@@ -162,6 +162,15 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 }
 
 int
+zocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_hw_ctx_execbuf *drm_hw_ctx_execbuf = (struct drm_zocl_hw_ctx_execbuf *)data;
+
+	return zocl_hw_ctx_execbuf(zdev, drm_hw_ctx_execbuf, filp);
+}
+
+int
 zocl_error_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;

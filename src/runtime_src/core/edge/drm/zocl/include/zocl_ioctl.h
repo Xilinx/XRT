@@ -35,6 +35,8 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_execbuf_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,

@@ -119,7 +119,7 @@ shim(unsigned index)
   , mCuMaps(128, {nullptr, 0})
 {
   xclLog(XRT_INFO, "%s", __func__);
-
+  hw_context_enable = xrt_core::config::get_hw_context_flag();
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
   mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
   // Validity of mKernelFD is checked using handleCheck in every shim function
@@ -1126,13 +1126,15 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
 {
   auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
   auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
-  if (false) { //TODO
+
+  if (!hw_context_enable) {
+    // for legacy flow
     auto cuidx = mCoreDevice->get_cuidx(0, cuname);
     xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
     return cuidx;
   }
   else {
-    /*This is for multi slot case.*/
+    // This is for multi slot case
     unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
     drm_zocl_open_cu_ctx  cu_ctx = {};
     cu_ctx.flags = flags;
@@ -1151,12 +1153,14 @@ shim::
 close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
   auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
-  if (false) { //TODO
+
+  if (!hw_context_enable) {
+    // for legacy flow
     if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
       throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
   }
   else {
-    /*This is for multi slot case.*/
+    // This is for multi slot case
     drm_zocl_close_cu_ctx cu_ctx = {};
     cu_ctx.hw_context = hwctx_hdl->get_slotidx();
     cu_ctx.cu_index = cuidx.index;
@@ -1331,43 +1335,75 @@ create_hw_context(xclDeviceHandle handle,
                   xrt::hw_context::access_mode mode)
 {
   const static int qos_val = 0;
-  auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
-  auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
-  int rcode = 0;
-  drm_zocl_create_hw_ctx hw_ctx = {};
-  hw_ctx.qos = qos_val;
-  auto shim = get_shim_object(handle);
-
-  if(auto ret = shim->load_hw_axlf(handle, buffer, &hw_ctx)) {
-    if (ret) {
-      if (ret == -EOPNOTSUPP) {
-        xclLog(XRT_ERROR, "XCLBIN does not match shell on the card.");
-      }
-      xclLog(XRT_ERROR, "See dmesg log for details. Err = %d", ret);
-      throw xrt_core::error("Failed to create hardware context");
-    }
+  if (!hw_context_enable) {
+    //for legacy flow
+    return std::make_unique<zynqaie::hwctx_object>(this, 0, xclbin_uuid, mode);
   }
-  //success
-  mCoreDevice->register_axlf(buffer);
-  return std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode);
+  else {
+    // This is for multi slot case
+    auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
+    auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+    int rcode = 0;
+    drm_zocl_create_hw_ctx hw_ctx = {};
+    hw_ctx.qos = qos_val;
+    auto shim = get_shim_object(handle);
+
+    if(auto ret = shim->load_hw_axlf(handle, buffer, &hw_ctx)) {
+      if (ret) {
+        if (ret == -EOPNOTSUPP) {
+          xclLog(XRT_ERROR, "XCLBIN does not match shell on the card.");
+        }
+        xclLog(XRT_ERROR, "See dmesg log for details. Err = %d", ret);
+        throw xrt_core::error("Failed to create hardware context");
+      }
+    }
+    //success
+    mCoreDevice->register_axlf(buffer);
+    return std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode);
+  }
 }
 
 void
 shim::
 destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
 {
-  drm_zocl_destroy_hw_ctx hw_ctx = {};
-  hw_ctx.hw_context = slot;
+  if (!hw_context_enable) {
+    //for legacy flow, nothing to be done.
+    return;
+  }
+  else {
+    // This is for multi slot case
+    drm_zocl_destroy_hw_ctx hw_ctx = {};
+    hw_ctx.hw_context = slot;
 
-  auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_DESTROY_HW_CTX, &hw_ctx);
-  if (ret)
-    throw xrt_core::system_error(errno, "Failed to destroy hardware context");
+    auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_DESTROY_HW_CTX, &hw_ctx);
+    if (ret)
+      throw xrt_core::system_error(errno, "Failed to destroy hardware context");
+  }
 }
 
 void
 shim::
 register_xclbin(const xrt::xclbin&){
   xclLog(XRT_INFO, "%s: xclbin successfully registered for this device without loading the xclbin", __func__);
+}
+
+void
+shim::
+hwctx_exec_buf(const xrt_core::hwctx_handle* hwctx_hdl, xclBufferHandle boh) {
+  auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
+  if (!hw_context_enable) {
+    //for legacy flow
+    xclExecBuf(boh);
+  }
+  else {
+    // This is for multi slot case
+    drm_zocl_hw_ctx_execbuf exec = {hwctx->get_slotidx(), boh};
+    int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_HW_CTX_EXECBUF, &exec);
+    xclLog(XRT_DEBUG, "%s: cmdBO handle %d, ioctl return %d", __func__, boh, result);
+    if (result == -EDEADLK)
+      xclLog(XRT_ERROR, "CU might hang, please reset device");
+  }
 }
 
 int

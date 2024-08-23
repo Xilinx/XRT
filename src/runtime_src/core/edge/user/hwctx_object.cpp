@@ -75,7 +75,7 @@ namespace zynqaie {
   void
   hwctx_object::exec_buf(xrt_core::buffer_handle* cmd)
   {
-    m_shim->xclExecBuf(cmd->get_xcl_handle());
+    m_shim->hwctx_exec_buf(this, cmd->get_xcl_handle());
   }
 
   std::unique_ptr<xrt_core::graph_handle>

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-
+#include "zocl_drv.h"
+#include "kds_ert_table.h"
 #include "zocl_util.h"
 #include "zocl_hwctx.h"
 #include <drm/drm_print.h>
@@ -202,5 +203,258 @@ int zocl_close_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_cu_ctx *d
 
 out:
     mutex_unlock(&client->lock);
+    return ret;
+}
+
+/**
+ * Callback function for async dma operation. This will also clean the
+ * command memory.
+ *
+ * @arg:    kds command pointer
+ * @ret:    return value of the dma operation.
+ */
+static void zocl_kds_dma_complete(void *arg, int ret)
+{
+    struct kds_command *xcmd = (struct kds_command *)arg;
+    zocl_dma_handle_t *dma_handle = (zocl_dma_handle_t *)xcmd->priv;
+
+    xcmd->status = KDS_COMPLETED;
+    if (ret)
+        xcmd->status = KDS_ERROR;
+    xcmd->cb.notify_host(xcmd, xcmd->status);
+    xcmd->cb.free(xcmd);
+
+    kfree(dma_handle);
+}
+
+/**
+ * Copy the user space command to kds command. Also register the callback
+ * function for the DMA operation.
+ *
+ * @zdev:   zocl device structure
+ * @flip:   DRM file private data
+ * @ecmd:   ERT command structure
+ * @xcmd:   KDS command structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
+static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
+			    struct ert_start_copybo_cmd *ecmd,
+			    struct kds_command *xcmd)
+{
+    struct drm_device *dev = zdev->ddev;
+    zocl_dma_handle_t *dma_handle;
+    struct drm_zocl_copy_bo args = {
+        .dst_handle = ecmd->dst_bo_hdl,
+        .src_handle = ecmd->src_bo_hdl,
+        .size = ert_copybo_size(ecmd),
+        .dst_offset = ert_copybo_dst_offset(ecmd),
+        .src_offset = ert_copybo_src_offset(ecmd),
+    };
+    int ret = 0;
+
+    dma_handle = kmalloc(sizeof(zocl_dma_handle_t), GFP_KERNEL);
+    if (!dma_handle)
+        return -ENOMEM;
+
+    memset(dma_handle, 0, sizeof(zocl_dma_handle_t));
+
+    ret = zocl_dma_channel_instance(dma_handle, zdev);
+    if (ret)
+        return ret;
+
+    /* We must set up callback for async dma operations. */
+    dma_handle->dma_func = zocl_kds_dma_complete;
+    dma_handle->dma_arg = xcmd;
+    xcmd->priv = dma_handle;
+
+    ret = zocl_copy_bo_async(dev, filp, dma_handle, &args);
+    return ret;
+}
+
+static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
+{
+    struct kds_client *client = xcmd->client;
+    struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+
+    ecmd->state = kds_ert_table[status];
+
+    if (xcmd->timestamp_enabled) {
+        /* Only start kernel command supports timestamps */
+        struct ert_start_kernel_cmd *scmd;
+        struct cu_cmd_state_timestamps *ts;
+
+        scmd = (struct ert_start_kernel_cmd *)ecmd;
+        ts = ert_start_kernel_timestamps(scmd);
+        ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
+        ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
+        ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
+        ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+    }
+
+    ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+
+    if (xcmd->cu_idx >= 0)
+        client_stat_inc(client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
+
+    atomic_inc(&client->event);
+    wake_up_interruptible(&client->waitq);
+}
+
+static struct kds_client_cu_ctx *
+zocl_get_hw_cu_ctx(struct kds_client_hw_ctx *kds_hw_ctx, int cu_idx)
+{
+    struct kds_client_cu_ctx *kds_cu_ctx = NULL;
+    bool found = false;
+
+    list_for_each_entry(kds_cu_ctx, &kds_hw_ctx->cu_ctx_list, link) {
+        if (kds_cu_ctx->cu_idx == cu_idx) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found)
+        return kds_cu_ctx;
+    return NULL;
+}
+
+static int
+check_for_open_hw_cu_ctx(struct drm_zocl_dev *zdev, struct kds_client *client, struct kds_command *xcmd)
+{
+    struct kds_client_hw_ctx *kds_hw_ctx = NULL;
+    int first_cu_idx = -EINVAL;
+    u32 mask = 0;
+    int i, j;
+    int ret = 0;
+
+    /* i for iterate masks, j for iterate bits */
+    for (i = 0; i < xcmd->num_mask; ++i) {
+        if (xcmd->cu_mask[i] == 0)
+            continue;
+
+        mask = xcmd->cu_mask[i];
+        for (j = 0; mask > 0; ++j) {
+            if (!(mask & 0x1)) {
+                mask >>= 1;
+                continue;
+            }
+
+            first_cu_idx = i * sizeof(u32) + j;
+            goto out;
+        }
+    }
+
+out:
+    if (first_cu_idx < 0)
+        return -EINVAL;
+
+    mutex_lock(&client->lock);
+    kds_hw_ctx = kds_get_hw_ctx_by_id(client, xcmd->hw_ctx_id);
+    if (!kds_hw_ctx) {
+        mutex_unlock(&client->lock);
+        return -EINVAL;
+    }
+
+    if (zocl_get_hw_cu_ctx(kds_hw_ctx, first_cu_idx) != NULL)
+        ret = 0;
+    else
+        ret = -EINVAL;
+
+    mutex_unlock(&client->lock);
+    return ret;
+}
+
+int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbuf *drm_hw_ctx_execbuf, struct drm_file *filp)
+{
+    struct drm_gem_object *gem_obj = NULL;
+    struct drm_device *dev = zdev->ddev;
+    struct kds_client *client = filp->driver_priv;
+    struct drm_zocl_bo *zocl_bo = NULL;
+    struct ert_packet *ecmd = NULL;
+    struct kds_command *xcmd = NULL;
+    int ret = 0;
+
+    if (zdev->kds.bad_state) {
+        DRM_ERROR("%s: KDS is in bad state", __func__);
+        return -EDEADLK;
+    }
+    gem_obj = zocl_gem_object_lookup(dev, filp, drm_hw_ctx_execbuf->exec_bo_handle);
+    if (!gem_obj) {
+        DRM_ERROR("%s: Look up GEM BO %d failed", __func__, drm_hw_ctx_execbuf->exec_bo_handle);
+        return -EINVAL;
+    }
+
+    zocl_bo = to_zocl_bo(gem_obj);
+    if (!zocl_bo_execbuf(zocl_bo)) {
+        DRM_ERROR("%s: Command Buffer is not exec buf", __func__);
+        return -EINVAL;
+    }
+
+    ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
+    ecmd->state = ERT_CMD_STATE_NEW;
+
+    xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
+    if (!xcmd) {
+        DRM_ERROR("%s: Failed to alloc xcmd", __func__);
+        ret = -ENOMEM;
+        goto out;
+    }
+
+    xcmd->cb.free = kds_free_command;
+    xcmd->cb.notify_host = notify_execbuf;
+    xcmd->execbuf = (u32 *)ecmd;
+    xcmd->gem_obj = gem_obj;
+    xcmd->exec_bo_handle = drm_hw_ctx_execbuf->exec_bo_handle;
+    xcmd->hw_ctx_id = drm_hw_ctx_execbuf->hw_ctx_id;
+
+    switch (ecmd->opcode) {
+        case ERT_CONFIGURE:
+            xcmd->status = KDS_COMPLETED;
+            xcmd->cb.notify_host(xcmd, xcmd->status);
+            goto out1;
+        case ERT_START_CU:
+            start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            break;
+        case ERT_EXEC_WRITE:
+            DRM_WARN_ONCE("ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL");
+#if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
+		    __attribute__ ((fallthrough));
+#else
+		    __attribute__ ((__fallthrough__));
+#endif
+        case ERT_START_KEY_VAL:
+            start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            break;
+        case ERT_START_FA:
+            start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+            break;
+        case ERT_START_COPYBO:
+            ret = copybo_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);
+            if (ret)
+                goto out1;
+            goto out;
+        case ERT_ABORT:
+            abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
+            break;
+        default:
+            DRM_ERROR("%s: Unsupport command", __func__);
+            ret = -EINVAL;
+            goto out1;
+    }
+
+    if (check_for_open_hw_cu_ctx(zdev, client, xcmd) < 0) {
+        DRM_ERROR("The client has no opening context\n");
+        return -EINVAL;
+    }
+
+    ret = kds_add_command(&zdev->kds, xcmd);
+    return ret;
+
+out1:
+    xcmd->cb.free(xcmd);
+out:
+    if (ret < 0)
+        ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
     return ret;
 }

@@ -65,6 +65,8 @@
  *      a device
  * 18   Open cu context                        DRM_IOCTL_ZOCL_OPEN_CU_CTX     drm_zocl_open_cu_ctx
  * 19   Close cu context                       DRM_IOCTL_ZOCL_CLOSE_CU_CTX    drm_zocl_close_cu_ctx
+ * 20   Send an execute job to a CU with hw    DRM_IOCTL_ZOCL_HW_CTX_EXECBUF  drm_zocl_hw_ctx_execbuf
+ *      context
  *
  * ==== ====================================== ============================== ==================================
  */
@@ -106,6 +108,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_PCAP_DOWNLOAD,
 	/* Send an execute job to a compute unit */
 	DRM_ZOCL_EXECBUF,
+	/* Send an execute job to a CU with hw ctx */
+	DRM_ZOCL_HW_CTX_EXECBUF,
 	/* Read the xclbin and map CUs */
 	DRM_ZOCL_READ_AXLF,
 	/* Create a hw context for a xlbin on the device */
@@ -390,6 +394,18 @@ struct drm_zocl_execbuf {
   uint32_t exec_bo_handle;
 };
 
+/**
+ * struct drm_zocl_hw_ctx_execbuf - Submit a command buffer for execution on a CU
+ * used with DRM_IOCTL_ZOCL_HW_CTX_EXECBUF ioctl
+ *
+ * @hw_ctx_id:	pass the hw context id
+ * @exec_bo_handle:	BO handle of command buffer formatted as ERT command
+ */
+struct drm_zocl_hw_ctx_execbuf {
+  uint32_t	hw_ctx_id;
+  uint32_t	exec_bo_handle;
+};
+
 /*
  * enum drm_zocl_platform_flags - can be used for axlf bitstream
  */
@@ -639,6 +655,8 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_PREAD_BO, struct drm_zocl_pread_bo)
 #define DRM_IOCTL_ZOCL_EXECBUF         DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_EXECBUF, struct drm_zocl_execbuf)
+#define DRM_IOCTL_ZOCL_HW_CTX_EXECBUF  DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_HW_CTX_EXECBUF, struct drm_zocl_hw_ctx_execbuf)
 #define DRM_IOCTL_ZOCL_READ_AXLF       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_READ_AXLF, struct drm_zocl_axlf)
 #define DRM_IOCTL_ZOCL_CREATE_HW_CTX   DRM_IOWR(DRM_COMMAND_BASE + \

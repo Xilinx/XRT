@@ -268,6 +268,9 @@ public:
 
   void
   destroy_hw_context(xrt_core::hwctx_handle::slot_id slotidx);
+
+  void
+  hwctx_exec_buf(const xrt_core::hwctx_handle* hwctx_hdl, xclBufferHandle boh);
 ////////////////////////////////////////////////////////////////
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
@@ -358,6 +361,7 @@ private:
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
   size_t mKernelClockFreq;
+  bool hw_context_enable = true;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most
