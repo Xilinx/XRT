@@ -153,7 +153,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   if(!AIEData.metadata->getRuntimeMetrics())
   {
     xrt_core::message::send(severity_level::warning, "XRT",
-                            "All the event-trace arguments are deprecated except 'runtime'. We recommend to use --event-trace=runtime");
+                            "AI Engine compile time event-trace arguments will be deprecated. "
+                            "Please plan to use runtime event trace by re-compiling AI Engine with --event-trace=runtime.");
   }
 
 #ifdef XDP_CLIENT_BUILD
