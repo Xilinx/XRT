@@ -853,10 +853,10 @@ static int __init awsmgmt_init(void)
 
 	printk(KERN_INFO DRV_NAME " init()\n");
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
-	xrt_class = class_create(THIS_MODULE, DRV_NAME);
+	awsmgmt_class = class_create(THIS_MODULE, DRV_NAME);
 #else
 	awsmgmt_class = class_create(DRV_NAME);
-#endif	
+#endif
 	if (IS_ERR(awsmgmt_class))
 		return PTR_ERR(awsmgmt_class);
 	res = alloc_chrdev_region(&awsmgmt_devnode, AWSMGMT_MINOR_BASE,
