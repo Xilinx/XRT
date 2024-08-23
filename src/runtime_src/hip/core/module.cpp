@@ -8,53 +8,54 @@
 
 #include <sstream>
 
-namespace xrt::core::hip {
-void
-module_xclbin::
-create_hw_context()
+namespace {
+static xrt::elf
+create_elf(void* data, size_t size)
 {
-  auto xrt_dev = get_context()->get_xrt_device();
-  auto uuid = xrt_dev.register_xclbin(m_xrt_xclbin);
-  m_xrt_hw_ctx = xrt::hw_context{xrt_dev, uuid};
+  std::istringstream stream;
+  stream.rdbuf()->pubsetbuf(static_cast<char*>(data), size);
+  return xrt::elf{stream};
 }
+
+static xrt::uuid
+register_xclbin(std::shared_ptr<xrt::core::hip::context> ctx, const xrt::xclbin& xclbin)
+{
+  auto xrt_device = ctx->get_xrt_device();
+  return xrt_device.register_xclbin(xclbin);
+}
+}
+
+namespace xrt::core::hip {
 
 module_xclbin::
 module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name)
   : module{std::move(ctx), true}
-{
-  m_xrt_xclbin = xrt::xclbin{file_name};
-  create_hw_context();
-}
+  , m_xrt_xclbin{file_name}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), register_xclbin(m_ctx, m_xrt_xclbin)}
+{}
 
 module_xclbin::
 module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size)
   : module{std::move(ctx), true}
-{
-  std::vector<char> buf(static_cast<char*>(data), static_cast<char*>(data) + size);
-  m_xrt_xclbin = xrt::xclbin{buf};
-  create_hw_context();
-}
+  , m_xrt_xclbin{std::vector<char>{static_cast<char*>(data), static_cast<char*>(data) + size}}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), register_xclbin(m_ctx, m_xrt_xclbin)}
+{}
 
 module_elf::
 module_elf(module_xclbin* xclbin_module, const std::string& file_name)
   : module{xclbin_module->get_context(), false}
   , m_xclbin_module{xclbin_module}
-  , m_xrt_elf{xrt::elf{file_name}}
-  , m_xrt_module{xrt::module{m_xrt_elf}}
-{
-}
+  , m_xrt_elf{file_name}
+  , m_xrt_module{m_xrt_elf}
+{}
 
 module_elf::
 module_elf(module_xclbin* xclbin_module, void* data, size_t size)
   : module{xclbin_module->get_context(), false}
   , m_xclbin_module{xclbin_module}
-{
-  std::istringstream stream;
-  stream.rdbuf()->pubsetbuf(static_cast<char*>(data), size);
-
-  m_xrt_elf = xrt::elf{stream};
-  m_xrt_module = xrt::module{m_xrt_elf};
-}
+  , m_xrt_elf{create_elf(data, size)}
+  , m_xrt_module{m_xrt_elf}
+{}
 
 function::
 function(module_xclbin* xclbin_mod_hdl, const xrt::module& xrt_module, const std::string& name)

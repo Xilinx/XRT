@@ -80,8 +80,11 @@ create_module(const hipModuleData* config)
       return insert_in_map(module_cache,
                            std::make_shared<module_xclbin>(ctx, std::string{static_cast<char*>(config->data), config->size}));
     }
-    // data passed is buffer, validity of buffer is checked during xrt::xclbin construction
-    return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
+    else if (config->type == hipModuleDataBuffer) {
+      // data passed is buffer, validity of buffer is checked during xrt::xclbin construction
+      return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
+    }
+    throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
   }
 
   // elf load
@@ -99,8 +102,11 @@ create_module(const hipModuleData* config)
     return insert_in_map(module_cache,
                          std::make_shared<module_elf>(hip_xclbin_mod.get(), std::string{static_cast<char*>(config->data), config->size}));
   }
-  // data passed is buffer
-  return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->data, config->size));
+  else if (config->type == hipModuleDataBuffer) {
+    // data passed is buffer
+    return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->data, config->size));
+  }
+  throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
 }
 
 static module_handle

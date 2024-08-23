@@ -219,7 +219,7 @@ hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 hipError_t
 hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
 #else
-#define hipDeviceProp_tR0600 hipDeviceProp_t
+using hipDeviceProp_tR0600 = hipDeviceProp_t;
 
 hipError_t
 hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
