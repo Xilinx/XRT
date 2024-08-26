@@ -420,7 +420,34 @@ namespace xdp::aie::profile {
     return adfApiMetricSetMap.at(metricSet);
   }
 
-
+   /****************************************************************************
+   * Get Interface tile broadcast channel and event 
+   * This is in pre-defined order of using last broadcast event first to avoid
+   * re-usage of same broadcast channel again in other plugin flows.
+   * TODO: All plugin broadcast usage should only query to FAL
+   ***************************************************************************/
+  std::pair<int, XAie_Events> getPLBroadcastChannel()
+  {
+    static std::vector<XAie_Events> broadcastEvents = {
+      XAIE_EVENT_BROADCAST_A_0_PL, XAIE_EVENT_BROADCAST_A_1_PL,
+      XAIE_EVENT_BROADCAST_A_2_PL, XAIE_EVENT_BROADCAST_A_3_PL,
+      XAIE_EVENT_BROADCAST_A_4_PL, XAIE_EVENT_BROADCAST_A_5_PL,
+      XAIE_EVENT_BROADCAST_A_6_PL, XAIE_EVENT_BROADCAST_A_7_PL,
+      XAIE_EVENT_BROADCAST_A_8_PL, XAIE_EVENT_BROADCAST_A_9_PL,
+      XAIE_EVENT_BROADCAST_A_10_PL, XAIE_EVENT_BROADCAST_A_11_PL,
+      XAIE_EVENT_BROADCAST_A_12_PL, XAIE_EVENT_BROADCAST_A_13_PL,
+      XAIE_EVENT_BROADCAST_A_14_PL, XAIE_EVENT_BROADCAST_A_15_PL,
+    };
+  
+    static int bcChannel = broadcastEvents.size()-1;
+    
+    if (bcChannel < 0)
+      return {-1, XAIE_EVENT_NONE_CORE};
+  
+    std::pair<int, XAie_Events> bcPair = std::make_pair(bcChannel, broadcastEvents[bcChannel]);
+    bcChannel--;
+    return bcPair;
+  }
 
 
 } // namespace xdp::aie

@@ -1136,7 +1136,16 @@ namespace xdp {
     return latencyConfigMap.at(tile).isSource;
   }
 
-  bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile)
+  bool AieProfileMetadata::getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const
+  {
+    if (!isValidLatencyTile(pairTyle))
+      return false;
+
+    sourceTile = latencyConfigMap.at(pairTyle).src;
+    return true;
+  }
+
+  bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile) const
   {
     return latencyConfigMap.find(tile) != latencyConfigMap.end();
   }

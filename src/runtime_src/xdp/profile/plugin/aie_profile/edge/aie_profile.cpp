@@ -842,7 +842,7 @@ namespace xdp {
 
     // Configure the combo events if user has specified valid non zero threshold
     if (threshold==0)
-      goto __done;
+      return startCounter(pc, counterEvent, retCounterEvent);
 
     // Set up a combo event using start & count event type
     comboEvent0 = xaieModule.comboEvent();
@@ -873,17 +873,24 @@ namespace xdp {
     if (ret != XAIE_OK)
       return nullptr;
 
-__done:
-    // Start the counter
-    ret = pc->start();
-    if (ret != XAIE_OK)
-      return nullptr;
-
-    // Respond back with this performance counter event 
-    // to use it later for broadcasting
-    retCounterEvent = counterEvent;
-    return pc;
+    return startCounter(pc, counterEvent, retCounterEvent);
   }
+
+  // inline std::shared_ptr<xaiefal::XAiePerfCounter>
+  // startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
+  // {
+  //   if (!pc)
+  //     return nullptr;
+    
+  //   auto ret = pc->start();
+  //   if (ret != XAIE_OK)
+  //     return nullptr;
+
+  //   // Return the known counter event
+  //   retCounterEvent = counterEvent;
+
+  //   return pc;
+  // }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
   AieProfile_EdgeImpl::configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
@@ -901,7 +908,9 @@ __done:
     
     startEvent = XAIE_EVENT_USER_EVENT_0_PL;
     if (!metadata->isSourceTile(tile)) {
-      startEvent = XAIE_EVENT_BROADCAST_A_10_PL;
+      // startEvent = XAIE_EVENT_BROADCAST_A_10_PL;
+      auto bcPair = determineBroadcastChannel(tile);
+      startEvent = bcPair.second;
       isSource = false;
     }
 
@@ -921,10 +930,15 @@ __done:
 
     XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
 
-    uint8_t status = -1;
-    uint8_t broadcastId  = 10;
+    // uint8_t status = -1;
+    // uint8_t broadcastId  = 10;
 
     if (isSource) {
+      auto bc_pair = determineBroadcastChannel(tile);
+      if (bc_pair.first == -1)
+        return nullptr;
+
+      uint8_t broadcastId  = static_cast<uint8_t>(bc_pair.first);
       // Set up of the brodcast of event over channel
       XAie_EventBroadcast(aieDevInst, tileloc, XAIE_PL_MOD, broadcastId, XAIE_EVENT_USER_EVENT_0_PL);
 
@@ -1058,5 +1072,25 @@ __done:
     uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
     return std::make_pair(phyStartEvent, phyEndEvent);
   }
+
+  std::pair<int, XAie_Events>
+  AieProfile_EdgeImpl::determineBroadcastChannel(const tile_type& currTileLoc)
+  {
+    tile_type srcTile = currTileLoc;
+    if (!metadata->isSourceTile(currTileLoc))
+      if (!metadata->getSourceTile(currTileLoc, srcTile))
+        return {-1, XAIE_EVENT_NONE_CORE};
+    
+    if (adfAPIBroadcastEventsMap.find(srcTile) == adfAPIBroadcastEventsMap.end()) {
+      auto bcPair = aie::profile::getPLBroadcastChannel();
+      if (bcPair.first == -1 || bcPair.second == XAIE_EVENT_NONE_CORE) {
+        std::cout << "!!! Error: Unable to get the broadcast channel events for PL module." << std::endl;
+        return {-1, XAIE_EVENT_NONE_CORE};
+      }
+      adfAPIBroadcastEventsMap[srcTile] = bcPair;
+    }
+    return adfAPIBroadcastEventsMap.at(srcTile);
+  }
+
 
   }

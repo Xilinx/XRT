@@ -96,10 +96,10 @@ namespace xdp {
                         size_t threshold, XAie_Events& retCounterEvent,
                         std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource);
 
-  bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
+      bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
                             XAie_Events& retCounterEvent);
 
-  void configEventBroadcast(XAie_DevInst* aieDevInst,
+      void configEventBroadcast(XAie_DevInst* aieDevInst,
                             const XAie_LocType loc,
                             const module_type xdpModType,
                             const std::string metricSet,
@@ -107,16 +107,34 @@ namespace xdp {
                             const XAie_Events bcEvent,
                             XAie_Events& bcChannelEvent);
 
-   void configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+      void configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
                       XAie_LocType loc, const XAie_ModuleType xaieModType,
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
 
-  std::pair<uint16_t, uint16_t>
-  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+      std::pair<uint16_t, uint16_t>
+      getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
                      XAie_ModuleType& xaieModType, module_type xdpModType, 
                      const std::string& metricSet,
                      XAie_Events startEvent, XAie_Events endEvent);
+  
+      std::pair<int, XAie_Events>
+      determineBroadcastChannel(const tile_type& currTileLoc);
+
+      inline std::shared_ptr<xaiefal::XAiePerfCounter>
+      startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
+      {
+        if (!pc)
+          return nullptr;
+        
+        auto ret = pc->start();
+        if (ret != XAIE_OK)
+          return nullptr;
+        
+        // Return the known counter event
+        retCounterEvent = counterEvent;
+        return pc;
+      }
 
     private:
       XAie_DevInst*     aieDevInst = nullptr;
@@ -142,6 +160,10 @@ namespace xdp {
       XAie_Events latencyUserBrodcastChannelEvent = XAIE_EVENT_NONE_CORE;
 
       std::unordered_map<aie::profile::adfAPI, aie::profile::adfAPIResourceInfo> adfAPIResourceInfoMap;
+      
+      // This stores the map of location of tile and configured broadcast channel event
+      std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
+ 
 
   };
 

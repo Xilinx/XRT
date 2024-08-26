@@ -158,6 +158,7 @@ namespace xdp::aie::profile {
   uint16_t getAdfApiReservedEventId(const std::string metricSet);
   inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
   inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
+  std::pair<int, XAie_Events> getPLBroadcastChannel();
 
 }  // namespace xdp::aie::profile
 
