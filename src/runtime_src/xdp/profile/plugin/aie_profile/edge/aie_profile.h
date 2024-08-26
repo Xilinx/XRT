@@ -159,7 +159,7 @@ namespace xdp {
       // This event is asserted in another interface tile
       XAie_Events latencyUserBrodcastChannelEvent = XAIE_EVENT_NONE_CORE;
 
-      std::unordered_map<aie::profile::adfAPI, aie::profile::adfAPIResourceInfo> adfAPIResourceInfoMap;
+      std::unordered_map<aie::profile::adfAPI, std::unordered_map<tile_loc, aie::profile::adfAPIResourceInfo>> adfAPIResourceInfoMap;
       
       // This stores the map of location of tile and configured broadcast channel event
       std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
