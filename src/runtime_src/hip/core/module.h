@@ -26,6 +26,7 @@ class function;
 // objects of module_xclbin/module_elf dervied from base class module
 class module
 {
+protected:
   std::shared_ptr<context> m_ctx;
   bool m_is_xclbin;
 
@@ -60,8 +61,7 @@ class module_xclbin : public module
 public:
   module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name);
 
-  void
-  create_hw_context();
+  module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size);
 
   function_handle
   add_function(std::shared_ptr<function> f)
@@ -90,6 +90,8 @@ class module_elf : public module
 
 public:
   module_elf(module_xclbin* xclbin_module, const std::string& file_name);
+
+  module_elf(module_xclbin* xclbin_module, void* data, size_t size);
 
   module_xclbin*
   get_xclbin_module() const { return m_xclbin_module; }
@@ -125,4 +127,3 @@ extern xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache
 } // xrt::core::hip
 
 #endif
-
