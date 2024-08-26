@@ -571,7 +571,7 @@ namespace xdp {
 
     void ConfigInfo::addAIECounter(uint32_t i, uint8_t col, uint8_t r,
                                    uint8_t num, uint16_t start, uint16_t end,
-                                   uint8_t reset, uint32_t load, double freq,
+                                   uint8_t reset, uint64_t load, double freq,
                                    const std::string& mod,
                                    const std::string& aieName)
     {

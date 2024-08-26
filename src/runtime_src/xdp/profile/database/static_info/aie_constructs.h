@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "xdp/profile/device/tracedefs.h"
+#include <iostream>
 
 namespace xdp::aie {
   struct aiecompiler_options
@@ -146,14 +147,14 @@ namespace xdp {
     uint8_t resetEvent;
     uint16_t startEvent;
     uint16_t endEvent;
-    uint32_t payload;
+    uint64_t payload;
     double clockFreqMhz;
     std::string module;
     std::string name;
 
     AIECounter(uint32_t i, uint8_t col, uint8_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
-               uint32_t load, double freq, const std::string& mod, 
+               uint64_t load, double freq, const std::string& mod, 
                const std::string& aieName)
       : id(i)
       , column(col)
@@ -338,6 +339,21 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  struct LatencyConfig
+  {
+    public:
+      tile_type src;
+      tile_type dest;
+      std::string metricSet;
+      uint32_t tranx_no;
+      bool isSource;
+      uint8_t portId;
+      LatencyConfig() = default;
+      LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i) :
+        src(s), dest(d), metricSet(m), tranx_no(t), isSource(i) {}
+      void updatePortId(uint8_t& id) { portId=id; }
+  };
+      
   struct AIEProfileFinalConfig
   {
     using tile_vec = std::vector<std::map<tile_type, std::string>>;
@@ -349,7 +365,7 @@ namespace xdp {
 
     AIEProfileFinalConfig() {}
     AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0, const tile_channel& cc1) :
-                          configMetrics(otherTileVec), configChannel0(cc0), configChannel1(cc1) 
+                          configMetrics(otherTileVec), configChannel0(cc0), configChannel1(cc1)
     {
     }
   };
