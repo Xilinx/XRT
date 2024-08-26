@@ -32,59 +32,60 @@ namespace zynqaie {
 
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
-    DevInst = {0};
-    devInst = nullptr;
-    adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+  DevInst = {0};
+  devInst = nullptr;
+  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
 
-    XAie_SetupConfig(ConfigPtr,
-        driver_config.hw_gen,
-        driver_config.base_address,
-        driver_config.column_shift,
-        driver_config.row_shift,
-        driver_config.num_columns,
-        driver_config.num_rows,
-        driver_config.shim_row,
-        driver_config.mem_row_start,
-        driver_config.mem_num_rows,
-        driver_config.aie_tile_row_start,
-        driver_config.aie_tile_num_rows);
+  XAie_SetupConfig(ConfigPtr,
+      driver_config.hw_gen,
+      driver_config.base_address,
+      driver_config.column_shift,
+      driver_config.row_shift,
+      driver_config.num_columns,
+      driver_config.num_rows,
+      driver_config.shim_row,
+      driver_config.mem_row_start,
+      driver_config.mem_num_rows,
+      driver_config.aie_tile_row_start,
+      driver_config.aie_tile_num_rows);
 
-    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-    /* TODO get partition id and uid from XCLBIN or PDI */
-    uint32_t partition_id = 1;
-    uint32_t uid = 0;
-    drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
-    int ret = drv->getPartitionFd(aiefd);
-    if (ret)
-        throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
-    fd = aiefd.fd;
+  /* TODO get partition id and uid from XCLBIN or PDI */
+  uint32_t partition_id = 1;
+  uint32_t uid = 0;
+  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+  int ret = drv->getPartitionFd(aiefd);
+  if (ret)
+    throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
+  fd = aiefd.fd;
 
-    access_mode = drv->getAIEAccessMode();
+  access_mode = drv->getAIEAccessMode();
 
-    ConfigPtr.PartProp.Handle = fd;
+  ConfigPtr.PartProp.Handle = fd;
 
-    AieRC rc;
-    if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
-        throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
-    devInst = &DevInst;
+  AieRC rc;
+  if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+    throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
+  devInst = &DevInst;
 
-    adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+  adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
-    fal_util::initialize(devInst); //resource manager initialization
-    
-    /* Initialize PLIO metadata */
-    plio_configs = xrt_core::edge::aie::get_plios(device.get());
+  fal_util::initialize(devInst); //resource manager initialization
+  
+  /* Initialize PLIO metadata */
+  plio_configs = xrt_core::edge::aie::get_plios(device.get());
 
-    /* Initialize gmio api instances */
-    gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
-    for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
-    {
-        auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
-        p_gmio_api->configure();
-        gmio_apis[config_itr->first] = p_gmio_api;
-    }
+  /* Initialize gmio api instances */
+  gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+  for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
+  {
+    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+    p_gmio_api->configure();
+    gmio_apis[config_itr->first] = p_gmio_api;
+  }
+  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
 }
 
 Aie::~Aie()
@@ -113,7 +114,7 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 
   int ret = drv->openAIEContext(am);
   if (ret)
-      throw xrt_core::error(ret, "Fail to open AIE context");
+    throw xrt_core::error(ret, "Fail to open AIE context");
 
   drv->setAIEAccessMode(am);
   access_mode = am;
@@ -128,6 +129,36 @@ is_context_set()
 
 void
 Aie::
+sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  if (config.shim_port_configs.empty())
+    return;
+
+  uint64_t address = bo.address();
+  for (auto& port_config : config.shim_port_configs) {
+    uint64_t transaction_size_ub = 0;
+    for (auto& shim_bd_info : port_config.shim_bd_infos)
+    {
+      uint64_t transaction_size = shim_bd_info.transaction_size;
+      if (transaction_size > transaction_size_ub)
+        transaction_size_ub = transaction_size;
+    }
+
+    int start_bd = -1;
+    for(auto& shim_bd_info : port_config.shim_bd_infos)
+    {
+      uint64_t bd_address;
+      bd_address = address  + shim_bd_info.offset * 4;
+      adf::dma_api::updateBDAddress(1 /* (adf::tile_type::shim_tile) */, port_config.shim_column, 0/*shim row*/, (uint8_t)shim_bd_info.bd_id, bd_address);
+      if (start_bd < 0)
+        start_bd = shim_bd_info.bd_id;
+    }
+    adf::dma_api::enqueueTask(1 /*(adf::tile_type::shim_tile)*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number, port_config.task_repetition , port_config.enable_task_complete_token, (uint8_t)start_bd);
+  }
+}
+
+void
+Aie::
 sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
@@ -136,10 +167,16 @@ sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t s
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
+  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  if (ebuf_itr != external_buffer_configs.end()) {
+    sync_external_buffer(bo, ebuf_itr->second, dir, size, offset);
+    return;
+  }
+
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   auto gmio_config_itr = gmio_configs.find(gmioName);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
@@ -161,11 +198,11 @@ sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   auto gmio_config_itr = gmio_configs.find(gmioName);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
 }
 
@@ -182,7 +219,7 @@ wait_gmio(const std::string& gmioName)
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-    
+
   gmio_itr->second->wait();
 }
 
