@@ -7,14 +7,17 @@
 #include "zocl_hwctx.h"
 #include <drm/drm_print.h>
 
-int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct kds_client *client, int slot_id)
+int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct drm_file *filp, int slot_id)
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct drm_zocl_slot *slot = NULL;
+    struct kds_client *client = filp->driver_priv;
     int ret = 0;
 
-    if (!client)
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
         return -EINVAL;
+    }
 
     if (slot_id < 0) {
         DRM_ERROR("%s: Invalid slot id =%d", __func__, slot_id);
@@ -45,11 +48,17 @@ error_out:
     return ret;
 }
 
-int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ctx *drm_hw_ctx, struct kds_client *client)
+int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ctx *drm_hw_ctx, struct drm_file *filp)
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct drm_zocl_slot *slot = NULL;
+    struct kds_client *client = filp->driver_priv;
     int ret = 0;
+
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
+        return -EINVAL;
+    }
 
     mutex_lock(&client->lock);
     kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_hw_ctx->hw_context);
@@ -63,6 +72,7 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
     ret = zocl_unlock_bitstream(slot, slot->slot_xclbin->zx_uuid);
     if (ret) {
         DRM_ERROR("%s: Unlocking the bistream failed", __func__);
+        mutex_unlock(&client->lock);
         return -EINVAL;
     }
     ret = kds_free_hw_ctx(client, kds_hw_ctx);
@@ -127,12 +137,18 @@ zocl_close_cu_ctx_to_info(struct drm_zocl_close_cu_ctx *drm_cu_ctx, struct kds_c
     kds_cu_info->cu_idx = get_domain_idx(drm_cu_ctx->cu_index);
 }
 
-int zocl_open_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_open_cu_ctx *drm_cu_ctx, struct kds_client *client)
+int zocl_open_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_open_cu_ctx *drm_cu_ctx, struct drm_file *filp)
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct kds_client_cu_ctx *kds_cu_ctx = NULL;
+    struct kds_client *client = filp->driver_priv;
     struct kds_client_cu_info kds_cu_info = {};
     int ret = 0;
+
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
+        return -EINVAL;
+    }
 
     mutex_lock(&client->lock);
 
@@ -170,12 +186,18 @@ out:
     return ret;
 }
 
-int zocl_close_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_cu_ctx *drm_cu_ctx, struct kds_client *client)
+int zocl_close_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_cu_ctx *drm_cu_ctx, struct drm_file *filp)
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct kds_client_cu_ctx *kds_cu_ctx = NULL;
+    struct kds_client *client = filp->driver_priv;
     struct kds_client_cu_info kds_cu_info = {};
     int ret = 0;
+
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
+        return -EINVAL;
+    }
 
     mutex_lock(&client->lock);
 
@@ -213,7 +235,7 @@ out:
  * @arg:    kds command pointer
  * @ret:    return value of the dma operation.
  */
-static void zocl_kds_dma_complete(void *arg, int ret)
+static void zocl_hwctx_kds_dma_complete(void *arg, int ret)
 {
     struct kds_command *xcmd = (struct kds_command *)arg;
     zocl_dma_handle_t *dma_handle = (zocl_dma_handle_t *)xcmd->priv;
@@ -238,7 +260,7 @@ static void zocl_kds_dma_complete(void *arg, int ret)
  *
  * @return      0 on success, Error code on failure.
  */
-static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
+static int copybo_hwctx_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
 			    struct ert_start_copybo_cmd *ecmd,
 			    struct kds_command *xcmd)
 {
@@ -264,15 +286,14 @@ static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
         return ret;
 
     /* We must set up callback for async dma operations. */
-    dma_handle->dma_func = zocl_kds_dma_complete;
+    dma_handle->dma_func = zocl_hwctx_kds_dma_complete;
     dma_handle->dma_arg = xcmd;
     xcmd->priv = dma_handle;
 
-    ret = zocl_copy_bo_async(dev, filp, dma_handle, &args);
-    return ret;
+    return zocl_copy_bo_async(dev, filp, dma_handle, &args);
 }
 
-static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
+static void notify_hwctx_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
     struct kds_client *client = xcmd->client;
     struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
@@ -382,13 +403,15 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     gem_obj = zocl_gem_object_lookup(dev, filp, drm_hw_ctx_execbuf->exec_bo_handle);
     if (!gem_obj) {
         DRM_ERROR("%s: Look up GEM BO %d failed", __func__, drm_hw_ctx_execbuf->exec_bo_handle);
-        return -EINVAL;
+        ret = -EINVAL;
+        goto out;
     }
 
     zocl_bo = to_zocl_bo(gem_obj);
     if (!zocl_bo_execbuf(zocl_bo)) {
         DRM_ERROR("%s: Command Buffer is not exec buf", __func__);
-        return -EINVAL;
+        ret = -EINVAL;
+        goto out;
     }
 
     ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
@@ -402,7 +425,7 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
     }
 
     xcmd->cb.free = kds_free_command;
-    xcmd->cb.notify_host = notify_execbuf;
+    xcmd->cb.notify_host = notify_hwctx_execbuf;
     xcmd->execbuf = (u32 *)ecmd;
     xcmd->gem_obj = gem_obj;
     xcmd->exec_bo_handle = drm_hw_ctx_execbuf->exec_bo_handle;
@@ -430,7 +453,7 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
             start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
             break;
         case ERT_START_COPYBO:
-            ret = copybo_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);
+            ret = copybo_hwctx_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);
             if (ret)
                 goto out1;
             goto out;
@@ -445,11 +468,12 @@ int zocl_hw_ctx_execbuf(struct drm_zocl_dev *zdev, struct drm_zocl_hw_ctx_execbu
 
     if (check_for_open_hw_cu_ctx(zdev, client, xcmd) < 0) {
         DRM_ERROR("The client has no opening context\n");
-        return -EINVAL;
+        ret = -EINVAL;
+        goto out;
     }
 
     ret = kds_add_command(&zdev->kds, xcmd);
-    return ret;
+    goto out;
 
 out1:
     xcmd->cb.free(xcmd);

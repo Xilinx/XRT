@@ -56,7 +56,7 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file
 		return ret;
 	}
 
-	return zocl_create_hw_ctx(zdev, drm_hw_ctx, client, slot_id);
+	return zocl_create_hw_ctx(zdev, drm_hw_ctx, filp, slot_id);
 }
 
 /*
@@ -66,9 +66,8 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
-	struct kds_client *client = filp->driver_priv;
 
-	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, client);
+	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, filp);
 }
 
 /*
@@ -78,8 +77,8 @@ int zocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_open_cu_ctx *drm_cu_ctx = (struct drm_zocl_open_cu_ctx *)data;
-	struct kds_client *client = filp->driver_priv;
-	return zocl_open_cu_ctx(zdev, drm_cu_ctx, client);
+
+	return zocl_open_cu_ctx(zdev, drm_cu_ctx, filp);
 }
 
 /*
@@ -89,8 +88,8 @@ int zocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file 
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_close_cu_ctx *drm_cu_ctx = (struct drm_zocl_close_cu_ctx *)data;
-	struct kds_client *client = filp->driver_priv;
-	return zocl_close_cu_ctx(zdev, drm_cu_ctx, client);
+
+	return zocl_close_cu_ctx(zdev, drm_cu_ctx, filp);
 }
 
 /*
