@@ -1145,6 +1145,25 @@ namespace xdp {
     return true;
   }
 
+  std::string AieProfileMetadata::srcDestPairKey(uint8_t col, uint8_t row) const
+  {
+    static std::map<std::string, std::string> keysCache;
+    std::string key = "";
+
+    std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row);
+    if(keysCache.find(cacheKey) != keysCache.end())
+      return keysCache.at(cacheKey);
+
+    for(const auto &config : latencyConfigMap) {
+      if(config.first.col == col && config.first.row == row) {
+        key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
+              "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
+        keysCache[cacheKey] = key;
+      }
+    }
+    return key;
+  }
+
   bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile) const
   {
     return latencyConfigMap.find(tile) != latencyConfigMap.end();

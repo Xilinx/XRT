@@ -439,7 +439,7 @@ namespace xdp::aie::profile {
       XAIE_EVENT_BROADCAST_A_14_PL, XAIE_EVENT_BROADCAST_A_15_PL,
     };
   
-    static int bcChannel = broadcastEvents.size()-1;
+    static int bcChannel = static_cast<int>(broadcastEvents.size()-1);
     
     if (bcChannel < 0)
       return {-1, XAIE_EVENT_NONE_CORE};

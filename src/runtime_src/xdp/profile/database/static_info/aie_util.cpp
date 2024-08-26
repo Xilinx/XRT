@@ -365,6 +365,11 @@ namespace xdp::aie {
     return static_cast<uint8_t>(std::stoi(input));
   }
 
+  std::string
+  uint8ToStr(const uint8_t& value) {
+    return std::to_string(static_cast<int>(value));
+  }
+
   /****************************************************************************
    * Get AIE partition information
    ****************************************************************************/

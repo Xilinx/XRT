@@ -166,6 +166,7 @@ class AieProfileMetadata {
     uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
                          uint8_t col2, uint8_t row2, uint8_t portID2);
     bool getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const;
+    std::string srcDestPairKey(uint8_t col, uint8_t row) const;
 
     std::vector<tile_type>
     getTiles(const std::string& graph_name, module_type type, const std::string& kernel_name) const;

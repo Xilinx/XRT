@@ -689,8 +689,9 @@ namespace xdp {
           uint32_t srcCounterValue = 0;
           uint32_t destCounterValue = 0;
           try {
-            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(tile_loc(aie->column,aie->row)).srcPcIdx;
-            uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(tile_loc(aie->column,aie->row)).destPcIdx;
+            std::string srcDestPairKey = metadata->srcDestPairKey(aie->column, aie->row);
+            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
+            uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
             auto srcPerfCount = perfCounters.at(srcPcIdx);
             auto destPerfCount = perfCounters.at(destPcIdx);
             srcPerfCount->readResult(srcCounterValue);
@@ -703,7 +704,8 @@ namespace xdp {
         else if (aie::profile::adfAPIStartToTransferredConfigEvent(aie->startEvent))
         {
           try {
-            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(tile_loc(aie->column,aie->row)).srcPcIdx;
+            std::string srcKey = aie::uint8ToStr(aie->column) + "," + aie::uint8ToStr(aie->row);
+            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(srcKey).srcPcIdx;
             auto perfCounter = perfCounters.at(srcPcIdx);
             perfCounter->readResult(counterValue);
           } catch(...) {
@@ -760,19 +762,19 @@ namespace xdp {
   {
     if (xdpModType != module_type::shim)
       return nullptr;
-    
+
     if (metricSet == "interface_tile_latency" && pcIndex==1) {
       bool isSourceTile = true;
       auto pc = configIntfLatency(aieDevInst, xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent, metadata, tile, isSourceTile);
-      tile_loc loc = tile_loc(tile.col, tile.row);
+      std::string srcDestPairKey = metadata->srcDestPairKey(tile.col, tile.row);
       if (isSourceTile) {
-        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][loc].isSourceTile = true; 
-        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][loc].srcPcIdx = perfCounters.size();
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = perfCounters.size();
       }
       else
-        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][loc].destPcIdx = perfCounters.size();
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].destPcIdx = perfCounters.size();
       return pc;
     }
 
@@ -780,8 +782,10 @@ namespace xdp {
       auto pc = configPCUsingComboEvents(aieDevInst, xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent);
-      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][loc].srcPcIdx = perfCounters.size();
-      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][loc].isSourceTile = true;
+
+      std::string srcKey = aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row);
+      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = perfCounters.size();
+      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].isSourceTile = true;
       return pc;
     }
 
@@ -919,7 +923,6 @@ namespace xdp {
       // startEvent = XAIE_EVENT_BROADCAST_A_10_PL;
       auto bcPair = determineBroadcastChannel(tile);
       startEvent = bcPair.second;
-      std::cout << "Dest startEvent: " << static_cast<uint8_t>(startEvent) << std::endl;
       isSource = false;
     }
 
@@ -948,7 +951,6 @@ namespace xdp {
         return nullptr;
 
       uint8_t broadcastId  = static_cast<uint8_t>(bc_pair.first);
-      std::cout << "!!! source broadcastID: " << +broadcastId << std::endl;
       // Set up of the brodcast of event over channel
       XAie_EventBroadcast(aieDevInst, tileloc, XAIE_PL_MOD, broadcastId, XAIE_EVENT_USER_EVENT_0_PL);
 
@@ -1094,7 +1096,6 @@ namespace xdp {
     if (adfAPIBroadcastEventsMap.find(srcTile) == adfAPIBroadcastEventsMap.end()) {
       auto bcPair = aie::profile::getPLBroadcastChannel();
       if (bcPair.first == -1 || bcPair.second == XAIE_EVENT_NONE_CORE) {
-        std::cout << "!!! Error: Unable to get the broadcast channel events for PL module." << std::endl;
         return {-1, XAIE_EVENT_NONE_CORE};
       }
       adfAPIBroadcastEventsMap[srcTile] = bcPair;

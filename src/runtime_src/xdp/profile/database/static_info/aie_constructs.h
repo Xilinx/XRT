@@ -64,13 +64,6 @@ namespace xdp {
     GMIO
   };
 
-  struct tile_loc {
-    uint8_t col;
-    uint8_t row;
-
-    tile_loc(uint8_t c=0, uint8_t r=0) : col(c), row(r) {}
-  };
-
   struct tile_type
   {
     uint8_t  row;
