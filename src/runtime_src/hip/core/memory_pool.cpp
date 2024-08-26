@@ -11,8 +11,8 @@
 namespace xrt::core::hip
 {
   // Global map of memory_pool associated with device id.
-  std::map<int, std::list<std::shared_ptr<memory_pool>>> memory_pool_db;
-  std::map<int, std::shared_ptr<memory_pool>> current_memory_pool_db;
+  std::map<uint32_t, std::list<std::shared_ptr<memory_pool>>> memory_pool_db;
+  std::map<uint32_t, std::shared_ptr<memory_pool>> current_memory_pool_db;
   
   // Global map of memory_pool associated with its handle.
   xrt_core::handle_map<mem_pool_handle, std::shared_ptr<memory_pool>> mem_pool_cache;
