@@ -13,7 +13,7 @@ enum hipModuleDataType {
 // structure that represents the config data passed to hipModuleLoadData
 struct hipModuleData
 {
-  hipModuleDataType type;  // type of data passed
+  enum hipModuleDataType type;  // type of data passed
   hipModule_t parent;      // parent module to establish link b/w xclbin and elf
                            // parent is null for xclbin creation, parent will point
                            // to xclbin module for elf creation
