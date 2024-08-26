@@ -29,8 +29,10 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/include/xclbin.h"
 
+#include <algorithm>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <cctype> 
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -363,6 +365,11 @@ namespace xdp::aie {
     return static_cast<uint8_t>(std::stoi(input));
   }
 
+  std::string
+  uint8ToStr(const uint8_t& value) {
+    return std::to_string(static_cast<int>(value));
+  }
+
   /****************************************************************************
    * Get AIE partition information
    ****************************************************************************/
@@ -398,6 +405,11 @@ namespace xdp::aie {
     }
 
     return startCols;
+  }
+
+  bool isDigitString(const std::string& str)
+  {
+    return std::all_of(str.begin(), str.end(), ::isdigit);
   }
 
   std::vector<uint8_t> getPartitionNumColumnsClient(void* handle)

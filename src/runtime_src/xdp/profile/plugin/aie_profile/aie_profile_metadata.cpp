@@ -44,6 +44,8 @@ namespace xdp {
     if (!metadataReader) {
       return;
     }
+    
+    auto compilerOptions = metadataReader->getAIECompilerOptions();
 
     // Verify settings from xrt.ini
     checkSettings();
@@ -57,11 +59,11 @@ namespace xdp {
     clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID, false);
 
     // Tile-based metrics settings
-    std::vector<std::string> metricsConfig;
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics());
+    std::vector<std::string> tileMetricsConfig;
+    tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
+    tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
+    tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
+    tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics());
 
     // Graph-based metrics settings
     std::vector<std::string> graphMetricsConfig;
@@ -70,16 +72,25 @@ namespace xdp {
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_memory_tile_metrics());
 
+    setProfileStartControl(compilerOptions.graph_iterator_event);
+    
     // Process all module types
     for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
-      auto metricsSettings = getSettingsVector(metricsConfig[module]);
+      auto metricsSettings      = getSettingsVector(tileMetricsConfig[module]);
       auto graphMetricsSettings = getSettingsVector(graphMetricsConfig[module]);
 
       if (type == module_type::shim)
         getConfigMetricsForInterfaceTiles(module, metricsSettings, graphMetricsSettings);
       else
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
+    }
+
+    // Graph-based Profile APIs support metrics settings
+    std::string intfTilesLatencyUserSettings = xrt_core::config::get_aie_profile_settings_interface_tile_latency_metrics();
+    if (!intfTilesLatencyUserSettings.empty()) {
+      auto latencyMetricsSettings = getSettingsVector(intfTilesLatencyUserSettings);
+      getConfigMetricsForintfTilesLatencyConfig(module_type::shim, latencyMetricsSettings);
     }
 
     xrt_core::message::send(severity_level::info,
@@ -105,7 +116,7 @@ namespace xdp {
       "graph_based_memory_tile_metrics", "graph_based_interface_tile_metrics",
       "tile_based_aie_metrics", "tile_based_aie_memory_metrics",
       "tile_based_memory_tile_metrics", "tile_based_interface_tile_metrics",
-      "interval_us"};
+      "interval_us", "interface_tile_latency", "start_type", "start_iteration"};
     const std::map<std::string, std::string> deprecatedSettings {
       {"aie_profile_core_metrics", "AIE_profile_settings.graph_based_aie_metrics or tile_based_aie_metrics"},
       {"aie_profile_memory_metrics", "AIE_profile_settings.graph_based_aie_memory_metrics or tile_based_aie_memory_metrics"},
@@ -639,7 +650,7 @@ namespace xdp {
     auto allValidPorts = metadataReader->getValidPorts();
 
     // STEP 1 : Parse per-graph or per-kernel settings
-    /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
      * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]
      */
@@ -679,6 +690,12 @@ namespace xdp {
 
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
+        if (graphMetrics[i][2]=="start_to_bytes_transferred") {
+          uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
+          for (auto& e : tiles)
+            setUserSpecifiedBytes(e, bytes);
+        }
+        else {
         try {
           for (auto& e : tiles) {
             configChannel0[e] = aie::convertStringToUint8(graphMetrics[i][3]);
@@ -690,6 +707,7 @@ namespace xdp {
           msg << "Channel specifications in graph_based_interface_metrics "
               << "are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }
         }
       }
     } // Graph Pass 1
@@ -737,17 +755,24 @@ namespace xdp {
 
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
-        try {
-          for (auto& e : tiles) {
-            configChannel0[e] = aie::convertStringToUint8(graphMetrics[i][3]);
-            configChannel1[e] = aie::convertStringToUint8(graphMetrics[i].back());
-          }
+        if (graphMetrics[i][2]=="start_to_bytes_transferred") {
+          uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
+          for (auto& e : tiles)
+            setUserSpecifiedBytes(e, bytes);
         }
-        catch (...) {
-          std::stringstream msg;
-          msg << "Channel specifications in graph_based_interface_tile_metrics "
-              << "are not valid and hence ignored.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        else {
+          try {
+            for (auto& e : tiles) {
+              configChannel0[e] = aie::convertStringToUint8(graphMetrics[i][3]);
+              configChannel1[e] = aie::convertStringToUint8(graphMetrics[i].back());
+            }
+          }
+          catch (...) {
+            std::stringstream msg;
+            msg << "Channel specifications in graph_based_interface_tile_metrics "
+                << "are not valid and hence ignored.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          }
         }
       }
     } // Graph Pass 2
@@ -774,12 +799,19 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
+      // Process <tile|all>:start_to_bytes_transferred:<bytes>
       // By-default select both the channels
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
-      if (metrics[i].size()>2) {
-        channelId0 = aie::convertStringToUint8(metrics[i][2]);
-        channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      uint32_t bytes = defaultTransferBytes;
+      if (metrics[i][1]=="start_to_bytes_transferred") {
+        bytes = processUserSpecifiedBytes(metrics[i][2]);
+      }
+      else {
+        if (metrics[i].size()>2) {
+          channelId0 = aie::convertStringToUint8(metrics[i][2]);
+          channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+        }
       }
 
       auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
@@ -787,6 +819,9 @@ namespace xdp {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
+        if (metrics[i][1] == "start_to_bytes_transferred")
+          setUserSpecifiedBytes(t, bytes);
+
       }
     } // Pass 1
 
@@ -797,7 +832,6 @@ namespace xdp {
         continue;
 
       uint8_t maxCol = 0;
-
       try {
         maxCol = aie::convertStringToUint8(metrics[i][1]);
       }
@@ -807,7 +841,6 @@ namespace xdp {
       }
 
       uint8_t minCol = 0;
-
       try {
         minCol = aie::convertStringToUint8(metrics[i][0]);
       }
@@ -823,17 +856,24 @@ namespace xdp {
       // By-default select both the channels
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
+      uint32_t bytes = defaultTransferBytes;
       if (metrics[i].size() >= 4) {
-        try {
-          channelId0 = aie::convertStringToUint8(metrics[i][3]);
-          channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
+        // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
+        if (metrics[i][2]=="start_to_bytes_transferred") {
+          bytes = processUserSpecifiedBytes(metrics[i][2]);
         }
-        catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer, give warning and ignore
-          xrt_core::message::send(severity_level::warning, "XRT",
-                                  "Channel ID specification in "
-                                  "tile_based_interface_tile_metrics is "
-                                  "not an integer and hence ignored.");
+        else {
+          try {
+            channelId0 = aie::convertStringToUint8(metrics[i][3]);
+            channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
+          }
+          catch (std::invalid_argument const&) {
+            // Expected channel Id is not an integer, give warning and ignore
+            xrt_core::message::send(severity_level::warning, "XRT",
+                                    "Channel ID specification in "
+                                    "tile_based_interface_tile_metrics is "
+                                    "not an integer and hence ignored.");
+          }
         }
       }
 
@@ -843,6 +883,8 @@ namespace xdp {
         configMetrics[moduleIdx][t] = metrics[i][2];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
+        if (metrics[i][2] == "start_to_bytes_transferred")
+          setUserSpecifiedBytes(t, bytes);
       }
     } // Pass 2
 
@@ -874,17 +916,23 @@ namespace xdp {
         // By-default select both the channels
         uint8_t channelId0 = 0;
         uint8_t channelId1 = 1;
+        uint32_t bytes = defaultTransferBytes;
         if (metrics[i].size() >= 3) {
-          try {
-            channelId0 = aie::convertStringToUint8(metrics[i][2]);
-            channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+          if (profileAPIMetricSet(metrics[i][1])) {
+            bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
-          catch (std::invalid_argument const&) {
-            // Expected channel Id is not an integer, give warning and ignore
-            xrt_core::message::send(severity_level::warning, "XRT",
-                                    "Channel ID specification in "
-                                    "tile_based_interface_tile_metrics is not an integer "
-                                    "and hence ignored.");
+          else {
+            try {
+              channelId0 = aie::convertStringToUint8(metrics[i][2]);
+              channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+            }
+            catch (std::invalid_argument const&) {
+              // Expected channel Id is not an integer, give warning and ignore
+              xrt_core::message::send(severity_level::warning, "XRT",
+                                      "Channel ID specification in "
+                                      "tile_based_interface_tile_metrics is not an integer "
+                                      "and hence ignored.");
+            }
           }
         }
 
@@ -894,6 +942,8 @@ namespace xdp {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
+          if (metrics[i][1] == "start_to_bytes_transferred")
+            setUserSpecifiedBytes(t, bytes);
         }
       }
     } // Pass 3
@@ -936,5 +986,224 @@ namespace xdp {
     static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
     return config;
   }
+
+  void AieProfileMetadata::getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
+                                           const std::vector<std::string>& tileMetricSettings)
+  {
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidPorts  = metadataReader->getValidPorts();
+    std::string metricName   = "interface_tile_latency";
+    int moduleIdx = static_cast<int>(module);
+
+    // STEP 1 : Parse per-graph or per-kernel settings
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * Interface Tiles
+     * interface_tile_latency = graph1:port1:graph2:port2:<tranx num>; graph3:port3:graph4:port4:<tranx num>;
+     */
+    std::vector<std::vector<std::string>> tileMetrics(tileMetricSettings.size());
+
+    for (size_t i = 0; i < tileMetricSettings.size(); ++i) {
+      // Split done only in Pass 1
+      boost::split(tileMetrics[i], tileMetricSettings[i], boost::is_any_of(":"));
+
+      if (tileMetrics[i].size() < 4 || tileMetrics[i].size()>5)
+        continue;
+      
+      auto tileSrc  =  metadataReader->getInterfaceTiles(tileMetrics[i][0],
+                                          tileMetrics[i][1],
+                                          metricName);
+      auto tileDest =  metadataReader->getInterfaceTiles(tileMetrics[i][2],
+                                          tileMetrics[i][3],
+                                          metricName);
+
+      if(tileSrc.empty() || tileDest.empty()) {
+        return;
+      } 
+      std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
+      if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
+        return;
+      }
+
+      // Update the latencyConfigMap to store the complete config.
+      latencyConfigMap[tileSrc[0]]  = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true);
+      latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false);
+
+      // Also update the common configMetrics 
+      // TODO: Make sure this config doesn't collide with other interface tile config
+      configMetrics[moduleIdx][tileSrc[0]]  = metricName;
+      configMetrics[moduleIdx][tileDest[0]] = metricName;
+    
+      // TODO: Check for off tiles
+    }
+  }
+
+  // Parse Profile start_type configuration
+  void AieProfileMetadata::setProfileStartControl(bool graphIteratorEvent)
+  {
+    useGraphIterator = false;
+    
+    auto startType = xrt_core::config::get_aie_profile_settings_start_type();
+    if (startType == "iteration") {
+      // Verify AIE was compiled with the proper setting
+      if (!graphIteratorEvent) {
+        std::string msg = "Unable to use graph iteration as profile start type. ";
+        msg.append("Please re-compile AI Engine with --graph-iterator-event=true.");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
+      else {
+        // Start profile when graph iterator reaches a threshold
+        iterationCount = xrt_core::config::get_aie_profile_settings_start_iteration();
+        useGraphIterator = (iterationCount != 0);
+      }
+    }
+  }
+
+  // Valodate the user provided the bytes configuration i.e. <N> in below example
+  // and converts it to the total no of bytes
+  // graph:port:start_to_bytes_transferred:<N>
+  uint32_t AieProfileMetadata::processUserSpecifiedBytes(const std::string& strTotalBytes)
+  {
+    uint32_t totalBytes = 0;
+    if (strTotalBytes.empty())  {
+      return defaultTransferBytes;
+    }
+    int lastIdx = static_cast<int>(strTotalBytes.size()-1);
+    int totalChars = 0;
+    char unit = '\0';
+    while (lastIdx >= 0 && !std::isdigit(strTotalBytes[lastIdx])) {
+      unit = strTotalBytes[lastIdx];
+      totalChars++;
+      lastIdx--;
+    }
+    
+    if (totalChars>1) {
+      return defaultTransferBytes;
+    }
+
+    if (!aie::isDigitString(strTotalBytes.substr(0, strTotalBytes.size()-totalChars))) {
+      return defaultTransferBytes;
+    }
+    
+    totalBytes = abs(stoi(strTotalBytes.substr(0, lastIdx+1)));
+    switch(unit) {
+      case 'K':
+        totalBytes *= 1024;
+        break;
+      case 'M':
+        totalBytes *= (1024*1024);
+        break;
+       case 'G':
+        totalBytes *= (1024*1024*1024);
+        break;
+      default:
+        break;
+    }
+    return std::min(totalBytes, std::numeric_limits<uint32_t>::max());
+  }
+
+  uint32_t AieProfileMetadata::getUserSpecifiedThreshold(const tile_type& tile,
+                                                   const std::string& metricSet)
+  {
+    if (metricSet == "start_to_bytes_transferred") {
+      if (bytesTransferConfigMap.find(tile) == bytesTransferConfigMap.end()) {
+        return 0;
+      }
+      else{
+        return bytesTransferConfigMap.at(tile);
+      }
+    }
+    else if(metricSet == "interface_tile_latency") {
+      if (latencyConfigMap.find(tile) == latencyConfigMap.end()) {
+        return 0;
+      }
+      else{
+        return latencyConfigMap.at(tile).tranx_no;
+      }
+    }
+    return 0;
+  }
+  
+  void AieProfileMetadata::setUserSpecifiedBytes(const tile_type& tile, const uint32_t& threshold)
+  {
+    bytesTransferConfigMap[tile] = threshold;
+  }
+
+  bool AieProfileMetadata::isSourceTile(const tile_type& tile)
+  {
+    if (!isValidLatencyTile(tile))
+      return false;
+    
+    return latencyConfigMap.at(tile).isSource;
+  }
+
+  bool AieProfileMetadata::getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const
+  {
+    if (!isValidLatencyTile(pairTyle))
+      return false;
+
+    sourceTile = latencyConfigMap.at(pairTyle).src;
+    return true;
+  }
+
+  std::string AieProfileMetadata::srcDestPairKey(uint8_t col, uint8_t row) const
+  {
+    static std::map<std::string, std::string> keysCache;
+    std::string key = "";
+
+    std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row);
+    if(keysCache.find(cacheKey) != keysCache.end())
+      return keysCache.at(cacheKey);
+
+    for(const auto &config : latencyConfigMap) {
+      if(config.first.col == col && config.first.row == row) {
+        key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
+              "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
+        keysCache[cacheKey] = key;
+      }
+    }
+    return key;
+  }
+
+  bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile) const
+  {
+    return latencyConfigMap.find(tile) != latencyConfigMap.end();
+  }
+
+  uint64_t AieProfileMetadata::getIntfLatencyPayload(const tile_type& tile)
+  {
+    if (!isValidLatencyTile(tile))
+      return 0;
+
+    LatencyConfig latencyCfg = latencyConfigMap.at(tile);
+    return createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_id,
+                        latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_id);
+  }
+
+ std::vector<tile_type>
+ AieProfileMetadata::getTiles(const std::string& graph_name, module_type type, const std::string& kernel_name) const
+ {
+  if (!metadataReader)
+    return {};
+  return metadataReader->getTiles(graph_name, type, kernel_name);
+ }
+
+  uint64_t AieProfileMetadata::createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
+                         uint8_t col2, uint8_t row2, uint8_t portID2)
+  {
+    uint64_t payload = (static_cast<uint64_t>(col1) << 40) |
+                       (static_cast<uint64_t>(row1) << 32) |
+                       (static_cast<uint64_t>(portID1) << 24) |
+                       (static_cast<uint64_t>(col2) << 16) |
+                       (static_cast<uint64_t>(row2) << 8) |
+                       (static_cast<uint64_t>(portID2) << 0);
+    return payload;
+  }
+
+  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
+  {
+    // input_throughputs/output_throughputs is already supported, hence excluded here
+    return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
+  }
+
 
 }  // namespace xdp
