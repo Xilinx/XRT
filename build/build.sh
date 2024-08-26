@@ -333,7 +333,7 @@ GIT_MODULES=$BUILDDIR/../.gitmodules
 if [[ -f "$GIT_MODULES" && $init_submodule == 1 ]]; then
     cd $BUILDDIR/../
     echo "Updating Git XRT submodule, use -noinit option to avoid updating"
-    git submodule update --init
+    git submodule update --init --recursive
     cd $BUILDDIR
 fi
 

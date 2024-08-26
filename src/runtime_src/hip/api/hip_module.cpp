@@ -5,18 +5,9 @@
 #include "hip/core/event.h"
 #include "hip/core/module.h"
 #include "hip/core/stream.h"
+#include "hip/xrt_hip.h"
 
 namespace xrt::core::hip {
-
-// structure that represents the config data passed to hipModuleLoadData
-// xclbin_module - module handle of xclbin loaded
-// elf_file - path to elf file
-
-struct elf_config_data
-{
-  hipModule_t xclbin_module;
-  std::string elf_file;
-};
 
 static void
 hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*gridDimY*/,
@@ -73,20 +64,49 @@ hip_module_get_function(hipModule_t hmod, const char* name)
 }
 
 static module_handle
-create_elf_module(const elf_config_data* config)
+create_module(const hipModuleData* config)
 {
-  // elf_config_data holds module handle to xclbin loaded previously and file path to elf
-  throw_invalid_resource_if(!config->xclbin_module, "module is nullptr");
-  auto hip_mod = module_cache.get(reinterpret_cast<module_handle>(config->xclbin_module));
+  // this function can be used to load either xclbin or elf based on parent module
+  // if parent module is null then buffer passed has xclbin data else parent module
+  // will point to xclbin module already loaded and buffer passed will have elf data
+
+  if (!config->parent) {
+    // xclbin load
+    auto ctx = get_current_context();
+    throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
+    // create xclbin module and store it in module map
+    if (config->type == hipModuleDataFilePath) {
+      // data passed is file path
+      return insert_in_map(module_cache,
+                           std::make_shared<module_xclbin>(ctx, std::string{static_cast<char*>(config->data), config->size}));
+    }
+    else if (config->type == hipModuleDataBuffer) {
+      // data passed is buffer, validity of buffer is checked during xrt::xclbin construction
+      return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
+    }
+    throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
+  }
+
+  // elf load
+  auto hip_mod = module_cache.get(reinterpret_cast<module_handle>(config->parent));
   throw_invalid_resource_if(!hip_mod, "module not available");
   throw_invalid_resource_if(!hip_mod->is_xclbin_module(), "invalid module handle passed");
 
   auto hip_xclbin_mod = std::dynamic_pointer_cast<module_xclbin>(hip_mod);
   throw_invalid_resource_if(!hip_xclbin_mod, "getting hip module using dynamic pointer cast failed");
 
-  // create xrt::elf and return the module handle
-  // validity of elf_file passed is checked in xrt::elf constructor
-  return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->elf_file));
+  // create elf module and store it in module map
+  // validity of elf_file or buffer passed is checked during xrt::elf construction
+  if (config->type == hipModuleDataFilePath) {
+    // data passed is file path
+    return insert_in_map(module_cache,
+                         std::make_shared<module_elf>(hip_xclbin_mod.get(), std::string{static_cast<char*>(config->data), config->size}));
+  }
+  else if (config->type == hipModuleDataBuffer) {
+    // data passed is buffer
+    return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->data, config->size));
+  }
+  throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
 }
 
 static module_handle
@@ -163,10 +183,10 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
   try {
     throw_invalid_resource_if(!module, "module is nullptr");
 
-    // image passed to this call is elf_config_data object pointer
-    auto config_data = static_cast<const xrt::core::hip::elf_config_data*>(image);
-    auto elf_module = xrt::core::hip::create_elf_module(config_data);
-    *module = reinterpret_cast<hipModule_t>(elf_module);
+    // image passed to this call is structure hipModuleData object pointer
+    auto config_data = static_cast<const hipModuleData*>(image);
+    auto mod = xrt::core::hip::create_module(config_data);
+    *module = reinterpret_cast<hipModule_t>(mod);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -196,7 +216,7 @@ hipModuleLoadData(hipModule_t* module, const void* image)
 }
 
 hipError_t
-hipModuleLoad(hipModule_t *module, const char *fname)
+hipModuleLoad(hipModule_t* module, const char* fname)
 {
   try {
     throw_invalid_resource_if(!module, "module is nullptr");
