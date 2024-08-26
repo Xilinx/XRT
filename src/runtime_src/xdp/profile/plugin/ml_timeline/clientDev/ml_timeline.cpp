@@ -77,10 +77,11 @@ namespace xdp {
        * can use their own Debug BO to capture their data.
        */
       mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
+      memset(mResultBOHolder->map(), 0, mBufSz);
 
     } catch (std::exception& e) {
       std::stringstream msg;
-      msg << "Unable to create result buffer of size "
+      msg << "Unable to create/initialize result buffer of size "
           << std::hex << mBufSz << std::dec
           << " Bytes for Record Timer Values. Cannot get ML Timeline info. " 
           << e.what() << std::endl;
