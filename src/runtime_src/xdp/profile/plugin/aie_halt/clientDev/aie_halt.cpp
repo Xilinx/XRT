@@ -50,9 +50,13 @@ namespace xdp {
   {
   }
 
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#endif
   void AIEHaltClientDevImpl::updateDevice(void* hwCtxImpl)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
               "In AIEHaltClientDevImpl::updateDevice");
 
     std::unique_ptr<aie::ClientTransaction> txnHandler
@@ -60,8 +64,8 @@ namespace xdp {
 
     if (!txnHandler->initializeKernel("XDP_KERNEL"))
       return;
-  
-    boost::property_tree::ptree aieMetadata;    
+
+    boost::property_tree::ptree aieMetadata;
     try {
       auto device = xrt_core::hw_context_int::get_core_device(mHwContext);
       xrt::xclbin xrtXclbin = device.get()->get_xclbin(device.get()->get_xclbin_uuid());
@@ -133,7 +137,9 @@ namespace xdp {
       return;
     XAie_ClearTransaction(&aieDevInst);
   }
-
+#ifdef _WIN32
+#pragma warning(pop)
+#endif
   void AIEHaltClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
   }
