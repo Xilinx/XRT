@@ -39,6 +39,9 @@ class shim {
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
 
+  void
+  register_xclbin(const xrt::xclbin&);
+
   // Shim handle for shared objects, like buffer and sync objects
   class shared_object : public xrt_core::shared_handle
   {
@@ -261,7 +264,13 @@ public:
   close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx);
 
   std::unique_ptr<xrt_core::hwctx_handle>
-  create_hw_context(const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
+  create_hw_context(xclDeviceHandle handle, const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
+
+  void
+  destroy_hw_context(xrt_core::hwctx_handle::slot_id slotidx);
+
+  void
+  hwctx_exec_buf(const xrt_core::hwctx_handle* hwctx_hdl, xclBufferHandle boh);
 ////////////////////////////////////////////////////////////////
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
@@ -292,6 +301,8 @@ public:
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
   int xclLoadAxlf(const axlf *buffer);
+  int prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj);
+  int load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_create_hw_ctx *hw_ctx);
 
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size,
                 size_t offset);
@@ -350,6 +361,7 @@ private:
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
   size_t mKernelClockFreq;
+  bool hw_context_enable = true;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most
