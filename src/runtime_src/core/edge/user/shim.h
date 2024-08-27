@@ -361,7 +361,7 @@ private:
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
   size_t mKernelClockFreq;
-  bool hw_context_enable = true;
+  bool hw_context_enable = false;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most

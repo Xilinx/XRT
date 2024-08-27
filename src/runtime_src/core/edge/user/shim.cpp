@@ -1386,6 +1386,7 @@ void
 shim::
 register_xclbin(const xrt::xclbin&){
   xclLog(XRT_INFO, "%s: xclbin successfully registered for this device without loading the xclbin", __func__);
+  hw_context_enable = true;
 }
 
 void
