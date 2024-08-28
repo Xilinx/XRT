@@ -571,7 +571,7 @@ reset:
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
 			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
-			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
+			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq) + sizeof(int32_t));
 			if (!err)
 				lro->reset_requested = true;
 		} else
@@ -898,11 +898,11 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	bool is_sw = false;
 	size_t payload_len;
 
-	if (len < sizeof(*req)) {
+	if (len < struct_size(req, data, 1)) {
 		mgmt_err(lro, "peer request dropped due to wrong size\n");
 		return;
 	}
-	payload_len = len - sizeof(*req);
+	payload_len = len - struct_size(req, data, 1);
 
 	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n",
 		req->req, sw_ch);
@@ -1258,7 +1258,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	size_t data_len = 0, reqlen = 0;
 
 	data_len = sizeof(struct xcl_mailbox_peer_state);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = struct_size(mb_req, data, 1) + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;

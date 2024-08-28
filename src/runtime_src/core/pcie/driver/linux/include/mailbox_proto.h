@@ -392,7 +392,7 @@ struct xcl_mailbox_clock_freqscaling {
 struct xcl_mailbox_req {
 	uint64_t flags;
 	int32_t req;
-	int32_t data[1]; /* variable length of payload from now on */
+	int32_t data[]; /* variable length of payload from now on */
 };
 
 /**
