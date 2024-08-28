@@ -238,7 +238,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // First, check against memory bank size
   // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
-  uint8_t memIndex = isPLIO ? deviceIntf->getAIETs2mmMemIndex(0) : 0;
+  uint8_t memIndex = (isPLIO && (deviceIntf != nullptr))? deviceIntf->getAIETs2mmMemIndex(0) : 0;
   Memory *memory = (db->getStaticInfo()).getMemory(deviceID, memIndex);
 
   if (memory != nullptr) {
