@@ -286,7 +286,7 @@ struct xcl_subdev {
 	uint64_t checksum;
 	uint64_t size;
 	uint64_t offset;
-	uint64_t data[1];
+	uint64_t data[];
 };
 /**
  * struct mailbox_subdev_peer - MAILBOX_REQ_PEER_DATA payload type

@@ -725,7 +725,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	if (lro->rp_program == XOCL_RP_PROGRAM_REQ) {
 		/* previous request is missed */
-		data_sz = sizeof(*hdr);
+		data_sz = struct_size(hdr, data, 1);
 		rtn_code = XOCL_MSG_SUBDEV_RTN_PENDINGPLP;
 	} else {
 		fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
@@ -737,13 +737,13 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 		else
 			rtn_code = XOCL_MSG_SUBDEV_RTN_COMPLETE;
 
-		data_sz += sizeof(*hdr);
+		data_sz += struct_size(hdr, data, 1);
 	}
 
 	*actual_sz = min_t(size_t, buf_sz, data_sz);
 
 	/* if it is invalid req, do nothing */
-	if (*actual_sz < sizeof(*hdr)) {
+	if (*actual_sz < struct_size(hdr, data, 1)) {
 		mgmt_err(lro, "Req buffer is too small");
 		return;
 	}
@@ -756,7 +756,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	hdr = *resp;
 	hdr->ver = XOCL_MSG_SUBDEV_VER;
-	hdr->size = *actual_sz - sizeof(*hdr);
+	hdr->size = *actual_sz - struct_size(hdr, data, 1);
 	hdr->offset = offset;
 	hdr->rtncode = rtn_code;
 	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
