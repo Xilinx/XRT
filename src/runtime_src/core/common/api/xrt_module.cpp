@@ -45,7 +45,6 @@ namespace
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
-static constexpr uint8_t Elf_Amd_npu3   = 65;
 
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
@@ -116,6 +115,7 @@ struct patcher
     scalar_32bit_kind = 3,
     control_packet_48 = 4,              // patching scheme needed by firmware to patch control packet
     shim_dma_48 = 5,                    // patching scheme needed by firmware to patch instruction buffer
+    shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
     unknown_symbol_kind = 8
   };
 
@@ -140,7 +140,6 @@ struct patcher
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
-  uint8_t m_os_abi = Elf_Amd_Aie2p;
 
   struct patch_info {
     uint64_t offset_to_patch_buffer;
@@ -150,9 +149,8 @@ struct patcher
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
 
-  patcher(uint8_t os_abi, symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
-    : m_os_abi(os_abi)
-    , m_buf_type(t)
+  patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
+    : m_buf_type(t)
     , m_symbol_type(type)
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
@@ -186,7 +184,7 @@ struct patcher
   }
 
   void
-  patch57_npu3(uint32_t* bd_data_ptr, uint64_t patch)
+  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
   {
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
@@ -239,10 +237,11 @@ struct patcher
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
-        if (m_os_abi == Elf_Amd_npu3)
-          patch57_npu3(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        else
-          patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        break;
+      case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+        // new_value is a bo address
+        patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
@@ -712,7 +711,7 @@ class module_elf : public module_impl
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          arg2patchers.emplace(std::move(key_string), patcher{ m_os_abi, patch_scheme, {pi}, buf_type});
+          arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
         }
       }
     }
@@ -777,7 +776,7 @@ class module_elf : public module_impl
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ m_os_abi, symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
       }
     }
 
@@ -823,7 +822,7 @@ class module_elf : public module_impl
   ert_cmd_opcode
   get_ert_opcode() const override
   {
-    if (m_os_abi == Elf_Amd_Aie2ps || m_os_abi == Elf_Amd_npu3)
+    if (m_os_abi == Elf_Amd_Aie2ps)
       return ERT_START_DPU;
 
     if (m_os_abi != Elf_Amd_Aie2p)
@@ -841,7 +840,7 @@ public:
     , m_elf(std::move(elf))
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
   {
-    if (m_os_abi == Elf_Amd_Aie2ps || m_os_abi == Elf_Amd_npu3) {
+    if (m_os_abi == Elf_Amd_Aie2ps) {
       m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes);
     }
@@ -1243,7 +1242,7 @@ class module_sram : public module_impl
       return;
 
     auto os_abi = m_parent.get()->get_os_abi();
-    if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_npu3) {
+    if (os_abi == Elf_Amd_Aie2ps) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
         auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
@@ -1371,7 +1370,7 @@ public:
       create_instr_buf(m_parent.get());
       fill_bo_addresses();
     }
-    else if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_npu3) {
+    else if (os_abi == Elf_Amd_Aie2ps) {
       create_instruction_buffer(m_parent.get());
       fill_column_bo_address(m_parent->get_data());
     }
@@ -1425,7 +1424,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<st
     const auto& instr_buf = hdl->get_instr();
     inst = &instr_buf;
   }
-  else if(hdl->get_os_abi() == Elf_Amd_Aie2ps || hdl->get_os_abi() == Elf_Amd_npu3) {
+  else if(hdl->get_os_abi() == Elf_Amd_Aie2ps) {
     const auto& instr_buf = hdl->get_data();
     if (instr_buf.size() != 1)
       throw std::runtime_error{"Patch failed: only support patching single column"};
