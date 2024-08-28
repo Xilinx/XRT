@@ -104,6 +104,9 @@ public:
     sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& ebuf_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
+    wait_external_buffer(adf::external_buffer_config& ebuf_config);
+
+    void
     sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void

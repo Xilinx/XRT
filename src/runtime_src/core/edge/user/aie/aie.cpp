@@ -154,6 +154,19 @@ sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& config, enum xclB
         start_bd = shim_bd_info.bd_id;
     }
     adf::dma_api::enqueueTask(1 /*(adf::tile_type::shim_tile)*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number, port_config.task_repetition , port_config.enable_task_complete_token, (uint8_t)start_bd);
+
+  }
+}
+
+void
+Aie::
+wait_external_buffer(adf::external_buffer_config& config)
+{
+  if (config.shim_port_configs.empty())
+    return;
+
+  for (auto& port_config : config.shim_port_configs) {
+    adf::dma_api::waitDMAChannelDone(1 /*adf::tile_type::shim_tile*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number);
   }
 }
 
@@ -170,6 +183,7 @@ sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t s
   auto ebuf_itr = external_buffer_configs.find(gmioName);
   if (ebuf_itr != external_buffer_configs.end()) {
     sync_external_buffer(bo, ebuf_itr->second, dir, size, offset);
+    wait_external_buffer(ebuf_itr->second);
     return;
   }
 
@@ -195,6 +209,12 @@ sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
+  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  if (ebuf_itr != external_buffer_configs.end()) {
+    sync_external_buffer(bo, ebuf_itr->second, dir, size, offset);
+    return;
+  }
+
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
@@ -215,6 +235,12 @@ wait_gmio(const std::string& gmioName)
 
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't wait gmio");
+
+  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  if (ebuf_itr != external_buffer_configs.end()) {
+    wait_external_buffer(ebuf_itr->second);
+    return;
+  }
 
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
