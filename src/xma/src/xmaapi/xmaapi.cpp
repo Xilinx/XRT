@@ -108,9 +108,7 @@ void xma_thread1() {
             //bool expected = false;
             //bool desired = true;
             XmaHwSessionPrivate *slowest_session = nullptr;
-            uint32_t session_cmd_busiest_val = 0;
-            std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
-
+            uint32_t sessioin_cmd_busiest_val = 0;
             for (auto& itr1: g_xma_singleton->all_sessions_vec) {
                 if (g_xma_singleton->xma_exit) {
                     break;
@@ -131,8 +129,8 @@ void xma_thread1() {
                     continue;
                 }
                 if (priv1->kernel_complete_total > 127) {
-                    if (priv1->cmd_busy > session_cmd_busiest_val) {
-                        session_cmd_busiest_val = priv1->cmd_busy;
+                    if (priv1->cmd_busy > sessioin_cmd_busiest_val) {
+                        sessioin_cmd_busiest_val = priv1->cmd_busy;
                         slowest_session = priv1;
                     }
                 }
@@ -212,8 +210,6 @@ void xma_thread1() {
         }
     }
     //Print all stats here
-    std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
-
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
     for (auto& itr1: g_xma_singleton->all_sessions_vec) {
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
@@ -271,7 +267,6 @@ void xma_thread2(uint32_t hw_dev_index) {
             xclExecWait(dev_handle, 100);
         }
 
-        std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
                 break;
