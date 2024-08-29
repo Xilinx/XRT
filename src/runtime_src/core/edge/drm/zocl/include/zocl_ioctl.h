@@ -35,7 +35,17 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_execbuf_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);

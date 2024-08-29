@@ -110,6 +110,12 @@ public:
     return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
   }
 
+  void
+  register_xclbin(const xrt::xclbin& xclbin) const override
+  {
+    xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
+
   std::unique_ptr<buffer_handle>
   alloc_bo(size_t size, uint64_t flags) override
   {
