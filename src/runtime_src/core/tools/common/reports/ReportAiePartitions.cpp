@@ -6,6 +6,7 @@
 #include "ReportAiePartitions.h"
 
 #include "core/common/query_requests.h"
+#include "core/common/utils.h"
 #include "tools/common/Table2D.h"
 #include "tools/common/XBUtilitiesCore.h"
 
@@ -31,6 +32,7 @@ populate_aie_partition(const xrt_core::device* device)
 
     boost::property_tree::ptree pt_entry;
     pt_entry.put("context_id", entry.metadata.id);
+    pt_entry.put("instr_bo_mem", entry.instruction_mem);
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
@@ -109,6 +111,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Ctx ID", Table2D::Justification::left},
+      {"Instr BO", Table2D::Justification::left},
       {"Sub", Table2D::Justification::left},
       {"Compl", Table2D::Justification::left},
       {"Migr", Table2D::Justification::left},
@@ -127,6 +130,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
       const std::vector<std::string> entry_data = {
         hw_context.get<std::string>("context_id"),
+        xrt_core::utils::unit_convert(hw_context.get<uint64_t>("instr_bo_mem")),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
