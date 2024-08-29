@@ -36,6 +36,13 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("migrations", entry.migrations);
     pt_entry.put("errors", entry.errors);
 
+    xrt_core::query::aie_partition_info::qos_info qos = entry.QoS;
+    pt_entry.put("gops", qos.gops);
+    pt_entry.put("egops", qos.egops);
+    pt_entry.put("fps", qos.fps);
+    pt_entry.put("latency", qos.latency);
+    pt_entry.put("priority", qos.priority);
+
     partition.first->second.push_back(std::make_pair("", pt_entry));
   }
 
@@ -101,11 +108,16 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     const std::vector<Table2D::HeaderData> table_headers = {
-      {"Context ID", Table2D::Justification::left},
-      {"Submissions", Table2D::Justification::left},
-      {"Completions", Table2D::Justification::left},
-      {"Migrations", Table2D::Justification::left},
-      {"Errors", Table2D::Justification::left},
+      {"Ctx ID", Table2D::Justification::left},
+      {"Sub", Table2D::Justification::left},
+      {"Compl", Table2D::Justification::left},
+      {"Migr", Table2D::Justification::left},
+      {"Err", Table2D::Justification::left},
+      {"Prio", Table2D::Justification::left},
+      {"GOPS", Table2D::Justification::left},
+      {"EGOPS", Table2D::Justification::left},
+      {"FPS", Table2D::Justification::left},
+      {"Latency", Table2D::Justification::left}
     };
     Table2D context_table(table_headers);
 
@@ -118,7 +130,12 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
-        std::to_string(hw_context.get<uint64_t>("errors"))
+        std::to_string(hw_context.get<uint64_t>("errors")),
+        std::to_string(hw_context.get<uint64_t>("priority")),
+        std::to_string(hw_context.get<uint64_t>("gops")),
+        std::to_string(hw_context.get<uint64_t>("egops")),
+        std::to_string(hw_context.get<uint64_t>("fps")),
+        std::to_string(hw_context.get<uint64_t>("latency"))
       };
       context_table.addEntry(entry_data);
     }
