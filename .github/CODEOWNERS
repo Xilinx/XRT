@@ -37,6 +37,7 @@ src/runtime_src/xocl/api/plugin/xdp/ @jvillarre
 src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
 src/runtime_src/tools/ @rozumx
+src/runtime_src/tools/xclbinutil/ @rozumx @xfreid
 src/runtime_src/tools/scripts/ @rozumx @stsoe
 src/runtime_src/hip/ @sonals @chvamshi-xilinx @stsoe
 src/CMake/ @rozumx @stsoe
