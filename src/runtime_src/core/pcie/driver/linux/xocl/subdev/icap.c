@@ -1328,7 +1328,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 
 	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
-				sizeof(mbreq) + sizeof(int32_t));
+				struct_size(&mbreq, data, 1));
 		ICAP_INFO(icap, "Notified userpf to program rp");
 		goto end;
 	}

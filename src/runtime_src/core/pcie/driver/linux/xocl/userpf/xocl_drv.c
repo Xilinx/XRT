@@ -327,7 +327,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 
 	userpf_info(xdev, "request mgmtpf to program prp");
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(mbreq) + sizeof(int32_t),
+	mbret = xocl_peer_request(xdev, &mbreq, struct_size(&mbreq, data, 1),
 		&ret, &resplen, NULL, NULL, 0, 0);
 	if (mbret)
 		ret = mbret;
@@ -403,7 +403,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		if (flag & XOCL_RESET_NO)
 			return 0;
 
-		mbret = xocl_peer_request(xdev, &mbreq, sizeof(mbreq) + sizeof(int32_t),
+		mbret = xocl_peer_request(xdev, &mbreq, struct_size(&mbreq, data, 1),
 			&ret, &resplen, NULL, NULL, 0, 6);
 		/*
 		 * Check the return values mbret & ret (mpd (peer) side response) and confirm
@@ -426,7 +426,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		return 0;
 	}
 
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(mbreq) + sizeof(int32_t),
+	mbret = xocl_peer_request(xdev, &mbreq, struct_size(&mbreq, data, 1),
 		&ret, &resplen, NULL, NULL, 0, 0);
 
 	xocl_reset_notify(xdev->core.pdev, true);
