@@ -2261,6 +2261,8 @@ namespace xdp {
         is_aie_available = true;
 
     data = xrt_core::xclbin_int::get_axlf_section(xclbin, IP_LAYOUT);
+    if (!data.first || !data.second)
+      data = xrt_core::xclbin_int::get_axlf_section(xclbin, DEBUG_IP_LAYOUT);
     if (data.first && data.second)
         is_pl_available = true;
 
