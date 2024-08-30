@@ -320,6 +320,17 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
+   * Get string reprensation of relative row of given tile
+   ***************************************************************************/
+  std::string
+  getRelativeRowStr(uint8_t absRow, uint8_t rowOffset)
+  {
+    uint8_t relativeRow = aie::getRelativeRow(absRow, rowOffset);
+
+    return std::to_string(+relativeRow);
+  }
+
+  /****************************************************************************
    * Get module type
    ***************************************************************************/
   module_type 

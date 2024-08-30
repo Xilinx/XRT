@@ -257,10 +257,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             continue;
         // Make sure channel number is same as specified (GMIO only)
         if ((type == io_type::GMIO) && (channelId >= 0) && (channelId != io.second.channelNum)) {
-            std::stringstream msg;
-            msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
-                << +shimCol <<" and stream ID " << +streamId;
-            xrt_core::message::send(severity_level::info, "XRT", msg.str());
             continue;
         }
 

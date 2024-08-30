@@ -443,7 +443,7 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
-      auto configMetrics = metadata->getConfigMetrics(module);
+      auto configMetrics = metadata->getConfigMetricsVec(module);
       if (configMetrics.empty())
         continue;
       
@@ -692,11 +692,15 @@ namespace xdp {
             std::string srcDestPairKey = metadata->srcDestPairKey(aie->column, aie->row);
             uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
             uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
+            // std::cout << "!!!! srcPcIdx: "<< +srcPcIdx << " destPcIdx: "<< +destPcIdx << std::endl;
             auto srcPerfCount = perfCounters.at(srcPcIdx);
             auto destPerfCount = perfCounters.at(destPcIdx);
             srcPerfCount->readResult(srcCounterValue);
             destPerfCount->readResult(destCounterValue);
-            counterValue = destCounterValue - srcCounterValue;
+            counterValue = (destCounterValue > srcCounterValue) ? (destCounterValue-srcCounterValue):(srcCounterValue-destCounterValue);
+            // std::cout << "!!!! SrcPFC value : 0x" << std::setfill('0') << std::setw(8) << std::hex << srcCounterValue << std::endl;
+            // std::cout << "!!!! destPFC value: 0x" << std::setfill('0') << std::setw(8) << std::hex << destPerfCount << std::endl;
+            // std::cout << "!!!! Latency value: 0x" << std::setfill('0') << std::setw(8) << std::hex << counterValue << std::endl;
           } catch(...) {
             continue;
           }
@@ -772,9 +776,12 @@ namespace xdp {
       if (isSourceTile) {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = perfCounters.size();
+        // std::cout << "!!! srcPcIdx: " << +perfCounters.size();
       }
-      else
+      else {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].destPcIdx = perfCounters.size();
+        // std::cout << "!!! destPcIdx: " << +perfCounters.size();
+      }
       return pc;
     }
 
@@ -887,22 +894,6 @@ namespace xdp {
 
     return startCounter(pc, counterEvent, retCounterEvent);
   }
-
-  // inline std::shared_ptr<xaiefal::XAiePerfCounter>
-  // startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
-  // {
-  //   if (!pc)
-  //     return nullptr;
-    
-  //   auto ret = pc->start();
-  //   if (ret != XAIE_OK)
-  //     return nullptr;
-
-  //   // Return the known counter event
-  //   retCounterEvent = counterEvent;
-
-  //   return pc;
-  // }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
   AieProfile_EdgeImpl::configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,

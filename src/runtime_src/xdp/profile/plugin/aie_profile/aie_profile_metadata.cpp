@@ -204,6 +204,35 @@ namespace xdp {
     return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
   }
 
+
+  std::vector<std::pair<tile_type, std::string>> AieProfileMetadata::getConfigMetricsVec(const int module)
+  {
+    if (module != static_cast<int>(module_type::shim))
+      return {configMetrics[module].begin(), configMetrics[module].end()};
+
+    std::vector<std::pair<tile_type, std::string>> shimMetrics, shimMetricsFromConfig;
+    shimMetrics.insert(shimMetrics.end(), configMetricLatencyVec.begin(), configMetricLatencyVec.end());
+    shimMetricsFromConfig.insert(shimMetricsFromConfig.end(), configMetrics[module].begin(), configMetrics[module].end());
+
+    // If no latency config available, use all tiles from configMap
+    if(shimMetrics.empty())
+      return shimMetricsFromConfig;
+
+    // Otherwise, merge latency config with other interface tile config
+    for (const auto& tileMetricPair : shimMetricsFromConfig) {
+        // Use std::find_if to check if the element already exists in 'a'
+        if (std::find_if(shimMetrics.begin(), shimMetrics.end(), [&tileMetricPair](const std::pair<tile_type, std::string>& existingTileMetricPair)
+            {
+            return existingTileMetricPair.first == tileMetricPair.first && existingTileMetricPair.second == tileMetricPair.second;
+            }) == shimMetrics.end()) {
+            // If not found, add the tile and metric pair
+            shimMetrics.push_back(tileMetricPair);
+        }
+    }
+
+    return shimMetrics;
+  }
+
   /****************************************************************************
    * Get driver configuration
    ***************************************************************************/
@@ -983,7 +1012,8 @@ namespace xdp {
 
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
   {
-    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
+    static const AIEProfileFinalConfig config(configMetrics, configChannel0,
+                        configChannel1, metadataReader->getAIETileRowOffset());
     return config;
   }
 
@@ -995,7 +1025,8 @@ namespace xdp {
     std::string metricName   = "interface_tile_latency";
     int moduleIdx = static_cast<int>(module);
 
-    // STEP 1 : Parse per-graph or per-kernel settings
+    // STEP 1 : Parse per-graph or per-kernel settings (Only graph settings supported)
+
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
      * interface_tile_latency = graph1:port1:graph2:port2:<tranx num>; graph3:port3:graph4:port4:<tranx num>;
@@ -1032,8 +1063,11 @@ namespace xdp {
       // TODO: Make sure this config doesn't collide with other interface tile config
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
       configMetrics[moduleIdx][tileDest[0]] = metricName;
-    
-      // TODO: Check for off tiles
+
+      // Also maintain the order of tile-loc and metricName
+      // Later during configuration, it is required to configure destination tile first
+      configMetricLatencyVec.push_back({tileDest[0], metricName});
+      configMetricLatencyVec.push_back({tileSrc[0], metricName});
     }
   }
 
@@ -1159,6 +1193,7 @@ namespace xdp {
         key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
               "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
         keysCache[cacheKey] = key;
+        return key;
       }
     }
     return key;

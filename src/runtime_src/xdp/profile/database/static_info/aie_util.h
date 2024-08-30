@@ -81,6 +81,9 @@ namespace xdp::aie {
   
   XDP_CORE_EXPORT
   uint8_t getRelativeRow(uint8_t absRow, uint8_t rowOffset);
+
+  XDP_CORE_EXPORT
+  std::string getRelativeRowStr(uint8_t absRow, uint8_t rowOffset);
   
   XDP_CORE_EXPORT
   module_type getModuleType(uint8_t absRow, uint8_t rowOffset);

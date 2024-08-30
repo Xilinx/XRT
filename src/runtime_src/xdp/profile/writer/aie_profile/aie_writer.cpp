@@ -56,6 +56,7 @@ namespace xdp {
   void AIEProfilingWriter::writeMetricSettings()
   {
     auto validConfig = (db->getStaticInfo()).getProfileConfig();
+
     std::map<module_type, std::vector<std::string>> filteredConfig;
     for(uint8_t i=0; i<static_cast<uint8_t>(module_type::num_types); i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
@@ -67,7 +68,7 @@ namespace xdp {
 
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
-        metrics.push_back(std::to_string(+elm.first.col) + "," + std::to_string(+elm.first.row)+ "," + elm.second);
+        metrics.push_back(std::to_string(+elm.first.col) + "," + aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) + "," + elm.second);
       }
       filteredConfig[static_cast<module_type>(i)] = metrics;
     }
