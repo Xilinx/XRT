@@ -1775,7 +1775,7 @@ static ssize_t mailbox_show(struct device *dev,
 	int ret = 0;
 
 	req.req = XCL_MAILBOX_REQ_TEST_READ;
-	ret = mailbox_request(to_platform_device(dev), &req, sizeof(req),
+	ret = mailbox_request(to_platform_device(dev), &req, struct_size(&req, data, 1),
 		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0, 0);
 	if (ret) {
 		MBX_ERR(mbx, "failed to read test msg from peer: %d", ret);
@@ -1803,7 +1803,7 @@ static ssize_t mailbox_store(struct device *dev,
 	(void) memcpy(mbx->mbx_tst_tx_msg, buf, count);
 	mbx->mbx_tst_tx_msg_len = count;
 	req.req = XCL_MAILBOX_REQ_TEST_READY;
-	(void) mailbox_post_notify(mbx->mbx_pdev, &req, sizeof(req));
+	(void) mailbox_post_notify(mbx->mbx_pdev, &req, struct_size(&req, data, 1));
 
 	return count;
 }
@@ -1880,7 +1880,7 @@ static void mailbox_send_test_load_xclbin_kaddr(struct mailbox *mbx)
 	mbx->mbx_recv_body_len = sizeof (int);
 
 	data_len = sizeof(struct xcl_mailbox_bitstream_kaddr);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen =  struct_size(req, data, 1) + data_len;
 	req = kzalloc(reqlen, GFP_KERNEL);
 	if (!req) {
 		mbx->mbx_test_send_status = -ENOMEM;
@@ -1917,7 +1917,7 @@ static void _mailbox_send_test(struct mailbox *mbx, size_t data_len, size_t resp
 		mbx->mbx_recv_body_len = resp_len;
 	}
 
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen =  struct_size(req, data, 1) + data_len;
 	req = vzalloc(reqlen);
 	if (!req) {
 		mbx->mbx_test_send_status = -ENOMEM;

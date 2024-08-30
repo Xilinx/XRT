@@ -444,7 +444,7 @@ struct xocl_subdev_priv {
 	unsigned long		debug_hdl;
 	u32			inst_idx;
 	u32			data_sz;
-	u64			data[1];
+	u64			data[];
 };
 
 #define INVALID_INST_INDEX	0xFFFF
@@ -462,7 +462,7 @@ static inline void *xocl_subdev_priv_alloc(u32 size)
 {
 	struct xocl_subdev_priv *priv;
 
-	priv = vzalloc(sizeof(*priv) + size);
+	priv = vzalloc(struct_size(priv, data, 1) + size);
 	if (!priv)
 		return NULL;
 

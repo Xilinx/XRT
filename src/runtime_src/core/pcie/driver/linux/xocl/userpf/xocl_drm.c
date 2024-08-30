@@ -569,9 +569,6 @@ const struct drm_gem_object_funcs xocl_gem_object_funcs = {
         .vmap = xocl_gem_prime_vmap,
         .vunmap = xocl_gem_prime_vunmap,
         .export = drm_gem_prime_export,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
-        .mmap = xocl_gem_prime_mmap,
-#endif
 };
 #endif
 
