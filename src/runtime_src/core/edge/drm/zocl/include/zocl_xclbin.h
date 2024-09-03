@@ -63,4 +63,8 @@ bool zocl_bitstream_is_locked(struct drm_zocl_dev *zdev,
 			      struct drm_zocl_slot *slot);
 int zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 		      struct drm_zocl_slot *slot);
+int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin, struct kds_client *client);
+
 #endif /* _ZOCL_XCLBIN_H_ */

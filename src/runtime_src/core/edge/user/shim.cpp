@@ -688,6 +688,8 @@ xclLoadAxlf(const axlf *buffer)
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  //force load PDI if below action mask is set
+  is_pr_platform = (buffer->m_header.m_actionMask & AM_LOAD_PDI) ? true : false;
 
   if (is_pr_platform)
     flags = DRM_ZOCL_PLATFORM_PR;
