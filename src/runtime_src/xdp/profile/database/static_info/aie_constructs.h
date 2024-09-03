@@ -97,7 +97,15 @@ namespace xdp {
     compareTileByLoc(const tile_type& t) : target_tile(t) {}
 
     bool operator()(const tile_type& src_tile) const {
-      return src_tile.col == target_tile.col && src_tile.row == target_tile.row;
+      return (src_tile.col == target_tile.col) && (src_tile.row == target_tile.row);
+    }
+  };
+  struct compareTileByLocMap {
+    tile_type target_tile;
+    compareTileByLocMap(const tile_type& t) : target_tile(t) {}
+
+    bool operator()(const std::pair<tile_type, std::string>& p) const {
+      return (p.first.col == target_tile.col) && (p.first.row == target_tile.row);
     }
   };
   struct compareTileByLocAndActiveType {
@@ -105,10 +113,10 @@ namespace xdp {
     compareTileByLocAndActiveType(const tile_type& t) : target_tile(t) {}
 
     bool operator()(const tile_type& src_tile) const {
-      return src_tile.col == target_tile.col &&
-             src_tile.row == target_tile.row &&
-             src_tile.active_core == target_tile.active_core &&
-             src_tile.active_memory == target_tile.active_memory;
+      return (src_tile.col == target_tile.col) &&
+             (src_tile.row == target_tile.row) &&
+             (src_tile.active_core == target_tile.active_core) &&
+             (src_tile.active_memory == target_tile.active_memory);
     }
   };
 

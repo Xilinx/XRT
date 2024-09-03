@@ -600,7 +600,9 @@ namespace xdp {
       // NOTE 2: This is agnostic to order and which setting is specified
       auto pairModuleIdx = getPairModuleIndex(metricSet, mod);
       if (pairModuleIdx >= 0) {
-        auto pairItr = configMetrics[pairModuleIdx].find(tile);
+        auto pairItr = std::find_if(configMetrics[pairModuleIdx].begin(), 
+          configMetrics[pairModuleIdx].end(), compareTileByLocMap(tile));
+
         if ((pairItr != configMetrics[pairModuleIdx].end())
             && (pairItr->second != metricSet)) {
           std::stringstream msg;
@@ -616,7 +618,9 @@ namespace xdp {
       }
       else {
         // Check if this tile/module was previously protected
-        auto pairItr2 = pairConfigMetrics.find(tile);
+        auto pairItr2 = std::find_if(pairConfigMetrics.begin(), 
+          pairConfigMetrics.end(), compareTileByLocMap(tile));
+
         if (pairItr2 != pairConfigMetrics.end()) {
           std::stringstream msg;
           msg << "Replacing metric set " << metricSet << " with complementary set " 
