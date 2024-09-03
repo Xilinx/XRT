@@ -545,7 +545,7 @@ struct aie_reg_read
   if (it == regmap.end())
     throw xrt_core::error(-EINVAL, "Invalid register");
 
-  rc = XAie_Read32(devInst, it->second + _XAie_GetTileAddr(devInst,row,col), &val);
+  rc = XAie_Read32(devInst, it->second + XAie_GetTileAddr(devInst,row,col), &val);
   if(rc != XAIE_OK)
     throw xrt_core::error(-EINVAL, boost::str(boost::format("Error reading register '%s' (0x%8x) for AIE[%u:%u]")
                                                             % v.c_str() % it->second % col % (row-1)));
