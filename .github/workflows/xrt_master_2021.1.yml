@@ -22,9 +22,9 @@ jobs:
           - os: centos8      
             packageType: rpm
             os_ver: centos_8.1      
-          - os: rhel9      
-            packageType: rpm
-            os_ver: rhel_9.1      
+          # - os: rhel9      
+          #   packageType: rpm
+          #   os_ver: rhel_9.1      
           - os: ubuntu2004      
             packageType: deb
             os_ver: ubuntu_20.04      
@@ -119,53 +119,53 @@ jobs:
   #         build-cmd: "build.bat -release"
   #         vs-version: "2017"
 
-  apu-package-build:
-    runs-on: apu
-    steps:
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  # apu-package-build:
+  #   runs-on: apu
+  #   steps:
+  #     - name: Set env variables    
+  #       run: |    
+  #         echo "Setting environment variables..."      
+  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV        
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+  #     - name: Set env variables    
+  #       run: |    
+  #         echo "Setting environment variables..."      
+  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV        
+  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-      - name: Checkout PR   
-        uses: actions/checkout@v3 
-        with: 
-          fetch-depth: 0
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-          submodules: recursive  
+  #     - name: Checkout PR   
+  #       uses: actions/checkout@v3 
+  #       with: 
+  #         fetch-depth: 0
+  #         path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+  #         submodules: recursive  
 
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
-          ref: main
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows  
+  #         ref: main
        
-      - name: Apu package build for XRT     
-        uses: ./composite-workflows/apu-package
-        with:     
-          pipeline: ${{ env.PIPELINE }}   
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}    
-          apuPackage: 'True' 
-          release: ${{ env.RELEASE }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          appConfig: ${{ secrets.APP_CONFIG }} 
-          appConfig1: ${{ secrets.APP_CONFIG1 }} 
-          appConfig2: ${{ secrets.APP_CONFIG2 }} 
-          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+  #     - name: Apu package build for XRT     
+  #       uses: ./composite-workflows/apu-package
+  #       with:     
+  #         pipeline: ${{ env.PIPELINE }}   
+  #         workspace: ${{ github.workspace }}  
+  #         buildNumber: ${{ env.XRT_VERSION_PATCH }}    
+  #         apuPackage: 'True' 
+  #         release: ${{ env.RELEASE }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         appConfig: ${{ secrets.APP_CONFIG }} 
+  #         appConfig1: ${{ secrets.APP_CONFIG1 }} 
+  #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
+  #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   # package-download:    
   #   needs: [build, apu-package-build, windows-build]    
@@ -401,255 +401,256 @@ jobs:
   #         # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
   #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
 
-  # setenv-download:    
-  #   needs: test-summary    
-  #   runs-on: [self-hosted, Ubuntu-22.04]    
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  setenv-download:    
+    needs: build    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v4 
-  #       with: 
-  #         repository: devops/setenv-XRT
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: devops/setenv-XRT
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action package download     
-  #       uses: ./composite-workflows/setenv   
-  #       with:    
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }}    
-  #         pipeline: ${{ env.PIPELINE }}    
-  #         env: ${{ env.ENV }}
-  #         release: ${{ env.RELEASE }}
-  #         workspace: ${{ github.workspace }}  
-  #         buildNumber: ${{ env.XRT_VERSION_PATCH }}
-  #         github_sha: ${{ github.sha }}
-  #         github_workflow: ${{ github.workflow }}   
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         NPATH: ${{ secrets.NPATH }}
-  #         USER: ${{ secrets.USER }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action package download     
+        uses: ./composite-workflows/setenv   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}
+          github_sha: ${{ github.sha }}
+          github_workflow: ${{ github.workflow }}   
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
-  # Release_to_xco:      
-  #   needs: setenv-download  
-  #   runs-on: [self-hosted, Ubuntu-22.04]
-  #   strategy:        
-  #     matrix:        
-  #       site: ['xco'] 
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  Release_to_xco:      
+    needs: setenv-download  
+    runs-on: [self-hosted, Ubuntu-22.04]
+    strategy:        
+      matrix:        
+        site: ['xco'] 
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Extract branch name      
-  #       id: extract_branch      
-  #       run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
+      - name: Extract branch name      
+        id: extract_branch      
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
 
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action release-all-sites download     
-  #       uses: ./composite-workflows/release-all-sites   
-  #       with: 
-  #         isProd: 'true'  
-  #         site: ${{ matrix.site }}       
-  #         pipeline: 'xrt'        
-  #         release: '2024.1'      
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }} 
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}      
-  #         buildNumber: ${{ env.XRT_VERSION_PATCH }}       
-  #         runnerName: ${{ runner.name }}      
-  #         branch: ${{ steps.extract_branch.outputs.branch }}    
-  #         github-server-url: ${{ secrets.SERVER_URL }}  
+      - name: Use composite action release-all-sites download     
+        uses: ./composite-workflows/release-all-sites   
+        with: 
+          isProd: 'true'  
+          site: ${{ matrix.site }}       
+          pipeline: 'xrt'        
+          release: '2024.1'      
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
+          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
+          runnerName: ${{ runner.name }}      
+          branch: ${{ steps.extract_branch.outputs.branch }}    
+          github-server-url: ${{ secrets.SERVER_URL }}  
 
-  # Release_to_all_sites:      
-  #   needs: Release_to_xco  
-  #   runs-on: [xrt, trx]     
-  #   strategy:        
-  #     matrix:        
-  #       site: ['xsj', 'xir', 'xhd', 'xdc'] 
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  Release_to_all_sites:      
+    needs: Release_to_xco  
+    runs-on: [xrt, trx]     
+    strategy:        
+      matrix:        
+        site: ['xsj', 'xir', 'xhd', 'xdc'] 
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Extract branch name      
-  #       id: extract_branch      
-  #       run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
+      - name: Extract branch name      
+        id: extract_branch      
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
 
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action release-all-sites download     
-  #       uses: ./composite-workflows/release-all-sites   
-  #       with: 
-  #         isProd: 'true'  
-  #         site: ${{ matrix.site }}       
-  #         pipeline: 'xrt'        
-  #         release: '2024.1'      
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }} 
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}      
-  #         buildNumber: ${{ env.XRT_VERSION_PATCH }}       
-  #         runnerName: ${{ runner.name }}      
-  #         branch: ${{ steps.extract_branch.outputs.branch }}    
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action release-all-sites download     
+        uses: ./composite-workflows/release-all-sites   
+        with: 
+          isProd: 'true'  
+          site: ${{ matrix.site }}       
+          pipeline: 'xrt'        
+          release: '2024.1'      
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
+          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
+          runnerName: ${{ runner.name }}      
+          branch: ${{ steps.extract_branch.outputs.branch }}    
+          github-server-url: ${{ secrets.SERVER_URL }}
 
-  # Upload_packages_to_Artifactory:  
-  #   runs-on: [self-hosted, Ubuntu-22.04]  
-  #   needs: Release_to_xco  
-  #   steps: 
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  Upload_packages_to_Artifactory:  
+    runs-on: [self-hosted, Ubuntu-22.04]  
+    needs: Release_to_xco  
+    steps: 
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
 
-  #     - name: Use composite action artifactory upload     
-  #       uses: ./composite-workflows/artifactory-upload   
-  #       with: 
-  #         isProd: 'true'  
-  #         pipeline: 'xrt'        
-  #         release: '2024.1'      
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }} 
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}      
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action artifactory upload     
+        uses: ./composite-workflows/artifactory-upload   
+        with: 
+          isProd: 'true'  
+          pipeline: 'xrt'        
+          release: '2024.1'      
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
+          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          github-server-url: ${{ secrets.SERVER_URL }}
 
-  # gradle-artifactory-upload:    
-  #   needs: Upload_packages_to_Artifactory    
-  #   runs-on: [self-hosted, Ubuntu-22.04]   
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  gradle-artifactory-upload:    
+    needs: Upload_packages_to_Artifactory    
+    runs-on: [self-hosted, Ubuntu-22.04]   
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Extract branch name      
-  #       id: extract_branch      
-  #       run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
+      - name: Extract branch name      
+        id: extract_branch      
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
 
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v4 
-  #       with: 
-  #         repository: devops/gradle-artifactory-publish-script
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: devops/gradle-artifactory-publish-script
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action package download     
-  #       uses: ./composite-workflows/gradle-artifactory-upload   
-  #       with:    
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }}    
-  #         pipeline: ${{ env.PIPELINE }}
-  #         release: ${{ env.RELEASE }}    
-  #         env: ${{ env.ENV }}
-  #         workspace: ${{ github.workspace }}  
-  #         buildNumber: ${{ env.XRT_VERSION_PATCH }} 
-  #         branch: ${{ steps.extract_branch.outputs.branch }}
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-  #         runnerName: ${{ runner.name }}
+      - name: Use composite action package download     
+        uses: ./composite-workflows/gradle-artifactory-upload   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}
+          release: ${{ env.RELEASE }}    
+          env: ${{ env.ENV }}
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ env.XRT_VERSION_PATCH }} 
+          branch: ${{ steps.extract_branch.outputs.branch }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+          runnerName: ${{ runner.name }}
 
-  # cleanup-build:    
-  #   needs: [Release_to_all_sites, gradle-artifactory-upload]    
-  #   runs-on: [self-hosted, Ubuntu-22.04]    
-  #   steps:    
+  cleanup-build:    
+    needs: [Release_to_all_sites, gradle-artifactory-upload]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
 
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action package download     
-  #       uses: ./composite-workflows/cleanup   
-  #       with:    
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }}    
-  #         pipeline: ${{ env.PIPELINE }}    
-  #         env: ${{ env.ENV }}
-  #         release: ${{ env.RELEASE }}  
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         NPATH: ${{ secrets.NPATH }}
-  #         USER: ${{ secrets.USER }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action package download     
+        uses: ./composite-workflows/cleanup   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
-  # notify-slack:  
-  #   needs: [Release_to_all_sites, gradle-artifactory-upload]  
-  #   runs-on: Ubuntu-22.04
-  #   if: always() && contains(needs.*.result, 'failure')  
-  #   steps:  
-  #     - name: Notify Slack on failure  
-  #       uses: 8398a7/action-slack@v3  
-  #       with:  
-  #         status: ${{ job.status }}  
-  #         fields: repo,message,commit,author,action   
-  #       env:  
-  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  
+  notify-slack:  
+    needs: [Release_to_all_sites, gradle-artifactory-upload]  
+    runs-on: Ubuntu-22.04
+    if: always() && contains(needs.*.result, 'failure')  
+    steps:  
+      - name: Notify Slack on failure  
+        uses: 8398a7/action-slack@v3  
+        with:  
+          status: ${{ job.status }}  
+          fields: repo,message,commit,author,action   
+        env:  
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  
+
