@@ -259,7 +259,7 @@ namespace xdp {
           // Read core status and PC value
           bool coreUnstalled = false;
           uint32_t coreStatus = 0;
-          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
+          auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
           auto& coreStallCounter = coreStuckCountMap[tile];

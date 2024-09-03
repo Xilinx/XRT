@@ -317,7 +317,7 @@ namespace xdp::aie::trace {
           "Configuring memory tile edge events to detect rise and fall of event " 
           + std::to_string(eventNum));
 
-      auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+      auto tileOffset = Aie_GetTileAddr(aieDevInst, tile.row, tile.col);
       XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, 
                    edgeEventsValue);
       return;
@@ -345,7 +345,7 @@ namespace xdp::aie::trace {
         "Configuring AIE tile edge events to detect rise and fall of event " 
         + std::to_string(eventNum));
 
-    auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
     XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM, 
                  edgeEventsValue);
   }
