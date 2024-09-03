@@ -168,7 +168,7 @@ jobs:
   #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   package-download:    
-    needs: [build, apu-package-build, windows-build]    
+    needs: [build]    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
       - name: Set env variables    
