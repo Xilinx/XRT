@@ -167,38 +167,38 @@ jobs:
   #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
   #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  # package-download:    
-  #   needs: [build, apu-package-build, windows-build]    
-  #   runs-on: [self-hosted, Ubuntu-22.04]    
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+  package-download:    
+    needs: [build, apu-package-build, windows-build]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action package download     
-  #       uses: ./composite-workflows/package-download   
-  #       with:    
-  #         runNumber: ${{ env.XRT_VERSION_PATCH }}    
-  #         pipeline: ${{ env.PIPELINE }}    
-  #         env: ${{ env.ENV }}
-  #         release: ${{ env.RELEASE }}  
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         NPATH: ${{ secrets.NPATH }}
-  #         USER: ${{ secrets.USER }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action package download     
+        uses: ./composite-workflows/package-download   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
   # extract-platforms:  
   #   needs: package-download    
