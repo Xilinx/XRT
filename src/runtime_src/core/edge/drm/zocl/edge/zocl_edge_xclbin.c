@@ -301,15 +301,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		if (ret)
 			goto out0;
 	} else {
-		/* For PR support platform, device-tree has configured addr */
-		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
-			DRM_ERROR("xclbin m_mod %d is not a PR mode",
-			    axlf_head.m_header.m_mode);
-			ret = -EINVAL;
-			goto out0;
-		}
 
 		if (!(axlf_obj->za_flags & DRM_ZOCL_PLATFORM_PR)) {
 			DRM_INFO("disable partial bitstream download, "
