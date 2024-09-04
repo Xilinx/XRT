@@ -5,6 +5,7 @@
 #include "kds_ert_table.h"
 #include "zocl_util.h"
 #include "zocl_hwctx.h"
+#include "zocl_aie.h"
 #include <drm/drm_print.h>
 
 int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct drm_file *filp, int slot_id)
@@ -480,5 +481,117 @@ out1:
 out:
     if (ret < 0)
         ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+    return ret;
+}
+
+static int zocl_add_hw_graph_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+        struct kds_client_hw_ctx *kds_hw_ctx, struct drm_zocl_open_graph_ctx *drm_graph_ctx)
+{
+    struct zocl_hw_graph_ctx *graph_ctx = NULL;
+    int ret = 0;
+
+    list_for_each_entry(graph_ctx, &kds_hw_ctx->graph_ctx_list, link) {
+        if (graph_ctx->graph_id != drm_graph_ctx->graph_id){
+            continue;
+        }
+
+        if (graph_ctx->flags == ZOCL_CTX_EXCLUSIVE || drm_graph_ctx->flags == ZOCL_CTX_EXCLUSIVE) {
+            DRM_ERROR("%s: graph %d is already opened with exclusive context", __func__, graph_ctx->graph_id);
+            ret = -EBUSY;
+            goto out;
+        }
+
+        if (graph_ctx->flags == ZOCL_CTX_PRIMARY && drm_graph_ctx->flags != ZOCL_CTX_SHARED) {
+            DRM_ERROR("%s: graph %d is already opened with primary context", __func__, graph_ctx->graph_id);
+            ret = -EBUSY;
+            goto out;
+        }
+    }
+
+    graph_ctx = kzalloc(sizeof(*graph_ctx), GFP_KERNEL);
+    graph_ctx->flags = drm_graph_ctx->flags;
+    graph_ctx->graph_id = drm_graph_ctx->graph_id;
+    graph_ctx->hw_context = drm_graph_ctx->hw_context;
+
+    list_add_tail(&graph_ctx->link, &kds_hw_ctx->graph_ctx_list);
+    return 0;
+
+out:
+    DRM_ERROR("%s: Failed to to add the graph ctx for graph = %d", __func__, drm_graph_ctx->graph_id);
+    return ret;
+
+}
+
+int zocl_open_graph_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_open_graph_ctx *drm_graph_ctx, struct drm_file *filp)
+{
+    struct kds_client_hw_ctx *kds_hw_ctx = NULL;
+    struct kds_client *client = filp->driver_priv;
+    int ret = 0;
+
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
+        return -EINVAL;
+    }
+    mutex_lock(&client->lock);
+    kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_graph_ctx->hw_context);
+    if (!kds_hw_ctx) {
+        DRM_ERROR("%s: No valid hw context is open", __func__);
+        ret = -EINVAL;
+        goto out;
+    }
+    ret = zocl_add_hw_graph_context(zdev, client, kds_hw_ctx, drm_graph_ctx);
+
+out:
+    mutex_unlock(&client->lock);
+    return ret;
+}
+
+static int zocl_del_hw_graph_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+        struct kds_client_hw_ctx *kds_hw_ctx, struct drm_zocl_close_graph_ctx *drm_graph_ctx)
+{
+    struct zocl_hw_graph_ctx *graph_ctx = NULL;
+    struct list_head *gptr, *next;
+    int ret = 0;
+
+    list_for_each_safe(gptr, next, &kds_hw_ctx->graph_ctx_list) {
+        graph_ctx = list_entry(gptr, struct zocl_hw_graph_ctx, link);
+        if (graph_ctx->graph_id == drm_graph_ctx->graph_id) {
+            list_del(gptr);
+            kfree(graph_ctx);
+            ret = 0;
+            goto out;
+        }
+    }
+
+    DRM_ERROR("%s Failed to close graph context: graph id %d does not exist", __func__, drm_graph_ctx->graph_id);
+    ret = -EINVAL;
+
+out:
+    return ret;
+}
+
+int zocl_close_graph_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_graph_ctx *drm_graph_ctx, struct drm_file *filp)
+{
+    struct kds_client_hw_ctx *kds_hw_ctx = NULL;
+    struct kds_client *client = filp->driver_priv;
+    int ret = 0;
+
+    if (!client) {
+        DRM_ERROR("%s: Invalid client", __func__);
+        return -EINVAL;
+    }
+    mutex_lock(&client->lock);
+
+    kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_graph_ctx->hw_context);
+    if (!kds_hw_ctx) {
+        DRM_ERROR("%s: No valid hw context is open", __func__);
+        ret = -EINVAL;
+        goto out;
+    }
+
+    ret = zocl_del_hw_graph_context(zdev, client, kds_hw_ctx, drm_graph_ctx);
+
+out:
+    mutex_unlock(&client->lock);
     return ret;
 }

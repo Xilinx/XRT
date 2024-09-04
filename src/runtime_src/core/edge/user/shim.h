@@ -273,6 +273,12 @@ public:
 
   void
   hwctx_exec_buf(const xrt_core::hwctx_handle* hwctx_hdl, xclBufferHandle boh);
+
+  int
+  open_graph_context(const zynqaie::hwctx_object* hwctx, const uuid_t xclbinId, unsigned int graph_id, xrt::graph::access_mode am);
+
+  void
+  close_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graph_id);
 ////////////////////////////////////////////////////////////////
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);

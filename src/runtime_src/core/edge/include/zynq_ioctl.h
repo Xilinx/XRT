@@ -67,6 +67,8 @@
  * 19   Close cu context                       DRM_IOCTL_ZOCL_CLOSE_CU_CTX    drm_zocl_close_cu_ctx
  * 20   Send an execute job to a CU with hw    DRM_IOCTL_ZOCL_HW_CTX_EXECBUF  drm_zocl_hw_ctx_execbuf
  *      context
+ * 21   Open graph context                     DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX  drm_zocl_open_graph_ctx
+ * 22   Close graph context                    DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX drm_zocl_close_graph_ctx
  *
  * ==== ====================================== ============================== ==================================
  */
@@ -75,6 +77,7 @@
 #define __ZYNQ_IOCTL_H__
 
 #define CU_NAME_MAX_LEN	64
+#define GRAPH_NAME_MAX_LEN	64
 
 #ifndef __KERNEL__
 #include <stdint.h>
@@ -120,6 +123,10 @@ enum drm_zocl_ops {
 	DRM_ZOCL_OPEN_CU_CTX,
 	/* Close CU context */
 	DRM_ZOCL_CLOSE_CU_CTX,
+	/* Open graph context */
+	DRM_ZOCL_OPEN_GRAPH_CTX,
+	/* Close graph context */
+	DRM_ZOCL_CLOSE_GRAPH_CTX,
 	/* Get the soft kernel command */
 	DRM_ZOCL_SK_GETCMD,
 	/* Create the soft kernel */
@@ -537,6 +544,34 @@ struct drm_zocl_close_cu_ctx {
 	uint32_t	cu_index;
 };
 
+/**
+ * struct drm_zocl_open_graph_ctx - Opens a graph context under a hw context on the device
+ * used with DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX
+ *
+ * @hw_context:	Open a graph context under this hw context handle
+ * @graph_name:	Name of the graph on the device image for which the open context is being made
+ * @flags:	Shared or Exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)
+ * @graph_id:	graph id
+ * @graph_context:	Reture the acquired graph index. This will be required for closing
+ */
+struct drm_zocl_open_graph_ctx {
+	uint32_t	hw_context;
+	uint32_t	flags;
+	uint32_t	graph_id;
+};
+
+/**
+ * struct drm_zocl_close_graph_ctx - Closes a graph context opened under a hw context on device
+ * used with DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX
+ *
+ * @hw_context:	close graph context under this hw context handle
+ * @graph_context:	Context of the graph on the device image for which the close request is being made
+ */
+struct drm_zocl_close_graph_ctx {
+	uint32_t	hw_context;
+	uint32_t	graph_id;
+};
+
 #define	ZOCL_MAX_NAME_LENGTH		32
 #define	ZOCL_MAX_PATH_LENGTH		255
 #define AIE_INFO_SIZE			4096
@@ -667,6 +702,10 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_OPEN_CU_CTX, struct drm_zocl_open_cu_ctx)
 #define DRM_IOCTL_ZOCL_CLOSE_CU_CTX    DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CLOSE_CU_CTX, struct drm_zocl_close_cu_ctx)
+#define DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX  DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_OPEN_GRAPH_CTX, struct drm_zocl_open_graph_ctx)
+#define DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_CLOSE_GRAPH_CTX, struct drm_zocl_close_graph_ctx)
 #define DRM_IOCTL_ZOCL_SK_GETCMD       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_SK_GETCMD, struct drm_zocl_sk_getcmd)
 #define DRM_IOCTL_ZOCL_SK_CREATE       DRM_IOWR(DRM_COMMAND_BASE + \

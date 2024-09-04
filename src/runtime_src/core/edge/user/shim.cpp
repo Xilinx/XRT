@@ -2073,6 +2073,55 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
+open_graph_context(const zynqaie::hwctx_object* hwctx, const uuid_t xclbinId, unsigned int graph_id, xrt::graph::access_mode am)
+{
+  int ret = 0;
+  if (!hw_context_enable){
+    // for legacy flow
+    ret = openGraphContext(xclbinId, graph_id, am);
+    if (ret)
+      throw xrt_core::error("Failed to open graph context");
+    return ret;
+  }
+  else {
+    // this is for multi slot case
+    auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+    unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
+    drm_zocl_open_graph_ctx graph_ctx = {};
+    graph_ctx.hw_context = hwctx->get_slotidx();
+    graph_ctx.flags = flags;
+    graph_ctx.graph_id = graph_id;
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX, &graph_ctx);
+    if (ret)
+      throw xrt_core::error("Failed to open graph context hwctx shim");
+    return ret;
+  }
+}
+
+void
+shim::
+close_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graph_id)
+{
+  int ret = 0;
+  if (!hw_context_enable) {
+    // for legacy flow
+    ret = closeGraphContext(graph_id);
+    if (ret)
+      throw xrt_core::error("Failed to close graph context");
+  }
+  else {
+    // this is for multi slot case
+    drm_zocl_close_graph_ctx graph_ctx = {};
+    graph_ctx.hw_context = hwctx->get_slotidx();
+    graph_ctx.graph_id = graph_id;
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX, &graph_ctx);
+    if (ret)
+      throw xrt_core::error("Failed to close graph context hwctx shim");
+  }
+}
+
+int
+shim::
 openAIEContext(xrt::aie::access_mode am)
 {
   unsigned int flags;
