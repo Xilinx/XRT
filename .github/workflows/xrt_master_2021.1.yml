@@ -185,7 +185,8 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
+
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
@@ -402,7 +403,7 @@ jobs:
   #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
 
   setenv-download:    
-    needs: build    
+    needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
       - name: Set env variables    
@@ -427,7 +428,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
     
       - name: Use composite action package download     
         uses: ./composite-workflows/setenv   
@@ -471,7 +472,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
     
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
@@ -479,7 +480,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: '2021.1'      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -513,7 +514,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
     
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
@@ -521,7 +522,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: '2021.1'      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -548,14 +549,14 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
 
       - name: Use composite action artifactory upload     
         uses: ./composite-workflows/artifactory-upload   
         with: 
           isProd: 'true'  
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: '2021.1'      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
           github-server-url: ${{ secrets.SERVER_URL }}
@@ -590,7 +591,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
     
       - name: Use composite action package download     
         uses: ./composite-workflows/gradle-artifactory-upload   
@@ -626,7 +627,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
     
       - name: Use composite action package download     
         uses: ./composite-workflows/cleanup   
