@@ -698,5 +698,55 @@ void logmsg(XmaLogLevelType level, const std::string& tag, const std::string& ms
     return;
 }
 
+void xma_session_destroy(XmaSession *xma_session) {
+
+    int itr = 0, sess_id = xma_session->session_id;
+    /*
+    delete (XmaHwSessionPrivate*)xma_session->hw_session.private_do_not_use;
+    */
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*)xma_session->hw_session.private_do_not_use;
+    if(priv1 != nullptr) {
+        priv1->CU_cmds.clear();
+        priv1->CU_error_cmds.clear();
+        priv1->execbo_lru.clear();
+        priv1->execbo_to_check.clear();
+        for(auto& kernel_bo: priv1->kernel_execbos) {
+            xclUnmapBO(priv1->dev_handle, kernel_bo.handle, kernel_bo.data);
+            xclFreeBO(priv1->dev_handle, kernel_bo.handle);
+        }
+        priv1->kernel_execbos.clear();
+        priv1->buffer_pools.clear();
+        priv1->dev_handle = NULL;
+        priv1->kernel_info = NULL;
+        priv1->device = NULL;
+        delete priv1;
+    }
+
+    xma_session->hw_session.private_do_not_use = nullptr;
+    xma_session->plugin_data = nullptr;
+    xma_session->stats = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    xma_session->hw_session.dev_index = -1;
+    xma_session->session_signature = NULL;
+    xma_session->channel_id = -1;
+
+    //Free session from all_sessions_vec
+    int vec_size = g_xma_singleton->all_sessions_vec.size();
+    if(vec_size > 0) {
+        for(auto& itr1: g_xma_singleton->all_sessions_vec) {
+            if(itr1.session_id == sess_id) {
+                itr1.hw_session.dev_index = -1;
+                itr1.channel_id = -1;
+                g_xma_singleton->all_sessions_vec.erase(g_xma_singleton->all_sessions_vec.begin() + itr);
+                if(vec_size == 1)
+                    g_xma_singleton->all_sessions_vec.clear();
+                break;
+            }
+            itr += 1;
+        }
+    }
+    return;
+}
+
 } // namespace utils
 } // namespace xma_core

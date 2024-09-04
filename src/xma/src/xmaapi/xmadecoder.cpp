@@ -287,13 +287,9 @@ xma_dec_session_destroy(XmaDecoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    session->base.hw_session.private_do_not_use = nullptr;
-    session->base.plugin_data = nullptr;
-    session->base.stats = NULL;
-    session->decoder_plugin = NULL;
-    //do not change kernel in_use as it maybe in use by another plugin
-    session->base.hw_session.dev_index = -1;
-    session->base.session_signature = NULL;
+    xma_core::utils::xma_session_destroy(&session->base);
+
+    // Free the session
     free(session);
     session = nullptr;
 
