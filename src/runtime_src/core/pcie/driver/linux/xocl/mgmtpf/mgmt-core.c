@@ -571,7 +571,7 @@ reset:
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
 			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
-			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
+			err = xocl_peer_notify(lro, &mbreq, struct_size(&mbreq, data, 1));
 			if (!err)
 				lro->reset_requested = true;
 		} else
@@ -725,7 +725,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	if (lro->rp_program == XOCL_RP_PROGRAM_REQ) {
 		/* previous request is missed */
-		data_sz = sizeof(*hdr);
+		data_sz = struct_size(hdr, data, 1);
 		rtn_code = XOCL_MSG_SUBDEV_RTN_PENDINGPLP;
 	} else {
 		fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
@@ -737,13 +737,13 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 		else
 			rtn_code = XOCL_MSG_SUBDEV_RTN_COMPLETE;
 
-		data_sz += sizeof(*hdr);
+		data_sz += struct_size(hdr, data, 1);
 	}
 
 	*actual_sz = min_t(size_t, buf_sz, data_sz);
 
 	/* if it is invalid req, do nothing */
-	if (*actual_sz < sizeof(*hdr)) {
+	if (*actual_sz < struct_size(hdr, data, 1)) {
 		mgmt_err(lro, "Req buffer is too small");
 		return;
 	}
@@ -756,7 +756,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	hdr = *resp;
 	hdr->ver = XOCL_MSG_SUBDEV_VER;
-	hdr->size = *actual_sz - sizeof(*hdr);
+	hdr->size = *actual_sz - struct_size(hdr, data, 1);
 	hdr->offset = offset;
 	hdr->rtncode = rtn_code;
 	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
@@ -898,11 +898,11 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	bool is_sw = false;
 	size_t payload_len;
 
-	if (len < sizeof(*req)) {
+	if (len < struct_size(req, data, 1)) {
 		mgmt_err(lro, "peer request dropped due to wrong size\n");
 		return;
 	}
-	payload_len = len - sizeof(*req);
+	payload_len = len - struct_size(req, data, 1);
 
 	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n",
 		req->req, sw_ch);
@@ -1258,7 +1258,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	size_t data_len = 0, reqlen = 0;
 
 	data_len = sizeof(struct xcl_mailbox_peer_state);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = struct_size(mb_req, data, 1) + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;

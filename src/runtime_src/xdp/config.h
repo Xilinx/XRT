@@ -28,7 +28,7 @@
     #define XDP_CORE_EXPORT __declspec(dllimport)
   #endif  
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
   #ifdef XDP_CORE_SOURCE
     #define XDP_CORE_EXPORT __attribute__ ((visibility("default")))
   #else
@@ -47,7 +47,7 @@
     #define XDP_PLUGIN_EXPORT __declspec(dllimport)
   #endif  
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
   #ifdef XDP_PLUGIN_SOURCE
     #define XDP_PLUGIN_EXPORT __attribute__ ((visibility("default")))
   #else

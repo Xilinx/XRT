@@ -26,7 +26,7 @@
 #  define XRT_EXPORT __declspec(dllimport)
 # endif
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
 # ifdef XRT_SOURCE
 #  define XRT_EXPORT __attribute__ ((visibility("default")))
 # else
@@ -38,7 +38,7 @@
 # define XRT_EXPORT
 #endif
 
-#ifdef __GNUC__
+#ifdef __linux__
 # define XRT_UNUSED __attribute__((unused))
 #endif
 

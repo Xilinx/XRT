@@ -20,7 +20,7 @@
 #ifndef _WIN32
 #include <unistd.h>
 #else
-#include <Shlobj.h>
+#include <shlobj.h>
 #endif
 
 namespace xrt_core {

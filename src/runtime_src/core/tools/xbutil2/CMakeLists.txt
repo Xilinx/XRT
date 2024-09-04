@@ -100,6 +100,10 @@ target_link_libraries(${XBUTIL2_NAME}
 
 if (NOT WIN32)
   target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread uuid dl)
+else()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(${XBUTIL2_NAME} PRIVATE ws2_32)
+  endif()
 endif()
 
 # Package xrt sub commands json file for embedded builds

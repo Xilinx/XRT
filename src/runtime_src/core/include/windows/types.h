@@ -19,7 +19,9 @@
 
 #include <stdint.h>
 
+#ifndef __GNU__
 typedef int64_t ssize_t;
 typedef int pid_t;
+#endif
 
 #endif

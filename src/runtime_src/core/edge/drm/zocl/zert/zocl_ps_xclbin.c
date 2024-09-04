@@ -398,34 +398,3 @@ out:
 	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
 }
-
-static int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct kds_client *client)
-{
-	uint64_t size = 0;
-	char *pdi_buf = NULL;
-	int ret = 0;
-
-	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
-		DRM_ERROR("%s Shared context can not load xclbin", __func__);
-		return -EPERM;
-	}
-
-	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
-	if (size == 0)
-		return 0;
-
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
-	vfree(pdi_buf);
-
-	/* Mark AIE out of reset state after load PDI */
-	if (zdev->aie) {
-		mutex_lock(&zdev->aie_lock);
-		zdev->aie->aie_reset = false;
-		mutex_unlock(&zdev->aie_lock);
-	}
-
-	return ret;
-}
-

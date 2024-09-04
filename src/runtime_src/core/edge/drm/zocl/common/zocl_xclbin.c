@@ -89,23 +89,24 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 
 	if (!slot->pr_isolation_addr) {
 		DRM_ERROR("PR isolation address is not set");
-		return -ENODEV;
+	} else {
+		map = ioremap(slot->pr_isolation_addr, PR_ISO_SIZE);
+		if (IS_ERR_OR_NULL(map)) {
+			DRM_ERROR("ioremap PR isolation address 0x%llx failed",
+				  slot->pr_isolation_addr);
+			return -EFAULT;
+		}
+		/* Freeze PR ISOLATION IP for bitstream download */
+		iowrite32(slot->pr_isolation_freeze, map);
 	}
 
-	map = ioremap(slot->pr_isolation_addr, PR_ISO_SIZE);
-	if (IS_ERR_OR_NULL(map)) {
-		DRM_ERROR("ioremap PR isolation address 0x%llx failed",
-		    slot->pr_isolation_addr);
-		return -EFAULT;
-	}
-
-	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(slot->pr_isolation_freeze, map);
 	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
-	/* Unfreeze PR ISOLATION IP */
-	iowrite32(slot->pr_isolation_unfreeze, map);
+	if (map) {
+		/* Unfreeze PR ISOLATION IP */
+		iowrite32(slot->pr_isolation_unfreeze, map);
+		iounmap(map);
+	}
 
-	iounmap(map);
 	return err;
 }
 
@@ -152,6 +153,36 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
 	/* 0 is for full bitstream */
 	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
+}
+
+int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin, struct kds_client *client)
+{
+	uint64_t size = 0;
+	char *pdi_buf = NULL;
+	int ret = 0;
+
+	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+		DRM_ERROR("%s Shared context can not load xclbin", __func__);
+		return -EPERM;
+	}
+
+	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
+	if (size == 0)
+		return 0;
+
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
+	vfree(pdi_buf);
+
+	/* Mark AIE out of reset state after load PDI */
+	if (zdev->aie) {
+		mutex_lock(&zdev->aie_lock);
+		zdev->aie->aie_reset = false;
+		mutex_unlock(&zdev->aie_lock);
+	}
+
+	return ret;
 }
 
 int

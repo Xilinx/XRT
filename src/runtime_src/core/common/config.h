@@ -27,7 +27,7 @@
 #  define XRT_CORE_COMMON_EXPORT __declspec(dllimport)
 # endif
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
 # ifdef XRT_CORE_COMMON_SOURCE
 #  define XRT_CORE_COMMON_EXPORT __attribute__ ((visibility("default")))
 # else
@@ -39,7 +39,7 @@
 # define XRT_CORE_COMMON_EXPORT
 #endif
 
-#ifdef __GNUC__
+#ifdef __linux__
 # define XRT_CORE_UNUSED __attribute__((unused))
 #endif
 

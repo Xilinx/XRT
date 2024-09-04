@@ -534,7 +534,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	}
 
 	if (!priv_data) {
-		priv_data = vzalloc(subdev->info.data_len + sizeof(*priv_data));
+		priv_data = vzalloc(subdev->info.data_len + struct_size(priv_data, data, 1));
 		if (!priv_data) {
 			retval = -ENOMEM;
 			goto error;
@@ -555,7 +555,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	priv_data->inst_idx = subdev->info.override_idx;
 
 	retval = platform_device_add_data(subdev->pldev, priv_data,
-			sizeof(*priv_data) + data_len);
+			struct_size(priv_data, data, 1) + data_len);
 	if (retval) {
 		xocl_xdev_err(xdev_hdl, "failed to add data");
 		goto error;

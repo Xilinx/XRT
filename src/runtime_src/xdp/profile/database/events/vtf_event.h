@@ -135,7 +135,7 @@ namespace xdp {
 
     virtual uint64_t getDevice() { return 0 ; } // CHECK
     XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
-    XDP_CORE_EXPORT virtual void dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/) {};
+    virtual void dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/) {};
   } ;
 
   // Used so the database can sort based on timestamp order

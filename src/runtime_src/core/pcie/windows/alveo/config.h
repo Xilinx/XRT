@@ -14,7 +14,7 @@
 #  define XRT_CORE_PCIE_WINDOWS_EXPORT __declspec(dllimport)
 # endif
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
 # ifdef XRT_CORE_PCIE_WINDOWS_SOURCE
 #  define XRT_CORE_PCIE_WINDOWS_EXPORT __attribute__ ((visibility("default")))
 # else
