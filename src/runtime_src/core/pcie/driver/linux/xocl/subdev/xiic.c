@@ -1012,7 +1012,7 @@ static int xiic_probe(struct platform_device *pdev)
 		I2C_SMBUS_BYTE_DATA, &data);
 
 cont:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 	i2c->lm63 = i2c_new_client_device(&i2c->adap, &lm96163_board_info);
 #else
 	i2c->lm63 = i2c_new_device(&i2c->adap, &lm96163_board_info);

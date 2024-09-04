@@ -254,7 +254,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   std::ostringstream os_stderr;
   constexpr static int MAX_TEST_DURATION = 300; //5 minutes
 
-  if(json_exists()) {
+  if(json_exists() && (py != "22_verify.py")) {
     //map old testcase names to new testcase names
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },

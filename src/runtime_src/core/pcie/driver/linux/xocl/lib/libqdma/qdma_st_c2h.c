@@ -95,7 +95,7 @@ static inline int flq_fill_one(struct qdma_sw_sg *sdesc,
 	}
 
 	mapping = dma_map_page(dev, pg, 0, PAGE_SIZE << pg_order,
-				PCI_DMA_FROMDEVICE);
+				DMA_FROM_DEVICE);
 	if (unlikely(dma_mapping_error(dev, mapping))) {
 		dev_err(dev, "page 0x%p mapping error 0x%llx.\n",
 			pg, (unsigned long long)mapping);

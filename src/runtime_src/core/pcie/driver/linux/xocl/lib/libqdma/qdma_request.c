@@ -240,7 +240,7 @@ void qdma_request_unmap(struct pci_dev *pdev, struct qdma_request *req)
 						DMA_FROM_DEVICE;
 
 	if (req->use_sgt) {
-		pci_unmap_sg(pdev, req->sgt->sgl, req->sgt->orig_nents, dir);
+		dma_unmap_sg(&pdev->dev, req->sgt->sgl, req->sgt->orig_nents, dir);
 	} else {
 		struct qdma_sw_sg *sg = req->sgl;
 		unsigned int sgcnt = req->sgcnt;
@@ -250,7 +250,7 @@ void qdma_request_unmap(struct pci_dev *pdev, struct qdma_request *req)
 			if (!sg->pg)
 				break;
 			if (sg->dma_addr) {
-				pci_unmap_page(pdev, sg->dma_addr - sg->offset,
+				dma_unmap_page(&pdev->dev, sg->dma_addr - sg->offset,
 						PAGE_SIZE, dir);
 				sg->dma_addr = 0UL;
 			}
@@ -274,7 +274,7 @@ int qdma_request_map(struct pci_dev *pdev, struct qdma_request *req)
 						DMA_FROM_DEVICE;
 
 	if (req->use_sgt) {
-		int nents = pci_map_sg(pdev, req->sgt->sgl,
+		int nents = dma_map_sg(&pdev->dev, req->sgt->sgl,
 					req->sgt->orig_nents, dir);
 
 		if (!nents) {
@@ -290,9 +290,9 @@ int qdma_request_map(struct pci_dev *pdev, struct qdma_request *req)
 
 		for (i = 0; i < sgcnt; i++, sg++) {
 			/* !! TODO  page size !! */
-			sg->dma_addr = pci_map_page(pdev, sg->pg, 0,
+			sg->dma_addr = dma_map_page(&pdev->dev, sg->pg, 0,
 						PAGE_SIZE, dir);
-			if (unlikely(pci_dma_mapping_error(pdev,
+			if (unlikely(dma_mapping_error(&pdev->dev,
 							sg->dma_addr))) {
 				pr_info("map sgl failed, sg %d, %u.\n",
 					i, sg->len);

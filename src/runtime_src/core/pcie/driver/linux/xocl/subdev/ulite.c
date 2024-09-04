@@ -338,8 +338,13 @@ static void ulite_shutdown(struct uart_port *port)
 	mutex_unlock(&pdata->lock);
 }
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 1, 0)) || defined(RHEL_9_2_GE)
+static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
+			      const struct ktermios *old)
+#else
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
 			      struct ktermios *old)
+#endif
 {
 	unsigned long flags;
 	unsigned int baud;
@@ -549,30 +554,39 @@ done:
 	return ret;
 }
 
+/*
+ * Sometime in Kernel version 6.5+ the platform_driver probe function will have
+ * its return code changed from `int` to `void`. This is to enforce the notion
+ * that the returned error code does nothing.
+ * For now, older drivers should handle the error within this function and return
+ * anything. Once the conversion of the return type is complete we must update
+ * the return type from int to void and change all instances of `return 0` to
+ * `return`.
+ * https://elixir.bootlin.com/linux/latest/source/include/linux/platform_device.h#L211
+ */
 static int ulite_remove(struct platform_device *pdev)
 {
 	struct uart_port *port = platform_get_drvdata(pdev);
-	int ret = 0;
 	struct uartlite_data *pdata;
 
 	if (!port)
-		return ret;
+		return 0;
 
 	sysfs_remove_group(&pdev->dev.kobj, &ulite_attr_group);
 
 	pdata = port->private_data;
 	if (!pdata)
-		return ret;
+		return 0;
 
 	atomic_set(&pdata->console_opened, 0);
 	if (pdata->thread)
 		kthread_stop(pdata->thread);
 
-	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
+	uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;
 
-	return ret;
+	return 0;
 }
 
 struct xocl_drv_private ulite_priv = {

@@ -319,9 +319,17 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
+	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#endif
+#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 #endif
 
 	/* make MMIO accessible to user space */
@@ -1547,7 +1555,11 @@ static int __init xclmgmt_init(void)
 	int res, i;
 
 	pr_info(DRV_NAME " init()\n");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
+#else
+	xrt_class = class_create("xrt_mgmt");
+#endif
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 

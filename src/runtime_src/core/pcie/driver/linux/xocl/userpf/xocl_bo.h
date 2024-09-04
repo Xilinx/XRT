@@ -83,7 +83,7 @@ static inline struct drm_gem_object *xocl_gem_object_lookup(struct drm_device *d
 							    struct drm_file *filp,
 							    u32 handle)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	return drm_gem_object_lookup(filp, handle);
 #elif defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,4)
@@ -182,9 +182,12 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map);
+#else
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
 #endif
 
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);

@@ -26,7 +26,7 @@
 
 /* Ensure compatibility with newer Linux kernels. */
 /* access_ok lost its first parameter with Linux 5.0. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 	#define AWSMGMT_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
 #else
 	#define AWSMGMT_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
