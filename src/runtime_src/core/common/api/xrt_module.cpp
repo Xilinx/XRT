@@ -115,6 +115,7 @@ struct patcher
     scalar_32bit_kind = 3,
     control_packet_48 = 4,              // patching scheme needed by firmware to patch control packet
     shim_dma_48 = 5,                    // patching scheme needed by firmware to patch instruction buffer
+    shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
     unknown_symbol_kind = 8
   };
 
@@ -183,6 +184,18 @@ struct patcher
   }
 
   void
+  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
+      bd_data_ptr[1];
+
+    base_address += patch;
+    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
+    bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
+  }
+
+  void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
   {
     // This patching scheme is originated from NPU firmware
@@ -225,6 +238,10 @@ struct patcher
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
         patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        break;
+      case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+        // new_value is a bo address
+        patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
