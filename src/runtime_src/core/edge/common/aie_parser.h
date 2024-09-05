@@ -137,6 +137,14 @@ std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
+ * get_external_buffers() - get external buffer data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::unordered_map<std::string, adf::external_buffer_config>
+get_external_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
+
+/**
  * get_plios() - get plio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

@@ -245,7 +245,7 @@ namespace xdp {
                                 uint8_t stream, uint8_t len) ;
     void addAIECounter(uint32_t i, uint8_t col, uint8_t r,
                                  uint8_t num, uint16_t start, uint16_t end,
-                                 uint8_t reset, uint32_t load, double freq,
+                                 uint8_t reset, uint64_t load, double freq,
                                  const std::string& mod,
                                  const std::string& aieName) ;
     void addAIECounterResources(uint32_t numCounters,

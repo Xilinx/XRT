@@ -310,8 +310,11 @@ namespace xdp {
 
     auto context = metadata->getHwContext();
     xrt::bo resultBO;
+    uint32_t* output = nullptr;
     try {
       resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
+      output = resultBO.map<uint32_t*>();
+      memset(output, 0, 0x20000);
     } catch (std::exception& e) {
       std::stringstream msg;
       msg << "Unable to create 128KB buffer for AIE Profile results. Cannot get AIE Profile info. " << e.what() << std::endl;
@@ -337,8 +340,6 @@ namespace xdp {
     XAie_ClearTransaction(&aieDevInst);
 
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    auto resultBOMap = resultBO.map<uint8_t*>();
-    uint32_t* output = reinterpret_cast<uint32_t*>(resultBOMap);
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;

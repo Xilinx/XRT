@@ -80,6 +80,8 @@ namespace adf
         static err_code enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId);
         static err_code waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
         static err_code waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
+	static err_code updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address);
+
     };
 
     class lock_api

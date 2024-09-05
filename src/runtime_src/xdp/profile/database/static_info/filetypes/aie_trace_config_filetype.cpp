@@ -55,6 +55,7 @@ AIETraceConfigFiletype::getValidKernels() const
             std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
         }
     }
+    
 
     return kernels;
 }

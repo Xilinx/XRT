@@ -873,6 +873,19 @@ err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, 
     return err_code::ok;
 }
 
+err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address)
+{
+  int driverStatus = XAIE_OK; //0
+  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+
+  driverStatus |= XAie_DmaUpdateBdAddr(config_manager::s_pDevInst, tileLoc, address, bdId);
+  debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaUpdateBdAddr " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", address " << std::hex << address << std::dec << ", bdId " << bdId << std::endl).str());
+
+  if (driverStatus != AieRC::XAIE_OK)
+    return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::updateBDAddress: AIE driver error.");
+
+  return err_code::ok;
+}
 /************************************ lock_api ************************************/
 
 err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)

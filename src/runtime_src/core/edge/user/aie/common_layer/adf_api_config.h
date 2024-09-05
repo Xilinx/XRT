@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace adf
 {
@@ -110,6 +111,79 @@ struct gmio_config
     /// (4 or 8 or 16 in C_RTS API). The burst length in bytes is burstLength * 16 bytes (128-bit aligned).
     /// For type == gm2pl or type == pl2gm, burstLength is the burst length in bytes.
     short burstLength;
+};
+
+struct shim_bd_info{
+  // BD Id
+  int bd_id;
+  // Buffer Idx (0:ping, 1:pong)
+  int buf_idx;
+  // Offset in 32bit word w.r.t. buffer starting address
+  int offset;
+  // Transaction Size Upper Bound
+  int transaction_size;
+
+  void print() const {
+    std::cout << "    BD Info: {" << std::endl;
+    std::cout << "      bd_id: " << bd_id << std::endl;
+    std::cout << "      buf_idx: " << buf_idx << std::endl;
+    std::cout << "      offset: " << offset << std::endl;
+    std::cout << "      transaction_size: " << transaction_size << std::endl;
+    std::cout << "    }" << std::endl;
+  }
+};
+
+struct shim_port_config {
+  // Port instance id
+  int port_id;
+  // Port name
+  std::string port_name;
+  // direction
+  int direction;
+  // shim column
+  int shim_column;
+  // channel number
+  int channel_number;
+  // Task repetition
+  int task_repetition;
+  // Enable Task Complete Token
+  int enable_task_complete_token;
+  std::vector<shim_bd_info> shim_bd_infos;
+
+  void print() const {
+    std::cout << "  Port Config: {" << std::endl;
+    std::cout << "    port_id: " << port_id << std::endl;
+    std::cout << "    port_name: " << port_name << std::endl;
+    std::cout << "    direction: " << direction << std::endl;
+    std::cout << "    shim_column: " << shim_column << std::endl;
+    std::cout << "    channel_number: " << channel_number << std::endl;
+    std::cout << "    task_repetition: " << task_repetition << std::endl;
+    std::cout << "    enable_task_complete_token: " << enable_task_complete_token << std::endl;
+    for (const auto& bd_info: shim_bd_infos) {
+      bd_info.print();
+    }
+    std::cout << "  }" << std::endl;
+  }
+};
+
+struct external_buffer_config
+{
+  // External buffer instance ID
+  int id;
+  // External buffer name
+  std::string name;
+  // Ports
+  std::vector<shim_port_config> shim_port_configs;
+
+  void print() const {
+    std::cout << "External Buffer Config: {" << std::endl;
+    std::cout << "  id: " << id << std::endl;
+    std::cout << "  name: " << name << std::endl;
+    for (const auto& port_config : shim_port_configs) {
+      port_config.print();
+    }
+    std::cout << "}" << std::endl;
+  }
 };
 
 struct kernel_config

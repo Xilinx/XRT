@@ -84,6 +84,7 @@ namespace xdp {
 
     shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
     shimEndEvents = shimStartEvents;
+    shimEndEvents["start_to_bytes_transferred"] = {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PERF_CNT_0_PL};
 
     memTileStartEvents = aie::profile::getMemoryTileEventSets();
     memTileEndEvents = memTileStartEvents;
@@ -319,7 +320,7 @@ namespace xdp {
   }
 
   // Get reportable payload specific for this tile and/or counter
-  uint32_t 
+  uint64_t 
   AieProfile_EdgeImpl::getCounterPayload(XAie_DevInst* aieDevInst, 
                                          const tile_type& tile, 
                                          const module_type type, 
@@ -329,6 +330,9 @@ namespace xdp {
                                          const std::string metricSet,
                                          const uint8_t channel)
   {
+    if (aie::profile::profileAPIMetricSet(metricSet))
+      return getAdfProfileAPIPayload(tile, metricSet);
+    
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)
@@ -383,6 +387,15 @@ namespace xdp {
     }
 
     return payloadValue;
+  }
+  
+  uint64_t 
+  AieProfile_EdgeImpl::getAdfProfileAPIPayload(const tile_type& tile, const std::string metricSet)
+  {
+    if (metricSet == "interface_tile_latency")
+      return metadata->getIntfLatencyPayload(tile);
+
+    return 0;
   }
 
   void AieProfile_EdgeImpl::printTileModStats(xaiefal::XAieDev* aieDevice, 
@@ -447,7 +460,7 @@ namespace xdp {
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
         if ((mod == XAIE_MEM_MOD) && (type == module_type::core))
           type = module_type::dma;
-
+        
         // Ignore invalid types and inactive modules
         // NOTE: Inactive core modules are configured when utilizing
         //       stream switch monitor ports to profile DMA channels
@@ -474,10 +487,20 @@ namespace xdp {
                          : ((type == module_type::dma)  ? memoryEndEvents[metricSet]
                          : ((type == module_type::shim) ? shimEndEvents[metricSet]
                          : memTileEndEvents[metricSet]));
+        std::vector<XAie_Events> resetEvents = {};
 
         int numCounters  = 0;
         auto numFreeCtr  = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
         numFreeCtr = (startEvents.size() < numFreeCtr) ? startEvents.size() : numFreeCtr;
+
+        int numFreeCtrSS = numFreeCtr;
+        if (aie::profile::profileAPIMetricSet(metricSet)) {
+          if (numFreeCtr < 2) {
+            continue;
+          }
+          // We need to monitor single stream switch monitor port
+          // numFreeCtrSS = 1 ;
+        }
 
         // Specify Sel0/Sel1 for memory tile events 21-44
         auto iter0 = configChannel0.find(tile);
@@ -489,45 +512,106 @@ namespace xdp {
         aie::profile::modifyEvents(type, subtype, channel0, startEvents, metadata->getHardwareGen());
         endEvents = startEvents;
 
+        // TBD : Placeholder to configure AIE core with required profile counters.
         aie::profile::configEventSelections(aieDevInst, loc, type, metricSet, channel0);
-        configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtr, 
-                                metricSet, channel0, channel1, startEvents, endEvents);
+        // TBD : Placeholder to configure shim tile with required profile counters.
 
+        configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtrSS, 
+                                metricSet, channel0, channel1, startEvents, endEvents);
+       
+        // Identify the profiling API metric sets and configure graph events
+        if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
+          XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
+          configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
+          graphIteratorBrodcastChannelEvent = bcEvent;
+          graphItrBroadcastConfigDone = true;
+        }
+
+        if (aie::profile::profileAPIMetricSet(metricSet)) {
+          // Re-use the existing port running event for both the counters
+          startEvents[startEvents.size()-1] = startEvents[0];
+          
+          // Use start events as End events for profile counters if threshold is not provided
+          endEvents[endEvents.size()-1] = endEvents[0];
+
+          // Use the set values broadcast events for the reset of counter
+          resetEvents = {XAIE_EVENT_NONE_CORE, XAIE_EVENT_NONE_CORE};
+          if (type == module_type::shim) {
+            resetEvents = {graphIteratorBrodcastChannelEvent, graphIteratorBrodcastChannelEvent};
+          }
+        }
+
+        // This vector keeps track of counter events required for other counters
+        std::vector<XAie_Events> profAPICounterEvents_startToBytes;
+        std::vector<XAie_Events> profAPICounterEvents_interfaceLatency;
+        uint32_t threshold = 0;
+        
         // Request and configure all available counters for this tile
         for (int i=0; i < numFreeCtr; ++i) {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
-          uint8_t resetEvent = 0;
+          XAie_Events resetEvent = XAIE_EVENT_NONE_CORE;
           auto portnum       = getPortNumberFromEvent(startEvent);
           uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
           // Configure group event before reserving and starting counter
           aie::profile::configGroupEvents(aieDevInst, loc, mod, type, metricSet, startEvent, channel);
 
-          // Request counter from resource manager
-          auto perfCounter = xaieModule.perfCounter();
-          auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
-          if (ret != XAIE_OK) break;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) break;
+          // Configure the profile counters for profile APIs metric sets.
+          std::shared_ptr<xaiefal::XAiePerfCounter> perfCounter = nullptr;
+          if (aie::profile::profileAPIMetricSet(metricSet)) {
+            resetEvent = resetEvents.at(i);
+            if (i==0) {
+              threshold = metadata->getUserSpecifiedThreshold(tileMetric.first, tileMetric.second);
+              if (threshold == 0) {
+                continue;
+              }
+            }
 
-          // Start the counter
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
+            if (i==1 && threshold>0) {
+              if (metricSet == "start_to_bytes_transferred")
+                endEvent = profAPICounterEvents_startToBytes.back();
+              else
+                endEvent = profAPICounterEvents_interfaceLatency.back();
+            }
+            
+            XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
+            perfCounter = configProfileAPICounters(aieDevInst, xaieModule, mod, type,
+                            metricSet, startEvent, endEvent, resetEvent, i, 
+                            threshold, retCounterEvent, metadata, tile);
+            if (metricSet == "start_to_bytes_transferred") {
+              profAPICounterEvents_startToBytes.push_back(retCounterEvent);
+           }
+            else {
+              profAPICounterEvents_interfaceLatency.push_back(retCounterEvent);
+           }
+          }
+          else {
+            // Request counter from resource manager
+            perfCounter = xaieModule.perfCounter();
+            auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
+            if (ret != XAIE_OK) break;
+            ret = perfCounter->reserve();
+            if (ret != XAIE_OK) break;
+
+            // Start the counter
+            ret = perfCounter->start();
+            if (ret != XAIE_OK) break;
+          }
+          if (!perfCounter)
+            continue;
           perfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          uint8_t tmpStart;
-          uint8_t tmpEnd;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
-          uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(type);
-          uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(type);
+          auto physicalEventIds = getEventPhysicalId(aieDevInst,
+                                     loc, mod, type, metricSet, startEvent, endEvent);
+          uint16_t phyStartEvent = physicalEventIds.first;
+          uint16_t phyEndEvent   = physicalEventIds.second;
 
           // Get payload for reporting purposes
-          auto payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
+          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
                                            startEvent, metricSet, channel);
-
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
@@ -535,14 +619,14 @@ namespace xdp {
                 metadata->getModuleName(module), counterName);
           counterId++;
           numCounters++;
-        }
+        } // numFreeCtr
 
         std::stringstream msg;
         msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
             << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
-      }
+      } // configMetrics
     
       // Report counters reserved per tile
       {
@@ -600,8 +684,38 @@ namespace xdp {
       }
       else {
         // Runtime-defined counters
-        auto perfCounter = perfCounters.at(c);
-        perfCounter->readResult(counterValue);
+        if (aie::profile::adfAPILatencyConfigEvent(aie->startEvent))
+        {
+          uint32_t srcCounterValue = 0;
+          uint32_t destCounterValue = 0;
+          try {
+            std::string srcDestPairKey = metadata->srcDestPairKey(aie->column, aie->row);
+            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
+            uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
+            auto srcPerfCount = perfCounters.at(srcPcIdx);
+            auto destPerfCount = perfCounters.at(destPcIdx);
+            srcPerfCount->readResult(srcCounterValue);
+            destPerfCount->readResult(destCounterValue);
+            counterValue = destCounterValue - srcCounterValue;
+          } catch(...) {
+            continue;
+          }
+        }
+        else if (aie::profile::adfAPIStartToTransferredConfigEvent(aie->startEvent))
+        {
+          try {
+            std::string srcKey = aie::uint8ToStr(aie->column) + "," + aie::uint8ToStr(aie->row);
+            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(srcKey).srcPcIdx;
+            auto perfCounter = perfCounters.at(srcPcIdx);
+            perfCounter->readResult(counterValue);
+          } catch(...) {
+            continue;
+          }
+        } 
+        else {
+          auto perfCounter = perfCounters.at(c);
+          perfCounter->readResult(counterValue);
+        }
       }
       values.push_back(counterValue);
 
@@ -638,4 +752,356 @@ namespace xdp {
     }
   }
 
-}
+  std::shared_ptr<xaiefal::XAiePerfCounter>
+  AieProfile_EdgeImpl::configProfileAPICounters(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                           XAie_ModuleType& xaieModType, const module_type xdpModType,
+                           const std::string& metricSet, XAie_Events startEvent,
+                           XAie_Events endEvent, XAie_Events resetEvent,
+                           int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
+                           std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile)
+  {
+    if (xdpModType != module_type::shim)
+      return nullptr;
+
+    if (metricSet == "interface_tile_latency" && pcIndex==1) {
+      bool isSourceTile = true;
+      auto pc = configIntfLatency(aieDevInst, xaieModule, xaieModType, xdpModType,
+                               metricSet, startEvent, endEvent, resetEvent,
+                               pcIndex, threshold, retCounterEvent, metadata, tile, isSourceTile);
+      std::string srcDestPairKey = metadata->srcDestPairKey(tile.col, tile.row);
+      if (isSourceTile) {
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = perfCounters.size();
+      }
+      else
+        adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].destPcIdx = perfCounters.size();
+      return pc;
+    }
+
+    if (metricSet == "start_to_bytes_transferred" && pcIndex==1) {
+      auto pc = configPCUsingComboEvents(aieDevInst, xaieModule, xaieModType, xdpModType,
+                               metricSet, startEvent, endEvent, resetEvent,
+                               pcIndex, threshold, retCounterEvent);
+
+      std::string srcKey = aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row);
+      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = perfCounters.size();
+      adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].isSourceTile = true;
+      return pc;
+    }
+
+    // Request counter from resource manager
+    auto pc = xaieModule.perfCounter();
+    auto ret = pc->initialize(xaieModType, startEvent, 
+                              xaieModType, endEvent);
+
+    if (ret != XAIE_OK) return nullptr;
+    ret = pc->reserve();
+    if (ret != XAIE_OK) return nullptr;
+
+    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
+    //   ret = pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
+    //   if (ret != XAIE_OK)
+    //     std::cout << "Error: Unable to set the reset event for threshold config of counter"<< std::endl;
+    // }
+
+    if (threshold > 0)
+      pc->changeThreshold(threshold);
+
+    XAie_Events counterEvent;
+    pc->getCounterEvent(xaieModType, counterEvent);
+
+    // Start the counter
+    ret = pc->start();
+    if (ret != XAIE_OK) return nullptr;
+    
+    // Respond back with this performance counter event 
+    // to use it later for broadcasting
+    retCounterEvent = counterEvent;
+    return pc;
+  }
+
+  std::shared_ptr<xaiefal::XAiePerfCounter>
+  AieProfile_EdgeImpl::configPCUsingComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                           XAie_ModuleType& xaieModType, const module_type xdpModType,
+                           const std::string& metricSet, XAie_Events startEvent,
+                           XAie_Events endEvent, XAie_Events resetEvent,
+                           int pcIndex, size_t threshold, XAie_Events& retCounterEvent)
+  {
+    if (xdpModType != module_type::shim || xaieModType != XAIE_PL_MOD)
+      return nullptr;
+    
+    std::shared_ptr<xaiefal::XAieComboEvent>  comboEvent0 = nullptr;
+    std::vector<XAie_Events>         combo_events;
+    std::vector<XAie_EventComboOps>  combo_opts;
+    std::vector<XAie_Events>         comboConfigedEvents;
+    XAie_Events newStartEvent = XAIE_EVENT_NONE_CORE;
+
+    // Request combo event from xaie module
+    auto pc = xaieModule.perfCounter();
+    auto ret = pc->initialize(xaieModType, startEvent, 
+                              xaieModType, endEvent);
+
+    if (ret != XAIE_OK) return nullptr;
+    ret = pc->reserve();
+    if (ret != XAIE_OK) return nullptr;
+
+    XAie_Events counterEvent;
+    pc->getCounterEvent(xaieModType, counterEvent);
+
+    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
+    //   pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
+    // }
+
+    // Configure the combo events if user has specified valid non zero threshold
+    if (threshold==0)
+      return startCounter(pc, counterEvent, retCounterEvent);
+
+    // Set up a combo event using start & count event type
+    comboEvent0 = xaieModule.comboEvent();
+    ret = comboEvent0->reserve();
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    combo_events.push_back(startEvent);
+    combo_events.push_back(endEvent);
+    // combo_opts.push_back(XAIE_EVENT_COMBO_E1_AND_E2);
+    combo_opts.push_back(XAIE_EVENT_COMBO_E1_AND_NOTE2);
+    ret = comboEvent0->setEvents(combo_events, combo_opts);
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    ret = comboEvent0->getEvents(comboConfigedEvents);
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    // Change the start event to above combo event type
+    newStartEvent = comboConfigedEvents[0];
+    ret = pc->changeStartEvent(xaieModType, newStartEvent);
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    // Start the combo event 0
+    ret = comboEvent0->start();
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    return startCounter(pc, counterEvent, retCounterEvent);
+  }
+
+  // inline std::shared_ptr<xaiefal::XAiePerfCounter>
+  // startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
+  // {
+  //   if (!pc)
+  //     return nullptr;
+    
+  //   auto ret = pc->start();
+  //   if (ret != XAIE_OK)
+  //     return nullptr;
+
+  //   // Return the known counter event
+  //   retCounterEvent = counterEvent;
+
+  //   return pc;
+  // }
+
+  std::shared_ptr<xaiefal::XAiePerfCounter>
+  AieProfile_EdgeImpl::configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                    XAie_ModuleType& xaieModType, const module_type xdpModType,
+                    const std::string& metricSet, XAie_Events startEvent,
+                    XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
+                    size_t threshold, XAie_Events& retCounterEvent,
+                    std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource)
+  {
+   // Request combo event from xaie module
+    auto pc = xaieModule.perfCounter();
+
+    if (!metadata->isValidLatencyTile(tile))
+      return nullptr;
+    
+    startEvent = XAIE_EVENT_USER_EVENT_0_PL;
+    if (!metadata->isSourceTile(tile)) {
+      // startEvent = XAIE_EVENT_BROADCAST_A_10_PL;
+      auto bcPair = determineBroadcastChannel(tile);
+      startEvent = bcPair.second;
+      isSource = false;
+    }
+
+    auto ret = pc->initialize(xaieModType, startEvent, 
+                              xaieModType, endEvent);
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    ret = pc->reserve();
+    if (ret != XAIE_OK)
+      return nullptr;
+
+   // Start the counter
+    ret = pc->start();
+    if (ret != XAIE_OK)
+      return nullptr;
+
+    XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+
+    // uint8_t status = -1;
+    // uint8_t broadcastId  = 10;
+
+    if (isSource) {
+      auto bc_pair = determineBroadcastChannel(tile);
+      if (bc_pair.first == -1)
+        return nullptr;
+
+      uint8_t broadcastId  = static_cast<uint8_t>(bc_pair.first);
+      // Set up of the brodcast of event over channel
+      XAie_EventBroadcast(aieDevInst, tileloc, XAIE_PL_MOD, broadcastId, XAIE_EVENT_USER_EVENT_0_PL);
+
+      XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_0_PL);
+    }
+
+    // to use it later for broadcasting
+    return pc;
+  }
+
+    /****************************************************************************
+   * Configure the individual AIE events for metric sets related to Profile APIs
+   ***************************************************************************/
+   void AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+                      XAie_LocType loc, const XAie_ModuleType xaieModType,
+                      const module_type xdpModType, const std::string metricSet,
+                      uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata)
+  {
+    if (!aie::profile::metricSupportsGraphIterator(metricSet))
+      return;
+
+    if (xdpModType != module_type::core) {
+      auto aieCoreTilesVec = metadata->getTiles("all", module_type::core, "all");
+      if (aieCoreTilesVec.empty()) {
+        // std::stringstream msg;
+        // msg << "No core tiles available, graph ieration profiling will not be available.\n";
+        // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        return;
+      }
+
+      // Use the first available core tile to configure the broadcasting
+      uint8_t col = aieCoreTilesVec.begin()->col;
+      uint8_t row = aieCoreTilesVec.begin()->row;
+      auto& xaieTile   = aieDevice->tile(col, row);
+      core = xaieTile.core();
+      loc = XAie_TileLoc(col, row);
+    }
+
+    XAie_Events counterEvent;
+    // Step 1: Configure the graph iterator event
+    // aie::profile::configStartIteration(core, iterCount, counterEvent);
+    configStartIteration(core, iterCount, counterEvent);
+
+    // Step 2: Configure the brodcast of the returned counter event
+    XAie_Events bcChannelEvent;
+    configEventBroadcast(aieDevInst, loc, xdpModType, metricSet, xaieModType,
+                          counterEvent, bcChannelEvent);
+
+    // Store the brodcasted channel event for later use
+    bcEvent = bcChannelEvent;
+  }
+
+  /****************************************************************************
+   * Configure AIE Core module start on graph iteration count threshold
+   ***************************************************************************/
+  bool AieProfile_EdgeImpl::configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
+                            XAie_Events& retCounterEvent)
+  {
+    XAie_ModuleType mod = XAIE_CORE_MOD;
+    // Count up by 1 for every iteration
+    auto pc = core.perfCounter();
+    if (pc->initialize(mod, XAIE_EVENT_INSTR_EVENT_0_CORE,
+                       mod, XAIE_EVENT_INSTR_EVENT_0_CORE) != XAIE_OK)
+      return false;
+    if (pc->reserve() != XAIE_OK)
+      return false;
+
+    xrt_core::message::send(severity_level::debug, "XRT",
+        "Configuring AIE profile to start on iteration " + std::to_string(iteration));
+
+    pc->changeThreshold(iteration);
+
+    XAie_Events counterEvent;
+    pc->getCounterEvent(mod, counterEvent);
+
+    // performance counter event to use it later for broadcasting
+    retCounterEvent = counterEvent;
+    return true;
+  }
+
+  /****************************************************************************
+   * Configure the broadcasting of provided module and event
+   * (Brodcasted from AIE Tile core module)
+   ***************************************************************************/
+  void AieProfile_EdgeImpl::configEventBroadcast(XAie_DevInst* aieDevInst,
+                        const XAie_LocType loc,
+                        const module_type xdpModType,
+                        const std::string metricSet,
+                        const XAie_ModuleType xaieModType,
+                        const XAie_Events bcEvent,
+                        XAie_Events& bcChannelEvent)
+  {
+    if ((xaieModType != XAIE_CORE_MOD) || (xdpModType != module_type::core))
+      return;
+
+    // Each module has 16 broadcast channels (0-15). It is safe to use
+    // later channel Ids considering other channel IDs being used.
+    // Use by default brodcastId 11 for interface_tile_latency start trigger
+    uint8_t brodcastId = 11;
+
+    int driverStatus   = AieRC::XAIE_OK;
+    driverStatus |= XAie_EventBroadcast(aieDevInst, loc, XAIE_CORE_MOD, brodcastId, bcEvent);
+    if (driverStatus!= XAIE_OK) {
+      std::stringstream msg;
+      msg << "Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
+          <<"is unavailable, graph ieration profiling will not be available.\n";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+
+    // This is the broadcast channel event seen in interface tiles
+    // TODO: To be replace with more structured way of procuring events
+    bcChannelEvent = XAIE_EVENT_BROADCAST_A_11_PL;
+  }
+
+  std::pair<uint16_t, uint16_t>
+  AieProfile_EdgeImpl::getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet,
+                     XAie_Events startEvent, XAie_Events endEvent)
+  {
+    if (aie::profile::profileAPIMetricSet(metricSet)) {
+      uint16_t eventId = aie::profile::getAdfApiReservedEventId(metricSet);
+      return std::make_pair(eventId, eventId);
+    }
+
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
+    uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
+    return std::make_pair(phyStartEvent, phyEndEvent);
+  }
+
+  std::pair<int, XAie_Events>
+  AieProfile_EdgeImpl::determineBroadcastChannel(const tile_type& currTileLoc)
+  {
+    tile_type srcTile = currTileLoc;
+    if (!metadata->isSourceTile(currTileLoc))
+      if (!metadata->getSourceTile(currTileLoc, srcTile))
+        return {-1, XAIE_EVENT_NONE_CORE};
+    
+    if (adfAPIBroadcastEventsMap.find(srcTile) == adfAPIBroadcastEventsMap.end()) {
+      auto bcPair = aie::profile::getPLBroadcastChannel();
+      if (bcPair.first == -1 || bcPair.second == XAIE_EVENT_NONE_CORE) {
+        return {-1, XAIE_EVENT_NONE_CORE};
+      }
+      adfAPIBroadcastEventsMap[srcTile] = bcPair;
+    }
+    return adfAPIBroadcastEventsMap.at(srcTile);
+  }
+
+
+  }
