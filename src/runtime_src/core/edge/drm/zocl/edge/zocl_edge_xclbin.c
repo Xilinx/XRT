@@ -79,36 +79,6 @@ zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	return 0;
 }
 
-static int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct kds_client *client)
-{
-	uint64_t size = 0;
-	char *pdi_buf = NULL;
-	int ret = 0;
-
-	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
-		DRM_ERROR("%s Shared context can not load xclbin", __func__);
-		return -EPERM;
-	}
-
-	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
-	if (size == 0)
-		return 0;
-
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
-	vfree(pdi_buf);
-
-	/* Mark AIE out of reset state after load PDI */
-	if (zdev->aie) {
-		mutex_lock(&zdev->aie_lock);
-		zdev->aie->aie_reset = false;
-		mutex_unlock(&zdev->aie_lock);
-	}
-
-	return ret;
-}
-
 static bool
 is_aie_only(struct axlf *axlf)
 {
@@ -172,6 +142,7 @@ zocl_resolver(struct drm_zocl_dev *zdev, struct axlf *axlf, xuid_t *xclbin_id,
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
 		} else {
+			*slot_id = s_id;
 			DRM_INFO("Exists xclbin %pUb to slot %d",
 							xclbin_id, s_id);
 			mutex_unlock(&slot->slot_xclbin_lock);
@@ -200,7 +171,7 @@ done:
  */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
-	struct kds_client *client)
+	struct kds_client *client, int *slot_idx)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -257,6 +228,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	ret = zocl_resolver(zdev, axlf, &axlf_head.m_header.uuid, qos, &slot_id);
 	if (ret) {
 		if (ret == -EEXIST) {
+			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
+			*slot_idx = slot_id;
 			vfree(axlf);
 			return 0;
 		}
@@ -266,6 +239,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 	}
 
+	*slot_idx = slot_id;
 	slot = zdev->pr_slot[slot_id];
 	mutex_lock(&slot->slot_xclbin_lock);
 	/*
@@ -306,16 +280,27 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	} else
 #endif
-	if (slot->pr_isolation_addr) {
-		/* For PR support platform, device-tree has configured addr */
-		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
-			DRM_ERROR("xclbin m_mod %d is not a PR mode",
-			    axlf_head.m_header.m_mode);
-			ret = -EINVAL;
+	if (is_aie_only(axlf)) {
+		zocl_cleanup_aie(zdev);
+
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
+		if (ret)
 			goto out0;
-		}
+
+		zocl_cache_xclbin(zdev, slot, axlf, xclbin);
+
+	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		/*
+		 * Load full bitstream, enabled in xrt runtime config
+		 * and xclbin has full bitstream and its not hw emulation
+		 */
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM, slot);
+		if (ret)
+			goto out0;
+	} else {
 
 		if (!(axlf_obj->za_flags & DRM_ZOCL_PLATFORM_PR)) {
 			DRM_INFO("disable partial bitstream download, "
@@ -348,25 +333,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			if (ret)
 				goto out0;
 		}
-	} else if (is_aie_only(axlf)) {
-		zocl_cleanup_aie(zdev);
-
-		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
-		if (ret)
-			goto out0;
-
-		zocl_cache_xclbin(zdev, slot, axlf, xclbin);
-	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
-		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
-		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
-		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
-		/*
-		 * Load full bitstream, enabled in xrt runtime config
-		 * and xclbin has full bitstream and its not hw emulation
-		 */
-		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM, slot);
-		if (ret)
-			goto out0;
 	}
 
 	ret = populate_slot_specific_sec(zdev, axlf, xclbin, slot);

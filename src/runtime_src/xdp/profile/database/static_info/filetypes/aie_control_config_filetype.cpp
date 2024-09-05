@@ -112,7 +112,6 @@ AIEControlConfigFiletype::getValidKernels() const
         boost::split(names, functionStr, boost::is_any_of("."));
         std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
     }
-
     return kernels;
 }
 
@@ -235,7 +234,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             && (portName.compare(logicalName) != 0))
             continue;
         if ((graphName.compare("all") != 0)
-            && (graphName.compare(currGraph) != 0))
+            && (graphName.compare(currGraph) != 0)
+            && !useColumn)
             continue;
 
         // Make sure it's desired polarity
@@ -245,7 +245,12 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                 && (metricStr.find("s2mm") == std::string::npos))
             || (!isMaster && (metricStr.find("input") == std::string::npos)
                 && (metricStr.find("mm2s") == std::string::npos)))
-            continue;
+        {
+            // Process this tile for below profile API specific metrics
+            if ((metricStr != "interface_tile_latency") &&
+                (metricStr != "start_to_bytes_transferred"))
+                continue;
+        }
 
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))

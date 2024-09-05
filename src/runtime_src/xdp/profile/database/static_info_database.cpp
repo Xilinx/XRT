@@ -1073,7 +1073,7 @@ namespace xdp {
   void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,
                                        uint8_t col, uint8_t row, uint8_t num,
                                        uint16_t start, uint16_t end,
-                                       uint8_t reset, uint32_t load,
+                                       uint8_t reset, uint64_t load,
                                        double freq, const std::string& mod,
                                        const std::string& aieName)
   {
@@ -2261,6 +2261,8 @@ namespace xdp {
         is_aie_available = true;
 
     data = xrt_core::xclbin_int::get_axlf_section(xclbin, IP_LAYOUT);
+    if (!data.first || !data.second)
+      data = xrt_core::xclbin_int::get_axlf_section(xclbin, DEBUG_IP_LAYOUT);
     if (data.first && data.second)
         is_pl_available = true;
 
@@ -2405,9 +2407,11 @@ namespace xdp {
       return;
     }
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_TRACE_METADATA);
     if (!data.first || !data.second) {
-      return;
+      data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+      if (!data.first || !data.second)
+        return;
     }
 
     metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);

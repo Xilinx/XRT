@@ -186,7 +186,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	xuid_t *uuid;
-	uint32_t slot_id = DEFAULT_PL_SLOT;
+	uint32_t slot_id = DEFAULT_PL_PS_SLOT;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};

@@ -534,7 +534,7 @@ namespace xdp {
 
           // Make sure tile is used
           auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
-                                 compareTileByLocAndActiveType(tile));
+                                 compareTileByLoc(tile));
           if (it == allValidTiles.end()) {
             std::stringstream msg;
             msg << "Specified Tile {" << std::to_string(tile.col) << ","
@@ -557,7 +557,7 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed or invalid format
-      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
         continue;
 
       uint8_t col = 0;
@@ -587,7 +587,7 @@ namespace xdp {
 
       // Make sure tile is used
       auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
-                             compareTileByLocAndActiveType(tile));
+                             compareTileByLoc(tile));
       if (it == allValidTiles.end()) {
         std::stringstream msg;
         msg << "Specified Tile {" << std::to_string(tile.col) << ","

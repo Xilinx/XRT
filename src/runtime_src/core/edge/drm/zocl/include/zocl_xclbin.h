@@ -36,7 +36,7 @@ struct drm_zocl_slot *zocl_get_slot(struct drm_zocl_dev *zdev,
 
 int zocl_xclbin_refcount(struct drm_zocl_slot *slot);
 int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
-	struct drm_zocl_axlf *axlf_obj, struct kds_client *client);
+	struct drm_zocl_axlf *axlf_obj, struct kds_client *client, int *slot_idx);
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
 int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_id);
@@ -63,4 +63,8 @@ bool zocl_bitstream_is_locked(struct drm_zocl_dev *zdev,
 			      struct drm_zocl_slot *slot);
 int zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 		      struct drm_zocl_slot *slot);
+int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin, struct kds_client *client);
+
 #endif /* _ZOCL_XCLBIN_H_ */

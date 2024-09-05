@@ -141,13 +141,21 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
     return;
   }
-  if (AIEData.metadata->configMetricsEmpty()) {
+  if (AIEData.metadata->configMetricsEmpty() && AIEData.metadata->getRuntimeMetrics()) {
     AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT",
                             AIE_TRACE_TILES_UNAVAILABLE);
     return;
   }
   AIEData.valid = true; // initialize struct
+
+  //TODO: Should be removed in 2025.1 release.
+  if(!AIEData.metadata->getRuntimeMetrics())
+  {
+    xrt_core::message::send(severity_level::warning, "XRT",
+                            "AI Engine compile time event-trace arguments will be deprecated. "
+                            "Please plan to use runtime event trace by re-compiling AI Engine with --event-trace=runtime.");
+  }
 
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
@@ -230,7 +238,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // First, check against memory bank size
   // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
-  uint8_t memIndex = isPLIO ? deviceIntf->getAIETs2mmMemIndex(0) : 0;
+  uint8_t memIndex = 0;
+  if (isPLIO && (deviceIntf != nullptr))
+    memIndex = deviceIntf->getAIETs2mmMemIndex(0);
+
   Memory *memory = (db->getStaticInfo()).getMemory(deviceID, memIndex);
 
   if (memory != nullptr) {

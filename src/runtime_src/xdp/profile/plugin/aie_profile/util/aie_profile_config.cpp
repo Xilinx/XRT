@@ -23,7 +23,6 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
-
 #include "core/common/message.h"
 
 
@@ -78,5 +77,5 @@ namespace xdp::aie::profile {
     << "DMA  for metricset " << metricSet << ", channel " << (int)channel << ".";
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   } 
-  
+
 }  // namespace xdp

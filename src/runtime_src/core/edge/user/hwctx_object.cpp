@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "hwctx_object.h"
+#include "core/edge/user/aie/profile_object.h"
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
+#include "core/edge/user/aie/aie.h"
 #endif
 #include "core/edge/user/shim.h"
 
@@ -17,20 +19,45 @@ namespace zynqaie {
 	  , m_uuid(std::move(uuid))
 	  , m_slotidx(slotidx)
 	  , m_mode(mode)
-  {}
+  {
+#ifdef XRT_ENABLE_AIE
+    auto device{xrt_core::get_userpf_device(m_shim)};
+    auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
+    if (data.first && data.second)
+      m_aie_array = std::make_unique<Aie>(device);
+#endif
+  }
+
+#ifdef XRT_ENABLE_AIE
+  Aie*
+  hwctx_object::get_aie_array_from_hwctx()
+  {
+    return m_aie_array.get();
+  }
+#endif
+
+  hwctx_object::~hwctx_object()
+  {
+    try {
+      m_shim->destroy_hw_context(m_slotidx);
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+    }
+  }
 
   std::unique_ptr<xrt_core::buffer_handle>
   hwctx_object::alloc_bo(void* userptr, size_t size, uint64_t flags)
   {
     // The hwctx is embedded in the flags, use regular shim path
-    return m_shim->xclAllocUserPtrBO(userptr, size, xcl_bo_flags{flags}.flags);
+    return m_shim->xclAllocUserPtrBO(userptr, size, xcl_bo_flags{flags}.flags, this);
   }
 
   std::unique_ptr<xrt_core::buffer_handle>
   hwctx_object::alloc_bo(size_t size, uint64_t flags)
   {
     // The hwctx is embedded in the flags, use regular shim path
-    return m_shim->xclAllocBO(size, xcl_bo_flags{flags}.flags);
+    return m_shim->xclAllocBO(size, xcl_bo_flags{flags}.flags, this);
   }
 
   xrt_core::cuidx_type
@@ -48,7 +75,7 @@ namespace zynqaie {
   void
   hwctx_object::exec_buf(xrt_core::buffer_handle* cmd)
   {
-    m_shim->xclExecBuf(cmd->get_xcl_handle());
+    m_shim->hwctx_exec_buf(this, cmd->get_xcl_handle());
   }
 
   std::unique_ptr<xrt_core::graph_handle>
@@ -57,7 +84,18 @@ namespace zynqaie {
 #ifdef XRT_ENABLE_AIE    
     return std::make_unique<graph_object>(m_shim, m_uuid, name, am, this);
 #else
-    return nullptr;
+    throw xrt_core::error(std::errc::not_supported, __func__);
 #endif
   }
+
+  std::unique_ptr<xrt_core::profile_handle>
+  hwctx_object::open_profile_handle()
+  {
+#ifdef XRT_ENABLE_AIE    
+    return std::make_unique<profile_object>(m_shim, m_aie_array.get());
+#else
+    throw xrt_core::error(std::errc::not_supported, __func__);
+#endif
+  }
+
 }

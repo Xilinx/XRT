@@ -133,7 +133,7 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
  
         /* Create the HW Context and lock the bitstream */ 
         /* Slot id is 0 for now */ 
-        return xocl_create_hw_context(xdev, filp, drm_hw_ctx, slot_id); 
+        return xocl_create_hw_context(xdev, filp, drm_hw_ctx, 0);
 } 
  
 /* 
@@ -350,7 +350,7 @@ static bool ps_xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id, uint3
 	xuid_t *downloaded_xclbin =  NULL;
 
 	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
-		if (i == DEFAULT_PL_SLOT)
+		if (i == DEFAULT_PL_PS_SLOT)
 			continue; 
 
 		err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin, i);
@@ -434,7 +434,7 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	int ret = 0;
 	struct mem_topology *topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
-	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_PS_SLOT;
 
 	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, legacy_slot_id);
 	if (ret)
@@ -479,13 +479,13 @@ static int
 xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 		uint32_t qos,	uint32_t *slot_id)
 {
-	uint32_t s_id = DEFAULT_PL_SLOT;
+	uint32_t s_id = DEFAULT_PL_PS_SLOT;
 	int ret = 0;
 
 	if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) ||
 		xocl_axlf_section_header(xdev, axlf, BITSTREAM_PARTIAL_PDI) ||
 		!xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
-		s_id = DEFAULT_PL_SLOT;
+		s_id = DEFAULT_PL_PS_SLOT;
 		if (xclbin_downloaded(xdev, xclbin_id, s_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
 				// We come here if user sets force_xclbin_program
@@ -506,14 +506,11 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 		}
 	}
 	else {
-		int ps_slot_id = xdev->ps_slot_id;
+		int ps_slot_id = DEFAULT_PL_PS_SLOT;
 		uint32_t existing_slot_id = 0;
 
 		if (ps_xclbin_downloaded(xdev, xclbin_id, &existing_slot_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
-				if (++ps_slot_id == DEFAULT_PL_SLOT)
-					++ps_slot_id;
-
 				s_id = ps_slot_id;
 				DRM_WARN("%s Force xclbin download to slot %d", __func__, s_id);
 			} else {
@@ -522,13 +519,6 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 				goto done;
 			}
 		}
-		else {
-			if (++ps_slot_id == DEFAULT_PL_SLOT)
-				++ps_slot_id;
-
-			s_id = ps_slot_id;
-		}
-    
         xdev->ps_slot_id = ps_slot_id;
 	}	
 
@@ -546,7 +536,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	struct axlf *axlf = NULL;
 	struct axlf bin_obj;
 	size_t size = 0;
-	uint32_t slot_id;
+	uint32_t slot_id = DEFAULT_PL_PS_SLOT;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;

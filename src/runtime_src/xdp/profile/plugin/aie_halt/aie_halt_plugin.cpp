@@ -18,6 +18,7 @@
 
 #include<regex>
 #include<string>
+#include<cassert>
 
 #include "core/common/device.h"
 #include "core/common/message.h"
@@ -95,10 +96,10 @@ namespace xdp {
     }
 
     if (hwCtxImpl != mHwCtxImpl) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
           "New Hw Context Impl passed in AIE Halt Plugin.");
       return;
-    } 
+    }
 
     DeviceDataEntry.valid = false;
     DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);

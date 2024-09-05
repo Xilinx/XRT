@@ -18,6 +18,8 @@
 #define AIE_PROFILE_UTIL_DOT_H
 
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
@@ -40,6 +42,24 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
     XAIE_MEM_MOD
+  };
+
+  #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
+  #define INTF_TILE_LATENCY_REPORT_EVENT_ID          3601
+  enum adfAPI {
+    START_TO_BYTES_TRANSFERRED,
+    INTF_TILE_LATENCY
+  };
+
+  struct adfAPIResourceInfo {
+    uint8_t srcPcIdx;
+    uint8_t destPcIdx;
+    bool isSourceTile = false;
+  };
+
+  const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
+    {"start_to_bytes_transferred", static_cast<uint16_t>(3600)},
+    {"interface_tile_latency",     static_cast<uint16_t>(3601)}
   };
 
   /**
@@ -132,6 +152,13 @@ namespace xdp::aie::profile {
    * @param mod AIE driver enum type
    */
   bool isValidType(const module_type type, const XAie_ModuleType mod);
+
+  bool metricSupportsGraphIterator(std::string metricSet);
+  bool profileAPIMetricSet(const std::string metricSet);
+  uint16_t getAdfApiReservedEventId(const std::string metricSet);
+  inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
+  inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
+  std::pair<int, XAie_Events> getPLBroadcastChannel();
 
 }  // namespace xdp::aie::profile
 

@@ -13,6 +13,7 @@
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
 #endif
+#include "core/edge/user/aie/profile_object.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -544,7 +545,7 @@ struct aie_reg_read
   if (it == regmap.end())
     throw xrt_core::error(-EINVAL, "Invalid register");
 
-  rc = XAie_Read32(devInst, it->second + _XAie_GetTileAddr(devInst,row,col), &val);
+  rc = XAie_Read32(devInst, it->second + XAie_GetTileAddr(devInst,row,col), &val);
   if(rc != XAIE_OK)
     throw xrt_core::error(-EINVAL, boost::str(boost::format("Error reading register '%s' (0x%8x) for AIE[%u:%u]")
                                                             % v.c_str() % it->second % col % (row-1)));
@@ -1138,7 +1139,27 @@ open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::acce
    return std::make_unique<zynqaie::graph_object>(
                   static_cast<ZYNQ::shim*>(get_device_handle()), xclbin_id, name, am);
 #else
-   return nullptr;
+   throw xrt_core::error(std::errc::not_supported, __func__);;
+#endif   
+}
+
+std::unique_ptr<xrt_core::profile_handle>
+device_linux::
+open_profile_handle()
+{
+#ifdef XRT_ENABLE_AIE
+
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (not drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aie_array = drv->getAieArray();
+
+  return std::make_unique<zynqaie::profile_object>(static_cast<ZYNQ::shim*>(get_device_handle()), aie_array);
+
+#else
+   throw xrt_core::error(std::errc::not_supported, __func__);
 #endif   
 }
 

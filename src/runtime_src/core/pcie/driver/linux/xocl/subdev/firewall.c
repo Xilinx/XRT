@@ -175,7 +175,7 @@ static void request_firewall_status(struct platform_device *pdev)
 	size_t resp_len = sizeof(struct xcl_firewall);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = struct_size(mb_req, data, 1) + data_len;
 	XOCL_TIMESPEC time;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 

@@ -5,6 +5,8 @@
 
 #include "core/common/shim/shared_handle.h"
 #include "xrt.h"
+#include "xrt/xrt_bo.h"
+#include "core/common/error.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -20,6 +22,8 @@ namespace xrt_core {
 class buffer_handle
 {
 public:
+
+  using bo_direction = xclBOSyncDirection;
   // map_type - determines how a buffer is mapped
   enum class map_type { read, write };
 
@@ -86,6 +90,18 @@ public:
   virtual void
   bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
   {
+  }
+
+  virtual void
+  sync_aie_bo(xrt::bo&, const char *, bo_direction, size_t, size_t)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual void
+  sync_aie_bo_nb(xrt::bo&, const char *, bo_direction, size_t, size_t)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
   }
 };
 

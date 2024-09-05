@@ -567,7 +567,8 @@ struct sequence_name : request
     df_bandwidth,
     tct_one_column,
     tct_all_column,
-    gemm_int8
+    gemm_int8,
+    aie_reconfig_overhead
   };
 
   static std::string
@@ -582,6 +583,8 @@ struct sequence_name : request
         return "tct_all_column";
       case type::gemm_int8:
         return "gemm_int8";
+      case type::aie_reconfig_overhead:
+        return "aie_reconfig_overhead";
     }
     return "unknown";
   }
@@ -1659,17 +1662,29 @@ struct aie_tiles_status_info : request
 // Hardware contexts may share the same aie partition.
 struct aie_partition_info : request
 {
+
+  struct qos_info {
+    uint64_t    gops;           // Giga operations per second
+    uint64_t    egops;          // Effective giga operations per second
+    uint64_t    fps;            // Frames per second
+    uint64_t    dma_bandwidth;  // DMA bandwidth
+    uint64_t    latency;        // Frame response latency
+    uint64_t    frame_exec_time;// Frame execution time
+    uint64_t    priority;       // Request priority
+  };
   struct data
   {
     hw_context_info::metadata metadata;
     uint64_t    start_col;
     uint64_t    num_cols;
     int         pid;
+    uint64_t    instruction_mem;
     uint64_t    command_submissions;
     uint64_t    command_completions;
     uint64_t    migrations;
     uint64_t    preemptions;
     uint64_t    errors;
+    qos_info    QoS;
   };
 
   using result_type = std::vector<struct data>;

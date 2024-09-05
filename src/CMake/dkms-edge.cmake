@@ -56,6 +56,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/edge/zocl_edge_kds.c
   zocl/edge/zocl_error.c
   zocl/edge/zocl_mailbox.c
+  zocl/edge/zocl_hwctx.c
 
   zocl/include/zocl_aie.h
   zocl/include/zocl_bo.h
@@ -76,6 +77,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/include/zocl_xclbin.h
   zocl/include/zocl_xgq.h
   zocl/include/zocl_xgq_plat.h
+  zocl/include/zocl_hwctx.h
   
   zocl/zert/cu_scu.c
   zocl/zert/scu.c

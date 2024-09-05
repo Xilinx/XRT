@@ -39,8 +39,8 @@ install_recipes()
     set +e
     mkdir -p ${META_USER_PATH}/recipes-xrt/xrt
     mkdir -p ${META_USER_PATH}/recipes-xrt/zocl
-    XRT_BB=${META_USER_PATH}/recipes-xrt/xrt/xrt_git.bbappend
-    ZOCL_BB=${META_USER_PATH}/recipes-xrt/zocl/zocl_git.bbappend
+    XRT_BB=${META_USER_PATH}/recipes-xrt/xrt/xrt_%.bbappend
+    ZOCL_BB=${META_USER_PATH}/recipes-xrt/zocl/zocl_%.bbappend
     grep "inherit externalsrc" $XRT_BB
     if [ $? != 0 ]; then
         echo "inherit externalsrc" > $XRT_BB

@@ -396,11 +396,58 @@ get_gmios(const pt::ptree& aie_meta)
   return gmios;
 }
 
+std::unordered_map<std::string, adf::external_buffer_config>
+get_external_buffers(const pt::ptree& aie_meta)
+{
+  auto start_col = get_start_col(aie_meta);
+  std::unordered_map<std::string, adf::external_buffer_config> external_buffer_configs;
+
+  auto ebuf_tree = aie_meta.get_child_optional("aie_metadata.ExternalBufferConfigs");
+  if (!ebuf_tree)
+    return external_buffer_configs;
+
+  for (auto& item: aie_meta.get_child("aie_metadata.ExternalBufferConfigs")) {
+    adf::external_buffer_config buffer_config;
+    buffer_config.id = item.second.get<int>("id");
+    buffer_config.name = item.second.get<std::string>("name");
+
+    for (const auto& port : item.second.get_child("shimPortConfigs")) {
+      adf::shim_port_config port_config;
+      port_config.port_id = port.second.get<int>("portId");
+      port_config.port_name = port.second.get<std::string>("portName");
+      std::string direction = port.second.get<std::string>("direction");
+      port_config.direction = direction.compare("s2mm") ? 1 : 0;
+      port_config.shim_column = port.second.get<int>("shim_column");
+      port_config.channel_number = port.second.get<int>("channel_number");
+      port_config.task_repetition = port.second.get<int>("task_repetition");
+      port_config.enable_task_complete_token = port.second.get<int>("enable_task_complete_token");
+
+      for (const auto& bd : port.second.get_child("shimBDInfos")) {
+        adf::shim_bd_info bd_info;
+        bd_info.bd_id = bd.second.get<int>("bd_id");
+        bd_info.buf_idx = bd.second.get<int>("buf_idx");
+        bd_info.offset = bd.second.get<int>("offset");
+        bd_info.transaction_size = bd.second.get<int>("transaction_size");
+        port_config.shim_bd_infos.push_back(bd_info);
+      }
+      buffer_config.shim_port_configs.push_back(port_config);
+    }
+    external_buffer_configs[buffer_config.name] = buffer_config;
+  }
+
+  /* Print the parsed data to verify
+  for (const auto& config : external_buffer_configs) {
+    config.second.print();
+  }*/
+
+  return external_buffer_configs;
+}
+
 std::unordered_map<std::string, adf::plio_config>
 get_plios(const pt::ptree& aie_meta)
 {
   std::unordered_map<std::string, adf::plio_config> plios;
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta);
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
     adf::plio_config plio;
@@ -609,6 +656,19 @@ get_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_gmios(aie_meta);
+}
+
+std::unordered_map<std::string, adf::external_buffer_config>
+get_external_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
+{
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
+  if (!data.first || !data.second)
+    return {};
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_external_buffers(aie_meta);
 }
 
 std::unordered_map<std::string, adf::plio_config>

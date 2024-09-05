@@ -1040,22 +1040,14 @@ namespace xdp {
         mNumTileTraceEvents[m][n] = 0;
     }
 
-    // Decide when to use user event for trace end to enable flushing
-    // NOTE: This is needed to "flush" the last trace packet.
-    //       We use the event generate register to create this 
-    //       event and gracefully shut down trace modules.
-    bool useTraceFlush = false;
-    if ((metadata->getUseUserControl()) || (metadata->getUseGraphIterator()) || (metadata->getUseDelay()) ||
-        (xrt_core::config::get_aie_trace_settings_end_type() == "event1")) {
-      if (metadata->getUseUserControl())
-        coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-      coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-      useTraceFlush = true;
+    // Using user event for trace end to enable flushing
+    // NOTE: Flush trace module always at the end because for some applications
+    //       core might be running infinitely.
+    if (metadata->getUseUserControl())
+      coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+    coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
 
-      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))
-        xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
-    }
-
+    
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
     //std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
@@ -1085,7 +1077,7 @@ namespace xdp {
       //   memory = xaieTile.mem();
 
       // Store location to flush at end of run
-      if (useTraceFlush || (type == module_type::mem_tile) 
+      if (type == module_type::core || (type == module_type::mem_tile) 
           || (type == module_type::shim)) {
         if (type == module_type::core)
           traceFlushLocs.push_back(loc);

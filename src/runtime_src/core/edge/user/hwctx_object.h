@@ -6,6 +6,7 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
 #include "core/common/shim/graph_handle.h"
+#include "core/common/shim/profile_handle.h"
 
 // Shim handle for hardware context Even as hw_emu does not
 // support hardware context, it still must implement a shim
@@ -15,15 +16,22 @@ namespace ZYNQ {
 }
 
 namespace zynqaie {
+  class Aie;
+
   class hwctx_object : public xrt_core::hwctx_handle
   {
     ZYNQ::shim* m_shim;
     xrt::uuid m_uuid;
     slot_id m_slotidx;
     xrt::hw_context::access_mode m_mode;
+#ifdef XRT_ENABLE_AIE
+    std::unique_ptr<Aie> m_aie_array;
+#endif
 
   public:
     hwctx_object(ZYNQ::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
+
+    ~hwctx_object();
 
     void
     update_access_mode(access_mode mode) override
@@ -72,6 +80,15 @@ namespace zynqaie {
 
     std::unique_ptr<xrt_core::graph_handle>
     open_graph_handle(const char* name, xrt::graph::access_mode am) override;
+
+    std::unique_ptr<xrt_core::profile_handle>
+    open_profile_handle() override;
+
+#ifdef XRT_ENABLE_AIE
+    Aie*
+    get_aie_array_from_hwctx();
+#endif
+
   }; // class hwctx_object
 }
 #endif
