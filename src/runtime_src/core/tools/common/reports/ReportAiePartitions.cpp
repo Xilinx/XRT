@@ -89,7 +89,7 @@ calculate_col_utilization(const xrt_core::device* device, boost::property_tree::
       }
     }
   }
-  // If this check is true, two contexts were active on the same column at once.
+  // If this check is true, at least two contexts were active on the same column at once.
   if (total_active_cols > total_device_cols)
     total_active_cols = total_device_cols;
   double total_col_utilization = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
