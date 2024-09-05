@@ -211,16 +211,18 @@ namespace xdp {
       return {configMetrics[module].begin(), configMetrics[module].end()};
 
     std::vector<std::pair<tile_type, std::string>> shimMetrics, shimMetricsFromConfig;
+    // Collect latency metric settings first in stored order
     shimMetrics.insert(shimMetrics.end(), configMetricLatencyVec.begin(), configMetricLatencyVec.end());
+    // Collect all interface tile metrics from configMap
     shimMetricsFromConfig.insert(shimMetricsFromConfig.end(), configMetrics[module].begin(), configMetrics[module].end());
 
-    // If no latency config available, use all tiles from configMap
+    // If no latency config available, use all tiles metrics from configMap
     if(shimMetrics.empty())
       return shimMetricsFromConfig;
 
     // Otherwise, merge latency config with other interface tile config
     for (const auto& tileMetricPair : shimMetricsFromConfig) {
-        // Use std::find_if to check if the element already exists in 'a'
+        // Use only intersection of the interface tile settings.
         if (std::find_if(shimMetrics.begin(), shimMetrics.end(), [&tileMetricPair](const std::pair<tile_type, std::string>& existingTileMetricPair)
             {
             return existingTileMetricPair.first == tileMetricPair.first && existingTileMetricPair.second == tileMetricPair.second;
@@ -1025,7 +1027,7 @@ namespace xdp {
     std::string metricName   = "interface_tile_latency";
     int moduleIdx = static_cast<int>(module);
 
-    // STEP 1 : Parse per-graph or per-kernel settings (Only graph settings supported)
+    // STEP 1 : Parse per-graph or per-kernel settings
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
