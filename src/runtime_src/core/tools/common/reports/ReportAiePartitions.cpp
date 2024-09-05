@@ -52,6 +52,41 @@ populate_aie_partition(const xrt_core::device* device)
   return pt;
 }
 
+std::string
+calculate_col_utilization(const xrt_core::device* device, boost::property_tree::ptree &_pt)
+{
+  xrt_core::query::total_cols::result_type total_device_cols;
+  try {
+    total_device_cols = xrt_core::device_query_default<xrt_core::query::total_cols>(device, 0);
+  }
+  catch (...) {
+    return "N/A"; //Error getting total device cols
+  }
+  if (total_device_cols == 0)
+    return "N/A";
+
+  boost::property_tree::ptree empty_ptree;
+  uint64_t total_active_cols = 0;
+  const boost::property_tree::ptree pt_partitions = _pt.get_child("partitions", empty_ptree);
+  for (auto& pt_partition : pt_partitions) {
+    auto& partition = pt_partition.second;
+    const auto num_cols = partition.get<uint64_t>("num_cols");
+    for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
+      const auto& hw_context = pt_hw_context.second;
+      // We consider a context and its columns active if there are more cmd submissions than completions.
+      if (hw_context.get<uint64_t>("command_submissions") > hw_context.get<uint64_t>("command_completions")) {
+        total_active_cols += num_cols;
+        break;
+      }
+    }
+  }
+  // If this check is true, two contexts were active on the same column at once.
+  if (total_active_cols > total_device_cols)
+    total_active_cols = total_device_cols;
+  double total_col_utilization = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
+  return boost::str(boost::format("%.0f%%") % total_col_utilization);
+}
+
 void
 ReportAiePartitions::
 getPropertyTreeInternal(const xrt_core::device* _pDevice, 
@@ -70,6 +105,7 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
   boost::property_tree::ptree pt;
   pt.put("description", "AIE Partition Information");
   pt.add_child("partitions", populate_aie_partition(_pDevice));
+  pt.put("total_col_utilization", calculate_col_utilization(_pDevice, pt));
   _pt.add_child("aie_partitions", pt);
 }
 
@@ -87,6 +123,12 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << "  No hardware contexts running on device\n\n";
     return;
   }
+
+  const boost::property_tree::ptree pt_info = _pt.get_child("aie_partitions", empty_ptree);
+  if (pt_info.empty())
+    _output << "Total Column Utilization: N/A\n";
+  else
+    _output << boost::str(boost::format("Total Column Utilization: %s\n") % pt_info.get<std::string>("total_col_utilization"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
