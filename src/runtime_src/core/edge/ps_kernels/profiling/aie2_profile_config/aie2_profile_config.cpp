@@ -250,7 +250,7 @@ namespace {
                                 XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK
                                };
 
-    auto tileOffset = _XAie_GetTileAddr(aieDevInst, row, column);
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, column);
 
     for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;

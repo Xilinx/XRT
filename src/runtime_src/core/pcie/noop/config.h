@@ -27,7 +27,7 @@
 #  define XRT_CORE_PCIE_NOOP_EXPORT __declspec(dllimport)
 # endif
 #endif
-#ifdef __GNUC__
+#ifdef __linux__
 # ifdef XRT_CORE_PCIE_NOOP_SOURCE
 #  define XRT_CORE_PCIE_NOOP_EXPORT __attribute__ ((visibility("default")))
 # else

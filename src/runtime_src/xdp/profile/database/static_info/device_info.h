@@ -101,7 +101,7 @@ namespace xdp {
     inline bool isNoDMA() const { return isNoDMADevice ; }
     double getMaxClockRatePLMHz();
 
-    XDP_CORE_EXPORT void setAIEGeneration(uint8_t hw_gen) { aieGeneration = hw_gen; }
+    void setAIEGeneration(uint8_t hw_gen) { aieGeneration = hw_gen; }
     inline uint8_t getAIEGeneration() const { return aieGeneration ; }
 
     // ****** Functions for information on the currently loaded xclbin *******

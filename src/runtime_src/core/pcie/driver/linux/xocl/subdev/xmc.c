@@ -553,7 +553,7 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	size_t resp_len = sizeof(struct xcl_sensor);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = struct_size(mb_req, data, 1) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -987,7 +987,7 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	size_t resp_len = sizeof(struct xcl_board_info);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = struct_size(mb_req, data, 1) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 

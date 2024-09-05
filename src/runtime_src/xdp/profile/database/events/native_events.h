@@ -28,7 +28,7 @@ namespace xdp {
     XDP_CORE_EXPORT NativeAPICall(uint64_t s_id, double ts, uint64_t name);
     XDP_CORE_EXPORT ~NativeAPICall() = default;
 
-    XDP_CORE_EXPORT virtual bool isNativeHostEvent() { return true; }
+    virtual bool isNativeHostEvent() { return true; }
 
     XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
   };
@@ -41,7 +41,7 @@ namespace xdp {
     XDP_CORE_EXPORT NativeSyncRead(uint64_t s_id, double ts, uint64_t name);
     XDP_CORE_EXPORT ~NativeSyncRead() = default;
 
-    XDP_CORE_EXPORT virtual bool isNativeRead() override { return true; }
+    virtual bool isNativeRead() override { return true; }
 
     // For printing out the event in a different bucket as a different
     //  type of event, without having to store additional events in the database
@@ -56,7 +56,7 @@ namespace xdp {
     XDP_CORE_EXPORT NativeSyncWrite(uint64_t s_id, double ts, uint64_t name);
     XDP_CORE_EXPORT ~NativeSyncWrite() = default;
 
-    XDP_CORE_EXPORT virtual bool isNativeWrite() override { return true; }
+    virtual bool isNativeWrite() override { return true; }
 
     // For printing out the event in a different bucket as a different
     //  type of event, without having to store additional events in the databaes

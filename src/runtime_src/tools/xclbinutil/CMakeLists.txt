@@ -136,6 +136,11 @@ if(NOT WIN32)
    target_link_libraries(${XCLBINUTIL_NAME} PRIVATE transformcdo)
 endif()
 
+# Link required windows specific libraries with MinGW
+if(WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  target_link_libraries(${XCLBINUTIL_NAME} PRIVATE wsock32 ws2_32)
+endif()
+
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 
