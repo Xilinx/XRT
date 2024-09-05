@@ -3684,7 +3684,7 @@ struct performance_mode : request
   // Get and set power mode of device
   enum class power_type
   {
-    basic, // deafult
+    basic = 0, // deafult
     powersaver,
     balanced,
     performance,
