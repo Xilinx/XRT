@@ -77,6 +77,7 @@ public:
   {
     shim* m_shim;
     xclBufferHandle m_hdl;
+    zynqaie::hwctx_object* m_hwctx_obj{nullptr};
 
 #ifdef XRT_ENABLE_AIE    
     zynqaie::Aie* m_aie_array{nullptr};
@@ -89,10 +90,10 @@ public:
     {
 #ifdef XRT_ENABLE_AIE       
       if (nullptr != hwctx_hdl) { // hwctx specific
-        auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+        m_hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
 
-        if (nullptr != hwctx_obj) {
-          m_aie_array = hwctx_obj->get_aie_array_from_hwctx();
+        if (nullptr != m_hwctx_obj) {
+          m_aie_array = m_hwctx_obj->get_aie_array_from_hwctx();
         }
       }
       else {
@@ -182,7 +183,7 @@ public:
 #ifdef XRT_ENABLE_AIE       
       if (!m_aie_array->is_context_set()) {
         auto device = xrt_core::get_userpf_device(m_shim);
-        m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
+        m_aie_array->open_context(device.get(), m_hwctx_obj, xrt::aie::access_mode::primary);
       }
 
       auto bosize = bo.size();
@@ -200,7 +201,7 @@ public:
 #ifdef XRT_ENABLE_AIE       
       if (!m_aie_array->is_context_set()) {
         auto device = xrt_core::get_userpf_device(m_shim);
-        m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
+        m_aie_array->open_context(device.get(), m_hwctx_obj, xrt::aie::access_mode::primary);
       }
 
       auto bosize = bo.size();
