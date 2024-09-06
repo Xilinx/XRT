@@ -1312,17 +1312,9 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
     drv->registerAieArray();
   #endif
 
-  #ifndef __HWEM__
-    xdp::hal::update_device(handle);
-    xdp::aie::update_device(handle);
-  #endif
-    xdp::aie::ctr::update_device(handle);
-    xdp::aie::sts::update_device(handle);
-  #ifndef __HWEM__
-    START_DEVICE_PROFILING_CB(handle);
-  #else
-    xdp::hal::hw_emu::update_device(handle);
-  #endif
+  // NOTE: Currently XDP plugins are loaded during device::load_xclbin(). To support XDP plugin during
+  // create_hw_context on edge, plugin update calls will need to be moved here.
+  // TODO: XDP plugins will be enabled for  Edge hw_context in a separate commit.
 
   return 0;
 }
