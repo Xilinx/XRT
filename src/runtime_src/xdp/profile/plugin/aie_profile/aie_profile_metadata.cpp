@@ -630,6 +630,10 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         
           auto pairModuleIdx2 = getPairModuleIndex(pairItr2->second, mod);
+          auto pairItr = std::find_if(configMetrics[pairModuleIdx2].begin(), 
+            configMetrics[pairModuleIdx2].end(), compareTileByLocMap(tile));
+          if (pairItr != configMetrics[pairModuleIdx2].end())
+            configMetrics[pairModuleIdx2].erase(pairItr);
           configMetrics[pairModuleIdx2][tile] = pairItr2->second;
         }
       }
