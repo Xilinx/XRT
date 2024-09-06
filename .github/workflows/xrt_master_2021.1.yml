@@ -32,8 +32,8 @@ jobs:
             packageType: deb
             os_ver: ubuntu_22.04 
           - os: amazonlinux-20202011111 
+            packageType: rpm
             os_ver: amazonlinux20202011111     
-            packageType: rpm   
           - os: ubuntu1804      
             packageType: deb   
             os_ver: ubuntu_18.04  
