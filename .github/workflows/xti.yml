@@ -142,7 +142,8 @@ jobs:
         uses: ./composite-workflows/package-download   
         with:    
           runNumber: ${{ github.run_number }}    
-          pipeline: ${{ env.PIPELINE }}    
+          pipeline: ${{ env.PIPELINE }}  
+          release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
