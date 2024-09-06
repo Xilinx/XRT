@@ -610,7 +610,6 @@ namespace xdp {
               << metricSet << " for tile (" << std::to_string(tile.col) << ","
               << std::to_string(tile.row) << ") [1].";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-          configMetrics[pairModuleIdx].erase(pairItr);
         }
 
         configMetrics[pairModuleIdx][tile] = metricSet;
@@ -622,19 +621,14 @@ namespace xdp {
         auto pairItr2 = std::find_if(pairConfigMetrics.begin(), 
           pairConfigMetrics.end(), compareTileByLocMap(tile));
 
-        if (pairItr2 != pairConfigMetrics.end()) {
+        if (pairItr2 != pairConfigMetrics.end()
+            && (pairItr2->second != metricSet)) {
           std::stringstream msg;
           msg << "Replacing metric set " << metricSet << " with complementary set " 
               << pairItr2->second << " for tile (" << std::to_string(tile.col) << ","
               << std::to_string(tile.row) << ") [2].";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        
-          auto pairModuleIdx2 = getPairModuleIndex(pairItr2->second, mod);
-          auto pairItr = std::find_if(configMetrics[pairModuleIdx2].begin(), 
-            configMetrics[pairModuleIdx2].end(), compareTileByLocMap(tile));
-          if (pairItr != configMetrics[pairModuleIdx2].end())
-            configMetrics[pairModuleIdx2].erase(pairItr);
-          configMetrics[pairModuleIdx2][tile] = pairItr2->second;
+          configMetrics[moduleIdx][tile] = pairItr2->second;
         }
       }
     }
