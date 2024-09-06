@@ -61,16 +61,10 @@ populate_aie_partition(const xrt_core::device* device)
   return pt;
 }
 
-std::string
+static std::string
 calculate_col_utilization(const xrt_core::device* device, boost::property_tree::ptree &_pt)
 {
-  xrt_core::query::total_cols::result_type total_device_cols;
-  try {
-    total_device_cols = xrt_core::device_query_default<xrt_core::query::total_cols>(device, 0);
-  }
-  catch (...) {
-    return "N/A"; //Error getting total device cols
-  }
+  auto total_device_cols = xrt_core::device_query_default<xrt_core::query::total_cols>(device, 0);
   if (total_device_cols == 0)
     return "N/A";
 
@@ -93,7 +87,7 @@ calculate_col_utilization(const xrt_core::device* device, boost::property_tree::
   if (total_active_cols > total_device_cols)
     total_active_cols = total_device_cols;
   double total_col_utilization = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
-  return boost::str(boost::format("%.0f%%") % total_col_utilization);
+  return (total_col_utilization == 0) ? "N/A" : boost::str(boost::format("%.0f%%") % total_col_utilization);
 }
 
 void
@@ -133,11 +127,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  const boost::property_tree::ptree pt_info = _pt.get_child("aie_partitions", empty_ptree);
-  if (pt_info.empty())
-    _output << "Total Column Utilization: N/A\n";
-  else
-    _output << boost::str(boost::format("Total Column Utilization: %s\n") % pt_info.get<std::string>("total_col_utilization"));
+  _output << boost::str(boost::format("Total Column Utilization: %s\n") % _pt.get<std::string>("aie_partitions.total_col_utilization"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
