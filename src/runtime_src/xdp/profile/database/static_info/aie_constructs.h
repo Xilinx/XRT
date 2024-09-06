@@ -66,29 +66,23 @@ namespace xdp {
 
   struct tile_type
   {
-    uint8_t  row;
-    uint8_t  col;
-    uint8_t  stream_id;
-    uint8_t  is_master;
-    uint64_t itr_mem_addr;
-    bool     active_core;
-    bool     active_memory;
-    bool     is_trigger;
-    io_type  subtype;
+    uint8_t  row = 0;
+    uint8_t  col = 0;
+    uint8_t  stream_id = 0;
+    uint8_t  is_master = 0;
+    uint64_t itr_mem_addr = 0;
+    bool     active_core = false;
+    bool     active_memory = false;
+    bool     is_trigger = false;
+    io_type  subtype = PLIO;
 
     bool operator==(const tile_type &tile) const {
-      return (col == tile.col) && (row == tile.row);
+      return (col == tile.col) && (row == tile.row) && (subtype == tile.subtype);
     }
     bool operator<(const tile_type &tile) const {
-      if(col != tile.col) return col<tile.col;
-      if(row != tile.row) return row<tile.row;
-      if(subtype != tile.subtype) return subtype < tile.subtype;
-      if(stream_id != tile.stream_id) return stream_id < tile.stream_id;
-      if(is_master != tile.is_master) return is_master < tile.is_master;
-      if(itr_mem_addr != tile.itr_mem_addr) return itr_mem_addr < tile.itr_mem_addr;
-      if(active_core != tile.active_core) return active_core < tile.active_core;
-      if(active_memory != tile.active_memory) return active_memory < tile.active_memory;
-      return is_trigger < tile.is_trigger;
+      if (col != tile.col) return col < tile.col;
+      if (row != tile.row) return row < tile.row;
+      return subtype < tile.subtype;
     }
   };
 
