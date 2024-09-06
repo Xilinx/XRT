@@ -45,7 +45,11 @@ jobs:
           - os: ubuntu2004      
             packageType: deb      
           - os: ubuntu2204      
-            packageType: deb      
+            packageType: deb  
+          - os: amazonlinux-20202011111      
+            packageType: rpm   
+          - os: ubuntu1804      
+            packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
