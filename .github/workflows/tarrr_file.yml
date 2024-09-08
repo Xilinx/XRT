@@ -1,4 +1,4 @@
-name: docker Image Existing Tar File  
+name: Build Docker Image from Existing Tar File  
   
 env:  
   RELEASE: '2021.1'  
@@ -25,12 +25,6 @@ jobs:
           fetch-depth: 0  
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           submodules: recursive  
-  
-      - name: Download XRT artifacts  
-        uses: actions/download-artifact@v3  
-        with:  
-          name: xrt-${{ env.BUILD_NUMBER }}_centos_8.1  
-          path: ./xrt_packages  
   
       - name: List contents of xrt_packages directory  
         run: |  
