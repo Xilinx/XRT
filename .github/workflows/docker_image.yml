@@ -70,7 +70,7 @@ jobs:
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_${{ matrix.os_ver }}_image:latest --build-arg PACKAGE_PATH=./xrt_packages .  
+          docker build -t xrt_${{ matrix.os_ver }}_image:latest --build-arg PACKAGE_PATH=./xrt_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile .  
   
       - name: Push Docker image to AMD Harbor  
         run: |  
