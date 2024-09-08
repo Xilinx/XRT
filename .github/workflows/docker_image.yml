@@ -1,61 +1,78 @@
-name: XRT 2021.1 docker_image
-
-env:  
-  RELEASE: '2021.1'  
-  PIPELINE: 'xrt' 
-  ENV: 'test'
-
-on:
-  workflow_dispatch:
+name: XRT 2021.1 docker_image  
   
-jobs:
-  build:
-    strategy:      
-      matrix:      
-        include:      
-          - os: centos8      
-            packageType: rpm
-            os_ver: centos_8.1      
-        
-    runs-on: [self-hosted, Ubuntu-22.04]
-    steps:  
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+env:    
+  RELEASE: '2021.1'    
+  PIPELINE: 'xrt'   
+  ENV: 'test'  
+  
+on:  
+  workflow_dispatch:  
     
-      - name: Checkout PR   
-        uses: actions/checkout@v3 
-        with: 
-          # repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          # ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-          submodules: recursive   
-
-      - name: Checkout private repository      
+jobs:  
+  build:  
+    strategy:        
+      matrix:        
+        include:        
+          - os: centos8        
+            packageType: rpm  
+            os_ver: centos_8.1        
+          
+    runs-on: [self-hosted, Ubuntu-22.04]  
+    steps:    
+      - name: Set env variables      
+        run: |      
+          echo "Setting environment variables..."        
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV      
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
+      
+      - name: Checkout PR     
         uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows 
-          ref: main
-       
-      - name: XRT build     
-        uses: ./composite-workflows/build
-        with:     
-          pipeline: ${{ env.PIPELINE }} 
-          osVersion: ${{ matrix.os }}  
-          packageType: ${{ matrix.packageType }}
-          os_ver: ${{ matrix.os_ver }}  
-          workspace: ${{ github.workspace }}
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}     
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          appConfig: ${{ secrets.APP_CONFIG }} 
-          appConfig1: ${{ secrets.APP_CONFIG1 }} 
-          appConfig2: ${{ secrets.APP_CONFIG2 }} 
-          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+        with:   
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
+          submodules: recursive     
+  
+      - name: Checkout private repository        
+        uses: actions/checkout@v3     
+        with:        
+          repository: actions-int/composite-workflows  
+          github-server-url: ${{ secrets.SERVER_URL }}        
+          token: ${{ secrets.ACCESS_TOKEN }}        
+          path: composite-workflows   
+          ref: main  
+         
+      - name: XRT build       
+        uses: ./composite-workflows/build  
+        with:       
+          pipeline: ${{ env.PIPELINE }}   
+          osVersion: ${{ matrix.os }}    
+          packageType: ${{ matrix.packageType }}  
+          os_ver: ${{ matrix.os_ver }}    
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
+          accessToken: ${{ secrets.ACCESS_TOKEN }}  
+          github-server-url: ${{ secrets.SERVER_URL }}  
+          appConfig: ${{ secrets.APP_CONFIG }}   
+          appConfig1: ${{ secrets.APP_CONFIG1 }}   
+          appConfig2: ${{ secrets.APP_CONFIG2 }}   
+          appConfig3: ${{ secrets.APP_CONFIG3 }}   
+  
+      - name: Download XRT artifacts  
+        uses: actions/download-artifact@v3  
+        with:  
+          name: xrt-${{ env.build_version }}_${{ matrix.os_ver }}  
+          path: ./xrt_packages  
+  
+      - name: Extract XRT tar.gz  
+        run: |  
+          mkdir -p ./xrt_packages  
+          tar -xzf ./xrt_packages/xrt_*.tar.gz -C ./xrt_packages  
+  
+      - name: Build Docker image  
+        run: |  
+          docker build -t xrt_${{ matrix.os_ver }}_image:latest --build-arg PACKAGE_PATH=./xrt_packages .  
+  
+      - name: Push Docker image to AMD Harbor  
+        run: |  
+          docker tag xrt_${{ matrix.os_ver }}_image:latest registry.amd.com/buildops/xrt_${{ matrix.os_ver }}_image:latest  
+          docker push registry.amd.com/buildops/xrt_${{ matrix.os_ver }}_image:latest  
