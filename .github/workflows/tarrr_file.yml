@@ -26,6 +26,11 @@ jobs:
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           submodules: recursive  
   
+      - name: List contents of Dockerfile directory  
+        run: |  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash  
+  
       - name: List contents of xrt_packages directory  
         run: |  
           ls -al ./xrt_packages  
@@ -44,7 +49,7 @@ jobs:
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=./xrt_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile .  
+          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=./xrt_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
   
       - name: Push Docker image to AMD Harbor  
