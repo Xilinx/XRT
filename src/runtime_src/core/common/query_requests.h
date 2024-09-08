@@ -3696,10 +3696,11 @@ struct performance_mode : request
   // Get and set power mode of device
   enum class power_type
   {
-    basic, // deafult
-    low,
-    medium,
-    high
+    basic = 0, // deafult
+    powersaver,
+    balanced,
+    performance,
+    turbo
   };
   using result_type = uint32_t;  // get value type
   using value_type = power_type;   // put value type
@@ -3719,11 +3720,13 @@ struct performance_mode : request
       case 0:
         return "Default";
       case 1:
-        return "Low";
+        return "Powersaver";
       case 2:
-        return "Medium";
+        return "Balanced";
       case 3:
-        return "High";
+        return "Performance";
+      case 4:
+        return "Turbo";
       default:
         throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }
