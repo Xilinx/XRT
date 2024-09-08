@@ -1,0 +1,21 @@
+name: XRT CI Test
+
+env:  
+  RELEASE: '2024.1'  
+  PIPELINE: 'xrt' 
+  ENV: 'test'
+
+# on:
+#   schedule:
+#     - cron: '0 0 * * *' 
+on:
+  workflow_dispatch:
+
+  
+jobs:
+  test_job:
+    runs-on: [self-hosted, trx]
+    steps:
+      - name: Testing
+        run: |    
+          echo "Testing..."
