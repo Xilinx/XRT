@@ -2,9 +2,6 @@ FROM centos:8
 ARG PACKAGE_PATH=/tmp/xilinx_packages  
 RUN yum upgrade -y; yum install -y wget; mkdir -p ${PACKAGE_PATH}  
   
-# Add DNS configuration  
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf  
-  
 # Install necessary dependencies  
 RUN yum install -y dnf-plugins-core  
 RUN yum config-manager --set-enabled powertools  
