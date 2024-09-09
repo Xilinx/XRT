@@ -26,4 +26,4 @@ RUN ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.
 RUN export PATH=/usr/local/bin/:$PATH  
   
 # Copy any additional scripts if needed  
-COPY auto_setup.sh /opt/xilinx/auto_setup.sh  
+COPY Dockerfile/auto_setup.sh /opt/xilinx/auto_setup.sh  
