@@ -3943,6 +3943,7 @@ void
 runlist::
 execute()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_execute);
   handle->execute(*this);
 }
 
@@ -3950,6 +3951,7 @@ std::cv_status
 runlist::
 wait(const std::chrono::milliseconds& timeout) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_wait);
   return handle->wait_throw_on_error(timeout);
 }
 
@@ -3957,6 +3959,7 @@ int
 runlist::
 poll() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_poll);
   return handle->poll_or_throw_on_error();
 }
 
