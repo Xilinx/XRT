@@ -126,6 +126,7 @@ enum class key_type
   aie_shim_info_sysfs,
   aie_mem_info_sysfs,
 
+  total_cols,
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
@@ -1583,6 +1584,16 @@ struct aie_mem_info_sysfs : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_mem_info_sysfs;
+
+  virtual std::any
+  get(const device*) const = 0;
+};
+
+// Retrieve total number of columns on device
+struct total_cols : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::total_cols;
 
   virtual std::any
   get(const device*) const = 0;
