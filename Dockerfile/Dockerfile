@@ -1,29 +1,29 @@
 FROM centos:8  
 ARG PACKAGE_PATH=/tmp/xilinx_packages  
-RUN yum upgrade -y; yum install -y wget; mkdir -p ${PACKAGE_PATH}  
   
-# Install necessary dependencies  
-RUN yum install -y dnf-plugins-core  
-RUN yum config-manager --set-enabled powertools  
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm  
-RUN yum config-manager --set-enabled appstream  
+# Update and install necessary tools  
+RUN yum upgrade -y; yum install -y wget tar  
   
-# Copy XRT Packages from local filesystem  
-COPY xrt_*.rpm ${PACKAGE_PATH}/  
+# Create directory for XRT packages  
+RUN mkdir -p ${PACKAGE_PATH}  
   
-# Install XRT and modify the Path  
-RUN XRT_VERSION="202110.2.11.727"; \  
-    yum install -y ${PACKAGE_PATH}/xrt_${XRT_VERSION}_8.1.1911-x86_64-xrt.rpm; \  
-    mkdir /opt/xilinx/xrt_versions; \  
-    mv /opt/xilinx/xrt /opt/xilinx/xrt_versions/xrt_${XRT_VERSION}; \  
-    sed -i "s/\/opt\/xilinx\/xrt/\/opt\/xilinx\/xrt_versions\/xrt_$XRT_VERSION/" /opt/xilinx/xrt_versions/xrt_${XRT_VERSION}/setup.sh; \  
-    sed -i "s/\/opt\/xilinx\/xrt/\/opt\/xilinx\/xrt_versions\/xrt_$XRT_VERSION/" /opt/xilinx/xrt_versions/xrt_${XRT_VERSION}/setup.csh; \  
-    ln -s /opt/xilinx/xrt_versions/xrt_${XRT_VERSION} /opt/xilinx/xrt  
+# Copy the tar file containing XRT packages into the Docker image  
+COPY xrt_202410.2.17.${BUILD_NUMBER}_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PATH}/  
   
-# Enable Systemctl  
+# Extract the tar file  
+RUN tar -zxvf ${PACKAGE_PATH}/xrt_202410.2.17.${BUILD_NUMBER}_8.1.1911-x86_64-xrt.tar.gz -C ${PACKAGE_PATH}  
+  
+# Install XRT packages  
+RUN yum install -y ${PACKAGE_PATH}/*.rpm  
+  
+# Clean up  
+RUN rm -rf ${PACKAGE_PATH}/*.rpm ${PACKAGE_PATH}/xrt_202410.2.17.${BUILD_NUMBER}_8.1.1911-x86_64-xrt.tar.gz  
+  
+# Enable Systemctl (if needed)  
 RUN wget -cO - https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py > /usr/local/share/systemctl3.py  
 RUN echo "alias systemctl='python3 /usr/local/share/systemctl3.py'" >> /root/.bashrc  
 RUN ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py /usr/local/bin/systemctl  
 RUN export PATH=/usr/local/bin/:$PATH  
   
+# Copy any additional scripts if needed  
 COPY auto_setup.sh /opt/xilinx/auto_setup.sh  
