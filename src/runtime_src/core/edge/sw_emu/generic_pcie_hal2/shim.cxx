@@ -2478,44 +2478,108 @@ int SwEmuShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer
 * Note: Upon return, the synchronization is submitted or error out
 */
 
-int SwEmuShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  bool ack = false;
-  if (!gmioname)
-    return -1;
+  int SwEmuShim::xrtSyncBOAIENB(xrt::bo &bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
+    auto boBase = bo.address();
+ 
+    std::lock_guard lk(mApiMtx);
+    bool ack = false;
+    if (!gmioname)
+      return -1;
 
-  auto boBase = bo.address();
-  xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
-  if (!ack) {
-    PRINTENDFUNC;
-    return -1;
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
+
+    xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
+    if (!ack)
+    {
+      PRINTENDFUNC;
+      return -1;
+    }
+    return 0;
   }
-  return 0;
-}
-
 
 /**
+* xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
+*
+* @bo:           BO obj.
+* @gmioName:        GMIO port name
+* @dir:             GM to AIE or AIE to GM
+* @size:            Size of data to synchronize
+* @offset:          Offset within the BO
+*
+* Return:          0 on success, or appropriate error number.
+*
+* Synchronize the buffer contents between GMIO and AIE.
+* Note: Upon return, the synchronization is submitted or error out
+*/
+
+  int SwEmuShim::xrtSyncBOAIE(xrt::bo &bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+
+    auto boBase = bo.address();
+
+    std::lock_guard lk(mApiMtx);
+    bool ack = false;
+    if (!gmioname)
+      return -1;
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
+
+    
+    //bool isCacheable = bo.flags & XCL_BO_FLAGS_CACHEABLE;
+    if (true) {
+      xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " End" << std::endl;
+
+      if (!ack)
+      {
+        PRINTENDFUNC;
+        return -1;
+      }
+    }
+
+    xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
+    if (!ack)
+    {
+      PRINTENDFUNC;
+      return -1;
+    }
+    return 0;
+  }
+ /**
 * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
 *
 * @gmioName:        GMIO port name
 *
 * Return:          0 on success, or appropriate error number.
 */
-int SwEmuShim::xrtGMIOWait(const char *gmioname)
-{
-  bool ack = false;
-  if (!gmioname)
-    return -1;
-  xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
-  if (!ack) {
-    PRINTENDFUNC;
-    return -1;
+  int SwEmuShim::xrtGMIOWait(const char *gmioname)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+
+    std::lock_guard lk(mApiMtx);
+    bool ack = false;
+    if (!gmioname)
+      return -1;
+
+    xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
+    if (!ack)
+    {
+      PRINTENDFUNC;
+      return -1;
+    }
+    return 0;
   }
-  return 0;
-}
 
 /******************************* XRT Graph API's End here**************************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
