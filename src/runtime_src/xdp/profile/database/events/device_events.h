@@ -72,7 +72,7 @@ namespace xdp {
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
     XDP_CORE_EXPORT ~KernelEvent();
 
-    XDP_CORE_EXPORT virtual int32_t getCUId() { return cuId; }
+    virtual int32_t getCUId() { return cuId; }
     XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   };
 

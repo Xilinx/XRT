@@ -126,6 +126,7 @@ enum class key_type
   aie_shim_info_sysfs,
   aie_mem_info_sysfs,
 
+  total_cols,
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
@@ -1583,6 +1584,16 @@ struct aie_mem_info_sysfs : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_mem_info_sysfs;
+
+  virtual std::any
+  get(const device*) const = 0;
+};
+
+// Retrieve total number of columns on device
+struct total_cols : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::total_cols;
 
   virtual std::any
   get(const device*) const = 0;
@@ -3696,10 +3707,11 @@ struct performance_mode : request
   // Get and set power mode of device
   enum class power_type
   {
-    basic, // deafult
-    low,
-    medium,
-    high
+    basic = 0, // deafult
+    powersaver,
+    balanced,
+    performance,
+    turbo
   };
   using result_type = uint32_t;  // get value type
   using value_type = power_type;   // put value type
@@ -3719,11 +3731,13 @@ struct performance_mode : request
       case 0:
         return "Default";
       case 1:
-        return "Low";
+        return "Powersaver";
       case 2:
-        return "Medium";
+        return "Balanced";
       case 3:
-        return "High";
+        return "Performance";
+      case 4:
+        return "Turbo";
       default:
         throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }

@@ -85,7 +85,7 @@ is_true(const std::string& str)
 static std::string
 get_self_path()
 {
-#ifdef __GNUC__
+#ifdef __linux__
   char buf[PATH_MAX] = {0};
   auto len = ::readlink("/proc/self/exe", buf, PATH_MAX);
   return std::string(buf, (len>0) ? len : 0);

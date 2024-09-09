@@ -88,6 +88,65 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
   external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
 }
 
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj)
+{
+  DevInst = {0};
+  devInst = nullptr;
+  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+
+  XAie_SetupConfig(ConfigPtr,
+      driver_config.hw_gen,
+      driver_config.base_address,
+      driver_config.column_shift,
+      driver_config.row_shift,
+      driver_config.num_columns,
+      driver_config.num_rows,
+      driver_config.shim_row,
+      driver_config.mem_row_start,
+      driver_config.mem_num_rows,
+      driver_config.aie_tile_row_start,
+      driver_config.aie_tile_num_rows);
+
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  /* TODO get partition id and uid from XCLBIN or PDI */
+  uint32_t partition_id = 1;
+  uint32_t uid = 0;
+  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+
+  //TODO: getparitionFd from driver instead of from shim
+  if (auto ret = drv->getPartitionFd(aiefd))
+    throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
+
+  fd = aiefd.fd;
+
+  ConfigPtr.PartProp.Handle = fd;
+
+  AieRC rc;
+  if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+    throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
+
+  devInst = &DevInst;
+
+  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+  adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+
+  fal_util::initialize(devInst); //resource manager initialization
+  
+  /* Initialize PLIO metadata */
+  plio_configs = xrt_core::edge::aie::get_plios(device.get());
+
+  /* Initialize gmio api instances */
+  gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+  for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
+  {
+    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+    p_gmio_api->configure();
+    gmio_apis[config_itr->first] = p_gmio_api;
+  }
+  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
+}
+
 Aie::~Aie()
 {
   if (devInst)
@@ -117,6 +176,19 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
     throw xrt_core::error(ret, "Fail to open AIE context");
 
   drv->setAIEAccessMode(am);
+  access_mode = am;
+}
+
+void
+Aie::
+open_context(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx_obj, xrt::aie::access_mode am)
+{
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  //TODO: replace openAIEContext with new function with parameters hwctx_obj, am
+  if (auto ret = drv->openAIEContext(am))
+    throw xrt_core::error(ret, "Fail to open AIE context");
+
   access_mode = am;
 }
 

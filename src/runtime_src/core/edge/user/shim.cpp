@@ -119,7 +119,6 @@ shim(unsigned index)
   , mCuMaps(128, {nullptr, 0})
 {
   xclLog(XRT_INFO, "%s", __func__);
-  hw_context_enable = xrt_core::config::get_hw_context_flag();
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
   mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
   // Validity of mKernelFD is checked using handleCheck in every shim function
@@ -684,7 +683,7 @@ xclLoadAxlf(const axlf *buffer)
   std::string dtbo_path("");
 
 #ifndef __HWEM__
-  auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
+  auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR || buffer->m_header.m_actionMask & AM_LOAD_PDI);
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
@@ -1177,7 +1176,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   std::string dtbo_path("");
 
 #ifndef __HWEM__
-  auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
+  auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR || buffer->m_header.m_actionMask & AM_LOAD_PDI);
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);

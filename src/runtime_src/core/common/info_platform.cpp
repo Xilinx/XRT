@@ -153,22 +153,7 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
     const auto mode = xrt_core::device_query<xq::performance_mode>(device);
-    const std::string pmode = xq::performance_mode::parse_status(mode);
-    if (boost::iequals(pmode, "DEFAULT")) {
-      pt.add("power_mode", "Default");
-    }
-    else if (boost::iequals(pmode, "LOW")) {
-      pt.add("power_mode", "Powersaver");
-    }
-    else if (boost::iequals(pmode, "MEDIUM")) {
-      pt.add("power_mode", "Balanced");
-    }
-    else if (boost::iequals(pmode, "HIGH")) {
-      pt.add("power_mode", "Performance");
-    }
-    else {
-      pt.add("power_mode", "N/A");
-    }
+      pt.add("power_mode", xq::performance_mode::parse_status(mode));
   } 
   catch (xrt_core::query::no_such_key&) {
     pt.add("power_mode", "not supported");

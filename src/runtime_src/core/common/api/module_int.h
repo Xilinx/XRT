@@ -20,6 +20,7 @@ uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t *payload);
 
 // Patch buffer object into control code at given argument
+XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
@@ -30,10 +31,12 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // Note that if size passed in is 0, real buffer size required will be returned
 // without any patching. This is useful if caller wishes to discover the exact size
 // of the control code buffer.
+XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*);
 
 // Patch scalar into control code at given argument
+XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
 
