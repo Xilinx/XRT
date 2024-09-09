@@ -38,13 +38,13 @@ jobs:
   
       - name: Verify file type  
         run: |  
-          file ./xrt_packages/xrt_202410.2.17.${{ env.BUILD_NUMBER }}_8.1.1911-x86_64-xrt.tar.gz  
+          file ./xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
         shell: bash  
   
       - name: Extract XRT tar.gz  
         run: |  
           mkdir -p ./xrt_packages  
-          tar -xzf ./xrt_packages/xrt_202410.2.17.${{ env.BUILD_NUMBER }}_8.1.1911-x86_64-xrt.tar.gz -C ./xrt_packages  
+          tar -xzf ./xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz -C ./xrt_packages  
         shell: bash  
   
       - name: Build Docker image  
