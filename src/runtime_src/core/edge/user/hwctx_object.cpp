@@ -24,15 +24,15 @@ namespace zynqaie {
     auto device{xrt_core::get_userpf_device(m_shim)};
     auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
     if (data.first && data.second)
-      m_aie_array = std::make_unique<Aie>(device, this);
+      m_aie_array = std::make_shared<Aie>(device, this);
 #endif
   }
 
 #ifdef XRT_ENABLE_AIE
-  Aie*
-  hwctx_object::get_aie_array_from_hwctx()
+  std::shared_ptr<Aie>
+  hwctx_object::get_aie_array_shared()
   {
-    return m_aie_array.get();
+    return m_aie_array;
   }
 #endif
 
@@ -92,7 +92,7 @@ namespace zynqaie {
   hwctx_object::open_profile_handle()
   {
 #ifdef XRT_ENABLE_AIE    
-    return std::make_unique<profile_object>(m_shim, m_aie_array.get());
+    return std::make_unique<profile_object>(m_shim, m_aie_array);
 #else
     throw xrt_core::error(std::errc::not_supported, __func__);
 #endif

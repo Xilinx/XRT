@@ -41,7 +41,7 @@ namespace zynqaie {
      * the graph resides. The Aie is an obect that holds the whole
      * AIE resources, configurations etc.
      */
-    Aie* aieArray;
+    std::shared_ptr<Aie> aieArray;
 
     /**
      * This is the collections of tiles that this graph uses.

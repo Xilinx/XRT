@@ -126,6 +126,7 @@ class profiling_impl
 {
 private:
   std::unique_ptr<xrt_core::profile_handle> m_profile_handle{nullptr};
+  bool is_stopped{false};
 
 public:
   static constexpr int invalid_handle = -1;
@@ -144,7 +145,6 @@ public:
   {
     stop();
   }
-
   profiling_impl() = delete;
   profiling_impl(const profiling_impl&) = delete;
   profiling_impl(profiling_impl&&) = delete;
@@ -166,7 +166,10 @@ public:
   void
   stop()
   {
-    return m_profile_handle->stop();
+    if(is_stopped == false)
+      m_profile_handle->stop();
+
+    is_stopped = true;
   }
 };
 

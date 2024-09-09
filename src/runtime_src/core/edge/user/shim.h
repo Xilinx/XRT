@@ -81,7 +81,7 @@ public:
     zynqaie::hwctx_object* m_hwctx_obj{nullptr};
 
 #ifdef XRT_ENABLE_AIE    
-    zynqaie::Aie* m_aie_array{nullptr};
+    std::shared_ptr<zynqaie::Aie> m_aie_array;
 #endif    
 
   public:
@@ -94,14 +94,14 @@ public:
         m_hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
 
         if (nullptr != m_hwctx_obj) {
-          m_aie_array = m_hwctx_obj->get_aie_array_from_hwctx();
+          m_aie_array = m_hwctx_obj->get_aie_array_shared();
         }
       }
       else {
         auto device = xrt_core::get_userpf_device(m_shim);
         auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
         if (drv->isAieRegistered())
-          m_aie_array = drv->getAieArray();
+          m_aie_array = drv->get_aie_array_shared();
       }
 #endif
     }
@@ -340,6 +340,7 @@ public:
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();
+  std::shared_ptr<zynqaie::Aie> get_aie_array_shared();
   zynqaie::aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
@@ -375,7 +376,7 @@ private:
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
 #ifdef XRT_ENABLE_AIE
-  std::unique_ptr<zynqaie::Aie> aieArray;
+  std::shared_ptr<zynqaie::Aie> aieArray;
   std::unique_ptr<zynqaie::aied> aied;
   xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 #endif
