@@ -5,6 +5,7 @@
 #define _ZYNQ_SHIM_H_
 
 #include "zynq_dev.h"
+#include "hwctx_object.h"
 
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
