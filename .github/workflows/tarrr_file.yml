@@ -43,7 +43,7 @@ jobs:
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/..  
         shell: bash  
   
       - name: Push Docker image to AMD Harbor  
