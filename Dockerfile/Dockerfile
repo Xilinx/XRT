@@ -2,7 +2,9 @@ FROM centos:8
 ARG PACKAGE_PATH=/tmp/xilinx_packages  
   
 # Update and install necessary tools  
-RUN yum upgrade -y; yum install -y wget tar  
+RUN yum install -y epel-release && \  
+    yum install -y wget tar && \  
+    yum clean all  
   
 # Create directory for XRT packages  
 RUN mkdir -p ${PACKAGE_PATH}  
