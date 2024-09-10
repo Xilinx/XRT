@@ -1300,7 +1300,6 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
     return -errno;
 
   auto core_device = xrt_core::get_userpf_device(handle);
-  core_device->register_axlf(buffer);
 
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
@@ -1391,19 +1390,19 @@ register_xclbin(const xrt::xclbin&){
 void
 shim::
 hwctx_exec_buf(const xrt_core::hwctx_handle* hwctx_hdl, xclBufferHandle boh) {
-  auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
   if (!hw_context_enable) {
     //for legacy flow
     xclExecBuf(boh);
+
+    return;
   }
-  else {
-    // This is for multi slot case
-    drm_zocl_hw_ctx_execbuf exec = {hwctx->get_slotidx(), boh};
-    int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_HW_CTX_EXECBUF, &exec);
-    xclLog(XRT_DEBUG, "%s: cmdBO handle %d, ioctl return %d", __func__, boh, result);
-    if (result == -EDEADLK)
-      xclLog(XRT_ERROR, "CU might hang, please reset device");
-  }
+  // This is for multi slot case
+  auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
+  drm_zocl_hw_ctx_execbuf exec = {hwctx->get_slotidx(), boh};
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_HW_CTX_EXECBUF, &exec);
+  xclLog(XRT_DEBUG, "%s: cmdBO handle %d, ioctl return %d", __func__, boh, result);
+  if (result == -EDEADLK)
+    xclLog(XRT_ERROR, "CU might hang, please reset device");
 }
 
 int
@@ -2071,53 +2070,45 @@ closeGraphContext(unsigned int graphId)
   return ret ? -errno : ret;
 }
 
-int
+void
 shim::
 open_graph_context(const zynqaie::hwctx_object* hwctx, const uuid_t xclbinId, unsigned int graph_id, xrt::graph::access_mode am)
 {
-  int ret = 0;
   if (!hw_context_enable){
     // for legacy flow
-    ret = openGraphContext(xclbinId, graph_id, am);
-    if (ret)
+    if (openGraphContext(xclbinId, graph_id, am))
       throw xrt_core::error("Failed to open graph context");
-    return ret;
+
+    return;
   }
-  else {
-    // this is for multi slot case
-    auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
-    unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
-    drm_zocl_open_graph_ctx graph_ctx = {};
-    graph_ctx.hw_context = hwctx->get_slotidx();
-    graph_ctx.flags = flags;
-    graph_ctx.graph_id = graph_id;
-    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX, &graph_ctx);
-    if (ret)
-      throw xrt_core::error("Failed to open graph context hwctx shim");
-    return ret;
-  }
+  // this is for multi slot case
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
+  drm_zocl_open_graph_ctx graph_ctx = {};
+  graph_ctx.hw_context = hwctx->get_slotidx();
+  graph_ctx.flags = flags;
+  graph_ctx.graph_id = graph_id;
+  if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX, &graph_ctx))
+    throw xrt_core::error("Failed to open graph context");
 }
 
 void
 shim::
 close_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graph_id)
 {
-  int ret = 0;
   if (!hw_context_enable) {
     // for legacy flow
-    ret = closeGraphContext(graph_id);
-    if (ret)
+    if (closeGraphContext(graph_id))
       throw xrt_core::error("Failed to close graph context");
+
+    return;
   }
-  else {
-    // this is for multi slot case
-    drm_zocl_close_graph_ctx graph_ctx = {};
-    graph_ctx.hw_context = hwctx->get_slotidx();
-    graph_ctx.graph_id = graph_id;
-    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX, &graph_ctx);
-    if (ret)
-      throw xrt_core::error("Failed to close graph context hwctx shim");
-  }
+  // this is for multi slot case
+  drm_zocl_close_graph_ctx graph_ctx = {};
+  graph_ctx.hw_context = hwctx->get_slotidx();
+  graph_ctx.graph_id = graph_id;
+  if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX, &graph_ctx))
+    throw xrt_core::error("Failed to close graph context");
 }
 
 int

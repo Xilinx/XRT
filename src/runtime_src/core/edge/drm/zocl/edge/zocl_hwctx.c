@@ -509,6 +509,11 @@ static int zocl_add_hw_graph_context(struct drm_zocl_dev *zdev, struct kds_clien
     }
 
     graph_ctx = kzalloc(sizeof(*graph_ctx), GFP_KERNEL);
+    if (!graph_ctx) {
+        DRM_ERROR("%s: Failed to allocate memory", __func__);
+        ret = -ENOMEM;
+        goto out;
+    }
     graph_ctx->flags = drm_graph_ctx->flags;
     graph_ctx->graph_id = drm_graph_ctx->graph_id;
     graph_ctx->hw_context = drm_graph_ctx->hw_context;
@@ -551,23 +556,19 @@ static int zocl_del_hw_graph_context(struct drm_zocl_dev *zdev, struct kds_clien
 {
     struct zocl_hw_graph_ctx *graph_ctx = NULL;
     struct list_head *gptr, *next;
-    int ret = 0;
 
     list_for_each_safe(gptr, next, &kds_hw_ctx->graph_ctx_list) {
         graph_ctx = list_entry(gptr, struct zocl_hw_graph_ctx, link);
         if (graph_ctx->graph_id == drm_graph_ctx->graph_id) {
             list_del(gptr);
             kfree(graph_ctx);
-            ret = 0;
-            goto out;
+            return 0;
         }
     }
 
     DRM_ERROR("%s Failed to close graph context: graph id %d does not exist", __func__, drm_graph_ctx->graph_id);
-    ret = -EINVAL;
 
-out:
-    return ret;
+    return -EINVAL;
 }
 
 int zocl_close_graph_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_graph_ctx *drm_graph_ctx, struct drm_file *filp)

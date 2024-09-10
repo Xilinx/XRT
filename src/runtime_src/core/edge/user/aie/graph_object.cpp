@@ -26,9 +26,7 @@ namespace zynqaie {
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
-      int ret = drv->open_graph_context(m_hwctx, uuid.get(), id, am);
-      if (ret)
-        throw xrt_core::error(ret, "Can not open Graph context");
+      drv->open_graph_context(m_hwctx, uuid.get(), id, am);
 
       /* Initialize graph tile metadata */
       graph_config = xrt_core::edge::aie::get_graph(device.get(), name, m_hwctx);

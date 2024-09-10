@@ -410,6 +410,12 @@ int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
 		kds_err(client, "CU contexts are still open under this HW Context");
 		return -EINVAL;
 	}
+
+	if(!list_empty(&hw_ctx->graph_ctx_list)) {
+		/* Graph ctx list must me empty to remove a HW context */
+		kds_err(client, "Graph contexts are still open under this HW Context");
+		return -EINVAL;
+	}
 	
 	free_percpu(hw_ctx->stats);	
 	list_del(&hw_ctx->link);
