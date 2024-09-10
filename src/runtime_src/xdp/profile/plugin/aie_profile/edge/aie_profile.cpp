@@ -564,6 +564,7 @@ namespace xdp {
             resetEvent = resetEvents.at(i);
             if (i==0) {
               threshold = metadata->getUserSpecifiedThreshold(tileMetric.first, tileMetric.second);
+              threshold = aie::profile::convertToBeats(tileMetric.second, threshold, metadata->getHardwareGen());
               if (threshold == 0) {
                 continue;
               }

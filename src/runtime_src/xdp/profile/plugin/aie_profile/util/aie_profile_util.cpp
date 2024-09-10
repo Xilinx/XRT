@@ -449,5 +449,29 @@ namespace xdp::aie::profile {
     return bcPair;
   }
 
+  /****************************************************************************
+   * Get the stream width in bits for specified hw_gen
+   ***************************************************************************/
+  uint32_t getStreamWidth(uint8_t hw_gen)
+  {
+    uint32_t default_width = 32;
+    if (streamWidthMap.find(hw_gen) == streamWidthMap.end())
+      return default_width;
+    
+    return streamWidthMap.at(hw_gen);
+  }
+
+  /****************************************************************************
+   * Convert user specified bytes to beats for provided metric set
+   ***************************************************************************/
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen)
+  {
+    if (metricSet != "start_to_bytes_transferred")
+      return bytes;
+
+    uint32_t streamWidth = getStreamWidth(hw_gen);
+    uint32_t total_beats = std::ceil((static_cast<double>(bytes)*8) / streamWidth);
+    return total_beats; 
+  }
 
 } // namespace xdp::aie

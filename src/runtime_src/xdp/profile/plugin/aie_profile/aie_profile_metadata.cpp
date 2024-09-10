@@ -1015,7 +1015,8 @@ namespace xdp {
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
   {
     static const AIEProfileFinalConfig config(configMetrics, configChannel0,
-                        configChannel1, metadataReader->getAIETileRowOffset());
+                         configChannel1, metadataReader->getAIETileRowOffset(),
+                         bytesTransferConfigMap);
     return config;
   }
 
@@ -1049,8 +1050,8 @@ namespace xdp {
                                           tileMetrics[i][3],
                                           metricName);
 
-      if(tileSrc.empty() || tileDest.empty()) {
-        return;
+      if(tileSrc.empty() || tileDest.empty() || (tileSrc[0]==tileDest[0])) {
+        continue;
       } 
       std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
