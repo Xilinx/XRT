@@ -1,4 +1,4 @@
-name: Build Docker Image from Existing Tar File  
+name: Test Docker
   
 env:  
   RELEASE: '2021.1'  
@@ -41,9 +41,22 @@ jobs:
           file ${{ github.workspace }}/../preflight-check/xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
         shell: bash  
   
+      - name: Prepare build context  
+        run: |  
+          mkdir -p ${{ github.workspace }}/build_context/xrt_packages  
+          cp ${{ github.workspace }}/../preflight-check/xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${{ github.workspace }}/build_context/xrt_packages/  
+          cp ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/build_context/  
+          cp ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/auto_setup.sh ${{ github.workspace }}/build_context/  
+  
+      - name: List contents of build context  
+        run: |  
+          ls -al ${{ github.workspace }}/build_context  
+          ls -al ${{ github.workspace }}/build_context/xrt_packages  
+        shell: bash  
+  
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/build_context/Dockerfile ${{ github.workspace }}/build_context  
         shell: bash  
   
       - name: Push Docker image to AMD Harbor  
