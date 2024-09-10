@@ -46,7 +46,7 @@ jobs:
            #   packageType: deb      
            # - os: ubuntu2204      
            #   packageType: deb  
-           - os: ubuntu2204      
+           - os: ubuntu2404      
              packageType: deb 
         
     runs-on: [self-hosted, Ubuntu-22.04]
