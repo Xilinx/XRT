@@ -17,6 +17,9 @@ COPY ../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PA
 # Extract the tar file  
 RUN tar -zxvf ${PACKAGE_PATH}/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz -C ${PACKAGE_PATH}  
   
+# List the contents of the extracted directory for debugging  
+RUN ls -al ${PACKAGE_PATH}  
+  
 # Install XRT packages  
 RUN yum install -y ${PACKAGE_PATH}/*.rpm  
   
