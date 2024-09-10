@@ -3264,9 +3264,21 @@ public:
   }
 
   ert_cmd_state
-  get_ert_state() const
+  get_ert_state()
   {
-    return poll_last_cmd();
+    // Poll state of the last submitted chained command
+    if (auto state = poll_last_cmd(); state < ERT_CMD_STATE_COMPLETED)
+      return state;
+
+    // All chained commands have completed.  Handle errors in
+    // any of the submitted chained commands.
+    try {
+      wait_throw_on_error(std::chrono::milliseconds(0));
+      return ERT_CMD_STATE_COMPLETED;
+    }
+    catch (const xrt::runlist::command_error& err) {
+      return err.get_command_state();
+    }
   }
 
   void
