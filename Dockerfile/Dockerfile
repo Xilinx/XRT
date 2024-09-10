@@ -2,7 +2,9 @@ FROM centos:8
 ARG PACKAGE_PATH=/tmp/xilinx_packages  
   
 # Update and install necessary tools  
-RUN yum install -y epel-release && \  
+RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \  
+    sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \  
+    yum install -y epel-release && \  
     yum install -y wget tar && \  
     yum clean all  
   
