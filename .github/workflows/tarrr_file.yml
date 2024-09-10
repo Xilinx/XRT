@@ -1,4 +1,4 @@
-name: Build Docker Image from Existing Tar File  
+name: Test Docker
   
 env:  
   RELEASE: '2021.1'  
@@ -33,20 +33,20 @@ jobs:
   
       - name: List contents of xrt_packages directory  
         run: |  
-          ls -al ${{ github.workspace }}/../xrt_packages  
+          ls -al ${{ github.workspace }}/../preflight-check/xrt_packages  
         shell: bash  
   
       - name: Verify file type  
         run: |  
-          file ${{ github.workspace }}/../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
+          file ${{ github.workspace }}/../preflight-check/xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
         shell: bash  
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/..  
+          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/../preflight-check  
         shell: bash  
   
-      - name: Push Docker image AMD Harbor  
+      - name: Push Docker image to AMD Harbor  
         run: |  
           docker tag xrt_centos_8.1_image:latest registry.amd.com/buildops/xrt_centos_8.1_image:latest  
           docker push registry.amd.com/buildops/xrt_centos_8.1_image:latest  
