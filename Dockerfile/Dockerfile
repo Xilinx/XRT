@@ -8,7 +8,7 @@ RUN yum upgrade -y; yum install -y wget tar
 RUN mkdir -p ${PACKAGE_PATH}  
   
 # Copy the tar file containing XRT packages into the Docker image  
-COPY ../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PATH}/  
+COPY ../../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PATH}/  
   
 # Extract the tar file  
 RUN tar -zxvf ${PACKAGE_PATH}/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz -C ${PACKAGE_PATH}  
@@ -25,5 +25,5 @@ RUN echo "alias systemctl='python3 /usr/local/share/systemctl3.py'" >> /root/.ba
 RUN ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py /usr/local/bin/systemctl  
 RUN export PATH=/usr/local/bin/:$PATH  
   
-# Copy any additional scripts if needed  ....
+# Copy any additional scripts if needed  
 COPY Dockerfile/auto_setup.sh /opt/xilinx/auto_setup.sh  
