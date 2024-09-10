@@ -1,4 +1,4 @@
-name: Test Docker
+name: Build Docker Image from Existing Tar File  
   
 env:  
   RELEASE: '2021.1'  
@@ -43,7 +43,7 @@ jobs:
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/../preflight-check  
+          docker build -t xrt_centos_8.1_image:latest --build-arg PACKAGE_PATH=/tmp/xilinx_packages -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
         shell: bash  
   
       - name: Push Docker image to AMD Harbor  
