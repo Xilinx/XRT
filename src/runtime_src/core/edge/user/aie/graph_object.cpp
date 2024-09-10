@@ -19,7 +19,7 @@ namespace zynqaie {
       if (!drv->isAieRegistered())
         throw xrt_core::error(-EINVAL, "No AIE presented");
 
-      aieArray = drv->getAieArray();
+      aieArray = drv->get_aie_array_shared();
 
       id = xrt_core::edge::aie::get_graph_id(device.get(), name, hwctx);
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
