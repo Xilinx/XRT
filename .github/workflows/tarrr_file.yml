@@ -1,5 +1,5 @@
 name: Test Docker
-  
+ 
 env:  
   RELEASE: '2021.1'  
   PIPELINE: 'xrt'  
@@ -29,6 +29,12 @@ jobs:
       - name: List contents of Dockerfile directory  
         run: |  
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash  
+  
+      - name: Copy xrt_packages from known location  
+        run: |  
+          mkdir -p ${{ github.workspace }}/../preflight-check/xrt_packages  
+          cp /scratch/ghe-runners/4/_work/preflight-check/preflight-check/xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${{ github.workspace }}/../preflight-check/xrt_packages/  
         shell: bash  
   
       - name: List contents of xrt_packages directory  
@@ -64,3 +70,4 @@ jobs:
           docker tag xrt_centos_8.1_image:latest registry.amd.com/buildops/xrt_centos_8.1_image:latest  
           docker push registry.amd.com/buildops/xrt_centos_8.1_image:latest  
         shell: bash  
+
