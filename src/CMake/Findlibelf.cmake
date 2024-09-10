@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Xilinx Inc.
+# Copyright (C) 2021 Xilinx Inc.
 # SPDX-License-Identifier: Apache-2.0
 #
 
