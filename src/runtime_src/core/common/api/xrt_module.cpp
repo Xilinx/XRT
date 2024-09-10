@@ -805,6 +805,10 @@ class module_elf : public module_impl
     if (m_save_buf_exist && m_restore_buf_exist)
       return ERT_START_NPU_PREEMPT;
 
+    if (m_pdi_buf_exist) {
+      printf("TESTING: m_pdi_buf_exist = true, ELF FLOW \n");
+      return ERT_START_NPU_ELF;	    
+    }
     return ERT_START_NPU;
   }
 
@@ -939,7 +943,7 @@ class module_sram : public module_impl
   xrt::bo m_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
-
+  xrt::bo mm_pdi_bo;
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
   // address (m_buffer.address()) of the buffer object.  The addresses
@@ -1010,6 +1014,7 @@ class module_sram : public module_impl
     XRT_DEBUGF("-> module_sram::create_instr_buf()\n");
     const auto& data = parent->get_instr();
     size_t sz = data.size();
+
     if (sz == 0)
       throw std::runtime_error("Invalid instruction buffer size");
 
@@ -1190,6 +1195,9 @@ class module_sram : public module_impl
 
       if (m_preempt_restore_bo)
         m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      if (m_pdi_bo)
+        m_pdi_bo(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
     m_dirty = false;
@@ -1198,7 +1206,7 @@ class module_sram : public module_impl
   uint32_t*
   fill_ert_aie2p(uint32_t *payload) const
   {
-     if (m_preempt_save_bo && m_preempt_restore_bo) {
+     if (m_preempt_save_bo && m_preempt_restore_bo && !m_pdi_bo) {
        // npu preemption
        auto npu = reinterpret_cast<ert_npu_preempt_data*>(payload);
        npu->instruction_buffer = m_instr_bo.address();
@@ -1209,6 +1217,22 @@ class module_sram : public module_impl
        npu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
        npu->instruction_prop_count = 0; // Reserved for future use
        payload += sizeof(ert_npu_preempt_data) / sizeof(uint32_t);
+
+       return payload;
+     } else if (m_pdi_bo) {
+       // npu elf flow
+       printf("TESTING fill_ert_aie2p ert_npu_elf_data\n");
+       auto npu = reinterpret_cast<ert_npu_elf_data*>(payload);
+       npu->instruction_buffer = m_instr_bo.address();
+       npu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+        if (m_preempt_save_bo && m_preempt_restore_bo) {
+          npu->save_buffer = m_preempt_save_bo.address();
+          npu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
+          npu->restore_buffer = m_preempt_restore_bo.address();
+          npu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
+        }
+       npu->instruction_prop_count = 0;
+       payload += sizeof(ert_npu_elf_data) / sizeof(uint32_t);
 
        return payload;
      }
