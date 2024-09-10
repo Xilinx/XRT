@@ -33,12 +33,12 @@ jobs:
   
       - name: List contents of xrt_packages directory  
         run: |  
-          ls -al ${{ github.workspace }}/xrt_packages  
+          ls -al ${{ github.workspace }}/../xrt_packages  
         shell: bash  
   
       - name: Verify file type  
         run: |  
-          file ${{ github.workspace }}/xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
+          file ${{ github.workspace }}/../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz  
         shell: bash  
   
       - name: Build Docker image  
