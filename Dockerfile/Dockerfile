@@ -8,7 +8,7 @@ RUN yum upgrade -y; yum install -y wget tar
 RUN mkdir -p ${PACKAGE_PATH}  
   
 # Copy the tar file containing XRT packages into the Docker image  
-COPY xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PATH}/  
+COPY ../xrt_packages/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz ${PACKAGE_PATH}/  
   
 # Extract the tar file  
 RUN tar -zxvf ${PACKAGE_PATH}/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz -C ${PACKAGE_PATH}  
