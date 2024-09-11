@@ -43,7 +43,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}        
           token: ${{ secrets.ACCESS_TOKEN }}        
           path: composite-workflows   
-          ref: main  
+          ref: image 
          
       - name: XRT build       
         uses: ./composite-workflows/build  
