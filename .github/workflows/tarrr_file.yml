@@ -1,5 +1,5 @@
 name: Test Docker
-
+ 
 env:    
   RELEASE: '2021.1'    
   PIPELINE: 'xrt'   
@@ -92,10 +92,16 @@ jobs:
           USER: ${{ secrets.USER }}  
           github-server-url: ${{ secrets.SERVER_URL }}  
   
+      - name: List contents of artifact directory  
+        run: |  
+          cd ${{ env.PATH_DIR }}/artifact  
+          ls -al  
+        shell: bash  
+  
       - name: Find and copy xrt.rpm  
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
-          cp xrt_*_x86_64-xrt.rpm ${{ github.workspace }}/xrt.rpm  
+          cp *xrt.rpm ${{ github.workspace }}/xrt.rpm || echo "RPM file not found"  
         shell: bash  
   
       - name: Build Docker image  
@@ -113,6 +119,7 @@ jobs:
           docker tag xrt_image:latest registry.amd.com/buildops/xrt_image:latest    
           docker push registry.amd.com/buildops/xrt_image:latest    
         shell: bash    
+
 
    
 
