@@ -3,7 +3,7 @@
 // Vivado(TM) HLS - High-Level Synthesis from C, C++ and SystemC v2018.3 (64-bit)
 // SW Build 2399019 on Tue Nov 27 19:07:14 MST 2018
 // IP Build 2398463 on Tue Nov 27 21:07:40 MST 2018
-// Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
+// Copyright (C) 1986-2018 Xilinx, Inc. All Rights Reserved.
 // ==============================================================
 // control
 // 0x00 : Control signals
