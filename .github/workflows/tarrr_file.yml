@@ -1,5 +1,5 @@
 name: Test Docker
-  
+
 env:    
   RELEASE: '2021.1'    
   PIPELINE: 'xrt'   
@@ -92,28 +92,10 @@ jobs:
           USER: ${{ secrets.USER }}  
           github-server-url: ${{ secrets.SERVER_URL }}  
   
-      - name: List contents of PATH_DIR  
-        run: |  
-          cd ${{ env.PATH_DIR }}  
-          ls -al  
-        shell: bash  
-  
-      - name: List contents of artifact directory  
+      - name: Find and copy xrt.rpm  
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
-          ls -al  
-        shell: bash  
-  
-      - name: List contents of tests directory  
-        run: |  
-          cd ${{ env.PATH_DIR }}/tests  
-          ls -al  
-        shell: bash  
-  
-      - name: List contents of xrt directory  
-        run: |  
-          cd ${{ env.PATH_DIR }}/xrt-2.17.${{ env.XRT_VERSION_PATCH }}_centos_8.1  
-          ls -al  
+          cp xrt_*_x86_64-xrt.rpm ${{ github.workspace }}/xrt.rpm  
         shell: bash  
   
       - name: Build Docker image  
