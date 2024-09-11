@@ -103,6 +103,11 @@ jobs:
           cd ${{ env.PATH_DIR }}/artifact  
           cp *xrt.rpm ${{ github.workspace }}/xrt.rpm || echo "RPM file not found"  
         shell: bash  
+
+      - name: List contents after copying RPM  
+        run: |  
+          ls -al ${{ github.workspace }}  
+        shell: bash 
   
       - name: Build Docker image  
         run: |  
