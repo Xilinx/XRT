@@ -187,7 +187,7 @@ TestSpatialSharingOvd::run(std::shared_ptr<xrt_core::device> dev){
   thread_ready = 0;
   /* Run 2*/
   TestCase t(xclbin, kernelName);
-  std::thread thr(runTestcase, t);
+  std::thread thr(runTestcase, std::ref(t));
   wait_for_threads_ready(1, mut, cond_var, thread_ready);
   start = std::chrono::high_resolution_clock::now(); 
   thr.join();
