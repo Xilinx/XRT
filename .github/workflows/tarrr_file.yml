@@ -71,9 +71,9 @@ jobs:
   
       - name: Authenticate with Harbor  
         run: |  
-          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u ${{ secrets.HARBOR_USERNAME }} --password-stdin  
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin  
         shell: bash  
-  
+   
       - name: Push Docker image to AMD Harbor  
         run: |  
           docker tag xrt_centos_8.1_image:latest registry.amd.com/buildops/xrt_centos_8.1_image:latest  
