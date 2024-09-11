@@ -1442,7 +1442,7 @@ xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     xclLog(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
   }
-  if (offset <= 0  || (offset & (sizeof(uint32_t) - 1)) != 0) {
+  if ((offset & (sizeof(uint32_t) - 1)) != 0) {
     xclLog(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
