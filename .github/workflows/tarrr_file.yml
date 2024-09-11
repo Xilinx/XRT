@@ -1,5 +1,5 @@
 name: Test Docker
- 
+  
 env:    
   RELEASE: '2021.1'    
   PIPELINE: 'xrt'   
@@ -98,12 +98,23 @@ jobs:
           ls -al  
         shell: bash  
   
-      - name: Unzip and list artifact contents    
-        run: |    
-          cd ${{ env.PATH_DIR }}    
-          unzip artifact.zip    
-          ls -alR    
-        shell: bash   
+      - name: List contents of artifact directory  
+        run: |  
+          cd ${{ env.PATH_DIR }}/artifact  
+          ls -al  
+        shell: bash  
+  
+      - name: List contents of tests directory  
+        run: |  
+          cd ${{ env.PATH_DIR }}/tests  
+          ls -al  
+        shell: bash  
+  
+      - name: List contents of xrt directory  
+        run: |  
+          cd ${{ env.PATH_DIR }}/xrt-2.17.${{ env.XRT_VERSION_PATCH }}_centos_8.1  
+          ls -al  
+        shell: bash  
   
       - name: Build Docker image  
         run: |  
@@ -120,6 +131,7 @@ jobs:
           docker tag xrt_image:latest registry.amd.com/buildops/xrt_image:latest    
           docker push registry.amd.com/buildops/xrt_image:latest    
         shell: bash    
+
    
 
 
