@@ -102,9 +102,9 @@ jobs:
       - name: Find and copy xrt.rpm  
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
-          cp *xrt.rpm ${{ github.workspace }}/xrt.rpm || echo "RPM file not found"  
+          cp *xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/xrt.rpm || echo "RPM file not found"  
         shell: bash  
-  
+   
       - name: List contents after copying RPM  
         run: |  
           ls -al ${{ github.workspace }}  
