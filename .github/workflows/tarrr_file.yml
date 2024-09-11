@@ -1,5 +1,6 @@
 name: Test Docker
  
+
 env:    
   RELEASE: '2021.1'    
   PIPELINE: 'xrt'   
@@ -109,6 +110,11 @@ jobs:
           ls -al ${{ github.workspace }}  
         shell: bash  
   
+      - name: List contents of Dockerfile directory  
+        run: |  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash  
+  
       - name: Build Docker image  
         run: |  
           docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}  
@@ -124,6 +130,12 @@ jobs:
           docker tag xrt_image:latest registry.amd.com/buildops/xrt_image:latest    
           docker push registry.amd.com/buildops/xrt_image:latest    
         shell: bash    
+  
+      - name: Deleting build files      
+        if: always()  
+        run: |  
+          rm -rf ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+        shell: bash   
 
 
    
