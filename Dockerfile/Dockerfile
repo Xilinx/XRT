@@ -1,24 +1,16 @@
 FROM centos:8    
-ARG PACKAGE_PATH=/tmp/xilinx_packages  
   
 # Update and install necessary tools    
 RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \    
     sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \    
     yum install -y epel-release && \    
-    yum install -y wget tar && \    
     yum clean all    
   
-# Create directory for XRT packages    
-RUN mkdir -p ${PACKAGE_PATH}    
+# Copy the xrt.rpm file into the Docker image    
+COPY xrt.rpm /tmp/xrt.rpm    
   
-# Copy the extracted RPM and DEB files into the Docker image    
-COPY ./path/to/extracted/files/* ${PACKAGE_PATH}/    
-  
-# Install XRT packages if RPM files are present    
-RUN find ${PACKAGE_PATH} -name "*.rpm" -exec yum install -y {} +    
-  
-# Clean up    
-RUN rm -rf ${PACKAGE_PATH}/*.rpm    
+# Install the XRT package    
+RUN yum install -y /tmp/xrt.rpm && rm -f /tmp/xrt.rpm    
   
 # Enable Systemctl (if needed)    
 RUN wget -cO - https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py > /usr/local/share/systemctl3.py    
