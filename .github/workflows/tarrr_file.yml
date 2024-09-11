@@ -117,7 +117,7 @@ jobs:
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}  
+          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
         shell: bash  
   
       - name: Authenticate with Harbor    
