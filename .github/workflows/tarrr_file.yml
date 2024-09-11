@@ -6,6 +6,9 @@ env:
   ENV: 'test'  
   
 on:  
+  push:  
+    branches:  
+      - '2021.1'  
   workflow_dispatch:  
     
 jobs:  
@@ -89,14 +92,18 @@ jobs:
           USER: ${{ secrets.USER }}  
           github-server-url: ${{ secrets.SERVER_URL }}  
   
-      - name: Unzip and list packages  
+      - name: List contents of PATH_DIR  
         run: |  
           cd ${{ env.PATH_DIR }}  
-          for file in *.tar.gz; do  
-            tar -zxvf "$file"  
-          done  
-          ls -alR  
+          ls -al  
         shell: bash  
+  
+      - name: Unzip and list artifact contents    
+        run: |    
+          cd ${{ env.PATH_DIR }}    
+          unzip artifact.zip    
+          ls -alR    
+        shell: bash   
   
       - name: Build Docker image  
         run: |  
@@ -113,5 +120,6 @@ jobs:
           docker tag xrt_image:latest registry.amd.com/buildops/xrt_image:latest    
           docker push registry.amd.com/buildops/xrt_image:latest    
         shell: bash    
+   
 
 
