@@ -20,6 +20,9 @@ RUN tar -zxvf ${PACKAGE_PATH}/xrt_202410.2.17.723_8.1.1911-x86_64-xrt.tar.gz -C 
 # List the contents of the extracted directory for debugging  
 RUN ls -alR ${PACKAGE_PATH}  
   
+# List RPM files to verify their presence  
+RUN find ${PACKAGE_PATH} -name "*.rpm" -exec ls -al {} +  
+  
 # Install XRT packages if RPM files are present  
 RUN find ${PACKAGE_PATH} -name "*.rpm" -exec yum install -y {} +  
   
