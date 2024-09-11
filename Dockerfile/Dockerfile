@@ -6,8 +6,8 @@ RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \
     yum install -y epel-release && \    
     yum clean all    
   
-# Copy the xrt.rpm file into the Docker image    
-COPY xrt.rpm /tmp/xrt.rpm    
+# Assuming xrt.rpm is in the same directory as the Dockerfile  
+COPY xrt.rpm /tmp/xrt.rpm  
   
 # Install the XRT package    
 RUN yum install -y /tmp/xrt.rpm && rm -f /tmp/xrt.rpm    
