@@ -99,11 +99,11 @@ jobs:
           ls -al  
         shell: bash  
   
-      - name: Find and copy xrt.rpm  
+      - name: Build Docker image  
         run: |  
-          cd ${{ env.PATH_DIR }}/artifact  
-          cp *xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/xrt.rpm || echo "RPM file not found"  
+          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
+
    
       - name: List contents after copying RPM  
         run: |  
