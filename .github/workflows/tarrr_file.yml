@@ -99,11 +99,11 @@ jobs:
           ls -al  
         shell: bash  
   
-      - name: Build Docker image  
+      - name: Find and copy xrt.rpm  
         run: |  
-          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+          cd ${{ env.PATH_DIR }}/artifact  
+          cp *xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/xrt.rpm || echo "RPM file not found"  
         shell: bash  
-
    
       - name: List contents after copying RPM  
         run: |  
@@ -114,15 +114,10 @@ jobs:
         run: |  
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
-
-      - name: List files in build context  
-        run: |  
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
-
   
       - name: Build Docker image  
         run: |  
-          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          docker build -t xrt_image:latest -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile 
         shell: bash  
   
       - name: Authenticate with Harbor    
@@ -141,8 +136,3 @@ jobs:
         run: |  
           rm -rf ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
         shell: bash   
-
-
-   
-
-
