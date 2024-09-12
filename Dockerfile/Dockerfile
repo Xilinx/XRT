@@ -4,10 +4,12 @@ FROM centos:8
 RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \  
     sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \  
     yum install -y epel-release && \  
+    yum install -y dnf-plugins-core && \  
+    yum config-manager --set-enabled powertools && \  
     yum clean all  
   
 # Install missing dependencies  
-RUN yum install -y ocl-icd-devel yaml-devel  
+RUN yum install -y ocl-icd ocl-icd-devel libyaml-devel  
   
 # Assuming xrt.rpm is in the same directory as the Dockerfile  
 COPY Dockerfile/xrt.rpm /tmp/xrt.rpm  
