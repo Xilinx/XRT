@@ -130,9 +130,17 @@ jobs:
           for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
             echo "Building image for $package_file"  
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+            if [[ $package_file == *7.8.2003* ]]; then  
+              base_image="centos:7"  
+            elif [[ $package_file == *8.1.1911* ]]; then  
+              base_image="centos:8"  
+            else  
+              base_image="ubuntu:20.04"  
+            fi  
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           done  
-        shell: bash      
+        shell: bash  
+     
   
       - name: Authenticate with Harbor        
         run: |        
