@@ -7,7 +7,7 @@ RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \
     yum clean all  
   
 # Install missing dependencies  
-RUN yum install -y ocl-icd-devel pkgconfig(yaml-0.1)  
+RUN yum install -y ocl-icd-devel yaml-devel  
   
 # Assuming xrt.rpm is in the same directory as the Dockerfile  
 COPY Dockerfile/xrt.rpm /tmp/xrt.rpm  
