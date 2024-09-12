@@ -30,4 +30,4 @@ RUN echo "alias systemctl='python3 /usr/local/share/systemctl3.py'" >> /root/.ba
 RUN ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py /usr/local/bin/systemctl  
   
 # Assuming auto_setup.sh is in the same directory as the Dockerfile  
-COPY Dockerfile/auto_setup.sh /opt/xilinx/auto_setup.sh  
+COPY auto_setup.sh /opt/xilinx/auto_setup.sh  
