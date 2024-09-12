@@ -38,7 +38,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("migrations", entry.migrations);
     pt_entry.put("errors", entry.errors);
 
-    xrt_core::query::aie_partition_info::qos_info qos = entry.QoS;
+    xrt_core::query::aie_partition_info::qos_info qos = entry.qos;
     pt_entry.put("gops", qos.gops);
     pt_entry.put("egops", qos.egops);
     pt_entry.put("fps", qos.fps);

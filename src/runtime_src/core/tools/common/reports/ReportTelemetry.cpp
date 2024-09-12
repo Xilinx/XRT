@@ -114,8 +114,8 @@ generate_opcode_string(const boost::property_tree::ptree& pt)
   std::stringstream ss;
 
   const std::vector<Table2D::HeaderData> opcode_headers = {
-    {"Opcode", Table2D::Justification::left},
-    {"Receive Count", Table2D::Justification::left}
+    {"Mailbox Opcode", Table2D::Justification::left},
+    {"Count", Table2D::Justification::left}
   };
   Table2D opcode_table(opcode_headers);
 

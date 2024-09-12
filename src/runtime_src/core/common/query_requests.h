@@ -1684,7 +1684,7 @@ struct aie_partition_info : request
     uint64_t    migrations;
     uint64_t    preemptions;
     uint64_t    errors;
-    qos_info    QoS;
+    qos_info    qos;
   };
 
   using result_type = std::vector<struct data>;
