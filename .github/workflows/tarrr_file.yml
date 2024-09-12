@@ -130,6 +130,12 @@ jobs:
           echo "Contents of Dockerfile directory:"        
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile        
         shell: bash        
+
+      - name: List contents of Dockerfile directory  
+        run: |  
+          echo "Listing contents of build context:"  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash  
     
   
       - name: Build Docker images  
@@ -144,7 +150,7 @@ jobs:
             else  
               base_image="ubuntu:20.04"  
             fi  
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}
           done  
         shell: bash  
      
