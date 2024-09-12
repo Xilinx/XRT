@@ -12,14 +12,29 @@ on:
       - '2021.1'  
   workflow_dispatch:  
     
-jobs:  
-  build:  
-    strategy:        
-      matrix:        
-        include:        
-          - os: centos8        
-            packageType: rpm  
-            os_ver: centos_8.1        
+jobs:
+  build:
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos78      
+            packageType: rpm
+            os_ver: centos_7.8      
+          - os: centos8      
+            packageType: rpm
+            os_ver: centos_8.1      
+          - os: ubuntu2004      
+            packageType: deb
+            os_ver: ubuntu_20.04      
+          - os: ubuntu2204      
+            packageType: deb
+            os_ver: ubuntu_22.04 
+          - os: amazonlinux-20202011111 
+            packageType: rpm
+            os_ver: amazonlinux20202011111     
+          - os: ubuntu1804      
+            packageType: deb   
+            os_ver: ubuntu_18.04         
   
     runs-on: [self-hosted, Ubuntu-22.04]  
     steps:    
