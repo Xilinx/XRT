@@ -115,15 +115,22 @@ jobs:
           done    
         shell: bash  
         
-  docker-build:  
-    needs: [package-download]  
-    runs-on: [self-hosted, Ubuntu-22.04]  
-    steps:  
-      - name: List contents of Dockerfile directory      
-        run: |      
-          echo "Contents of Dockerfile directory:"      
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile      
-        shell: bash      
+  docker-build:    
+    needs: [package-download]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
+      - name: Set env variables          
+        run: |          
+          echo "Setting environment variables..."            
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV    
+    
+      - name: List contents of Dockerfile directory        
+        run: |        
+          echo "Contents of Dockerfile directory:"        
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile        
+        shell: bash        
+    
   
       - name: Build Docker images  
         run: |  
