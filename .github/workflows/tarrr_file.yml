@@ -104,16 +104,19 @@ jobs:
           ls -al    
         shell: bash    
     
-      - name: Find and copy packages    
-        run: |    
-          cd ${{ env.PATH_DIR }}/artifact    
-          echo "Listing all files in artifact directory:"    
-          ls -al    
-          for package_file in *-xrt.rpm *-xrt.deb; do    
-            echo "Found package: $package_file"    
-            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
-          done    
-        shell: bash  
+      - name: Find and copy packages      
+        run: |      
+          cd ${{ env.PATH_DIR }}/artifact      
+          echo "Listing all files in artifact directory:"      
+          ls -al      
+          for package_file in *-xrt.rpm *-xrt.deb; do      
+            echo "Found package: $package_file"      
+            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/      
+            echo "Copied $package_file to Dockerfile directory"  
+          done      
+          echo "Contents of Dockerfile directory after copy:"      
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile      
+        shell: bash    
         
   docker-build:    
     needs: [package-download]    
@@ -132,23 +135,23 @@ jobs:
         shell: bash        
     
   
-      - name: Build Docker images  
-        run: |  
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
-            echo "Building image for $package_file"  
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-            if [[ $package_file == *7.8.2003* ]]; then  
-              base_image="centos:7"  
-            elif [[ $package_file == *8.1.1911* ]]; then  
-              base_image="centos:8"  
-            else  
-              base_image="ubuntu:20.04"  
-            fi  
+      - name: Build Docker images    
+        run: |    
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do    
+            echo "Building image for $package_file"    
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')    
+            if [[ $package_file == *7.8.2003* ]]; then    
+              base_image="centos:7"    
+            elif [[ $package_file == *8.1.1911* ]]; then    
+              base_image="centos:8"    
+            else    
+              base_image="ubuntu:20.04"    
+            fi    
+            echo "Using base image: $base_image"  
             docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-          done  
+          done    
         shell: bash  
-     
-  
+       
       - name: Authenticate with Harbor        
         run: |        
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin        
