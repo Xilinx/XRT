@@ -104,19 +104,23 @@ jobs:
           ls -al    
         shell: bash    
     
-      - name: Find and copy package    
+      - name: Find and copy packages    
         run: |    
           cd ${{ env.PATH_DIR }}/artifact    
           echo "Listing all files in artifact directory:"    
           ls -al    
           if [[ "${{ matrix.packageType }}" == "rpm" ]]; then    
-            package_file=$(ls *${{ matrix.os_ver }}*-xrt.rpm)    
+            for package_file in *${{ matrix.os_ver }}*-xrt.rpm; do  
+              echo "Found RPM package: $package_file"  
+              cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/  
+            done  
           else    
-            package_file=$(ls *${{ matrix.os_ver }}*-xrt.deb)    
+            for package_file in *${{ matrix.os_ver }}*-xrt.deb; do  
+              echo "Found DEB package: $package_file"  
+              cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/  
+            done  
           fi    
-          echo "Found package: $package_file"    
-          cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
-        shell: bash    
+        shell: bash   
     
       - name: List contents of Dockerfile directory    
         run: |    
