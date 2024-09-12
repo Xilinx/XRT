@@ -87,7 +87,7 @@ calculate_col_utilization(const xrt_core::device* device, boost::property_tree::
   if (total_active_cols > total_device_cols)
     total_active_cols = total_device_cols;
   double total_col_utilization = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
-  return (total_col_utilization == 0) ? "N/A" : boost::str(boost::format("%.0f%%") % total_col_utilization);
+  return boost::str(boost::format("%.0f%%") % total_col_utilization);
 }
 
 void
