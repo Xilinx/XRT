@@ -7,7 +7,8 @@ RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \
     yum clean all    
   
 # Assuming xrt.rpm is in the same directory as the Dockerfile  
-COPY xrt.rpm /tmp/xrt.rpm  
+COPY Dockerfile/xrt.rpm /tmp/xrt.rpm  
+
   
 # Install the XRT package    
 RUN yum install -y /tmp/xrt.rpm && rm -f /tmp/xrt.rpm    
