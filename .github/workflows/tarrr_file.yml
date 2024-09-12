@@ -114,6 +114,11 @@ jobs:
         run: |  
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
+
+      - name: List files in build context  
+        run: |  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+
   
       - name: Build Docker image  
         run: |  
