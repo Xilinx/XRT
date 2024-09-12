@@ -1,21 +1,28 @@
-FROM centos:8  
+ARG BASE_IMAGE  
+FROM ${BASE_IMAGE}  
+  
+ARG PACKAGE_FILE  
   
 # Update and install necessary tools  
-RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \  
-    sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \  
-    yum install -y epel-release && \  
-    yum install -y dnf-plugins-core wget && \  
-    yum config-manager --set-enabled powertools && \  
-    yum clean all  
+RUN if [[ "${BASE_IMAGE}" == "centos:7" || "${BASE_IMAGE}" == "centos:8" ]]; then \  
+      yum install -y epel-release wget && \  
+      yum clean all; \  
+    else \  
+      apt-get update && \  
+      apt-get install -y wget && \  
+      apt-get clean; \  
+    fi  
   
-# Install missing dependencies  
-RUN yum install -y ocl-icd ocl-icd-devel libyaml-devel  
-  
-# Assuming xrt.rpm is in the same directory as the Dockerfile  
-COPY Dockerfile/xrt.rpm /tmp/xrt.rpm  
-  
-# Install the XRT package  
-RUN yum install -y /tmp/xrt.rpm && rm -f /tmp/xrt.rpm  
+# Copy and install the package  
+COPY ${PACKAGE_FILE} /tmp/  
+RUN if [[ "${PACKAGE_FILE}" == *.rpm ]]; then \  
+      echo "Installing RPM package: ${PACKAGE_FILE}" && \  
+      yum install -y /tmp/${PACKAGE_FILE}; \  
+    else \  
+      echo "Installing DEB package: ${PACKAGE_FILE}" && \  
+      dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \  
+    fi && \  
+    rm -f /tmp/${PACKAGE_FILE}  
   
 # Enable Systemctl (if needed)  
 RUN wget -cO - https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py > /usr/local/share/systemctl3.py  
