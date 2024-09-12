@@ -173,8 +173,8 @@ TestSpatialSharingOvd::run(std::shared_ptr<xrt_core::device> dev){
       ptree.put("status", test_token_failed);
     }
   };
-  threads.emplace_back(runTestcase, testcases[0]);
-  threads.emplace_back(runTestcase, testcases[1]);
+  threads.emplace_back(runTestcase, std::ref(testcases[0]));
+  threads.emplace_back(runTestcase, std::ref(testcases[1]));
   wait_for_threads_ready((uint32_t)threads.size(), mut, cond_var, thread_ready);
   auto start = std::chrono::high_resolution_clock::now(); 
   for (uint32_t i = 0; i < threads.size(); i++) {
