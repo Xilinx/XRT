@@ -130,7 +130,8 @@ jobs:
           echo "Contents of Dockerfile directory:"        
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile        
         shell: bash        
-      
+    
+  
       - name: Build Docker images  
         run: |  
           for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
