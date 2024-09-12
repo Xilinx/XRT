@@ -16,7 +16,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Modes: default, powersaver, balanced, performance")
+    : OptionOptions(_longName, _isHidden, "Modes: default, powersaver, balanced, performance, turbo")
     , m_device("")
     , m_action("")
     , m_help(false)

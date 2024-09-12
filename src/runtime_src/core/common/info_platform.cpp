@@ -426,7 +426,6 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
       add_versal_controller_info(device, pt_platform);
     else
       add_controller_info(device, pt_platform);
-    add_clock_info(device, pt_platform);
     add_mac_info(device, pt_platform);
     add_config_info(device, pt_platform);
     break;
