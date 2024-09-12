@@ -164,14 +164,17 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
                                  module_type type,
                                  const std::string& kernel_name) const
 {
+    bool isAllGraph  = (graph_name.compare("all") == 0);
+    bool isAllKernel = (kernel_name.compare("all") == 0);
+
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && (kernel_name.compare("all") == 0))
+    if ((type == module_type::dma) && isAllKernel)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping && (kernel_name.compare("all") == 0))
+    if (!kernelToTileMapping && isAllKernel)
         return getAIETiles(graph_name);
     if (!kernelToTileMapping) {
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
@@ -183,8 +186,8 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
 
     // Parse all kernel mappings
     for (auto const &mapping : kernelToTileMapping.get()) {
-        bool foundGraph  = (graph_name.compare("all") == 0);
-        bool foundKernel = (kernel_name.compare("all") == 0);
+        bool foundGraph  = isAllGraph;
+        bool foundKernel = isAllKernel;
 
         if (!foundGraph || !foundKernel) {
             auto graphStr = mapping.second.get<std::string>("graph");
@@ -201,7 +204,7 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
 
                 std::vector<std::string> names;
                 boost::split(names, functions.at(i), boost::is_any_of("."));
-                if (std::find(names.begin(), names.end(), kernel_name) == names.end())
+                if (std::find(names.begin(), names.end(), kernel_name) != names.end())
                     foundKernel = true;
 
                 if (foundGraph && foundKernel)
