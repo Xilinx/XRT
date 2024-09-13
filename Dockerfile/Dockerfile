@@ -29,7 +29,7 @@ RUN if [[ "${PACKAGE_FILE}" == *.rpm ]]; then \
       echo "Installing DEB package: ${PACKAGE_FILE}" && \  
       dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \  
     fi && \  
-    rm -f /tmp/${PACKAGE_FILE}  
+    # rm -f /tmp/${PACKAGE_FILE}  
   
 # Enable Systemctl (if needed)  
 RUN wget -cO - https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py > /usr/local/share/systemctl3.py  
