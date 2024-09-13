@@ -28,9 +28,9 @@ jobs:
           - os: amazonlinux-20202011111 
             packageType: rpm
             os_ver: amazonlinux20202011111     
-          - os: ubuntu1804      
-            packageType: deb   
-            os_ver: ubuntu_18.04  
+          # - os: ubuntu1804      
+          #   packageType: deb   
+          #   os_ver: ubuntu_18.04  
   
     runs-on: [self-hosted, Ubuntu-22.04]  
     steps:  
