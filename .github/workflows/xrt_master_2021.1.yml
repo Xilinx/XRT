@@ -63,7 +63,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: main
+          ref: '2021.1'
        
       - name: XRT build     
         uses: ./composite-workflows/build
@@ -80,6 +80,7 @@ jobs:
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
+          released: ${{ secrets.RELEASED }}
 
 # Disabling windows for 2021.branch as per request
   # windows-build:
