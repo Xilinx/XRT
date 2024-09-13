@@ -12,6 +12,8 @@ RUN if [ -f /etc/redhat-release ]; then \
       yum config-manager --set-enabled powertools && \  
       yum clean all && \  
       yum install -y ocl-icd ocl-icd-devel libyaml-devel; \  
+    elif [ -f /etc/system-release ] && grep -q "Amazon Linux" /etc/system-release; then \  
+      yum install -y wget ocl-icd ocl-icd-devel libyaml-devel; \  
     else \  
       apt-get update && \  
       apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev && \  
