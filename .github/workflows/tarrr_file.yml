@@ -11,17 +11,26 @@ on:
       - '2021.1'  
   workflow_dispatch:  
   
-jobs:  
-  build:  
-    strategy:  
-      matrix:  
-        include:  
-          - os: centos8  
-            packageType: rpm  
-            os_ver: 8.1.1911  
-          - os: ubuntu2004  
-            packageType: deb  
-            os_ver: 20.04  
+jobs:
+  build:
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos8      
+            packageType: rpm
+            os_ver: centos_8.1      
+          - os: ubuntu2004      
+            packageType: deb
+            os_ver: ubuntu_20.04      
+          - os: ubuntu2204      
+            packageType: deb
+            os_ver: ubuntu_22.04 
+          - os: amazonlinux-20202011111 
+            packageType: rpm
+            os_ver: amazonlinux20202011111     
+          - os: ubuntu1804      
+            packageType: deb   
+            os_ver: ubuntu_18.04  
   
     runs-on: [self-hosted, Ubuntu-22.04]  
     steps:  
@@ -111,7 +120,7 @@ jobs:
             cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/  
           done  
         shell: bash  
-  
+
   docker-build:  
     needs: [package-download]  
     runs-on: [self-hosted, Ubuntu-22.04]  
@@ -133,10 +142,16 @@ jobs:
           for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
             echo "Building image for $package_file"  
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-            if [[ $package_file == *8.1.1911* ]]; then  
+            if [[ $package_file == *centos_8.1* ]]; then  
               base_image="centos:8"  
-            else  
+            elif [[ $package_file == *ubuntu_20.04* ]]; then  
               base_image="ubuntu:20.04"  
+            elif [[ $package_file == *ubuntu_22.04* ]]; then  
+              base_image="ubuntu:22.04"  
+            elif [[ $package_file == *amazonlinux20202011111* ]]; then  
+              base_image="amazonlinux:2"  
+            else  
+              base_image="ubuntu:18.04"  
             fi  
             docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
           done  
