@@ -27,12 +27,12 @@ jobs:
           - os: ubuntu2204      
             packageType: deb
             os_ver: ubuntu_22.04 
-          - os: amazonlinux-20202011111 
-            packageType: rpm
-            os_ver: amazonlinux20202011111     
-          - os: ubuntu1804      
-            packageType: deb   
-            os_ver: ubuntu_18.04  
+          # - os: amazonlinux-20202011111 
+          #   packageType: rpm
+          #   os_ver: amazonlinux20202011111     
+          # - os: ubuntu1804      
+          #   packageType: deb   
+          #   os_ver: ubuntu_18.04  
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -77,97 +77,6 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-# Disabling windows for 2021.branch as per request
-  # windows-build:
-  #   runs-on: Windows
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
-
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v2.4.2 
-  #       with: 
-  #         fetch-depth: 0
-  #         path: ${{ github.workspace }}/${{ github.run_number }}
-  #         submodules: recursive
-  #         persist-credentials: false
-  #         sparse-checkout: 
-  #           build
-  #           src
-  #           tests 
-            
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows
-  #         github-server-url: ${{ secrets.SERVER_URL }}      
-  #         token: ${{ secrets.ACCESS_TOKEN }}      
-  #         path: composite-workflows 
-  #         ref: main
-       
-  #     - name: XRT windows build     
-  #       uses: ./composite-workflows/windows-build
-  #       with:     
-  #         workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-  #         buildNumber: ${{ github.run_number }}    
-  #         release: ${{ env.RELEASE }}
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }} 
-  #         workspaceg: ${{ github.workspace }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
-  #         build-cmd: "build.bat -release"
-  #         vs-version: "2017"
-
-  # apu-package-build:
-  #   runs-on: apu
-  #   steps:
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
-
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-  #         echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV        
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
-    
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v3 
-  #       with: 
-  #         fetch-depth: 0
-  #         path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-  #         submodules: recursive  
-
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows      
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}       
-  #         path: composite-workflows  
-  #         ref: main
-       
-  #     - name: Apu package build for XRT     
-  #       uses: ./composite-workflows/apu-package
-  #       with:     
-  #         pipeline: ${{ env.PIPELINE }}   
-  #         workspace: ${{ github.workspace }}  
-  #         buildNumber: ${{ env.XRT_VERSION_PATCH }}    
-  #         apuPackage: 'True' 
-  #         release: ${{ env.RELEASE }}  
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
-  #         appConfig: ${{ secrets.APP_CONFIG }} 
-  #         appConfig1: ${{ secrets.APP_CONFIG1 }} 
-  #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
-  #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   package-download:    
     needs: [build]    
@@ -244,12 +153,8 @@ jobs:
               base_image="centos:8"  
             elif [[ $package_file == *ubuntu_20.04* ]]; then  
               base_image="ubuntu:20.04"  
-            elif [[ $package_file == *ubuntu_22.04* ]]; then  
-              base_image="ubuntu:22.04"  
-            elif [[ $package_file == *amazonlinux20202011111* ]]; then  
-              base_image="amazonlinux:2"  
             else  
-              base_image="ubuntu:18.04"  
+              base_image="ubuntu:22.04"  
             fi  
             docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
           done  
@@ -268,4 +173,4 @@ jobs:
             docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag  
             docker push registry.amd.com/buildops/xrt_image:$image_tag  
           done  
-        shell: bash  
+        shell: bash
