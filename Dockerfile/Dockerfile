@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 ARG PACKAGE_FILE  
   
 # Update and install necessary tools  
-RUN if [[ "${BASE_IMAGE}" == "centos:7" || "${BASE_IMAGE}" == "centos:8" ]]; then \  
+RUN if [ -f /etc/redhat-release ]; then \  
       yum install -y epel-release wget && \  
       yum clean all; \  
     else \  
