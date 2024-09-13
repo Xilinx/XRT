@@ -120,27 +120,33 @@ namespace xdp {
     // Record Timer TS in JSON
     // Assuming correct Stub has been called and Write Buffer contains valid data
     
-    uint32_t max_count = mBufSz / (2*sizeof(uint32_t));
-    // Each record timer entry has 32bit ID and 32bit AIE Timer low value.
+    uint32_t max_count = mBufSz / (3*sizeof(uint32_t));
+    // Each record timer entry has 32bit ID and 32bit AIE High Timer + 32bit AIE Low Timer value.
 
     uint32_t numEntries = max_count;
     std::stringstream msg;
-    msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size"
+    msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size "
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
     if (numEntries <= max_count) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
+        uint32_t id = *ptr;
         ptIdTS.put("id", *ptr);
         ptr++;
-        if (0 == *ptr) {
-          // Zero value for Timestamp in cycles indicates end of recorded data
+
+        uint64_t ts64 = *ptr;
+        ts64 = ts64 << 32;
+        ptr++;
+        ts64 |= (*ptr);
+        if (0 == ts64 && 0 == id) {
+          // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
           std::string msgEntries = " Got " + std::to_string(i) + " records in buffer";
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
           break;
         }
-        ptIdTS.put("cycle", *ptr);
+        ptIdTS.put("cycle", ts64);
         ptr++;
 
         ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
