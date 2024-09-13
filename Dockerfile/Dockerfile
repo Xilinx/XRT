@@ -4,15 +4,19 @@ FROM ${BASE_IMAGE}
 ARG PACKAGE_FILE  
   
 # Update and install necessary tools  
-RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \  
-    sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \  
-    yum install -y epel-release && \  
-    yum install -y dnf-plugins-core wget && \  
-    yum config-manager --set-enabled powertools && \  
-    yum clean all  
-  
-# Install missing dependencies  
-RUN yum install -y ocl-icd ocl-icd-devel libyaml-devel  
+RUN if [ -f /etc/redhat-release ]; then \  
+      sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && \  
+      sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \  
+      yum install -y epel-release && \  
+      yum install -y dnf-plugins-core wget && \  
+      yum config-manager --set-enabled powertools && \  
+      yum clean all && \  
+      yum install -y ocl-icd ocl-icd-devel libyaml-devel; \  
+    else \  
+      apt-get update && \  
+      apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev && \  
+      apt-get clean; \  
+    fi  
   
 # Copy and install the package  
 COPY ${PACKAGE_FILE} /tmp/  
