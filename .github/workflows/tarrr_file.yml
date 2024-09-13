@@ -12,9 +12,9 @@ jobs:
     strategy:        
       matrix:        
         include:        
-          - os: centos78        
-            packageType: rpm  
-            os_ver: centos_7.8        
+          # - os: centos78        
+          #   packageType: rpm  
+          #   os_ver: centos_7.8        
           - os: centos8        
             packageType: rpm  
             os_ver: centos_8.1        
@@ -34,46 +34,48 @@ jobs:
             packageType: deb     
             os_ver: ubuntu_18.04    
           
-    runs-on: [self-hosted, Ubuntu-22.04]  
-    steps:    
-      - name: Set env variables      
-        run: |      
-          echo "Setting environment variables..."        
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV      
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
-      
-      - name: Checkout PR     
+    runs-on: [self-hosted, Ubuntu-22.04]
+    steps:  
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v3 
+        with: 
+          # repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: '2021.1'
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          submodules: recursive   
+
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
-        with:   
-          ref: '2021.1'  
-          fetch-depth: 0  
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
-          submodules: recursive  
-  
-      - name: Checkout private repository        
-        uses: actions/checkout@v3     
-        with:        
-          repository: actions-int/composite-workflows  
-          github-server-url: ${{ secrets.SERVER_URL }}        
-          token: ${{ secrets.ACCESS_TOKEN }}        
-          path: composite-workflows   
-          ref: image  
-         
-      - name: XRT build       
-        uses: ./composite-workflows/build  
-        with:       
-          pipeline: ${{ env.PIPELINE }}   
-          osVersion: ${{ matrix.os }}    
-          packageType: ${{ matrix.packageType }}  
-          os_ver: ${{ matrix.os_ver }}    
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
-          github-server-url: ${{ secrets.SERVER_URL }}  
-          appConfig: ${{ secrets.APP_CONFIG }}   
-          appConfig1: ${{ secrets.APP_CONFIG1 }}   
-          appConfig2: ${{ secrets.APP_CONFIG2 }}   
-          appConfig3: ${{ secrets.APP_CONFIG3 }}   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: image
+       
+      - name: XRT build     
+        uses: ./composite-workflows/build
+        with:     
+          pipeline: ${{ env.PIPELINE }} 
+          osVersion: ${{ matrix.os }}  
+          packageType: ${{ matrix.packageType }}
+          os_ver: ${{ matrix.os_ver }}  
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
 
   package-download:    
@@ -113,6 +115,12 @@ jobs:
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
           ls -al  
+        shell: bash  
+        
+      - name: List contents of Dockerfile directory  
+        run: |  
+          echo "Contents of Dockerfile directory:"  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
   
       - name: Find and copy packages  
