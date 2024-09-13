@@ -4,10 +4,14 @@ FROM ${BASE_IMAGE}
 ARG PACKAGE_FILE  
   
 # Update and install necessary tools  
-RUN if [ -f /etc/redhat-release ]; then \  
+RUN echo "Checking network connectivity..." && \  
+    curl -I http://mirrorlist.centos.org || echo "Network check failed" && \  
+    if [ -f /etc/redhat-release ]; then \  
+      echo "Running on a Red Hat-based system" && \  
       yum install -y epel-release wget && \  
       yum clean all; \  
     else \  
+      echo "Running on a Debian-based system" && \  
       apt-get update && \  
       apt-get install -y wget && \  
       apt-get clean; \  
