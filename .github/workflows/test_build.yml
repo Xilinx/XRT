@@ -44,6 +44,9 @@ jobs:
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
           submodules: recursive     
   
+      - name: Create directory for Dockerfile  
+        run: mkdir -p ${{ github.workspace }}/dockerfiles  
+        
       - name: Checkout Dockerfile from master  
         run: |  
           git init  
@@ -53,6 +56,7 @@ jobs:
           git fetch origin master  
           git checkout master  
         working-directory: ${{ github.workspace }}/dockerfiles  
+
   
       - name: Checkout private repository        
         uses: actions/checkout@v3     
