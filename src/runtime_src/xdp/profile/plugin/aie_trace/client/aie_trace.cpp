@@ -294,7 +294,7 @@ namespace xdp {
     }
   }
 
-  bool AieTrace_WinImpl::configureWindowedEventTrace(void* hwCtxImpl {
+  bool AieTrace_WinImpl::configureWindowedEventTrace(void* hwCtxImpl) {
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
