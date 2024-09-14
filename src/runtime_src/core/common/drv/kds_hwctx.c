@@ -388,6 +388,7 @@ kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id)
 	hw_ctx->slot_idx = slot_id;
 	hw_ctx->xclbin_id = xclbin_id;
 	INIT_LIST_HEAD(&hw_ctx->cu_ctx_list);
+	INIT_LIST_HEAD(&hw_ctx->graph_ctx_list);
         list_add_tail(&hw_ctx->link, &client->hw_ctx_list);
 
 	++client->next_hw_ctx_id;
@@ -407,6 +408,12 @@ int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
 	if(!list_empty(&hw_ctx->cu_ctx_list)) {
 		/* CU ctx list must me empty to remove a HW context */
 		kds_err(client, "CU contexts are still open under this HW Context");
+		return -EINVAL;
+	}
+
+	if(!list_empty(&hw_ctx->graph_ctx_list)) {
+		/* Graph ctx list must me empty to remove a HW context */
+		kds_err(client, "Graph contexts are still open under this HW Context");
 		return -EINVAL;
 	}
 	
