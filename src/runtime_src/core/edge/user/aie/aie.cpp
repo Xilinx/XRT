@@ -206,7 +206,8 @@ sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& config, enum xclB
   if (config.shim_port_configs.empty())
     return;
 
-  uint64_t address = bo.address();
+  BD bd;
+  prepare_bd(bd, bo);
   for (auto& port_config : config.shim_port_configs) {
     uint64_t transaction_size_ub = 0;
     for (auto& shim_bd_info : port_config.shim_bd_infos)
@@ -219,15 +220,14 @@ sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& config, enum xclB
     int start_bd = -1;
     for(auto& shim_bd_info : port_config.shim_bd_infos)
     {
-      uint64_t bd_address;
-      bd_address = address  + shim_bd_info.offset * 4;
-      adf::dma_api::updateBDAddress(1 /* (adf::tile_type::shim_tile) */, port_config.shim_column, 0/*shim row*/, (uint8_t)shim_bd_info.bd_id, bd_address);
+      adf::dma_api::updateBDAddressLin(&bd.memInst, port_config.shim_column, 0/*shim row*/, (uint8_t)shim_bd_info.bd_id, shim_bd_info.offset*4);
       if (start_bd < 0)
         start_bd = shim_bd_info.bd_id;
     }
     adf::dma_api::enqueueTask(1 /*(adf::tile_type::shim_tile)*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number, port_config.task_repetition , port_config.enable_task_complete_token, (uint8_t)start_bd);
 
   }
+  clear_bd(bd);
 }
 
 void
