@@ -5,6 +5,7 @@
 
 #include "core/common/cuidx_type.h"
 #include "core/common/error.h"
+#include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/common/shim/shared_handle.h"
 #include "core/common/shim/graph_handle.h"
@@ -103,6 +104,12 @@ public:
 
   virtual std::unique_ptr<xrt_core::profile_handle>
   open_profile_handle()
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual std::unique_ptr<xrt_core::aie_buffer_handle>
+  open_aie_buffer_handle(const char*)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }

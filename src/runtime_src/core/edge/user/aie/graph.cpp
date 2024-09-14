@@ -77,7 +77,8 @@ xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xcl
   if (offset + size > bosize)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
 
-  aieArray->sync_bo(bo, gmioName, dir, size, offset);
+  std::vector<xrt::bo> bos {bo};
+  aieArray->sync_bo(bos, gmioName, dir, size, offset);
 }
 
 void
@@ -99,7 +100,8 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
   if (offset + size > bosize)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
 
-  aieArray->sync_bo_nb(bo, gmioName, dir, size, offset);
+  std::vector<xrt::bo> bos {bo};
+  aieArray->sync_bo_nb(bos, gmioName, dir, size, offset);
 }
 
 void

@@ -879,7 +879,8 @@ err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uin
   XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(1, row));
 
   // uncomment below line once latest Petalinux is available
-  //driverStatus |= XAie_DmaUpdateBdAddrOff(memInst, tileLoc ,offset, bdId);
+  driverStatus |= XAie_DmaUpdateBdAddrOff(memInst, tileLoc ,offset, bdId);
+
 
   if (driverStatus != AieRC::XAIE_OK)
     return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::updateBDAddressLin: AIE driver error.");

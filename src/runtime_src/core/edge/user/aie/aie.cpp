@@ -200,34 +200,30 @@ is_context_set()
 }
 
 void
-Aie::
-sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
+Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (config.shim_port_configs.empty())
+  if (config.shim_port_configs.empty() || bos.size() > 2)
     return;
 
-  BD bd;
-  prepare_bd(bd, bo);
-  for (auto& port_config : config.shim_port_configs) {
-    uint64_t transaction_size_ub = 0;
-    for (auto& shim_bd_info : port_config.shim_bd_infos)
-    {
-      uint64_t transaction_size = shim_bd_info.transaction_size;
-      if (transaction_size > transaction_size_ub)
-        transaction_size_ub = transaction_size;
-    }
+  BD bd[bos.size()];
+  for (size_t i = 0; i < bos.size(); ++i) {
+    prepare_bd(bd[i], bos[i]);
+  }
 
+  for (const auto& port_config : config.shim_port_configs) {
     int start_bd = -1;
-    for(auto& shim_bd_info : port_config.shim_bd_infos)
-    {
-      adf::dma_api::updateBDAddressLin(&bd.memInst, port_config.shim_column, 0/*shim row*/, (uint8_t)shim_bd_info.bd_id, shim_bd_info.offset*4);
+    for (const auto& shim_bd_info : port_config.shim_bd_infos) {
+      auto buf_idx = shim_bd_info.buf_idx;
+      adf::dma_api::updateBDAddressLin(&bd[buf_idx].memInst, port_config.shim_column, 0, static_cast<uint8_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
       if (start_bd < 0)
         start_bd = shim_bd_info.bd_id;
     }
-    adf::dma_api::enqueueTask(1 /*(adf::tile_type::shim_tile)*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number, port_config.task_repetition , port_config.enable_task_complete_token, (uint8_t)start_bd);
-
+    adf::dma_api::enqueueTask(1, port_config.shim_column, 0, port_config.direction, port_config.channel_number, port_config.task_repetition, port_config.enable_task_complete_token, static_cast<uint8_t>(start_bd));
   }
-  clear_bd(bd);
+
+  for (size_t i = 0; i < bos.size(); ++i) {
+    clear_bd(bd[i]);
+  }
 }
 
 void
@@ -244,21 +240,28 @@ wait_external_buffer(adf::external_buffer_config& config)
 
 void
 Aie::
-sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+sync_bo(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
+
+  if (bos.size() == 0)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: No global buffer is provided");
 
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
   auto ebuf_itr = external_buffer_configs.find(gmioName);
   if (ebuf_itr != external_buffer_configs.end()) {
-    sync_external_buffer(bo, ebuf_itr->second, dir, size, offset);
+    sync_external_buffer(bos, ebuf_itr->second, dir, size, offset);
     wait_external_buffer(ebuf_itr->second);
     return;
   }
 
+  if (bos.size() > 1)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: morethan one buffers are not support for GMIO");
+
+  auto bo = bos[0];
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
@@ -273,20 +276,27 @@ sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t s
 
 void
 Aie::
-sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
+
+  if (bos.size() == 0)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: No global buffer is provided");
 
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
   auto ebuf_itr = external_buffer_configs.find(gmioName);
   if (ebuf_itr != external_buffer_configs.end()) {
-    sync_external_buffer(bo, ebuf_itr->second, dir, size, offset);
+    sync_external_buffer(bos, ebuf_itr->second, dir, size, offset);
     return;
   }
 
+  if (bos.size() > 1)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: morethan one buffers are not support for GMIO");
+
+  auto bo = bos[0];
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
@@ -534,4 +544,25 @@ start_profiling_event_count(const std::string& port_name)
   return handle;
 }
 
+bool
+Aie::
+find_gmio(const std::string& buffer_name)
+{
+  auto gmio_itr = gmio_configs.find(buffer_name);
+  if (gmio_itr == gmio_configs.end())
+    return false;
+
+  return true;
+}
+
+bool
+Aie::
+find_external_buffer(const std::string& buffer_name)
+{
+  auto ebuf_itr = external_buffer_configs.find(buffer_name);
+  if (ebuf_itr == external_buffer_configs.end())
+    return false;
+
+  return true;
+}
 }

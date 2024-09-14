@@ -173,6 +173,39 @@ public:
   }
 };
 
+class buffer_impl
+{
+private:
+  std::shared_ptr<xrt_core::device> device;
+  xrt::hw_context hw_ctx;
+  std::unique_ptr<xrt_core::aie_buffer_handle> m_buffer_handle;
+
+public:
+  buffer_impl(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xclbin_id,
+                const std::string& name)
+    : device{std::move(dev)}
+    , m_buffer_handle{device->open_aie_buffer_handle(xclbin_id,name.c_str())}
+  {}
+
+  buffer_impl(xrt::hw_context hwctx, const std::string& name)
+    : device{hwctx.get_device().get_handle()}
+    , hw_ctx{std::move(hwctx)}
+    , m_buffer_handle{(static_cast<xrt_core::hwctx_handle*>(hw_ctx))->open_aie_buffer_handle(name.c_str())}
+  {}
+
+  buffer_impl() = delete;
+  buffer_impl(const buffer_impl&) = delete;
+  buffer_impl(buffer_impl&&) = delete;
+  buffer_impl& operator=(const buffer_impl&) = delete;
+  buffer_impl& operator=(buffer_impl&&) = delete;
+
+  void
+  sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const
+  {
+    m_buffer_handle->sync(bos, dir, size, offset);
+  }
+};
+
 } // xrt::aie
 
 namespace {
@@ -420,6 +453,32 @@ stop() const
   xdp::native::profiling_wrapper("xrt::aie::profiling::stop", [this] {
     return get_handle()->stop();
   });
+}
+
+buffer::
+buffer(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
+  : detail::pimpl<buffer_impl>(std::make_shared<xrt::aie::buffer_impl>(device.get_handle(), xclbin_id, name))
+{}
+
+buffer::
+buffer(const xrt::hw_context& hwctx, const std::string& name)
+    : detail::pimpl<buffer_impl>(std::make_shared<xrt::aie::buffer_impl>(hwctx,name))
+{}
+
+void
+buffer::
+sync(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {bo};
+  return get_handle()->sync(bos, dir, size, offset);
+}
+
+void
+buffer::
+sync(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {ping,pong};
+  return get_handle()->sync(bos, dir, size, offset);
 }
 
 } // xrt:aie
