@@ -223,10 +223,14 @@ namespace xdp {
 
   void AieTrace_WinImpl::build2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event) {
 
-    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(handle);
-    uint8_t startCol = partitionCols[0];
-    auto numColsVec = xdp::aie::getPartitionNumColumnsClient(handle);
-    uint8_t numCols = numColsVec[0];
+    uint8_t startCol = 0, numCols = 0;
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+    for (const auto& e : aiePartitionPt) {
+      startCol = static_cast<uint8_t>(e.second.get<uint64_t>("start_col"));
+      numCols  = static_cast<uint8_t>(e.second.get<uint64_t>("num_cols"));
+      // Currently, assuming only one Hw Context is alive at a time
+      break;
+    }
 
     std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
     for (auto& tileMetric : metadata->getConfigMetrics()) {
@@ -294,8 +298,13 @@ namespace xdp {
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
-    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(handle);
-    uint8_t startCol = partitionCols[0];
+    uint8_t startCol = 0;
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+    for (const auto& e : aiePartitionPt) {
+      startCol = static_cast<uint8_t>(e.second.get<uint64_t>("start_col"));
+      // Currently, assuming only one Hw Context is alive at a time
+      break;
+    }
 
     uint8_t broadcastId1 = 6;
     uint8_t broadcastId2 = 7;
@@ -1016,8 +1025,14 @@ namespace xdp {
 
     // Get partition columns
     // NOTE: for now, assume a single partition
-    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(handle);
-    uint8_t startCol = partitionCols.at(0);
+    uint8_t startCol = 0;
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+    for (const auto& e : aiePartitionPt) {
+      startCol = static_cast<uint8_t>(e.second.get<uint64_t>("start_col"));
+      // Currently, assuming only one Hw Context is alive at a time
+      break;
+    }
+
     std::string startType = xrt_core::config::get_aie_trace_settings_start_type();
     unsigned int startLayer = xrt_core::config::get_aie_trace_settings_start_layer();
     
