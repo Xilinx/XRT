@@ -873,6 +873,19 @@ err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, 
     return err_code::ok;
 }
 
+err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint8_t bdId, uint64_t offset)
+{
+  int driverStatus = XAIE_OK;
+  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(1, row));
+
+  driverStatus |= XAie_DmaUpdateBdAddrOff(memInst, tileLoc ,offset, bdId);
+
+  if (driverStatus != AieRC::XAIE_OK)
+    return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::updateBDAddressLin: AIE driver error.");
+
+  return err_code::ok;
+}
+
 err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address)
 {
   int driverStatus = XAIE_OK; //0

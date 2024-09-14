@@ -15,6 +15,10 @@
 */
 
 #include "adf_api_message.h"
+extern "C"
+{
+#include "xaiengine/xaiegbl.h"
+}
 
 namespace adf
 {
@@ -81,6 +85,7 @@ namespace adf
         static err_code waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
         static err_code waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
 	static err_code updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address);
+        static err_code updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint8_t bdId, uint64_t offset);
 
     };
 
