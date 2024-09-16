@@ -3,7 +3,7 @@ FROM ${BASE_IMAGE}
   
 ARG PACKAGE_FILE  
   
-# Update and install necessary tools  
+# Update and install necessary tools and dependencies  
 RUN if [ -f /etc/redhat-release ]; then \  
     yum install -y epel-release && \  
     yum install -y dnf-plugins-core wget && \  
@@ -14,13 +14,16 @@ elif [ -f /etc/system-release ] && grep -q "Amazon Linux" /etc/system-release; t
     yum install -y wget ocl-icd ocl-icd-devel libyaml-devel; \  
 else \  
     apt-get update && \  
-    apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev && \  
+    apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev \  
+    lsb-release dkms udev python3 uuid-dev libboost-filesystem1.74.0 \  
+    libboost-program-options1.74.0 libgcc-s1 libncurses6 libprotobuf23 \  
+    libssl3 libtinfo6 && \  
     apt-get clean; \  
 fi  
   
 # Copy and install the package  
 COPY ${PACKAGE_FILE} /tmp/  
-RUN if [[ "${PACKAGE_FILE}" == *.rpm ]]; then \  
+RUN if [ "${PACKAGE_FILE##*.}" = "rpm" ]; then \  
     echo "Installing RPM package: ${PACKAGE_FILE}" && \  
     yum install -y /tmp/${PACKAGE_FILE} && \  
     rpm -ql $(rpm -q --whatprovides /tmp/${PACKAGE_FILE}); \  
