@@ -22,24 +22,23 @@ RUN echo "---- Installing Dependencies ----" && \
     else \  
         echo "Detected Debian-based system" && \  
         apt-get update && \  
-        apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev \  
-        lsb-release dkms udev python3 uuid-dev libboost-filesystem1.74.0 \  
-        libboost-program-options1.74.0 libgcc-s1 libncurses6 libprotobuf23 \  
-        libssl3 libtinfo6 && \  
+        apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev && \  
         apt-get clean; \  
     fi  
   
 # Copy and install the package  
 COPY ${PACKAGE_FILE} /tmp/  
-RUN echo "---- Installing Package: ${PACKAGE_FILE} ----" && \  
-    if [ "${PACKAGE_FILE##*.}" = "rpm" ]; then \  
-        echo "Installing RPM package" && \  
+RUN /bin/bash -c " \  
+    echo '---- Checking Package Type ----'; \  
+    if [[ \"${PACKAGE_FILE}\" == *.rpm ]]; then \  
+        echo 'Installing RPM package: ${PACKAGE_FILE}' && \  
         yum install -y /tmp/${PACKAGE_FILE}; \  
     else \  
-        echo "Installing DEB package" && \  
+        echo 'Installing DEB package: ${PACKAGE_FILE}' && \  
         dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \  
     fi && \  
-    rm -f /tmp/${PACKAGE_FILE}  
+    echo '---- Cleaning Up ----' && \  
+    rm -f /tmp/${PACKAGE_FILE}"  
   
 # Enable Systemctl (if needed)  
 RUN echo "---- Setting up Systemctl Replacement ----" && \  
@@ -49,3 +48,11 @@ RUN echo "---- Setting up Systemctl Replacement ----" && \
   
 # Assuming auto_setup.sh is in the same directory as the Dockerfile  
 COPY auto_setup.sh /opt/xilinx/auto_setup.sh  
+  
+# Debug: Verify installation  
+RUN echo "---- Verifying Installation ----" && \  
+    if command -v rpm &> /dev/null; then \  
+        rpm -qa | grep xrt; \  
+    else \  
+        dpkg -l | grep xrt; \  
+    fi  
