@@ -1487,11 +1487,11 @@ namespace xdp {
       devInfo->isNoDMADevice = true;
   }
 
-  void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
+  void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device, bool readAIEMetadata)
   {
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
     // Client should have no PL interface
-    updateDevice(deviceId, xrtXclbin, nullptr, true);
+    updateDevice(deviceId, xrtXclbin, nullptr, true, readAIEMetadata);
   }
 
   // Return true if we should reset the device information.
@@ -2286,7 +2286,7 @@ namespace xdp {
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild, bool readAIEdata)
   {
     XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
     // We need to update the device, but if we had an xclbin previously loaded
@@ -2327,9 +2327,11 @@ namespace xdp {
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ;
 
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
-    readAIEMetadata(xrtXclbin, clientBuild);
-    setAIEGeneration(deviceId, xrtXclbin);
-    setAIEClockRateMHz(deviceId, xrtXclbin);
+    if (readAIEdata) {
+      readAIEMetadata(xrtXclbin, clientBuild);
+      setAIEGeneration(deviceId, xrtXclbin);
+      setAIEClockRateMHz(deviceId, xrtXclbin);
+    }
 
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
