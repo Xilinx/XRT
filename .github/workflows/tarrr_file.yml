@@ -48,6 +48,13 @@ jobs:
       - name: Create directory for Dockerfile  
         run: mkdir -p ${{ github.workspace }}/dockerfiles  
   
+      - name: Remove existing Dockerfile and auto_setup.sh  
+        run: |  
+          echo "Removing existing Dockerfile and auto_setup.sh if they exist..."  
+          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile  
+          rm -f ${{ github.workspace }}/dockerfiles/auto_setup.sh  
+        shell: bash  
+  
       - name: Checkout Dockerfile and auto_setup.sh from master  
         run: |  
           git init  
@@ -58,9 +65,9 @@ jobs:
           git config core.sparseCheckout true  
           echo "Dockerfile" >> .git/info/sparse-checkout  
           echo "auto_setup.sh" >> .git/info/sparse-checkout  
-          git fetch origin master  
-          git checkout master  
-        working-directory: ${{ github.workspace }}/dockerfiles  
+          git fetch origin master --force  
+          git checkout master --force  
+        working-directory: ${{ github.workspace }}/dockerfiles
   
       - name: Checkout private repository  
         uses: actions/checkout@v3  
