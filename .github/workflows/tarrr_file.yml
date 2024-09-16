@@ -47,17 +47,19 @@ jobs:
       - name: Create directory for Dockerfile  
         run: mkdir -p ${{ github.workspace }}/dockerfiles  
         
-      - name: Checkout Dockerfile from master  
-        run: |  
-          git init  
-          git remote add origin https://github.com/Xilinx/preflight-check.git  
-          git config core.sparseCheckout true  
-          echo "Dockerfile" >> .git/info/sparse-checkout  
-          git fetch origin master  
-          git checkout master  
-        working-directory: ${{ github.workspace }}/dockerfiles  
-
-  
+      - name: Checkout Dockerfile from master        
+        run: |        
+          git init        
+          if git remote | grep -q origin; then    
+            git remote remove origin  
+          fi    
+          git remote add origin https://github.com/Xilinx/preflight-check.git        
+          git config core.sparseCheckout true        
+          echo "Dockerfile" >> .git/info/sparse-checkout        
+          git fetch origin master        
+          git checkout master        
+        working-directory: ${{ github.workspace }}/dockerfiles   
+    
       - name: Checkout private repository        
         uses: actions/checkout@v3     
         with:        
