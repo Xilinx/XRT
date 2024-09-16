@@ -45,7 +45,9 @@ jobs:
           - os: ubuntu2004      
             packageType: deb      
           - os: hip      
-            packageType: deb      
+            packageType: deb  
+          - os: ubuntu2404      
+            packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
