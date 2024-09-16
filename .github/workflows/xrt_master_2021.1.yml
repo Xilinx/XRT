@@ -6,10 +6,12 @@ env:
   ENV: 'prod'
 
 on:
+  workflow_dispatch:
+  workflow_call:
   push:
     branches:
       - '2021.1'
-  workflow_dispatch:
+
   
 jobs:
   build:
