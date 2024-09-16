@@ -158,7 +158,7 @@ namespace xdp {
     // pointer to handle any connection to the PL side as necessary.
     // Some plugins do not require any PL control and will pass in nullptr
     DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin,
-                             std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild) ;
+                             std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild, bool readAIEdata = true) ;
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -283,7 +283,7 @@ namespace xdp {
     XDP_CORE_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_CORE_EXPORT void updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle) ;
-    XDP_CORE_EXPORT void updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device);
+    XDP_CORE_EXPORT void updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device, bool readAIEMetadata = true);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
