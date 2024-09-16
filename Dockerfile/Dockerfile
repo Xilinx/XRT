@@ -24,7 +24,7 @@ RUN echo "---- Installing Dependencies ----" && \
         apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev \  
         lsb-release dkms udev python3 uuid-dev libboost-filesystem1.74.0 \  
         libboost-program-options1.74.0 libgcc-s1 libncurses6 libprotobuf23 \  
-        libssl3 libtinfo6 && \  
+        libssl3 libtinfo6 libstdc++6 && \  
         apt-get clean; \  
     fi  
   
