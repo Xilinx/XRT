@@ -29,14 +29,8 @@ RUN echo "---- Installing Dependencies ----" && \
 # Copy and install the package  
 COPY ${PACKAGE_FILE} /tmp/  
 RUN /bin/bash -c " \  
-    echo '---- Checking Package Type ----'; \  
-    if [[ \"${PACKAGE_FILE}\" == *.rpm ]]; then \  
-        echo 'Installing RPM package: ${PACKAGE_FILE}' && \  
-        yum install -y /tmp/${PACKAGE_FILE}; \  
-    else \  
-        echo 'Installing DEB package: ${PACKAGE_FILE}' && \  
-        dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \  
-    fi && \  
+    echo '---- Installing RPM package: ${PACKAGE_FILE} ----'; \  
+    yum install -y /tmp/${PACKAGE_FILE} && \  
     echo '---- Cleaning Up ----' && \  
     rm -f /tmp/${PACKAGE_FILE}"  
   
@@ -51,8 +45,4 @@ COPY auto_setup.sh /opt/xilinx/auto_setup.sh
   
 # Debug: Verify installation  
 RUN echo "---- Verifying Installation ----" && \  
-    if command -v rpm &> /dev/null; then \  
-        rpm -qa | grep xrt; \  
-    else \  
-        dpkg -l | grep xrt; \  
-    fi  
+    rpm -qa | grep xrt  
