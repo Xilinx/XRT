@@ -119,7 +119,7 @@ namespace xdp {
                      XAie_Events startEvent, XAie_Events endEvent);
   
       std::pair<int, XAie_Events>
-      determineBroadcastChannel(const tile_type& currTileLoc);
+      setupBroadcastChannel(const tile_type& currTileLoc);
 
       inline std::shared_ptr<xaiefal::XAiePerfCounter>
       startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
@@ -135,6 +135,9 @@ namespace xdp {
         retCounterEvent = counterEvent;
         return pc;
       }
+
+      std::pair<int, XAie_Events>
+      getPLBroadcastChannel(const tile_type& srcTile);
 
     private:
       XAie_DevInst*     aieDevInst = nullptr;

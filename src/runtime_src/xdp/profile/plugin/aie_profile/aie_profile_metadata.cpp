@@ -1185,6 +1185,15 @@ namespace xdp {
     return true;
   }
 
+  bool AieProfileMetadata::getDestTile(const tile_type& pairTyle, tile_type& destTile) const
+  {
+    if (!isValidLatencyTile(pairTyle))
+      return false;
+
+    destTile = latencyConfigMap.at(pairTyle).dest;
+    return true;
+  }
+
   std::string AieProfileMetadata::srcDestPairKey(uint8_t col, uint8_t row) const
   {
     static std::map<std::string, std::string> keysCache;

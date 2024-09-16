@@ -426,7 +426,7 @@ namespace xdp::aie::profile {
    * re-usage of same broadcast channel again in other plugin flows.
    * TODO: All plugin broadcast usage should only query to FAL
    ***************************************************************************/
-  std::pair<int, XAie_Events> getPLBroadcastChannel()
+  std::pair<int, XAie_Events> getPreferredPLBroadcastChannel()
   {
     static std::vector<XAie_Events> broadcastEvents = {
       XAIE_EVENT_BROADCAST_A_0_PL, XAIE_EVENT_BROADCAST_A_1_PL,
