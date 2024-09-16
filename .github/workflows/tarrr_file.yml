@@ -1,4 +1,4 @@
-name: Testt Build 
+name: Testt Build Final
 env:      
   RELEASE: '2021.1'      
   PIPELINE: 'xrt'     
