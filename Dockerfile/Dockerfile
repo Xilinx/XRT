@@ -3,8 +3,9 @@ FROM ${BASE_IMAGE}
   
 ARG PACKAGE_FILE  
   
-# Debug: Print base image  
-RUN echo "---- Using Base Image: ${BASE_IMAGE} ----"  
+# Debug: Print base image and package file  
+RUN echo "---- Using Base Image ----" && cat /etc/os-release && \  
+    echo "---- Package File: ${PACKAGE_FILE} ----"  
   
 # Update and install necessary tools and dependencies  
 RUN echo "---- Installing Dependencies ----" && \  
@@ -24,7 +25,7 @@ RUN echo "---- Installing Dependencies ----" && \
         apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev \  
         lsb-release dkms udev python3 uuid-dev libboost-filesystem1.74.0 \  
         libboost-program-options1.74.0 libgcc-s1 libncurses6 libprotobuf23 \  
-        libssl3 libtinfo6 libstdc++6 && \  
+        libssl3 libtinfo6 && \  
         apt-get clean; \  
     fi  
   
