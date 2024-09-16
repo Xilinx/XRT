@@ -25,12 +25,10 @@ fi
 COPY ${PACKAGE_FILE} /tmp/  
 RUN if [ "${PACKAGE_FILE##*.}" = "rpm" ]; then \  
     echo "Installing RPM package: ${PACKAGE_FILE}" && \  
-    yum install -y /tmp/${PACKAGE_FILE} && \  
-    rpm -ql $(rpm -q --whatprovides /tmp/${PACKAGE_FILE}); \  
+    yum install -y /tmp/${PACKAGE_FILE}; \  
 else \  
     echo "Installing DEB package: ${PACKAGE_FILE}" && \  
-    dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y && \  
-    dpkg-query -L $(dpkg -f /tmp/${PACKAGE_FILE} Package); \  
+    dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \  
 fi && \  
 rm -f /tmp/${PACKAGE_FILE}  
   
