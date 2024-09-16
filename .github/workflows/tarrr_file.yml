@@ -51,9 +51,9 @@ jobs:
       - name: Remove existing Dockerfile and auto_setup.sh  
         run: |  
           echo "Removing existing Dockerfile and auto_setup.sh if they exist..."  
-          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile  
-          rm -f ${{ github.workspace }}/dockerfiles/auto_setup.sh  
-        shell: bash  
+          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile/Dockerfile  
+          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile/auto_setup.sh  
+        shell: bash 
   
       - name: Checkout Dockerfile and auto_setup.sh from master  
         run: |  
