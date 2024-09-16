@@ -48,7 +48,7 @@ jobs:
       - name: Create directory for Dockerfile  
         run: mkdir -p ${{ github.workspace }}/dockerfiles  
   
-      - name: Checkout Dockerfile from master  
+      - name: Checkout Dockerfile and auto_setup.sh from master  
         run: |  
           git init  
           if git remote | grep -q origin; then  
@@ -57,6 +57,7 @@ jobs:
           git remote add origin https://github.com/Xilinx/preflight-check.git  
           git config core.sparseCheckout true  
           echo "Dockerfile" >> .git/info/sparse-checkout  
+          echo "auto_setup.sh" >> .git/info/sparse-checkout  
           git fetch origin master  
           git checkout master  
         working-directory: ${{ github.workspace }}/dockerfiles  
@@ -122,6 +123,12 @@ jobs:
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
           ls -al  
+        shell: bash  
+  
+      - name: Clear package files in Dockerfile directory  
+        run: |  
+          echo "Clearing package files in Dockerfile directory..."  
+          find ${{ github.workspace }}/dockerfiles/Dockerfile -type f -name '*-xrt.*' -delete  
         shell: bash  
   
       - name: List contents of Dockerfile directory  
