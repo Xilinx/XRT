@@ -158,6 +158,13 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
   catch (xrt_core::query::no_such_key&) {
     pt.add("power_mode", "not supported");
   }
+    try {
+    const auto mode = (xrt_core::device_query<xq::preemption>(device) == 0) ? "enabled" : "disabled";
+      pt.add("force_preemption", mode);
+  } 
+  catch (xrt_core::query::no_such_key&) {
+    pt.add("force_preemption", "not supported");
+  }
 }
 
 static std::string
