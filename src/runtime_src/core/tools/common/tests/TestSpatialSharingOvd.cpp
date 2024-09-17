@@ -83,15 +83,15 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   std::mutex mut;
   std::condition_variable cond_var;
-  uint32_t thread_ready = 0;
+  int thread_ready = 0;
 
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  testcases.emplace_back(xclbin, kernelName);
-  testcases.emplace_back(xclbin, kernelName);
+  testcases.emplace_back(xclbin, kernelName, working_dev);
+  testcases.emplace_back(xclbin, kernelName, working_dev);
 
   // Lambda function to run a test case. This will be sent to individual thread to be run.
   auto runTestcase = [&](TestCase& test) {
@@ -109,7 +109,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   threads.emplace_back(runTestcase, std::ref(testcases[1]));
 
   // Wait for both threads to be ready to begin clocking
-  wait_for_threads_ready((uint32_t)threads.size(), mut, cond_var, thread_ready);
+  wait_for_threads_ready((int)threads.size(), mut, cond_var, thread_ready);
 
   // Measure the latency for running the test cases in parallel
   auto start = std::chrono::high_resolution_clock::now(); 
@@ -124,7 +124,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   /* Run 2 */
   // Create a single test case and run it in a single thread
-  TestCase t(xclbin, kernelName);
+  TestCase t(xclbin, kernelName, working_dev);
   std::thread thr(runTestcase, std::ref(t));
 
   // Wait for the thread to be ready
@@ -139,8 +139,8 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   // Log the latencies and the overhead
   if(XBU::getVerbose()){
-    logger(ptree, "Details", boost::str(boost::format("LatencySingle: '%.1f' ms") % (latencySingle * 1000)));
-    logger(ptree, "Details", boost::str(boost::format("LatencyShared: '%.1f' ms") % (latencyShared * 1000)));
+    logger(ptree, "Details", boost::str(boost::format("Single context latency: '%.1f' ms") % (latencySingle * 1000)));
+    logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: '%.1f' ms") % (latencyShared * 1000)));
   }
   logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % ((latencyShared - latencySingle) * 1000)));
 

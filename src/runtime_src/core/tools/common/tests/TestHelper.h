@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
+#ifndef __TestHelper_h_
+#define __TestHelper_h_
+
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "tools/common/TestRunner.h"
@@ -39,17 +42,16 @@ class TestCase {
   int itr_count;              // Number of iterations
 
   // Method to signal that a thread is ready to run
-  void thread_ready_to_run(std::mutex&, std::condition_variable&, uint32_t&);
+  void thread_ready_to_run(std::mutex&, std::condition_variable&, int&);
 
 public:
   // Constructor to initialize the test case with xclbin and kernel name with hardware context creation
-  TestCase(xrt::xclbin& xclbin, std::string& kernel, size_t buffer_size = 1024)
-      : device(xrt::device(0)), xclbin(xclbin), kernel_name(kernel), buffer_size(buffer_size), itr_count(1000) 
+  TestCase(xrt::xclbin& xclbin, std::string& kernel, xrt::device& device)
+      : device(device), xclbin(xclbin), kernel_name(kernel), buffer_size(1024), itr_count(1000) 
   {
-    device.register_xclbin(xclbin);
     hw_ctx = xrt::hw_context(device, xclbin.get_uuid());
   }
 
-  void run(std::mutex&, std::condition_variable&, uint32_t&);
+  void run(std::mutex&, std::condition_variable&, int&);
 };
-
+#endif

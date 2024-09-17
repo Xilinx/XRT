@@ -506,7 +506,7 @@ TestRunner::get_test_header()
 // - mut: Mutex to lock the critical section
 // - cond_var: Condition variable to wait on
 // - thread_ready: Counter to track the number of ready threads
-void TestRunner::wait_for_threads_ready(uint32_t thread_num, std::mutex& mut, std::condition_variable& cond_var, uint32_t& thread_ready) {
+void TestRunner::wait_for_threads_ready(const int thread_num, std::mutex& mut, std::condition_variable& cond_var, int& thread_ready) {
   std::unique_lock<std::mutex> lock(mut);
   while (thread_ready != thread_num) {
     lock.unlock();

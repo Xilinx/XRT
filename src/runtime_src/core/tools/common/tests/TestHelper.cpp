@@ -55,7 +55,7 @@ void BO_set::set_kernel_args(xrt::run& run) {
 // - cond_var: Condition variable to wait on
 // - thread_ready: Counter to track the number of ready threads
 void
-TestCase::run(std::mutex& mut, std::condition_variable& cond_var, uint32_t& thread_ready)
+TestCase::run(std::mutex& mut, std::condition_variable& cond_var, int& thread_ready)
 {
   std::vector<xrt::kernel> kernels;
   std::vector<BO_set> bo_set_list;
@@ -92,7 +92,7 @@ TestCase::run(std::mutex& mut, std::condition_variable& cond_var, uint32_t& thre
 }
 
 // Method to signal that a thread is ready to run
-void TestCase::thread_ready_to_run(std::mutex& mut, std::condition_variable& cond_var, uint32_t& thread_ready) {
+void TestCase::thread_ready_to_run(std::mutex& mut, std::condition_variable& cond_var, int& thread_ready) {
   std::unique_lock<std::mutex> lock(mut);
   thread_ready++;
   cond_var.wait(lock);
