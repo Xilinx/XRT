@@ -80,7 +80,7 @@ License: Apache-2.0 and/or GPL-2
 Files: src/runtime_src/core/pcie/driver/linux/xocl/lib/cdev_sgdma.h
  src/runtime_src/core/pcie/driver/linux/xocl/lib/libxdma.h
  src/runtime_src/core/pcie/driver/linux/xocl/subdev/ulite.c
-Copyright: (c) 2015 - 2019 Xilinx, Inc.
+Copyright: 2015-2019 Xilinx, Inc.
   2006, Peter Korsgaard <jacmet@sunsite.dk>
   2007, Secret Lab Technologies Ltd.
   2020, Chien-Wei Lan <chienwei@xilinx.com>

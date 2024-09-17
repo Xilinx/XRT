@@ -66,7 +66,7 @@ xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xcl
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -88,7 +88,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -110,7 +110,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -127,7 +127,7 @@ xclResetAieArray(xclDeviceHandle handle)
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -144,7 +144,7 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -162,7 +162,7 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
@@ -180,7 +180,7 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
-  auto aieArray = drv->getAieArray();
+  auto aieArray = drv->get_aie_array_shared();
 
   if (!aieArray->is_context_set()) {
     aieArray->open_context(device.get(), xrt::aie::access_mode::primary);

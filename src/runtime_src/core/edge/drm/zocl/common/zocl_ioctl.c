@@ -93,6 +93,28 @@ int zocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file 
 }
 
 /*
+ * IOCTL to open a graph context under the given hw context
+ */
+int zocl_open_graph_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_open_graph_ctx *drm_graph_ctx = (struct drm_zocl_open_graph_ctx *)data;
+
+	return zocl_open_graph_ctx(zdev, drm_graph_ctx, filp);
+}
+
+/*
+ * IOCTL to close a graph context openned under the given hw context
+ */
+int zocl_close_graph_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_close_graph_ctx *drm_graph_ctx = (struct drm_zocl_close_graph_ctx *)data;
+
+	return zocl_close_graph_ctx(zdev, drm_graph_ctx, filp);
+}
+
+/*
  * Block comment for context switch.
  * The read_axlf_ioctl can happen without calling open context, we need to use mutex
  * lock to exclude access between read_axlf_ioctl and zocl_ctx_ioctl. At one

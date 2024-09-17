@@ -8,10 +8,11 @@
 
 namespace zynqaie {
   graph_object::graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* gname,
-                  xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx)
+                  xrt::graph::access_mode am, zynqaie::hwctx_object* hwctx)
     : m_shim{shim},
       name{gname},
-      access_mode{am}
+      access_mode{am},
+      m_hwctx{hwctx}
   {
       auto device{xrt_core::get_userpf_device(m_shim)};
       auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -19,21 +20,19 @@ namespace zynqaie {
       if (!drv->isAieRegistered())
         throw xrt_core::error(-EINVAL, "No AIE presented");
 
-      aieArray = drv->getAieArray();
+      aieArray = drv->get_aie_array_shared();
 
-      id = xrt_core::edge::aie::get_graph_id(device.get(), name, hwctx);
+      id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctx);
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
-      int ret = drv->openGraphContext(uuid.get(), id, am);
-      if (ret)
-        throw xrt_core::error(ret, "Can not open Graph context");
+      drv->open_graph_context(m_hwctx, uuid.get(), id, am);
 
       /* Initialize graph tile metadata */
-      graph_config = xrt_core::edge::aie::get_graph(device.get(), name, hwctx);
+      graph_config = xrt_core::edge::aie::get_graph(device.get(), name, m_hwctx);
 
       /* Initialize graph rtp metadata */
-      rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, hwctx);
+      rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, m_hwctx);
       aie_config_api = std::make_shared<adf::graph_api>(&graph_config);
       aie_config_api->configure();
       state = graph_state::reset;
@@ -50,7 +49,7 @@ namespace zynqaie {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", warnMsg.str());
       return;
     }
-    drv->closeGraphContext(id);
+    drv->close_graph_context(m_hwctx, id);
     drv->getAied()->deregister_graph(this);
   }
 

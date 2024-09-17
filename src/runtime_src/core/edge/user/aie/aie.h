@@ -82,6 +82,8 @@ public:
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
 
+    Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj);
+
     std::vector<ShimDMA> shim_dma;   // shim DMA // not used anymore, should be cleanedup
 
     /* This is the collections of gmios that are used. */
@@ -96,6 +98,9 @@ public:
 
     void
     open_context(const xrt_core::device* device, xrt::aie::access_mode am);
+
+    void
+    open_context(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx_obj, xrt::aie::access_mode am);
 
     bool
     is_context_set();
