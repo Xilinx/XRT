@@ -21,6 +21,10 @@
 * @see runTestcase()
 * @see wait_for_threads_ready()
 * @see std::thread::join()
+
+   * | col1         | col2       | col3       | col4       | col5       | col6       | col7       | col8       |
+   * |--------------|------------|------------|------------|------------|------------|------------|------------|
+   * |                      shared 4x1                     |                   shared 4x1                      |
 */
 
 // Class representing the TestSpatialSharingOvd test
