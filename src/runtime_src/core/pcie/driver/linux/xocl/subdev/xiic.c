@@ -1,6 +1,7 @@
 /**
  *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
  *  Copyright (c) 2009-2010 Intel Corporation
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
  *
  *  I2C driver module
  *

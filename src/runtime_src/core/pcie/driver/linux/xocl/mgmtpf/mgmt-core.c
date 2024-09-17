@@ -1,7 +1,8 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2020 Xilinx, Inc.
+ * Copyright (c) 2017-present, Advanced Micro Devices, Inc.
+ * All rights reserved.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *

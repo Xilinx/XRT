@@ -1,7 +1,8 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (c) 2020-present, Advanced Micro Devices, Inc.
+ * All rights reserved.
  *
  * Authors: Chien-Wei Lan <chienwei@xilinx.com>
  *

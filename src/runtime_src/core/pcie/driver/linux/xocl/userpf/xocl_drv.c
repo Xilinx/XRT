@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (c) 2016-present, Advanced Micro Devices, Inc.
+ * All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
