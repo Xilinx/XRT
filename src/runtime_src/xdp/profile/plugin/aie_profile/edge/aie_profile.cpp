@@ -442,6 +442,7 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    aie::displayColShiftInfo(startColShift);
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       auto configMetrics = metadata->getConfigMetrics(module);

@@ -17,8 +17,9 @@
 #define XDP_CORE_SOURCE
 
 #include "aie_trace_config_filetype.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>

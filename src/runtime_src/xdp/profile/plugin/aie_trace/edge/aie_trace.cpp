@@ -296,6 +296,7 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    aie::displayColShiftInfo(startColShift);
 
     // Zero trace event tile counts
     for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
