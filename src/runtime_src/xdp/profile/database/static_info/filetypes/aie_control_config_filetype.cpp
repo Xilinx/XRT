@@ -67,6 +67,11 @@ AIEControlConfigFiletype::getAIETileRowOffset() const {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
 }
 
+std::vector<uint8_t>
+AIEControlConfigFiletype::getPartitionOverlayStartCols() const {
+  return std::vector<uint8_t>{0};
+}
+
 std::vector<std::string>
 AIEControlConfigFiletype::getValidGraphs() const
 {

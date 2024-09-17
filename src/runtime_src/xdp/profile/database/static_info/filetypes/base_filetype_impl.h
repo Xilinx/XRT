@@ -42,6 +42,9 @@ class BaseFiletypeImpl {
         
         virtual uint8_t getAIETileRowOffset() const = 0;
 
+        virtual std::vector<uint8_t>
+        getPartitionOverlayStartCols() const = 0;
+
         virtual std::vector<std::string>
         getValidGraphs() const = 0;
 

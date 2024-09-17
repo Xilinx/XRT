@@ -295,6 +295,8 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
 
+    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+
     // Zero trace event tile counts
     for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
       for (int n = 0; n <= NUM_TRACE_EVENTS; ++n)
@@ -314,7 +316,7 @@ namespace xdp {
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
-      auto col        = tile.col;
+      auto col        = tile.col + startColShift;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
       auto type       = aie::getModuleType(row, metadata->getRowOffset());

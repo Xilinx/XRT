@@ -31,6 +31,22 @@ using severity_level = xrt_core::message::severity_level;
 AIETraceConfigFiletype::AIETraceConfigFiletype(boost::property_tree::ptree& aie_project)
 : AIEControlConfigFiletype(aie_project) {}
 
+std::vector<uint8_t>
+AIETraceConfigFiletype::getPartitionOverlayStartCols() const {
+    auto partitionOverlays = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+    if (!partitionOverlays) {
+        return std::vector<uint8_t>{0};
+    }
+
+    std::vector<uint8_t> allStartColShits;
+    for (auto const &shift : partitionOverlays.get()) {
+        uint8_t colShift = xdp::aie::convertStringToUint8(shift.second.data());
+        allStartColShits.push_back(colShift);
+    }
+
+    return allStartColShits.size() > 0 ? allStartColShits : std::vector<uint8_t>{0};
+}
+
 std::vector<std::string>
 AIETraceConfigFiletype::getValidKernels() const
 {
