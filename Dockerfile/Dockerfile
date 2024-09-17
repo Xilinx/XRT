@@ -26,13 +26,17 @@ RUN echo "---- Installing Dependencies ----" && \
         apt-get clean; \  
     fi  
   
-# Copy and install the package  
-COPY ${PACKAGE_FILE} /tmp/  
-RUN /bin/bash -c " \  
-    echo '---- Installing RPM package: ${PACKAGE_FILE} ----'; \  
-    yum install -y /tmp/${PACKAGE_FILE} && \  
-    echo '---- Cleaning Up ----' && \  
-    rm -f /tmp/${PACKAGE_FILE}"  
+# Copy and install the package    
+COPY ${PACKAGE_FILE} /tmp/    
+RUN if [[ "${PACKAGE_FILE}" == *.rpm ]]; then \    
+        echo "Installing RPM package: ${PACKAGE_FILE}" && \    
+        yum install -y /tmp/${PACKAGE_FILE}; \    
+    else \    
+        echo "Installing DEB package: ${PACKAGE_FILE}" && \    
+        dpkg -i /tmp/${PACKAGE_FILE} || apt-get install -f -y; \    
+    fi && \    
+    rm -f /tmp/${PACKAGE_FILE}  
+
   
 # Enable Systemctl (if needed)  
 RUN echo "---- Setting up Systemctl Replacement ----" && \  
