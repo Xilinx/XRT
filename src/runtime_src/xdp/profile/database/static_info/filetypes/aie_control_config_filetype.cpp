@@ -219,7 +219,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
 
     for (auto& io : ios) {
         auto isMaster    = io.second.slaveOrMaster;
-        auto streamId    = io.second.streamId;
         auto shimCol     = io.second.shimColumn;
         auto logicalName = io.second.logicalName;
         auto name        = io.second.name;
@@ -256,12 +255,18 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
-        // Make sure channel number is same as specified (GMIO only)
-        if ((type == io_type::GMIO) && (channelId >= 0) && (channelId != io.second.channelNum)) {
-            std::stringstream msg;
-            msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
-                << +shimCol <<" and stream ID " << +streamId;
-            xrt_core::message::send(severity_level::info, "XRT", msg.str());
+
+        // Make sure stream/channel number is as specified
+        // NOTE: For GMIO we use DMA channel number; for PLIO, we use the SOUTH location
+        uint8_t idToCheck = (type == io_type::GMIO) ? io.second.channelNum : io.second.streamId;
+        if ((channelId >= 0) && (channelId != idToCheck)) {
+            if (isInfoVerbosity()) {
+                std::string idType = (type == io_type::GMIO) ? "channel" : "stream";
+                std::stringstream msg;
+                msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
+                    << +shimCol <<" and " << idType << " ID of " << +idToCheck;
+                xrt_core::message::send(severity_level::info, "XRT", msg.str());
+            }
             continue;
         }
 
