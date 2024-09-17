@@ -115,9 +115,11 @@ namespace xdp {
    uint8_t startColShift = metadataReader->getPartitionOverlayStartCols().front();
    aie::displayColShiftInfo(startColShift);
 
-   for(auto& [graph, tileVec] : mGraphCoreTilesMap) {
-    for(auto& tile : tileVec)
-      tile.col += startColShift;
+   if (startColShift > 0) {
+    for(auto& [graph, tileVec] : mGraphCoreTilesMap) {
+      for(auto& tile : tileVec)
+        tile.col += startColShift;
+    }
    }
 
     // Report tiles (debug only)
