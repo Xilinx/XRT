@@ -35,6 +35,7 @@ namespace zynqaie {
     graph_state state;
     std::string name;
     xrt::graph::access_mode access_mode;
+    zynqaie::hwctx_object* m_hwctx = nullptr;
 
     /**
      * This is the pointer to the AIE array where the AIE part of
@@ -55,7 +56,7 @@ namespace zynqaie {
 
   public:
     graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* name,
-                    xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx = nullptr);
+                    xrt::graph::access_mode am, zynqaie::hwctx_object* hwctx = nullptr);
 					
 	  ~graph_object();
 
