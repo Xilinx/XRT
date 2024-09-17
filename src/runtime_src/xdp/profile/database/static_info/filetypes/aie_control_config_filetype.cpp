@@ -208,7 +208,7 @@ std::vector<tile_type>
 AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             const std::string& portName,
                                             const std::string& metricStr,
-                                            int16_t channelId,
+                                            int16_t specifiedId,
                                             bool useColumn,
                                             uint8_t minCol,
                                             uint8_t maxCol) const
@@ -220,6 +220,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
     for (auto& io : ios) {
         auto isMaster    = io.second.slaveOrMaster;
         auto shimCol     = io.second.shimColumn;
+        auto streamId    = io.second.streamId;
+        auto channelNum  = io.second.channelNum;
         auto logicalName = io.second.logicalName;
         auto name        = io.second.name;
         auto type        = io.second.type;
@@ -258,15 +260,13 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
 
         // Make sure stream/channel number is as specified
         // NOTE: For GMIO we use DMA channel number; for PLIO, we use the SOUTH location
-        uint8_t idToCheck = (type == io_type::GMIO) ? io.second.channelNum : io.second.streamId;
-        if ((channelId >= 0) && (channelId != idToCheck)) {
-            if (isInfoVerbosity()) {
-                std::string idType = (type == io_type::GMIO) ? "channel" : "stream";
-                std::stringstream msg;
-                msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
-                    << +shimCol <<" and " << idType << " ID of " << +idToCheck;
-                xrt_core::message::send(severity_level::info, "XRT", msg.str());
-            }
+        uint8_t idToCheck  = (type == io_type::GMIO) ? channelNum : streamId;
+        if ((specifiedId >= 0) && (specifiedId != idToCheck)) {
+            std::string idType = (type == io_type::GMIO) ? "channel" : "stream";
+            std::stringstream msg;
+            msg << "Specified " << idType << " ID " << +specifiedId << "doesn't match for "
+                << "interface column " << +shimCol <<" and " << idType << " ID of " << +idToCheck;
+            xrt_core::message::send(severity_level::info, "XRT", msg.str());
             continue;
         }
 
@@ -281,9 +281,9 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         tiles.emplace_back(std::move(tile));
     }
 
-    if (tiles.empty() && (channelId >= 0)) {
-        std::string msg = "No tiles used channel ID " + std::to_string(channelId) 
-                        + ". Please specify a valid channel ID.";
+    if (tiles.empty() && (specifiedId >= 0)) {
+        std::string msg = "No tiles used specified ID " + std::to_string(specifiedId) 
+                        + ". Please specify a valid ID.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 
