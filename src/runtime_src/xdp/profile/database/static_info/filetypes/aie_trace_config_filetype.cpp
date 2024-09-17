@@ -38,13 +38,13 @@ AIETraceConfigFiletype::getPartitionOverlayStartCols() const {
         return std::vector<uint8_t>{0};
     }
 
-    std::vector<uint8_t> allStartColShits;
+    std::vector<uint8_t> allStartColShifts;
     for (auto const &shift : partitionOverlays.get()) {
         uint8_t colShift = xdp::aie::convertStringToUint8(shift.second.data());
-        allStartColShits.push_back(colShift);
+        allStartColShifts.push_back(colShift);
     }
 
-    return allStartColShits.size() > 0 ? allStartColShits : std::vector<uint8_t>{0};
+    return allStartColShifts.size() > 0 ? allStartColShifts : std::vector<uint8_t>{0};
 }
 
 std::vector<std::string>
