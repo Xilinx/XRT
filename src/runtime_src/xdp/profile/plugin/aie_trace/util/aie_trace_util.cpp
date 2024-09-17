@@ -121,7 +121,7 @@ namespace xdp::aie::trace {
     //   * AIE2+ supports all eight trace events (AIE1 requires one for counter)
     //   * Sets w/ DMA stall/backpressure events not supported on AIE1
     if (hwGen > 1) {
-      eventSets["all_stalls_s2mm"].insert(XAIE_EVENT_CASCADE_STALL_CORE);
+      eventSets["all_stalls_s2mm"].push_back(XAIE_EVENT_CASCADE_STALL_CORE);
 
       eventSets["s2mm_channels_stalls"] =
          {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
