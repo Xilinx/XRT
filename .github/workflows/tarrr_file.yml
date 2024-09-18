@@ -68,7 +68,13 @@ jobs:
           echo "Setting environment variables..."        
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV      
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV   
-  
+    
+      - name: Checkout repository  
+        uses: actions/checkout@v3  
+        with:  
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+    
       - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
@@ -77,10 +83,10 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
           ref: '2021.1'  
-  
+    
       - name: List workspace contents  
         run: ls -alR ${{ github.workspace }}  
-  
+    
       - name: Use composite action package download       
         uses: ./composite-workflows/package-download     
         with:      
@@ -110,6 +116,7 @@ jobs:
             cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
           done    
         shell: bash    
+   
   
   docker-build:    
     needs: [package-download]    
