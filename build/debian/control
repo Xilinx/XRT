@@ -29,6 +29,7 @@ Build-Depends: cmake,
                pkg-config,
                protobuf-compiler,
                rapidjson-dev,
+               systemtap-sdt-dev,
                uuid-dev,
 Standards-Version: 4.5.0
 
