@@ -65,7 +65,7 @@ class BaseFiletypeImpl {
         getInterfaceTiles(const std::string& graphName,
                           const std::string& portName = "all",
                           const std::string& metricStr = "channels",
-                          int16_t channelId = -1,
+                          int16_t specifiedId = -1,
                           bool useColumn = false, 
                           uint8_t minCol = 0, 
                           uint8_t maxCol = 0) const = 0;
