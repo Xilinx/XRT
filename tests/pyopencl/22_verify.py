@@ -1,3 +1,4 @@
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 # this code is based on validate testcase
 import pyopencl as cl
 import numpy as np
