@@ -48,7 +48,7 @@ RUN echo "---- Setting up Systemctl Replacement ----" && \
     ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py /usr/local/bin/systemctl    
     
 # Assuming auto_setup.sh is in the same directory as the Dockerfile    
-COPY auto_setup.sh /opt/xilinx/auto_setup.sh    
+COPY Dockerfile/auto_setup.sh /opt/xilinx/auto_setup.sh    
     
 # Debug: Verify installation    
 RUN echo "---- Verifying Installation ----" && \    
