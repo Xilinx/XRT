@@ -89,6 +89,8 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     break;
   }
 
+  std::vector<xrt::bo> global_args;
+
   // create specified a run and populate with arguments
   auto run = xrt::run(testker);
   for (const auto& arg : cu.get_args()) {
@@ -106,6 +108,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
         bo = xrt::bo(working_dev, arg.get_size(), xrt::bo::flags::host_only, testker.group_id(arg_idx));
 
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      global_args.push_back(bo);
 	    run.set_arg(arg_idx, bo);
     }
   } 
