@@ -261,14 +261,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure stream/channel number is as specified
         // NOTE: For GMIO we use DMA channel number; for PLIO, we use the SOUTH location
         uint8_t idToCheck = (type == io_type::GMIO) ? channelNum : streamId;
-        if ((specifiedId >= 0) && (specifiedId != idToCheck)) {
-            std::string idType = (type == io_type::GMIO) ? "channel" : "stream";
-            std::stringstream msg;
-            msg << "Specified " << idType << " ID " << +specifiedId << "doesn't match for "
-                << "interface column " << +shimCol <<" and " << idType << " ID of " << +idToCheck;
-            xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        if ((specifiedId >= 0) && (specifiedId != idToCheck))
             continue;
-        }
 
         tile_type tile = {0};
         tile.col = shimCol;
