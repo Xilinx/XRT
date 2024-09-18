@@ -133,6 +133,18 @@ namespace xdp::aie {
     return *hwGen;
   }
 
+  // On Edge devices, AIE clock frequency shouldn't change once execution has started.
+  // On Client devices, this static information from metadata may not be correct.
+  double getAIEClockFreqMHz(const boost::property_tree::ptree& aie_meta,
+                            const std::string& root)
+  {
+    static std::optional<double> clockFreqMHz;
+    if (!clockFreqMHz.has_value()) {
+      clockFreqMHz = aie_meta.get_child(root).get_value<double>();
+    }
+    return *clockFreqMHz;
+  }
+
   /****************************************************************************
    * Get metadata required to configure driver
    ***************************************************************************/

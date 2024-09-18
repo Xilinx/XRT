@@ -36,6 +36,7 @@ class BaseFiletypeImpl {
         getDriverConfig() const = 0;
         
         virtual int getHardwareGeneration() const = 0;
+        virtual double getAIEClockFreqMHz() const = 0;
         
         virtual aiecompiler_options
         getAIECompilerOptions() const = 0;
