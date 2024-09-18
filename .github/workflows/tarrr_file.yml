@@ -1,147 +1,120 @@
-name: Test Build Final  
+name: Test 1 build
 env:  
   RELEASE: '2021.1'  
-  PIPELINE: 'xrt'  
-  ENV: 'test'  
+  PIPELINE: 'xrt' 
+  ENV: 'test'
+
+on:
+  workflow_dispatch:
   
-on:  
-  workflow_dispatch:  
-  
-jobs:  
-  build:  
-    strategy:  
-      matrix:  
-        include:  
-          - os: centos8  
-            packageType: rpm  
-            os_ver: centos_8.1  
-          # Uncomment the following lines to enable other OS builds  
-          # - os: ubuntu2004  
-          #   packageType: deb  
-          #   os_ver: ubuntu_20.04  
-          # - os: ubuntu2204  
-          #   packageType: deb  
-          #   os_ver: ubuntu_22.04  
-          # - os: amazonlinux-20202011111  
-          #   packageType: rpm  
-          #   os_ver: amazonlinux20202011111  
-          # - os: ubuntu1804  
-          #   packageType: deb  
+jobs:
+  build:
+    strategy:      
+      matrix:      
+        include:      
+          # - os: centos78      
+          #   packageType: rpm
+          #   os_ver: centos_7.8      
+          - os: centos8      
+            packageType: rpm
+            os_ver: centos_8.1      
+          # - os: rhel9      
+          #   packageType: rpm
+          #   os_ver: rhel_9.1      
+          # - os: ubuntu2004      
+          #   packageType: deb
+          #   os_ver: ubuntu_20.04      
+          # - os: ubuntu2204      
+          #   packageType: deb
+          #   os_ver: ubuntu_22.04 
+          # - os: amazonlinux-20202011111 
+          #   packageType: rpm
+          #   os_ver: amazonlinux20202011111     
+          # - os: ubuntu1804      
+          #   packageType: deb   
           #   os_ver: ubuntu_18.04  
-  
-    runs-on: [self-hosted, Ubuntu-22.04]  
+        
+    runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
-      - name: Set env variables  
-        run: |  
-          echo "Setting environment variables..."  
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV  
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV  
-  
-      - name: Checkout PR  
-        uses: actions/checkout@v3  
-        with:  
-          ref: '2021.1'  
-          fetch-depth: 0  
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v3 
+        with: 
+          # repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          # ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-          submodules: recursive  
-  
-      - name: Create directory for Dockerfile  
-        run: mkdir -p ${{ github.workspace }}/dockerfiles  
-  
-      - name: Remove existing Dockerfile and auto_setup.sh  
-        run: |  
-          echo "Removing existing Dockerfile and auto_setup.sh if they exist..."  
-          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile/Dockerfile  
-          rm -f ${{ github.workspace }}/dockerfiles/Dockerfile/auto_setup.sh  
-        shell: bash 
-  
-      - name: Checkout Dockerfile and auto_setup.sh from master  
-        run: |  
-          git init  
-          if git remote | grep -q origin; then  
-            git remote remove origin  
-          fi  
-          git remote add origin https://github.com/Xilinx/preflight-check.git  
-          git config core.sparseCheckout true  
-          echo "Dockerfile" >> .git/info/sparse-checkout  
-          echo "auto_setup.sh" >> .git/info/sparse-checkout  
-          git fetch origin master --force  
-          git checkout master --force  
-        working-directory: ${{ github.workspace }}/dockerfiles
-  
-      - name: Checkout private repository  
-        uses: actions/checkout@v3  
-        with:  
-          repository: actions-int/composite-workflows  
-          github-server-url: ${{ secrets.SERVER_URL }}  
-          token: ${{ secrets.ACCESS_TOKEN }}  
-          path: composite-workflows  
-          ref: image  
-  
-      - name: XRT build  
-        uses: ./composite-workflows/build  
-        with:  
-          pipeline: ${{ env.PIPELINE }}  
+          submodules: recursive   
+
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: image
+       
+      - name: XRT build     
+        uses: ./composite-workflows/build
+        with:     
+          pipeline: ${{ env.PIPELINE }} 
           osVersion: ${{ matrix.os }}  
-          packageType: ${{ matrix.packageType }}  
+          packageType: ${{ matrix.packageType }}
           os_ver: ${{ matrix.os_ver }}  
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
-          github-server-url: ${{ secrets.SERVER_URL }}  
-          appConfig: ${{ secrets.APP_CONFIG }}  
-          appConfig1: ${{ secrets.APP_CONFIG1 }}  
-          appConfig2: ${{ secrets.APP_CONFIG2 }}  
-          appConfig3: ${{ secrets.APP_CONFIG3 }}  
-  
-  package-download:  
-    needs: [build]  
-    runs-on: [self-hosted, Ubuntu-22.04]  
-    steps:  
-      - name: Set env variables  
-        run: |  
-          echo "Setting environment variables..."  
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV  
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV  
-  
-      - name: Checkout private repository  
-        uses: actions/checkout@v3  
-        with:  
-          repository: actions-int/composite-workflows  
-          token: ${{ secrets.ACCESS_TOKEN }}  
-          github-server-url: ${{ secrets.SERVER_URL }}  
-          path: composite-workflows  
-          ref: '2021.1'  
-  
-      - name: Use composite action package download  
-        uses: ./composite-workflows/package-download  
-        with:  
-          runNumber: ${{ env.XRT_VERSION_PATCH }}  
-          pipeline: ${{ env.PIPELINE }}  
-          env: ${{ env.ENV }}  
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
+
+  package-download:    
+    needs: [build]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: '2021.1'
+
+    
+      - name: Use composite action package download     
+        uses: ./composite-workflows/package-download   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
           release: ${{ env.RELEASE }}  
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
-          NPATH: ${{ secrets.NPATH }}  
-          USER: ${{ secrets.USER }}  
-          github-server-url: ${{ secrets.SERVER_URL }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }} 
   
       - name: List contents of artifact directory  
         run: |  
           cd ${{ env.PATH_DIR }}/artifact  
           ls -al  
-        shell: bash  
-  
-      - name: Clear package files in Dockerfile directory  
-        run: |  
-          echo "Clearing package files in Dockerfile directory..."  
-          find ${{ github.workspace }}/dockerfiles/Dockerfile -type f -name '*-xrt.*' -delete  
-        shell: bash  
-  
-      - name: List contents of Dockerfile directory  
-        run: |  
-          echo "Contents of Dockerfile directory:"  
-          ls -al ${{ github.workspace }}/dockerfiles/Dockerfile  
         shell: bash  
   
       - name: Find and copy packages  
@@ -151,19 +124,10 @@ jobs:
           ls -al  
           for package_file in *-xrt.rpm; do  
             echo "Found package: $package_file"  
-            cp $package_file ${{ github.workspace }}/dockerfiles/Dockerfile/  
+            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/  
           done  
-          # Uncomment the following lines to handle .deb packages  
-          # if ls *-xrt.deb 1> /dev/null 2>&1; then  
-          #   for package_file in *-xrt.deb; do  
-          #     echo "Found package: $package_file"  
-          #     cp $package_file ${{ github.workspace }}/dockerfiles/Dockerfile/  
-          #   done  
-          # else  
-          #   echo "No .deb packages found."  
-          # fi  
         shell: bash  
-  
+
   docker-build:  
     needs: [package-download]  
     runs-on: [self-hosted, Ubuntu-22.04]  
@@ -177,63 +141,21 @@ jobs:
       - name: List contents of Dockerfile directory  
         run: |  
           echo "Contents of Dockerfile directory:"  
-          ls -al ${{ github.workspace }}/dockerfiles/Dockerfile  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
         shell: bash  
   
       - name: Build Docker images  
         run: |  
-          for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.rpm; do  
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do  
             echo "Building image for $package_file"  
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
             if [[ $package_file == *centos_8.1* ]]; then  
               base_image="centos:8"  
-            elif [[ $package_file == *ubuntu_20.04* ]]; then  
-              base_image="ubuntu:20.04"  
-            elif [[ $package_file == *ubuntu_22.04* ]]; then  
-              base_image="ubuntu:22.04"  
-            elif [[ $package_file == *amazonlinux20202011111* ]]; then  
-              base_image="amazonlinux:2"  
             else  
-              base_image="ubuntu:18.04"  
+              base_image="ubuntu:22.04"  
             fi  
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/dockerfiles/Dockerfile/Dockerfile ${{ github.workspace }}/dockerfiles/Dockerfile  
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
           done  
-          # Uncomment the following lines to handle .deb packages  
-          # for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.deb; do  
-          #   echo "Building image for $package_file"  
-          #   image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-          #   if [[ $package_file == *ubuntu_20.04* ]]; then  
-          #     base_image="ubuntu:20.04"  
-          #   elif [[ $package_file == *ubuntu_22.04* ]]; then  
-          #     base_image="ubuntu:22.04"  
-          #   elif [[ $package_file == *ubuntu_18.04* ]]; then  
-          #     base_image="ubuntu:18.04"  
-          #   fi  
-          #   docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/dockerfiles/Dockerfile/Dockerfile ${{ github.workspace }}/dockerfiles/Dockerfile  
-          # done  
-        shell: bash  
-  
-      - name: Verify XRT package in Docker image  
-        run: |  
-          for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.rpm; do  
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-            echo "Running container from image xrt_image:$image_tag"  
-            docker run --rm xrt_image:$image_tag bash -c "  
-              if command -v rpm &> /dev/null; then  
-                rpm -qa | grep xrt  
-              else  
-                dpkg -l | grep xrt  
-              fi  
-            "  
-          done  
-          # Uncomment the following lines to verify .deb packages  
-          # for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.deb; do  
-          #   image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-          #   echo "Running container from image xrt_image:$image_tag"  
-          #   docker run --rm xrt_image:$image_tag bash -c "  
-          #     dpkg -l | grep xrt  
-          #   "  
-          # done  
         shell: bash  
   
       - name: Authenticate with Harbor  
@@ -243,17 +165,10 @@ jobs:
   
       - name: Push Docker images to AMD Harbor  
         run: |  
-          for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.rpm; do  
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
             echo "Pushing image xrt_image:$image_tag"  
             docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag  
             docker push registry.amd.com/buildops/xrt_image:$image_tag  
           done  
-          # Uncomment the following lines to push .deb images  
-          # for package_file in ${{ github.workspace }}/dockerfiles/Dockerfile/*-xrt.deb; do  
-          #   image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
-          #   echo "Pushing image xrt_image:$image_tag"  
-          #   docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag  
-          #   docker push registry.amd.com/buildops/xrt_image:$image_tag  
-          # done  
-        shell: bash  
+        shell: bash
