@@ -402,4 +402,16 @@ namespace xdp::aie {
     return infoPt;
   }
 
+  void displayColShiftInfo(uint8_t colShift)
+  {
+    static bool displayed = false;
+    if (colShift>0 && !displayed) {
+      std::stringstream msg;
+      msg << "Partition start column shift of " << +colShift << " was found."
+          << " Tile locations are adjusted by this column shift.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      displayed = true;
+    }
+  }
+
 } // namespace xdp::aie

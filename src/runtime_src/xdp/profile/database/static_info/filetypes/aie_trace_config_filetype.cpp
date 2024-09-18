@@ -17,8 +17,9 @@
 #define XDP_CORE_SOURCE
 
 #include "aie_trace_config_filetype.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -30,6 +31,22 @@ using severity_level = xrt_core::message::severity_level;
 
 AIETraceConfigFiletype::AIETraceConfigFiletype(boost::property_tree::ptree& aie_project)
 : AIEControlConfigFiletype(aie_project) {}
+
+std::vector<uint8_t>
+AIETraceConfigFiletype::getPartitionOverlayStartCols() const {
+    auto partitionOverlays = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+    if (!partitionOverlays) {
+        return std::vector<uint8_t>{0};
+    }
+
+    std::vector<uint8_t> allStartColShifts;
+    for (auto const &shift : partitionOverlays.get()) {
+        uint8_t colShift = xdp::aie::convertStringToUint8(shift.second.data());
+        allStartColShifts.push_back(colShift);
+    }
+
+    return allStartColShifts.size() > 0 ? allStartColShifts : std::vector<uint8_t>{0};
+}
 
 std::vector<std::string>
 AIETraceConfigFiletype::getValidKernels() const

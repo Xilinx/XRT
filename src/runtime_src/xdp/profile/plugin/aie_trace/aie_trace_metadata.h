@@ -108,6 +108,9 @@ class AieTraceMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
+    inline std::vector<uint8_t> getPartitionOverlayStartCols() const {
+      return metadataReader->getPartitionOverlayStartCols();
+    }
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
 
     bool isGMIOMetric(const std::string& metric) const {

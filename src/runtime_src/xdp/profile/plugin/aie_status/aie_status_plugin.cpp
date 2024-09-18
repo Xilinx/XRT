@@ -110,6 +110,18 @@ namespace xdp {
       mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
     }
 
+   //Note: AIE Status is not released product on client. Whenever client support is needed,
+   // required dynamic column start shift should come from XRT and not compiler metadata
+   uint8_t startColShift = metadataReader->getPartitionOverlayStartCols().front();
+   aie::displayColShiftInfo(startColShift);
+
+   if (startColShift > 0) {
+    for(auto& [graph, tileVec] : mGraphCoreTilesMap) {
+      for(auto& tile : tileVec)
+        tile.col += startColShift;
+    }
+   }
+
     // Report tiles (debug only)
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::stringstream msg;
@@ -117,7 +129,7 @@ namespace xdp {
       for (const auto& kv : mGraphCoreTilesMap) {
         msg << kv.first << " : ";
         for (const auto& tile : kv.second)
-          msg << "(" << tile.col << "," << tile.row << "), ";
+          msg << "(" << +tile.col << "," << +tile.row << "), ";
         msg << "\n";
       }
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
@@ -357,7 +369,7 @@ namespace xdp {
           for (const auto& tile : graphTilesVec) {
             if (coreStuckCountMap[tile]) {
               msg
-                << "T(" << tile.col <<"," << tile.row << "):" << "<" << coreStuckCountMap[tile]
+                << "T(" << +tile.col <<"," << +tile.row << "):" << "<" << coreStuckCountMap[tile]
                 << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
             }
           }

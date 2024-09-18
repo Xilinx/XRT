@@ -104,6 +104,9 @@ namespace xdp::aie {
   boost::property_tree::ptree
   getAIEPartitionInfoClient(void* hwCtxImpl);
 
+  XDP_CORE_EXPORT
+  void displayColShiftInfo(uint8_t colShift);
+
 } // namespace xdp::aie
 
 #endif
