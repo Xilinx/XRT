@@ -41,9 +41,6 @@ class TestCase {
   size_t buffer_size;         // Size of the buffer
   int itr_count;              // Number of iterations
 
-  // Method to signal that a thread is ready to run
-  void thread_ready_to_run(std::mutex&, std::condition_variable&, int&);
-
 public:
   // Constructor to initialize the test case with xclbin and kernel name with hardware context creation
   TestCase(xrt::xclbin& xclbin, std::string& kernel, xrt::device& device)
@@ -52,6 +49,6 @@ public:
     hw_ctx = xrt::hw_context(device, xclbin.get_uuid());
   }
 
-  void run(std::mutex&, std::condition_variable&, int&);
+  void run(std::function<void()>);
 };
 #endif

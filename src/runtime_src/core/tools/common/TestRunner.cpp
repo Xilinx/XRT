@@ -499,20 +499,3 @@ TestRunner::get_test_header()
     ptree.put("explicit", m_explicit);
     return ptree;
 }
-
-// Method to wait for threads to be ready
-// Parameters:
-// - thread_num: Number of threads to wait for
-// - mut: Mutex to lock the critical section
-// - cond_var: Condition variable to wait on
-// - thread_ready: Counter to track the number of ready threads
-void TestRunner::wait_for_threads_ready(const int thread_num, std::mutex& mut, std::condition_variable& cond_var, int& thread_ready) {
-  std::unique_lock<std::mutex> lock(mut);
-  while (thread_ready != thread_num) {
-    lock.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
-    lock.lock();
-  }
-  cond_var.notify_all();
-  lock.unlock();
-}

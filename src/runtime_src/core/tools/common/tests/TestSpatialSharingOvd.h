@@ -29,14 +29,19 @@
 
 // Class representing the TestSpatialSharingOvd test
 class TestSpatialSharingOvd : public TestRunner {
+  std::mutex mut;
+  std::condition_variable cond_var;
+  int thread_ready; 
+
 public:
   boost::property_tree::ptree ptree;
 
   boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
+  void wait_for_threads_ready(const int thread_num);
 
   // Constructor to initialize the test runner with a name and description
   TestSpatialSharingOvd()
-    : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()){}
+    : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()), thread_ready(0){}
 };
 
 #endif

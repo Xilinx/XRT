@@ -30,7 +30,6 @@ class TestRunner : public JSONConfigurable {
     const std::string & getConfigName() const { return get_name(); };
     virtual const std::string& getConfigDescription() const { return m_description; };
     boost::property_tree::ptree get_test_header();
-    void wait_for_threads_ready(const int thread_num, std::mutex& mut, std::condition_variable& cond_var, int& thread_ready); 
 
   // Child class helper methods
   protected:

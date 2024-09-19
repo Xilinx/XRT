@@ -10,6 +10,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
+#include "experimental/xrt_ini.h"
 #include <thread>
 
 namespace XBU = XBUtilities;
@@ -24,6 +25,7 @@ static constexpr size_t host_app = 1; //opcode
 boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
+  xrt::ini::set("Runtime.dummy_app_context_type", "proxy");
 
   // Query the xclbin name from the device
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
@@ -81,9 +83,6 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
-  std::mutex mut;
-  std::condition_variable cond_var;
-  int thread_ready = 0;
 
   /* Run 1 */
   std::vector<std::thread> threads;
@@ -93,10 +92,18 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   testcases.emplace_back(xclbin, kernelName, working_dev);
   testcases.emplace_back(xclbin, kernelName, working_dev);
 
+  // Lambda funtion to signal that a thread is ready to run
+  auto thread_ready_to_run = [&]() {
+    std::unique_lock<std::mutex> lock(mut);
+    thread_ready++;
+    cond_var.notify_all();
+    lock.unlock();
+  };
+
   // Lambda function to run a test case. This will be sent to individual thread to be run.
   auto runTestcase = [&](TestCase& test) {
     try {
-      test.run(mut, cond_var, thread_ready);
+      test.run(thread_ready_to_run);
     } catch (const std::exception& ex) {
       logger(ptree, "Error", ex.what());
       ptree.put("status", test_token_failed);
@@ -109,7 +116,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   threads.emplace_back(runTestcase, std::ref(testcases[1]));
 
   // Wait for both threads to be ready to begin clocking
-  wait_for_threads_ready((int)threads.size(), mut, cond_var, thread_ready);
+  wait_for_threads_ready((int)threads.size());
 
   // Measure the latency for running the test cases in parallel
   auto start = std::chrono::high_resolution_clock::now(); 
@@ -128,7 +135,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   std::thread thr(runTestcase, std::ref(t));
 
   // Wait for the thread to be ready
-  wait_for_threads_ready(1, mut, cond_var, thread_ready);
+  wait_for_threads_ready(1);
 
   // Measure the latency for running the test case in a single thread
   start = std::chrono::high_resolution_clock::now(); 
@@ -147,4 +154,18 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   // Set the test status to passed
   ptree.put("status", test_token_passed);
   return ptree;
+}
+
+// Method to wait for threads to be ready
+// Parameters:
+// - thread_num: Number of threads to wait for
+void TestSpatialSharingOvd::wait_for_threads_ready(const int thread_num) {
+  std::unique_lock<std::mutex> lock(mut);
+  while (thread_ready != thread_num) {
+    lock.unlock();
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    lock.lock();
+  }
+  cond_var.notify_all();
+  lock.unlock();
 }
