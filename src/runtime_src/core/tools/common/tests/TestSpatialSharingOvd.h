@@ -41,7 +41,7 @@ public:
 
   // Constructor to initialize the test runner with a name and description
   TestSpatialSharingOvd()
-    : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()), thread_ready(0){}
+    : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), thread_ready(0), ptree(get_test_header()){}
 };
 
 #endif
