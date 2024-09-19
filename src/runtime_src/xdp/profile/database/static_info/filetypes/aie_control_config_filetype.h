@@ -35,6 +35,8 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
 
         int getHardwareGeneration() const override;
 
+        double getAIEClockFreqMHz() const override;
+
         aiecompiler_options
         getAIECompilerOptions() const override;
 

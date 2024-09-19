@@ -49,6 +49,12 @@ AIEControlConfigFiletype::getHardwareGeneration() const
     return xdp::aie::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
 }
 
+double
+AIEControlConfigFiletype::getAIEClockFreqMHz() const
+{
+    return xdp::aie::getAIEClockFreqMHz(aie_meta, "aie_metadata.DeviceData.AIEFrequency");
+}
+
 aiecompiler_options
 AIEControlConfigFiletype::getAIECompilerOptions() const
 {
