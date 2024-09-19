@@ -1,154 +1,149 @@
-name: Test 1 build    
-env:      
-  RELEASE: '2021.1'      
-  PIPELINE: 'xrt'     
-  ENV: 'test'    
-    
-on:    
-  workflow_dispatch:    
-      
-jobs:      
-  build:      
-    strategy:            
-      matrix:            
-        include:            
-          - os: centos8            
-            packageType: rpm      
-            os_ver: centos_8.1            
-              
-    runs-on: [self-hosted, Ubuntu-22.04]      
-    steps:        
-      - name: Set env variables          
-        run: |          
-          echo "Setting environment variables..."            
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV           
-          
-      - name: Checkout PR         
-        uses: actions/checkout@v3       
-        with:       
-          fetch-depth: 0      
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}        
-          submodules: recursive         
-      
-      - name: List workspace contents      
-        run: ls -alR ${{ github.workspace }}      
-      
-      - name: Checkout private repository            
-        uses: actions/checkout@v3         
-        with:            
-          repository: actions-int/composite-workflows      
-          github-server-url: ${{ secrets.SERVER_URL }}            
-          token: ${{ secrets.ACCESS_TOKEN }}            
-          path: composite-workflows       
-          ref: image      
-             
-      - name: XRT build           
-        uses: ./composite-workflows/build      
-        with:           
-          pipeline: ${{ env.PIPELINE }}       
-          osVersion: ${{ matrix.os }}        
-          packageType: ${{ matrix.packageType }}      
-          os_ver: ${{ matrix.os_ver }}        
-          workspace: ${{ github.workspace }}      
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}           
-          accessToken: ${{ secrets.ACCESS_TOKEN }}      
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          appConfig: ${{ secrets.APP_CONFIG }}       
-          appConfig1: ${{ secrets.APP_CONFIG1 }}       
-          appConfig2: ${{ secrets.APP_CONFIG2 }}       
-          appConfig3: ${{ secrets.APP_CONFIG3 }}       
-      
-  package-download:          
-    needs: [build]          
-    runs-on: [self-hosted, Ubuntu-22.04]          
-    outputs:  
-      path_dir: ${{ steps.set_path_dir.outputs.path_dir }}  
-    steps:      
-      - name: Set env variables          
-        run: |          
-          echo "Setting environment variables..."            
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
+name: Test 1 build
+env:  
+  RELEASE: '2021.1'  
+  PIPELINE: 'xrt' 
+  ENV: 'test'
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  build:
+    strategy:      
+      matrix:      
+        include:      
+          # - os: centos78      
+          #   packageType: rpm
+          #   os_ver: centos_7.8      
+          - os: centos8      
+            packageType: rpm
+            os_ver: centos_8.1      
+          # - os: rhel9      
+          #   packageType: rpm
+          #   os_ver: rhel_9.1      
+          - os: ubuntu2004      
+            packageType: deb
+            os_ver: ubuntu_20.04      
+          - os: ubuntu2204      
+            packageType: deb
+            os_ver: ubuntu_22.04 
+          # - os: amazonlinux-20202011111 
+          #   packageType: rpm
+          #   os_ver: amazonlinux20202011111     
+          # - os: ubuntu1804      
+          #   packageType: deb   
+          #   os_ver: ubuntu_18.04  
         
-      - name: Checkout repository      
-        uses: actions/checkout@v3      
-        with:      
-          fetch-depth: 0      
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}      
-        
-      - name: Checkout private repository          
-        uses: actions/checkout@v3       
-        with:          
-          repository: actions-int/composite-workflows          
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          github-server-url: ${{ secrets.SERVER_URL }}          
-          path: composite-workflows       
-          ref: '2021.1'      
-        
-      - name: List workspace contents      
-        run: ls -alR ${{ github.workspace }}      
-        
-      - name: Use composite action package download           
-        uses: ./composite-workflows/package-download         
-        with:          
-          runNumber: ${{ env.XRT_VERSION_PATCH }}          
-          pipeline: ${{ env.PIPELINE }}          
-          env: ${{ env.ENV }}      
-          release: ${{ env.RELEASE }}        
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}          
-          accessToken: ${{ secrets.ACCESS_TOKEN }}      
-          NPATH: ${{ secrets.NPATH }}      
-          USER: ${{ secrets.USER }}      
-          github-server-url: ${{ secrets.SERVER_URL }}       
-        
-      - name: Set PATH_DIR    
-        id: set_path_dir  
+    runs-on: [self-hosted, Ubuntu-22.04]
+    steps:  
+      - name: Set env variables    
         run: |    
-          echo "Setting PATH_DIR..."    
-          echo "PATH_DIR=${{ inputs.NPATH }}/${{ inputs.pipeline }}/${{ inputs.env }}_pipeline/builds/${{ inputs.release }}/${{ inputs.runNumber }}/staging/" >> $GITHUB_ENV   
-          echo "::set-output name=path_dir::${{ inputs.NPATH }}/${{ inputs.pipeline }}/${{ inputs.env }}_pipeline/builds/${{ inputs.release }}/${{ inputs.runNumber }}/staging/"  
-        shell: bash    
-  
-      - name: List contents of artifact directory        
-        run: |        
-          cd ${{ env.PATH_DIR }}/artifact        
-          ls -al        
-        shell: bash        
-        
-  docker-build:        
-    needs: [package-download]        
-    runs-on: [self-hosted, Ubuntu-22.04]        
-    steps:        
-      - name: Set env variables        
-        run: |        
-          echo "Setting environment variables..."        
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV        
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV        
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-      - name: Checkout repository    
-        uses: actions/checkout@v3    
+      - name: Checkout PR   
+        uses: actions/checkout@v3 
+        with: 
+          # repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          # ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          submodules: recursive   
+
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: image
+       
+      - name: XRT build     
+        uses: ./composite-workflows/build
+        with:     
+          pipeline: ${{ env.PIPELINE }} 
+          osVersion: ${{ matrix.os }}  
+          packageType: ${{ matrix.packageType }}
+          os_ver: ${{ matrix.os_ver }}  
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
+
+  package-download:    
+    needs: [build]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
         with:    
-          fetch-depth: 0    
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}   
-  
-      - name: List contents of artifact directory        
-        run: |        
-          cd ${{ needs.package-download.outputs.path_dir }}/artifact        
-          ls -al        
-        shell: bash     
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: '2021.1'
+
     
-      - name: Copy packages    
-        run: |      
-          mkdir -p ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
-          cp ${{ needs.package-download.outputs.path_dir }}/artifact/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
-        shell: bash      
+      - name: Use composite action package download     
+        uses: ./composite-workflows/package-download   
+        with:    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }} 
+  
+      - name: List contents of artifact directory  
+        run: |  
+          cd ${{ env.PATH_DIR }}/artifact  
+          ls -al  
+        shell: bash  
+  
+      - name: Find and copy packages  
+        run: |  
+          cd ${{ env.PATH_DIR }}/artifact  
+          echo "Listing all files in artifact directory:"  
+          ls -al  
+          for package_file in *-xrt.rpm; do  
+            echo "Found package: $package_file"  
+            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/  
+          done  
+        shell: bash  
+       
         
-      - name: List contents of Dockerfile directory        
-        run: |        
-          echo "Contents of Dockerfile directory:"        
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile        
-        shell: bash        
+  docker-build:  
+    needs: [package-download]  
+    runs-on: [self-hosted, Ubuntu-22.04]  
+    steps:  
+      - name: Set env variables  
+        run: |  
+          echo "Setting environment variables..."  
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV  
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV  
+  
+      - name: List contents of Dockerfile directory  
+        run: |  
+          echo "Contents of Dockerfile directory:"  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash     
         
       - name: Build Docker images        
         run: |        
