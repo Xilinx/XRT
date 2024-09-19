@@ -64,7 +64,7 @@ jobs:
       - name: List Root Directory Contents  
         run: |  
           echo "Listing contents of the root directory:"  
-          ls -al ${{ github.workspace }}  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }} 
 
 
       - name: Check Dockerfile Directory  
