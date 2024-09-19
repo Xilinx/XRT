@@ -60,6 +60,11 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
           ref: image
+
+      - name: Check Dockerfile Directory  
+        run: |  
+          echo "Checking for Dockerfile directory..."  
+          ls -al ${{ github.workspace }}/Dockerfile
        
       - name: XRT build     
         uses: ./composite-workflows/build
