@@ -61,6 +61,12 @@ jobs:
           path: composite-workflows 
           ref: image
 
+      - name: List Root Directory Contents  
+        run: |  
+          echo "Listing contents of the root directory:"  
+          ls -al ${{ github.workspace }}  
+
+
       - name: Check Dockerfile Directory  
         run: |  
           echo "Checking for Dockerfile directory..."  
