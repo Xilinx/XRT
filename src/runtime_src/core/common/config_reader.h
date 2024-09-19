@@ -711,6 +711,13 @@ get_force_program_xclbin()
   return value;
 }
 
+inline std::string
+get_dummy_app_context_type()
+{
+  static std::string value = detail::get_string_value("Runtime.dummy_app_context_type", "default");
+  return value;
+}
+
 inline bool
 get_is_enable_prep_target()
 {
