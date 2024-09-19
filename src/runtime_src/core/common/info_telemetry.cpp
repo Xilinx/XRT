@@ -94,6 +94,10 @@ aie2_telemetry_info(const xrt_core::device* device)
     const auto misc_telem = xrt_core::device_query<xrt_core::query::misc_telemetry>(device);
     if(static_cast<int>(misc_telem.l1_interrupts) != -1)
       pt.put("level_one_interrupt_count", misc_telem.l1_interrupts);
+    if(static_cast<int>(misc_telem.preemption_flag_set) != -1)
+      pt.put("preemption_flag_set", misc_telem.preemption_flag_set);
+    if(static_cast<int>(misc_telem.preemption_flag_unset) != -1)
+      pt.put("preemption_flag_unset", misc_telem.preemption_flag_unset);
 
     add_rtos_tasks(device, pt);
     add_opcode_info(device, pt);
