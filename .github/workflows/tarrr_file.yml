@@ -70,7 +70,7 @@ jobs:
       - name: Check Dockerfile Directory  
         run: |  
           echo "Checking for Dockerfile directory..."  
-          ls -al ${{ github.workspace }}/Dockerfile
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile
        
       - name: XRT build     
         uses: ./composite-workflows/build
