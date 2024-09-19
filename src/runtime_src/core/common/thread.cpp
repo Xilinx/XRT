@@ -97,7 +97,7 @@ set_cpu_affinity(std::thread& thread)
 {
   static bool initialized = false;
   static cpu_set_t cpuset;
-  static bool all=false;
+  
   if (!initialized) {
     initialized = true;
 
@@ -140,7 +140,6 @@ set_cpu_affinity(std::thread& thread)
 {
   static bool initialized = false;
   static DWORD_PTR affinity_mask = 0;
-  static bool all = false;
 
   if (!initialized) {
     initialized = true;
