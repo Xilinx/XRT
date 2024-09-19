@@ -31,6 +31,9 @@ class AIETraceConfigFiletype : public AIEControlConfigFiletype {
         AIETraceConfigFiletype(boost::property_tree::ptree& aie_project);
         ~AIETraceConfigFiletype() = default;
 
+        std::vector<uint8_t>
+        getPartitionOverlayStartCols() const override;
+
         std::vector<std::string>
         getValidKernels() const override;
 
