@@ -29,7 +29,7 @@
 # endif
 #endif
 
-#ifdef __GNUC__
+#ifdef __linux__
 # ifdef XRT_XOCL_SOURCE
 #  define XRT_XOCL_EXPORT __attribute__ ((visibility("default")))
 # else

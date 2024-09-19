@@ -101,6 +101,11 @@ namespace xdp::aie::trace {
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE,
           XAIE_EVENT_PORT_RUNNING_2_CORE,                  XAIE_EVENT_PORT_RUNNING_3_CORE}},
+        {"all_stalls_s2mm",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
+          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
+          XAIE_EVENT_LOCK_STALL_CORE,                      XAIE_EVENT_PORT_RUNNING_0_CORE,
+          XAIE_EVENT_PORT_RUNNING_1_CORE}},
         {"all_stalls_dma",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_GROUP_CORE_STALL_CORE,                XAIE_EVENT_PORT_RUNNING_0_CORE,
@@ -109,18 +114,15 @@ namespace xdp::aie::trace {
         {"s2mm_channels",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_STALLED_0_CORE,
-          XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_STALLED_1_CORE}},
-        {"all_stalls_s2mm",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
-          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
-          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE,
-          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}}
-     };
-    eventSets["mm2s_channels"]   = eventSets["s2mm_channels"];
-    eventSets["all_stalls_mm2s"] = eventSets["all_stalls_s2mm"];
+          XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_STALLED_1_CORE}}
+    };
 
-    // Sets w/ DMA stall/backpressure events not supported on AIE1 
+    // Generation-specific sets
+    //   * AIE2+ supports all eight trace events (AIE1 requires one for counter)
+    //   * Sets w/ DMA stall/backpressure events not supported on AIE1
     if (hwGen > 1) {
+      eventSets["all_stalls_s2mm"].push_back(XAIE_EVENT_CASCADE_STALL_CORE);
+
       eventSets["s2mm_channels_stalls"] =
          {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
@@ -132,6 +134,9 @@ namespace xdp::aie::trace {
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM,           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
           XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
     }
+
+    eventSets["mm2s_channels"]   = eventSets["s2mm_channels"];
+    eventSets["all_stalls_mm2s"] = eventSets["all_stalls_s2mm"];
 
     // Deprecated after 2024.1
     eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];

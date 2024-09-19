@@ -148,6 +148,9 @@ class AieProfileMetadata {
       hwContext = std::move(c);
     }
 
+    inline std::vector<uint8_t> getPartitionOverlayStartCols() const {
+      return metadataReader->getPartitionOverlayStartCols();
+    }
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
 
     void getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,

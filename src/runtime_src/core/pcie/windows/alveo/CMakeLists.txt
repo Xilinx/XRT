@@ -36,6 +36,13 @@ target_link_libraries(xrt_core
   xrt_coreutil
   )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_link_libraries(xrt_core
+    PRIVATE
+    setupapi
+  )
+endif()
+
 # For DLL platforms the DLL part of a shared library is treated as a
 # RUNTIME target and the corresponding import library is treated as an
 # ARCHIVE target. All Windows-based systems including Cygwin are DLL

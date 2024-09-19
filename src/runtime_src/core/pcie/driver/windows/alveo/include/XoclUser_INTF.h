@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
 //    (C) Copyright 2021 OSR Open Systems Resources, Inc.
-//    (C) Copyright 2019-2021 Xilinx, Inc.
+//    Copyright (C) 2019-2021 Xilinx, Inc.
 //    (C) Copyright 2019-2021 OSR Open Systems Resources, Inc.
 //    All Rights Reserved
 //
