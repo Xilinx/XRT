@@ -1,198 +1,196 @@
-name: Test 1 build    
-env:      
-  RELEASE: '2021.1'      
-  PIPELINE: 'xrt'     
-  ENV: 'test'    
-    
-on:    
-  workflow_dispatch:    
+name: Test 1 build      
+env:        
+  RELEASE: '2021.1'        
+  PIPELINE: 'xrt'       
+  ENV: 'test'      
       
-jobs:    
-  build:    
-    strategy:          
-      matrix:          
-        include:          
-          - os: centos8          
-            packageType: rpm    
-            os_ver: centos_8.1          
-            
-    runs-on: [self-hosted, Ubuntu-22.04]    
-    steps:      
+on:      
+  workflow_dispatch:      
+        
+jobs:      
+  build:      
+    strategy:            
+      matrix:            
+        include:            
+          - os: centos8            
+            packageType: rpm      
+            os_ver: centos_8.1            
+              
+    runs-on: [self-hosted, Ubuntu-22.04]      
+    steps:        
+      - name: Set env variables          
+        run: |          
+          echo "Setting environment variables..."            
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV           
+          
+      - name: Checkout PR         
+        uses: actions/checkout@v3       
+        with:       
+          fetch-depth: 0      
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}        
+          submodules: recursive         
+      
+      - name: Checkout private repository            
+        uses: actions/checkout@v3         
+        with:            
+          repository: actions-int/composite-workflows      
+          github-server-url: ${{ secrets.SERVER_URL }}            
+          token: ${{ secrets.ACCESS_TOKEN }}            
+          path: composite-workflows       
+          ref: image      
+      
+      - name: XRT build           
+        uses: ./composite-workflows/build      
+        with:           
+          pipeline: ${{ env.PIPELINE }}       
+          osVersion: ${{ matrix.os }}        
+          packageType: ${{ matrix.packageType }}      
+          os_ver: ${{ matrix.os_ver }}        
+          workspace: ${{ github.workspace }}      
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}           
+          accessToken: ${{ secrets.ACCESS_TOKEN }}      
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          appConfig: ${{ secrets.APP_CONFIG }}       
+          appConfig1: ${{ secrets.APP_CONFIG1 }}       
+          appConfig2: ${{ secrets.APP_CONFIG2 }}       
+          appConfig3: ${{ secrets.APP_CONFIG3 }}       
+      
+      
+  package-download:        
+    needs: [build]        
+    runs-on: [self-hosted, Ubuntu-22.04]        
+    steps:    
       - name: Set env variables        
         run: |        
           echo "Setting environment variables..."          
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV        
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV         
-        
-      - name: Checkout PR       
-        uses: actions/checkout@v3     
-        with:     
-          fetch-depth: 0    
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}      
-          submodules: recursive       
-    
-      - name: Checkout private repository          
-        uses: actions/checkout@v3       
-        with:          
-          repository: actions-int/composite-workflows    
-          github-server-url: ${{ secrets.SERVER_URL }}          
-          token: ${{ secrets.ACCESS_TOKEN }}          
-          path: composite-workflows     
-          ref: image    
-    
-      - name: XRT build         
-        uses: ./composite-workflows/build    
-        with:         
-          pipeline: ${{ env.PIPELINE }}     
-          osVersion: ${{ matrix.os }}      
-          packageType: ${{ matrix.packageType }}    
-          os_ver: ${{ matrix.os_ver }}      
-          workspace: ${{ github.workspace }}    
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}         
-          accessToken: ${{ secrets.ACCESS_TOKEN }}    
-          github-server-url: ${{ secrets.SERVER_URL }}    
-          appConfig: ${{ secrets.APP_CONFIG }}     
-          appConfig1: ${{ secrets.APP_CONFIG1 }}     
-          appConfig2: ${{ secrets.APP_CONFIG2 }}     
-          appConfig3: ${{ secrets.APP_CONFIG3 }}     
-    
-    
-  package-download:      
-    needs: [build]      
-    runs-on: [self-hosted, Ubuntu-22.04]      
-    steps:  
-      - name: Set env variables      
-        run: |      
-          echo "Setting environment variables..."        
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV      
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV   
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}  
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          path: composite-workflows   
-          ref: '2021.1'  
-      
-      - name: Use composite action package download       
-        uses: ./composite-workflows/package-download     
-        with:      
-          runNumber: ${{ env.XRT_VERSION_PATCH }}      
-          pipeline: ${{ env.PIPELINE }}      
-          env: ${{ env.ENV }}  
-          release: ${{ env.RELEASE }}    
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
-          NPATH: ${{ secrets.NPATH }}  
-          USER: ${{ secrets.USER }}  
-          github-server-url: ${{ secrets.SERVER_URL }}   
-    
-      - name: List contents of artifact directory    
-        run: |    
-          cd ${{ env.PATH_DIR }}/artifact    
-          ls -al    
-        shell: bash    
-    
-      - name: Authenticate with Harbor    
-        run: |    
-          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin    
-        shell: bash    
-    
-      - name: Push RPM Packages to Harbor    
-        run: |    
-          cd ${{ env.PATH_DIR }}/artifact    
-          for package_file in *-xrt.rpm; do    
-            echo "Pushing package: $package_file"    
-            versioned_name="${{ env.XRT_VERSION_PATCH }}-$(basename $package_file)"  
-            echo "FROM scratch" > Dockerfile  
-            echo "COPY $package_file /" >> Dockerfile  
-            docker build -t registry.amd.com/buildops/$versioned_name -f Dockerfile .  
-            docker push registry.amd.com/buildops/$versioned_name    
-          done    
-        shell: bash     
-  
-    
-  docker-build:      
-    needs: [package-download]      
-    runs-on: [self-hosted, Ubuntu-22.04]      
-    steps:      
-      - name: Set env variables      
-        run: |      
-          echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV      
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
-  
-      - name: Checkout PR       
+      - name: Checkout private repository        
         uses: actions/checkout@v3     
-        with:     
-          fetch-depth: 0    
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}      
+        with:        
+          repository: actions-int/composite-workflows        
+          token: ${{ secrets.ACCESS_TOKEN }}    
+          github-server-url: ${{ secrets.SERVER_URL }}        
+          path: composite-workflows     
+          ref: '2021.1'    
+        
+      - name: Use composite action package download         
+        uses: ./composite-workflows/package-download       
+        with:        
+          runNumber: ${{ env.XRT_VERSION_PATCH }}        
+          pipeline: ${{ env.PIPELINE }}        
+          env: ${{ env.ENV }}    
+          release: ${{ env.RELEASE }}      
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}        
+          accessToken: ${{ secrets.ACCESS_TOKEN }}    
+          NPATH: ${{ secrets.NPATH }}    
+          USER: ${{ secrets.USER }}    
+          github-server-url: ${{ secrets.SERVER_URL }}     
+      
+      - name: List contents of artifact directory      
+        run: |      
+          cd ${{ env.PATH_DIR }}/artifact      
+          ls -al      
+        shell: bash      
+      
+      - name: Authenticate with Harbor      
+        run: |      
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin      
+        shell: bash      
+      
+      - name: Push RPM Packages to Harbor      
+        run: |      
+          cd ${{ env.PATH_DIR }}/artifact      
+          for package_file in *-xrt.rpm; do      
+            echo "Pushing package: $package_file"      
+            versioned_name="${{ env.XRT_VERSION_PATCH }}-$(basename $package_file)"    
+            echo "FROM scratch" > Dockerfile    
+            echo "COPY $package_file /" >> Dockerfile    
+            docker build -t registry.amd.com/buildops/$versioned_name -f Dockerfile .    
+            docker push registry.amd.com/buildops/$versioned_name      
+          done      
+        shell: bash       
+    
+      
+  docker-build:        
+    needs: [package-download]        
+    runs-on: [self-hosted, Ubuntu-22.04]        
+    steps:        
+      - name: Set env variables        
+        run: |        
+          echo "Setting environment variables..."        
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV        
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
+    
+      - name: Checkout PR         
+        uses: actions/checkout@v3       
+        with:       
+          fetch-depth: 0      
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}        
           submodules: recursive    
-
 
       - name: List contents of Repo
         run: |  
           echo "Contents of Dockerfile directory:"  
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}
         shell: bash    
-
-
+  
       - name: List contents of Dockerfile directory  
-        run: |  
-          echo "Contents of Dockerfile directory:"  
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        run: |    
+          echo "Contents of Dockerfile directory:"    
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+        shell: bash      
+  
+      - name: Authenticate with Harbor        
+        run: |        
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin        
+        shell: bash        
+    
+      - name: Pull RPM Packages from Harbor      
+        run: |      
+          cd ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile   
+          for package_file in $(docker images registry.amd.com/buildops --format "{{.Repository}}:{{.Tag}}" | grep "${{ env.XRT_VERSION_PATCH }}-xrt_.*-xrt.rpm"); do      
+            echo "Pulling package: $package_file"      
+            docker pull $package_file || { echo "Failed to pull $package_file"; exit 1; }  
+            container_id=$(docker create $package_file)    
+            docker cp $container_id:/$(basename $package_file) .    
+            docker rm $container_id    
+          done      
         shell: bash    
       
-      - name: Authenticate with Harbor      
-        run: |      
-          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin      
+      - name: List contents of Dockerfile directory          
+        run: |          
+          echo "Contents of Dockerfile directory:"          
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile   
         shell: bash      
-  
-      - name: Pull RPM Packages from Harbor    
-        run: |    
-          cd ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile 
-          for package_file in $(docker search registry.amd.com/buildops --format "{{.Name}}" | grep "${{ env.XRT_VERSION_PATCH }}-xrt_.*-xrt.rpm"); do    
-            echo "Pulling package: $package_file"    
-            docker pull $package_file    
-            container_id=$(docker create $package_file)  
-            docker cp $container_id:/$(basename $package_file) .  
-            docker rm $container_id  
-          done    
-        shell: bash    
-  
-    
-      - name: List contents of Dockerfile directory        
-        run: |        
-          echo "Contents of Dockerfile directory:"        
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile 
-        shell: bash    
-            
-      - name: Build Docker images            
-        run: |            
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do            
-            echo "Building image for $package_file"            
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')            
-            if [[ $package_file == *centos_8.1* ]]; then            
-              base_image="centos:8"            
-            else            
-              base_image="ubuntu:22.04"            
-            fi            
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile             
-          done            
-        shell: bash            
-            
-      - name: Authenticate with Harbor            
-        run: |            
-          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin            
-        shell: bash            
-            
-      - name: Push Docker images to AMD Harbor            
-        run: |            
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do            
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')            
-            echo "Pushing image xrt_image:$image_tag"            
-            docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag            
-            docker push registry.amd.com/buildops/xrt_image:$image_tag            
-          done            
-        shell: bash      
+              
+      - name: Build Docker images              
+        run: |              
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do              
+            echo "Building image for $package_file"              
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')              
+            if [[ $package_file == *centos_8.1* ]]; then              
+              base_image="centos:8"              
+            else              
+              base_image="ubuntu:22.04"              
+            fi              
+            echo "Using base image: $base_image"  # Debugging statement  
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile               
+          done              
+        shell: bash              
+              
+      - name: Authenticate with Harbor              
+        run: |              
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin              
+        shell: bash              
+              
+      - name: Push Docker images to AMD Harbor              
+        run: |              
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do              
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')              
+            echo "Pushing image xrt_image:$image_tag"              
+            docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag              
+            docker push registry.amd.com/buildops/xrt_image:$image_tag              
+          done              
+        shell: bash     
