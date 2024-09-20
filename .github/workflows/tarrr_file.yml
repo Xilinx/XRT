@@ -129,6 +129,20 @@ jobs:
           fetch-depth: 0    
           path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}      
           submodules: recursive    
+
+
+      - name: List contents of Repo
+        run: |  
+          echo "Contents of Dockerfile directory:"  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}
+        shell: bash    
+
+
+      - name: List contents of Dockerfile directory  
+        run: |  
+          echo "Contents of Dockerfile directory:"  
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+        shell: bash    
       
       - name: Authenticate with Harbor      
         run: |      
