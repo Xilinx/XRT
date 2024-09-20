@@ -151,7 +151,7 @@ jobs:
   
       - name: Pull RPM Packages from Harbor    
         run: |    
-          cd ${{ github.workspace }}/Dockerfile    
+          cd ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile 
           for package_file in $(docker search registry.amd.com/buildops --format "{{.Name}}" | grep "${{ env.XRT_VERSION_PATCH }}-xrt_.*-xrt.rpm"); do    
             echo "Pulling package: $package_file"    
             docker pull $package_file    
@@ -165,12 +165,12 @@ jobs:
       - name: List contents of Dockerfile directory        
         run: |        
           echo "Contents of Dockerfile directory:"        
-          ls -al ${{ github.workspace }}/Dockerfile        
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile 
         shell: bash    
             
       - name: Build Docker images            
         run: |            
-          for package_file in ${{ github.workspace }}/Dockerfile/*-xrt.rpm; do            
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do            
             echo "Building image for $package_file"            
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')            
             if [[ $package_file == *centos_8.1* ]]; then            
@@ -178,7 +178,7 @@ jobs:
             else            
               base_image="ubuntu:22.04"            
             fi            
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/Dockerfile/Dockerfile ${{ github.workspace }}/Dockerfile            
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile             
           done            
         shell: bash            
             
@@ -189,7 +189,7 @@ jobs:
             
       - name: Push Docker images to AMD Harbor            
         run: |            
-          for package_file in ${{ github.workspace }}/Dockerfile/*-xrt.rpm; do            
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do            
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')            
             echo "Pushing image xrt_image:$image_tag"            
             docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag            
