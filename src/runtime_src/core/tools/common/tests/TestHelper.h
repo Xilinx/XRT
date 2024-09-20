@@ -10,6 +10,7 @@
 
 // Class representing a set of buffer objects (BOs)
 class BO_set {
+  size_t buffer_size; // Size of the buffer
   xrt::bo bo_instr;   // Buffer object for instructions
   xrt::bo bo_ifm;     // Buffer object for input feature map
   xrt::bo bo_param;   // Buffer object for parameters
@@ -17,7 +18,6 @@ class BO_set {
   xrt::bo bo_inter;   // Buffer object for intermediate data
   xrt::bo bo_mc;      // Buffer object for memory controller
   uint32_t instr_size; // Size of the instruction buffer
-  size_t buffer_size; // Size of the buffer
 
 public:
   // Constructor to initialize buffer objects

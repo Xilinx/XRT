@@ -11,16 +11,14 @@
 // - device: Reference to the xrt::device object
 // - kernel: Reference to the xrt::kernel object
 BO_set::BO_set(xrt::device& device, xrt::kernel& kernel, size_t buffer_size) 
-  : buffer_size(buffer_size) 
+  : buffer_size(buffer_size), 
+    bo_instr (xrt::bo(device, buffer_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5))),
+    bo_ifm   (xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1))),
+    bo_param (xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2))),
+    bo_ofm   (xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3))),
+    bo_inter (xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4))),
+    bo_mc    (xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7)))
 {
-  // Initialize buffer objects with appropriate flags and group IDs
-  bo_instr = xrt::bo(device, buffer_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  bo_ifm = xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1));
-  bo_param = xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2));
-  bo_ofm = xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
-  bo_inter = xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4));
-  bo_mc = xrt::bo(device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7));
-
   // no-op instruction buffer
   std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
 }
