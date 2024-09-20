@@ -174,6 +174,7 @@ ub_package_list()
      cppcheck \
      curl \
      dkms \
+     file \
      g++ \
      gcc \
      gdb \

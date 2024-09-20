@@ -1154,7 +1154,7 @@ open_profile_handle()
   if (not drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
-  auto aie_array = drv->getAieArray();
+  auto aie_array = drv->get_aie_array_shared();
 
   return std::make_unique<zynqaie::profile_object>(static_cast<ZYNQ::shim*>(get_device_handle()), aie_array);
 

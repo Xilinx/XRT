@@ -29,7 +29,10 @@ jobs:
             os_ver: ubuntu_20.04      
           - os: hip      
             packageType: deb
-            os_ver: ubuntu_22.04      
+            os_ver: ubuntu_22.04    
+          - os: ubuntu2404      
+            packageType: deb
+            os_ver: ubuntu_24.04   
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  

@@ -1,3 +1,4 @@
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 import subprocess
 
 # Start of our unit test

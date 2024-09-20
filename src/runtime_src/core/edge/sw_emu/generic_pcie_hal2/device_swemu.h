@@ -8,6 +8,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
+#include "core/common/shim/graph_handle.h"
 #include "core/edge/common/device_edge.h"
 
 namespace xrt_core { namespace swemu {
@@ -44,6 +45,36 @@ public:
 
   void
   get_device_info(xclDeviceInfo2 *info) override;
+
+  std::unique_ptr<xrt_core::graph_handle>
+  open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am) override;
+
+  void
+  open_aie_context(xrt::aie::access_mode am) override;
+
+  void
+  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
+
+  void
+  reset_aie() override;
+
+  void
+  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
+
+  void
+  wait_gmio(const char *gmioName) override;
+
+  int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override;
+
+  uint64_t
+  read_profiling(int phdl) override;
+
+  void
+  stop_profiling(int phdl) override;
+
+  void
+  load_axlf_meta(const axlf* buffer) override;
 
 private:
   // Private look up function for concrete query::request

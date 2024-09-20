@@ -124,7 +124,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   const auto perf_mode = xrt_core::device_query<xrt_core::query::performance_mode>(dev);
 
   //set to performance mode
-  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::high);
+  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::performance);
 
   // wait until clock reaches the targeted frequency
   auto const target_h_clock_freq = 1810;

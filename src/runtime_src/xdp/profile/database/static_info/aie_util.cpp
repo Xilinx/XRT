@@ -133,6 +133,18 @@ namespace xdp::aie {
     return *hwGen;
   }
 
+  // On Edge devices, AIE clock frequency shouldn't change once execution has started.
+  // On Client devices, this static information from metadata may not be correct.
+  double getAIEClockFreqMHz(const boost::property_tree::ptree& aie_meta,
+                            const std::string& root)
+  {
+    static std::optional<double> clockFreqMHz;
+    if (!clockFreqMHz.has_value()) {
+      clockFreqMHz = aie_meta.get_child(root).get_value<double>();
+    }
+    return *clockFreqMHz;
+  }
+
   /****************************************************************************
    * Get metadata required to configure driver
    ***************************************************************************/
@@ -370,81 +382,14 @@ namespace xdp::aie {
     return std::to_string(static_cast<int>(value));
   }
 
-  /****************************************************************************
-   * Get AIE partition information
-   ****************************************************************************/
-  std::vector<uint8_t>
-  getPartitionStartColumnsClient(void* handle)
-  {
-    std::vector<uint8_t> startCols;
-
-    try {
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-      auto device = xrt_core::hw_context_int::get_core_device(context);
-      if (device==nullptr)
-        return std::vector<uint8_t>{0};
-
-      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(device.get());
-      if (infoVector.empty()) {
-        xrt_core::message::send(severity_level::info, "XRT", "No AIE partition information found.");
-        return std::vector<uint8_t>{0};
-      }
-
-      for (auto& info : infoVector) {
-        auto startCol = static_cast<uint8_t>(info.start_col);
-        xrt_core::message::send(severity_level::info, "XRT",
-            "Partition shift of " + std::to_string(startCol) +
-            " was found, number of columns: " + std::to_string(info.num_cols));
-        startCols.push_back(startCol);
-      }
-    }
-    catch(...) {
-      // Query not available
-      xrt_core::message::send(severity_level::info, "XRT", "Unable to query AIE partition information.");
-      return std::vector<uint8_t>{0};
-    }
-
-    return startCols;
-  }
-
   bool isDigitString(const std::string& str)
   {
     return std::all_of(str.begin(), str.end(), ::isdigit);
   }
 
-  std::vector<uint8_t> getPartitionNumColumnsClient(void* handle)
-  {
-    std::vector<uint8_t> numCols;
-
-    try {
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-      auto device = xrt_core::hw_context_int::get_core_device(context);
-      if (device==nullptr)
-        return std::vector<uint8_t>{0};
-
-      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(device.get());
-      if (infoVector.empty()) {
-        xrt_core::message::send(severity_level::info, "XRT", "No AIE partition information found.");
-        return std::vector<uint8_t>{0};
-      }
-
-      for (auto& info : infoVector) {
-        auto numCol = static_cast<uint8_t>(info.num_cols);
-        auto startCol = static_cast<uint8_t>(info.start_col);
-        xrt_core::message::send(severity_level::info, "XRT",
-            "Partition shift of " + std::to_string(startCol) +
-            " was found, number of columns: " + std::to_string(info.num_cols));
-        numCols.push_back(numCol);
-      }
-    }
-    catch(...) {
-      // Query not available
-      xrt_core::message::send(severity_level::info, "XRT", "Unable to query AIE partition information.");
-      return std::vector<uint8_t>{0};
-    }
-
-    return numCols;
-  }
+  /****************************************************************************
+   * Get AIE partition information
+   ****************************************************************************/
 
   boost::property_tree::ptree
   getAIEPartitionInfoClient(void* hwCtxImpl)
@@ -467,6 +412,18 @@ namespace xdp::aie {
       return infoPt;
     }
     return infoPt;
+  }
+
+  void displayColShiftInfo(uint8_t colShift)
+  {
+    static bool displayed = false;
+    if (colShift>0 && !displayed) {
+      std::stringstream msg;
+      msg << "Partition start column shift of " << +colShift << " was found."
+          << " Tile locations are adjusted by this column shift.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      displayed = true;
+    }
   }
 
 } // namespace xdp::aie
