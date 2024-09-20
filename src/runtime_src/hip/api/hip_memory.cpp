@@ -303,7 +303,6 @@ namespace xrt::core::hip
     mem_pool_cache.remove(mem_pool);
   }
 
-#ifdef DEBUG
   static device*
   get_device_by_id(int device_id)
   {
@@ -314,14 +313,14 @@ namespace xrt::core::hip
     }
     return nullptr;
   }
-#endif
 
   // Returns the default memory pool of the specified device.
   static void
   hip_device_get_default_mempool(hipMemPool_t* mem_pool, int device)
   {
-    assert(get_device_by_id(device));
-    assert(mem_pool);
+    throw_invalid_value_if(!mem_pool, "Invalid mem_pool pointer.");
+    auto dev = get_device_by_id(device);
+    throw_invalid_value_if(!dev, "Invalid device index.");
 
     auto default_mem_pool = memory_pool_db[device].front();
     *mem_pool = get_mem_pool_handle(default_mem_pool);
@@ -331,18 +330,20 @@ namespace xrt::core::hip
   static void
   hip_device_get_mempool(hipMemPool_t* mem_pool, int device)
   {
-    assert(get_device_by_id(device));
-    assert(mem_pool);
+    throw_invalid_value_if(!mem_pool, "Invalid mem_pool pointer.");
+    auto dev = get_device_by_id(device);
+    throw_invalid_value_if(!dev, "Invalid device index.");
 
     auto curr_mem_pool = current_memory_pool_db[device];
     *mem_pool = get_mem_pool_handle(curr_mem_pool);
   }
 
   static void
-  hip_device_set_mempool(int 	device, hipMemPool_t mem_pool)
+  hip_device_set_mempool(int device, hipMemPool_t mem_pool)
   {
-    assert(get_device_by_id(device));
-    assert(mem_pool);
+    throw_invalid_handle_if(!mem_pool, "Invalid mem_pool handle.");
+    auto dev = get_device_by_id(device);
+    throw_invalid_value_if(!dev, "Invalid device index.");
 
     current_memory_pool_db[device] = get_mem_pool(mem_pool);
   }
