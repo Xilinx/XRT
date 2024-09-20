@@ -712,9 +712,9 @@ get_force_program_xclbin()
 }
 
 inline std::string
-get_dummy_app_context_type()
+get_hardware_context_type()
 {
-  static std::string value = detail::get_string_value("Runtime.dummy_app_context_type", "default");
+  static std::string value = detail::get_string_value("Runtime.hardware_context_type", "default");
   return value;
 }
 
