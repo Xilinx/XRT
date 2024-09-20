@@ -303,6 +303,7 @@ namespace xrt::core::hip
     mem_pool_cache.remove(mem_pool);
   }
 
+#ifdef DEBUG
   static device*
   get_device_by_id(int device_id)
   {
@@ -313,6 +314,7 @@ namespace xrt::core::hip
     }
     return nullptr;
   }
+#endif
 
   // Returns the default memory pool of the specified device.
   static void
