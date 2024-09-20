@@ -1,55 +1,22 @@
-ARG BASE_IMAGE    
-FROM ${BASE_IMAGE}    
-    
-ARG PACKAGE_FILE    
-    
-# Debug: Print base image and package file    
-RUN echo "---- Using Base Image ----" && cat /etc/os-release && \    
-    echo "---- Package File: ${PACKAGE_FILE} ----"    
-    
-# Update and install necessary tools and dependencies    
-RUN echo "---- Installing Dependencies ----" && \    
-    if [ -f /etc/redhat-release ]; then \    
-        echo "Detected Red Hat-based system" && \    
-        yum install -y epel-release && \    
-        yum install -y dnf-plugins-core wget && \    
-        yum config-manager --set-enabled powertools && \    
-        yum clean all && \    
-        yum install -y ocl-icd ocl-icd-devel libyaml-devel; \    
-    elif [ -f /etc/system-release ] && grep -q "Amazon Linux" /etc/system-release; then \    
-        echo "Detected Amazon Linux" && \    
-        yum install -y wget ocl-icd ocl-icd-devel libyaml-devel; \    
-    else \    
-        echo "Detected Debian-based system" && \    
-        apt-get update && \    
-        apt-get install -y wget ocl-icd-libopencl1 ocl-icd-opencl-dev libyaml-dev && \    
-        apt-get clean; \    
-    fi    
-    
-# Use bash for the shell    
-SHELL ["/bin/bash", "-c"]    
-    
-# Copy the package file    
-COPY ${PACKAGE_FILE} /tmp/    
-    
-# Check the file format and install accordingly    
-RUN if [[ "${PACKAGE_FILE}" == *.rpm ]]; then \    
-        echo "Installing RPM package: ${PACKAGE_FILE}" && \    
-        yum install -y /tmp/${PACKAGE_FILE}; \    
-    else \    
-        echo "Unknown package format: ${PACKAGE_FILE}" && exit 1; \    
-    fi && \    
-    rm -f /tmp/${PACKAGE_FILE}    
-    
-# Enable Systemctl (if needed)    
-RUN echo "---- Setting up Systemctl Replacement ----" && \    
-    wget -cO - https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py > /usr/local/share/systemctl3.py && \    
-    echo "alias systemctl='python3 /usr/local/share/systemctl3.py'" >> /root/.bashrc && \    
-    ln -s /usr/local/share/docker-systemctl-replacement/files/docker/systemctl3.py /usr/local/bin/systemctl    
-    
-# Assuming auto_setup.sh is in the same directory as the Dockerfile    
-COPY auto_setup.sh /opt/xilinx/auto_setup.sh    
-    
-# Debug: Verify installation    
-RUN echo "---- Verifying Installation ----" && \    
-    rpm -qa | grep xrt    
+# Use CentOS 8 as the base image  
+FROM centos:8  
+  
+# Set environment variables  
+ARG PACKAGE_FILE  
+  
+# Copy the RPM package into the image  
+COPY ${PACKAGE_FILE} /tmp/  
+  
+# Install necessary tools and the RPM package  
+RUN yum install -y epel-release && \  
+    yum install -y dnf-plugins-core wget && \  
+    yum config-manager --set-enabled powertools && \  
+    yum clean all && \  
+    yum install -y /tmp/${PACKAGE_FILE} && \  
+    rm -f /tmp/${PACKAGE_FILE}  
+  
+# Verify the installation  
+RUN rpm -qa | grep xrt  
+  
+# Set the entrypoint (if needed)  
+# ENTRYPOINT ["/bin/bash"]  
