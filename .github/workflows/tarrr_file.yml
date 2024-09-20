@@ -105,10 +105,13 @@ jobs:
           for package_file in *-xrt.rpm; do    
             echo "Pushing package: $package_file"    
             versioned_name="${{ env.XRT_VERSION_PATCH }}-$(basename $package_file)"  
-            docker build -t registry.amd.com/buildops/$versioned_name .    
+            echo "FROM scratch" > Dockerfile  
+            echo "COPY $package_file /" >> Dockerfile  
+            docker build -t registry.amd.com/buildops/$versioned_name -f Dockerfile .  
             docker push registry.amd.com/buildops/$versioned_name    
           done    
         shell: bash     
+  
     
   docker-build:      
     needs: [package-download]      
@@ -138,9 +141,12 @@ jobs:
           for package_file in $(docker search registry.amd.com/buildops --format "{{.Name}}" | grep "${{ env.XRT_VERSION_PATCH }}-xrt_.*-xrt.rpm"); do    
             echo "Pulling package: $package_file"    
             docker pull $package_file    
-            docker save $package_file -o $(basename $package_file)    
+            container_id=$(docker create $package_file)  
+            docker cp $container_id:/$(basename $package_file) .  
+            docker rm $container_id  
           done    
         shell: bash    
+  
     
       - name: List contents of Dockerfile directory        
         run: |        
