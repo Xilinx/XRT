@@ -255,6 +255,20 @@ get_ml_timeline_buffer_size()
 }
 
 inline bool
+get_aie_pc()
+{
+  static bool value = detail::get_bool_value("Debug.aie_pc",false);
+  return value;
+}
+
+inline std::string
+get_aie_pc_settings()
+{
+  static std::string value = detail::get_string_value("AIE_pc_settings.addresses", "");
+  return value;
+}
+
+inline bool
 get_aie_halt()
 {
   static bool value = detail::get_bool_value("Debug.aie_halt", false);
