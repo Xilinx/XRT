@@ -215,7 +215,7 @@ namespace xdp {
         }
       }
     } 
-    // end 
+    // end parsing settings and populating desired configurations
 
     xdp::aie::driver_config meta_config = xdp::aie::getDriverConfig(aieMetadata, "aie_metadata.driver_config");
 
