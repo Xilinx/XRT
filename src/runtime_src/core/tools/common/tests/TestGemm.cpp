@@ -41,6 +41,18 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
+  double m_threshold = 0.0;
+  try {
+    m_threshold = find_threshold(dev, ptree);
+    if(XBU::getVerbose())
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TOPS") % m_threshold));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
@@ -120,12 +132,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  //get current performance mode
-  const auto perf_mode = xrt_core::device_query<xrt_core::query::performance_mode>(dev);
-
-  //set to performance mode
-  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::performance);
-
   // wait until clock reaches the targeted frequency
   auto const target_h_clock_freq = 1810;
   int ipu_hclock = 0;
@@ -181,15 +187,16 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     core_ptr++;
   }
 
-  //reset the performance mode
-  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), static_cast<xrt_core::query::performance_mode::power_type>(perf_mode));
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
-    logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (total_cycle_count/num_of_cores)));
-    logger(ptree, "Details", boost::str(boost::format("NPU H-Clock: '%f' MHz") % ipu_hclock));
+    logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+    logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
+    logger(ptree, "Details", boost::str(boost::format("NPU H-Clock: %f MHz") % ipu_hclock));
   }
-  logger(ptree, "Details", boost::str(boost::format("TOPS: '%.1f'") % TOPS));
 
-  ptree.put("status", test_token_passed);
+  //check if the value is in range
+  result_in_range(TOPS, m_threshold, ptree);
+
+  logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+
   return ptree;
 }

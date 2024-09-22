@@ -29,6 +29,18 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
+  double m_threshold = 0.0;
+  try {
+    m_threshold = find_threshold(dev, ptree);
+    if(XBU::getVerbose())
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ops") % m_threshold));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
@@ -119,13 +131,13 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count_throughput));
+    logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count_throughput));
   }
 
   // Run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
-  float elapsedSecs = 0.0;
+  double elapsedSecs = 0.0;
 
   try {
     auto start = std::chrono::high_resolution_clock::now();
@@ -139,7 +151,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
       run_handles[i%run_buffer].start();
     }
     auto end = std::chrono::high_resolution_clock::now();
-    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -149,7 +161,9 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   // Compute the throughput
   const double throughput = (elapsedSecs != 0.0) ? itr_count_throughput / elapsedSecs : 0.0;
 
-  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops") % throughput));
-  ptree.put("status", test_token_passed);
+  //check if the value is in range
+  result_in_range(throughput, m_threshold, ptree);
+
+  logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % throughput));
   return ptree;
 }

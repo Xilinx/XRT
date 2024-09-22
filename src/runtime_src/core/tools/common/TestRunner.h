@@ -48,6 +48,8 @@ class TestRunner : public JSONConfigurable {
     int validate_binary_file(const std::string& binaryfile);
     void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
     size_t get_instr_size(const std::string& dpu_file);
+    void result_in_range(double value, double threshold, boost::property_tree::ptree& ptTest);
+    double find_threshold(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
 
     const std::string test_token_skipped = "SKIPPED";
     const std::string test_token_failed = "FAILED";

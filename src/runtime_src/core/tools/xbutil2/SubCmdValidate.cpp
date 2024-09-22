@@ -158,7 +158,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if supported and xclbin/testcase: verbose
   // if not supported: verbose
   auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
-    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase", "DPU-Sequence"};
+    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase", "DPU-Sequence", "Benchmarks"};
     if (boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if (XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
@@ -328,11 +328,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
     pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
     pretty_print_test_run(ptTest, status, std::cout);
-
-    // If a test fails, don't test the remaining ones
-    if (status == test_status::failed) {
-      break;
-    }
   }
 
   print_status(status, std::cout);
@@ -459,6 +454,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     , m_output("")
     , m_param("")
     , m_xclbin_location("")
+    , m_pmode("")
     , m_help(false)
 {
   const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
@@ -484,6 +480,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("pmode", boost::program_options::value<decltype(m_pmode)>(&m_pmode), "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -691,9 +688,44 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
   }
 
+  //get current performance mode
+  const auto curr_mode = xrt_core::device_query<xrt_core::query::performance_mode>(device);
+  //--pmode
+  try {
+    if (!m_pmode.empty()) {
+      XBU::verbose("Sub command: --param");
+
+      if (boost::iequals(m_pmode, "DEFAULT")) {
+        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
+      }
+      else if (boost::iequals(m_pmode, "PERFORMANCE")) {
+        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+      }
+      else if (boost::iequals(m_pmode, "TURBO")) {
+        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::turbo);
+      }
+      else if (boost::iequals(m_pmode, "POWERSAVER") || boost::iequals(m_pmode, "BALANCED")) {
+        throw xrt_core::error(boost::str(boost::format("No tests are supported in %s mode\n") % m_pmode));
+      }
+      else {
+        throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % m_pmode));
+      }
+    }
+    else {
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+    }
+  }
+  catch(const xrt_core::error& e) {
+    std::cerr << boost::format("\nERROR: %s\n") % e.what();
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
   bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
+
+  //reset pmode
+  xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
 
   // -- Write output file ----------------------------------------------
   if (!m_output.empty()) {
