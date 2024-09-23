@@ -33,7 +33,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   try {
     set_threshold(dev, ptree);
     if(XBUtilities::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());

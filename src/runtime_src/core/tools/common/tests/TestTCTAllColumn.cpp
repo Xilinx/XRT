@@ -33,7 +33,7 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   try {
     set_threshold(dev, ptree);
     if(XBU::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TCT/s") % get_threshold()));
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TCT/s") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
