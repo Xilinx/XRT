@@ -36,12 +36,13 @@ jobs:
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV           
           
-      - name: Checkout PR         
-        uses: actions/checkout@v3       
-        with:       
-          fetch-depth: 0      
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}        
-          submodules: recursive         
+      - name: Checkout PR     
+        uses: actions/checkout@v3   
+        with:   
+          ref: '2021.1'  
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
+          submodules: recursive        
       
       - name: Checkout private repository            
         uses: actions/checkout@v3         
@@ -78,38 +79,18 @@ jobs:
           echo "Setting environment variables..."            
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
-
-      - name: Checkout PR     
-        uses: actions/checkout@v3   
-        with:   
-          ref: '2021.1'  
-          fetch-depth: 0  
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
-          submodules: recursive     
-  
-      - name: Create directory for Dockerfile  
-        run: mkdir -p ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles  
-        
-      - name: Checkout Dockerfile from master  
-        run: |  
-          git init  
-          git remote add origin https://github.com/Xilinx/preflight-check.git  
-          git config core.sparseCheckout true  
-          echo "Dockerfile" >> .git/info/sparse-checkout  
-          git fetch origin master  
-          git checkout master  
-        working-directory: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles
+    
+      - name: Checkout PR           
+        uses: actions/checkout@v3         
+        with:         
+          fetch-depth: 0        
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}          
+          submodules: recursive      
     
       - name: List contents of Repo  
         run: |    
           echo "Contents of Repo directory:"    
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
-        shell: bash   
-
-      - name: List contents of dockerfiles dir  
-        run: |    
-          echo "Contents of Repo directory:"    
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles
         shell: bash   
     
       - name: Checkout private repository          
@@ -139,33 +120,27 @@ jobs:
           cd ${{ env.PATH_DIR }}/artifact        
           ls -al        
         shell: bash        
-
-      - name: List contents of Dockerfile directory    
-        run: |    
-          echo "Contents of Dockerfile directory:"    
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/ 
-        shell: bash 
     
       - name: Find and copy packages    
         run: |    
           cd ${{ env.PATH_DIR }}/artifact    
           echo "Listing all files in artifact directory:"    
           ls -al    
-          for package_file in *-xrt.rpm *-xrt.deb; do    
+          for package_file in *-xrt.rpm *-xrt.deb; do   
             echo "Found package: $package_file"    
-            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/      
+            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
           done    
         shell: bash    
     
       - name: List contents of Dockerfile directory    
         run: |    
           echo "Contents of Dockerfile directory:"    
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/   
-        shell: bash    
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
+        shell: bash     
     
       - name: Build Docker images      
         run: |      
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.deb; do      
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do      
             echo "Building image for $package_file"      
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')      
             if [[ $package_file == *centos_8.1* ]]; then      
@@ -179,7 +154,7 @@ jobs:
             else      
               base_image="ubuntu:18.04"      
             fi      
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile      
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile      
           done      
         shell: bash    
 
@@ -190,7 +165,7 @@ jobs:
         
       - name: Push Docker images to AMD Harbor      
         run: |      
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.deb; do      
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do      
             image_tag=$(basename $package_file | sed 's/\.[^.]*$//')      
             echo "Pushing image xrt_image:$image_tag"      
             docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag      
