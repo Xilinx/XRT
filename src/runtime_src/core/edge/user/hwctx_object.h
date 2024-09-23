@@ -25,7 +25,7 @@ namespace zynqaie {
     slot_id m_slotidx;
     xrt::hw_context::access_mode m_mode;
 #ifdef XRT_ENABLE_AIE
-    std::unique_ptr<Aie> m_aie_array;
+    std::shared_ptr<Aie> m_aie_array;
 #endif
 
   public:
@@ -85,8 +85,8 @@ namespace zynqaie {
     open_profile_handle() override;
 
 #ifdef XRT_ENABLE_AIE
-    Aie*
-    get_aie_array_from_hwctx();
+    std::shared_ptr<Aie>
+    get_aie_array_shared();
 #endif
 
   }; // class hwctx_object

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2019-2023 Xilinx, Inc
+// Copyright (C) 2019-2022 Xilinx, Inc
 // Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
@@ -254,22 +254,7 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
   const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  const std::string pmode = xrt_core::query::performance_mode::parse_status(mode);
-  if (boost::iequals(pmode, "DEFAULT")) {
-    ptTree.put("power_mode", "Default");
-  }
-  else if (boost::iequals(pmode, "LOW")) {
-    ptTree.put("power_mode", "Powersaver");
-  }
-  else if (boost::iequals(pmode, "MEDIUM")) {
-    ptTree.put("power_mode", "Balanced");
-  }
-  else if (boost::iequals(pmode, "HIGH")) {
-    ptTree.put("power_mode", "Performance");
-  }
-  else {
-    ptTree.put("power_mode", "N/A");
-  }
+  ptTree.put("power_mode", xrt_core::query::performance_mode::parse_status(mode));
 }
 
 static void

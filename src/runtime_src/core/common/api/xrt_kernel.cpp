@@ -758,7 +758,7 @@ public:
   get_state() const
   {
     // For lazy state update the command must be polled. Polling
-    // is a no-op on platforms where command status is live.
+    // is a no-op on platforms where command state is live.
     m_hwqueue.poll(this);
     
     auto state = get_state_raw();
@@ -3037,16 +3037,23 @@ class runlist_impl
   // command has comleted (error or not), then in-order execution
   // guarantees that all prior command have completed (error or not).
   //
-  // This funtion returns 0 to indicate that last command is still
-  // running.  Any other return value implies completion.
-  int
+  // This funtion returns the ert command packet state of the last
+  // command or ERT_CMD_STATE_COMPLETED if no commands have been
+  // submitted.
+  ert_cmd_state
   poll_last_cmd() const
   {
+    // Treat empty runlist as completed
     if (m_submitted_cmds.empty())
-      return 1;
+      return ERT_CMD_STATE_COMPLETED;
 
     auto [cmd, pkt] = unpack(m_submitted_cmds.back());
-    return m_hwqueue.poll(cmd);
+
+    // For lazy state update the command must be polled. Polling
+    // is a no-op on platforms where command state is live.
+    m_hwqueue.poll(cmd);
+    
+    return static_cast<ert_cmd_state>(pkt->state);
   }
 
   // Wait for runlist to complete, then check each chained command
@@ -3248,12 +3255,30 @@ public:
     if (m_state != state::running)
       return 1;
 
-    if (!poll_last_cmd())
+    if (poll_last_cmd() < ERT_CMD_STATE_COMPLETED)
       return 0;
 
     // All commands have completed.  Handle errors.
     wait_throw_on_error(std::chrono::milliseconds(0));
     return 1;
+  }
+
+  ert_cmd_state
+  get_ert_state()
+  {
+    // Poll state of the last submitted chained command
+    if (auto state = poll_last_cmd(); state < ERT_CMD_STATE_COMPLETED)
+      return state;
+
+    // All chained commands have completed.  Handle errors in
+    // any of the submitted chained commands.
+    try {
+      wait_throw_on_error(std::chrono::milliseconds(0));
+      return ERT_CMD_STATE_COMPLETED;
+    }
+    catch (const xrt::runlist::command_error& err) {
+      return err.get_command_state();
+    }
   }
 
   void
@@ -3943,6 +3968,7 @@ void
 runlist::
 execute()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_execute);
   handle->execute(*this);
 }
 
@@ -3950,13 +3976,22 @@ std::cv_status
 runlist::
 wait(const std::chrono::milliseconds& timeout) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_wait);
   return handle->wait_throw_on_error(timeout);
+}
+
+ert_cmd_state
+runlist::
+state() const
+{
+  return handle->get_ert_state();
 }
 
 int
 runlist::
 poll() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_poll);
   return handle->poll_or_throw_on_error();
 }
 

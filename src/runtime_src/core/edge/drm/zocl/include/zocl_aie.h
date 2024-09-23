@@ -49,6 +49,15 @@ struct zocl_graph_ctx_node {
 	u32			gid;
 };
 
+/* Multiple graph context can be active under a HW Context.
+ */
+struct zocl_hw_graph_ctx {
+	struct list_head	link;
+	u32			graph_id;
+	u32			flags;
+	u32			hw_context;
+};
+
 #ifdef __NONE_PETALINUX__
 
 #define AIE_ERROR_CATEGORY_SATURATION		0U

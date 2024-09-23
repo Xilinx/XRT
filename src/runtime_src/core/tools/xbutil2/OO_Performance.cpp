@@ -16,7 +16,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Modes: default, powersaver, balanced, performance")
+    : OptionOptions(_longName, _isHidden, "Modes: default, powersaver, balanced, performance, turbo")
     , m_device("")
     , m_action("")
     , m_help(false)
@@ -27,7 +27,7 @@ OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
   ;
 
   m_optionsHidden.add_options()
-    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: default, powersaver, balanced, performance")
+    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: default, powersaver, balanced, performance, turbo")
   ;
 
   m_positionalOptions.
@@ -88,13 +88,16 @@ OO_Performance::execute(const SubCmdOptions& _options) const
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
     }
     else if (boost::iequals(m_action, "POWERSAVER")) {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::low);
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::powersaver);
     }
     else if (boost::iequals(m_action, "BALANCED")) {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::medium);
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::balanced);
     }
     else if (boost::iequals(m_action, "PERFORMANCE")) {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::high);
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+    }
+    else if (boost::iequals(m_action, "TURBO")) {
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::turbo);
     }
     else {
       throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % m_action));

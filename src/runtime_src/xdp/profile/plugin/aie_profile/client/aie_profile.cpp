@@ -113,9 +113,9 @@ namespace xdp {
     }
 
     // Get partition columns
-    // NOTE: for now, assume a single partition
-    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(metadata->getHandle());
-    uint8_t startCol = partitionCols.at(0);
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(metadata->getHandle());
+    // Currently, assuming only one Hw Context is alive at a time
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);

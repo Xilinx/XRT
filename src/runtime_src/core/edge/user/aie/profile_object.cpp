@@ -12,9 +12,9 @@ std::string value_or_empty(const char* s)
 namespace zynqaie {
 		
 profile_object::
-profile_object(ZYNQ::shim* shim, Aie* aie_array)
+profile_object(ZYNQ::shim* shim, std::shared_ptr<Aie> aie_array)
   : m_shim{shim},
-    m_aie_array{aie_array},
+    m_aie_array{std::move(aie_array)},
     m_profile_id{invalid_profile_id}
 {}
 

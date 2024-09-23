@@ -36,11 +36,15 @@ class BaseFiletypeImpl {
         getDriverConfig() const = 0;
         
         virtual int getHardwareGeneration() const = 0;
+        virtual double getAIEClockFreqMHz() const = 0;
         
         virtual aiecompiler_options
         getAIECompilerOptions() const = 0;
         
         virtual uint8_t getAIETileRowOffset() const = 0;
+
+        virtual std::vector<uint8_t>
+        getPartitionOverlayStartCols() const = 0;
 
         virtual std::vector<std::string>
         getValidGraphs() const = 0;
@@ -62,7 +66,7 @@ class BaseFiletypeImpl {
         getInterfaceTiles(const std::string& graphName,
                           const std::string& portName = "all",
                           const std::string& metricStr = "channels",
-                          int16_t channelId = -1,
+                          int16_t specifiedId = -1,
                           bool useColumn = false, 
                           uint8_t minCol = 0, 
                           uint8_t maxCol = 0) const = 0;

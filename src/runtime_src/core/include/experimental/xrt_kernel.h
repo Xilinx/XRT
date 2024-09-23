@@ -189,6 +189,24 @@ public:
   }
 
   /**
+   * state() - Check the current state of a runlist object
+   *
+   * @return
+   *  Current state of this run object.
+   *
+   * The state values are defined in ``include/ert.h``
+   * The state of an empty runlist is ERT_CMD_STATE_COMPLETED.
+   *
+   * This function is the preferred way to poll a runlist for
+   * for completion.
+   */
+  XRT_API_EXPORT
+  ert_cmd_state
+  state() const;
+
+  /**
+   * DEPRECATED, prefer `state()`.
+   *
    * Poll the runlist for completion.
    *
    * @return 0 if command list is still running, any other value
