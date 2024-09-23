@@ -138,23 +138,24 @@ jobs:
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
         shell: bash     
     
-      - name: Build Docker images        
-        run: |        
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do        
-            echo "Building image for $package_file"        
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')        
-            if [[ $package_file == *centos_8.1* || $package_file == *amazonlinux20202011111* ]]; then        
-              base_image="centos:8"        
-            elif [[ $package_file == *ubuntu_20.04* ]]; then        
-              base_image="ubuntu:20.04"        
-            elif [[ $package_file == *ubuntu_22.04* ]]; then        
-              base_image="ubuntu:22.04"        
-            else        
-              base_image="ubuntu:18.04"        
-            fi        
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile        
-          done        
-        shell: bash  
+      - name: Build Docker images  
+        run: |  
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.deb; do  
+            echo "Building image for $package_file"  
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')  
+            if [[ $package_file == *centos_8.1* || $package_file == *amazonlinux20202011111* ]]; then  
+              base_image="centos:8"  
+            elif [[ $package_file == *ubuntu_20.04* ]]; then  
+              base_image="ubuntu:20.04"  
+            elif [[ $package_file == *ubuntu_22.04* ]]; then  
+              base_image="ubuntu:22.04"  
+            else  
+              base_image="ubuntu:18.04"  
+            fi  
+            echo "Using base image: $base_image"  
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile  
+          done  
+        shell: bash   
   
 
       - name: Authenticate with Harbor    
