@@ -174,6 +174,8 @@ struct external_buffer_config
   std::string name;
   // Ports
   std::vector<shim_port_config> shim_port_configs;
+  // Number of buffers needed
+  int num_bufs;
 
   void print() const {
     std::cout << "External Buffer Config: {" << std::endl;

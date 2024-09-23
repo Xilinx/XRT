@@ -202,8 +202,12 @@ is_context_set()
 void
 Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (config.shim_port_configs.empty() || bos.size() > 2)
+  if (config.shim_port_configs.empty())
     return;
+
+  if (bos.size() !=  config.num_bufs)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: Required " +
+			  std::to_string(config.num_bufs) + " buffers ,but you provided " + std::to_string(bos.size()) + " buffers");
 
   BD bd[bos.size()];
   for (size_t i = 0; i < bos.size(); ++i) {
@@ -230,7 +234,8 @@ void
 Aie::
 wait_external_buffer(adf::external_buffer_config& config)
 {
-  if (config.shim_port_configs.empty())
+  // Dont wait for DMA to be done for the ping-pong buffer cases
+  if (config.shim_port_configs.empty() || config.num_bufs == 2)
     return;
 
   for (auto& port_config : config.shim_port_configs) {

@@ -410,6 +410,7 @@ get_external_buffers(const pt::ptree& aie_meta)
     adf::external_buffer_config buffer_config;
     buffer_config.id = item.second.get<int>("id");
     buffer_config.name = item.second.get<std::string>("name");
+    auto num_bufs = 0;
 
     for (const auto& port : item.second.get_child("shimPortConfigs")) {
       adf::shim_port_config port_config;
@@ -429,9 +430,12 @@ get_external_buffers(const pt::ptree& aie_meta)
         bd_info.offset = bd.second.get<int>("offset");
         bd_info.transaction_size = bd.second.get<int>("transaction_size");
         port_config.shim_bd_infos.push_back(bd_info);
+	num_bufs = std::max(num_bufs, bd_info.buf_idx);
       }
       buffer_config.shim_port_configs.push_back(port_config);
     }
+    // buf_idx starts from 0, we need to add 1 to get number of buffers used
+    buffer_config.num_bufs = num_bufs+1;
     external_buffer_configs[buffer_config.name] = buffer_config;
   }
 
