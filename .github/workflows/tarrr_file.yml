@@ -12,9 +12,21 @@ jobs:
     strategy:            
       matrix:            
         include:            
-          - os: centos8            
-            packageType: rpm      
-            os_ver: centos_8.1            
+          - os: centos8          
+            packageType: rpm    
+            os_ver: centos_8.1          
+          - os: ubuntu2004          
+            packageType: deb    
+            os_ver: ubuntu_20.04          
+          - os: ubuntu2204          
+            packageType: deb    
+            os_ver: ubuntu_22.04     
+          - os: amazonlinux-20202011111     
+            packageType: rpm    
+            os_ver: amazonlinux20202011111         
+          - os: ubuntu1804          
+            packageType: deb       
+            os_ver: ubuntu_18.04             
               
     runs-on: [self-hosted, Ubuntu-22.04]      
     steps:        
@@ -66,18 +78,38 @@ jobs:
           echo "Setting environment variables..."            
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV          
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
-    
-      - name: Checkout PR           
-        uses: actions/checkout@v3         
-        with:         
-          fetch-depth: 0        
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}          
-          submodules: recursive      
+
+      - name: Checkout PR     
+        uses: actions/checkout@v3   
+        with:   
+          ref: '2021.1'  
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
+          submodules: recursive     
+  
+      - name: Create directory for Dockerfile  
+        run: mkdir -p ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles  
+        
+      - name: Checkout Dockerfile from master  
+        run: |  
+          git init  
+          git remote add origin https://github.com/Xilinx/preflight-check.git  
+          git config core.sparseCheckout true  
+          echo "Dockerfile" >> .git/info/sparse-checkout  
+          git fetch origin master  
+          git checkout master  
+        working-directory: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles
     
       - name: List contents of Repo  
         run: |    
           echo "Contents of Repo directory:"    
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+        shell: bash   
+
+      - name: List contents of dockerfiles dir  
+        run: |    
+          echo "Contents of Repo directory:"    
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles
         shell: bash   
     
       - name: Checkout private repository          
@@ -107,45 +139,61 @@ jobs:
           cd ${{ env.PATH_DIR }}/artifact        
           ls -al        
         shell: bash        
+
+      - name: List contents of Dockerfile directory    
+        run: |    
+          echo "Contents of Dockerfile directory:"    
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/ 
+        shell: bash 
     
       - name: Find and copy packages    
         run: |    
           cd ${{ env.PATH_DIR }}/artifact    
           echo "Listing all files in artifact directory:"    
           ls -al    
-          for package_file in *-xrt.rpm; do    
+          for package_file in *-xrt.rpm *-xrt.deb; do    
             echo "Found package: $package_file"    
-            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/    
+            cp $package_file ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/      
           done    
         shell: bash    
     
       - name: List contents of Dockerfile directory    
         run: |    
           echo "Contents of Dockerfile directory:"    
-          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
+          ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/   
         shell: bash    
     
-      - name: Build Docker images    
-        run: |    
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do    
-            echo "Building image for $package_file"    
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')    
-            docker build --build-arg PACKAGE_FILE=$(basename $package_file) -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
-          done    
+      - name: Build Docker images      
+        run: |      
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.deb; do      
+            echo "Building image for $package_file"      
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')      
+            if [[ $package_file == *centos_8.1* ]]; then      
+              base_image="centos:8"      
+            elif [[ $package_file == *ubuntu_20.04* ]]; then      
+              base_image="ubuntu:20.04"      
+            elif [[ $package_file == *ubuntu_22.04* ]]; then      
+              base_image="ubuntu:22.04"      
+            elif [[ $package_file == *amazonlinux20202011111* ]]; then      
+              base_image="amazonlinux:2"      
+            else      
+              base_image="ubuntu:18.04"      
+            fi      
+            docker build --build-arg PACKAGE_FILE=$(basename $package_file) --build-arg BASE_IMAGE=$base_image -t xrt_image:$image_tag -f ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/Dockerfile ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile      
+          done      
         shell: bash    
-    
+
       - name: Authenticate with Harbor    
         run: |    
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login registry.amd.com -u '${{ secrets.HARBOR_USERNAME }}' --password-stdin    
-        shell: bash    
-    
-      - name: Push Docker images to AMD Harbor    
-        run: |    
-          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile/*-xrt.rpm; do    
-            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')    
-            echo "Pushing image xrt_image:$image_tag"    
-            docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag    
-            docker push registry.amd.com/buildops/xrt_image:$image_tag    
-          done    
+        shell: bash      
+        
+      - name: Push Docker images to AMD Harbor      
+        run: |      
+          for package_file in ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.rpm ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/dockerfiles/Dockerfile/*-xrt.deb; do      
+            image_tag=$(basename $package_file | sed 's/\.[^.]*$//')      
+            echo "Pushing image xrt_image:$image_tag"      
+            docker tag xrt_image:$image_tag registry.amd.com/buildops/xrt_image:$image_tag      
+            docker push registry.amd.com/buildops/xrt_image:$image_tag      
+          done      
         shell: bash  
-
