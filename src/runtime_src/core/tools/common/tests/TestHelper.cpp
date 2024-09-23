@@ -50,7 +50,7 @@ void
 TestCase::initialize()
 {
   // Initialize kernels, buffer objects, and runs
-  for (uint32_t j = 0; j < queue_len; j++) {
+  for (int j = 0; j < queue_len; j++) {
     auto kernel = xrt::kernel(hw_ctx, kernel_name);
     auto bos = BO_set(device, kernel, buffer_size);
     bos.sync_bos_to_device();

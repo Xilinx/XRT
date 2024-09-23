@@ -17,7 +17,6 @@ class BO_set {
   xrt::bo bo_ofm;     // Buffer object for output feature map
   xrt::bo bo_inter;   // Buffer object for intermediate data
   xrt::bo bo_mc;      // Buffer object for memory controller
-  uint32_t instr_size; // Size of the instruction buffer
 
 public:
   // Constructor to initialize buffer objects
@@ -37,7 +36,7 @@ class TestCase {
   xrt::xclbin xclbin;               // Xclbin object
   std::string kernel_name;          // Name of the kernel
   xrt::hw_context hw_ctx;           // Hardware context
-  uint32_t queue_len;               // Queue length
+  int queue_len;               // Queue length
   size_t buffer_size;               // Size of the buffer
   int itr_count;                    // Number of iterations
   std::vector<xrt::run> run_list;   // Collection of run objects
