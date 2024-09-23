@@ -48,8 +48,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
-  if (!std::filesystem::exists(xclbin_path))
+  if (!std::filesystem::exists(xclbin_path)){
+    logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
+  }
 
   logger(ptree, "Xclbin", xclbin_path);
 

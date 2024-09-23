@@ -450,7 +450,6 @@ TestRunner::findPlatformFile(const std::string& file_path,
   }
   catch (const std::exception&) {
     logger(ptTest, "Details", boost::str(boost::format("%s not available") % file_path));
-    logger(ptTest, "Details", "The test is not supported on this device.");
     ptTest.put("status", test_token_skipped);
     return "";
   }
@@ -532,7 +531,7 @@ TestRunner::find_threshold(const std::shared_ptr<xrt_core::device>& dev,
                             % xq::pcie_id::device_to_string(pcie_id) % xq::pcie_id::revision_to_string(pcie_id));
   auto json_config = findPlatformFile(benchmark_fname, ptTest);
   if (!std::filesystem::exists(json_config)) {
-    logger(ptTest, "Warning", "%s was not found. The results are not compared to expected numbers.");
+    logger(ptTest, "Warning", "The results are not compared to expected numbers.");
     return 0.0;
   }
 
