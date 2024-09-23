@@ -138,30 +138,36 @@ jobs:
           ls -al ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/Dockerfile    
         shell: bash     
     
-      - name: Build Docker images    
-        run: |    
-          set -e  # Exit on any error  
-          for package_file in "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/"*-xrt.rpm "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/"*-xrt.deb; do    
-            echo "Building image for $package_file"    
-            image_tag=$(basename "$package_file" | sed 's/\.[^.]*$//')    
-              
-            # Use [ ... ] for POSIX compliance  
-            if [ "$package_file" = *centos_8.1* ] || [ "$package_file" = *amazonlinux20202011111* ]; then    
-              base_image="centos:8"    
-            elif [ "$package_file" = *ubuntu_20.04* ]; then    
-              base_image="ubuntu:20.04"    
-            elif [ "$package_file" = *ubuntu_22.04* ]; then    
-              base_image="ubuntu:22.04"    
-            else    
-              base_image="ubuntu:18.04"    
-            fi    
-              
-            echo "Using base image: $base_image"    
-            docker build --build-arg PACKAGE_FILE=$(basename "$package_file") --build-arg BASE_IMAGE="$base_image" -t "xrt_image:$image_tag" -f "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile" "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile"    
-          done    
-        shell: bash  
- 
-  
+      - name: Build Docker images      
+        run: |      
+          set -e  # Exit on any error    
+          package_files=("$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/"*-xrt.rpm "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/"*-xrt.deb)  
+            
+          if [ ${#package_files[@]} -eq 0 ]; then  
+            echo "No package files found."  
+            exit 1  
+          fi  
+        
+          for package_file in "${package_files[@]}"; do      
+            echo "Building image for $package_file"      
+            image_tag=$(basename "$package_file" | sed 's/\.[^.]*$//')      
+                
+            # Use [[ ... ]] for Bash pattern matching  
+            if [[ "$package_file" == *centos_8.1* ]] || [[ "$package_file" == *amazonlinux20202011111* ]]; then      
+              base_image="centos:8"      
+            elif [[ "$package_file" == *ubuntu_20.04* ]]; then      
+              base_image="ubuntu:20.04"      
+            elif [[ "$package_file" == *ubuntu_22.04* ]]; then      
+              base_image="ubuntu:22.04"      
+            else      
+              base_image="ubuntu:18.04"      
+            fi  
+                
+            echo "Using base image: $base_image"      
+            docker build --build-arg PACKAGE_FILE=$(basename "$package_file") --build-arg BASE_IMAGE="$base_image" -t "xrt_image:$image_tag" -f "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile/Dockerfile" "$GITHUB_WORKSPACE/${{ env.XRT_VERSION_PATCH }}/Dockerfile"      
+          done      
+        shell: bash    
+
 
       - name: Authenticate with Harbor    
         run: |    
