@@ -21,10 +21,10 @@ class BO_set {
 
 public:
   // Constructor to initialize buffer objects
-  BO_set(xrt::device&, xrt::kernel&, size_t);
+  BO_set(const xrt::device&, const xrt::kernel&, size_t);
 
   // Method to set kernel arguments
-  void set_kernel_args(xrt::run&);
+  void set_kernel_args(xrt::run&) const;
 
   // Method to synchronize buffer objects to the device
   void sync_bos_to_device();
@@ -33,22 +33,23 @@ public:
 
 // Class representing a test case, which is created for a single run on a single thread//
 class TestCase {
-  xrt::device device;         // Device object
-  xrt::xclbin xclbin;         // Xclbin object
-  std::string kernel_name;    // Name of the kernel
-  xrt::hw_context hw_ctx;     // Hardware context
-  uint32_t queue_len = 4;     // Queue length
-  size_t buffer_size;         // Size of the buffer
-  int itr_count;              // Number of iterations
+  xrt::device device;               // Device object
+  xrt::xclbin xclbin;               // Xclbin object
+  std::string kernel_name;          // Name of the kernel
+  xrt::hw_context hw_ctx;           // Hardware context
+  uint32_t queue_len;               // Queue length
+  size_t buffer_size;               // Size of the buffer
+  int itr_count;                    // Number of iterations
+  std::vector<xrt::run> run_list;   // Collection of run objects
+  std::vector<xrt::kernel> kernels; // Collection of kernel objects
+  std::vector<BO_set> bo_set_list;  // Collection of buffer object sets
 
 public:
   // Constructor to initialize the test case with xclbin and kernel name with hardware context creation
-  TestCase(xrt::xclbin& xclbin, std::string& kernel, xrt::device& device)
-      : device(device), xclbin(xclbin), kernel_name(kernel), buffer_size(1024), itr_count(1000) 
-  {
-    hw_ctx = xrt::hw_context(device, xclbin.get_uuid());
-  }
+  TestCase(const xrt::xclbin& xclbin, const std::string& kernel, const xrt::device& device)
+      : device(device), xclbin(xclbin), kernel_name(kernel), hw_ctx(device, xclbin.get_uuid()), queue_len(4), buffer_size(1024), itr_count(1000) {}
 
-  void run(std::function<void()>);
-};
+  void initialize();
+  void run();
+};;;
 #endif

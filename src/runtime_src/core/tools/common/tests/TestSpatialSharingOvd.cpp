@@ -83,6 +83,16 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
+  // Lambda function to run a test case. This will be sent to individual thread to be run.
+  auto runTestcase = [&](TestCase& test) {
+    try {
+      test.run();
+    } catch (const std::exception& ex) {
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+      return;
+    }
+  };
 
   /* Run 1 */
   std::vector<std::thread> threads;
@@ -92,31 +102,19 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   testcases.emplace_back(xclbin, kernelName, working_dev);
   testcases.emplace_back(xclbin, kernelName, working_dev);
 
-  // Lambda funtion to signal that a thread is ready to run
-  auto thread_ready_to_run = [&]() {
-    std::unique_lock<std::mutex> lock(mut);
-    thread_ready++;
-    cond_var.notify_all();
-    lock.unlock();
-  };
-
-  // Lambda function to run a test case. This will be sent to individual thread to be run.
-  auto runTestcase = [&](TestCase& test) {
-    try {
-      test.run(thread_ready_to_run);
+  for (uint32_t i = 0; i < testcases.size(); i++) {
+    try{
+      testcases[i].initialize();
     } catch (const std::exception& ex) {
       logger(ptree, "Error", ex.what());
       ptree.put("status", test_token_failed);
-      return;
+      return ptree;
     }
-  };
+  }
 
   // Create two threads to run the test cases
   threads.emplace_back(runTestcase, std::ref(testcases[0]));
   threads.emplace_back(runTestcase, std::ref(testcases[1]));
-
-  // Wait for both threads to be ready to begin clocking
-  wait_for_threads_ready((int)threads.size());
 
   // Measure the latency for running the test cases in parallel
   auto start = std::chrono::high_resolution_clock::now(); 
@@ -125,17 +123,22 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   }
   auto end = std::chrono::high_resolution_clock::now(); 
   float latencyShared = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  /* End of Run 1 */
 
-  thread_ready = 0;
+  //Clearing so that the hardware contexts get destroyed and the Run 2 is start afresh
+  testcases.clear();
+  /* End of Run 1 */
 
   /* Run 2 */
   // Create a single test case and run it in a single thread
   TestCase t(xclbin, kernelName, working_dev);
+  try{
+    t.initialize();
+  } catch (const std::exception& ex) {
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
+    return ptree;
+  }
   std::thread thr(runTestcase, std::ref(t));
-
-  // Wait for the thread to be ready
-  wait_for_threads_ready(1);
 
   // Measure the latency for running the test case in a single thread
   start = std::chrono::high_resolution_clock::now(); 
@@ -154,18 +157,4 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   // Set the test status to passed
   ptree.put("status", test_token_passed);
   return ptree;
-}
-
-// Method to wait for threads to be ready
-// Parameters:
-// - thread_num: Number of threads to wait for
-void TestSpatialSharingOvd::wait_for_threads_ready(const int thread_num) {
-  std::unique_lock<std::mutex> lock(mut);
-  while (thread_ready != thread_num) {
-    lock.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
-    lock.lock();
-  }
-  cond_var.notify_all();
-  lock.unlock();
 }
