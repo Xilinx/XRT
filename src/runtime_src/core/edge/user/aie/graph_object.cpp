@@ -17,10 +17,12 @@ namespace zynqaie {
       auto device{xrt_core::get_userpf_device(m_shim)};
       auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-      if (!drv->isAieRegistered())
-        throw xrt_core::error(-EINVAL, "No AIE presented");
-
-      aieArray = drv->get_aie_array_shared();
+#ifdef XRT_ENABLE_AIE       
+      if (nullptr != m_hwctx)
+        aieArray = m_hwctx->get_aie_array_shared();
+      else if (drv->isAieRegistered())
+        aieArray = drv->get_aie_array_shared();
+#endif
 
       id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctx);
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
