@@ -112,12 +112,13 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     }
   }
 
+  // Measure the latency for running the test cases in parallel
+  auto start = std::chrono::high_resolution_clock::now(); 
+
   // Create two threads to run the test cases
   threads.emplace_back(runTestcase, std::ref(testcases[0]));
   threads.emplace_back(runTestcase, std::ref(testcases[1]));
 
-  // Measure the latency for running the test cases in parallel
-  auto start = std::chrono::high_resolution_clock::now(); 
   for (uint32_t i = 0; i < threads.size(); i++) {
     threads[i].join();
   }
@@ -130,18 +131,18 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   /* Run 2 */
   // Create a single test case and run it in a single thread
-  TestCase t(xclbin, kernelName, working_dev);
+  TestCase singleHardwareCtxTest(xclbin, kernelName, working_dev);
   try{
-    t.initialize();
+    singleHardwareCtxTest.initialize();
   } catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
     return ptree;
   }
-  std::thread thr(runTestcase, std::ref(t));
-
   // Measure the latency for running the test case in a single thread
   start = std::chrono::high_resolution_clock::now(); 
+  std::thread thr(runTestcase, std::ref(singleHardwareCtxTest));
+
   thr.join();
   end = std::chrono::high_resolution_clock::now(); 
   float latencySingle =  std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count(); 
