@@ -30,11 +30,10 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  double m_threshold = 0.0;
   try {
-    m_threshold = find_threshold(dev, ptree);
+    set_threshold(dev, ptree);
     if(XBUtilities::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ms") % m_threshold));
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
@@ -191,7 +190,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   double overhead = (elapsedSecsAverage - elapsedSecsNoOpAverage)*1000; //in ms
 
   //check if the value is in range
-  result_in_range(overhead, m_threshold, ptree);
+  result_in_range(overhead, get_threshold(), ptree);
   logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
   return ptree;
 }

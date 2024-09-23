@@ -34,11 +34,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  double m_threshold = 0.0;
   try {
-    m_threshold = find_threshold(dev, ptree);
+    set_threshold(dev, ptree);
     if(XBU::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f GB/s") % m_threshold));
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f GB/s") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
@@ -171,7 +170,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   double bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
 
   //check if the value is in range
-  result_in_range(bandwidth, m_threshold, ptree);
+  result_in_range(bandwidth, get_threshold(), ptree);
 
   if(XBU::getVerbose())
     logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % elapsedSecs));

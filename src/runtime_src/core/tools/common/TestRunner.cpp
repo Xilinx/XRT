@@ -521,8 +521,8 @@ TestRunner::result_in_range(double value, double threshold, boost::property_tree
  * Case 3: json and the corresponding pmode is found - testcase will compare the
  *         result against the json value
  */
-double 
-TestRunner::find_threshold(const std::shared_ptr<xrt_core::device>& dev, 
+void 
+TestRunner::set_threshold(const std::shared_ptr<xrt_core::device>& dev, 
                            boost::property_tree::ptree& ptTest)
 {
   //find the benchmark.json
@@ -532,7 +532,8 @@ TestRunner::find_threshold(const std::shared_ptr<xrt_core::device>& dev,
   auto json_config = findPlatformFile(benchmark_fname, ptTest);
   if (!std::filesystem::exists(json_config)) {
     logger(ptTest, "Warning", "The results are not compared to expected numbers.");
-    return 0.0;
+    m_threshold = 0.0;
+    return;
   }
 
   logger(ptTest, "Benchmarks", json_config);
@@ -554,7 +555,8 @@ TestRunner::find_threshold(const std::shared_ptr<xrt_core::device>& dev,
     for (const auto& kb : benchmarks) {
       const boost::property_tree::ptree& pt_benchmark = kb.second;
       if(boost::iequals(curr_pmode, pt_benchmark.get<std::string>("pmode"))) {
-        return pt_benchmark.get<double>("threshold");
+        m_threshold = pt_benchmark.get<double>("threshold");
+        return;
       }
     }
   }

@@ -30,11 +30,10 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  double m_threshold = 0.0;
   try {
-    m_threshold = find_threshold(dev, ptree);
+    set_threshold(dev, ptree);
     if(XBU::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TCT/s") % m_threshold));
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TCT/s") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
@@ -165,7 +164,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
   //check if the value is in range
-  result_in_range(throughput, m_threshold, ptree);
+  result_in_range(throughput, get_threshold(), ptree);
 
   if(XBU::getVerbose())
     logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));

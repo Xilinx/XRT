@@ -41,11 +41,10 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  double m_threshold = 0.0;
   try {
-    m_threshold = find_threshold(dev, ptree);
+    set_threshold(dev, ptree);
     if(XBU::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TOPS") % m_threshold));
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f TOPS") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
@@ -196,7 +195,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   //check if the value is in range
-  result_in_range(TOPS, m_threshold, ptree);
+  result_in_range(TOPS, get_threshold(), ptree);
 
   logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
 

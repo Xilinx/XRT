@@ -29,11 +29,10 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  double m_threshold = 0.0;
   try {
-    m_threshold = find_threshold(dev, ptree);
+    set_threshold(dev, ptree);
     if(XBU::getVerbose())
-      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ops") % m_threshold));
+      logger(ptree, "Deatils", boost::str(boost::format("Threshold is %.1f ops") % get_threshold()));
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Details", ex.what());
@@ -164,7 +163,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   const double throughput = (elapsedSecs != 0.0) ? itr_count_throughput / elapsedSecs : 0.0;
 
   //check if the value is in range
-  result_in_range(throughput, m_threshold, ptree);
+  result_in_range(throughput, get_threshold(), ptree);
 
   logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % throughput));
   return ptree;
