@@ -1,7 +1,8 @@
 /*
  * FPGA Manager bindings for XRT driver
  *
- * Copyright (c) 2019-present, Advanced Micro Devices, Inc.
+ * Copyright (C) 2019-2022, Xilinx Inc
+ * Copyright (C) 2022-present Advanced Micro Devices, Inc.
  * All rights reserved.
  *
  * Authors: Sonal Santan
