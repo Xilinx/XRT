@@ -99,10 +99,6 @@ namespace xdp {
       EventType interfaceTileTraceStartEvent;
       EventType interfaceTileTraceEndEvent;
 
-      // Broadcast Channels to start trace modules
-      uint8_t traceStartBroadcastId1;
-      uint8_t traceStartBroadcastId2;
-
       bool m_trace_start_broadcast;
 
       // Tile locations to apply trace end and flush
