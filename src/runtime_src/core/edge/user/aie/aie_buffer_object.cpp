@@ -11,7 +11,7 @@ namespace zynqaie {
   aie_buffer_object::aie_buffer_object(xrt_core::device* device ,const xrt::uuid uuid, const char* buffer_name, const zynqaie::hwctx_object* hwctx)
     : name{buffer_name}
   {
-    if (nullptr != hwctx) {
+    if (hwctx) {
       m_aie_array = hwctx->get_aie_array_shared();
     }
     else {

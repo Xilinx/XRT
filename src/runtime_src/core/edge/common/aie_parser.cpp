@@ -435,7 +435,7 @@ get_external_buffers(const pt::ptree& aie_meta)
       buffer_config.shim_port_configs.push_back(port_config);
     }
     // buf_idx starts from 0, we need to add 1 to get number of buffers used
-    buffer_config.num_bufs = num_bufs+1;
+    buffer_config.num_bufs = num_bufs + 1;
     external_buffer_configs[buffer_config.name] = buffer_config;
   }
 

@@ -375,7 +375,7 @@ public:
    *
    * This constructor initializes a buffer object with the specified device, xclbin UUID, and string identifier. This throws an exception if no GMIO/External buffer exists with given name
    */
-  explicit buffer(const xrt::device& device, const xrt::uuid& uuid, const std::string& name);
+  buffer(const xrt::device& device, const xrt::uuid& uuid, const std::string& name);
 
   /**
    * buffer() - Constructor from hardware context and name of the buffer
@@ -388,7 +388,7 @@ public:
    * This constructor initializes a buffer object with the specified hardware context
    * and string identifier. This throws an exception if no GMIO/External buffer exists with given name
    */
-  explicit buffer(const xrt::hw_context& hw_context, const std::string& name);
+  buffer(const xrt::hw_context& hw_context, const std::string& name);
 
   /**
    * sync() - Synchronize buffer with a single xrt::bo object
