@@ -141,7 +141,7 @@ namespace xdp {
       "start_type", "start_time", "start_iteration", "end_type",
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s",
-      "enable_system_timeline"
+      "enable_system_timeline", "poll_timers_interval_us"
     };
     const std::map<std::string, std::string> deprecatedSettings {
       {"aie_trace_metrics", "AIE_trace_settings.graph_based_aie_tile_metrics or tile_based_aie_tile_metrics"},
