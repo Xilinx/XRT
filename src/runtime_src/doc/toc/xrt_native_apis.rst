@@ -751,7 +751,7 @@ The above code shows
     
                
 GMIOs & External Buffers
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 XRT provides a buffer class ``xrt::aie::buffer`` which represents GMIO & External-Buffers. GMIOs & External Buffers facilitates the movement of data from global memory (like DDR) to the AI Engine and vice versa.Both GMIO and External buffers work together to manage data flow efficiently by ensuring that large datasets can be processed effectively without overwhelming local memory resources
 
@@ -767,61 +767,63 @@ xrt::aie::buffer::sync(xrt::bo ping, xrt::bo pong, ...) configures the External 
 The following code shows a sample example with a single input/output GMIO/External Buffer. Data gets transferred from global buffer "in_bo" to "gr.in1"
 
 .. code:: c++
-        :number-lines: 24
+        :number-lines: 1
 
            auto device = xrt::aie::device(0);
-  
            auto uuid = device.load_xclbin(xclbin-filename);
        
-           // Buffer from global memory (GM) to AIE
+           // Create Buffer in DDR/Global memory & prepare input
            auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
-       
-           // Buffer from AIE to global memory (GM)
-           auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
-       
            auto inp_bo_map = in_bo.map<float *>(); 
-           auto out_bo_map = out_bo.map<float *>();
-
-           // Prepare input data 
            std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
+       
+           // Create Buffer in DDR/Global memory to store output
+           auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
+           auto out_bo_map = out_bo.map<float *>();
            
-           // create GMIO/External Buffer object
-           auto xrt::aie::buffer simple_bo  = xrt::aie::buffer(device, uuid,"gr.in1");
+           // create GMIO/External Buffer object for input & sync from in_bo
+           auto xrt::aie::buffer in_buffer = xrt::aie::buffer(device, uuid,"gr.in1");
+           in_buffer.sync(in_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
 
-           simple_bo.sync(in_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+           //run your graphs which uses output GMIO/External buffer
+           
+           // create GMIO/External Buffer object for output & sync from out_bo
+           auto xrt::aie::buffer out_buffer  = xrt::aie::buffer(device, uuid,"gr.out1");
+           out_buffer.sync(out_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0); 
 
+Ping Pong buffers
+~~~~~~~~~~~~~~~~~
 The following code shows ping-pong buffer example.This shows an example with a ping/ping buffer being set on one of External buffer
            
 .. code:: c++
-        :number-lines: 30
-                auto device = xrt::aie::device(0);
+        :number-lines: 1
 
-                auto uuid = device.load_xclbin(xclbin-filename);
+           auto device = xrt::aie::device(0);
+           auto uuid = device.load_xclbin(xclbin-filename);
 
-                // Buffer from global memory (GM) to AIE
-                auto in1_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
-                
-                // Buffer from global memory (GM) to AIE
-                auto in2_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
-
-                // Buffer from AIE to global memory (GM)
-                auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
-       
-                auto inp1_bo_map = in1_bo.map<float *>(); 
-                auto inp2_bo_map = in2_bo.map<float *>(); 
-                auto out_bo_map = out_bo.map<float *>();
-
-                // Prepare input data 
-                std::copy(my_float_array,my_float_array+SIZE,inp1_bo_map);
-
-                // Prepare input data 
-                std::copy(my_float_array,my_float_array+SIZE,inp2_bo_map);
+           // Create a Buffer in DDR/Global Memory & prepare input
+           auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
+           auto in_bo_map = in_bo.map<float *>(); 
+           std::copy(my_float_array,my_float_array+SIZE,in_bo_map);
            
-                // create GMIO/External Buffer object
-                auto xrt::aie::buffer ping_pong_bo  = xrt::aie::buffer(device, uuid,"gr.in1");
+           // create GMIO/External Buffer object for input
+           auto xrt::aie::buffer in_buffer  = xrt::aie::buffer(device, uuid,"gr.in1");
+           in_buffer.sync(in_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0); 
+           
+           // Create a Buffer in DDR/Global Memory for storing output
+           auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
+           auto out_bo_map = out_bo.map<float *>();
 
-                ping_pong_bo.sync(in1_bo, in2_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+           // Create Ping/Pong Buffers in global memory for intermediate buffers
+           auto ext1_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
+           auto ext2_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
 
+           // create GMIO/External Buffer object for input
+           auto xrt::aie::buffer ping_pong_bo  = xrt::aie::buffer(device, uuid,"gr.ext1");
+           ping_pong_bo.sync(ext1_bo, ext2_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+           // create GMIO/External Buffer object for output
+           auto xrt::aie::buffer out_buffer  = xrt::aie::buffer(device, uuid,"gr.out1");
+           out_buffer.sync(out_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0); 
 
 XRT Error API
 -------------
