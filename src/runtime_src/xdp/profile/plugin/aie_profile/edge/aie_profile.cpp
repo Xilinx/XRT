@@ -22,6 +22,7 @@
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
