@@ -10,7 +10,6 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
-#include "experimental/xrt_ini.h"
 #include <thread>
 
 namespace XBU = XBUtilities;
@@ -25,7 +24,17 @@ static constexpr size_t host_app = 1; //opcode
 boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
-  xrt::ini::set("Runtime.dummy_app_context_type", "proxy");
+
+  try {
+    set_threshold(dev, ptree);
+    if(XBU::getVerbose())
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
 
   // Query the xclbin name from the device
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
@@ -123,7 +132,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     threads[i].join();
   }
   auto end = std::chrono::high_resolution_clock::now(); 
-  float latencyShared = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
 
   //Clearing so that the hardware contexts get destroyed and the Run 2 is start afresh
   testcases.clear();
@@ -145,7 +154,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   thr.join();
   end = std::chrono::high_resolution_clock::now(); 
-  float latencySingle =  std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count(); 
+  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count(); 
   /* End of Run 2 */
 
   // Log the latencies and the overhead
@@ -153,9 +162,12 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     logger(ptree, "Details", boost::str(boost::format("Single context latency: '%.1f' ms") % (latencySingle * 1000)));
     logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: '%.1f' ms") % (latencyShared * 1000)));
   }
-  logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % ((latencyShared - latencySingle) * 1000)));
+  auto overhead = (latencyShared - latencySingle) * 1000;
+  logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % overhead));
 
-  // Set the test status to passed
-  ptree.put("status", test_token_passed);
+  //check if the value is in range
+  result_in_range(overhead, get_threshold(), ptree);
+
+  logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f ms") % overhead));
   return ptree;
 }
