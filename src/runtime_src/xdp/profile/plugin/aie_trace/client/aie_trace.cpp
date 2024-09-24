@@ -248,7 +248,7 @@ namespace xdp {
     }
 
     XAie_Events bcastEvent2_PL =  (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + broadcastId2);
-    XAie_EventBroadcast(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, broadcastId2, event);
+    XAie_EventBroadcast(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2, event);
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
@@ -316,7 +316,7 @@ namespace xdp {
       maxRowAtCol[startCol + col] = std::max(maxRowAtCol[col], (uint8_t)row);
     }
 
-    XAie_EventBroadcastReset(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, broadcastId2);
+    XAie_EventBroadcastReset(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2);
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
@@ -385,8 +385,8 @@ namespace xdp {
     }
 
     if(startLayer != UINT_MAX) {
-      XAie_PerfCounterControlSet(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, 0, XAIE_EVENT_USER_EVENT_0_PL, XAIE_EVENT_USER_EVENT_0_PL);
-      XAie_PerfCounterEventValueSet(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, 0, startLayer);
+      XAie_PerfCounterControlSet(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, 0, XAIE_EVENT_USER_EVENT_0_PL, XAIE_EVENT_USER_EVENT_0_PL);
+      XAie_PerfCounterEventValueSet(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, 0, startLayer);
     }
 
     build2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastChId1, traceStartBroadcastChId2, XAIE_EVENT_PERF_CNT_0_PL);
@@ -1604,7 +1604,7 @@ namespace xdp {
 
     if(m_trace_start_broadcast) {
       build2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastChId1, traceStartBroadcastChId2, interfaceTileTraceStartEvent);
-      XAie_EventGenerate(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD,  interfaceTileTraceStartEvent);
+      XAie_EventGenerate(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD,  interfaceTileTraceStartEvent);
     }
 
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
