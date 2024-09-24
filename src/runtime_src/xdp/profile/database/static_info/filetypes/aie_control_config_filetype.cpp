@@ -275,14 +275,21 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if ((specifiedId >= 0) && (specifiedId != idToCheck))
             continue;
 
-        tile_type tile = {0};
+        tile_type tile;
         tile.col = shimCol;
         tile.row = 0;
         tile.subtype = type;
+
+        auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
+        if ((type == io_type::PLIO) && (it != allValidTiles.end())) {
+            std::string msg = "Interface tile " + std::to_string(shimCol)
+                            + " supports more than one PLIO, but only one can be monitored.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+
         // Grab stream ID and slave/master (used in configStreamSwitchPorts())
         tile.is_master = isMaster;
         tile.stream_id = streamId;
-
         tiles.emplace_back(std::move(tile));
     }
 
