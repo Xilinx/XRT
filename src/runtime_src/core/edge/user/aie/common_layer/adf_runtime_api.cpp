@@ -344,7 +344,7 @@ err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_confi
     // error checking: size
     if (numBytes != pRTPConfig->numBytes)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::update parameter size " + std::to_string(numBytes)
-            + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
+            + " bytes is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + " bytes.");
 
     // error checking: connected RTP port
     if (pRTPConfig->isConnect)
@@ -387,19 +387,55 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     bool bAcquireLock = !(pRTPConfig->isAsync && !isRunning);
 
     int8_t acquireVal = (pRTPConfig->isAsync ? XAIE_LOCK_WITH_NO_VALUE : ACQ_WRITE); //Versal
-    int8_t releaseVal = REL_READ; //Versal
+    int8_t selAcqVal  = acquireVal;
+    int8_t bufAcqVal  = acquireVal;
 
-    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    int8_t releaseVal = REL_READ; //Versal
+    bool relSelLock = true;
+    bool relBufLock = true;
+
+    if (config_manager::s_pDevInst->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
         {
-            auto it = std::find (asyncNotFirstTimePorts.begin(), asyncNotFirstTimePorts.end(), pRTPConfig->portId);
-            if (it != asyncNotFirstTimePorts.end())
-                acquireVal = AIE_ML_ASYNC_ACQ;
-            else
+            int rtpUpdateTimes = asyncRtpUpdateTimes[pRTPConfig->portId];
+            if (rtpUpdateTimes == 0)
             {
-                acquireVal = AIE_ML_ASYNC_ACQ_FIRST_TIME;
-                asyncNotFirstTimePorts.push_back(pRTPConfig->portId);
+                selAcqVal = AIE_ML_ASYNC_ACQ_FIRST_TIME;
+                bufAcqVal = AIE_ML_ASYNC_ACQ_FIRST_TIME;
+
+                // For the first RTP update, release both the locks even if they are not acquired.
+                // Otherwise, the kernel won't be able to acquire the lock.
+                relSelLock = true;
+                relBufLock = true;
+
+                asyncRtpUpdateTimes[pRTPConfig->portId]++;
+            }
+            else if (rtpUpdateTimes == 1)
+            {
+                selAcqVal = AIE_ML_ASYNC_ACQ;
+                relSelLock = bAcquireLock;
+                if (pRTPConfig->pingLockId == pRTPConfig->pongLockId) //single buffer
+                {
+                    bufAcqVal = AIE_ML_ASYNC_ACQ;
+                    relBufLock = bAcquireLock;
+                }
+                else
+                {
+                    bufAcqVal = AIE_ML_ASYNC_ACQ_FIRST_TIME; //double buffer, second update call to pong buffer, still first time for pong buffer lock
+                    relBufLock = true; // for pong, its the first update. Hence, release the lock.
+                }
+
+                asyncRtpUpdateTimes[pRTPConfig->portId]++;
+            }
+            else // rtpUpdateTimes>=2
+            {
+                selAcqVal = AIE_ML_ASYNC_ACQ;
+                bufAcqVal = AIE_ML_ASYNC_ACQ;
+
+                // release the locks only if they are acquired. Otherwise, it can result in lock value overflow.
+                relSelLock = bAcquireLock;
+                relBufLock = bAcquireLock;
             }
         }
     }
@@ -411,8 +447,8 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     int driverStatus = AieRC::XAIE_OK; //0
 
     // sync ports acquire selector lock for WRITE, async ports acquire selector lock unconditionally
-    if (pRTPConfig->hasLock && bAcquireLock)
-        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, acquireVal), LOCK_TIMEOUT);
+    if (pRTPConfig->hasLock && bAcquireLock && pRTPConfig->blocking)
+        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
 
     // Read the selector value
     u32 selector;
@@ -423,7 +459,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     {
         // sync ports acquire buffer lock for WRITE, async ports acquire buffer lock unconditionally
         if (pRTPConfig->hasLock && bAcquireLock)
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, bufAcqVal), LOCK_TIMEOUT);
 
         driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     }
@@ -431,11 +467,13 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     {
         // sync ports acquire buffer lock for WRITE, async ports acquire buffer lock unconditionally
         if (pRTPConfig->hasLock && bAcquireLock)
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, bufAcqVal), LOCK_TIMEOUT);
 
         driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
     }
 
+    if (pRTPConfig->hasLock && bAcquireLock && !pRTPConfig->blocking)
+        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
     // write the new selector value
     driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, selector);
 
@@ -444,15 +482,19 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         // release selector and buffer locks for ME
         // still need to release async RTP selector lock FOR_READ even when the graph is suspended;
         // otherwise, the ME side may deadlock in acquiring selector lock FOR_READ
-        driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
+        if (relSelLock)
+            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
 
         // still need to release async RTP buffer lock FOR_READ even when the graph is suspended;
         // otherwise, the AIE side may deadlock in acquiring buffer lock FOR_READ
         // (note that there is one selector lock but two buffer locks)
-        if (selector == 1) //pong
-            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
-        else //ping
-            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
+        if (relBufLock)
+        {
+            if (selector == 1) //pong
+                driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
+            else //ping
+                driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
+        }
     }
 
     if (driverStatus != AieRC::XAIE_OK)
@@ -478,7 +520,7 @@ err_code checkRTPConfigForRead(const rtp_config* pRTPConfig, const graph_config*
     // error checking: size
     if (numBytes != pRTPConfig->numBytes)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::read parameter size " + std::to_string(numBytes)
-            + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
+            + " bytes is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + " bytes.");
 
     // error checking: connected RTP port
     if (pRTPConfig->isConnect)
@@ -508,7 +550,7 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
     XAie_LocType pongTile = XAie_TileLoc(pRTPConfig->pongColumn, pRTPConfig->pongRow + numReservedRows + 1);
 
-    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    if (config_manager::s_pDevInst->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
             acquireVal = AIE_ML_ASYNC_ACQ;

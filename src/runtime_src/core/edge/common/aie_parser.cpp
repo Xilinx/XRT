@@ -359,6 +359,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
     rtp.isAsync = rtp_node.second.get<bool>("is_asynchronous");
     rtp.isConnect = rtp_node.second.get<bool>("is_connected");
     rtp.hasLock = rtp_node.second.get<bool>("requires_lock");
+    rtp.blocking= rtp_node.second.get<bool>("blocking");
 
     rtps[rtp.portName] = rtp;
     rtps[rtp.aliasName] = rtp;
