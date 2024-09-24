@@ -17,7 +17,7 @@ namespace ZYNQ {
 
 namespace zynqaie {
   class Aie;
-
+  class aied;
   class hwctx_object : public xrt_core::hwctx_handle
   {
     ZYNQ::shim* m_shim;
@@ -26,12 +26,16 @@ namespace zynqaie {
     xrt::hw_context::access_mode m_mode;
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<Aie> m_aie_array;
+    std::unique_ptr<zynqaie::aied> m_aied;
 #endif
 
   public:
     hwctx_object(ZYNQ::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
 
     ~hwctx_object();
+
+    void
+    initAie();
 
     void
     update_access_mode(access_mode mode) override
@@ -86,7 +90,16 @@ namespace zynqaie {
 
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<Aie>
-    get_aie_array_shared();
+    get_aie_array_shared()
+    {
+      return m_aie_array;
+    }
+    
+    aied*
+    getAied()
+    {
+      return m_aied.get();
+    }
 #endif
 
   }; // class hwctx_object
