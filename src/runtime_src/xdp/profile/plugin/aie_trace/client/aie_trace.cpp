@@ -62,7 +62,8 @@ namespace xdp {
     traceStartBroadcastId1 = 6;
     traceStartBroadcastId2 = 7;
 
-    if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) 
+    m_trace_start_broadcast = xrt_core::config::get_aie_trace_settings_trace_start_broadcast();
+    if(m_trace_start_broadcast) 
       coreTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastId1);
     else 
       coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
@@ -153,7 +154,7 @@ namespace xdp {
     memoryTileEventSets["mm2s_channels_stalls"] = memoryTileEventSets["output_channels_stalls"];
 
     // Memory tile trace is flushed at end of run
-    if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+    if(m_trace_start_broadcast)
       memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastId1);
     else
       memoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
@@ -200,7 +201,7 @@ namespace xdp {
     interfaceTileEventSets["s2mm_ports_details"]     = interfaceTileEventSets["output_ports_details"];
 
     // Interface tile trace is flushed at end of run
-    if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+    if(m_trace_start_broadcast)
       interfaceTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastId2);
     else
       interfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -1315,14 +1316,14 @@ namespace xdp {
         }
         else if (type == module_type::core) {
           // Broadcast to memory module
-          if(!xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+          if(!m_trace_start_broadcast)
             if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, 8, traceStartEvent) != XAIE_OK)
               break;
           if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, 9, traceEndEvent) != XAIE_OK)
             break;
 
           uint8_t phyEvent = 0;
-          if(!xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) {
+          if(!m_trace_start_broadcast) {
             XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
             cfgTile->core_trace_config.internal_events_broadcast[8] = phyEvent;
           }
@@ -1339,7 +1340,7 @@ namespace xdp {
             if (XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, i, XAIE_EVENT_BROADCAST_EAST) != XAIE_OK)
               break;
 
-          if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+          if(m_trace_start_broadcast)
             traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastId1);
           else
             traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
@@ -1606,7 +1607,7 @@ namespace xdp {
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
 
-    if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) {
+    if(m_trace_start_broadcast) {
       build2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastId1, traceStartBroadcastId2, interfaceTileTraceStartEvent);
       XAie_EventGenerate(&aieDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD,  interfaceTileTraceStartEvent);
     }
@@ -1625,7 +1626,7 @@ namespace xdp {
     XAie_ClearTransaction(&aieDevInst);
 
     // Clearing the broadcast network used for trace start
-    if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) {
+    if(m_trace_start_broadcast) {
       XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
       reset2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastId1, traceStartBroadcastId2);
       txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
