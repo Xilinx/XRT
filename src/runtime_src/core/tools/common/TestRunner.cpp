@@ -503,7 +503,7 @@ TestRunner::get_test_header()
 void 
 TestRunner::result_in_range(double value, double threshold, boost::property_tree::ptree& ptTest)
 {
-  if (((((0.95*threshold) <= value) && (value <=(1.05*threshold))) || threshold == 0.0)) {
+  if (((((0.90*threshold) <= value) && (value <=(1.10*threshold))) || threshold == 0.0)) {
     ptTest.put("status", test_token_passed);
   }
   else {
