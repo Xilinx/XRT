@@ -201,15 +201,9 @@ generate_misc_string(const boost::property_tree::ptree& pt)
 {
   std::stringstream ss;
   auto l1_int = pt.get<std::string>("level_one_interrupt_count", "");
-  auto preempt_set = pt.get<std::string>("preemption_flag_set", "");
-  auto preempt_unset = pt.get<std::string>("preemption_flag_unset", "");
 
   if(!l1_int.empty())
     ss << boost::format("  %-23s: %s \n") % "L1 Interrupt Count" % l1_int << "\n";
-  if(!preempt_set.empty())
-    ss << boost::format("  %-23s: %s \n") % "Preemption flag set" % preempt_set << "\n";
-  if(!preempt_unset.empty())
-    ss << boost::format("  %-23s: %s \n") % "Preemption flag unset" % preempt_unset << "\n";
 
   return ss.str();
 }
