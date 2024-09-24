@@ -339,7 +339,7 @@ namespace xdp {
     // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (channel/stream ID)
-      uint8_t idToReport = (tile.subtype == aie::io_type::GMIO) ? channel : tile.stream_id;
+      uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : tile.stream_id;
       return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) | idToReport);
     }
 
