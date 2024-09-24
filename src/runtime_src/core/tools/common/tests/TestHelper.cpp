@@ -71,11 +71,11 @@ TestCase::run()
 {
   for (int i = 0; i < itr_count; i++) {
     // Start all runs in the queue so that they run in parallel
-    for (uint32_t cnt = 0; cnt < queue_len; cnt++) {
+    for (int cnt = 0; cnt < queue_len; cnt++) {
       run_list[cnt].start();
     }
     // Wait for all runs in the queue to complete
-    for (uint32_t cnt = 0; cnt < queue_len; cnt++) {
+    for (int cnt = 0; cnt < queue_len; cnt++) {
       run_list[cnt].wait2();
     }
   }
