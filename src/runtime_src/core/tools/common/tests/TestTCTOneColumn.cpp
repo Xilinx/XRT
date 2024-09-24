@@ -30,10 +30,23 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
+  try {
+    set_threshold(dev, ptree);
+    if(XBU::getVerbose())
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TCT/s") % get_threshold()));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
-  if (!std::filesystem::exists(xclbin_path))
+  if (!std::filesystem::exists(xclbin_path)){
+    logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
+  }
 
   logger(ptree, "Xclbin", xclbin_path);
 
@@ -118,8 +131,8 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+    logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
   auto start = std::chrono::high_resolution_clock::now();
   try {
@@ -146,13 +159,16 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   //Calculate throughput
-  float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  float throughput = itr_count / elapsedSecs;
-  float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Average time for TCT: '%.1f' us") % latency));
-  logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: '%.1f' TCT/s") % throughput));
+  auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
+  double throughput = itr_count / elapsedSecs;
+  double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
-  ptree.put("status", test_token_passed);
+  //check if the value is in range
+  result_in_range(throughput, get_threshold(), ptree);
+
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));
+  logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput));
+
   return ptree;
 }
