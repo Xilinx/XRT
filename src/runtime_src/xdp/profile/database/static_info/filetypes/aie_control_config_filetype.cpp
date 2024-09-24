@@ -281,7 +281,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         tile.subtype = type;
 
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
-        if ((type == io_type::PLIO) && (it != allValidTiles.end())) {
+        if ((type == io_type::PLIO) && (it != tiles.end())) {
             std::string msg = "Interface tile " + std::to_string(shimCol)
                             + " supports more than one PLIO, but only one can be monitored.";
             xrt_core::message::send(severity_level::warning, "XRT", msg);
