@@ -3745,6 +3745,10 @@ struct performance_mode : request
   }
 };
 
+/*
+ * this request force enables or disables pre-emption globally
+ * 0: enable; 1: disable
+*/
 struct preemption : request
 {
   using result_type = uint32_t;  // get value type
