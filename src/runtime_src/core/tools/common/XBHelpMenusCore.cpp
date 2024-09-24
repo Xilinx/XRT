@@ -431,10 +431,6 @@ XBUtilities::report_option_help(const std::string & _groupName,
 {
   const auto& fh = FormatHelper::instance();
 
-  // Determine if there is anything to report
-  if (_optionDescription.options().empty())
-    return;
-
   // Report option group name (if defined)
   boost::format fmtHeader(fh.fgc_header + "\n%s:\n" + fh.fgc_reset);
   if ( !_groupName.empty() )
