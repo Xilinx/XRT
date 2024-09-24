@@ -42,6 +42,7 @@
 #include "tools/common/tests/TestCmdChainLatency.h"
 #include "tools/common/tests/TestCmdChainThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
+#include "tools/common/tests/TestSpatialSharingOvd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -114,7 +115,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestNPULatency>(),
   std::make_shared<TestCmdChainLatency>(),
   std::make_shared<TestCmdChainThroughput>(),
-  std::make_shared<TestAIEReconfigOverhead>()
+  std::make_shared<TestAIEReconfigOverhead>(),
+  std::make_shared<TestSpatialSharingOvd>()
 };
 
 /*
