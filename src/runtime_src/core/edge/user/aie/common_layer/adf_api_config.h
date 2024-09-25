@@ -87,6 +87,7 @@ struct rtp_config
     short pongRow;
     size_t pongAddr;
     unsigned short pongLockId;
+    bool blocking;
 };
 
 struct gmio_config
