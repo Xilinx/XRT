@@ -1720,6 +1720,8 @@ struct misc_telemetry : request
 {
   struct data {
     uint64_t l1_interrupts;
+    uint64_t preemption_flag_set;
+    uint64_t preemption_flag_unset;
   };
 
   using result_type = data;
