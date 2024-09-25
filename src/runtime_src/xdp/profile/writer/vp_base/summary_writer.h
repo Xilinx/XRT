@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -106,6 +106,9 @@ namespace xdp {
     static constexpr double one_thousand = 1000.0 ;
     static constexpr double one_million  = 1.0e06 ;
     static constexpr double one_billion  = 1.0e09 ;
+
+    // Values used for bounding the values we report in tables
+    static constexpr double maxHostTransferRate = 10000.0; // In MB/s
 
   public:
     XDP_CORE_EXPORT SummaryWriter(const char* filename) ;
