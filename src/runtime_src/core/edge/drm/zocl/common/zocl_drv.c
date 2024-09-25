@@ -708,7 +708,7 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		 */
 		vma->vm_page_prot = prot;
 
-	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
+	if (!bo->mm_node) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		dma_obj = to_drm_gem_dma_obj(gem_obj);
 		paddr = dma_obj->dma_addr;
@@ -719,8 +719,8 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	} else
 		paddr = bo->mm_node->start;
 
-	if ((!(bo->flags & ZOCL_BO_FLAGS_CMA)) ||
-	    (bo->flags & ZOCL_BO_FLAGS_CMA &&
+	if (bo->mm_node ||
+	    (!bo->mm_node &&
 	    bo->flags & ZOCL_BO_FLAGS_CACHEABLE)) {
 		/* Map PL-DDR and cacheable CMA */
 		rc = remap_pfn_range(vma, vma->vm_start,
