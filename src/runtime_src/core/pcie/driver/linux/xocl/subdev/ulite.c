@@ -4,6 +4,7 @@
  * Copyright (C) 2006 Peter Korsgaard <jacmet@sunsite.dk>
  * Copyright (C) 2007 Secret Lab Technologies Ltd.
  * Copyright (C) 2020 Chien-Wei Lan <chienwei@xilinx.com>
+ * Copyright (c) 2024, Advanced Micro Devices, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
