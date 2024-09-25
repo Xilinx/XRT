@@ -338,6 +338,98 @@ public:
   stop() const;
 };
 
+/*!
+ * @class buffer
+ *
+ * @brief
+ * xrt::aie::buffer represents AIE constructs like GMIO/External Buffers
+ *
+ * @details
+ * GMIO/External Buffers are constructs used in AI Engine( AIE) Programming
+ * They create connections between the AI Engine and the external memory.
+ * It allows data to be transferred between AIE and global memory which is
+ * essential for handling large datasets that cannot fit into local memory
+ * of the AIE tiles.
+ * GMIOs can attach to single buffer whereas External buffers can be
+ * attached to ping/pong buffers to achieve parallelism
+ */
+class buffer_impl;
+class buffer : public detail::pimpl<buffer_impl>
+{
+public:
+
+  /**
+   * buffer() - Constructor for empty buffer
+   */
+  buffer() = default;
+
+  /**
+   * buffer() - Constructor from device , xclbin UUID and name of the buffer
+   *
+   * @param device
+   *  Device on which the buffer should create
+   * @param uuid
+   *  UUID of the xclbin that should be used
+   * @param name
+   *  Name of the buffer which represents GMIO/External Buffer
+   *
+   * This constructor initializes a buffer object with the specified device, xclbin UUID, and string identifier. This throws an exception if no GMIO/External buffer exists with given name
+   */
+  buffer(const xrt::device& device, const xrt::uuid& uuid, const std::string& name);
+
+  /**
+   * buffer() - Constructor from hardware context and name of the buffer
+   *
+   * @param hw_context
+   *  The xrt::hw_context object associated with the buffer
+   * @param name
+   *  A string identifier for the buffer
+   *
+   * This constructor initializes a buffer object with the specified hardware context
+   * and string identifier. This throws an exception if no GMIO/External buffer exists with given name
+   */
+  buffer(const xrt::hw_context& hw_context, const std::string& name);
+
+  /**
+   * sync() - Synchronize buffer with a single xrt::bo object
+   *
+   * @param bo
+   *  The xrt::bo object to synchronize
+   * @param dir
+   *  The direction of synchronization (e.g., host to device or device to host)
+   * @param size
+   *  The size of the data to synchronize
+   * @param offset
+   *  The offset within the buffer to start synchronization
+   *
+   * This function synchronizes the buffer with the specified xrt::bo object.
+   * This configures the required BDs , enqueues the task and wait for
+   * completion
+   */
+  void sync(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const;
+
+  /**
+   * sync() - Synchronize buffer with two xrt::bo objects (ping-pong)
+   *
+   * @param ping
+   *  The first xrt::bo object to synchronize (ping)
+   * @param pong
+   *  The second xrt::bo object to synchronize (pong)
+   * @param dir
+   *  The direction of synchronization (e.g., host to device or device to host)
+   * @param size
+   *  The size of the data to synchronize
+   * @param offset
+   *  The offset within the buffer to start synchronization
+   *
+   * This function synchronizes the buffer with the specified xrt::bo objects in a ping-pong manner.
+   * This configures the required BDs , enqueues the task and wait for
+   * completion
+   */
+  void sync(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
+
+};
+
 }} // aie, xrt
 
 /**

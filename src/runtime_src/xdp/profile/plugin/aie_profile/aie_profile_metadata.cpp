@@ -204,6 +204,37 @@ namespace xdp {
     return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
   }
 
+
+  std::vector<std::pair<tile_type, std::string>> AieProfileMetadata::getConfigMetricsVec(const int module)
+  {
+    if (module != static_cast<int>(module_type::shim))
+      return {configMetrics[module].begin(), configMetrics[module].end()};
+
+    std::vector<std::pair<tile_type, std::string>> shimMetrics, shimMetricsFromConfig;
+    // Collect latency metric settings first in stored order
+    shimMetrics.insert(shimMetrics.end(), configMetricLatencyVec.begin(), configMetricLatencyVec.end());
+    // Collect all interface tile metrics from configMap
+    shimMetricsFromConfig.insert(shimMetricsFromConfig.end(), configMetrics[module].begin(), configMetrics[module].end());
+
+    // If no latency config available, use all tiles metrics from configMap
+    if(shimMetrics.empty())
+      return shimMetricsFromConfig;
+
+    // Otherwise, merge latency config with other interface tile config
+    for (const auto& tileMetricPair : shimMetricsFromConfig) {
+        // Use only intersection of the interface tile settings.
+        if (std::find_if(shimMetrics.begin(), shimMetrics.end(), [&tileMetricPair](const std::pair<tile_type, std::string>& existingTileMetricPair)
+            {
+            return existingTileMetricPair.first == tileMetricPair.first && existingTileMetricPair.second == tileMetricPair.second;
+            }) == shimMetrics.end()) {
+            // If not found, add the tile and metric pair
+            shimMetrics.push_back(tileMetricPair);
+        }
+    }
+
+    return shimMetrics;
+  }
+
   /****************************************************************************
    * Get driver configuration
    ***************************************************************************/
@@ -986,7 +1017,9 @@ namespace xdp {
 
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
   {
-    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
+    static const AIEProfileFinalConfig config(configMetrics, configChannel0,
+                         configChannel1, metadataReader->getAIETileRowOffset(),
+                         bytesTransferConfigMap);
     return config;
   }
 
@@ -999,6 +1032,7 @@ namespace xdp {
     int moduleIdx = static_cast<int>(module);
 
     // STEP 1 : Parse per-graph or per-kernel settings
+
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
      * interface_tile_latency = graph1:port1:graph2:port2:<tranx num>; graph3:port3:graph4:port4:<tranx num>;
@@ -1019,8 +1053,8 @@ namespace xdp {
                                           tileMetrics[i][3],
                                           metricName);
 
-      if(tileSrc.empty() || tileDest.empty()) {
-        return;
+      if(tileSrc.empty() || tileDest.empty() || (tileSrc[0]==tileDest[0])) {
+        continue;
       } 
       std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
@@ -1035,8 +1069,11 @@ namespace xdp {
       // TODO: Make sure this config doesn't collide with other interface tile config
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
       configMetrics[moduleIdx][tileDest[0]] = metricName;
-    
-      // TODO: Check for off tiles
+
+      // Also maintain the order of tile-loc and metricName
+      // Later during configuration, it is required to configure destination tile first
+      configMetricLatencyVec.push_back({tileDest[0], metricName});
+      configMetricLatencyVec.push_back({tileSrc[0], metricName});
     }
   }
 
@@ -1162,6 +1199,7 @@ namespace xdp {
         key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
               "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
         keysCache[cacheKey] = key;
+        return key;
       }
     }
     return key;

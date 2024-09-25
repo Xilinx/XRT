@@ -461,7 +461,7 @@ namespace xdp {
     aie::displayColShiftInfo(startColShift);
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
-      auto configMetrics = metadata->getConfigMetrics(module);
+      auto configMetrics = metadata->getConfigMetricsVec(module);
       if (configMetrics.empty())
         continue;
       
@@ -582,6 +582,7 @@ namespace xdp {
             resetEvent = resetEvents.at(i);
             if (i==0) {
               threshold = metadata->getUserSpecifiedThreshold(tileMetric.first, tileMetric.second);
+              threshold = aie::profile::convertToBeats(tileMetric.second, threshold, metadata->getHardwareGen());
               if (threshold == 0) {
                 continue;
               }
@@ -714,7 +715,7 @@ namespace xdp {
             auto destPerfCount = perfCounters.at(destPcIdx);
             srcPerfCount->readResult(srcCounterValue);
             destPerfCount->readResult(destCounterValue);
-            counterValue = destCounterValue - srcCounterValue;
+            counterValue = (destCounterValue > srcCounterValue) ? (destCounterValue-srcCounterValue):(srcCounterValue-destCounterValue);
           } catch(...) {
             continue;
           }
@@ -791,8 +792,9 @@ namespace xdp {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = perfCounters.size();
       }
-      else
+      else {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].destPcIdx = perfCounters.size();
+      }
       return pc;
     }
 
@@ -905,22 +907,6 @@ namespace xdp {
 
     return startCounter(pc, counterEvent, retCounterEvent);
   }
-
-  // inline std::shared_ptr<xaiefal::XAiePerfCounter>
-  // startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
-  // {
-  //   if (!pc)
-  //     return nullptr;
-    
-  //   auto ret = pc->start();
-  //   if (ret != XAIE_OK)
-  //     return nullptr;
-
-  //   // Return the known counter event
-  //   retCounterEvent = counterEvent;
-
-  //   return pc;
-  // }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
   AieProfile_EdgeImpl::configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,

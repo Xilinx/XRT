@@ -103,6 +103,7 @@ class AieProfileMetadata {
       {"interface_tile_latency",     static_cast<uint16_t>(3601)}
     };
     std::map<tile_type, LatencyConfig> latencyConfigMap;
+    std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
     uint32_t defaultTransferBytes = 1;
     
@@ -129,6 +130,8 @@ class AieProfileMetadata {
     uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
+     std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module);
+
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
     xdp::aie::driver_config getAIEConfigMetadata();

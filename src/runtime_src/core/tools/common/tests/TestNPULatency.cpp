@@ -29,10 +29,23 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
+  try {
+    set_threshold(dev, ptree);
+    if(XBU::getVerbose())
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f us") % get_threshold()));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
-  if (!std::filesystem::exists(xclbin_path))
+  if (!std::filesystem::exists(xclbin_path)){
+    logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
+  }
 
   logger(ptree, "Xclbin", xclbin_path);
 
@@ -115,13 +128,13 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+    logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   // Run the test to compute latency where we submit one job at a time and wait for its completion before
   // we submit the next one
-  float elapsed_secs = 0.0;
+  double elapsed_secs = 0.0;
 
   try {
     auto start = std::chrono::high_resolution_clock::now();
@@ -130,7 +143,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
       run.wait2();
     }
     auto end = std::chrono::high_resolution_clock::now();
-    elapsed_secs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+    elapsed_secs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -138,8 +151,11 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   // Calculate end-to-end latency of one job execution
-  const float latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
-  logger(ptree, "Details", boost::str(boost::format("Average latency: '%.1f' us") % latency));
-  ptree.put("status", test_token_passed);
+  const double latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
+
+  //check if the value is in range
+  result_in_range(latency, get_threshold(), ptree);
+
+  logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
   return ptree;
 }

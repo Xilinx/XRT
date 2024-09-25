@@ -87,6 +87,7 @@ struct rtp_config
     short pongRow;
     size_t pongAddr;
     unsigned short pongLockId;
+    bool blocking;
 };
 
 struct gmio_config
@@ -169,11 +170,13 @@ struct shim_port_config {
 struct external_buffer_config
 {
   // External buffer instance ID
-  int id;
+  int id = 0;
   // External buffer name
   std::string name;
   // Ports
   std::vector<shim_port_config> shim_port_configs;
+  // Number of buffers needed
+  int num_bufs = 0;
 
   void print() const {
     std::cout << "External Buffer Config: {" << std::endl;
