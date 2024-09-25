@@ -106,7 +106,7 @@ class AieProfileMetadata {
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
     uint32_t defaultTransferBytes = 1;
-    
+
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
   public:
@@ -155,6 +155,11 @@ class AieProfileMetadata {
       return metadataReader->getPartitionOverlayStartCols();
     }
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
+    std::vector<tile_type> getInterfaceTiles(const std::string graph, const std::string port, const std::string metric) {
+      if (aieMetadataEmpty())
+        return {};
+      return metadataReader->getInterfaceTiles(graph, port, metric);
+    }
 
     void getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
                        const std::vector<std::string>& intfTilesLatencyConfigs);

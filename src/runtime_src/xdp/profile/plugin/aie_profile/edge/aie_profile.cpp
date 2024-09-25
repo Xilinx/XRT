@@ -524,10 +524,12 @@ namespace xdp {
         // Identify the profiling API metric sets and configure graph events
         if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
           XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
-          configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+          bool status = configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
               loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
-          graphIteratorBrodcastChannelEvent = bcEvent;
-          graphItrBroadcastConfigDone = true;
+          if (status) {
+            graphIteratorBrodcastChannelEvent = bcEvent;
+            graphItrBroadcastConfigDone = true;
+          }
         }
 
         if (aie::profile::profileAPIMetricSet(metricSet)) {
@@ -538,7 +540,7 @@ namespace xdp {
           endEvents[endEvents.size()-1] = endEvents[0];
 
           // Use the set values broadcast events for the reset of counter
-          resetEvents = {XAIE_EVENT_NONE_PL, XAIE_EVENT_NONE_PL};
+          resetEvents = {XAIE_EVENT_NONE_CORE, XAIE_EVENT_NONE_CORE};
           if (type == module_type::shim) {
             resetEvents = {graphIteratorBrodcastChannelEvent, graphIteratorBrodcastChannelEvent};
           }
@@ -791,6 +793,8 @@ namespace xdp {
       auto pc = configPCUsingComboEvents(aieDevInst, xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent);
+      XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+      XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_1_PL);
 
       std::string srcKey = aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row);
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = perfCounters.size();
@@ -812,6 +816,9 @@ namespace xdp {
     //   if (ret != XAIE_OK)
     //     std::cout << "Error: Unable to set the reset event for threshold config of counter"<< std::endl;
     // }
+
+    if (resetEvent != XAIE_EVENT_NONE_CORE)
+      pc->changeRstEvent(xaieModType, resetEvent);
 
     if (threshold > 0)
       pc->changeThreshold(threshold);
@@ -860,7 +867,7 @@ namespace xdp {
     // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
     //   pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
     // }
-    if (resetEvent != XAIE_EVENT_NONE_PL)
+    if (resetEvent != XAIE_EVENT_NONE_CORE)
       pc->changeRstEvent(xaieModType, resetEvent);
 
     // Configure the combo events if user has specified valid non zero threshold
@@ -874,8 +881,7 @@ namespace xdp {
       return nullptr;
 
     // Set up the combo event with FSM type using 4 events state machine
-    // XAie_Events eventA = XAIE_EVENT_TRUE_PL;
-    XAie_Events eventA = (resetEvent != XAIE_EVENT_NONE_PL) ? resetEvent : XAIE_EVENT_TRUE_PL;
+    XAie_Events eventA = (resetEvent != XAIE_EVENT_NONE_CORE) ? resetEvent : XAIE_EVENT_USER_EVENT_1_PL;
     XAie_Events eventB = startEvent;
     XAie_Events eventC = startEvent;
     XAie_Events eventD = endEvent;
@@ -886,7 +892,7 @@ namespace xdp {
     combo_events.push_back(eventC);
     combo_events.push_back(eventD);
 
-    // This is NO-OP for COMBO3, however required for FAL & generates COMBO2 event too
+    // This is NO-OP for COMBO3, necessary for FAL & generates COMBO 1 & 2 events as well
     combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
     combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
     combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
@@ -986,13 +992,14 @@ namespace xdp {
     /****************************************************************************
    * Configure the individual AIE events for metric sets related to Profile APIs
    ***************************************************************************/
-   void AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+   bool AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
                       XAie_LocType loc, const XAie_ModuleType xaieModType,
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata)
   {
+    bool rc = false;
     if (!aie::profile::metricSupportsGraphIterator(metricSet))
-      return;
+      return rc;
 
     if (xdpModType != module_type::core) {
       auto aieCoreTilesVec = metadata->getTiles("all", module_type::core, "all");
@@ -1000,7 +1007,7 @@ namespace xdp {
         std::stringstream msg;
         msg << "No core tiles available, graph ieration profiling will not be available.\n";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-        return;
+        return rc;
       }
 
       // Use the first available core tile to configure the broadcasting
@@ -1011,17 +1018,23 @@ namespace xdp {
       loc = XAie_TileLoc(col, row);
     }
 
+    std::stringstream msg;
+    msg << "Configuring AIE profile start_to_bytes_transferred to start on iteration " << iterCount
+        << " using core tile (" << +loc.Col << "," << +loc.Row << ").\n";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+
     XAie_Events counterEvent;
     // Step 1: Configure the graph iterator event
     configStartIteration(core, iterCount, counterEvent);
 
     // Step 2: Configure the brodcast of the returned counter event
     XAie_Events bcChannelEvent;
-    configEventBroadcast(aieDevInst, loc, xdpModType, metricSet, xaieModType,
-                          counterEvent, bcChannelEvent);
+    configEventBroadcast(aieDevInst, loc, module_type::core, metricSet, XAIE_CORE_MOD,
+                         counterEvent, bcChannelEvent);
 
     // Store the brodcasted channel event for later use
     bcEvent = bcChannelEvent;
+    return true;
   }
 
   /****************************************************************************
@@ -1038,9 +1051,6 @@ namespace xdp {
       return false;
     if (pc->reserve() != XAIE_OK)
       return false;
-
-    xrt_core::message::send(severity_level::debug, "XRT",
-        "Configuring AIE profile to start on iteration " + std::to_string(iteration));
 
     pc->changeThreshold(iteration);
 
@@ -1072,27 +1082,40 @@ namespace xdp {
     std::vector<XAie_LocType> vL;
     AieRC RC = AieRC::XAIE_OK;
 
-    vL.push_back(loc);
-    auto BC  = aieDevice->broadcast(vL, XAIE_CORE_MOD, XAIE_PL_MOD);
-    RC = BC->setPreferredId(bcPair.first);
-    if (RC != XAIE_OK) {
-      std::cout << "!!!! Failure in BC set prefferred." << std::endl;
+    // vL.push_back(loc);
+    // aie::profile::getAllInterfaceTileLocs(vL);
+    std::vector<tile_type> allIntfTiles = metadata->getInterfaceTiles("all", "all", "start_to_bytes_transferred");
+    std::set<tile_type> allIntfTilesSet(allIntfTiles.begin(), allIntfTiles.end());
+    if (allIntfTilesSet.empty())
+      return;
+
+    for (auto &tile : allIntfTilesSet) {
+      vL.push_back(XAie_TileLoc(tile.col, tile.row));
+      std::cout << "!!!! Added tile loc: " << +tile.col << ", " << +tile.row << std::endl;
     }
+
+    BCBytesTx   = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);
+    RC = BCBytesTx->setPreferredId(bcPair.first);
+    std::cout << "!!!! Attempt BC set prefferred: " << bcPair.first << std::endl;
+    if (RC != XAIE_OK) {
+      std::cout << "!!!! Failure in BC set prefferred: " << bcPair.first << std::endl;
+    } 
     
-    RC = BC->reserve();
+    RC = BCBytesTx->reserve();
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC reserve." << std::endl;
     }
 
-    RC = BC->start();
+    RC = BCBytesTx->start();
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC start." << std::endl;
     }
 
-    uint8_t bcId = BC->getBc();
+    uint8_t bcId = BCBytesTx->getBc();
     std::cout << "!!!! Allocated BcId: " << +bcId << std::endl;
+
     XAie_Events channelEvent;
-    RC = BC->getEvent(XAie_TileLoc(1,0), XAIE_PL_MOD, channelEvent);
+    RC = BCBytesTx->getEvent(vL.front(), XAIE_PL_MOD, channelEvent);
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC channel event." << std::endl;
     }
@@ -1101,11 +1124,13 @@ namespace xdp {
     uint8_t brodcastId = bcId;
     int driverStatus   = AieRC::XAIE_OK;
     driverStatus |= XAie_EventBroadcast(aieDevInst, loc, XAIE_CORE_MOD, brodcastId, bcEvent);
-    if (driverStatus!= XAIE_OK) {
+    if (driverStatus != XAIE_OK) {
       std::stringstream msg;
-      msg << "Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
-          <<"is unavailable, graph ieration profiling will not be available.\n";
+      msg <<"Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
+          <<" is unavailable, graph ieration profiling will not be available.\n";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }else {
+      std::cout << "!!! Success: configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row << std::endl;
     }
 
     // This is the broadcast channel event seen in interface tiles

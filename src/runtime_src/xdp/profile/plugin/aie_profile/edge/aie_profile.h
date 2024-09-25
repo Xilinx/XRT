@@ -107,7 +107,7 @@ namespace xdp {
                             const XAie_Events bcEvent,
                             XAie_Events& bcChannelEvent);
 
-      void configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+      bool configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
                       XAie_LocType loc, const XAie_ModuleType xaieModType,
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
@@ -166,6 +166,8 @@ namespace xdp {
       
       // This stores the map of location of tile and configured broadcast channel event
       std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
+
+      std::shared_ptr<xaiefal::XAieBroadcast> BCBytesTx;
  
 
   };
