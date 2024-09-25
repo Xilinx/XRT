@@ -4,12 +4,14 @@ env:
   RELEASE: '2021.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod'
-
+# Adding workflow call and dispatch
 on:
+  workflow_dispatch:
+  workflow_call:
   push:
     branches:
       - '2021.1'
-  workflow_dispatch:
+
   
 jobs:
   build:
@@ -39,6 +41,7 @@ jobs:
             os_ver: ubuntu_18.04  
         
     runs-on: [self-hosted, Ubuntu-22.04]
+    continue-on-error: true
     steps:  
       - name: Set env variables    
         run: |    
@@ -174,7 +177,8 @@ jobs:
   #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
   #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  package-download:    
+  package-download: 
+    if: always()   
     needs: [build]    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
