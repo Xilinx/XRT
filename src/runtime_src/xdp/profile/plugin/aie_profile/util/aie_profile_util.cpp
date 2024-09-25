@@ -470,7 +470,7 @@ namespace xdp::aie::profile {
       return bytes;
 
     uint32_t streamWidth = getStreamWidth(hw_gen);
-    uint32_t total_beats = std::ceil((static_cast<double>(bytes)*8) / streamWidth);
+    uint32_t total_beats = static_cast<uint32_t>(std::ceil((static_cast<double>(bytes)*8) / streamWidth));
     return total_beats; 
   }
 
