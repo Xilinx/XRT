@@ -338,22 +338,28 @@ namespace xdp {
     
     // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
-      // NOTE: value = ((master or slave) << 8) & (channel/stream ID)
+      // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel/stream ID)
+      uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : tile.stream_id;
-      return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) | idToReport);
+      return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) 
+             | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | idToReport);
     }
 
     // 3. Channel IDs for memory tiles
     if (type == module_type::mem_tile) {
-      // NOTE: value = ((master or slave) << 8) & (channel ID)
+      // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel ID)
+      uint8_t isChannel = 1;
       uint8_t isMaster = aie::isInputSet(type, metricSet) ? 1 : 0;
-      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT) | channel);
+      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT) 
+             | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | channel);
     }
 
     // 4. DMA BD sizes for AIE tiles
-    // NOTE: value = ((max BD size) << 16) & ((master or slave) << 8) & (channel ID)
-    uint8_t isMaster = aie::isInputSet(type, metricSet) ? 1 : 0;
-    uint32_t payloadValue = ((isMaster << PAYLOAD_IS_MASTER_SHIFT) | channel);
+    // NOTE: value = ((max BD size) << 16) & ((isMaster) << 8) & (isChannel << 7) & (channel ID)
+    uint8_t isChannel = 1;
+    uint8_t isMaster  = aie::isInputSet(type, metricSet) ? 1 : 0;
+    uint32_t payloadValue = ((isMaster << PAYLOAD_IS_MASTER_SHIFT) 
+                            | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | channel);
 
     if ((metadata->getHardwareGen() != 1)
         || ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
