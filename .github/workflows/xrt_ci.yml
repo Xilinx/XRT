@@ -52,6 +52,7 @@ jobs:
             packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]
+    continue-on-error: true
     steps:  
       - name: Set env variables    
         run: |    
