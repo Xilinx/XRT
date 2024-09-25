@@ -192,7 +192,8 @@ public:
       if (offset + size > bosize)
         throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
 
-      m_aie_array->sync_bo(bo, gmioName, dir, size, offset);
+      std::vector<xrt::bo> bos {bo};
+      m_aie_array->sync_bo(bos, gmioName, dir, size, offset);
 #endif      
     }
 
@@ -210,7 +211,8 @@ public:
       if (offset + size > bosize)
         throw xrt_core::error(-EINVAL, "Sync AIE NBO fails: exceed BO boundary.");
 
-      m_aie_array->sync_bo_nb(bo, gmioName, dir, size, offset);
+      std::vector<xrt::bo> bos {bo};
+      m_aie_array->sync_bo_nb(bos, gmioName, dir, size, offset);
 #endif      
     }
 
