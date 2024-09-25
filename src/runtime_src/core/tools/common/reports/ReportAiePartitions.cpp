@@ -31,6 +31,7 @@ populate_aie_partition(const xrt_core::device* device)
     auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
 
     boost::property_tree::ptree pt_entry;
+    pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
     pt_entry.put("instr_bo_mem", entry.instruction_mem);
     pt_entry.put("command_submissions", entry.command_submissions);
@@ -142,6 +143,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     const std::vector<Table2D::HeaderData> table_headers = {
+      {"PID", Table2D::Justification::left},
       {"Ctx ID", Table2D::Justification::left},
       {"Instr BO", Table2D::Justification::left},
       {"Sub", Table2D::Justification::left},
@@ -161,6 +163,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       const auto& hw_context = pt_hw_context.second;
 
       const std::vector<std::string> entry_data = {
+        hw_context.get<std::string>("pid"),
         hw_context.get<std::string>("context_id"),
         xrt_core::utils::unit_convert(hw_context.get<uint64_t>("instr_bo_mem")),
         hw_context.get<std::string>("command_submissions"),

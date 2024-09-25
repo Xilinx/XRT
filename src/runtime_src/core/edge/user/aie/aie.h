@@ -106,16 +106,16 @@ public:
     is_context_set();
 
     void
-    sync_external_buffer(xrt::bo& bo, adf::external_buffer_config& ebuf_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    sync_external_buffer(std::vector<xrt::bo>& bo, adf::external_buffer_config& ebuf_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
     wait_external_buffer(adf::external_buffer_config& ebuf_config);
 
     void
-    sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    sync_bo(std::vector<xrt::bo>& bos, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
-    sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
     wait_gmio(const std::string& gmioName);
@@ -137,6 +137,12 @@ public:
 
     void
     clear_bd(BD& bd);
+
+    bool
+    find_gmio(const std::string & port_name);
+
+    bool
+    find_external_buffer(const std::string & port_name);
 
 private:
     int numCols;

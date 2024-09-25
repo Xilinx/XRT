@@ -11,6 +11,7 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/counters.h"
+#include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/graph_handle.h"
 #include "core/common/shim/profile_handle.h"
 
@@ -264,6 +265,11 @@ struct ishim
   virtual bool
   write_aie_reg(uint16_t /*col*/, uint16_t /*row*/, uint32_t /*reg_addr*/, uint32_t /*reg_val*/)
   { throw not_supported_error{__func__}; }
+
+  virtual std::unique_ptr<aie_buffer_handle>
+  open_aie_buffer_handle(const xrt::uuid&, const char*)
+  { throw not_supported_error{__func__}; }
+
 };
 
 template <typename DeviceType>

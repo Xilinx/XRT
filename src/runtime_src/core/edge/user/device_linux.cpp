@@ -12,6 +12,7 @@
 #include "shim.h"
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
+#include "core/edge/user/aie/aie_buffer_object.h"
 #endif
 #include "core/edge/user/aie/profile_object.h"
 #include <map>
@@ -1161,6 +1162,17 @@ open_profile_handle()
 #else
    throw xrt_core::error(std::errc::not_supported, __func__);
 #endif   
+}
+
+std::unique_ptr<xrt_core::aie_buffer_handle>
+device_linux::
+open_aie_buffer_handle(const xrt::uuid& xclbin_id, const char* name)
+{
+#ifdef XRT_ENABLE_AIE
+  return std::make_unique<zynqaie::aie_buffer_object>(this,xclbin_id,name);
+#else
+  throw xrt_core::error(std::errc::not_supported, __func__);;
+#endif
 }
 
 std::unique_ptr<buffer_handle>

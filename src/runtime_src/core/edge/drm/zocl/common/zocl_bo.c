@@ -57,7 +57,7 @@ void zocl_describe(const struct drm_zocl_bo *obj)
 static inline void
 zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, uint64_t *paddr)
 {
-	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
+	if (!bo->mm_node) {
 		*size = (uint64_t)bo->cma_base.base.size;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		*paddr = (uint64_t)bo->cma_base.dma_addr;
@@ -213,27 +213,6 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	struct zocl_mem *head_mem = mem;
 	int err = -ENOMEM;
 
-	bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-	if (IS_ERR(bo))
-		return ERR_PTR(-ENOMEM);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-	bo->gem_base.funcs = &zocl_gem_object_funcs;
-#endif
-	err = drm_gem_object_init(dev, &bo->gem_base, size);
-	if (err) {
-		kfree(bo);
-		return ERR_PTR(err);
-	}
-
-	bo->mm_node = kzalloc(sizeof(struct drm_mm_node),
-			GFP_KERNEL);
-	if (IS_ERR(bo->mm_node)) {
-		drm_gem_object_release(&bo->gem_base);
-		kfree(bo);
-		return ERR_PTR(-ENOMEM);
-	}
-
 	mutex_lock(&zdev->mm_lock);
 	do {
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
@@ -241,10 +220,6 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				zocl_create_cma_mem(dev, size);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
-				mutex_unlock(&zdev->mm_lock);
-				kfree(bo->mm_node);
-				drm_gem_object_release(&bo->gem_base);
-				kfree(bo);
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
 				return cma_bo;
 			}
@@ -252,7 +227,29 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				" whereas requested for reserved memory region\n");
 		}
 		else {
-			err = drm_mm_insert_node_in_range(zdev->zm_drm_mm,
+                        bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+                        if (IS_ERR(bo))
+                                return ERR_PTR(-ENOMEM);
+
+                        #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+                                bo->gem_base.funcs = &zocl_gem_object_funcs;
+                        #endif
+
+                        err = drm_gem_object_init(dev, &bo->gem_base, size);
+                        if (err) {
+                                kfree(bo);
+                                return ERR_PTR(err);
+                        }
+
+                        bo->mm_node = kzalloc(sizeof(struct drm_mm_node),GFP_KERNEL);
+
+	                if (IS_ERR(bo->mm_node)) {
+		                drm_gem_object_release(&bo->gem_base);
+		                kfree(bo);
+		                return ERR_PTR(-ENOMEM);
+	                }
+
+                        err = drm_mm_insert_node_in_range(zdev->zm_drm_mm,
 				bo->mm_node, size, PAGE_SIZE, 0,
 				mem->zm_base_addr,
 				mem->zm_base_addr + mem->zm_size, 0);

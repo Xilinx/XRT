@@ -6,6 +6,7 @@
 
 #include "xrt.h"
 #include "core/common/ishim.h"
+#include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
@@ -42,6 +43,9 @@ public:
 
   std::unique_ptr<xrt_core::profile_handle>
   open_profile_handle() override;
+
+  std::unique_ptr<xrt_core::aie_buffer_handle>
+  open_aie_buffer_handle(const xrt::uuid& xclbin_id, const char* name) override;
 
   void
   get_device_info(xclDeviceInfo2 *info) override;
