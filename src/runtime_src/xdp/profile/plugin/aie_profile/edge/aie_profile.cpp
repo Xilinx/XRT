@@ -525,7 +525,7 @@ namespace xdp {
         if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
           XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
           bool status = configGraphIteratorAndBroadcast(xaieModule,
-              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
+              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent);
           if (status) {
             graphIteratorBrodcastChannelEvent = bcEvent;
             graphItrBroadcastConfigDone = true;
@@ -589,7 +589,7 @@ namespace xdp {
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
             perfCounter = configProfileAPICounters(xaieModule, mod, type,
                             metricSet, startEvent, endEvent, resetEvent, i, 
-                            threshold, retCounterEvent, metadata, tile);
+                            threshold, retCounterEvent, tile);
           //   if (metricSet == "start_to_bytes_transferred") {
           //     profAPICounterEvents_startToBytes.push_back(retCounterEvent);
           //  }
@@ -759,6 +759,16 @@ namespace xdp {
       c->stop();
       c->release();
     }
+
+    for (auto &bc : BCBytesTxVec) {
+      bc->stop();
+      bc->release();
+    }
+
+    for (auto &bc : BCLatencyVec) {
+      bc->stop();
+      bc->release();
+    }
   }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
@@ -767,7 +777,7 @@ namespace xdp {
                            const std::string& metricSet, XAie_Events startEvent,
                            XAie_Events endEvent, XAie_Events resetEvent,
                            int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
-                           std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile)
+                           const tile_type& tile)
   {
     if (xdpModType != module_type::shim)
       return nullptr;
@@ -776,7 +786,7 @@ namespace xdp {
       bool isSourceTile = true;
       auto pc = configIntfLatency(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
-                               pcIndex, threshold, retCounterEvent, metadata, tile, isSourceTile);
+                               pcIndex, threshold, retCounterEvent, tile, isSourceTile);
       std::string srcDestPairKey = metadata->srcDestPairKey(tile.col, tile.row);
       if (isSourceTile) {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
@@ -934,11 +944,11 @@ namespace xdp {
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
   AieProfile_EdgeImpl::configIntfLatency(xaiefal::XAieMod& xaieModule,
-                    XAie_ModuleType& xaieModType, const module_type xdpModType,
-                    const std::string& metricSet, XAie_Events startEvent,
-                    XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
-                    size_t threshold, XAie_Events& retCounterEvent,
-                    std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource)
+                                         XAie_ModuleType& xaieModType, const module_type xdpModType,
+                                         const std::string& metricSet, XAie_Events startEvent,
+                                         XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
+                                         size_t threshold, XAie_Events& retCounterEvent,
+                                         const tile_type& tile, bool& isSource)
   {
    // Request combo event from xaie module
     auto pc = xaieModule.perfCounter();
@@ -994,7 +1004,7 @@ namespace xdp {
    bool AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
                       XAie_LocType loc, const XAie_ModuleType xaieModType,
                       const module_type xdpModType, const std::string metricSet,
-                      uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata)
+                      uint32_t iterCount, XAie_Events& bcEvent)
   {
     bool rc = false;
     if (!aie::profile::metricSupportsGraphIterator(metricSet))
@@ -1092,28 +1102,30 @@ namespace xdp {
       std::cout << "!!!! Added tile loc: " << +tile.col << ", " << +tile.row << std::endl;
     }
 
-    BCBytesTx   = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);
-    RC = BCBytesTx->setPreferredId(bcPair.first);
+    auto BC = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);
+    RC = BC->setPreferredId(bcPair.first);
     std::cout << "!!!! Attempt BC set prefferred: " << bcPair.first << std::endl;
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC set prefferred: " << bcPair.first << std::endl;
-    } 
+    }
+    BCBytesTxVec.push_back(BC);
     
-    RC = BCBytesTx->reserve();
+    RC = BC->reserve();
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC reserve." << std::endl;
     }
 
-    RC = BCBytesTx->start();
+    RC = BC->start();
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC start." << std::endl;
     }
 
-    uint8_t bcId = BCBytesTx->getBc();
+
+    uint8_t bcId = BC->getBc();
     std::cout << "!!!! Allocated BcId: " << +bcId << std::endl;
 
     XAie_Events channelEvent;
-    RC = BCBytesTx->getEvent(vL.front(), XAIE_PL_MOD, channelEvent);
+    RC = BC->getEvent(vL.front(), XAIE_PL_MOD, channelEvent);
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC channel event." << std::endl;
     }
@@ -1177,7 +1189,10 @@ namespace xdp {
   std::pair<int, XAie_Events>
   AieProfile_EdgeImpl::getPLBroadcastChannel(const tile_type& srcTile)
   {
+    std::pair<int, XAie_Events> rc(-1, XAIE_EVENT_NONE_PL);
+    AieRC RC = AieRC::XAIE_OK;
     tile_type destTile;
+    
     metadata->getDestTile(srcTile, destTile);
     auto& tile = aieDevice->tile(srcTile.col, srcTile.row);
     XAie_LocType srctileLocation  = XAie_TileLoc(srcTile.col, srcTile.row);
@@ -1188,9 +1203,11 @@ namespace xdp {
     vL.push_back(DesttileLocation);
     XAie_ModuleType StartM = XAIE_PL_MOD;
 	  XAie_ModuleType EndM = XAIE_PL_MOD;
-    AieRC RC = AieRC::XAIE_OK;
     
     auto BC  = aieDevice->broadcast(vL, StartM, EndM);
+    if (!BC)
+      return rc;
+    BCLatencyVec.push_back(BC);
 
     auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
     RC = BC->setPreferredId(bcPair.first);

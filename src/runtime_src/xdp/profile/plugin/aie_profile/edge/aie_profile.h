@@ -78,7 +78,7 @@ namespace xdp {
                                const std::string& metricSet, XAie_Events startEvent,
                                XAie_Events endEvent, XAie_Events resetEvent,
                                int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
-                               std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile);
+                               const tile_type& tile);
 
       std::shared_ptr<xaiefal::XAiePerfCounter>
       configPCUsingComboEvents(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType, const module_type xdpModType,
@@ -92,7 +92,7 @@ namespace xdp {
                         XAie_Events startEvent, XAie_Events endEvent,
                         XAie_Events resetEvent, int pcIndex, size_t threshold,
                         XAie_Events& retCounterEvent,
-                        std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource);
+                        const tile_type& tile, bool& isSource);
 
       bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
                                 XAie_Events& retCounterEvent);
@@ -107,7 +107,7 @@ namespace xdp {
       bool configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
                                            XAie_LocType loc, const XAie_ModuleType xaieModType,
                                            const module_type xdpModType, const std::string metricSet,
-                                           uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
+                                           uint32_t iterCount, XAie_Events& bcEvent);
 
       std::pair<uint16_t, uint16_t>
       getEventPhysicalId(XAie_LocType& tileLoc,
@@ -164,7 +164,8 @@ namespace xdp {
       // This stores the map of location of tile and configured broadcast channel event
       std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
 
-      std::shared_ptr<xaiefal::XAieBroadcast> BCBytesTx;
+      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> BCBytesTxVec;
+      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> BCLatencyVec;
  
 
   };
