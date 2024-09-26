@@ -524,7 +524,7 @@ namespace xdp {
         // Identify the profiling API metric sets and configure graph events
         if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
           XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
-          bool status = configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+          bool status = configGraphIteratorAndBroadcast(xaieModule,
               loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
           if (status) {
             graphIteratorBrodcastChannelEvent = bcEvent;
@@ -587,7 +587,7 @@ namespace xdp {
               continue;
             
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
-            perfCounter = configProfileAPICounters(aieDevInst, xaieModule, mod, type,
+            perfCounter = configProfileAPICounters(xaieModule, mod, type,
                             metricSet, startEvent, endEvent, resetEvent, i, 
                             threshold, retCounterEvent, metadata, tile);
           //   if (metricSet == "start_to_bytes_transferred") {
@@ -614,8 +614,7 @@ namespace xdp {
           perfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          auto physicalEventIds = getEventPhysicalId(aieDevInst,
-                                     loc, mod, type, metricSet, startEvent, endEvent);
+          auto physicalEventIds = getEventPhysicalId(loc, mod, type, metricSet, startEvent, endEvent);
           uint16_t phyStartEvent = physicalEventIds.first;
           uint16_t phyEndEvent   = physicalEventIds.second;
 
@@ -763,7 +762,7 @@ namespace xdp {
   }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
-  AieProfile_EdgeImpl::configProfileAPICounters(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+  AieProfile_EdgeImpl::configProfileAPICounters(xaiefal::XAieMod& xaieModule,
                            XAie_ModuleType& xaieModType, const module_type xdpModType,
                            const std::string& metricSet, XAie_Events startEvent,
                            XAie_Events endEvent, XAie_Events resetEvent,
@@ -775,7 +774,7 @@ namespace xdp {
 
     if (metricSet == "interface_tile_latency" && pcIndex==0) {
       bool isSourceTile = true;
-      auto pc = configIntfLatency(aieDevInst, xaieModule, xaieModType, xdpModType,
+      auto pc = configIntfLatency(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent, metadata, tile, isSourceTile);
       std::string srcDestPairKey = metadata->srcDestPairKey(tile.col, tile.row);
@@ -790,7 +789,7 @@ namespace xdp {
     }
 
     if (metricSet == "start_to_bytes_transferred" && pcIndex==0) {
-      auto pc = configPCUsingComboEvents(aieDevInst, xaieModule, xaieModType, xdpModType,
+      auto pc = configPCUsingComboEvents(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent);
       XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
@@ -837,7 +836,7 @@ namespace xdp {
   }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
-  AieProfile_EdgeImpl::configPCUsingComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+  AieProfile_EdgeImpl::configPCUsingComboEvents(xaiefal::XAieMod& xaieModule,
                            XAie_ModuleType& xaieModType, const module_type xdpModType,
                            const std::string& metricSet, XAie_Events startEvent,
                            XAie_Events endEvent, XAie_Events resetEvent,
@@ -934,7 +933,7 @@ namespace xdp {
   }
 
   std::shared_ptr<xaiefal::XAiePerfCounter>
-  AieProfile_EdgeImpl::configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+  AieProfile_EdgeImpl::configIntfLatency(xaiefal::XAieMod& xaieModule,
                     XAie_ModuleType& xaieModType, const module_type xdpModType,
                     const std::string& metricSet, XAie_Events startEvent,
                     XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
@@ -992,7 +991,7 @@ namespace xdp {
     /****************************************************************************
    * Configure the individual AIE events for metric sets related to Profile APIs
    ***************************************************************************/
-   bool AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+   bool AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
                       XAie_LocType loc, const XAie_ModuleType xaieModType,
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata)
@@ -1029,7 +1028,7 @@ namespace xdp {
 
     // Step 2: Configure the brodcast of the returned counter event
     XAie_Events bcChannelEvent;
-    configEventBroadcast(aieDevInst, loc, module_type::core, metricSet, XAIE_CORE_MOD,
+    configEventBroadcast(loc, module_type::core, metricSet, XAIE_CORE_MOD,
                          counterEvent, bcChannelEvent);
 
     // Store the brodcasted channel event for later use
@@ -1066,13 +1065,12 @@ namespace xdp {
    * Configure the broadcasting of provided module and event
    * (Brodcasted from AIE Tile core module)
    ***************************************************************************/
-  void AieProfile_EdgeImpl::configEventBroadcast(XAie_DevInst* aieDevInst,
-                        const XAie_LocType loc,
-                        const module_type xdpModType,
-                        const std::string metricSet,
-                        const XAie_ModuleType xaieModType,
-                        const XAie_Events bcEvent,
-                        XAie_Events& bcChannelEvent)
+  void AieProfile_EdgeImpl::configEventBroadcast(const XAie_LocType loc,
+                                                 const module_type xdpModType,
+                                                 const std::string metricSet,
+                                                 const XAie_ModuleType xaieModType,
+                                                 const XAie_Events bcEvent,
+                                                 XAie_Events& bcChannelEvent)
   {
     // if ((xaieModType != XAIE_CORE_MOD) || (xdpModType != module_type::core))
     //   return;
@@ -1138,7 +1136,7 @@ namespace xdp {
   }
 
   std::pair<uint16_t, uint16_t>
-  AieProfile_EdgeImpl::getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+  AieProfile_EdgeImpl::getEventPhysicalId(XAie_LocType& tileLoc,
                      XAie_ModuleType& xaieModType, module_type xdpModType,
                      const std::string& metricSet,
                      XAie_Events startEvent, XAie_Events endEvent)

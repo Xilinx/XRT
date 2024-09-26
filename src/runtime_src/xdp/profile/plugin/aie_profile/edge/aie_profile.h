@@ -74,49 +74,46 @@ namespace xdp {
 
     private:
       std::shared_ptr<xaiefal::XAiePerfCounter>
-      configProfileAPICounters(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
-                              XAie_ModuleType& xaieModType, const module_type xdpModType,
-                              const std::string& metricSet, XAie_Events startEvent,
-                              XAie_Events endEvent, XAie_Events resetEvent,
-                              int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
-                              std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile);
+      configProfileAPICounters(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType, const module_type xdpModType,
+                               const std::string& metricSet, XAie_Events startEvent,
+                               XAie_Events endEvent, XAie_Events resetEvent,
+                               int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
+                               std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile);
 
       std::shared_ptr<xaiefal::XAiePerfCounter>
-      configPCUsingComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
-                                XAie_ModuleType& xaieModType, const module_type xdpModType,
-                                const std::string& metricSet, XAie_Events startEvent,
-                                XAie_Events endEvent, XAie_Events resetEvent,
-                                int pcIndex, size_t threshold, XAie_Events& retCounterEvent);
+      configPCUsingComboEvents(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType, const module_type xdpModType,
+                               const std::string& metricSet, XAie_Events startEvent,
+                               XAie_Events endEvent, XAie_Events resetEvent,
+                               int pcIndex, size_t threshold, XAie_Events& retCounterEvent);
 
       std::shared_ptr<xaiefal::XAiePerfCounter>
-      configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
-                        XAie_ModuleType& xaieModType, const module_type xdpModType,
-                        const std::string& metricSet, XAie_Events startEvent,
-                        XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
-                        size_t threshold, XAie_Events& retCounterEvent,
+      configIntfLatency(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType,
+                        const module_type xdpModType, const std::string& metricSet,
+                        XAie_Events startEvent, XAie_Events endEvent,
+                        XAie_Events resetEvent, int pcIndex, size_t threshold,
+                        XAie_Events& retCounterEvent,
                         std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource);
 
       bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
-                            XAie_Events& retCounterEvent);
+                                XAie_Events& retCounterEvent);
 
-      void configEventBroadcast(XAie_DevInst* aieDevInst,
-                            const XAie_LocType loc,
-                            const module_type xdpModType,
-                            const std::string metricSet,
-                            const XAie_ModuleType xaieModType,
-                            const XAie_Events bcEvent,
-                            XAie_Events& bcChannelEvent);
+      void configEventBroadcast(const XAie_LocType loc,
+                                const module_type xdpModType,
+                                const std::string metricSet,
+                                const XAie_ModuleType xaieModType,
+                                const XAie_Events bcEvent,
+                                XAie_Events& bcChannelEvent);
 
-      bool configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
-                      XAie_LocType loc, const XAie_ModuleType xaieModType,
-                      const module_type xdpModType, const std::string metricSet,
-                      uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
+      bool configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
+                                           XAie_LocType loc, const XAie_ModuleType xaieModType,
+                                           const module_type xdpModType, const std::string metricSet,
+                                           uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
 
       std::pair<uint16_t, uint16_t>
-      getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
-                     XAie_ModuleType& xaieModType, module_type xdpModType, 
-                     const std::string& metricSet,
-                     XAie_Events startEvent, XAie_Events endEvent);
+      getEventPhysicalId(XAie_LocType& tileLoc,
+                         XAie_ModuleType& xaieModType, module_type xdpModType, 
+                         const std::string& metricSet,
+                         XAie_Events startEvent, XAie_Events endEvent);
   
       std::pair<int, XAie_Events>
       setupBroadcastChannel(const tile_type& currTileLoc);
