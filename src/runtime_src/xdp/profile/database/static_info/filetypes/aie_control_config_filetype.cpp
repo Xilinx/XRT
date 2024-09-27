@@ -224,10 +224,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             uint8_t minCol,
                                             uint8_t maxCol) const
 {
-    std::stringstream msg;
-    msg << "Fetching Interface tiles' specifics and details for AIE Profiling." ;
-    xrt_core::message::send(severity_level::info, "XRT", msg.str());
-
     std::vector<tile_type> tiles;
 
     auto ios = getAllIOs();
@@ -292,7 +288,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
 
     if (tiles.empty() && (specifiedId >= 0)) {
         std::string msg = "No shim tiles used specified ID " + std::to_string(specifiedId) 
-                        + ". Please specify a valid ID.";
+                        + ". Please specify a valid ID for AIE Profiling. ";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 
