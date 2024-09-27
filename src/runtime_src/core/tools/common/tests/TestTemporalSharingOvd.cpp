@@ -141,7 +141,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
 
 void
 TestTemporalSharingOvd::initializeTests(std::vector<TestCase>& testcases) {
-  for (int i = 0; i < testcases.size(); i++) {
+  for (unsigned int i = 0; i < testcases.size(); i++) {
     try{
       testcases[i].initialize();
     } catch (const std::exception& ex) {
