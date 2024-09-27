@@ -9,11 +9,13 @@
 #include "OO_HostMem.h"
 #include "OO_P2P.h"
 #include "OO_Performance.h"
+#include "OO_Preemption.h"
 
 std::vector<std::shared_ptr<OptionOptions>> SubCmdConfigureInternal::optionOptionsCollection = {
   std::make_shared<OO_HostMem>("host-mem"),
   std::make_shared<OO_P2P>("p2p"),
   std::make_shared<OO_Performance>("pmode"),
+  std::make_shared<OO_Preemption>("force-preemption") //hidden
 };
 
 SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
