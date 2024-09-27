@@ -932,8 +932,8 @@ XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
   Section *pIPLayout = xclbin.findSection(IP_LAYOUT);
   boost::property_tree::ptree ptIPLayout;
   pIPLayout->getPayload(ptIPLayout);
-  boost::property_tree::ptree ptIPData = ptIPLayout.get_child("ip_layout");
-  boost::property_tree::ptree ipDatas = ptIPData.get_child("m_ip_data");
+  boost::property_tree::ptree ptIPlayout = ptIPLayout.get_child("ip_layout");
+  boost::property_tree::ptree ipDatas = ptIPlayout.get_child("m_ip_data");
   for (const auto& element : ipDatas) {
     boost::property_tree::ptree ptIPData = element.second;
     std::string sm_type = ptIPData.get<std::string>("m_type");
