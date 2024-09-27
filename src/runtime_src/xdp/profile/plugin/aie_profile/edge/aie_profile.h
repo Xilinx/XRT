@@ -94,17 +94,20 @@ namespace xdp {
                         XAie_Events& retCounterEvent,
                         const tile_type& tile, bool& isSource);
 
-      bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
+      bool
+      configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
                                 XAie_Events& retCounterEvent);
 
-      void configEventBroadcast(const XAie_LocType loc,
+      void
+      configEventBroadcast(const XAie_LocType loc,
                                 const module_type xdpModType,
                                 const std::string metricSet,
                                 const XAie_ModuleType xaieModType,
                                 const XAie_Events bcEvent,
                                 XAie_Events& bcChannelEvent);
 
-      bool configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
+      bool
+      configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
                                            XAie_LocType loc, const XAie_ModuleType xaieModType,
                                            const module_type xdpModType, const std::string metricSet,
                                            uint32_t iterCount, XAie_Events& bcEvent);
@@ -136,6 +139,9 @@ namespace xdp {
       std::pair<int, XAie_Events>
       getPLBroadcastChannel(const tile_type& srcTile);
 
+      void
+      displayAdfAPIResults();
+
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
@@ -164,14 +170,9 @@ namespace xdp {
       // This stores the map of location of tile and configured broadcast channel event
       std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
 
-      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> BCBytesTxVec;
-      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> BCLatencyVec;
- 
-
+      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesBytesTx;
+      std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesLatency;
   };
-
-
-
 }   
 
 #endif

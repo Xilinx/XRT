@@ -698,14 +698,17 @@ namespace xdp {
           uint32_t srcCounterValue = 0;
           uint32_t destCounterValue = 0;
           try {
-            std::string srcDestPairKey = metadata->srcDestPairKey(aie->column, aie->row);
+            std::string srcDestPairKey = metadata->getSrcDestPairKey(aie->column, aie->row);
             uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
             uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
             auto srcPerfCount = perfCounters.at(srcPcIdx);
             auto destPerfCount = perfCounters.at(destPcIdx);
             srcPerfCount->readResult(srcCounterValue);
             destPerfCount->readResult(destCounterValue);
-            counterValue = (destCounterValue > srcCounterValue) ? (destCounterValue-srcCounterValue):(srcCounterValue-destCounterValue);
+            counterValue = (destCounterValue > srcCounterValue) ? (destCounterValue-srcCounterValue) : (srcCounterValue-destCounterValue);
+            uint64_t storedValue = adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].profileResult;
+            if (counterValue != storedValue)
+              adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].profileResult = counterValue;
           } catch(...) {
             continue;
           }
@@ -713,10 +716,13 @@ namespace xdp {
         else if (aie::profile::adfAPIStartToTransferredConfigEvent(aie->startEvent))
         {
           try {
-            std::string srcKey = aie::uint8ToStr(aie->column) + "," + aie::uint8ToStr(aie->row);
+            std::string srcKey = "(" + aie::uint8ToStr(aie->column) + "," + aie::uint8ToStr(aie->row) + ")";
             uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(srcKey).srcPcIdx;
             auto perfCounter = perfCounters.at(srcPcIdx);
             perfCounter->readResult(counterValue);
+            uint64_t storedValue = adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].profileResult;
+            if (counterValue != storedValue)
+              adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].profileResult = counterValue;
           } catch(...) {
             continue;
           }
@@ -750,6 +756,8 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::freeResources() 
   {
+    std::cout << "!!! free resources called. \n";
+    displayAdfAPIResults();
     for (auto& c : perfCounters){
       c->stop();
       c->release();
@@ -760,12 +768,12 @@ namespace xdp {
       c->release();
     }
 
-    for (auto &bc : BCBytesTxVec) {
+    for (auto &bc : bcResourcesBytesTx) {
       bc->stop();
       bc->release();
     }
 
-    for (auto &bc : BCLatencyVec) {
+    for (auto &bc : bcResourcesLatency) {
       bc->stop();
       bc->release();
     }
@@ -787,7 +795,7 @@ namespace xdp {
       auto pc = configIntfLatency(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent, tile, isSourceTile);
-      std::string srcDestPairKey = metadata->srcDestPairKey(tile.col, tile.row);
+      std::string srcDestPairKey = metadata->getSrcDestPairKey(tile.col, tile.row);
       if (isSourceTile) {
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = perfCounters.size();
@@ -805,7 +813,7 @@ namespace xdp {
       XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
       XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_1_PL);
 
-      std::string srcKey = aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row);
+      std::string srcKey = "(" + aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row) + ")";
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = perfCounters.size();
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].isSourceTile = true;
       return pc;
@@ -815,16 +823,12 @@ namespace xdp {
     auto pc = xaieModule.perfCounter();
     auto ret = pc->initialize(xaieModType, startEvent, 
                               xaieModType, endEvent);
+    if (ret != XAIE_OK)
+      return nullptr;
 
-    if (ret != XAIE_OK) return nullptr;
     ret = pc->reserve();
-    if (ret != XAIE_OK) return nullptr;
-
-    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
-    //   ret = pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
-    //   if (ret != XAIE_OK)
-    //     std::cout << "Error: Unable to set the reset event for threshold config of counter"<< std::endl;
-    // }
+    if (ret != XAIE_OK)
+      return nullptr;
 
     if (resetEvent != XAIE_EVENT_NONE_CORE)
       pc->changeRstEvent(xaieModType, resetEvent);
@@ -873,15 +877,12 @@ namespace xdp {
     XAie_Events counterEvent;
     pc->getCounterEvent(xaieModType, counterEvent);
 
-    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
-    //   pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
-    // }
     if (resetEvent != XAIE_EVENT_NONE_CORE)
       pc->changeRstEvent(xaieModType, resetEvent);
 
     // Configure the combo events if user has specified valid non zero threshold
-    if (threshold==0)
-      return startCounter(pc, counterEvent, retCounterEvent);
+    // if (threshold==0)
+    //   return startCounter(pc, counterEvent, retCounterEvent);
 
     // Set up a combo event using start & count event type
     comboEvent0 = xaieModule.comboEvent(4);
@@ -1103,12 +1104,15 @@ namespace xdp {
     }
 
     auto BC = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);
+    if (!BC)
+      return;
+
+    bcResourcesBytesTx.push_back(BC);
     RC = BC->setPreferredId(bcPair.first);
     std::cout << "!!!! Attempt BC set prefferred: " << bcPair.first << std::endl;
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC set prefferred: " << bcPair.first << std::endl;
     }
-    BCBytesTxVec.push_back(BC);
     
     RC = BC->reserve();
     if (RC != XAIE_OK) {
@@ -1119,7 +1123,6 @@ namespace xdp {
     if (RC != XAIE_OK) {
       std::cout << "!!!! Failure in BC start." << std::endl;
     }
-
 
     uint8_t bcId = BC->getBc();
     std::cout << "!!!! Allocated BcId: " << +bcId << std::endl;
@@ -1207,7 +1210,7 @@ namespace xdp {
     auto BC  = aieDevice->broadcast(vL, StartM, EndM);
     if (!BC)
       return rc;
-    BCLatencyVec.push_back(BC);
+    bcResourcesLatency.push_back(BC);
 
     auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
     RC = BC->setPreferredId(bcPair.first);
@@ -1236,6 +1239,38 @@ namespace xdp {
 
     std::pair<int, XAie_Events> bcPairSelected = std::make_pair(bcId, bcEvent);
     return bcPairSelected;
+  }
+
+  void AieProfile_EdgeImpl::displayAdfAPIResults()
+  {
+    std::cout << "!!! display adfAPIResults() called. \n";
+    for(auto &adfAPIType : adfAPIResourceInfoMap) {
+      if (adfAPIType.first == aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED) {
+        for(auto &adfApiResource : adfAPIType.second) {
+          std::stringstream msg;
+          msg << "Start to bytes transferred for tile " << adfApiResource.first << " is " 
+              << +adfApiResource.second.profileResult <<" clock cycles for specified bytes in xrt.ini.\n";
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          //Note: User specified bytes or graph/port name display will be supported later for this metric. 
+        }
+      }
+      else if(adfAPIType.first == aie::profile::adfAPI::INTF_TILE_LATENCY) {
+        for(auto &adfApiResource : adfAPIType.second) {
+          GraphPortPair graphPortPair;
+          try {
+            graphPortPair = metadata->getSrcDestGraphPair(adfApiResource.first);
+          }
+          catch (...) {
+            continue;
+          }
+          std::stringstream msg;
+          msg << "Latency between specified first beat of " <<graphPortPair.srcGraphName << ":" <<graphPortPair.srcGraphPort 
+              << " to first beat of " <<graphPortPair.destGraphName << ":" <<graphPortPair.destGraphPort << " is " 
+              << +adfApiResource.second.profileResult <<" clock cycles.\n";
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+      }
+    }
   }
 
 

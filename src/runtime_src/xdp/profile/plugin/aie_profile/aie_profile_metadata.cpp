@@ -1045,13 +1045,14 @@ namespace xdp {
 
       if (tileMetrics[i].size() < 4 || tileMetrics[i].size()>5)
         continue;
-      
-      auto tileSrc  =  metadataReader->getInterfaceTiles(tileMetrics[i][0],
-                                          tileMetrics[i][1],
-                                          metricName);
-      auto tileDest =  metadataReader->getInterfaceTiles(tileMetrics[i][2],
-                                          tileMetrics[i][3],
-                                          metricName);
+
+      std::string g1 =  tileMetrics[i][0];
+      std::string p1 =  tileMetrics[i][1];
+      std::string g2 =  tileMetrics[i][2];
+      std::string p2 =  tileMetrics[i][3];
+
+      auto tileSrc  =  metadataReader->getInterfaceTiles(g1, p1, metricName);
+      auto tileDest =  metadataReader->getInterfaceTiles(g2, p2, metricName);
 
       if(tileSrc.empty() || tileDest.empty() || (tileSrc[0]==tileDest[0])) {
         continue;
@@ -1062,8 +1063,8 @@ namespace xdp {
       }
 
       // Update the latencyConfigMap to store the complete config.
-      latencyConfigMap[tileSrc[0]]  = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true);
-      latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false);
+      latencyConfigMap[tileSrc[0]]  = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true, g1, p1, g2, p2);
+      latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2);
 
       // Also update the common configMetrics 
       // TODO: Make sure this config doesn't collide with other interface tile config
@@ -1194,24 +1195,45 @@ namespace xdp {
     return true;
   }
 
-  std::string AieProfileMetadata::srcDestPairKey(uint8_t col, uint8_t row) const
+  std::string AieProfileMetadata::getSrcDestPairKey(uint8_t col, uint8_t row)
   {
-    static std::map<std::string, std::string> keysCache;
+    // static std::map<std::string, std::string> keysCache;
     std::string key = "";
 
     std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row);
     if(keysCache.find(cacheKey) != keysCache.end())
-      return keysCache.at(cacheKey);
+      return keysCache.at(cacheKey).srcDestKey;
 
     for(const auto &config : latencyConfigMap) {
       if(config.first.col == col && config.first.row == row) {
         key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
               "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
-        keysCache[cacheKey] = key;
+        keysCache[cacheKey] = LatencyCache(key,
+        // keysCache.emplace(cacheKey, LatencyCache(key,
+                                           config.second.graphPortPair.srcGraphName,
+                                           config.second.graphPortPair.srcGraphPort,
+                                           config.second.graphPortPair.destGraphName,
+                                           config.second.graphPortPair.destGraphPort);
         return key;
       }
     }
     return key;
+  }
+
+  GraphPortPair AieProfileMetadata::getSrcDestGraphPair(const std::string& srcDestKey) const
+  {
+    std::cout << "!!!! getSrcDestGraphPair: " << srcDestKey << std::endl;
+    for (const auto &keys : keysCache) {
+      std::cout << "!! cache.first: " << keys.first << " cache.second: " << keys.second.srcDestKey << std::endl;
+      if (keys.second.srcDestKey == srcDestKey)
+        return keys.second.graphPortPair;
+    }
+
+    // TODO: Handle if key is not found
+    // Code flow should never come here
+    std::cout << "Key not found: " << srcDestKey << std::endl;
+    std::string errMsg = "Key not found: " + srcDestKey;
+    throw std::runtime_error(errMsg);
   }
 
   bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile) const

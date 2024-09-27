@@ -341,6 +341,17 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  struct GraphPortPair {
+    std::string srcGraphName;
+    std::string srcGraphPort;
+    std::string destGraphName;
+    std::string destGraphPort;
+
+    GraphPortPair() = default;
+    GraphPortPair(std::string g1, std::string p1, std::string g2, std::string p2):
+                  srcGraphName(g1), srcGraphPort(p1), destGraphName(g2), destGraphPort(p2) {}
+  };
+
   struct LatencyConfig
   {
     public:
@@ -350,10 +361,24 @@ namespace xdp {
       uint32_t tranx_no;
       bool isSource;
       uint8_t portId;
+      GraphPortPair graphPortPair;
+
       LatencyConfig() = default;
-      LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i) :
-        src(s), dest(d), metricSet(m), tranx_no(t), isSource(i) {}
+      LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i,
+                    std::string g1, std::string p1, std::string g2, std::string p2) :
+                    src(s), dest(d), metricSet(m), tranx_no(t), isSource(i),
+                    graphPortPair(g1, p1, g2, p2) {}
       void updatePortId(uint8_t& id) { portId=id; }
+  };
+
+  struct LatencyCache
+  {
+    std::string srcDestKey;
+    GraphPortPair graphPortPair;
+
+    LatencyCache() = default;
+    LatencyCache(std::string key, std::string g1, std::string p1, std::string g2, std::string p2):
+                 srcDestKey(key), graphPortPair(g1, p1, g2, p2) {}
   };
       
   struct AIEProfileFinalConfig
