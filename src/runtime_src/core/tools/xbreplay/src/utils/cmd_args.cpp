@@ -42,7 +42,7 @@ int cmd_args::validate_args(const std::string& opt, cmd_args_opt& arg)
 int cmd_args::parse(const std::vector<std::string>& argv,
                       cmd_args_opt &arg, const std::string& optstring)
 {
-  uint32_t argc = argv.size();
+  auto argc = argv.size();
 
   if ((m_optind >= argc) || (argv[m_optind][0] != '-'))
     return -1;

@@ -13,7 +13,7 @@ namespace xrt_core::tools::xbreplay {
 void replay_xrt::register_device_class_func()
 {
   m_api_map["xrt::device::device(unsigned int)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     uint32_t device_index = std::stoi(args[0].second);
@@ -21,7 +21,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::device(const std::string&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     std::string bdf = args[0].second;
@@ -29,7 +29,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::device(xclDeviceHandle)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -43,7 +43,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::load_xclbin(const std::string&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     std::string fp = get_file_path(msg, ".xclbin");
 
@@ -59,7 +59,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::load_xclbin(const axlf*)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     unsigned long  axlf_ref = std::stoul(args[0].second);
@@ -77,7 +77,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::load_xclbin(const xrt::xclbin&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     unsigned long  xclbin_ref = std::stoul(args[0].second);
@@ -96,7 +96,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::register_xclbin(const xrt::xclbin&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     uint64_t  xclbin_ref = std::stoull(args[0].second, nullptr, utils::base_hex);
@@ -115,7 +115,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::reset()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     /*get device handle */
     auto dev = m_device_hndle_map[msg->m_handle];
@@ -127,7 +127,7 @@ void replay_xrt::register_device_class_func()
   };
 
   m_api_map["xrt::device::~device()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_device_hndle_map[msg->m_handle];
 

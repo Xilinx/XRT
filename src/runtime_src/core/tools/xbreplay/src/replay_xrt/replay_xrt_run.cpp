@@ -13,7 +13,7 @@ namespace xrt_core::tools::xbreplay {
 void replay_xrt::register_run_class_func()
 {
   m_api_map["xrt::run::run(const xrt::kernel&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto krnl_hndle = std::stoull(args[0].second, nullptr, utils::base_hex);
@@ -30,7 +30,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::set_arg_at_index(int, const xrt::bo&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -47,7 +47,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::set_arg_at_index(int, const void*, size_t)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto run_ptr = m_run_hndle_map[msg->m_handle];
@@ -66,7 +66,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::start()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto run_ptr = m_run_hndle_map[msg->m_handle];
 
@@ -77,7 +77,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::wait(const std::chrono::milliseconds&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -91,7 +91,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::wait2(const std::chrono::milliseconds&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto run_ptr = m_run_hndle_map[msg->m_handle];
@@ -104,7 +104,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::stop()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     //const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto run_ptr = m_run_hndle_map[msg->m_handle];
@@ -115,7 +115,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::abort()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     //const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto run_ptr = m_run_hndle_map[msg->m_handle];
@@ -126,7 +126,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::update_arg_at_index(int, const void*, size_t)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
     auto run_ptr = m_run_hndle_map[msg->m_handle];
@@ -144,7 +144,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::update_arg_at_index(int, const xrt::bo&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -161,7 +161,7 @@ void replay_xrt::register_run_class_func()
   };
 
   m_api_map["xrt::run::~run()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_run_hndle_map[msg->m_handle];
 

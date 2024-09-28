@@ -14,7 +14,7 @@ void replay_xrt::register_kernel_class_func()
 {
  m_api_map["xrt::kernel::kernel(const xrt::device&, const xrt::uuid&, "
           "const std::string&, xrt::kernel::cu_access_mode)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -41,7 +41,7 @@ void replay_xrt::register_kernel_class_func()
   };
 
   m_api_map["xrt::kernel::kernel(const xrt::hw_context&, const std::string&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -63,7 +63,7 @@ void replay_xrt::register_kernel_class_func()
   };
 
  m_api_map["xrt::kernel::group_id(int)"] =
- [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+ [this] (std::shared_ptr<utils::message>msg)
  {
    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -85,7 +85,7 @@ void replay_xrt::register_kernel_class_func()
 /*TBD: API write_register is deprecated to be removed */
 #if 0
   m_api_map["xrt::kernel::write_register(unsigned int, unsigned int)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
 
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
@@ -109,7 +109,7 @@ void replay_xrt::register_kernel_class_func()
 #endif
 
   m_api_map["xrt::kernel::~kernel()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_kernel_hndle_map[msg->m_handle];
 

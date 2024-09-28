@@ -13,7 +13,7 @@ namespace xrt_core::tools::xbreplay {
 void replay_xrt::register_xclbin_class_func()
 {
   m_api_map["xrt::xclbin::xclbin(const std::string&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const auto& args = msg->m_args;
     if (args.size() > 0)
@@ -27,7 +27,7 @@ void replay_xrt::register_xclbin_class_func()
   };
 
   m_api_map["xrt::xclbin::xclbin(const std::vector<char>&)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     try
     {
@@ -60,7 +60,7 @@ void replay_xrt::register_xclbin_class_func()
   };
 
   m_api_map["xrt::xclbin::xclbin(const axlf*)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     try
     {
@@ -104,7 +104,7 @@ void replay_xrt::register_xclbin_class_func()
   };
 
   m_api_map["xrt::xclbin::~xclbin()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_xclbin_hndle_map[msg->m_handle];
 

@@ -46,7 +46,7 @@ static bool deserialize_map_data(const std::vector<char>& buffer, xrt::hw_contex
 void replay_xrt::register_hwctxt_class_func()
 {
   m_api_map["xrt::hw_context::hw_context(const xrt::device&, const xrt::uuid&, xrt::hw_context::access_mode)"] =
-  [this](replay_xrt& handle, std::shared_ptr<utils::message> msg)
+  [this](std::shared_ptr<utils::message> msg)
   {
     const std::vector<std::pair<std::string, std::string>>& args = msg->m_args;
 
@@ -69,7 +69,7 @@ void replay_xrt::register_hwctxt_class_func()
   };
 
 m_api_map["xrt::hw_context::hw_context(const xrt::device&, const xrt::uuid&, const xrt::hw_context::cfg_param_type&)"] =
-  [this](replay_xrt& handle, std::shared_ptr<utils::message> msg)
+  [this](std::shared_ptr<utils::message> msg)
   {
     const std::vector<std::pair<std::string, std::string>>& args = msg->m_args;
 
@@ -95,7 +95,7 @@ m_api_map["xrt::hw_context::hw_context(const xrt::device&, const xrt::uuid&, con
   };
 
 m_api_map["xrt::hw_context::update_qos(const xrt::hw_context::cfg_param_type&)"] =
-[this](replay_xrt& handle, std::shared_ptr<utils::message> msg)
+[this](std::shared_ptr<utils::message> msg)
   {
     const std::vector<std::pair<std::string, std::string>>& args = msg->m_args;
 
@@ -112,7 +112,7 @@ m_api_map["xrt::hw_context::update_qos(const xrt::hw_context::cfg_param_type&)"]
   };
 
 m_api_map["xrt::hw_context::~hw_context()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_hwctx_hndle_map[msg->m_handle];
 

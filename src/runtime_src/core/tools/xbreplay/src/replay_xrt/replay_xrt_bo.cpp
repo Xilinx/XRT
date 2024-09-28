@@ -13,7 +13,7 @@ namespace xrt_core::tools::xbreplay {
 void replay_xrt::register_bo_class_func()
 {
   m_api_map["xrt::bo::bo(const xrt::device&, void*, size_t, xrt::bo::flags, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -49,7 +49,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::device&, void*, size_t, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -76,7 +76,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::device&, size_t, xrt::bo::flags, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -102,7 +102,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::device&, size_t, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -126,7 +126,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::hw_context&, void*, size_t, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -161,7 +161,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::hw_context&, size_t, xrt::bo::flags, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -187,7 +187,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::hw_context&, size_t, xrt::memory_group)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -211,7 +211,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::bo(const xrt::bo&, size_t, size_t)"] =
-  [this](replay_xrt &handle, std::shared_ptr<utils::message> msg)
+  [this](std::shared_ptr<utils::message> msg)
   {
     const std::vector<std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -229,7 +229,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::async(xclBOSyncDirection, size_t, size_t)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -277,7 +277,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::sync(xclBOSyncDirection, size_t, size_t)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -325,7 +325,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["ext::bo::bo(constxrt::hw_context&, size_t, xrt::ext::bo::access_mode)"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
@@ -349,7 +349,7 @@ void replay_xrt::register_bo_class_func()
   };
 
   m_api_map["xrt::bo::~bo()"] =
-  [this] (replay_xrt& handle, std::shared_ptr<utils::message>msg)
+  [this] (std::shared_ptr<utils::message>msg)
   {
     auto ptr = m_bo_hndle_map[msg->m_handle];
 

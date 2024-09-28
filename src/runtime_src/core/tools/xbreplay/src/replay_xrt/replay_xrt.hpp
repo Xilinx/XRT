@@ -62,12 +62,12 @@ class replay_xrt
   std::unordered_map<uint64_t, std::shared_ptr<xrt::xclbin>> m_xclbin_hndle_map;
 
   /*Map between group id */
-  std::unordered_map<uint32_t, uint32_t> m_kernel_grp_id;
+  std::unordered_map<uint64_t, xrt::memory_group> m_kernel_grp_id;
 
   /* Map betgween uuid & device handle */
   std::unordered_map<std::shared_ptr<xrt::device>, xrt::uuid> m_uuid_device_map;
 
-  std::map <std::string, std::function < void (replay_xrt&, std::shared_ptr<utils::message>)>> m_api_map;
+  std::map <std::string, std::function < void (std::shared_ptr<utils::message>)>> m_api_map;
 
   /* Registers device class API's */
   void register_device_class_func();
@@ -135,7 +135,7 @@ class replay_xrt
     if (m_api_map.find (msg->m_api_id) != m_api_map.end ())
     {
       msg->print_args();
-      m_api_map[msg->m_api_id] (*this, msg);
+      m_api_map[msg->m_api_id] (msg);
     }
     else
     {
