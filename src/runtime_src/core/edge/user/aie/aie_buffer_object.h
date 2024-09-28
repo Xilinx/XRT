@@ -33,7 +33,7 @@ namespace zynqaie {
     async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
-    wait() const;
+    wait();
 
     std::string
     get_name() const;

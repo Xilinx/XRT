@@ -31,7 +31,7 @@ public:
   }
 
   virtual void
-  wait() const
+  wait()
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }

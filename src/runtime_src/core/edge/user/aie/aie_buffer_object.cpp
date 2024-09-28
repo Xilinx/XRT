@@ -56,11 +56,12 @@ namespace zynqaie {
   }
 
   void
-  aie_buffer_object::wait() const
+  aie_buffer_object::wait()
   {
     if (!async_started)
       throw xrt_core::error(-EINVAL, "Asynchronous operation is not initiated. Please call 'wait' after 'async' call");
 
-    return m_aie_array->wait_gmio(name);
+    m_aie_array->wait_gmio(name);
+    async_started = false;
   }
 }
