@@ -44,4 +44,23 @@ namespace zynqaie {
   {
     return m_aie_array->sync_bo(bos, name.c_str(), dir, size, offset);
   }
+
+  void
+  aie_buffer_object::async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (async_started)
+      throw xrt_core::error(-EINVAL, "Asynchronous operation is already initiated. Multiple 'async' calls are not supported");
+
+    async_started = true;
+    return m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
+  }
+
+  void
+  aie_buffer_object::wait() const
+  {
+    if (!async_started)
+      throw xrt_core::error(-EINVAL, "Asynchronous operation is not initiated. Please call 'wait' after 'async' call");
+
+    return m_aie_array->wait_gmio(name);
+  }
 }
