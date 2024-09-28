@@ -48,11 +48,12 @@ namespace zynqaie {
   void
   aie_buffer_object::async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset)
   {
+    //TODO do we need to support multi threaded? if yes, we need to acquire lock
     if (async_started)
       throw xrt_core::error(-EINVAL, "Asynchronous operation is already initiated. Multiple 'async' calls are not supported");
 
+    m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
     async_started = true;
-    return m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
   }
 
   void
