@@ -58,7 +58,7 @@ R"(
     }]
   },{
     "configure": [{
-      "suboption": ["pmode"]
+      "suboption": ["pmode", "force-preemption"]
     }]
   },{
     "advanced":[{

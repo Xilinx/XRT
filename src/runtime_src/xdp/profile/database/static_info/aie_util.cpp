@@ -437,4 +437,22 @@ namespace xdp::aie {
     }
   }
 
+  /****************************************************************************
+   * Get the stream width in bits for specified hw_gen
+   ***************************************************************************/
+  uint32_t getStreamWidth(uint8_t hw_gen)
+  {
+    // Stream width in bits
+    static const std::unordered_map<uint8_t, uint8_t> streamWidthMap = {
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(32)},
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(32)}
+    };
+    uint32_t default_width = 32;
+    
+    if (streamWidthMap.find(hw_gen) == streamWidthMap.end())
+      return default_width;
+    
+    return streamWidthMap.at(hw_gen);
+  }
+
 } // namespace xdp::aie

@@ -287,8 +287,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
     }
 
     if (tiles.empty() && (specifiedId >= 0)) {
-        std::string msg = "No tiles used specified ID " + std::to_string(specifiedId) 
-                        + ". Please specify a valid ID.";
+        std::string msg = "No shim tiles used specified ID " + std::to_string(specifiedId) 
+                        + ". Please specify a valid ID for AIE Profiling. ";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 

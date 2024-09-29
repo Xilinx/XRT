@@ -114,6 +114,9 @@ namespace xdp::aie {
   XDP_CORE_EXPORT
   void displayColShiftInfo(uint8_t colShift);
 
+  XDP_CORE_EXPORT
+  uint32_t getStreamWidth(uint8_t hw_gen);
+
 } // namespace xdp::aie
 
 #endif
