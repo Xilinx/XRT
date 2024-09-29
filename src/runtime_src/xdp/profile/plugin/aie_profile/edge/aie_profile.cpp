@@ -546,11 +546,7 @@ namespace xdp {
           }
         }
 
-        // This vector keeps track of counter events required for other counters
-        // std::vector<XAie_Events> profAPICounterEvents_startToBytes;
-        // std::vector<XAie_Events> profAPICounterEvents_interfaceLatency;
         uint32_t threshold = 0;
-        
         // Request and configure all available counters for this tile
         for (int i=0; i < numFreeCtr; ++i) {
           auto startEvent    = startEvents.at(i);
@@ -566,23 +562,12 @@ namespace xdp {
           std::shared_ptr<xaiefal::XAiePerfCounter> perfCounter = nullptr;
           if (aie::profile::profileAPIMetricSet(metricSet)) {
             resetEvent = resetEvents.at(i);
-            // if (i==1) {
-              threshold = metadata->getUserSpecifiedThreshold(tileMetric.first, tileMetric.second);
-              threshold = aie::profile::convertToBeats(tileMetric.second, threshold, metadata->getHardwareGen());
-              // if (threshold == 0) {
-              //   continue;
-              // }
-            // }
+            threshold = metadata->getUserSpecifiedThreshold(tileMetric.first, tileMetric.second);
+            threshold = aie::profile::convertToBeats(tileMetric.second, threshold, metadata->getHardwareGen());
 
-            if (i==0 && threshold>0) {
-              if (metricSet == METRIC_BYTE_COUNT)
-                // endEvent = profAPICounterEvents_startToBytes.back();
-                endEvent = XAIE_EVENT_PERF_CNT_1_PL;
-              else
-                // endEvent = profAPICounterEvents_interfaceLatency.back();
-                endEvent = XAIE_EVENT_PERF_CNT_1_PL;
-            }
-
+            if (i==0 && threshold>0)
+              endEvent = XAIE_EVENT_PERF_CNT_1_PL;
+              
             if (i==1 && threshold == 0)
               continue;
             
@@ -590,12 +575,6 @@ namespace xdp {
             perfCounter = configProfileAPICounters(xaieModule, mod, type,
                             metricSet, startEvent, endEvent, resetEvent, i, 
                             threshold, retCounterEvent, tile);
-          //   if (metricSet == METRIC_BYTE_COUNT) {
-          //     profAPICounterEvents_startToBytes.push_back(retCounterEvent);
-          //  }
-          //   else {
-          //     profAPICounterEvents_interfaceLatency.push_back(retCounterEvent);
-          //  }
           }
           else {
             // Request counter from resource manager
@@ -906,27 +885,13 @@ namespace xdp {
     combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
 
     ret = comboEvent0->setEvents(combo_events, combo_opts);
-    if (ret != XAIE_OK) {
-      std::cout << "!!! setEvents error" << std::endl;
+    if (ret != XAIE_OK)
       return nullptr;
-    }
 
     ret = comboEvent0->getEvents(comboConfigedEvents);
     if (ret != XAIE_OK)
       return nullptr;
     
-    for(auto &e : comboConfigedEvents)
-      std::cout << "!!! sub events of combo3 configEvents: " << static_cast<int>(e) << std::endl;
-
-    std::vector<XAie_Events>         input_events;
-    std::vector<XAie_EventComboOps>  input_opts;
-    ret = comboEvent0->getInputEvents(input_events, input_opts);
-    if (ret != XAIE_OK)
-      return nullptr;
-    
-    for(auto &e : input_events)
-      std::cout << "!!! Input Event for combo3: " << static_cast<int>(e) << std::endl;
-
     // Change the start event to above combo event type
     newStartEvent = XAIE_EVENT_COMBO_EVENT_3_PL;
     ret = pc->changeStartEvent(xaieModType, newStartEvent);
@@ -1081,9 +1046,6 @@ namespace xdp {
                                                  const XAie_Events bcEvent,
                                                  XAie_Events& bcChannelEvent)
   {
-    // if ((xaieModType != XAIE_CORE_MOD) || (xdpModType != module_type::core))
-    //   return;
-
     auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
 
     std::vector<XAie_LocType> vL;
@@ -1098,7 +1060,6 @@ namespace xdp {
 
     for (auto &tile : allIntfTilesSet) {
       vL.push_back(XAie_TileLoc(tile.col, tile.row));
-      std::cout << "!!!! Added tile loc: " << +tile.col << ", " << +tile.row << std::endl;
     }
 
     auto BC = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);
@@ -1106,31 +1067,21 @@ namespace xdp {
       return;
 
     bcResourcesBytesTx.push_back(BC);
-    RC = BC->setPreferredId(bcPair.first);
-    std::cout << "!!!! Attempt BC set prefferred: " << bcPair.first << std::endl;
-    if (RC != XAIE_OK) {
-      std::cout << "!!!! Failure in BC set prefferred: " << bcPair.first << std::endl;
-    }
+    BC->setPreferredId(bcPair.first);
     
     RC = BC->reserve();
-    if (RC != XAIE_OK) {
-      std::cout << "!!!! Failure in BC reserve." << std::endl;
-    }
+    if (RC != XAIE_OK)
+      return;
 
     RC = BC->start();
-    if (RC != XAIE_OK) {
-      std::cout << "!!!! Failure in BC start." << std::endl;
-    }
+    if (RC != XAIE_OK)
+      return;
 
     uint8_t bcId = BC->getBc();
-    std::cout << "!!!! Allocated BcId: " << +bcId << std::endl;
-
     XAie_Events channelEvent;
     RC = BC->getEvent(vL.front(), XAIE_PL_MOD, channelEvent);
-    if (RC != XAIE_OK) {
-      std::cout << "!!!! Failure in BC channel event." << std::endl;
-    }
-    std::cout << "!!!! Derieved channelEvent: " << static_cast<int>(channelEvent) << std::endl;
+    if (RC != XAIE_OK)
+      return;
 
     uint8_t brodcastId = bcId;
     int driverStatus   = AieRC::XAIE_OK;
@@ -1140,8 +1091,7 @@ namespace xdp {
       msg <<"Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
           <<" is unavailable, graph ieration profiling will not be available.\n";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-    }else {
-      std::cout << "!!! Success: configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row << std::endl;
+      return;
     }
 
     // This is the broadcast channel event seen in interface tiles
@@ -1211,29 +1161,21 @@ namespace xdp {
     bcResourcesLatency.push_back(BC);
 
     auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
-    RC = BC->setPreferredId(bcPair.first);
-    if (RC != XAIE_OK) {
-      std::cout << "!!! Failure in BC set prefferred." << std::endl;
-    }
+    BC->setPreferredId(bcPair.first);
 
     RC = BC->reserve();
-    if (RC != XAIE_OK) {
-      std::cout << "!!! Failure in BC reserve." << std::endl;
-    }
+    if (RC != XAIE_OK)
+      return rc;
 
     RC = BC->start();
-    if (RC != XAIE_OK) {
-      std::cout << "!!! Failure in BC start." << std::endl;
-    }
+    if (RC != XAIE_OK)
+      return rc;
 
     uint8_t bcId = BC->getBc();
-    std::cout << "!!! Allocated BcId: " << +bcId << std::endl;
     XAie_Events bcEvent;
     RC = BC->getEvent(DesttileLocation, XAIE_PL_MOD, bcEvent);
-    if (RC != XAIE_OK) {
-      std::cout << "!!! Failure in BC channel event." << std::endl;
-    }
-    std::cout << "!!! Derieved channelEvent: " << static_cast<int>(bcEvent) << std::endl;
+    if (RC != XAIE_OK)
+      return rc;
 
     std::pair<int, XAie_Events> bcPairSelected = std::make_pair(bcId, bcEvent);
     return bcPairSelected;
@@ -1241,15 +1183,14 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::displayAdfAPIResults()
   {
-    std::cout << "!!! display adfAPIResults() called. \n";
     for(auto &adfAPIType : adfAPIResourceInfoMap) {
       if (adfAPIType.first == aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED) {
         for(auto &adfApiResource : adfAPIType.second) {
           std::stringstream msg;
           msg << "Start to bytes transferred for tile " << adfApiResource.first << " is " 
               << +adfApiResource.second.profileResult <<" clock cycles for specified bytes in xrt.ini.\n";
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
-          //Note: User specified bytes or graph/port name display will be supported later for this metric. 
+          // xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          //Note: User specified bytes or graph/port name display support can be added in 2025.1. 
         }
       }
       else if(adfAPIType.first == aie::profile::adfAPI::INTF_TILE_LATENCY) {
