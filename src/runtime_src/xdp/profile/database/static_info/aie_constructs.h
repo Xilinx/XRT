@@ -342,8 +342,8 @@ namespace xdp {
   };
 
   // ADF API related constants
-  const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
-  const std::string METRIC_LATENCY    = "interface_tile_latency";
+  inline const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
+  inline const std::string METRIC_LATENCY    = "interface_tile_latency";
   struct GraphPortPair {
     std::string srcGraphName;
     std::string srcGraphPort;
