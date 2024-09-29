@@ -1196,7 +1196,6 @@ namespace xdp {
 
   std::string AieProfileMetadata::getSrcDestPairKey(uint8_t col, uint8_t row)
   {
-    // static std::map<std::string, std::string> keysCache;
     std::string key = "";
 
     std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row);
@@ -1208,7 +1207,6 @@ namespace xdp {
         key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
               "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
         keysCache[cacheKey] = LatencyCache(key,
-        // keysCache.emplace(cacheKey, LatencyCache(key,
                                            config.second.graphPortPair.srcGraphName,
                                            config.second.graphPortPair.srcGraphPort,
                                            config.second.graphPortPair.destGraphName,

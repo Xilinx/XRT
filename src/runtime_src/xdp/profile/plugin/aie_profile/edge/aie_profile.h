@@ -61,6 +61,7 @@ namespace xdp {
                                    const uint8_t channel1,
                                    std::vector<XAie_Events>& startEvents,
                                    std::vector<XAie_Events>& endEvents);
+
       uint64_t getCounterPayload(XAie_DevInst* aieDevInst,
                                  const tile_type& tile,
                                  const module_type type,
@@ -96,15 +97,15 @@ namespace xdp {
 
       bool
       configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
-                                XAie_Events& retCounterEvent);
+                           XAie_Events& retCounterEvent);
 
       void
       configEventBroadcast(const XAie_LocType loc,
-                                const module_type xdpModType,
-                                const std::string metricSet,
-                                const XAie_ModuleType xaieModType,
-                                const XAie_Events bcEvent,
-                                XAie_Events& bcChannelEvent);
+                           const module_type xdpModType,
+                           const std::string metricSet,
+                           const XAie_ModuleType xaieModType,
+                           const XAie_Events bcEvent,
+                           XAie_Events& bcChannelEvent);
 
       bool
       configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
@@ -122,7 +123,8 @@ namespace xdp {
       setupBroadcastChannel(const tile_type& currTileLoc);
 
       inline std::shared_ptr<xaiefal::XAiePerfCounter>
-      startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc, XAie_Events counterEvent, XAie_Events& retCounterEvent)
+      startCounter(std::shared_ptr<xaiefal::XAiePerfCounter>& pc,
+                   XAie_Events counterEvent, XAie_Events& retCounterEvent)
       {
         if (!pc)
           return nullptr;
