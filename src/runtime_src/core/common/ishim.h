@@ -203,47 +203,24 @@ struct ishim
 
   virtual std::unique_ptr<graph_handle>
   open_graph_handle(const xrt::uuid&, const char*, xrt::graph::access_mode)
-  {
-    throw not_supported_error{__func__};
-  }
+  { throw not_supported_error{__func__}; }
 
   virtual std::unique_ptr<profile_handle>
   open_profile_handle()
-  {
-    throw not_supported_error{__func__};
-  }  
-  ////////////////////////////////////////////////////////////////
+  { throw not_supported_error{__func__}; }
 
   virtual void
   open_aie_context(xrt::aie::access_mode)
   { throw not_supported_error{__func__}; }
 
-  virtual void
-  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t , size_t )
-  { throw not_supported_error{__func__}; }
 
   virtual void
   reset_aie()
   { throw not_supported_error{__func__}; }
 
-  virtual void
-  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t)
-  { throw not_supported_error{__func__}; }
 
   virtual void
   wait_gmio(const char*)
-  { throw not_supported_error{__func__}; }
-
-  virtual int
-  start_profiling(int, const char*, const char*, uint32_t)
-  { throw not_supported_error{__func__}; }
-
-  virtual uint64_t
-  read_profiling(int)
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  stop_profiling(int)
   { throw not_supported_error{__func__}; }
 
   virtual void
