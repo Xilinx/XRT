@@ -724,7 +724,7 @@ namespace xdp {
 
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
-        if (graphMetrics[i][2]=="start_to_bytes_transferred") {
+        if (graphMetrics[i][2]==METRIC_BYTE_COUNT) {
           uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
           for (auto& e : tiles)
             setUserSpecifiedBytes(e, bytes);
@@ -789,7 +789,7 @@ namespace xdp {
 
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
-        if (graphMetrics[i][2]=="start_to_bytes_transferred") {
+        if (graphMetrics[i][2]==METRIC_BYTE_COUNT) {
           uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
           for (auto& e : tiles)
             setUserSpecifiedBytes(e, bytes);
@@ -838,7 +838,7 @@ namespace xdp {
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
-      if (metrics[i][1]=="start_to_bytes_transferred") {
+      if (metrics[i][1]==METRIC_BYTE_COUNT) {
         bytes = processUserSpecifiedBytes(metrics[i][2]);
       }
       else {
@@ -853,7 +853,7 @@ namespace xdp {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
-        if (metrics[i][1] == "start_to_bytes_transferred")
+        if (metrics[i][1] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
 
       }
@@ -893,7 +893,7 @@ namespace xdp {
       uint32_t bytes = defaultTransferBytes;
       if (metrics[i].size() >= 4) {
         // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
-        if (metrics[i][2]=="start_to_bytes_transferred") {
+        if (metrics[i][2]==METRIC_BYTE_COUNT) {
           bytes = processUserSpecifiedBytes(metrics[i][2]);
         }
         else {
@@ -917,7 +917,7 @@ namespace xdp {
         configMetrics[moduleIdx][t] = metrics[i][2];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
-        if (metrics[i][2] == "start_to_bytes_transferred")
+        if (metrics[i][2] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
       }
     } // Pass 2
@@ -976,7 +976,7 @@ namespace xdp {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
-          if (metrics[i][1] == "start_to_bytes_transferred")
+          if (metrics[i][1] == METRIC_BYTE_COUNT)
             setUserSpecifiedBytes(t, bytes);
         }
       }
@@ -1019,7 +1019,7 @@ namespace xdp {
   {
     static const AIEProfileFinalConfig config(configMetrics, configChannel0,
                          configChannel1, metadataReader->getAIETileRowOffset(),
-                         bytesTransferConfigMap);
+                         bytesTransferConfigMap, latencyConfigMap);
     return config;
   }
 
@@ -1028,7 +1028,7 @@ namespace xdp {
   {
     auto allValidGraphs = metadataReader->getValidGraphs();
     auto allValidPorts  = metadataReader->getValidPorts();
-    std::string metricName   = "interface_tile_latency";
+    std::string metricName   = METRIC_LATENCY;
     int moduleIdx = static_cast<int>(module);
 
     // STEP 1 : Parse per-graph or per-kernel settings
@@ -1067,7 +1067,6 @@ namespace xdp {
       latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2);
 
       // Also update the common configMetrics 
-      // TODO: Make sure this config doesn't collide with other interface tile config
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
       configMetrics[moduleIdx][tileDest[0]] = metricName;
 
@@ -1145,7 +1144,7 @@ namespace xdp {
   uint32_t AieProfileMetadata::getUserSpecifiedThreshold(const tile_type& tile,
                                                    const std::string& metricSet)
   {
-    if (metricSet == "start_to_bytes_transferred") {
+    if (metricSet == METRIC_BYTE_COUNT) {
       if (bytesTransferConfigMap.find(tile) == bytesTransferConfigMap.end()) {
         return 0;
       }
@@ -1153,7 +1152,7 @@ namespace xdp {
         return bytesTransferConfigMap.at(tile);
       }
     }
-    else if(metricSet == "interface_tile_latency") {
+    else if(metricSet == METRIC_LATENCY) {
       if (latencyConfigMap.find(tile) == latencyConfigMap.end()) {
         return 0;
       }
@@ -1222,16 +1221,12 @@ namespace xdp {
 
   GraphPortPair AieProfileMetadata::getSrcDestGraphPair(const std::string& srcDestKey) const
   {
-    std::cout << "!!!! getSrcDestGraphPair: " << srcDestKey << std::endl;
     for (const auto &keys : keysCache) {
-      std::cout << "!! cache.first: " << keys.first << " cache.second: " << keys.second.srcDestKey << std::endl;
       if (keys.second.srcDestKey == srcDestKey)
         return keys.second.graphPortPair;
     }
 
-    // TODO: Handle if key is not found
     // Code flow should never come here
-    std::cout << "Key not found: " << srcDestKey << std::endl;
     std::string errMsg = "Key not found: " + srcDestKey;
     throw std::runtime_error(errMsg);
   }

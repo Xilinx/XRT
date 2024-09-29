@@ -84,7 +84,7 @@ namespace xdp {
 
     shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
     shimEndEvents = shimStartEvents;
-    shimEndEvents["start_to_bytes_transferred"] = {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PERF_CNT_0_PL};
+    shimEndEvents[METRIC_BYTE_COUNT] = {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PERF_CNT_0_PL};
 
     memTileStartEvents = aie::profile::getMemoryTileEventSets();
     memTileEndEvents = memTileStartEvents;
@@ -392,7 +392,7 @@ namespace xdp {
   uint64_t 
   AieProfile_EdgeImpl::getAdfProfileAPIPayload(const tile_type& tile, const std::string metricSet)
   {
-    if (metricSet == "interface_tile_latency")
+    if (metricSet == METRIC_LATENCY)
       return metadata->getIntfLatencyPayload(tile);
 
     return 0;
@@ -575,7 +575,7 @@ namespace xdp {
             // }
 
             if (i==0 && threshold>0) {
-              if (metricSet == "start_to_bytes_transferred")
+              if (metricSet == METRIC_BYTE_COUNT)
                 // endEvent = profAPICounterEvents_startToBytes.back();
                 endEvent = XAIE_EVENT_PERF_CNT_1_PL;
               else
@@ -590,7 +590,7 @@ namespace xdp {
             perfCounter = configProfileAPICounters(xaieModule, mod, type,
                             metricSet, startEvent, endEvent, resetEvent, i, 
                             threshold, retCounterEvent, tile);
-          //   if (metricSet == "start_to_bytes_transferred") {
+          //   if (metricSet == METRIC_BYTE_COUNT) {
           //     profAPICounterEvents_startToBytes.push_back(retCounterEvent);
           //  }
           //   else {
@@ -756,7 +756,6 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::freeResources() 
   {
-    std::cout << "!!! free resources called. \n";
     displayAdfAPIResults();
     for (auto& c : perfCounters){
       c->stop();
@@ -790,7 +789,7 @@ namespace xdp {
     if (xdpModType != module_type::shim)
       return nullptr;
 
-    if (metricSet == "interface_tile_latency" && pcIndex==0) {
+    if (metricSet == METRIC_LATENCY && pcIndex==0) {
       bool isSourceTile = true;
       auto pc = configIntfLatency(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
@@ -806,7 +805,7 @@ namespace xdp {
       return pc;
     }
 
-    if (metricSet == "start_to_bytes_transferred" && pcIndex==0) {
+    if (metricSet == METRIC_BYTE_COUNT && pcIndex==0) {
       auto pc = configPCUsingComboEvents(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent);
@@ -895,7 +894,6 @@ namespace xdp {
     XAie_Events eventB = startEvent;
     XAie_Events eventC = startEvent;
     XAie_Events eventD = endEvent;
-    std::cout  << "!!! resetEvent: " << static_cast<int>(resetEvent) << std::endl;
 
     combo_events.push_back(eventA);
     combo_events.push_back(eventB);
@@ -1093,7 +1091,7 @@ namespace xdp {
 
     // vL.push_back(loc);
     // aie::profile::getAllInterfaceTileLocs(vL);
-    std::vector<tile_type> allIntfTiles = metadata->getInterfaceTiles("all", "all", "start_to_bytes_transferred");
+    std::vector<tile_type> allIntfTiles = metadata->getInterfaceTiles("all", "all", METRIC_BYTE_COUNT);
     std::set<tile_type> allIntfTilesSet(allIntfTiles.begin(), allIntfTiles.end());
     if (allIntfTilesSet.empty())
       return;

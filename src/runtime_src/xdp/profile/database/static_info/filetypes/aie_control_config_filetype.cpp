@@ -260,8 +260,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         {
             // Catch metric sets that don't follow above naming convention
             if ((metricStr != "packets") &&
-                (metricStr != "interface_tile_latency") &&
-                (metricStr != "start_to_bytes_transferred"))
+                (metricStr != METRIC_LATENCY) &&
+                (metricStr != METRIC_BYTE_COUNT))
                 continue;
         }
 

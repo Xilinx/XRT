@@ -71,9 +71,13 @@ namespace xdp {
         metrics.push_back(std::to_string(+elm.first.col) + "," + \
                           aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) \
                           + "," + elm.second);
-        if (i == module_type::shim && elm.second == "start_to_bytes_transferred") {
+        if (i == module_type::shim && elm.second == METRIC_BYTE_COUNT) {
           if(validConfig.bytesTransferConfigMap.find(elm.first) != validConfig.bytesTransferConfigMap.end())
             metrics.back() += "," + std::to_string(+validConfig.bytesTransferConfigMap.at(elm.first));
+        }
+        else if (i == module_type::shim && elm.second == METRIC_LATENCY) {
+          if(validConfig.latencyConfigMap.find(elm.first) != validConfig.latencyConfigMap.end())
+            metrics.back() += "," + std::to_string(+validConfig.latencyConfigMap.at(elm.first).tranx_no);
         }
       }
       filteredConfig[static_cast<module_type>(i)] = metrics;

@@ -147,6 +147,8 @@ constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x00002222;
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM      = 0x14408;
 
+
+
 }
 
 #endif

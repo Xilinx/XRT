@@ -341,6 +341,9 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  // ADF API related constants
+  const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
+  const std::string METRIC_LATENCY    = "interface_tile_latency";
   struct GraphPortPair {
     std::string srcGraphName;
     std::string srcGraphPort;
@@ -386,19 +389,22 @@ namespace xdp {
     using tile_vec     = std::vector<std::map<tile_type, std::string>>;
     using tile_channel = std::map<tile_type, uint8_t>;
     using tile_bytes   = std::map<tile_type, uint32_t>;
+    using tile_latencyMap = std::map<tile_type, LatencyConfig>;
 
-    std::vector<std::map<tile_type, std::string>> configMetrics;
-    std::map<tile_type, uint8_t> configChannel0;
-    std::map<tile_type, uint8_t> configChannel1;
+    tile_vec configMetrics;
+    tile_channel configChannel0;
+    tile_channel configChannel1;
     uint8_t tileRowOffset;
-    std::map<tile_type, uint32_t> bytesTransferConfigMap;
+    tile_bytes bytesTransferConfigMap;
+    tile_latencyMap latencyConfigMap;
 
     AIEProfileFinalConfig() {}
     AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0,
-                          const tile_channel& cc1, uint8_t offset, const tile_bytes& byteMap):
+                          const tile_channel& cc1, uint8_t offset,
+                          const tile_bytes& byteMap, const tile_latencyMap& latencyMap):
                           configMetrics(otherTileVec), configChannel0(cc0),
                           configChannel1(cc1), tileRowOffset(offset),
-                          bytesTransferConfigMap(byteMap) {}
+                          bytesTransferConfigMap(byteMap), latencyConfigMap(latencyMap) {}
   };
 
 } // end namespace xdp

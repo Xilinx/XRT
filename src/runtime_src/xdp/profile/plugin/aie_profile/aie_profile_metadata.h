@@ -99,9 +99,11 @@ class AieProfileMetadata {
     
     // Config data structures required for new profile API metrics
     const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-      {"start_to_bytes_transferred", static_cast<uint16_t>(3600)},
-      {"interface_tile_latency",     static_cast<uint16_t>(3601)}
+      {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
+      {METRIC_LATENCY,     static_cast<uint16_t>(3601)}
     };
+
+
     std::map<tile_type, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
