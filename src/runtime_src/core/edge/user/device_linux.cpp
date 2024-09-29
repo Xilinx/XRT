@@ -1207,67 +1207,53 @@ get_sysfs_path(const std::string& subdev, const std::string& entry)
 }
 
 #ifdef XRT_ENABLE_AIE
- 
 void
 device_linux::
 open_aie_context(xrt::aie::access_mode am)
 {
- if (auto ret = xclAIEOpenContext(get_device_handle(), am))
-   throw error(ret, "fail to open aie context");
-}
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+  int ret = drv->openAIEContext(am);
 
-void
-device_linux::
-sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  if (auto ret = xclSyncBOAIE(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie bo");
+  if (ret)
+    throw xrt_core::error(ret, "Fail to open AIE context");
+
+  drv->setAIEAccessMode(am);
 }
 
 void
 device_linux::
 reset_aie()
 {
-  if (auto ret = xclResetAIEArray(get_device_handle()))
-    throw system_error(ret, "fail to reset aie");
-}
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
-void
-device_linux::
-sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  if (auto ret = xclSyncBOAIENB(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie non-blocking bo");
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aieArray = drv->get_aie_array_shared();
+
+  if (!aieArray->is_context_set()) {
+    aieArray->open_context(this, xrt::aie::access_mode::primary);
+  }
+
+  aieArray->reset(this);
 }
 
 void
 device_linux::
 wait_gmio(const char *gmioName)
 {
-  if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
-    throw system_error(ret, "fail to wait gmio");
-}
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
-int
-device_linux::
-start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
-{
-  return xclStartProfiling(get_device_handle(), option, port1Name, port2Name, value);
-}
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
 
-uint64_t
-device_linux::
-read_profiling(int phdl)
-{
-  return xclReadProfiling(get_device_handle(), phdl);
-}
+  auto aieArray = drv->get_aie_array_shared();
 
-void
-device_linux::
-stop_profiling(int phdl)
-{
-  if (auto ret = xclStopProfiling(get_device_handle(), phdl))
-    throw system_error(ret, "failed to stop profiling");
+  if (!aieArray->is_context_set()) {
+    aieArray->open_context(this, xrt::aie::access_mode::primary);
+  }
+
+  aieArray->wait_gmio(gmioName);
 }
 
 void

@@ -21,12 +21,6 @@ namespace zynqaie {
 	  , m_slotidx(slotidx)
 	  , m_mode(mode)
   {
-#ifdef XRT_ENABLE_AIE
-    auto device{xrt_core::get_userpf_device(m_shim)};
-    auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
-    if (data.first && data.second)
-      m_aie_array = std::make_shared<Aie>(device, this);
-#endif
   }
 
 #ifdef XRT_ENABLE_AIE
@@ -35,6 +29,12 @@ namespace zynqaie {
   {
     return m_aie_array;
   }
+  
+    aied*
+    hwctx_object::getAied()
+    {
+      return m_aied.get();
+    }
 #endif
 
   hwctx_object::~hwctx_object()
@@ -45,6 +45,19 @@ namespace zynqaie {
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(ex.what());
     }
+  }
+  
+  void 
+  hwctx_object::initAie()
+  {
+#ifdef XRT_ENABLE_AIE
+    auto device{xrt_core::get_userpf_device(m_shim)};
+    auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
+    if (data.first && data.second)
+      m_aie_array = std::make_shared<Aie>(device, this);
+
+    m_aied = std::make_unique<zynqaie::aied>(device.get());
+#endif
   }
 
   std::unique_ptr<xrt_core::buffer_handle>

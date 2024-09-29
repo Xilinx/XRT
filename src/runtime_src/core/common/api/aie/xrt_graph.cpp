@@ -252,7 +252,7 @@ sync_aie_bo(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, 
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
   auto bo = xrt::bo(bohdl);
-  device->sync_aie_bo(bo, gmio_name, dir, size, offset);
+  bo.sync(dir, size, offset);
 }
 
 static void
@@ -267,7 +267,7 @@ sync_aie_bo_nb(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_nam
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
   auto bo = xrt::bo(bohdl);
-  device->sync_aie_bo_nb(bo, gmio_name, dir, size, offset);
+  bo.async(dir, size, offset);
 }
 
 static void
