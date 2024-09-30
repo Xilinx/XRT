@@ -926,12 +926,9 @@ namespace xdp {
         }
       }
 
-      std::vector<tile_type> tiles;
-      if (foundChannels)
-        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
-      else
-        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], -1, true, minCol, maxCol);
-
+      int16_t channelNum = (foundChannels) ? channelId0 : -1;
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelNum, true, minCol, maxCol);
+      
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
         configChannel0[t] = channelId0;
@@ -967,30 +964,33 @@ namespace xdp {
         }
 
         // By-default select both the channels
+        bool foundChannels = false;
         uint8_t channelId0 = 0;
         uint8_t channelId1 = 1;
         uint32_t bytes = defaultTransferBytes;
-        if (metrics[i].size() >= 3) {
+        if (metrics[i].size() > 2) {
           if (profileAPIMetricSet(metrics[i][1])) {
             bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
           else {
             try {
+              foundChannels = true;
               channelId0 = aie::convertStringToUint8(metrics[i][2]);
               channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
             }
             catch (std::invalid_argument const&) {
               // Expected channel Id is not an integer, give warning and ignore
+              foundChannels = false;
               xrt_core::message::send(severity_level::warning, "XRT",
-                                      "Channel ID specification in "
-                                      "tile_based_interface_tile_metrics is not an integer "
-                                      "and hence ignored.");
+                                      "Column specification in tile_based_interface_tile_metrics "
+                                      "is not an integer and hence skipped.");
             }
           }
         }
 
-        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0, true, col, col);
-
+        int16_t channelNum = (foundChannels) ? channelId0 : -1;
+        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelNum, true, col, col);
+        
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
