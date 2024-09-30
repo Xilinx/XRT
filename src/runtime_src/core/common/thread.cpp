@@ -97,31 +97,36 @@ set_cpu_affinity(std::thread& thread)
 {
   static bool initialized = false;
   static cpu_set_t cpuset;
+  static bool all = false;
   
   if (!initialized) {
     initialized = true;
 
     std::string cpus = xrt_core::config::detail::get_string_value("Runtime.cpu_affinity","default");
     if (cpus=="default")
-      return;
-
-    boost::trim_if(cpus,boost::is_any_of("{}"));
-    using tokenizer=boost::tokenizer<boost::char_separator<char> >;
-    boost::char_separator<char> sep(", ");
-    auto max_cpus = std::thread::hardware_concurrency();
-    CPU_ZERO(&cpuset);
-    for (auto& tok : tokenizer(cpus,sep)) {
-      auto cpu = std::stoul(tok);
-      if (cpu < max_cpus) {
-        XRT_DEBUG(std::cout,"adding cpu #",cpu," to affinity mask\n");
-        CPU_SET(cpu,&cpuset);
-      }
-      else {
-        xrt_core::message::send(xrt_core::message::severity_level::warning,"XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
-        return;
+      all = true;
+    else {
+      boost::trim_if(cpus,boost::is_any_of("{}"));
+      using tokenizer=boost::tokenizer<boost::char_separator<char> >;
+      boost::char_separator<char> sep(", ");
+      auto max_cpus = std::thread::hardware_concurrency();
+      CPU_ZERO(&cpuset);
+      for (auto& tok : tokenizer(cpus,sep)) {
+        auto cpu = std::stoul(tok);
+        if (cpu < max_cpus) {
+          XRT_DEBUG(std::cout,"adding cpu #",cpu," to affinity mask\n");
+          CPU_SET(cpu,&cpuset);
+        }
+        else {
+          xrt_core::message::send(xrt_core::message::severity_level::warning,"XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
+          all = true;
+        }
       }
     }
   }
+
+  if (all)
+    return;
 
   if (pthread_setaffinity_np(thread.native_handle(),sizeof(cpu_set_t),&cpuset))
     throw std::runtime_error("error calling pthread_setaffinity_np");
