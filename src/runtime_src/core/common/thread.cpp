@@ -145,32 +145,37 @@ set_cpu_affinity(std::thread& thread)
 {
   static bool initialized = false;
   static DWORD_PTR affinity_mask = 0;
+  static bool all = false;
 
   if (!initialized) {
     initialized = true;
 
     std::string cpus = xrt_core::config::detail::get_string_value("Runtime.cpu_affinity", "default");
     if (cpus == "default")
-      return;
-
-    boost::trim_if(cpus, boost::is_any_of("{}"));
-    using tokenizer = boost::tokenizer<boost::char_separator<char>>;
-    boost::char_separator<char> sep(", ");
-    auto max_cpus = std::thread::hardware_concurrency();
-    for (auto& tok : tokenizer(cpus, sep)) {
-      auto cpu = std::stoul(tok);
-      cpu = static_cast<DWORD_PTR>(cpu);
-      auto one = static_cast<DWORD_PTR>(1U);
-      if (cpu < max_cpus) {
-        XRT_DEBUG(std::cout, "adding cpu #", cpu, " to affinity mask\n");
-        affinity_mask |= (one << cpu);  // Set the respective bit for the CPU
-      }
-      else {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
-        return;
+      all = true;
+    else {
+      boost::trim_if(cpus, boost::is_any_of("{}"));
+      using tokenizer = boost::tokenizer<boost::char_separator<char>>;
+      boost::char_separator<char> sep(", ");
+      auto max_cpus = std::thread::hardware_concurrency();
+      for (auto& tok : tokenizer(cpus, sep)) {
+        auto cpu = std::stoul(tok);
+        cpu = static_cast<DWORD_PTR>(cpu);
+        auto one = static_cast<DWORD_PTR>(1U);
+        if (cpu < max_cpus) {
+          XRT_DEBUG(std::cout, "adding cpu #", cpu, " to affinity mask\n");
+          affinity_mask |= (one << cpu);  // Set the respective bit for the CPU
+        }
+        else {
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
+          all = true;
+        }
       }
     }
   }
+
+  if (all)
+    return;
 
   HANDLE thread_handle = thread.native_handle();
   if (!SetThreadAffinityMask(thread_handle, affinity_mask))
