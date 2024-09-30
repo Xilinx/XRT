@@ -894,7 +894,7 @@ namespace xdp {
       if (metrics[i].size() >= 4) {
         // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
         if (metrics[i][2]==METRIC_BYTE_COUNT) {
-          bytes = processUserSpecifiedBytes(metrics[i][2]);
+          bytes = processUserSpecifiedBytes(metrics[i][3]);
         }
         else {
           try {
