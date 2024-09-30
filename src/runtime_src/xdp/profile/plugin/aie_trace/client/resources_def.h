@@ -1,0 +1,2 @@
+#define traceStartBroadcastChId1 6
+#define traceStartBroadcastChId2 7
