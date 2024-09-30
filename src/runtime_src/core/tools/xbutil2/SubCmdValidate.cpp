@@ -717,7 +717,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
     }
   }
-  catch(const xrt_core::query::no_such_key& e) {
+  catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   }
   catch(const xrt_core::error& e) {
@@ -732,7 +732,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   try {
     //reset pmode
     xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
-  } catch(const xrt_core::query::no_such_key& e) {
+  } catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   }
 
