@@ -835,27 +835,41 @@ namespace xdp {
 
       // Process <tile|all>:start_to_bytes_transferred:<bytes>
       // By-default select both the channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
-      if (metrics[i][1]=="start_to_bytes_transferred") {
-        bytes = processUserSpecifiedBytes(metrics[i][2]);
-      }
-      else {
-        if (metrics[i].size()>2) {
-          channelId0 = aie::convertStringToUint8(metrics[i][2]);
-          channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      if (metrics[i].size() > 2) {
+        if (metrics[i][1] == "start_to_bytes_transferred") {
+          bytes = processUserSpecifiedBytes(metrics[i][2]);
+        }
+        else {
+          try {
+            foundChannels = true;
+            channelId0 = aie::convertStringToUint8(metrics[i][2]);
+            channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+          }
+          catch (std::invalid_argument const&) {
+            // Expected channel Id is not an integer, give warning and ignore
+            foundChannels = false;
+            xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+              "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          }
         }
       }
 
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      std::vector<tile_type> tiles;
+      if (foundChannels)
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      else
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1]);
+
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
         if (metrics[i][1] == "start_to_bytes_transferred")
           setUserSpecifiedBytes(t, bytes);
-
       }
     } // Pass 1
 
@@ -888,30 +902,35 @@ namespace xdp {
       }
 
       // By-default select both the channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
-      if (metrics[i].size() >= 4) {
+      if (metrics[i].size() > 3) {
         // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
-        if (metrics[i][2]=="start_to_bytes_transferred") {
-          bytes = processUserSpecifiedBytes(metrics[i][2]);
+        if (metrics[i][2] == "start_to_bytes_transferred") {
+          bytes = processUserSpecifiedBytes(metrics[i][3]);
         }
         else {
           try {
+            foundChannels = true;
             channelId0 = aie::convertStringToUint8(metrics[i][3]);
             channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
           }
           catch (std::invalid_argument const&) {
             // Expected channel Id is not an integer, give warning and ignore
-            xrt_core::message::send(severity_level::warning, "XRT",
-                                    "Channel ID specification in "
-                                    "tile_based_interface_tile_metrics is "
-                                    "not an integer and hence ignored.");
+            foundChannels = false;
+            xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+              "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
           }
         }
       }
 
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
+      std::vector<tile_type> tiles;
+      if (foundChannels)
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
+      else
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], -1, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
