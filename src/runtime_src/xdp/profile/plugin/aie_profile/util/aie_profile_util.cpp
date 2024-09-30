@@ -450,4 +450,18 @@ namespace xdp::aie::profile {
   }
 
 
+
+  /****************************************************************************
+   * Convert user specified bytes to beats for provided metric set
+   ***************************************************************************/
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen)
+  {
+    if (metricSet != "start_to_bytes_transferred")
+      return bytes;
+
+    uint32_t streamWidth = aie::getStreamWidth(hw_gen);
+    uint32_t total_beats = static_cast<uint32_t>(std::ceil((static_cast<double>(bytes)*8) / streamWidth));
+    return total_beats; 
+  }
+
 } // namespace xdp::aie

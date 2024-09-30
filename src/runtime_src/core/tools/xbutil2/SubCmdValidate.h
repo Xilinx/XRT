@@ -22,6 +22,7 @@ class SubCmdValidate : public SubCmd {
   std::string               m_output;
   std::string               m_param;
   std::string               m_xclbin_location;
+  std::string               m_pmode;
   bool                      m_help;
 
   void print_help_internal() const;

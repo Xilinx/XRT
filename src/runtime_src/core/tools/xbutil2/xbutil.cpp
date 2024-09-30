@@ -58,7 +58,7 @@ R"(
     }]
   },{
     "configure": [{
-      "suboption": ["pmode"]
+      "suboption": ["pmode", "force-preemption"]
     }]
   },{
     "advanced":[{
@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead"]
     }]
   }]
 }]

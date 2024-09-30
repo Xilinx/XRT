@@ -204,6 +204,37 @@ namespace xdp {
     return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
   }
 
+
+  std::vector<std::pair<tile_type, std::string>> AieProfileMetadata::getConfigMetricsVec(const int module)
+  {
+    if (module != static_cast<int>(module_type::shim))
+      return {configMetrics[module].begin(), configMetrics[module].end()};
+
+    std::vector<std::pair<tile_type, std::string>> shimMetrics, shimMetricsFromConfig;
+    // Collect latency metric settings first in stored order
+    shimMetrics.insert(shimMetrics.end(), configMetricLatencyVec.begin(), configMetricLatencyVec.end());
+    // Collect all interface tile metrics from configMap
+    shimMetricsFromConfig.insert(shimMetricsFromConfig.end(), configMetrics[module].begin(), configMetrics[module].end());
+
+    // If no latency config available, use all tiles metrics from configMap
+    if(shimMetrics.empty())
+      return shimMetricsFromConfig;
+
+    // Otherwise, merge latency config with other interface tile config
+    for (const auto& tileMetricPair : shimMetricsFromConfig) {
+        // Use only intersection of the interface tile settings.
+        if (std::find_if(shimMetrics.begin(), shimMetrics.end(), [&tileMetricPair](const std::pair<tile_type, std::string>& existingTileMetricPair)
+            {
+            return existingTileMetricPair.first == tileMetricPair.first && existingTileMetricPair.second == tileMetricPair.second;
+            }) == shimMetrics.end()) {
+            // If not found, add the tile and metric pair
+            shimMetrics.push_back(tileMetricPair);
+        }
+    }
+
+    return shimMetrics;
+  }
+
   /****************************************************************************
    * Get driver configuration
    ***************************************************************************/
@@ -804,27 +835,41 @@ namespace xdp {
 
       // Process <tile|all>:start_to_bytes_transferred:<bytes>
       // By-default select both the channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
-      if (metrics[i][1]=="start_to_bytes_transferred") {
-        bytes = processUserSpecifiedBytes(metrics[i][2]);
-      }
-      else {
-        if (metrics[i].size()>2) {
-          channelId0 = aie::convertStringToUint8(metrics[i][2]);
-          channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      if (metrics[i].size() > 2) {
+        if (metrics[i][1] == "start_to_bytes_transferred") {
+          bytes = processUserSpecifiedBytes(metrics[i][2]);
+        }
+        else {
+          try {
+            foundChannels = true;
+            channelId0 = aie::convertStringToUint8(metrics[i][2]);
+            channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+          }
+          catch (std::invalid_argument const&) {
+            // Expected channel Id is not an integer, give warning and ignore
+            foundChannels = false;
+            xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+              "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          }
         }
       }
 
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      std::vector<tile_type> tiles;
+      if (foundChannels)
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      else
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1]);
+
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
         configChannel1[t] = channelId1;
         if (metrics[i][1] == "start_to_bytes_transferred")
           setUserSpecifiedBytes(t, bytes);
-
       }
     } // Pass 1
 
@@ -857,30 +902,35 @@ namespace xdp {
       }
 
       // By-default select both the channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
-      if (metrics[i].size() >= 4) {
+      if (metrics[i].size() > 3) {
         // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
-        if (metrics[i][2]=="start_to_bytes_transferred") {
-          bytes = processUserSpecifiedBytes(metrics[i][2]);
+        if (metrics[i][2] == "start_to_bytes_transferred") {
+          bytes = processUserSpecifiedBytes(metrics[i][3]);
         }
         else {
           try {
+            foundChannels = true;
             channelId0 = aie::convertStringToUint8(metrics[i][3]);
             channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
           }
           catch (std::invalid_argument const&) {
             // Expected channel Id is not an integer, give warning and ignore
-            xrt_core::message::send(severity_level::warning, "XRT",
-                                    "Channel ID specification in "
-                                    "tile_based_interface_tile_metrics is "
-                                    "not an integer and hence ignored.");
+            foundChannels = false;
+            xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+              "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
           }
         }
       }
 
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
+      std::vector<tile_type> tiles;
+      if (foundChannels)
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
+      else
+        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], -1, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
@@ -986,7 +1036,9 @@ namespace xdp {
 
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
   {
-    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
+    static const AIEProfileFinalConfig config(configMetrics, configChannel0,
+                         configChannel1, metadataReader->getAIETileRowOffset(),
+                         bytesTransferConfigMap);
     return config;
   }
 
@@ -999,6 +1051,7 @@ namespace xdp {
     int moduleIdx = static_cast<int>(module);
 
     // STEP 1 : Parse per-graph or per-kernel settings
+
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
      * interface_tile_latency = graph1:port1:graph2:port2:<tranx num>; graph3:port3:graph4:port4:<tranx num>;
@@ -1019,8 +1072,8 @@ namespace xdp {
                                           tileMetrics[i][3],
                                           metricName);
 
-      if(tileSrc.empty() || tileDest.empty()) {
-        return;
+      if(tileSrc.empty() || tileDest.empty() || (tileSrc[0]==tileDest[0])) {
+        continue;
       } 
       std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
@@ -1035,8 +1088,11 @@ namespace xdp {
       // TODO: Make sure this config doesn't collide with other interface tile config
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
       configMetrics[moduleIdx][tileDest[0]] = metricName;
-    
-      // TODO: Check for off tiles
+
+      // Also maintain the order of tile-loc and metricName
+      // Later during configuration, it is required to configure destination tile first
+      configMetricLatencyVec.push_back({tileDest[0], metricName});
+      configMetricLatencyVec.push_back({tileSrc[0], metricName});
     }
   }
 
@@ -1162,6 +1218,7 @@ namespace xdp {
         key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
               "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
         keysCache[cacheKey] = key;
+        return key;
       }
     }
     return key;

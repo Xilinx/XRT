@@ -316,6 +316,7 @@ enum class key_type
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
   performance_mode,
+  preemption,
   debug_ip_layout_path,
   debug_ip_layout,
   num_live_processes,
@@ -1720,6 +1721,8 @@ struct misc_telemetry : request
 {
   struct data {
     uint64_t l1_interrupts;
+    uint64_t preemption_flag_set;
+    uint64_t preemption_flag_unset;
   };
 
   using result_type = data;
@@ -3743,6 +3746,25 @@ struct performance_mode : request
         throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }
   }
+};
+
+/*
+ * this request force enables or disables pre-emption globally
+ * 0: enable; 1: disable
+*/
+struct preemption : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::preemption;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const std::any&) const = 0;
+
 };
 
 struct debug_ip_layout_path : request

@@ -53,25 +53,10 @@ public:
   open_aie_context(xrt::aie::access_mode am) override;
 
   void
-  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
-
-  void
   reset_aie() override;
 
   void
-  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
-
-  void
   wait_gmio(const char *gmioName) override;
-
-  int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override;
-
-  uint64_t
-  read_profiling(int phdl) override;
-
-  void
-  stop_profiling(int phdl) override;
 
   void
   load_axlf_meta(const axlf* buffer) override;

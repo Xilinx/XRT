@@ -12,6 +12,7 @@
 #include "shim.h"
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
+#include "core/edge/user/aie/aie_buffer_object.h"
 #endif
 #include "core/edge/user/aie/profile_object.h"
 #include <map>
@@ -1163,6 +1164,17 @@ open_profile_handle()
 #endif   
 }
 
+std::unique_ptr<xrt_core::aie_buffer_handle>
+device_linux::
+open_aie_buffer_handle(const xrt::uuid& xclbin_id, const char* name)
+{
+#ifdef XRT_ENABLE_AIE
+  return std::make_unique<zynqaie::aie_buffer_object>(this,xclbin_id,name);
+#else
+  throw xrt_core::error(std::errc::not_supported, __func__);;
+#endif
+}
+
 std::unique_ptr<buffer_handle>
 device_linux::
 import_bo(pid_t pid, shared_handle::export_handle ehdl)
@@ -1206,14 +1218,6 @@ open_aie_context(xrt::aie::access_mode am)
 
 void
 device_linux::
-sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  if (auto ret = xclSyncBOAIE(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie bo");
-}
-
-void
-device_linux::
 reset_aie()
 {
   if (auto ret = xclResetAIEArray(get_device_handle()))
@@ -1222,40 +1226,10 @@ reset_aie()
 
 void
 device_linux::
-sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  if (auto ret = xclSyncBOAIENB(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie non-blocking bo");
-}
-
-void
-device_linux::
 wait_gmio(const char *gmioName)
 {
   if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
     throw system_error(ret, "fail to wait gmio");
-}
-
-int
-device_linux::
-start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
-{
-  return xclStartProfiling(get_device_handle(), option, port1Name, port2Name, value);
-}
-
-uint64_t
-device_linux::
-read_profiling(int phdl)
-{
-  return xclReadProfiling(get_device_handle(), phdl);
-}
-
-void
-device_linux::
-stop_profiling(int phdl)
-{
-  if (auto ret = xclStopProfiling(get_device_handle(), phdl))
-    throw system_error(ret, "failed to stop profiling");
 }
 
 void

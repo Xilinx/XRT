@@ -358,18 +358,22 @@ namespace xdp {
       
   struct AIEProfileFinalConfig
   {
-    using tile_vec = std::vector<std::map<tile_type, std::string>>;
-    using tile_channel =  std::map<tile_type, uint8_t>;
+    using tile_vec     = std::vector<std::map<tile_type, std::string>>;
+    using tile_channel = std::map<tile_type, uint8_t>;
+    using tile_bytes   = std::map<tile_type, uint32_t>;
 
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
+    uint8_t tileRowOffset;
+    std::map<tile_type, uint32_t> bytesTransferConfigMap;
 
     AIEProfileFinalConfig() {}
-    AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0, const tile_channel& cc1) :
-                          configMetrics(otherTileVec), configChannel0(cc0), configChannel1(cc1)
-    {
-    }
+    AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0,
+                          const tile_channel& cc1, uint8_t offset, const tile_bytes& byteMap):
+                          configMetrics(otherTileVec), configChannel0(cc0),
+                          configChannel1(cc1), tileRowOffset(offset),
+                          bytesTransferConfigMap(byteMap) {}
   };
 
 } // end namespace xdp

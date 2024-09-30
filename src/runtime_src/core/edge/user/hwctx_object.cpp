@@ -4,6 +4,7 @@
 #include "core/edge/user/aie/profile_object.h"
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
+#include "core/edge/user/aie/aie_buffer_object.h"
 #include "core/edge/user/aie/aie.h"
 #endif
 #include "core/edge/user/shim.h"
@@ -30,7 +31,7 @@ namespace zynqaie {
 
 #ifdef XRT_ENABLE_AIE
   std::shared_ptr<Aie>
-  hwctx_object::get_aie_array_shared()
+  hwctx_object::get_aie_array_shared() const
   {
     return m_aie_array;
   }
@@ -93,6 +94,17 @@ namespace zynqaie {
   {
 #ifdef XRT_ENABLE_AIE    
     return std::make_unique<profile_object>(m_shim, m_aie_array);
+#else
+    throw xrt_core::error(std::errc::not_supported, __func__);
+#endif
+  }
+
+  std::unique_ptr<xrt_core::aie_buffer_handle>
+  hwctx_object::open_aie_buffer_handle(const char* name)
+  {
+#ifdef XRT_ENABLE_AIE
+    auto device{xrt_core::get_userpf_device(m_shim)};
+    return std::make_unique<aie_buffer_object>(device.get(),m_uuid,name,this);
 #else
     throw xrt_core::error(std::errc::not_supported, __func__);
 #endif

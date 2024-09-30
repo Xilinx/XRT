@@ -44,6 +44,9 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD
   };
 
+
+
+
   #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
   #define INTF_TILE_LATENCY_REPORT_EVENT_ID          3601
   enum adfAPI {
@@ -159,6 +162,8 @@ namespace xdp::aie::profile {
   inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
   inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
   std::pair<int, XAie_Events> getPLBroadcastChannel();
+
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen);
 
 }  // namespace xdp::aie::profile
 

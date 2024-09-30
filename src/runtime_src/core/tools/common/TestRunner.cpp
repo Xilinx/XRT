@@ -11,6 +11,7 @@
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
+namespace xq = xrt_core::query;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -60,7 +61,7 @@ getXsaPath(const uint16_t vendor)
 static void
 program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin)
 {
-  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+  auto bdf = xq::pcie_bdf::to_string(xrt_core::device_query<xq::pcie_bdf>(device));
   auto xclbin_obj = xrt::xclbin{xclbin};
   try {
     device->load_xclbin(xclbin_obj);
@@ -270,7 +271,7 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
-  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
+  const auto logic_uuid = xrt_core::device_query_default<xq::logic_uuids>(_dev, {});
   if (!logic_uuid.empty() && !std::filesystem::exists(xclbin_path)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
@@ -309,7 +310,7 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
   logger(_ptTest, "Testcase", xrtTestCasePath);
 
   std::vector<std::string> args = { "-k", xclbin_path.string(),
-                                    "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+                                    "-d", xq::pcie_bdf::to_string(xrt_core::device_query<xq::pcie_bdf>(_dev)) };
   int exit_code;
   try {
     exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
@@ -403,7 +404,7 @@ bool
 TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest)
 {
   xuid_t uuid;
-  uuid_parse(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev).c_str(), uuid);
+  uuid_parse(xrt_core::device_query<xq::xclbin_uuid>(dev).c_str(), uuid);
 
   const std::string xclbin_path = findXclbinPath(dev, ptTest);
 
@@ -430,12 +431,12 @@ std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
 {
-  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
+  const auto logic_uuid = xrt_core::device_query_default<xq::logic_uuids>(dev, {});
   if (!logic_uuid.empty())
     return searchSSV2Xclbin(logic_uuid.front(), ptTest);
   else {
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+    auto vendor = xrt_core::device_query<xq::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xq::rom_vbnv>(dev);
     return searchLegacyXclbin(vendor, name, ptTest);
   }
 }
@@ -449,7 +450,6 @@ TestRunner::findPlatformFile(const std::string& file_path,
   }
   catch (const std::exception&) {
     logger(ptTest, "Details", boost::str(boost::format("%s not available") % file_path));
-    logger(ptTest, "Details", "The test is not supported on this device.");
     ptTest.put("status", test_token_skipped);
     return "";
   }
@@ -498,4 +498,68 @@ TestRunner::get_test_header()
     ptree.put("xclbin", m_xclbin);
     ptree.put("explicit", m_explicit);
     return ptree;
+}
+
+void 
+TestRunner::result_in_range(double value, double threshold, boost::property_tree::ptree& ptTest)
+{
+  //have a 40% tolerance until we can nail down consistent numbers
+  if (((((0.60*threshold) <= value) && (value <=(1.40*threshold))) || threshold == 0.0)) {
+    ptTest.put("status", test_token_passed);
+  }
+  else {
+    logger(ptTest, "Warning", boost::str(boost::format("Benchmark value is not ~%.1f which is the expected value") % threshold));
+    ptTest.put("status", test_token_passed);
+  }
+}
+
+/*
+ * This function finds the benchmark_devid_revid.json file in the driverstore and 
+ * iterates through it to find the golden threshold value for a given test.
+ * Case 1: json is not found - the testcase will show a warning and pass the test
+ * Case 2: json is found, but the corresponding pmode is not - testcase will throw
+ *         an exception
+ * Case 3: json and the corresponding pmode is found - testcase will compare the
+ *         result against the json value
+ */
+void 
+TestRunner::set_threshold(const std::shared_ptr<xrt_core::device>& dev, 
+                           boost::property_tree::ptree& ptTest)
+{
+  //find the benchmark.json
+  const auto pcie_id = xrt_core::device_query<xq::pcie_id>(dev);
+  auto benchmark_fname = boost::str(boost::format("benchmark_%s_%s.json") 
+                            % xq::pcie_id::device_to_string(pcie_id) % xq::pcie_id::revision_to_string(pcie_id));
+  auto json_config = findPlatformFile(benchmark_fname, ptTest);
+  if (!std::filesystem::exists(json_config)) {
+    logger(ptTest, "Warning", "The results are not compared to expected numbers.");
+    m_threshold = 0.0;
+    return;
+  }
+
+  logger(ptTest, "Benchmarks", json_config);
+
+  //open file
+  boost::property_tree::ptree validate_json;
+  boost::property_tree::read_json(json_config, validate_json);
+
+  //find curr pmode
+  const auto curr_pmode = xq::performance_mode::parse_status(xrt_core::device_query<xq::performance_mode>(dev));
+
+  //iterate tests array to find test_name
+  const boost::property_tree::ptree& tests = validate_json.get_child("tests");
+  for (const auto& kt : tests) {
+    const boost::property_tree::ptree& pt_test = kt.second;
+    if(!boost::iequals(pt_test.get<std::string>("test_name"), ptTest.get<std::string>("name")))
+      continue;
+    const boost::property_tree::ptree& benchmarks = pt_test.get_child("benchmarks");
+    for (const auto& kb : benchmarks) {
+      const boost::property_tree::ptree& pt_benchmark = kb.second;
+      if(boost::iequals(curr_pmode, pt_benchmark.get<std::string>("pmode"))) {
+        m_threshold = pt_benchmark.get<double>("threshold");
+        return;
+      }
+    }
+  }
+  throw std::runtime_error(boost::str(boost::format("Test is not supported for %s mode") % curr_pmode));
 }

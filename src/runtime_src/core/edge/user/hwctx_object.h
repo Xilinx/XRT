@@ -84,9 +84,12 @@ namespace zynqaie {
     std::unique_ptr<xrt_core::profile_handle>
     open_profile_handle() override;
 
+    std::unique_ptr<xrt_core::aie_buffer_handle>
+    open_aie_buffer_handle(const char* name) override;
+
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<Aie>
-    get_aie_array_shared();
+    get_aie_array_shared() const;
 #endif
 
   }; // class hwctx_object

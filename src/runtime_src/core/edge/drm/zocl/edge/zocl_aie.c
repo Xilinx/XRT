@@ -731,7 +731,7 @@ zocl_aie_kds_add_context(struct drm_zocl_dev *zdev, u32 ctx_code,
 		}
 	}
 
-	client->aie_ctx = ctx_code;
+	client->aie_ctx = ZOCL_CTX_NOOPS;
 
 out:
 	mutex_unlock(&kds->lock);
