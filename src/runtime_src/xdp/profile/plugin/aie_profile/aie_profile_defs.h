@@ -17,9 +17,13 @@
 #ifndef AIE_PROFILE_DEFS_H
 #define AIE_PROFILE_DEFS_H
 
-constexpr uint16_t BASE_MEMORY_COUNTER   = 1000;
-constexpr uint16_t BASE_SHIM_COUNTER     = 2000;
-constexpr uint16_t BASE_MEM_TILE_COUNTER = 3000;
+constexpr uint16_t BASE_MEMORY_COUNTER    = 1000;
+constexpr uint16_t BASE_SHIM_COUNTER      = 2000;
+constexpr uint16_t BASE_MEM_TILE_COUNTER  = 3000;
+
+constexpr uint32_t PAYLOAD_IS_CHANNEL_SHIFT =  7;
+constexpr uint32_t PAYLOAD_IS_MASTER_SHIFT  =  8;
+constexpr uint32_t PAYLOAD_BD_SIZE_SHIFT    = 16;
 
 constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
 constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
