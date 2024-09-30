@@ -130,6 +130,11 @@ shim(unsigned index)
 shim::
 ~shim()
 {
+#ifdef XRT_ENABLE_AIE
+  if (aieArray)  // Aie cleanup should be done before shim destroyed
+    aieArray.reset();
+#endif
+
   xclLog(XRT_INFO, "%s", __func__);
 
   // Flush all of the profiling information from the device to the profiling
@@ -1304,12 +1309,6 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
-  #ifdef XRT_ENABLE_AIE
-  auto data = core_device->get_axlf_section(AIE_METADATA);
-  if(data.first && data.second)
-    drv->registerAieArray();
-  #endif
-
   #ifndef __HWEM__
     xdp::hal::update_device(handle);
     xdp::aie::update_device(handle);
@@ -1357,7 +1356,11 @@ create_hw_context(xclDeviceHandle handle,
     }
     //success
     mCoreDevice->register_axlf(buffer);
-    return std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode);
+
+    auto hwctx_obj_ptr{std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode)};
+    hwctx_obj_ptr->init_aie(); // just to make sure Aie instance created only once
+
+    return std::move(hwctx_obj_ptr);
   }
 }
 
