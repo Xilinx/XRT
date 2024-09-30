@@ -47,6 +47,7 @@ namespace xdp {
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       bool configureWindowedEventTrace(void* handle);
       void build2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event);
+      void reset2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2);
       module_type getTileType(uint8_t row);
       uint16_t getRelativeRow(uint16_t absRow);
       uint32_t bcIdToEvent(int bcId);
@@ -97,6 +98,8 @@ namespace xdp {
       EventType memoryTileTraceEndEvent;
       EventType interfaceTileTraceStartEvent;
       EventType interfaceTileTraceEndEvent;
+
+      bool m_trace_start_broadcast;
 
       // Tile locations to apply trace end and flush
       std::vector<XAie_LocType> traceFlushLocs;

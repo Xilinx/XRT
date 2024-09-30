@@ -17,10 +17,12 @@
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -330,31 +332,43 @@ namespace xdp {
                                          const std::string metricSet,
                                          const uint8_t channel)
   {
+    // 1. Profile API specific values
     if (aie::profile::profileAPIMetricSet(metricSet))
       return getAdfProfileAPIPayload(tile, metricSet);
     
-    // 1. Stream IDs for interface tiles
+    // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
-      // NOTE: value = ((master or slave) << 8) & (stream ID)
-      return ((tile.is_master << 8) | tile.stream_id);
+      // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel/stream ID)
+      uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
+      uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : tile.stream_id;
+      return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) 
+             | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | idToReport);
     }
 
-    // 2. Channel IDs for memory tiles
+    // 3. Channel IDs for memory tiles
     if (type == module_type::mem_tile) {
-      // NOTE: value = ((master or slave) << 8) & (channel ID)
+      // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel ID)
+      uint8_t isChannel = 1;
       uint8_t isMaster = aie::isInputSet(type, metricSet) ? 1 : 0;
-      return ((isMaster << 8) | channel);
+      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT) 
+             | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | channel);
     }
 
-    // 3. DMA BD sizes for AIE tiles
-    if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
+    // 4. DMA BD sizes for AIE tiles
+    // NOTE: value = ((max BD size) << 16) & ((isMaster) << 8) & (isChannel << 7) & (channel ID)
+    uint8_t isChannel = 1;
+    uint8_t isMaster  = aie::isInputSet(type, metricSet) ? 1 : 0;
+    uint32_t payloadValue = ((isMaster << PAYLOAD_IS_MASTER_SHIFT) 
+                            | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | channel);
+
+    if ((metadata->getHardwareGen() != 1)
+        || ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
-        && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM))
-      return 0;
+        && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM)))
+      return payloadValue;
 
-    uint32_t payloadValue = 0;
-
+    // Get average BD size for throughput calculations (AIE1 only)
     constexpr int NUM_BDS = 8;
     constexpr uint32_t BYTES_PER_WORD = 4;
     constexpr uint32_t ACTUAL_OFFSET = 1;
@@ -375,6 +389,7 @@ namespace xdp {
                                  XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
                                  XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
 
+    uint32_t maxBDSize = 0;
     auto tileOffset = XAie_GetTileAddr(aieDevInst, row, column);
     for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;
@@ -382,10 +397,11 @@ namespace xdp {
       
       if (regValue & valids[bd]) {
         uint32_t bdBytes = BYTES_PER_WORD * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
-        payloadValue = std::max(bdBytes, payloadValue);
+        maxBDSize = std::max(bdBytes, maxBDSize);
       }
     }
 
+    payloadValue |= (maxBDSize << PAYLOAD_BD_SIZE_SHIFT);
     return payloadValue;
   }
   
@@ -599,7 +615,7 @@ namespace xdp {
 
           // Get payload for reporting purposes
           uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
-                                           startEvent, metricSet, channel);
+                                               startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
