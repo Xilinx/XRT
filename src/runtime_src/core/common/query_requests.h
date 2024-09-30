@@ -3750,12 +3750,12 @@ struct performance_mode : request
 
 /*
  * this request force enables or disables pre-emption globally
- * 0: enable; 1: disable
+ * 1: enable; 0: disable
 */
 struct preemption : request
 {
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t;   // put value type
+  using result_type = int;  // get value type
+  using value_type = int;   // put value type
 
   static const key_type key = key_type::preemption;
 
