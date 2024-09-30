@@ -341,9 +341,6 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
-  // ADF API related constants
-  inline const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
-  inline const std::string METRIC_LATENCY    = "interface_tile_latency";
   struct GraphPortPair {
     std::string srcGraphName;
     std::string srcGraphPort;

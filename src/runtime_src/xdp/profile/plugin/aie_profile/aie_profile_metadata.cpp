@@ -840,7 +840,7 @@ namespace xdp {
       uint8_t channelId1 = 1;
       uint32_t bytes = defaultTransferBytes;
       if (metrics[i].size() > 2) {
-        if (metrics[i][1] == "start_to_bytes_transferred") {
+        if (metrics[i][1] == METRIC_BYTE_COUNT) {
           bytes = processUserSpecifiedBytes(metrics[i][2]);
         }
         else {
@@ -908,7 +908,7 @@ namespace xdp {
       uint32_t bytes = defaultTransferBytes;
       if (metrics[i].size() > 3) {
         // Process <tile1>:<tile2>:start_to_bytes_transferred:<bytes>
-        if (metrics[i][2] == "start_to_bytes_transferred") {
+        if (metrics[i][2] == METRIC_BYTE_COUNT) {
           bytes = processUserSpecifiedBytes(metrics[i][3]);
         }
         else {

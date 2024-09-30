@@ -28,6 +28,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp {
 
@@ -62,7 +63,7 @@ class AieProfileMetadata {
           "input_throughputs", "output_throughputs", 
           "s2mm_throughputs", "mm2s_throughputs",
           "input_stalls", "output_stalls",
-          "s2mm_stalls", "mm2s_stalls", "packets", "start_to_bytes_transferred"}
+          "s2mm_stalls", "mm2s_stalls", "packets", METRIC_BYTE_COUNT}
       },
       {
         module_type::mem_tile, {

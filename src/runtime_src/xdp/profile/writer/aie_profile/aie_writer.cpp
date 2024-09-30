@@ -20,6 +20,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 namespace xdp {
