@@ -981,9 +981,8 @@ namespace xdp {
             catch (std::invalid_argument const&) {
               // Expected channel Id is not an integer, give warning and ignore
               foundChannels = false;
-              xrt_core::message::send(severity_level::warning, "XRT",
-                                      "Column specification in tile_based_interface_tile_metrics "
-                                      "is not an integer and hence skipped.");
+              xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+                "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
             }
           }
         }
