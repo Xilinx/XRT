@@ -192,9 +192,9 @@ bool AIETraceOffload::initReadTrace()
         bufferInitialized = false;
         return bufferInitialized;
       }
-      zynqaie::Aie* aieObj = drv->getAieArray();
+      zynqaie::aie_array* aieObj = drv->getAieArray();
 
-      XAie_DevInst* devInst = aieObj->getDevInst();
+      XAie_DevInst* devInst = aieObj->get_dev();
 
       gmioDMAInsts[i].gmioTileLoc = XAie_TileLoc(traceGMIO->shimColumn, 0);
 
@@ -264,8 +264,8 @@ void AIETraceOffload::endReadTrace()
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
     if (!drv)
       return;
-    zynqaie::Aie* aieObj = drv->getAieArray();
-    XAie_DevInst* devInst = aieObj->getDevInst();
+    zynqaie::aie_array* aieObj = drv->getAieArray();
+    XAie_DevInst* devInst = aieObj->get_dev();
 
     // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
     // Enable shim DMA channel, need to start first so the status is correct

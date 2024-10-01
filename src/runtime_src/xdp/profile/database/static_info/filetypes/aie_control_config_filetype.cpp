@@ -21,8 +21,9 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "aie_control_config_filetype.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
 namespace pt = boost::property_tree;
@@ -260,8 +261,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         {
             // Catch metric sets that don't follow above naming convention
             if ((metricStr != "packets") &&
-                (metricStr != "interface_tile_latency") &&
-                (metricStr != "start_to_bytes_transferred"))
+                (metricStr != METRIC_LATENCY) &&
+                (metricStr != METRIC_BYTE_COUNT))
                 continue;
         }
 

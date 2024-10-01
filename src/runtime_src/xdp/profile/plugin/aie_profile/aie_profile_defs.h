@@ -42,4 +42,8 @@ constexpr uint32_t GROUP_SHIM_S2MM1_STALL_MASK      = 0x00082000;
 constexpr uint32_t GROUP_SHIM_MM2S0_STALL_MASK      = 0x00500000;
 constexpr uint32_t GROUP_SHIM_MM2S1_STALL_MASK      = 0x00A00000;
 
+// ADF API related constants
+inline const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
+inline const std::string METRIC_LATENCY    = "interface_tile_latency";
+
 #endif

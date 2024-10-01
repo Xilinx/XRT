@@ -17,11 +17,11 @@ namespace zynqaie {
       auto device{xrt_core::get_userpf_device(m_shim)};
       auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-#ifdef XRT_ENABLE_AIE       
+#ifdef XRT_ENABLE_AIE
       if (nullptr != m_hwctx)
-        aieArray = m_hwctx->get_aie_array_shared();
+        m_aie_array = m_hwctx->get_aie_array_shared();
       else if (drv->isAieRegistered())
-        aieArray = drv->get_aie_array_shared();
+        m_aie_array = drv->get_aie_array_shared();
 #endif
 
       id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctx);
@@ -76,7 +76,7 @@ namespace zynqaie {
       for (int i = 0; i < graph_config.coreColumns.size(); i++)
       {
         XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-        XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+        XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
       }
 
       state = graph_state::reset;
@@ -89,7 +89,7 @@ namespace zynqaie {
       XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[0], graph_config.coreRows[0] + adf::config_manager::s_num_reserved_rows + 1);
 
       uint64_t timeStamp;
-      AieRC rc = XAie_ReadTimer(aieArray->getDevInst(), coreTile, XAIE_CORE_MOD, &timeStamp);
+      AieRC rc = XAie_ReadTimer(m_aie_array->get_dev(), coreTile, XAIE_CORE_MOD, &timeStamp);
       if (rc != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Fail to read timestamp for Graph '" + name);
 
@@ -154,7 +154,7 @@ namespace zynqaie {
           }
 
           XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-          XAie_CoreReadDoneBit(aieArray->getDevInst(), coreTile, &done);
+          XAie_CoreReadDoneBit(m_aie_array->get_dev(), coreTile, &done);
           if (!done)
             break;
         }
@@ -168,7 +168,7 @@ namespace zynqaie {
               continue;
 
             XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-            XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+            XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
           }
           return 0;
         }
@@ -227,7 +227,7 @@ namespace zynqaie {
       for (int i = 0; i < graph_config.coreColumns.size(); i++)
       {
         XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-        XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+        XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
       }
       state = graph_state::suspend;
   }

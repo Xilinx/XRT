@@ -22,40 +22,43 @@
 #include <filesystem>
 
 std::fstream
-aie_sys_parser::sysfs_open_path(const std::string& path, bool write, bool binary) const
-{   
-    std::fstream fs;
-    std::ios::openmode mode = write ? std::ios::out : std::ios::in;
-    
-    if (binary) 
-        mode |= std::ios::binary;
-    
-    fs.open(path, mode);
-    if (!fs.is_open()) {
-        throw std::runtime_error(boost::str(boost::format("Failed to open %s for %s %s: (%d) %s") 
-            % path 
-            % (binary ? "binary " : "") 
-            % (write ? "writing" : "reading") 
+aie_sys_parser::
+sysfs_open_path(const std::string& path, bool write, bool binary) const
+{
+  std::fstream fs;
+  std::ios::openmode mode = write ? std::ios::out : std::ios::in;
+
+  if (binary)
+    mode |= std::ios::binary;
+
+  fs.open(path, mode);
+  if (!fs.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for %s %s: (%d) %s")
+            % path
+            % (binary ? "binary " : "")
+            % (write ? "writing" : "reading")
             % errno
             % strerror(errno)));
-    }
-    return fs;
+  }
+  return fs;
 }
 
 std::fstream
-aie_sys_parser::sysfs_open(const std::string& entry, bool write, bool binary) const
+aie_sys_parser::
+sysfs_open(const std::string& entry, bool write, bool binary) const
 {
-    return sysfs_open_path(entry, write, binary);
+  return sysfs_open_path(entry, write, binary);
 }
 
 void
-aie_sys_parser::sysfs_get(const std::string& entry, std::vector<std::string>& sv) const
+aie_sys_parser::
+sysfs_get(const std::string& entry, std::vector<std::string>& sv) const
 {
-    sv.clear();
-    std::fstream fs = sysfs_open(entry, false, false);
-    std::string line;
-    while (std::getline(fs, line))
-        sv.push_back(line);
+  sv.clear();
+  std::fstream fs = sysfs_open(entry, false, false);
+  std::string line;
+  while (std::getline(fs, line))
+    sv.push_back(line);
 }
 
 /*
@@ -90,54 +93,55 @@ Function parse the above input content for given row and column and generate abo
 Input is in non-standard format, where ':', '|', and "," are the delimiters.
 */
 void
-aie_sys_parser::addrecursive(const int col, const int row, const std::string& tag, const std::string& line, boost::property_tree::ptree &pt) const
+aie_sys_parser::
+addrecursive(const int col, const int row, const std::string& tag, const std::string& line, boost::property_tree::ptree &pt) const
 {
-    std::string n(tag); 
-    boost::property_tree::ptree value;
-    int start_index = 0;
-    int end_index = 0;
-    pt.put("col",col);
-    pt.put("row",row);
-    std::size_t found = line.find_first_of(":|, ");
-    while (found!=std::string::npos) {
-        switch(line[found]) {
-            case ':':	{
-                end_index = found;
-                if(!n.empty())
-                    n += ".";
-                n += line.substr(start_index, (end_index-start_index));
-                break;
-                }
-            case '|':	{
-                end_index = found;
-                boost::property_tree::ptree v;
-                v.put("", line.substr(start_index, (end_index-start_index)));
-                value.push_back(std::make_pair("",v));
-                break;
-                }
-            case ',':	{
-                end_index = found;
-                boost::property_tree::ptree v;
-                v.put("", line.substr(start_index, (end_index-start_index)));
-                value.push_back(std::make_pair("",v));
-                pt.add_child(n.c_str(), value);
-                value.erase("");
-                n = n.substr(0, n.rfind("."));
-                break;
-                }
-            case ' ':	{
-                start_index++;
-                break;
-                }
-	}
-        start_index = found+1;
-        found = line.find_first_of(":|, ",found+1);;
+  std::string n(tag);
+  boost::property_tree::ptree value;
+  int start_index = 0;
+  int end_index = 0;
+  pt.put("col",col);
+  pt.put("row",row);
+  std::size_t found = line.find_first_of(":|, ");
+  while (found!=std::string::npos) {
+    switch (line[found]) {
+      case ':' : {
+        end_index = found;
+        if(!n.empty())
+          n += ".";
+        n += line.substr(start_index, (end_index-start_index));
+        break;
+      }
+      case '|' : {
+        end_index = found;
+        boost::property_tree::ptree v;
+        v.put("", line.substr(start_index, (end_index-start_index)));
+        value.push_back(std::make_pair("",v));
+        break;
+      }
+      case ',' : {
+        end_index = found;
+        boost::property_tree::ptree v;
+        v.put("", line.substr(start_index, (end_index-start_index)));
+        value.push_back(std::make_pair("",v));
+        pt.add_child(n.c_str(), value);
+        value.erase("");
+        n = n.substr(0, n.rfind("."));
+        break;
+      }
+      case ' ' : {
+        start_index++;
+        break;
+      }
     }
-    end_index = found;
-    boost::property_tree::ptree v;
-    v.put("", line.substr(start_index, (end_index-start_index)));
-    value.push_back(std::make_pair("",v));
-    pt.add_child(n.c_str(), value);
+    start_index = found+1;
+    found = line.find_first_of(":|, ",found+1);;
+  }
+  end_index = found;
+  boost::property_tree::ptree v;
+  v.put("", line.substr(start_index, (end_index-start_index)));
+  value.push_back(std::make_pair("",v));
+  pt.add_child(n.c_str(), value);
 }
 
 /*
@@ -145,22 +149,24 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
  * If present, reads and parse the content of each sysfs.
  */
 boost::property_tree::ptree
-aie_sys_parser::aie_sys_read(const int col, const int row) const
+aie_sys_parser::
+aie_sys_read(const int col, const int row) const
 {
-    const std::vector<std::string> tags{"core","dma","lock","errors","event","bd"};
-    std::vector<std::string> data;
-    boost::property_tree::ptree pt;
-    for(auto& tag:tags) {
-        std::ifstream ifile(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag);
-        if(ifile.is_open()) {
-            sysfs_get(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag,data);
-            for(auto& line:data)
-                addrecursive(col,row,tag,line,pt);
-        }
+  const std::vector<std::string> tags{"core","dma","lock","errors","event","bd"};
+  std::vector<std::string> data;
+  boost::property_tree::ptree pt;
+  for (auto& tag:tags) {
+    std::ifstream ifile(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag);
+    if (ifile.is_open()) {
+      sysfs_get(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag,data);
+      for (auto& line:data)
+        addrecursive(col,row,tag,line,pt);
     }
-    return pt;	
+  }
+  return pt;
 }
 
-aie_sys_parser::aie_sys_parser(const std::string& root) : sysfs_root("/sys/class/aie/aiepart_" + root + "/")
+aie_sys_parser::
+aie_sys_parser(const std::string& root) : sysfs_root("/sys/class/aie/aiepart_" + root + "/")
 {
 }

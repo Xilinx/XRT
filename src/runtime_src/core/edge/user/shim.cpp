@@ -1968,14 +1968,14 @@ resetDevice(xclResetKind kind)
 
 #ifdef XRT_ENABLE_AIE
 
-std::shared_ptr<zynqaie::Aie>
+std::shared_ptr<zynqaie::aie_array>
 shim::
 get_aie_array_shared()
 {
   return aieArray;
 }
 
-zynqaie::Aie*
+zynqaie::aie_array*
 shim::
 getAieArray()
 {
@@ -1994,7 +1994,7 @@ shim::
 registerAieArray()
 {
   if(aieArray == nullptr)
-      aieArray = std::make_shared<zynqaie::Aie>(mCoreDevice);
+      aieArray = std::make_shared<zynqaie::aie_array>(mCoreDevice);
 
   aied = std::make_unique<zynqaie::aied>(mCoreDevice.get());
 }

@@ -20,7 +20,7 @@ namespace zynqaie {
   class aie_buffer_object: public xrt_core::aie_buffer_handle
   {
     std::string name;
-    std::shared_ptr<Aie> m_aie_array;
+    std::shared_ptr<aie_array> m_aie_array;
 
   public:
     aie_buffer_object(xrt_core::device* device , const xrt::uuid uuid, const char* name, const zynqaie::hwctx_object* hwctx=nullptr);

@@ -42,7 +42,7 @@ namespace zynqaie {
      * the graph resides. The Aie is an obect that holds the whole
      * AIE resources, configurations etc.
      */
-    std::shared_ptr<Aie> aieArray;
+    std::shared_ptr<aie_array> m_aie_array;
 
     /**
      * This is the collections of tiles that this graph uses.
@@ -56,9 +56,9 @@ namespace zynqaie {
 
   public:
     graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* name,
-                    xrt::graph::access_mode am, zynqaie::hwctx_object* hwctx = nullptr);
-					
-	  ~graph_object();
+                 xrt::graph::access_mode am, zynqaie::hwctx_object* hwctx = nullptr);
+
+    ~graph_object();
 
     std::string
     getname() const;

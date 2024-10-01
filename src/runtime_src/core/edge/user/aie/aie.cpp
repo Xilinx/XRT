@@ -30,10 +30,11 @@
 
 namespace zynqaie {
 
-Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
+aie_array::
+aie_array(const std::shared_ptr<xrt_core::device>& device)
 {
-  DevInst = {0};
-  devInst = nullptr;
+  dev_inst_obj = {0};
+  dev_inst = nullptr;
   adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
 
   XAie_SetupConfig(ConfigPtr,
@@ -65,15 +66,15 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
   ConfigPtr.PartProp.Handle = fd;
 
   AieRC rc;
-  if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+  if ((rc = XAie_CfgInitialize(&dev_inst_obj, &ConfigPtr)) != XAIE_OK)
     throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
-  devInst = &DevInst;
+  dev_inst = &dev_inst_obj;
 
   adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-  adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  adf::config_manager::initialize(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
-  fal_util::initialize(devInst); //resource manager initialization
-  
+  fal_util::initialize(dev_inst); //resource manager initialization
+
   /* Initialize PLIO metadata */
   plio_configs = xrt_core::edge::aie::get_plios(device.get());
 
@@ -88,10 +89,11 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
   external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
 }
 
-Aie::Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj)
+aie_array::
+aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj)
 {
-  DevInst = {0};
-  devInst = nullptr;
+  dev_inst_obj = {0};
+  dev_inst = nullptr;
   adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
 
   XAie_SetupConfig(ConfigPtr,
@@ -123,15 +125,15 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_o
   ConfigPtr.PartProp.Handle = fd;
 
   AieRC rc;
-  if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+  if ((rc = XAie_CfgInitialize(&dev_inst_obj, &ConfigPtr)) != XAIE_OK)
     throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
 
-  devInst = &DevInst;
+  dev_inst = &dev_inst_obj;
 
   adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-  adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  adf::config_manager::initialize(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
-  fal_util::initialize(devInst); //resource manager initialization
+  fal_util::initialize(dev_inst); //resource manager initialization
   
   /* Initialize PLIO metadata */
   plio_configs = xrt_core::edge::aie::get_plios(device.get());
@@ -147,22 +149,25 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_o
   external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
 }
 
-Aie::~Aie()
+aie_array::
+~aie_array()
 {
-  if (devInst)
-    XAie_Finish(devInst);
+  if (dev_inst)
+    XAie_Finish(dev_inst);
 }
 
-XAie_DevInst* Aie::getDevInst()
+XAie_DevInst*
+aie_array::
+get_dev()
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "AIE is not initialized");
 
-  return devInst;
+  return dev_inst;
 }
 
 void
-Aie::
+aie_array::
 open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 {
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -180,7 +185,7 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 }
 
 void
-Aie::
+aie_array::
 open_context(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx_obj, xrt::aie::access_mode am)
 {
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -193,14 +198,15 @@ open_context(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx_
 }
 
 bool
-Aie::
+aie_array::
 is_context_set()
 {
   return (access_mode != xrt::aie::access_mode::none);
 }
 
 void
-Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
+aie_array::
+sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (config.shim_port_configs.empty())
     return;
@@ -209,7 +215,7 @@ Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config
     throw xrt_core::error(-EINVAL, "Can't sync BO: Required " +
 			  std::to_string(config.num_bufs) + " buffers ,but you provided " + std::to_string(bos.size()) + " buffers");
 
-  BD bds[bos.size()];
+  aie_bd bds[bos.size()];
   size_t counter = 0;
   for (auto& bd: bds) {
     prepare_bd(bd, bos[counter++]);
@@ -219,7 +225,7 @@ Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config
     int start_bd = -1;
     for (const auto& shim_bd_info : port_config.shim_bd_infos) {
       auto buf_idx = shim_bd_info.buf_idx;
-      adf::dma_api::updateBDAddressLin(&bds[buf_idx].memInst, port_config.shim_column, 0, static_cast<uint8_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
+      adf::dma_api::updateBDAddressLin(&bds[buf_idx].mem_inst, port_config.shim_column, 0, static_cast<uint8_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
       if (start_bd < 0)
         start_bd = shim_bd_info.bd_id;
     }
@@ -232,7 +238,7 @@ Aie::sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config
 }
 
 void
-Aie::
+aie_array::
 wait_external_buffer(adf::external_buffer_config& config)
 {
   // Dont wait for DMA to be done for the ping-pong buffer cases
@@ -245,10 +251,10 @@ wait_external_buffer(adf::external_buffer_config& config)
 }
 
 void
-Aie::
-sync_bo(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+aie_array::
+sync_bo(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
   if (bos.size() == 0)
@@ -257,7 +263,7 @@ sync_bo(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
-  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  auto ebuf_itr = external_buffer_configs.find(port_name);
   if (ebuf_itr != external_buffer_configs.end()) {
     sync_external_buffer(bos, ebuf_itr->second, dir, size, offset);
     wait_external_buffer(ebuf_itr->second);
@@ -268,11 +274,11 @@ sync_bo(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection
     throw xrt_core::error(-EINVAL, "Can't sync BO: morethan one buffers are not support for GMIO");
 
   auto bo = bos[0];
-  auto gmio_itr = gmio_apis.find(gmioName);
+  auto gmio_itr = gmio_apis.find(port_name);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  auto gmio_config_itr = gmio_configs.find(gmioName);
+  auto gmio_config_itr = gmio_configs.find(port_name);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
@@ -281,10 +287,10 @@ sync_bo(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection
 }
 
 void
-Aie::
-sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+aie_array::
+sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
   if (bos.empty())
@@ -293,7 +299,7 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirect
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
-  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  auto ebuf_itr = external_buffer_configs.find(port_name);
   if (ebuf_itr != external_buffer_configs.end()) {
     sync_external_buffer(bos, ebuf_itr->second, dir, size, offset);
     return;
@@ -302,11 +308,11 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirect
   if (bos.size() > 1)
     throw xrt_core::error(-EINVAL, "Can't sync BO: morethan one buffers are not support for GMIO");
 
-  auto gmio_itr = gmio_apis.find(gmioName);
+  auto gmio_itr = gmio_apis.find(port_name);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  auto gmio_config_itr = gmio_configs.find(gmioName);
+  auto gmio_config_itr = gmio_configs.find(port_name);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
@@ -314,22 +320,22 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirect
 }
 
 void
-Aie::
-wait_gmio(const std::string& gmioName)
+aie_array::
+wait_gmio(const std::string& port_name)
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't wait GMIO: AIE is not initialized");
 
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't wait gmio");
 
-  auto ebuf_itr = external_buffer_configs.find(gmioName);
+  auto ebuf_itr = external_buffer_configs.find(port_name);
   if (ebuf_itr != external_buffer_configs.end()) {
     wait_external_buffer(ebuf_itr->second);
     return;
   }
 
-  auto gmio_itr = gmio_apis.find(gmioName);
+  auto gmio_itr = gmio_apis.find(port_name);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
@@ -337,7 +343,7 @@ wait_gmio(const std::string& gmioName)
 }
 
 void
-Aie::
+aie_array::
 submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   switch (dir) {
@@ -355,49 +361,49 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
 
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
-  BD bd;
+  aie_bd bd;
   prepare_bd(bd, bo);
-  gmio_api->enqueueBD(&bd.memInst, offset, size);
+  gmio_api->enqueueBD(&bd.mem_inst, offset, size);
   clear_bd(bd);
 }
 
 void
-Aie::
-prepare_bd(BD& bd, xrt::bo& bo)
+aie_array::
+prepare_bd(aie_bd& bd, xrt::bo& bo)
 {
   auto buf_fd = bo.export_buffer();
   if (buf_fd == XRT_NULL_BO_EXPORT)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
   bd.buf_fd = buf_fd;
 
-  auto bosize = bo.size();
+  auto bo_size = bo.size();
 
   XAie_MemCacheProp prop = XAIE_MEM_NONCACHEABLE;
-  XAie_MemAttach(devInst, &bd.memInst, 0, 0, bosize, prop, buf_fd);
+  XAie_MemAttach(dev_inst, &bd.mem_inst, 0, 0, bo_size, prop, buf_fd);
 }
 
 void
-Aie::
-clear_bd(BD& bd)
+aie_array::
+clear_bd(aie_bd& bd)
 {
-  XAie_MemDetach(&bd.memInst);
+  XAie_MemDetach(&bd.mem_inst);
   /* we shouldnt close the buffer handle here. file handle gets closed in bo
    * destructor */
   //close(bd.buf_fd);
 }
 
 void
-Aie::
+aie_array::
 reset(const xrt_core::device* device)
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
 
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't reset AIE");
 
-  XAie_Finish(devInst);
-  devInst = nullptr;
+  XAie_Finish(dev_inst);
+  dev_inst = nullptr;
 
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
@@ -411,10 +417,10 @@ reset(const xrt_core::device* device)
 }
 
 int
-Aie::
+aie_array::
 start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
-  if (!devInst)
+  if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Start profiling fails: AIE is not initialized");
 
   if (access_mode == xrt::aie::access_mode::shared)
@@ -440,34 +446,34 @@ start_profiling(int option, const std::string& port1_name, const std::string& po
 }
 
 uint64_t
-Aie::
+aie_array::
 read_profiling(int phdl)
 {
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
 
   uint64_t value = 0;
-  if (eventRecords.size() > phdl)
-    value = adf::profiling::read(eventRecords[phdl].acquiredResources, eventRecords[phdl].option == IO_STREAM_START_DIFFERENCE_CYCLES);
+  if (event_records.size() > phdl)
+    value = adf::profiling::read(event_records[phdl].acquired_resources, event_records[phdl].option == IO_STREAM_START_DIFFERENCE_CYCLES);
   else
     throw xrt_core::error(-EAGAIN, "Read profiling failed: invalid handle.");
   return value;
 }
 
 void
-Aie::
+aie_array::
 stop_profiling(int phdl)
 {
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
-  if (eventRecords.size() > phdl)
-    adf::profiling::stop(eventRecords[phdl].acquiredResources);
+  if (event_records.size() > phdl)
+    adf::profiling::stop(event_records[phdl].acquired_resources);
   else
     throw xrt_core::error(-EINVAL, "Stop profiling failed: invalid handle.");
 }
 
 adf::shim_config
-Aie::
+aie_array::
 get_shim_config(const std::string& port_name)
 {
   auto gmio = gmio_configs.find(port_name);
@@ -494,63 +500,63 @@ get_shim_config(const std::string& port_name)
 }
 
 int
-Aie::
+aie_array::
 start_profiling_run_idle(const std::string& port_name)
 {
   int handle = -1;
-  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
-  if (adf::profiling::profile_stream_running_to_idle_cycles(get_shim_config(port_name), acquiredResources) == adf::err_code::ok)
+  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
+  if (adf::profiling::profile_stream_running_to_idle_cycles(get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
   {
-    handle = eventRecords.size();
-    eventRecords.push_back({ IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE, acquiredResources });
+    handle = event_records.size();
+    event_records.push_back({ IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE, acquired_resources });
   }
   return handle;
 }
 
 int
-Aie::
+aie_array::
 start_profiling_start_bytes(const std::string& port_name, uint32_t value)
 {
   int handle = -1;
-  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
-  if (adf::profiling::profile_stream_start_to_transfer_complete_cycles(get_shim_config(port_name), value, acquiredResources) == adf::err_code::ok)
+  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
+  if (adf::profiling::profile_stream_start_to_transfer_complete_cycles(get_shim_config(port_name), value, acquired_resources) == adf::err_code::ok)
   {
-    handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES, acquiredResources });
+    handle = event_records.size();
+    event_records.push_back({ IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES, acquired_resources });
   }
   return handle;
 }
 
 int
-Aie::
+aie_array::
 start_profiling_diff_cycles(const std::string& port1_name, const std::string& port2_name)
 {
   int handle = -1;
-  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
-  if (adf::profiling::profile_start_time_difference_btw_two_streams(get_shim_config(port1_name), get_shim_config(port2_name), acquiredResources) == adf::err_code::ok)
+  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
+  if (adf::profiling::profile_start_time_difference_btw_two_streams(get_shim_config(port1_name), get_shim_config(port2_name), acquired_resources) == adf::err_code::ok)
   {
-    handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_START_DIFFERENCE_CYCLES, acquiredResources });
+    handle = event_records.size();
+    event_records.push_back({ IO_STREAM_START_DIFFERENCE_CYCLES, acquired_resources });
   }
   return handle;
 }
 
 int
-Aie::
+aie_array::
 start_profiling_event_count(const std::string& port_name)
 {
   int handle = -1;
-  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
-  if (adf::profiling::profile_stream_running_event_count(get_shim_config(port_name), acquiredResources) == adf::err_code::ok)
+  std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
+  if (adf::profiling::profile_stream_running_event_count(get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
   {
-    handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_RUNNING_EVENT_COUNT, acquiredResources });
+    handle = event_records.size();
+    event_records.push_back({ IO_STREAM_RUNNING_EVENT_COUNT, acquired_resources });
   }
   return handle;
 }
 
 bool
-Aie::
+aie_array::
 find_gmio(const std::string& buffer_name)
 {
   if (auto gmio_itr = gmio_configs.find(buffer_name) ; gmio_itr == gmio_configs.end())
@@ -560,7 +566,7 @@ find_gmio(const std::string& buffer_name)
 }
 
 bool
-Aie::
+aie_array::
 find_external_buffer(const std::string& buffer_name)
 {
   if (auto ebuf_itr = external_buffer_configs.find(buffer_name); ebuf_itr == external_buffer_configs.end())

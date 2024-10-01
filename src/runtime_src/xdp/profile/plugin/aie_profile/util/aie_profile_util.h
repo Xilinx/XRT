@@ -57,12 +57,13 @@ namespace xdp::aie::profile {
   struct adfAPIResourceInfo {
     uint8_t srcPcIdx;
     uint8_t destPcIdx;
+    uint64_t profileResult;
     bool isSourceTile = false;
   };
 
   const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-    {"start_to_bytes_transferred", static_cast<uint16_t>(3600)},
-    {"interface_tile_latency",     static_cast<uint16_t>(3601)}
+    {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
+    {METRIC_LATENCY,     static_cast<uint16_t>(3601)}
   };
 
   /**
@@ -161,7 +162,7 @@ namespace xdp::aie::profile {
   uint16_t getAdfApiReservedEventId(const std::string metricSet);
   inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
   inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
-  std::pair<int, XAie_Events> getPLBroadcastChannel();
+  std::pair<int, XAie_Events> getPreferredPLBroadcastChannel();
 
   uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen);
 
