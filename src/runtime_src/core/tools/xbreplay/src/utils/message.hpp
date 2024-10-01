@@ -6,6 +6,7 @@
 #include "utils/logger.hpp"
 
 #include <string>
+#include <cstring>
 #include <unordered_map>
 #include <vector>
 #include <regex>
@@ -133,11 +134,6 @@ class message
    * This function is used to retrive arguments from given string.
    */
   replay_status update_args(const std::pair <std::string&, std::string&> args);
-
-  /*
-   * This function is used to convert given strings to pairs.
-   */
-  void string_to_pairs(const std::string& str1, const std::string& str2);
 
   /*
    * This function is used to remove return type in function signature

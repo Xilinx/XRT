@@ -16,26 +16,6 @@ void trim_spaces(std::string& entry)
 }
 
 /*
- * This function accepts two strings, first string contains list of arguments type
- * separated by "," and second string contains list of arguments value separated by
- * ",". This function will create a pair of arguments type and value and store it.
- */
-void message::string_to_pairs(const std::string& str_args_type,
-                                          const std::string& str_args_value)
-{
-  std::vector<std::pair<std::string, std::string>> pairs;
-  std::istringstream iss1(str_args_type);
-  std::istringstream iss2(str_args_value);
-  std::string token1, token2;
-  while (std::getline(iss1, token1, ',') && std::getline(iss2, token2, ','))
-  {
-    trim_spaces(token1);
-	  trim_spaces(token2);
-    m_args.emplace_back(token1, token2);
-  }
-}
-
-/*
  * This function is used to retrive arguments from given string.
  */
 replay_status message::update_args(const std::pair <std::string&, std::string&> args)
@@ -125,11 +105,19 @@ replay_status message::decode_args(const std::string& line)
 
       /* In some cases there will be no arguments
        * do not error out
-       * strings_to_pairs will store the args_type and
-       * corresponding args_value
        */
       if (!args_type.empty())
-        string_to_pairs(args_type, args_value);
+      {
+        std::istringstream iss1(args_type);
+        std::istringstream iss2(args_value);
+        std::string token1, token2;
+        while (std::getline(iss1, token1, ',') && std::getline(iss2, token2, ','))
+        {
+          trim_spaces(token1);
+          trim_spaces(token2);
+          m_args.emplace_back(token1, token2);
+        }
+      }
     }
     else
      XBREPLAY_WARN("Pattern do not match for args.");

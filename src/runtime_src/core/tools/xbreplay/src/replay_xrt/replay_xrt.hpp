@@ -140,7 +140,7 @@ class replay_xrt
     else
     {
       XBREPLAY_WARN("===================================================");
-      XBREPLAY_WARN("No API MAPPED FOR:", msg->m_api_id);
+      XBREPLAY_WARN("No API MAPPED FOR:|", msg->m_api_id,"|");
       msg.reset();
     }
   }
