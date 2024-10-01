@@ -341,6 +341,17 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  struct GraphPortPair {
+    std::string srcGraphName;
+    std::string srcGraphPort;
+    std::string destGraphName;
+    std::string destGraphPort;
+
+    GraphPortPair() = default;
+    GraphPortPair(std::string g1, std::string p1, std::string g2, std::string p2):
+                  srcGraphName(g1), srcGraphPort(p1), destGraphName(g2), destGraphPort(p2) {}
+  };
+
   struct LatencyConfig
   {
     public:
@@ -350,10 +361,24 @@ namespace xdp {
       uint32_t tranx_no;
       bool isSource;
       uint8_t portId;
+      GraphPortPair graphPortPair;
+
       LatencyConfig() = default;
-      LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i) :
-        src(s), dest(d), metricSet(m), tranx_no(t), isSource(i) {}
+      LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i,
+                    std::string g1, std::string p1, std::string g2, std::string p2) :
+                    src(s), dest(d), metricSet(m), tranx_no(t), isSource(i),
+                    graphPortPair(g1, p1, g2, p2) {}
       void updatePortId(uint8_t& id) { portId=id; }
+  };
+
+  struct LatencyCache
+  {
+    std::string srcDestKey;
+    GraphPortPair graphPortPair;
+
+    LatencyCache() = default;
+    LatencyCache(std::string key, std::string g1, std::string p1, std::string g2, std::string p2):
+                 srcDestKey(key), graphPortPair(g1, p1, g2, p2) {}
   };
       
   struct AIEProfileFinalConfig
@@ -361,19 +386,22 @@ namespace xdp {
     using tile_vec     = std::vector<std::map<tile_type, std::string>>;
     using tile_channel = std::map<tile_type, uint8_t>;
     using tile_bytes   = std::map<tile_type, uint32_t>;
+    using tile_latencyMap = std::map<tile_type, LatencyConfig>;
 
-    std::vector<std::map<tile_type, std::string>> configMetrics;
-    std::map<tile_type, uint8_t> configChannel0;
-    std::map<tile_type, uint8_t> configChannel1;
+    tile_vec configMetrics;
+    tile_channel configChannel0;
+    tile_channel configChannel1;
     uint8_t tileRowOffset;
-    std::map<tile_type, uint32_t> bytesTransferConfigMap;
+    tile_bytes bytesTransferConfigMap;
+    tile_latencyMap latencyConfigMap;
 
     AIEProfileFinalConfig() {}
     AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0,
-                          const tile_channel& cc1, uint8_t offset, const tile_bytes& byteMap):
+                          const tile_channel& cc1, uint8_t offset,
+                          const tile_bytes& byteMap, const tile_latencyMap& latencyMap):
                           configMetrics(otherTileVec), configChannel0(cc0),
                           configChannel1(cc1), tileRowOffset(offset),
-                          bytesTransferConfigMap(byteMap) {}
+                          bytesTransferConfigMap(byteMap), latencyConfigMap(latencyMap) {}
   };
 
 } // end namespace xdp

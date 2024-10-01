@@ -28,6 +28,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp {
 
@@ -62,7 +63,7 @@ class AieProfileMetadata {
           "input_throughputs", "output_throughputs", 
           "s2mm_throughputs", "mm2s_throughputs",
           "input_stalls", "output_stalls",
-          "s2mm_stalls", "mm2s_stalls", "packets", "start_to_bytes_transferred"}
+          "s2mm_stalls", "mm2s_stalls", "packets", METRIC_BYTE_COUNT}
       },
       {
         module_type::mem_tile, {
@@ -99,14 +100,17 @@ class AieProfileMetadata {
     
     // Config data structures required for new profile API metrics
     const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-      {"start_to_bytes_transferred", static_cast<uint16_t>(3600)},
-      {"interface_tile_latency",     static_cast<uint16_t>(3601)}
+      {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
+      {METRIC_LATENCY,     static_cast<uint16_t>(3601)}
     };
+
+
     std::map<tile_type, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
+    std::map<std::string, LatencyCache> keysCache;
     uint32_t defaultTransferBytes = 1;
-    
+
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
   public:
@@ -155,6 +159,11 @@ class AieProfileMetadata {
       return metadataReader->getPartitionOverlayStartCols();
     }
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
+    std::vector<tile_type> getInterfaceTiles(const std::string graph, const std::string port, const std::string metric) {
+      if (aieMetadataEmpty())
+        return {};
+      return metadataReader->getInterfaceTiles(graph, port, metric);
+    }
 
     void getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
                        const std::vector<std::string>& intfTilesLatencyConfigs);
@@ -172,7 +181,9 @@ class AieProfileMetadata {
     uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
                          uint8_t col2, uint8_t row2, uint8_t portID2);
     bool getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const;
-    std::string srcDestPairKey(uint8_t col, uint8_t row) const;
+    bool getDestTile(const tile_type& pairTyle, tile_type& destTile) const;
+    std::string getSrcDestPairKey(uint8_t col, uint8_t row);
+    GraphPortPair getSrcDestGraphPair(const std::string& srcDestKey) const;
 
     std::vector<tile_type>
     getTiles(const std::string& graph_name, module_type type, const std::string& kernel_name) const;
