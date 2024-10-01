@@ -15,20 +15,20 @@ class shim;
 
 namespace zynqaie {
 
-class Aie;
+class aie_array;
 
 class profile_object : public xrt_core::profile_handle
 {
 public:
   static constexpr int invalid_profile_id = -1;
-  ZYNQ::shim* m_shim{nullptr}; 		
-  std::shared_ptr<Aie> m_aie_array;
+  ZYNQ::shim* m_shim{nullptr};
+  std::shared_ptr<aie_array> m_aie_array;
   int m_profile_id;
 
-  profile_object(ZYNQ::shim* shim, std::shared_ptr<Aie> aie_array);
+  profile_object(ZYNQ::shim* shim, std::shared_ptr<aie_array> array);
 
   int
-  start(int option, const char* port1Name, const char* port2Name, uint32_t value) override;
+  start(int option, const char* port1_name, const char* port2_name, uint32_t value) override;
 
   uint64_t
   read() override;

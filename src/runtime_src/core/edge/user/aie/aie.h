@@ -49,42 +49,42 @@ enum xrtProfilingOption {
 
 namespace zynqaie {
 
-struct BD {
+struct aie_bd {
     uint16_t bd_num;
     int      buf_fd;
 #ifdef __AIESIM__
     char     *vaddr;
     size_t   size;
 #else
-    XAie_MemInst memInst;
+    XAie_MemInst mem_inst;
 #endif
 };
 
-struct DMAChannel {
-    std::queue<BD> idle_bds;
-    std::queue<BD> pend_bds;
+struct dma_channel {
+    std::queue<aie_bd> idle_bds;
+    std::queue<aie_bd> pend_bds;
 };
 
-struct ShimDMA {
+struct shim_dma {
     XAie_DmaDesc desc;
-    DMAChannel dma_chan[XAIEDMA_SHIM_MAX_NUM_CHANNELS];
+    dma_channel dma_chan[XAIEDMA_SHIM_MAX_NUM_CHANNELS];
     bool configured;
-    uint8_t maxqSize;
+    uint8_t maxq_size;
 };
 
-struct EventRecord {
+struct event_record {
     int option;
-    std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
+    std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
 };
 
-class Aie {
+class aie_array {
 public:
-    ~Aie();
-    Aie(const std::shared_ptr<xrt_core::device>& device);
+    ~aie_array();
+    aie_array(const std::shared_ptr<xrt_core::device>& device);
 
-    Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj);
+    aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx_obj);
 
-    std::vector<ShimDMA> shim_dma;   // shim DMA // not used anymore, should be cleanedup
+    std::vector<shim_dma> shim_dmas;   // shim DMA // not used anymore, should be cleanedup
 
     /* This is the collections of gmios that are used. */
     std::unordered_map<std::string, adf::gmio_config> gmio_configs;
@@ -94,7 +94,7 @@ public:
 
     std::unordered_map<std::string, adf::external_buffer_config> external_buffer_configs;
 
-    XAie_DevInst *getDevInst();
+    XAie_DevInst *get_dev();
 
     void
     open_context(const xrt_core::device* device, xrt::aie::access_mode am);
@@ -133,10 +133,10 @@ public:
     stop_profiling(int phdl);
 
     void
-    prepare_bd(BD& bd, xrt::bo& bo);
+    prepare_bd(aie_bd& bd, xrt::bo& bo);
 
     void
-    clear_bd(BD& bd);
+    clear_bd(aie_bd& bd);
 
     bool
     find_gmio(const std::string & port_name);
@@ -145,11 +145,11 @@ public:
     find_external_buffer(const std::string & port_name);
 
 private:
-    int numCols;
+    int num_cols;
     int fd;
     xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 
-    XAie_DevInst* devInst;         // AIE Device Instance pointer
+    XAie_DevInst* dev_inst;         // AIE Device Instance pointer
 
     // XAie_InstDeclare(DevInst, &ConfigPtr) is the interface
     // to initialize DevInst by the AIE driver. But it does not
@@ -157,9 +157,9 @@ private:
     // class to maintain its life cylce. So we declair it here.
     //
     // Note: need to evolve when XAie_InstDecalare() evolves.
-    XAie_DevInst DevInst;
+    XAie_DevInst dev_inst_obj;
 
-    std::vector<EventRecord> eventRecords;
+    std::vector<event_record> event_records;
 
     void
     submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
