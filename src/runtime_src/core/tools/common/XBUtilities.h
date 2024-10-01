@@ -87,6 +87,9 @@ namespace XBUtilities {
   std::string
   get_xrt_pretty_version();
 
+  void
+  fill_xrt_version(const boost::property_tree::ptree& pt_xrt, std::stringstream &ss);
+
   /**
    * OEM ID is a unique number called as the
    * Private Enterprise Number (PEN) maintained by IANA
