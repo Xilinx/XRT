@@ -750,7 +750,7 @@ fill_xrt_version(const boost::property_tree::ptree& pt_xrt, std::stringstream& o
     std::string drv_name = driver.get<std::string>("name", "N/A");
     std::string drv_hash = driver.get<std::string>("hash", "N/A");
     if (!boost::iequals(drv_hash, "N/A")) {
-      output << boost::format("%-20s : %s, %s\n") % drv_name
+      output << boost::format("  %-20s : %s, %s\n") % drv_name
           % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
     } else {
       std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
