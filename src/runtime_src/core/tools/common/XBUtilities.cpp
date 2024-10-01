@@ -731,13 +731,16 @@ get_xrt_pretty_version()
   std::stringstream ss;
   boost::property_tree::ptree pt_xrt;
   xrt_core::sysinfo::get_xrt_info(pt_xrt);
-  XBUtilities::fill_xrt_version(pt_xrt, ss);
+  const boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
+  XBUtilities::fill_xrt_versions(pt_xrt, ss, available_devices);
   return ss.str();
 }
 
 void 
 XBUtilities::
-fill_xrt_version(const boost::property_tree::ptree& pt_xrt, std::stringstream& output)
+fill_xrt_versions(const boost::property_tree::ptree& pt_xrt, 
+                 std::stringstream& output, 
+                 const boost::property_tree::ptree& available_devices)
 {
   boost::property_tree::ptree empty_ptree;
   output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
@@ -759,7 +762,6 @@ fill_xrt_version(const boost::property_tree::ptree& pt_xrt, std::stringstream& o
     if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
       output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
   }
-  const boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
   if (!available_devices.empty()) {
     const boost::property_tree::ptree& dev = available_devices.begin()->second;
     if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))

@@ -88,7 +88,9 @@ namespace XBUtilities {
   get_xrt_pretty_version();
 
   void
-  fill_xrt_version(const boost::property_tree::ptree& pt_xrt, std::stringstream &ss);
+  fill_xrt_versions(const boost::property_tree::ptree&, 
+                    std::stringstream&, 
+                    const boost::property_tree::ptree&);
 
   /**
    * OEM ID is a unique number called as the

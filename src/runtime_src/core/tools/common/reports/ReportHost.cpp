@@ -132,7 +132,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << std::endl;
     _output << "XRT\n";
     std::stringstream xrt_version_ss;
-    XBUtilities::fill_xrt_version(_pt.get_child("host.xrt", empty_ptree), xrt_version_ss);
+    XBUtilities::fill_xrt_versions(_pt.get_child("host.xrt", empty_ptree), xrt_version_ss, available_devices);
     _output << xrt_version_ss.str();
   }
   catch (const boost::property_tree::ptree_error &ex) {
