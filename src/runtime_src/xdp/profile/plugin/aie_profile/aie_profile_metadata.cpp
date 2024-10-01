@@ -261,12 +261,14 @@ namespace xdp {
       return;
     }
     
-    uint8_t rowOffset  = (mod == module_type::mem_tile) ? 1 : metadataReader->getAIETileRowOffset();
-    std::string modName = (mod == module_type::core) ? "aie" 
-                        : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
+    uint8_t rowOffset     = (mod == module_type::mem_tile) ? 1 : metadataReader->getAIETileRowOffset();
+    std::string entryName = (mod == module_type::mem_tile) ? "buffer" : "kernel";
+    std::string modName   = (mod == module_type::core) ? "aie" 
+                          : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidGraphs = metadataReader->getValidGraphs();
-    auto allValidKernels = metadataReader->getValidKernels();
+    auto allValidGraphs  = metadataReader->getValidGraphs();
+    std::vector<std::string> allValidEntries = (mod == module_type::mem_tile) ?
+      metadataReader->getValidBuffers() : metadataReader->getValidKernels();
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = metadataReader->getTiles("all", mod, "all");
@@ -302,14 +304,14 @@ namespace xdp {
         continue;
 
       if ((graphMetrics[i][1].compare("all") != 0) &&
-          (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1]
+        msg << "Could not find " << entryName << " " << graphMetrics[i][1]
             << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
+            << " The following " << entryName << "s are valid : " << allValidEntries[0];
 
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+        for (size_t j = 1; j < allValidEntries.size(); j++)
+          msg << ", " << allValidEntries[j];
 
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
@@ -343,14 +345,14 @@ namespace xdp {
         continue;
 
       if ((graphMetrics[i][1].compare("all") != 0) &&
-          (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1]
+        msg << "Could not find " << entryName << " " << graphMetrics[i][1]
             << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
+            << " The following " << entryName << "s are valid : " << allValidEntries[0];
 
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+        for (size_t j = 1; j < allValidEntries.size(); j++)
+          msg << ", " << allValidEntries[j];
 
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;

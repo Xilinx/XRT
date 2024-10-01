@@ -126,6 +126,32 @@ AIEControlConfigFiletype::getValidKernels() const
     return kernels;
 }
 
+std::vector<std::string>
+AIEControlConfigFiletype::getValidBuffers() const
+{
+    if (getHardwareGeneration() == 1) 
+        return {};
+        
+    std::vector<std::string> buffers;
+
+    // Grab all shared buffers
+    auto sharedBufferTree =
+        aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
+    if (!sharedBufferTree) {
+        xrt_core::message::send(severity_level::info, "XRT", 
+            getMessage("TileMapping.SharedBufferToTileMapping"));
+        return {};
+    }
+
+    // Now parse all shared buffers
+    for (auto const &shared_buffer : sharedBufferTree.get()) {
+        std::string bufferStr = shared_buffer.second.get<std::string>("bufferName");
+        auto nameStr = bufferStr.substr(bufferStr.find_last_of(".") + 1);
+        buffers.push_back(nameStr);
+    }
+    return buffers;
+}
+
 std::unordered_map<std::string, io_config>
 AIEControlConfigFiletype::getTraceGMIOs() const
 {
