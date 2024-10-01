@@ -47,7 +47,7 @@ namespace {
     auto aieArray = drv->getAieArray() ;
     if (!aieArray)
       return nullptr ;
-    return aieArray->getDevInst() ;
+    return aieArray->get_dev() ;
   }
 
   static void* allocateAieDevice(void* devHandle)
