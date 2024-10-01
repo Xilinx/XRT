@@ -32,6 +32,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <set>
 
 #if (BOOST_VERSION >= 106400)
 
@@ -908,8 +909,48 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
   // Group the memories
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
 }
-  
 
+// CR1176455: DRC to check if dpu_kernel_ids of AIE_PARTITION section matches with the m_kernel_ids of IP_LAYOUT section 
+// because the dpu_kernel_id is the key in mapping between CU and PDI.
+bool
+XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
+  // Get AIE_PARTITION metadata
+  std::set<std::string> allDpuKernelIDs;
+  Section *pAIEPartition = xclbin.findSection(AIE_PARTITION);
+  std::string jsonFile = pAIEPartition->getPathAndName();
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json(jsonFile, pt);
+  const boost::property_tree::ptree& ptAIEPartition = pt.get_child("aie_partition");
+  std::vector<boost::property_tree::ptree> ptPDIs = XUtil::as_vector<boost::property_tree::ptree>(ptAIEPartition, "PDIs");
+  for (const auto& pdi : ptPDIs) {
+    std::vector<boost::property_tree::ptree> ptCDOs = XUtil::as_vector<boost::property_tree::ptree>(pdi, "cdo_groups");
+    for (const auto& cdo_group : ptCDOs) {
+      std::vector<std::string> dpuKernelIDs = XUtil::as_vector_simple<std::string>(cdo_group, "dpu_kernel_ids");
+      allDpuKernelIDs.insert(dpuKernelIDs.begin(), dpuKernelIDs.end());
+    }
+  }
+                                             
+  // Get IP_LAYOUT metadata
+  Section *pIPLayout = xclbin.findSection(IP_LAYOUT);
+  boost::property_tree::ptree ptIPLayout;
+  pIPLayout->getPayload(ptIPLayout);
+  boost::property_tree::ptree ptIPlayout = ptIPLayout.get_child("ip_layout");
+  boost::property_tree::ptree ipDatas = ptIPlayout.get_child("m_ip_data");
+  for (const auto& element : ipDatas) {
+    boost::property_tree::ptree ptIPData = element.second;
+    std::string sm_type = ptIPData.get<std::string>("m_type");
+    std::string sSubType = ptIPData.get<std::string>("m_subtype", "");
+    // Check if each m_kernel_id is present in the set of all dpu_kernel_ids
+    if(sm_type == "IP_PS_KERNEL" && sSubType == "DPU"){
+      std::string sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
+      if(allDpuKernelIDs.find(sKernelId) == allDpuKernelIDs.end()){
+	XUtil::TRACE("There is no matching dpu_kernel_id in AIE_PARTITION for m_kernel_id " + sKernelId + " in IP_LAYOUT");    
+        return false;
+      }
+    }
+  }
+  return true;   
+}
 
 void 
 XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
