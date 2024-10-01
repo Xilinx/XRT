@@ -741,9 +741,28 @@ get_xrt_pretty_version()
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
-    boost::algorithm::to_upper(drv_name);
-    ss << boost::format("%-20s : %s, %s\n") % drv_name
-        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    std::string drv_hash = driver.get<std::string>("hash", "N/A");
+    if (!boost::iequals(drv_hash, "N/A")) {
+      ss << boost::format("%-20s : %s, %s\n") % drv_name
+          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    } else {
+      std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
+      ss << boost::format("%-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
+    }
+  }
+  const boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
+  try {
+    if (!available_devices.empty()) {
+      const boost::property_tree::ptree& dev = available_devices.begin()->second;
+      if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+        ss << boost::format("%-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+      else
+        ss << boost::format("%-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    }
+  }
+  catch (const boost::property_tree::ptree_error &ex) {
+    throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
+         % ex.what()));
   }
   return ss.str();
 }
