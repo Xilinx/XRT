@@ -81,15 +81,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
-</ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
@@ -726,6 +717,12 @@ Copy full content of specified src buffer object to this buffer object </p>
 </dl>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt2boD0Ev">
+<span id="_CPPv3N3xrt2boD0Ev"></span><span id="_CPPv2N3xrt2boD0Ev"></span><span id="xrt::bo::~bo"></span><span class="target" id="classxrt_1_1bo_1ace557ba711faf3962a16f25b6761d56c"></span><span class="sig-name descname"><span class="n"><span class="pre">~bo</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2boD0Ev" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1ace557ba711faf3962a16f25b6761d56c"><span class="std std-ref">~bo()</span></a> - Destructor for bo object </p>
+</dd></dl>
+
 </div>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo12async_handleE">
@@ -938,8 +935,8 @@ Blocks the current thread until an interrupt is received from the IP, or until a
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6deviceD0Ev">
-<span id="_CPPv3N3xrt6deviceD0Ev"></span><span id="_CPPv2N3xrt6deviceD0Ev"></span><span id="xrt::device::~device"></span><span class="target" id="classxrt_1_1device_1a6bb81291b4174166de783cb9ee3cd2db"></span><span class="sig-name descname"><span class="n"><span class="pre">~device</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6deviceD0Ev" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1ada846b9273eeffd4d26ecdf7eba4d9c5"><span class="std std-ref">device()</span></a> - Dtor </p>
+<span id="_CPPv3N3xrt6deviceD0Ev"></span><span id="_CPPv2N3xrt6deviceD0Ev"></span><span id="xrt::device::~device"></span><span class="target" id="classxrt_1_1device_1a9e999c6877a04b1770d6fad414faaf2a"></span><span class="sig-name descname"><span class="n"><span class="pre">~device</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6deviceD0Ev" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a9e999c6877a04b1770d6fad414faaf2a"><span class="std std-ref">~device()</span></a> - Destructor for device object </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1272,6 +1269,36 @@ The kernel name must uniquely identify compatible kernel instances (compute unit
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernel6kernelERK6kernel">
+<span id="_CPPv3N3xrt6kernel6kernelERK6kernel"></span><span id="_CPPv2N3xrt6kernel6kernelERK6kernel"></span><span id="xrt::kernel::kernel__kernelCR"></span><span class="target" id="classxrt_1_1kernel_1abc04a5d319361cfe70a3b77dfb0b21c2"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt6kernel6kernelERK6kernel" title="xrt::kernel::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelERK6kernel" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Copy ctor </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernel6kernelERR6kernel">
+<span id="_CPPv3N3xrt6kernel6kernelERR6kernel"></span><span id="_CPPv2N3xrt6kernel6kernelERR6kernel"></span><span id="xrt::kernel::kernel__kernelRR"></span><span class="target" id="classxrt_1_1kernel_1a42fff186de7e484c987a14a43d70917d"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt6kernel6kernelERR6kernel" title="xrt::kernel::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelERR6kernel" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Move ctor </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernelD0Ev">
+<span id="_CPPv3N3xrt6kernelD0Ev"></span><span id="_CPPv2N3xrt6kernelD0Ev"></span><span id="xrt::kernel::~kernel"></span><span class="target" id="classxrt_1_1kernel_1ab4ca37caccc2e5a6296a41244db82542"></span><span class="sig-name descname"><span class="n"><span class="pre">~kernel</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernelD0Ev" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Destructor for kernel - needed for tracing </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernelaSERK6kernel">
+<span id="_CPPv3N3xrt6kernelaSERK6kernel"></span><span id="_CPPv2N3xrt6kernelaSERK6kernel"></span><span id="xrt::kernel::assign-operator__kernelCR"></span><span class="target" id="classxrt_1_1kernel_1a35abf20bf3f26a1dc65e1a4163422b7b"></span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6kernelaSERK6kernel" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator= () - Copy assignment </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernelaSERR6kernel">
+<span id="_CPPv3N3xrt6kernelaSERR6kernel"></span><span id="_CPPv2N3xrt6kernelaSERR6kernel"></span><span id="xrt::kernel::assign-operator__kernelRR"></span><span class="target" id="classxrt_1_1kernel_1a2ec51e741f1ea8c4ab941347988b507b"></span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6kernelaSERR6kernel" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator= () - Move assignment </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">
 <span id="_CPPv3IDpEN3xrt6kernelclEDpRR4Args"></span><span id="_CPPv2IDpEN3xrt6kernelclEDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1kernel_1a602dcd5ff860f31695abdf74d24116f9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args" title="xrt::kernel::operator()::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>operator() - Invoke the kernel function</p>
@@ -1356,6 +1383,36 @@ Use with <code class="docutils literal notranslate"><span class="pre">read_regis
 <dd class="field-odd"><p><strong>krnl</strong> – Kernel object representing the kernel to execute </p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3run3runERK3run">
+<span id="_CPPv3N3xrt3run3runERK3run"></span><span id="_CPPv2N3xrt3run3runERK3run"></span><span id="xrt::run::run__runCR"></span><span class="target" id="classxrt_1_1run_1a4322dadfac444afa077632c677a025bb"></span><span class="sig-name descname"><span class="n"><span class="pre">run</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt3run3runERK3run" title="xrt::run::run"><span class="n"><span class="pre">run</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt3run3runERK3run" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a43f61719426fff8f5f24f0d550e0f29f"><span class="std std-ref">run()</span></a> - Copy ctor </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3run3runERR3run">
+<span id="_CPPv3N3xrt3run3runERR3run"></span><span id="_CPPv2N3xrt3run3runERR3run"></span><span id="xrt::run::run__runRR"></span><span class="target" id="classxrt_1_1run_1a1b662cfbe1c64a6c566ea1108b76140c"></span><span class="sig-name descname"><span class="n"><span class="pre">run</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt3run3runERR3run" title="xrt::run::run"><span class="n"><span class="pre">run</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt3run3runERR3run" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a43f61719426fff8f5f24f0d550e0f29f"><span class="std std-ref">run()</span></a> - Move ctor </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3runD0Ev">
+<span id="_CPPv3N3xrt3runD0Ev"></span><span id="_CPPv2N3xrt3runD0Ev"></span><span id="xrt::run::~run"></span><span class="target" id="classxrt_1_1run_1a12ba3243db877220bf5820eab31e0ff0"></span><span class="sig-name descname"><span class="n"><span class="pre">~run</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3runD0Ev" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a12ba3243db877220bf5820eab31e0ff0"><span class="std std-ref">~run()</span></a> - Destruct run object </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3runaSERK3run">
+<span id="_CPPv3N3xrt3runaSERK3run"></span><span id="_CPPv2N3xrt3runaSERK3run"></span><span id="xrt::run::assign-operator__runCR"></span><span class="target" id="classxrt_1_1run_1a72e1bd6bb46b8165f1d081316b5b2a7c"></span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt3runaSERK3run" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator= () - Copy assignment </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3runaSERR3run">
+<span id="_CPPv3N3xrt3runaSERR3run"></span><span id="_CPPv2N3xrt3runaSERR3run"></span><span id="xrt::run::assign-operator__runRR"></span><span class="target" id="classxrt_1_1run_1afee6b8aa80257eff7137db40a8c0754e"></span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt3runaSERR3run" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator= () - Move assignment </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -2681,7 +2738,7 @@ The memory connections of an argument is the union of the connections for each c
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="classxrt_1_1xclbin_1_1mem_1aedef1d46f1deb6610efc97bbfcc3d19e"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_tag</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
-<dd><p>get_name() - Get tag name</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1aedef1d46f1deb6610efc97bbfcc3d19e"><span class="std std-ref">get_tag()</span></a> - Get tag name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Memory tag name </p>
@@ -2703,7 +2760,7 @@ The memory connections of an argument is the union of the connections for each c
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="classxrt_1_1xclbin_1_1mem_1ad21ef7a8dbe0be1ff9a69490cd4ca614"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_size_kb</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
-<dd><p>get_size() - Get the size of the memory in KB</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1ad21ef7a8dbe0be1ff9a69490cd4ca614"><span class="std std-ref">get_size_kb()</span></a> - Get the size of the memory in KB</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Size of memory in KB, or -1 for invalid size </p>

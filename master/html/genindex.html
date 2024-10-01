@@ -78,15 +78,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
-</ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
@@ -174,74 +165,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="xmakernels.main.html#c.xma_dec_session_create">xma_dec_session_create (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_dec_session_destroy">xma_dec_session_destroy (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_dec_session_get_properties">xma_dec_session_get_properties (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_dec_session_recv_frame">xma_dec_session_recv_frame (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_dec_session_send_data">xma_dec_session_send_data (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_enc_session_create">xma_enc_session_create (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_enc_session_destroy">xma_enc_session_destroy (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_enc_session_recv_data">xma_enc_session_recv_data (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_enc_session_send_frame">xma_enc_session_send_frame (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_filter_session_create">xma_filter_session_create (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_filter_session_destroy">xma_filter_session_destroy (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_filter_session_recv_frame">xma_filter_session_recv_frame (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_filter_session_send_frame">xma_filter_session_send_frame (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_initialize">xma_initialize (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_kernel_session_create">xma_kernel_session_create (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_kernel_session_destroy">xma_kernel_session_destroy (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_kernel_session_read">xma_kernel_session_read (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_kernel_session_write">xma_kernel_session_write (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_arg_num">xma_plg_buffer_alloc_arg_num (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_ddr">xma_plg_buffer_alloc_ddr (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_channel_id">xma_plg_channel_id (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_get_dev_handle">xma_plg_get_dev_handle (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_work_item_return_code">xma_plg_work_item_return_code (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_scaler_default_filter_coeff_set">xma_scaler_default_filter_coeff_set (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_scaler_session_create">xma_scaler_session_create (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_scaler_session_destroy">xma_scaler_session_destroy (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_scaler_session_recv_frame_list">xma_scaler_session_recv_frame_list (C function)</a>
-</li>
-      <li><a href="xmakernels.main.html#c.xma_scaler_session_send_frame">xma_scaler_session_send_frame (C function)</a>
-</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2boE">xrt::bo (C++ class)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo7addressEv">xrt::bo::address (C++ function)</a>
@@ -289,6 +212,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection">xrt::bo::sync (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection6size_t6size_t">[1]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv">xrt::bo::write (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boD0Ev">xrt::bo::~bo (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceE">xrt::device (C++ class)</a>
 </li>
@@ -354,8 +279,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringERKNSt6stringE">xrt::ini::set (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringEj">[1]</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2ipE">xrt::ip (C++ class)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip23create_interrupt_notifyEv">xrt::ip::create_interrupt_notify (C++ function)</a>
@@ -382,14 +305,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8group_idEi">xrt::kernel::group_id (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">xrt::kernel::kernel (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelEv">[1]</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERK6kernel">xrt::kernel::kernel (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERR6kernel">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelEv">[3]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel6offsetEi">xrt::kernel::offset (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">xrt::kernel::operator() (C++ function)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernelaSERK6kernel">xrt::kernel::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernelaSERR6kernel">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernelD0Ev">xrt::kernel::~kernel (C++ function)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt7messageE">xrt::message (C++ type)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5levelE">xrt::message::level (C++ enum)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level5alertE">xrt::message::level::alert (C++ enumerator)</a>
@@ -428,9 +357,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runltERKN3xrt3runE">xrt::run::operator&lt; (C++ function)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3runaSERK3run">xrt::run::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3runaSERR3run">[1]</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run11return_codeEv">xrt::run::return_code (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[1]</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK3run">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runERR3run">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[3]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEvRKNSt6stringERR7ArgType">xrt::run::set_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRKN3xrt2boE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRN3xrt2boE">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRRN3xrt2boE">[4]</a>
 </li>
@@ -445,6 +376,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitERKNSt6chrono12millisecondsE">xrt::run::wait (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitEj">[1]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2ERKNSt6chrono12millisecondsE">xrt::run::wait2 (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2Ev">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3runD0Ev">xrt::run::~run (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6systemE">xrt::system (C++ type)</a>
 </li>

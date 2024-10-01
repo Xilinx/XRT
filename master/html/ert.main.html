@@ -81,15 +81,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
-</ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
@@ -249,6 +240,114 @@ preprended to the data payload.</p>
 <p>The data payload for ERT_START_DPU is interpreted as fixed instruction
 buffer address along with instruction count, followed by regular kernel
 arguments.</p>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_npu_data</span></span></dt>
+<dd><p>interpretation of data payload for ERT_START_NPU</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_npu_data {
+  uint64_t instruction_buffer;
+  uint32_t instruction_buffer_size;
+  uint32_t instruction_prop_count;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer</span></code></dt><dd><p>address of instruction buffer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer_size</span></code></dt><dd><p>size of instruction buffer in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_prop_count</span></code></dt><dd><p>WORD length of property name value pairs</p>
+</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The ert_npu_data is prepended to data payload of ert_start_kernel_cmd
+after any extra cu masks.  The payload count of the ert packet is
+incremented with the size (words) of ert_npu_data elements
+preprended to the data payload.</p>
+<p>The data payload for ERT_START_NPU is interpreted as instruction
+buffer address, instruction count along with instruction property,
+followed by regular kernel arguments.</p>
+<p>When instruction_prop_count is non-zero, it indicates the length
+(in 32 bits WORD) of the instruction buffer properties after this
+fields. This count is reserved for future extension. One example
+propertiy is the number of actual columns this instruction used.</p>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_npu_preempt_data</span></span></dt>
+<dd><p>interpretation of data payload for ERT_START_NPU_PREEMPT</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_npu_preempt_data {
+  uint64_t instruction_buffer;
+  uint64_t save_buffer;
+  uint64_t restore_buffer;
+  uint32_t instruction_buffer_size;
+  uint32_t save_buffer_size;
+  uint32_t restore_buffer_size;
+  uint32_t instruction_prop_count;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer</span></code></dt><dd><p>address of instruction buffer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">save_buffer</span></code></dt><dd><p>address of save instruction buffer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">restore_buffer</span></code></dt><dd><p>address of restrore instruction buffer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer_size</span></code></dt><dd><p>size of instruction buffer in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">save_buffer_size</span></code></dt><dd><p>size of save instruction buffer in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">restore_buffer_size</span></code></dt><dd><p>size of restore instruction buffer in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">instruction_prop_count</span></code></dt><dd><p>number of property name value pairs</p>
+</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The ert_npu_preempt_data is prepended to data payload of ert_start_kernel_cmd
+after any extra cu masks.  The payload count of the ert packet is
+incremented with the size (words) of ert_npu_preempt_data elements
+preprended to the data payload.</p>
+<p>The data payload for ERT_START_NPU_PREEMPT is interpreted as instruction
+buffer, save instruction buffer, restore instruction buffer and their
+size, along with instruction property, followed by regular kernel arguments.</p>
+<p>When instruction_prop_count is non-zero, it indicates the length
+(in 32 bits WORD) of the instruction buffer properties after this
+fields. This count is reserved for future extension. One example
+propertiy is the number of actual columns this instruction used.</p>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_cmd_chain_data</span></span></dt>
+<dd><p>interpretation of data payload for ERT_CMD_CHAIN</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_cmd_chain_data {
+  uint32_t command_count;
+  uint32_t submit_index;
+  uint32_t error_index;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">command_count</span></code></dt><dd><p>number of commands in chain</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">submit_index</span></code></dt><dd><p>index of last successfully submitted command in chain</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">error_index</span></code></dt><dd><p>index of failing command if cmd status is not completed
+<a href="#id1"><span class="problematic" id="id2">**</span></a>data**[]:        address of each command in chain</p>
+</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This is the payload of an <em>ert_packet</em> when the opcode is ERT_CMD_CHAIN</p>
 <dl class="c type">
 <dt class="sig sig-object c">
 <span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_init_kernel_cmd</span></span></dt>
