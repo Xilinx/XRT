@@ -21,8 +21,9 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "aie_control_config_filetype.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
 namespace pt = boost::property_tree;
@@ -260,8 +261,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         {
             // Catch metric sets that don't follow above naming convention
             if ((metricStr != "packets") &&
-                (metricStr != "interface_tile_latency") &&
-                (metricStr != "start_to_bytes_transferred"))
+                (metricStr != METRIC_LATENCY) &&
+                (metricStr != METRIC_BYTE_COUNT))
                 continue;
         }
 
@@ -275,14 +276,21 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if ((specifiedId >= 0) && (specifiedId != idToCheck))
             continue;
 
-        tile_type tile = {0};
+        tile_type tile;
         tile.col = shimCol;
         tile.row = 0;
         tile.subtype = type;
+
+        auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
+        if ((type == io_type::PLIO) && (it != tiles.end())) {
+            std::string msg = "Interface tile " + std::to_string(shimCol)
+                            + " supports more than one PLIO, but only one can be monitored.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+
         // Grab stream ID and slave/master (used in configStreamSwitchPorts())
         tile.is_master = isMaster;
         tile.stream_id = streamId;
-
         tiles.emplace_back(std::move(tile));
     }
 

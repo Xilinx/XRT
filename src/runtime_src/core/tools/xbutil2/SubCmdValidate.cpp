@@ -691,7 +691,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   //get current performance mode
-  const auto curr_mode = xrt_core::device_query<xrt_core::query::performance_mode>(device);
+  const auto curr_mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
   //--pmode
   try {
     if (!m_pmode.empty()) {

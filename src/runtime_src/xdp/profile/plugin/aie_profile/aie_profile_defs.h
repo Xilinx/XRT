@@ -17,9 +17,13 @@
 #ifndef AIE_PROFILE_DEFS_H
 #define AIE_PROFILE_DEFS_H
 
-constexpr uint16_t BASE_MEMORY_COUNTER   = 1000;
-constexpr uint16_t BASE_SHIM_COUNTER     = 2000;
-constexpr uint16_t BASE_MEM_TILE_COUNTER = 3000;
+constexpr uint16_t BASE_MEMORY_COUNTER    = 1000;
+constexpr uint16_t BASE_SHIM_COUNTER      = 2000;
+constexpr uint16_t BASE_MEM_TILE_COUNTER  = 3000;
+
+constexpr uint32_t PAYLOAD_IS_CHANNEL_SHIFT =  7;
+constexpr uint32_t PAYLOAD_IS_MASTER_SHIFT  =  8;
+constexpr uint32_t PAYLOAD_BD_SIZE_SHIFT    = 16;
 
 constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
 constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
@@ -37,5 +41,9 @@ constexpr uint32_t GROUP_SHIM_S2MM0_STALL_MASK      = 0x00041000;
 constexpr uint32_t GROUP_SHIM_S2MM1_STALL_MASK      = 0x00082000;
 constexpr uint32_t GROUP_SHIM_MM2S0_STALL_MASK      = 0x00500000;
 constexpr uint32_t GROUP_SHIM_MM2S1_STALL_MASK      = 0x00A00000;
+
+// ADF API related constants
+inline const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";
+inline const std::string METRIC_LATENCY    = "interface_tile_latency";
 
 #endif

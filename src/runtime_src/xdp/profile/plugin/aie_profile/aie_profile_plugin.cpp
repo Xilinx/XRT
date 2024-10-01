@@ -278,6 +278,8 @@ auto time = std::time(nullptr);
       auto& data = p.second;
       if (data.thread.joinable())
         data.thread.join();
+      if (data.implementation)
+        data.implementation->freeResources();
     }
 
     handleToAIEData.clear();
