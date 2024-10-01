@@ -21,21 +21,20 @@ hwctx_object(ZYNQ::shim* shim, slot_id slot_idx, xrt::uuid uuid, xrt::hw_context
 	  , m_uuid(std::move(uuid))
 	  , m_slot_idx(slot_idx)
 	  , m_mode(mode)
-{
-#ifdef XRT_ENABLE_AIE
-  auto device{xrt_core::get_userpf_device(m_shim)};
-  auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
-  if (data.first && data.second)
-    m_aie_array = std::make_shared<aie_array>(device, this);
-#endif
-}
+{}
 
 #ifdef XRT_ENABLE_AIE
 std::shared_ptr<aie_array>
 hwctx_object::
-get_aie_array_shared() const
+get_aie_array_shared()
 {
   return m_aie_array;
+}
+
+aied*
+hwctx_object::get_aied() const
+{
+  return m_aied.get();
 }
 #endif
 
@@ -48,6 +47,19 @@ hwctx_object::
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
   }
+}
+
+void 
+hwctx_object::init_aie()
+{
+#ifdef XRT_ENABLE_AIE
+  auto device{xrt_core::get_userpf_device(m_shim)};
+  auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
+  if (data.first && data.second)
+    m_aie_array = std::make_shared<aie_array>(device, this);
+
+    m_aied = std::make_unique<zynqaie::aied>(device.get());
+#endif
 }
 
 std::unique_ptr<xrt_core::buffer_handle>

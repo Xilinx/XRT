@@ -1212,24 +1212,45 @@ void
 device_linux::
 open_aie_context(xrt::aie::access_mode am)
 {
- if (auto ret = xclAIEOpenContext(get_device_handle(), am))
-   throw error(ret, "fail to open aie context");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (int ret; ret = drv->openAIEContext(am))
+    throw xrt_core::error(ret, "Fail to open AIE context");
+
+  drv->setAIEAccessMode(am);
 }
 
 void
 device_linux::
 reset_aie()
 {
-  if (auto ret = xclResetAIEArray(get_device_handle()))
-    throw system_error(ret, "fail to reset aie");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aie_array = drv->get_aie_array_shared();
+
+  if (!aie_array->is_context_set())
+    aie_array->open_context(this, xrt::aie::access_mode::primary);
+
+  aie_array->reset(this);
 }
 
 void
 device_linux::
 wait_gmio(const char *gmioName)
 {
-  if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
-    throw system_error(ret, "fail to wait gmio");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aie_array = drv->get_aie_array_shared();
+
+  if (!aie_array->is_context_set())
+    aie_array->open_context(this, xrt::aie::access_mode::primary);
+
+  aie_array->wait_gmio(gmioName);
 }
 
 void

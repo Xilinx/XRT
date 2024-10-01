@@ -23,7 +23,7 @@ namespace zynqaie {
     std::shared_ptr<aie_array> m_aie_array;
 
   public:
-    aie_buffer_object(xrt_core::device* device , const xrt::uuid uuid, const char* name, const zynqaie::hwctx_object* hwctx=nullptr);
+    aie_buffer_object(xrt_core::device* device , const xrt::uuid uuid, const char* name, zynqaie::hwctx_object* hwctx=nullptr);
 
     void
     sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const;

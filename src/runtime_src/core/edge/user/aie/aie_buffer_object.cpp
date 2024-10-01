@@ -8,7 +8,7 @@
 #include "core/edge/user/shim.h"
 
 namespace zynqaie {
-  aie_buffer_object::aie_buffer_object(xrt_core::device* device ,const xrt::uuid uuid, const char* buffer_name, const zynqaie::hwctx_object* hwctx)
+  aie_buffer_object::aie_buffer_object(xrt_core::device* device ,const xrt::uuid uuid, const char* buffer_name, zynqaie::hwctx_object* hwctx)
     : name{buffer_name}
   {
     if (hwctx) {
