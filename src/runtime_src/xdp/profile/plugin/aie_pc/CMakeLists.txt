@@ -2,9 +2,10 @@
 # Copyright (C) 2024 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-# =======================================================================
-# This builds the AIE Halt Plugin to add Debug Halts for all AIE Cores at 
-# the start. It is currently built on Client Windows Only.
+# ========================================================================
+# This builds the AIE PC Plugin which can configure Perf Counter registers
+# to count cycles between core function start and end.
+# It is currently built on Client Windows Only.
 # =========================================================================
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
