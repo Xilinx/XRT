@@ -81,15 +81,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
-</ul>
 <p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
@@ -282,6 +273,44 @@ units.</p></td>
 (experimental)</p></td>
 <td><p>DRM_IOCTL_ZOCL_INFO_CU</p></td>
 <td><p>drm_zocl_info_cu</p></td>
+</tr>
+<tr class="row-odd"><td><p>16</p></td>
+<td><p>Create a hw context on a slot for
+a xclbin on the device</p></td>
+<td><p>DRM_IOCTL_ZOCL_CREATE_HW_CTX</p></td>
+<td><p>drm_zocl_create_hw_ctx</p></td>
+</tr>
+<tr class="row-even"><td><p>17</p></td>
+<td><p>Destroy a hw context on a slot on
+a device</p></td>
+<td><p>DRM_IOCTL_ZOCL_DESTROY_HW_CTX</p></td>
+<td><p>drm_zocl_destroy_hw_ctx</p></td>
+</tr>
+<tr class="row-odd"><td><p>18</p></td>
+<td><p>Open cu context</p></td>
+<td><p>DRM_IOCTL_ZOCL_OPEN_CU_CTX</p></td>
+<td><p>drm_zocl_open_cu_ctx</p></td>
+</tr>
+<tr class="row-even"><td><p>19</p></td>
+<td><p>Close cu context</p></td>
+<td><p>DRM_IOCTL_ZOCL_CLOSE_CU_CTX</p></td>
+<td><p>drm_zocl_close_cu_ctx</p></td>
+</tr>
+<tr class="row-odd"><td><p>20</p></td>
+<td><p>Send an execute job to a CU with hw
+context</p></td>
+<td><p>DRM_IOCTL_ZOCL_HW_CTX_EXECBUF</p></td>
+<td><p>drm_zocl_hw_ctx_execbuf</p></td>
+</tr>
+<tr class="row-even"><td><p>21</p></td>
+<td><p>Open graph context</p></td>
+<td><p>DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX</p></td>
+<td><p>drm_zocl_open_graph_ctx</p></td>
+</tr>
+<tr class="row-odd"><td><p>22</p></td>
+<td><p>Close graph context</p></td>
+<td><p>DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX</p></td>
+<td><p>drm_zocl_close_graph_ctx</p></td>
 </tr>
 </tbody>
 </table>
@@ -558,6 +587,26 @@ units.</p></td>
 </dl>
 <dl class="c type">
 <dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_hw_ctx_execbuf</span></span></dt>
+<dd><p>Submit a command buffer for execution on a CU used with DRM_IOCTL_ZOCL_HW_CTX_EXECBUF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_hw_ctx_execbuf {
+  uint32_t hw_ctx_id;
+  uint32_t exec_bo_handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_ctx_id</span></code></dt><dd><p>pass the hw context id</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt><dd><p>BO handle of command buffer formatted as ERT command</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
 <span class="sig-name descname"><span class="pre">struct</span> <span class="pre">argument_info</span></span></dt>
 <dd><p>Kernel argument information</p>
 </dd></dl>
@@ -658,6 +707,132 @@ units.</p></td>
 <dt><code class="docutils literal notranslate"><span class="pre">hw_gen</span></code></dt><dd><p>aie generation</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">partition_id</span></code></dt><dd><p>aie partition id</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_create_hw_ctx</span></span></dt>
+<dd><p>Create a hw context on a slot on device used with DRM_IOCTL_ZOCL_CREATE_HW_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_create_hw_ctx {
+  struct drm_zocl_axlf * axlf_ptr;
+  uint32_t qos;
+  uint32_t hw_context;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">axlf_ptr</span></code></dt><dd><p>axlf pointer which need to be downloaded</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">qos</span></code></dt><dd><p>QOS information</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>Returns context handle</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_destroy_hw_ctx</span></span></dt>
+<dd><p>Destroy a hw context on a slot on device used with DRM_IOCTL_ZOCL_DESTROY_HW_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_destroy_hw_ctx {
+  uint32_t hw_context;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>Context handle that needs to be closed</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_open_cu_ctx</span></span></dt>
+<dd><p>Opens a cu context under a hw context on the device used with DRM_IOCTL_ZOCL_OPEN_CU_CTX</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_open_cu_ctx {
+  uint32_t hw_context;
+  char cu_name;
+  uint32_t flags;
+  uint32_t cu_index;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>Open a cu context under this hw context handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_name</span></code></dt><dd><p>Name of the cu on the device image for which the open context is being made</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Shared or Exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt><dd><p>Reture the acquired cu index. This will be required for closing</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_close_cu_ctx</span></span></dt>
+<dd><p>Closes a cu context opened under a hw context on device used with DRM_IOCTL_ZOCL_CLOSE_CU_CTX</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_close_cu_ctx {
+  uint32_t hw_context;
+  uint32_t cu_index;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>close cu context under this hw context handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt><dd><p>Index of the cu on the device image for which the close request is being made</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_open_graph_ctx</span></span></dt>
+<dd><p>Opens a graph context under a hw context on the device used with DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_open_graph_ctx {
+  uint32_t hw_context;
+  uint32_t flags;
+  uint32_t graph_id;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>Open a graph context under this hw context handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Shared or Exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">graph_id</span></code></dt><dd><p>graph id</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_close_graph_ctx</span></span></dt>
+<dd><p>Closes a graph context opened under a hw context on device used with DRM_IOCTL_ZOCL_CLOSE_GRAPH_CTX</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_close_graph_ctx {
+  uint32_t hw_context;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt><dd><p>close graph context under this hw context handle</p>
 </dd>
 </dl>
 <dl class="c type">

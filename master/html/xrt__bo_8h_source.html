@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>XRT: /home/rahul/rahul/doc/XRT/src/runtime_src/core/include/xrt/xrt_bo.h Source File</title>
+<title>XRT: /home/manoj/test_build_doc/XRT/src/runtime_src/core/include/xrt/xrt_bo.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -318,112 +318,115 @@ $(function() {
 <div class="line"><a name="l00723"></a><span class="lineno">  723</span>&#160;    <a class="code" href="classxrt_1_1bo.html#a94050c81c4a3e6a829b1123496f0b3de">copy</a>(src, src.<a class="code" href="classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975">size</a>());</div>
 <div class="line"><a name="l00724"></a><span class="lineno">  724</span>&#160;  }</div>
 <div class="line"><a name="l00725"></a><span class="lineno">  725</span>&#160; </div>
-<div class="line"><a name="l00726"></a><span class="lineno">  726</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00728"></a><span class="lineno">  728</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;bo_impl&gt;&amp;</div>
-<div class="line"><a name="l00729"></a><span class="lineno">  729</span>&#160;  get_handle()<span class="keyword"> const</span></div>
-<div class="line"><a name="l00730"></a><span class="lineno">  730</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00731"></a><span class="lineno">  731</span>&#160;    <span class="keywordflow">return</span> handle;</div>
-<div class="line"><a name="l00732"></a><span class="lineno">  732</span>&#160;  }</div>
-<div class="line"><a name="l00733"></a><span class="lineno">  733</span>&#160; </div>
-<div class="line"><a name="l00734"></a><span class="lineno">  734</span>&#160;  <span class="comment">// Construct bo from C-API handle</span></div>
-<div class="line"><a name="l00735"></a><span class="lineno">  735</span>&#160;  <span class="comment">// Throws if argument handle is not from xrtBOAlloc variant</span></div>
-<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00737"></a><span class="lineno">  737</span>&#160;  <a class="code" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo</a>(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a>);</div>
-<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160; </div>
-<div class="line"><a name="l00739"></a><span class="lineno">  739</span>&#160;  <a class="code" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo</a>(std::shared_ptr&lt;bo_impl&gt; impl)</div>
-<div class="line"><a name="l00740"></a><span class="lineno">  740</span>&#160;    : handle(std::move(impl))</div>
-<div class="line"><a name="l00741"></a><span class="lineno">  741</span>&#160;  {}</div>
-<div class="line"><a name="l00743"></a><span class="lineno">  743</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00744"></a><span class="lineno">  744</span>&#160;  std::shared_ptr&lt;bo_impl&gt; handle;</div>
-<div class="line"><a name="l00745"></a><span class="lineno">  745</span>&#160;};</div>
-<div class="line"><a name="l00746"></a><span class="lineno">  746</span>&#160; </div>
-<div class="line"><a name="l00747"></a><span class="lineno">  747</span>&#160;} <span class="comment">// namespace xrt</span></div>
-<div class="line"><a name="l00748"></a><span class="lineno">  748</span>&#160; </div>
-<div class="line"><a name="l00750"></a><span class="lineno">  750</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
-<div class="line"><a name="l00751"></a><span class="lineno">  751</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00729"></a><span class="lineno">  729</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00730"></a><span class="lineno"><a class="line" href="classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c">  730</a></span>&#160;  <a class="code" href="classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c">~bo</a>();</div>
+<div class="line"><a name="l00731"></a><span class="lineno">  731</span>&#160; </div>
+<div class="line"><a name="l00732"></a><span class="lineno">  732</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00734"></a><span class="lineno">  734</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;bo_impl&gt;&amp;</div>
+<div class="line"><a name="l00735"></a><span class="lineno">  735</span>&#160;  get_handle()<span class="keyword"> const</span></div>
+<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00737"></a><span class="lineno">  737</span>&#160;    <span class="keywordflow">return</span> handle;</div>
+<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160;  }</div>
+<div class="line"><a name="l00739"></a><span class="lineno">  739</span>&#160; </div>
+<div class="line"><a name="l00740"></a><span class="lineno">  740</span>&#160;  <span class="comment">// Construct bo from C-API handle</span></div>
+<div class="line"><a name="l00741"></a><span class="lineno">  741</span>&#160;  <span class="comment">// Throws if argument handle is not from xrtBOAlloc variant</span></div>
+<div class="line"><a name="l00742"></a><span class="lineno">  742</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00743"></a><span class="lineno">  743</span>&#160;  <a class="code" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo</a>(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a>);</div>
+<div class="line"><a name="l00744"></a><span class="lineno">  744</span>&#160; </div>
+<div class="line"><a name="l00745"></a><span class="lineno">  745</span>&#160;  <a class="code" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo</a>(std::shared_ptr&lt;bo_impl&gt; impl)</div>
+<div class="line"><a name="l00746"></a><span class="lineno">  746</span>&#160;    : handle(std::move(impl))</div>
+<div class="line"><a name="l00747"></a><span class="lineno">  747</span>&#160;  {}</div>
+<div class="line"><a name="l00749"></a><span class="lineno">  749</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00750"></a><span class="lineno">  750</span>&#160;  std::shared_ptr&lt;bo_impl&gt; handle;</div>
+<div class="line"><a name="l00751"></a><span class="lineno">  751</span>&#160;};</div>
 <div class="line"><a name="l00752"></a><span class="lineno">  752</span>&#160; </div>
-<div class="line"><a name="l00763"></a><span class="lineno">  763</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00764"></a><span class="lineno">  764</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
-<div class="line"><a name="l00765"></a><span class="lineno">  765</span>&#160;xrtBOAllocUserPtr(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, <span class="keywordtype">void</span>* userptr, <span class="keywordtype">size_t</span> size, <a class="code" href="xrt__bo_8h.html#af7e1ca20dfcae346ed803426494c5b91">xrtBufferFlags</a> flags, <a class="code" href="xrt__bo_8h.html#acf6299e759d81e5d27853480153c8d11">xrtMemoryGroup</a> grp);</div>
-<div class="line"><a name="l00766"></a><span class="lineno">  766</span>&#160; </div>
-<div class="line"><a name="l00776"></a><span class="lineno">  776</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00777"></a><span class="lineno">  777</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
-<div class="line"><a name="l00778"></a><span class="lineno">  778</span>&#160;xrtBOAlloc(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, <span class="keywordtype">size_t</span> size, <a class="code" href="xrt__bo_8h.html#af7e1ca20dfcae346ed803426494c5b91">xrtBufferFlags</a> flags, <a class="code" href="xrt__bo_8h.html#acf6299e759d81e5d27853480153c8d11">xrtMemoryGroup</a> grp);</div>
-<div class="line"><a name="l00779"></a><span class="lineno">  779</span>&#160; </div>
-<div class="line"><a name="l00789"></a><span class="lineno">  789</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00790"></a><span class="lineno">  790</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
-<div class="line"><a name="l00791"></a><span class="lineno">  791</span>&#160;xrtBOImport(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, xclBufferExportHandle ehdl);</div>
-<div class="line"><a name="l00792"></a><span class="lineno">  792</span>&#160; </div>
-<div class="line"><a name="l00802"></a><span class="lineno">  802</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00803"></a><span class="lineno">  803</span>&#160;xclBufferExportHandle</div>
-<div class="line"><a name="l00804"></a><span class="lineno">  804</span>&#160;xrtBOExport(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
-<div class="line"><a name="l00805"></a><span class="lineno">  805</span>&#160; </div>
-<div class="line"><a name="l00814"></a><span class="lineno">  814</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00815"></a><span class="lineno">  815</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
-<div class="line"><a name="l00816"></a><span class="lineno">  816</span>&#160;xrtBOSubAlloc(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> parent, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> offset);</div>
-<div class="line"><a name="l00817"></a><span class="lineno">  817</span>&#160; </div>
-<div class="line"><a name="l00818"></a><span class="lineno">  818</span>&#160;<span class="comment">/*</span></div>
-<div class="line"><a name="l00819"></a><span class="lineno">  819</span>&#160;<span class="comment"> * xrtBOAllocFromXcl() - Undocumented allocation from an xclBufferHandle</span></div>
-<div class="line"><a name="l00820"></a><span class="lineno">  820</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00821"></a><span class="lineno">  821</span>&#160;<span class="comment"> * @dhdl:  XRT device handle on which the buffer is residing.</span></div>
-<div class="line"><a name="l00822"></a><span class="lineno">  822</span>&#160;<span class="comment"> * @xhdl:  The xcl buffer handle to convert to an xrtBufferHandle</span></div>
-<div class="line"><a name="l00823"></a><span class="lineno">  823</span>&#160;<span class="comment"> * Return: xrtBufferHandle which must be freed using `xrtBOFree`</span></div>
-<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;<span class="comment"> * Note that argument xclBufferHandle must be wrapped as</span></div>
-<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160;<span class="comment"> * an xcl_buffer_handle in order to disambiguate the untyped</span></div>
-<div class="line"><a name="l00827"></a><span class="lineno">  827</span>&#160;<span class="comment"> * xclBufferHandle.</span></div>
-<div class="line"><a name="l00828"></a><span class="lineno">  828</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00829"></a><span class="lineno">  829</span>&#160;<span class="comment"> * Please note that the device is an xrtDeviceHandle.  It is the</span></div>
-<div class="line"><a name="l00830"></a><span class="lineno">  830</span>&#160;<span class="comment"> * responsibility of the user to convert an xclDeviceHandle to</span></div>
-<div class="line"><a name="l00831"></a><span class="lineno">  831</span>&#160;<span class="comment"> * an xrtDeviceHandle before calling this API.</span></div>
-<div class="line"><a name="l00832"></a><span class="lineno">  832</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00833"></a><span class="lineno">  833</span>&#160;<span class="comment"> * The xrtBufferHandle returned by this API</span></div>
+<div class="line"><a name="l00753"></a><span class="lineno">  753</span>&#160;} <span class="comment">// namespace xrt</span></div>
+<div class="line"><a name="l00754"></a><span class="lineno">  754</span>&#160; </div>
+<div class="line"><a name="l00756"></a><span class="lineno">  756</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
+<div class="line"><a name="l00757"></a><span class="lineno">  757</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00758"></a><span class="lineno">  758</span>&#160; </div>
+<div class="line"><a name="l00769"></a><span class="lineno">  769</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00770"></a><span class="lineno">  770</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
+<div class="line"><a name="l00771"></a><span class="lineno">  771</span>&#160;xrtBOAllocUserPtr(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, <span class="keywordtype">void</span>* userptr, <span class="keywordtype">size_t</span> size, <a class="code" href="xrt__bo_8h.html#af7e1ca20dfcae346ed803426494c5b91">xrtBufferFlags</a> flags, <a class="code" href="xrt__bo_8h.html#acf6299e759d81e5d27853480153c8d11">xrtMemoryGroup</a> grp);</div>
+<div class="line"><a name="l00772"></a><span class="lineno">  772</span>&#160; </div>
+<div class="line"><a name="l00782"></a><span class="lineno">  782</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00783"></a><span class="lineno">  783</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
+<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160;xrtBOAlloc(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, <span class="keywordtype">size_t</span> size, <a class="code" href="xrt__bo_8h.html#af7e1ca20dfcae346ed803426494c5b91">xrtBufferFlags</a> flags, <a class="code" href="xrt__bo_8h.html#acf6299e759d81e5d27853480153c8d11">xrtMemoryGroup</a> grp);</div>
+<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160; </div>
+<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
+<div class="line"><a name="l00797"></a><span class="lineno">  797</span>&#160;xrtBOImport(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, xclBufferExportHandle ehdl);</div>
+<div class="line"><a name="l00798"></a><span class="lineno">  798</span>&#160; </div>
+<div class="line"><a name="l00808"></a><span class="lineno">  808</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00809"></a><span class="lineno">  809</span>&#160;xclBufferExportHandle</div>
+<div class="line"><a name="l00810"></a><span class="lineno">  810</span>&#160;xrtBOExport(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
+<div class="line"><a name="l00811"></a><span class="lineno">  811</span>&#160; </div>
+<div class="line"><a name="l00820"></a><span class="lineno">  820</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00821"></a><span class="lineno">  821</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
+<div class="line"><a name="l00822"></a><span class="lineno">  822</span>&#160;xrtBOSubAlloc(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> parent, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> offset);</div>
+<div class="line"><a name="l00823"></a><span class="lineno">  823</span>&#160; </div>
+<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160;<span class="comment">/*</span></div>
+<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;<span class="comment"> * xrtBOAllocFromXcl() - Undocumented allocation from an xclBufferHandle</span></div>
+<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00827"></a><span class="lineno">  827</span>&#160;<span class="comment"> * @dhdl:  XRT device handle on which the buffer is residing.</span></div>
+<div class="line"><a name="l00828"></a><span class="lineno">  828</span>&#160;<span class="comment"> * @xhdl:  The xcl buffer handle to convert to an xrtBufferHandle</span></div>
+<div class="line"><a name="l00829"></a><span class="lineno">  829</span>&#160;<span class="comment"> * Return: xrtBufferHandle which must be freed using `xrtBOFree`</span></div>
+<div class="line"><a name="l00830"></a><span class="lineno">  830</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00831"></a><span class="lineno">  831</span>&#160;<span class="comment"> * Note that argument xclBufferHandle must be wrapped as</span></div>
+<div class="line"><a name="l00832"></a><span class="lineno">  832</span>&#160;<span class="comment"> * an xcl_buffer_handle in order to disambiguate the untyped</span></div>
+<div class="line"><a name="l00833"></a><span class="lineno">  833</span>&#160;<span class="comment"> * xclBufferHandle.</span></div>
 <div class="line"><a name="l00834"></a><span class="lineno">  834</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00835"></a><span class="lineno">  835</span>&#160;<span class="comment"> * The argument xcl buffer handle must be explicitly freed using</span></div>
-<div class="line"><a name="l00836"></a><span class="lineno">  836</span>&#160;<span class="comment"> * xclFreeBO, in other words xclAllocBO requires xclFreeBO and</span></div>
-<div class="line"><a name="l00837"></a><span class="lineno">  837</span>&#160;<span class="comment"> * xrtBOAlloc requires xrtBOFree.</span></div>
-<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160;<span class="comment"> */</span></div>
-<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
-<div class="line"><a name="l00841"></a><span class="lineno">  841</span>&#160;xrtBOAllocFromXcl(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, xclBufferHandle xhdl);</div>
-<div class="line"><a name="l00842"></a><span class="lineno">  842</span>&#160; </div>
-<div class="line"><a name="l00849"></a><span class="lineno">  849</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00850"></a><span class="lineno">  850</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00851"></a><span class="lineno">  851</span>&#160;xrtBOFree(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
-<div class="line"><a name="l00852"></a><span class="lineno">  852</span>&#160; </div>
-<div class="line"><a name="l00859"></a><span class="lineno">  859</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00860"></a><span class="lineno">  860</span>&#160;<span class="keywordtype">size_t</span></div>
-<div class="line"><a name="l00861"></a><span class="lineno">  861</span>&#160;xrtBOSize(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
-<div class="line"><a name="l00862"></a><span class="lineno">  862</span>&#160; </div>
-<div class="line"><a name="l00869"></a><span class="lineno">  869</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00870"></a><span class="lineno">  870</span>&#160;uint64_t</div>
-<div class="line"><a name="l00871"></a><span class="lineno">  871</span>&#160;xrtBOAddress(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
-<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160; </div>
-<div class="line"><a name="l00886"></a><span class="lineno">  886</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00887"></a><span class="lineno">  887</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00888"></a><span class="lineno">  888</span>&#160;xrtBOSync(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keyword">enum</span> xclBOSyncDirection dir, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> offset);</div>
-<div class="line"><a name="l00889"></a><span class="lineno">  889</span>&#160; </div>
-<div class="line"><a name="l00899"></a><span class="lineno">  899</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00900"></a><span class="lineno">  900</span>&#160;<span class="keywordtype">void</span>*</div>
-<div class="line"><a name="l00901"></a><span class="lineno">  901</span>&#160;xrtBOMap(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
-<div class="line"><a name="l00902"></a><span class="lineno">  902</span>&#160; </div>
-<div class="line"><a name="l00916"></a><span class="lineno">  916</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00917"></a><span class="lineno">  917</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00918"></a><span class="lineno">  918</span>&#160;xrtBOWrite(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keyword">const</span> <span class="keywordtype">void</span>* src, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> seek);</div>
-<div class="line"><a name="l00919"></a><span class="lineno">  919</span>&#160; </div>
-<div class="line"><a name="l00934"></a><span class="lineno">  934</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00935"></a><span class="lineno">  935</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00936"></a><span class="lineno">  936</span>&#160;xrtBORead(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keywordtype">void</span>* dst, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> skip);</div>
-<div class="line"><a name="l00937"></a><span class="lineno">  937</span>&#160; </div>
-<div class="line"><a name="l00950"></a><span class="lineno">  950</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00951"></a><span class="lineno">  951</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00952"></a><span class="lineno">  952</span>&#160;xrtBOCopy(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> dst, <a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> src, <span class="keywordtype">size_t</span> sz, <span class="keywordtype">size_t</span> dst_offset, <span class="keywordtype">size_t</span> src_offset);</div>
-<div class="line"><a name="l00953"></a><span class="lineno">  953</span>&#160; </div>
-<div class="line"><a name="l00955"></a><span class="lineno">  955</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a name="l00956"></a><span class="lineno">  956</span>&#160;}</div>
-<div class="line"><a name="l00957"></a><span class="lineno">  957</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00958"></a><span class="lineno">  958</span>&#160; </div>
-<div class="line"><a name="l00959"></a><span class="lineno">  959</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00835"></a><span class="lineno">  835</span>&#160;<span class="comment"> * Please note that the device is an xrtDeviceHandle.  It is the</span></div>
+<div class="line"><a name="l00836"></a><span class="lineno">  836</span>&#160;<span class="comment"> * responsibility of the user to convert an xclDeviceHandle to</span></div>
+<div class="line"><a name="l00837"></a><span class="lineno">  837</span>&#160;<span class="comment"> * an xrtDeviceHandle before calling this API.</span></div>
+<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;<span class="comment"> * The xrtBufferHandle returned by this API</span></div>
+<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00841"></a><span class="lineno">  841</span>&#160;<span class="comment"> * The argument xcl buffer handle must be explicitly freed using</span></div>
+<div class="line"><a name="l00842"></a><span class="lineno">  842</span>&#160;<span class="comment"> * xclFreeBO, in other words xclAllocBO requires xclFreeBO and</span></div>
+<div class="line"><a name="l00843"></a><span class="lineno">  843</span>&#160;<span class="comment"> * xrtBOAlloc requires xrtBOFree.</span></div>
+<div class="line"><a name="l00844"></a><span class="lineno">  844</span>&#160;<span class="comment"> */</span></div>
+<div class="line"><a name="l00845"></a><span class="lineno">  845</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00846"></a><span class="lineno">  846</span>&#160;<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a></div>
+<div class="line"><a name="l00847"></a><span class="lineno">  847</span>&#160;xrtBOAllocFromXcl(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> dhdl, xclBufferHandle xhdl);</div>
+<div class="line"><a name="l00848"></a><span class="lineno">  848</span>&#160; </div>
+<div class="line"><a name="l00855"></a><span class="lineno">  855</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00856"></a><span class="lineno">  856</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00857"></a><span class="lineno">  857</span>&#160;xrtBOFree(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
+<div class="line"><a name="l00858"></a><span class="lineno">  858</span>&#160; </div>
+<div class="line"><a name="l00865"></a><span class="lineno">  865</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00866"></a><span class="lineno">  866</span>&#160;<span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00867"></a><span class="lineno">  867</span>&#160;xrtBOSize(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
+<div class="line"><a name="l00868"></a><span class="lineno">  868</span>&#160; </div>
+<div class="line"><a name="l00875"></a><span class="lineno">  875</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00876"></a><span class="lineno">  876</span>&#160;uint64_t</div>
+<div class="line"><a name="l00877"></a><span class="lineno">  877</span>&#160;xrtBOAddress(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
+<div class="line"><a name="l00878"></a><span class="lineno">  878</span>&#160; </div>
+<div class="line"><a name="l00892"></a><span class="lineno">  892</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00893"></a><span class="lineno">  893</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00894"></a><span class="lineno">  894</span>&#160;xrtBOSync(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keyword">enum</span> xclBOSyncDirection dir, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> offset);</div>
+<div class="line"><a name="l00895"></a><span class="lineno">  895</span>&#160; </div>
+<div class="line"><a name="l00905"></a><span class="lineno">  905</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00906"></a><span class="lineno">  906</span>&#160;<span class="keywordtype">void</span>*</div>
+<div class="line"><a name="l00907"></a><span class="lineno">  907</span>&#160;xrtBOMap(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl);</div>
+<div class="line"><a name="l00908"></a><span class="lineno">  908</span>&#160; </div>
+<div class="line"><a name="l00922"></a><span class="lineno">  922</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00923"></a><span class="lineno">  923</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00924"></a><span class="lineno">  924</span>&#160;xrtBOWrite(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keyword">const</span> <span class="keywordtype">void</span>* src, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> seek);</div>
+<div class="line"><a name="l00925"></a><span class="lineno">  925</span>&#160; </div>
+<div class="line"><a name="l00940"></a><span class="lineno">  940</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00941"></a><span class="lineno">  941</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00942"></a><span class="lineno">  942</span>&#160;xrtBORead(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> bhdl, <span class="keywordtype">void</span>* dst, <span class="keywordtype">size_t</span> size, <span class="keywordtype">size_t</span> skip);</div>
+<div class="line"><a name="l00943"></a><span class="lineno">  943</span>&#160; </div>
+<div class="line"><a name="l00956"></a><span class="lineno">  956</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00957"></a><span class="lineno">  957</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00958"></a><span class="lineno">  958</span>&#160;xrtBOCopy(<a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> dst, <a class="code" href="xrt__bo_8h.html#a0e7088a86bb6c894941629d2870c9e15">xrtBufferHandle</a> src, <span class="keywordtype">size_t</span> sz, <span class="keywordtype">size_t</span> dst_offset, <span class="keywordtype">size_t</span> src_offset);</div>
+<div class="line"><a name="l00959"></a><span class="lineno">  959</span>&#160; </div>
+<div class="line"><a name="l00961"></a><span class="lineno">  961</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00962"></a><span class="lineno">  962</span>&#160;}</div>
+<div class="line"><a name="l00963"></a><span class="lineno">  963</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00964"></a><span class="lineno">  964</span>&#160; </div>
+<div class="line"><a name="l00965"></a><span class="lineno">  965</span>&#160;<span class="preprocessor">#endif</span></div>
 <div class="ttc" id="aclassxrt_1_1bo_1_1async__handle_html"><div class="ttname"><a href="classxrt_1_1bo_1_1async__handle.html">xrt::bo::async_handle</a></div><div class="ttdoc">xrt::bo::async_handle represents an asynchronously operation</div><div class="ttdef"><b>Definition:</b> xrt_bo.h:86</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_1_1async__handle_html_a2b6ac7716242ebe5f1767b711cdbcf4c"><div class="ttname"><a href="classxrt_1_1bo_1_1async__handle.html#a2b6ac7716242ebe5f1767b711cdbcf4c">xrt::bo::async_handle::async_handle</a></div><div class="ttdeci">async_handle(std::shared_ptr&lt; async_handle_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_bo.h:89</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_1_1async__handle_html_aa3514ba288259b383c5734b36b59a6ba"><div class="ttname"><a href="classxrt_1_1bo_1_1async__handle.html#aa3514ba288259b383c5734b36b59a6ba">xrt::bo::async_handle::wait</a></div><div class="ttdeci">void wait()</div></div>
@@ -458,6 +461,7 @@ $(function() {
 <div class="ttc" id="aclassxrt_1_1bo_html_aa547fa01401a9b2acd4efd758368cc9a"><div class="ttname"><a href="classxrt_1_1bo.html#aa547fa01401a9b2acd4efd758368cc9a">xrt::bo::bo</a></div><div class="ttdeci">bo(const xrt::hw_context &amp;hwctx, void *userptr, size_t sz, memory_group grp)</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_html_ab682cbb4ee9d69be401b202d17209e16"><div class="ttname"><a href="classxrt_1_1bo.html#ab682cbb4ee9d69be401b202d17209e16">xrt::bo::sync</a></div><div class="ttdeci">void sync(xclBOSyncDirection dir, size_t sz, size_t offset)</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_html_ace5346587d9b1facd6a34ea160d26862"><div class="ttname"><a href="classxrt_1_1bo.html#ace5346587d9b1facd6a34ea160d26862">xrt::bo::bo</a></div><div class="ttdeci">bo(bo &amp;&amp;rhs)=default</div></div>
+<div class="ttc" id="aclassxrt_1_1bo_html_ace557ba711faf3962a16f25b6761d56c"><div class="ttname"><a href="classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c">xrt::bo::~bo</a></div><div class="ttdeci">~bo()</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_html_ad6a4bb086ce3b1023df8671c29a1d1dd"><div class="ttname"><a href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dd">xrt::bo::flags</a></div><div class="ttdeci">flags</div><div class="ttdef"><b>Definition:</b> xrt_bo.h:119</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_html_ad6a4bb086ce3b1023df8671c29a1d1dda58a6d9caf38ddb91ad23015bcfc97abd"><div class="ttname"><a href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda58a6d9caf38ddb91ad23015bcfc97abd">xrt::bo::flags::host_only</a></div><div class="ttdeci">@ host_only</div></div>
 <div class="ttc" id="aclassxrt_1_1bo_html_ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c"><div class="ttname"><a href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c">xrt::bo::flags::p2p</a></div><div class="ttdeci">@ p2p</div></div>
