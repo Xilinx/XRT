@@ -942,6 +942,7 @@ XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
     if(sm_type == "IP_PS_KERNEL" && sSubType == "DPU"){
       std::string sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
       if(allDpuKernelIDs.find(sKernelId) == allDpuKernelIDs.end()){
+	XUtil::TRACE("There is no matching dpu_kernel_id in AIE_PARTITION for m_kernel_id " + sKernelId + " in IP_LAYOUT");    
         return false;
       }
     }
