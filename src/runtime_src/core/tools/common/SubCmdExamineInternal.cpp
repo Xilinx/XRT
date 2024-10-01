@@ -77,7 +77,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   
   if (m_isUserDomain)
     m_hiddenOptions.add_options()
-      ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+      ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken()->zero_tokens(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ;
 }
 
