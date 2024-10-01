@@ -909,7 +909,9 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
   // Group the memories
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
 }
-  
+
+// CR1176455: DRC to check if dpu_kernel_ids of AIE_PARTITION section matches with the m_kernel_ids of IP_LAYOUT section 
+// because the dpu_kernel_id is the key in mapping between CU and PDI.
 bool
 XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
   // Get AIE_PARTITION metadata
