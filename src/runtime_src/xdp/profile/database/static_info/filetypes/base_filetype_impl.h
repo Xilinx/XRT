@@ -55,6 +55,9 @@ class BaseFiletypeImpl {
         virtual std::vector<std::string>
         getValidKernels() const = 0;
 
+        virtual std::vector<std::string>
+        getValidBuffers() const = 0;
+
         virtual std::unordered_map<std::string, io_config>
         getTraceGMIOs() const = 0;
 
