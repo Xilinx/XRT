@@ -355,27 +355,30 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
 void
 add_tops_info(const xrt_core::device* device, ptree_type& pt)
 {
-    ptree_type pt_tops_array;
+  ptree_type pt_tops_array;
 
-    try {
-        auto res_info = xrt_core::device_query<xq::xrt_resource_raw>(device);
-        if (res_info.empty())
-            return;
+  try
+  {
+    auto res_info = xrt_core::device_query<xq::xrt_resource_raw>(device);
+    if (res_info.empty())
+      return;
 
-        for (auto& res: res_info) {
-            if(res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_tops_max)
-                continue;
+    for (auto &res : res_info)
+    {
+      if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_tops_max)
+        continue;
 
-            ptree_type pt_tops;
-            pt_tops.add("id", xq::xrt_resource_raw::get_name(res.type));
-            pt_tops.add("value", res.data_double);
-            pt_tops_array.push_back(std::make_pair("", pt_tops));
-        }
-        pt.put_child("tops", pt_tops_array);
+      ptree_type pt_tops;
+      pt_tops.add("id", xq::xrt_resource_raw::get_name(res.type));
+      pt_tops.add("value", res.data_double);
+      pt_tops_array.push_back(std::make_pair("", pt_tops));
     }
-    catch (const xq::no_such_key&) {
-        // ignoring if not available: Edge Case
-    }
+    pt.put_child("tops", pt_tops_array);
+  }
+  catch (const xq::no_such_key &)
+  {
+    // ignoring if not available: Edge Case
+  }
 }
 
 void
