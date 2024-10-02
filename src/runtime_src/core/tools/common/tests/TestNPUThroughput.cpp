@@ -157,6 +157,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
+    return ptree;
   }
 
   // Compute the throughput
