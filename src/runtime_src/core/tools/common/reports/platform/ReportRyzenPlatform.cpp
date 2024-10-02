@@ -64,7 +64,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     const boost::property_tree::ptree& tops = pt_platform.get_child("tops", empty_ptree);
     if (!tops.empty()) {
-      _output << std::endl << "TOPs" << std::endl;
+      _output << "\nTOPs\n";
       for (const auto& kt : tops) {
         const boost::property_tree::ptree& pt_tops = kt.second;
         std::string tops_name_type = pt_tops.get<std::string>("id");

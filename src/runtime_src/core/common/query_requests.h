@@ -1185,22 +1185,31 @@ struct clock_freq_topology_raw : request
   get(const device*) const = 0;
 };
 
+/**
+ * Return some of the resouces within a NPU device
+ */
 struct xrt_resource_raw : request
 {
-  enum resource_type {
-    ipu_clk_max,
-    ipu_tops_max,
-    ipu_task_max,
-    ipu_tops_curr,
-    ipu_task_curr
+  /**
+   * enum class resource_type - represents the different types of resources
+   */
+  enum class resource_type {
+    ipu_clk_max,    // Max H-Clocks, query returns uint64 value
+    ipu_tops_max,   // Max TOPs, query returns double value
+    ipu_task_max,   // Max Tasks, query returns uint64 value
+    ipu_tops_curr,  // Current TOPs, query returns double value
+    ipu_task_curr   // Current Tasks, query returns uint64 value
   };
 
+   /**
+   * The buffer that holds the resource query data
+   */
   struct xrt_resource_query {
       resource_type type;
       union
       {
-          uint64_t data_uint64;
-          double data_double;
+          uint64_t data_uint64; // holds the value represented as uint64
+          double data_double;   // holds the value represented as double
       };
   };
 
