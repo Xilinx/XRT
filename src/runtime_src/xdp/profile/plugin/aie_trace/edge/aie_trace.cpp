@@ -410,6 +410,15 @@ namespace xdp {
         interfaceEvents = interfaceTileEventSets[metricSet];
       }
 
+      // Check ccore and memory events and interfaceEvents are empty & generated warning if so
+      if (coreEvents.empty() && memoryEvents.empty() && interfaceEvents.empty()) {
+        std::stringstream msg;
+        msg << "Event trace is not available for " << tileName << " using metric set "
+            << metricSet << " on hardware generation " << metadata->getHardwareGen() << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+
       // Check Resource Availability
       if (!tileHasFreeRsc(aieDevice, loc, type, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT",
