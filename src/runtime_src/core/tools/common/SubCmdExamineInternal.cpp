@@ -138,6 +138,9 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     if (vm.count("report") && m_reportNames.empty())
       throw xrt_core::error("No report given to be produced");
 
+    if (vm.count("element") && m_elementsFilter.empty())
+      throw xrt_core::error("No element filter given to be produced");
+
     // DRC check
     // When json is specified, make sure an accompanying output file is also specified
     if (!m_format.empty() && m_output.empty())
@@ -153,7 +156,6 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     print_help_internal();
-    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Determine report level
