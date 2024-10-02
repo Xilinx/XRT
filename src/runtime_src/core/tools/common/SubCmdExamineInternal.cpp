@@ -156,6 +156,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     print_help_internal();
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Determine report level
