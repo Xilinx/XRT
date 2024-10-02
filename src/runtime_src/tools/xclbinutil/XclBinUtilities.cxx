@@ -918,6 +918,10 @@ XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
   std::set<std::string> allDpuKernelIDs;
   Section *pAIEPartition = xclbin.findSection(AIE_PARTITION);
   std::string jsonFile = pAIEPartition->getPathAndName();
+  // If the aie partition metadata file is not found, then no-op
+  if(jsonFile.empty()){
+    return true; 	  
+  }
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(jsonFile, pt);
   const boost::property_tree::ptree& ptAIEPartition = pt.get_child("aie_partition");
