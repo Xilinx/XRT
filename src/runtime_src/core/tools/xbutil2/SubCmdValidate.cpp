@@ -717,6 +717,9 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
     }
   }
+  catch (const xrt_core::query::no_such_key&) {
+    // Do nothing, as performance mode setting is not supported
+  }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     printHelp();
@@ -726,8 +729,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::ostringstream oSchemaOutput;
   bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
 
-  //reset pmode
-  xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
+  try {
+    //reset pmode
+    xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
+  } catch (const xrt_core::query::no_such_key&) {
+    // Do nothing, as performance mode setting is not supported
+  }
 
   // -- Write output file ----------------------------------------------
   if (!m_output.empty()) {
