@@ -189,6 +189,14 @@ jobs:
           echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+717))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
+      - name: Checkout PR     
+        uses: actions/checkout@v3   
+        with:   
+          ref: '2021.1'  
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}    
+          submodules: recursive 
+
       - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
@@ -197,7 +205,6 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
           ref: '2021.1'
-
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
@@ -211,6 +218,10 @@ jobs:
           NPATH: ${{ secrets.NPATH }}
           USER: ${{ secrets.USER }}
           github-server-url: ${{ secrets.SERVER_URL }}
+          workspace: ${{ github.workspace }}  
+          appConfig4: ${{ secrets.APP_CONFIG4 }} 
+          huname: ${{ secrets.HARBOR_USERNAME }}
+          hpwd: ${{ secrets.HARBOR_PASSWORD }}
 
   # extract-platforms:  
   #   needs: package-download    
