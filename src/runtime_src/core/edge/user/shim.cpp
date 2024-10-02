@@ -1310,16 +1310,9 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
     drv->registerAieArray();
   #endif
 
-  #ifndef __HWEM__
-    xdp::hal::update_device(handle);
-    xdp::aie::update_device(handle);
-  #endif
-    xdp::aie::ctr::update_device(handle);
-    xdp::aie::sts::update_device(handle);
+  xdp::update_device(handle);
   #ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
-  #else
-    xdp::hal::hw_emu::update_device(handle);
   #endif
 
   return 0;
