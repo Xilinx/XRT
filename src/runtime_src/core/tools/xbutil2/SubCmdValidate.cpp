@@ -520,6 +520,68 @@ SubCmdValidate::print_help_internal() const
   printHelp(common_options, m_hiddenOptions, deviceClass, false);
 }
 
+void 
+SubCmdValidate::handle_errors_and_validate_tests(po::variables_map& vm, 
+                                                 std::vector<std::string>& validatedTests,
+                                                 std::vector<std::string>& param) const
+{
+  const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
+
+  if (vm.count("output") && m_output.empty())
+    throw xrt_core::error("Output file not specified");
+
+  if (vm.count("path") && m_xclbin_location.empty())
+    throw xrt_core::error("xclbin path not specified");
+
+  if (vm.count("param") && m_param.empty())
+    throw xrt_core::error("Parameter not specified");
+
+  if (vm.count("pmode") && m_pmode.empty())
+    throw xrt_core::error("Power mode not specified");
+
+  if (vm.count("format") && m_format.empty())
+    throw xrt_core::error("Output format not specified");
+
+  if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
+    throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
+
+  if (m_tests_to_run.empty())
+    throw xrt_core::error("No test given to validate against.");
+
+  // Validate the user test requests
+  for (auto &userTestName : m_tests_to_run) {
+    const auto validateTestName = boost::algorithm::to_lower_copy(userTestName);
+
+    if ((validateTestName == "all") && (m_tests_to_run.size() > 1))
+      throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
+
+    if ((validateTestName == "quick") && (m_tests_to_run.size() > 1))
+      throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
+
+    // Verify the current user test request exists in the test suite
+    doesTestExist(validateTestName, testNameDescription);
+    validatedTests.push_back(validateTestName);
+  }
+  //check if param option is provided
+  if (!m_param.empty()) {
+    XBU::verbose("Sub command: --param");
+    boost::split(param, m_param, boost::is_any_of(":")); // eg: dma:block-size:1024
+
+    //check parameter format
+    if (param.size() != 3)
+      throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % m_param).str());
+
+    //check test case name
+    doesTestExist(param[0], testNameDescription);
+
+    //check parameter name
+    auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(),
+        [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
+    if (iter == extendedKeysCollection.end())
+      throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
+  }
+}
+
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
@@ -555,40 +617,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = m_xclbin_location;
-  const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
-    // Output file
-    if (vm.count("output") && m_output.empty())
-      throw xrt_core::error("Output file not specified");
-
-    if (vm.count("path") && m_xclbin_location.empty())
-      throw xrt_core::error("xclbin path not specified");
-
-    if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
-        throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
-
-    if (m_tests_to_run.empty())
-      throw xrt_core::error("No test given to validate against.");
-
-    // Validate the user test requests
-    for (auto &userTestName : m_tests_to_run) {
-      const auto validateTestName = boost::algorithm::to_lower_copy(userTestName);
-
-      if ((validateTestName == "all") && (m_tests_to_run.size() > 1))
-        throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
-
-      if ((validateTestName == "quick") && (m_tests_to_run.size() > 1))
-        throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
-
-      // Verify the current user test request exists in the test suite
-      doesTestExist(validateTestName, testNameDescription);
-      validatedTests.push_back(validateTestName);
-    }
+    // All Error Handling for xrt-smi validate should go here
+    handle_errors_and_validate_tests(vm, validatedTests, param); 
 
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
@@ -600,26 +636,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if (validateXclbinPath.back() != '/')
         validateXclbinPath.append("/");
     }
-
-    //check if param option is provided
-    if (!m_param.empty()) {
-      XBU::verbose("Sub command: --param");
-      boost::split(param, m_param, boost::is_any_of(":")); // eg: dma:block-size:1024
-
-      //check parameter format
-      if (param.size() != 3)
-        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % m_param).str());
-
-      //check test case name
-      doesTestExist(param[0], testNameDescription);
-
-      //check parameter name
-      auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(),
-          [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
-      if (iter == extendedKeysCollection.end())
-        throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
-    }
-
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
