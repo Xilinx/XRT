@@ -186,11 +186,13 @@ struct patcher
   void
   patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
   {
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
       bd_data_ptr[1];
 
-    base_address += patch;
+    base_address += patch + ddr_aie_addr_offset;  //2G offset
     bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
     bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
   }
