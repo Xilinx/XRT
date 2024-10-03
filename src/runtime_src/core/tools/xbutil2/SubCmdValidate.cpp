@@ -716,7 +716,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
     else {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
-      XBU::verbose("Setting power mode to `performance`. Please use --pmode option to run tests in a differnt power setting.\n");
+      XBU::verbose("Setting power mode to `performance`\n");
     }
     
   }
