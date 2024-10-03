@@ -191,7 +191,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   if(XBU::getVerbose()) {
     logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
     logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
-    logger(ptree, "Details", boost::str(boost::format("NPU H-Clock: %f MHz") % ipu_hclock));
   }
 
   //check if the value is in range

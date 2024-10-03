@@ -421,7 +421,6 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
-  add_clock_info(device, pt_platform);
   add_status_info(device, pt_platform);
 
   const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
@@ -434,6 +433,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     else
       add_controller_info(device, pt_platform);
     add_mac_info(device, pt_platform);
+    add_clock_info(device, pt_platform);
     add_config_info(device, pt_platform);
     break;
   }
