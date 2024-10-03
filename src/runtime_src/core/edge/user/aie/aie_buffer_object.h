@@ -21,6 +21,7 @@ namespace zynqaie {
   {
     std::string name;
     std::shared_ptr<aie_array> m_aie_array;
+    std::mutex mtx;
     bool async_started = false;
 
   public:

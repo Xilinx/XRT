@@ -406,7 +406,7 @@ public:
    * This configures the required BDs , enqueues the task and wait for
    * completion
    */
-  void sync(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const;
+  void sync(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const;
 
   /**
    * async() - This function initiates an asynchronize operation to synchronize the buffer with a single xrt::bo object
@@ -423,7 +423,7 @@ public:
    * This function synchronizes the buffer with the specified xrt::bo object.
    * This configures the required BDs , enqueues the task
    */
-  void async(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const;
+  void async(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const;
 
   /**
    * sync() - Synchronize buffer with two xrt::bo objects (ping-pong)
@@ -443,7 +443,7 @@ public:
    * This configures the required BDs , enqueues the task and wait for
    * completion
    */
-  void sync(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
+  void sync(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
 
   /**
    * async() - This function initiates an asynchronize operation to synchronize buffer with two xrt::bo objects (ping-pong)
@@ -462,7 +462,7 @@ public:
    * This function synchronizes the buffer with the specified xrt::bo objects in a ping-pong manner.
    * This configures the required BDs , enqueues the task
    */
-  void async(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
+  void async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
 
   /**
    * wait() - This function waits for the previously initiated async operation
