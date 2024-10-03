@@ -558,7 +558,10 @@ namespace xdp {
           // Use the set values broadcast events for the reset of counter
           resetEvents = {XAIE_EVENT_NONE_CORE, XAIE_EVENT_NONE_CORE};
           if (type == module_type::shim) {
-            resetEvents = {graphIteratorBrodcastChannelEvent, graphIteratorBrodcastChannelEvent};
+            if (metadata->getUseGraphIterator())
+              resetEvents = {graphIteratorBrodcastChannelEvent, graphIteratorBrodcastChannelEvent};
+            else
+              resetEvents = {XAIE_EVENT_NONE_CORE, XAIE_EVENT_USER_EVENT_1_PL};
           }
         }
 
@@ -607,6 +610,12 @@ namespace xdp {
           if (!perfCounter)
             continue;
           perfCounters.push_back(perfCounter);
+
+          // Generate user_event_1 for this specific case
+          if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
+            XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
+          }
 
           // Convert enums to physical event IDs for reporting purposes
           auto physicalEventIds = getEventPhysicalId(loc, mod, type, metricSet, startEvent, endEvent);
@@ -804,9 +813,6 @@ namespace xdp {
       auto pc = configPCUsingComboEvents(xaieModule, xaieModType, xdpModType,
                                metricSet, startEvent, endEvent, resetEvent,
                                pcIndex, threshold, retCounterEvent);
-      XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
-      XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_1_PL);
-
       std::string srcKey = "(" + aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row) + ")";
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = perfCounters.size();
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].isSourceTile = true;
@@ -850,7 +856,7 @@ namespace xdp {
                            XAie_Events endEvent, XAie_Events resetEvent,
                            int pcIndex, size_t threshold, XAie_Events& retCounterEvent)
   {
-    if (xdpModType != module_type::shim || xaieModType != XAIE_PL_MOD)
+    if ((xdpModType != module_type::shim) || (xaieModType != XAIE_PL_MOD))
       return nullptr;
     
     std::shared_ptr<xaiefal::XAieComboEvent>  comboEvent0 = nullptr;
@@ -1203,10 +1209,9 @@ namespace xdp {
       if (adfAPIType.first == aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED) {
         for(auto &adfApiResource : adfAPIType.second) {
           std::stringstream msg;
-          msg << "Start to bytes transferred for tile " << adfApiResource.first << " is " 
-              << +adfApiResource.second.profileResult <<" clock cycles for specified bytes in xrt.ini.\n";
-          // xrt_core::message::send(severity_level::info, "XRT", msg.str());
-          //Note: User specified bytes or graph/port name display support can be added in 2025.1. 
+          msg << "Total start to bytes transferred for tile " << adfApiResource.first << " is " 
+              << +adfApiResource.second.profileResult <<" clock cycles for specified bytes.";
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
         }
       }
       else if(adfAPIType.first == aie::profile::adfAPI::INTF_TILE_LATENCY) {
@@ -1219,9 +1224,9 @@ namespace xdp {
             continue;
           }
           std::stringstream msg;
-          msg << "Latency between specified first beat of " <<graphPortPair.srcGraphName << ":" <<graphPortPair.srcGraphPort 
+          msg << "Total latency between specified first beat of " <<graphPortPair.srcGraphName << ":" <<graphPortPair.srcGraphPort
               << " to first beat of " <<graphPortPair.destGraphName << ":" <<graphPortPair.destGraphPort << " is " 
-              << +adfApiResource.second.profileResult <<" clock cycles.\n";
+              << +adfApiResource.second.profileResult <<" clock cycles.";
           xrt_core::message::send(severity_level::info, "XRT", msg.str());
         }
       }
