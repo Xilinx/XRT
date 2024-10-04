@@ -25,7 +25,7 @@ namespace zynqaie {
     bool async_started = false;
 
   public:
-    aie_buffer_object(xrt_core::device* device , const xrt::uuid uuid, const char* name, const zynqaie::hwctx_object* hwctx=nullptr);
+    aie_buffer_object(xrt_core::device* device, const xrt::uuid uuid, const char* name, zynqaie::hwctx_object* hwctx=nullptr);
 
     void
     sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const;

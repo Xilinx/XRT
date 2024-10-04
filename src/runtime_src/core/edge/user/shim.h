@@ -380,7 +380,7 @@ private:
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
 #ifdef XRT_ENABLE_AIE
-  std::shared_ptr<zynqaie::aie_array> aieArray;
+  std::shared_ptr<zynqaie::aie_array> m_aie_array;
   std::unique_ptr<zynqaie::aied> aied;
   xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 #endif
