@@ -22,6 +22,20 @@ public:
     : xclbin(xclbin), device(device), kernel_name(kernel_name), dpu_file(dpu_file), queue_len(queue_len), buffer_size(buffer_size), itr_count(itr_count) {}
 };
 
+class TestParams {
+public:
+  xrt::xclbin xclbin;               // Xclbin object
+  xrt::device device;              
+  std::string kernel_name;
+  std::string dpu_file;
+  int queue_len;
+  size_t buffer_size;
+  int itr_count;
+  
+  TestParams(const xrt::xclbin& xclbin, xrt::device device, const std::string& kernel_name, const std::string& dpu_file, int queue_len, size_t buffer_size, int itr_count)
+    : xclbin(xclbin), device(device), kernel_name(kernel_name), dpu_file(dpu_file), queue_len(queue_len), buffer_size(buffer_size), itr_count(itr_count) {}
+};
+
 // Class representing a set of buffer objects (BOs)
 class BO_set {
   size_t buffer_size; // Size of the buffer
@@ -47,6 +61,7 @@ public:
 // Class representing a test case, which is created for a single run on a single thread//
 class TestCase {
   TestParams params;           // Test parameters
+  TestParams params;           // Test parameters
   xrt::hw_context hw_ctx;           // Hardware context
   std::vector<xrt::run> run_list;   // Collection of run objects
   std::vector<xrt::kernel> kernels; // Collection of kernel objects
@@ -56,9 +71,12 @@ public:
   // Constructor to initialize the test case with xclbin and kernel name with hardware context creation
   TestCase(const TestParams& params)
       : params(params) {}
+  TestCase(const TestParams& params)
+      : params(params) {}
 
   void initialize();
   void run();
+};
 };
 
 

@@ -110,6 +110,13 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     return ptree;
 
   logger(ptree, "DPU-Sequence", dpu_instr);
+
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  if (!std::filesystem::exists(dpu_instr))
+    return ptree;
+
+  logger(ptree, "DPU-Sequence", dpu_instr);
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
