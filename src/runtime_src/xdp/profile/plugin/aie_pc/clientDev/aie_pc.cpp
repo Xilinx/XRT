@@ -19,7 +19,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <tuple>
 
 #include "core/common/device.h"
 #include "core/common/message.h"
@@ -44,10 +43,6 @@ extern "C" {
   #include <xaiengine/xaie_events_aie.h>
 }
 
-#ifdef _WIN32
-# pragma warning ( disable : 4244 )
-#endif
-
 namespace xdp {
 
   struct PCInfo {
@@ -55,9 +50,36 @@ namespace xdp {
     uint64_t endPC;
     XAie_Events startPCEvent;
     XAie_Events endPCEvent;
-    uint64_t perfCounterId;
     uint64_t perfCounterOffset;
+    uint8_t  perfCounterId;
   };
+
+  struct TilePCInfo {
+    PCInfo* eventsCorePC_0_1;
+    PCInfo* eventsCorePC_2_3;
+
+    TilePCInfo()
+      : eventsCorePC_0_1(nullptr),
+        eventsCorePC_2_3(nullptr)
+    {}
+
+    ~TilePCInfo()
+    {
+      delete eventsCorePC_0_1;
+      delete eventsCorePC_2_3;
+    }
+  };
+
+  AIEPCClientDevImpl::~AIEPCClientDevImpl()
+  {
+    for (auto &specEntry : spec) {
+      for (auto &rowEntry : specEntry.second) {
+        delete rowEntry.second;
+      }
+      specEntry.second.clear();
+    }
+    spec.clear();
+  }
 
   AIEPCClientDevImpl::AIEPCClientDevImpl(VPDatabase*dB)
     : AIEPCImpl(dB)
@@ -103,13 +125,13 @@ namespace xdp {
     
     std::vector<std::string> addresses;
 
-    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo>>::iterator itrSpec;
-    std::map<uint64_t /*row*/, TilePCInfo>::iterator itrTileInfo;
+    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo*>>::iterator itrSpec;
+    std::map<uint64_t /*row*/, TilePCInfo*>::iterator itrTileInfo;
 
     uint32_t nEntries = 0;
 
     boost::split(addresses, str, boost::is_any_of(";"));
-    // Format : col, row:start_pc:end_pc
+    // Format : col, row:start_pc:end_pc ; col,row:start_pc:end_pc
     for (uint32_t i = 0; i < addresses.size(); i++) {
       std::vector<std::string> address;
       boost::split(address, addresses[i], boost::is_any_of(":"));
@@ -137,11 +159,11 @@ namespace xdp {
         info->perfCounterId = 0;
         info->perfCounterOffset = 0x0031520;
 
-        TilePCInfo tilePCInfo;
-        tilePCInfo.eventsCorePC_0_1 = info;
-        tilePCInfo.eventsCorePC_2_3 = nullptr;
+        TilePCInfo* tilePCInfo = new TilePCInfo;
+        tilePCInfo->eventsCorePC_0_1 = info;
+        tilePCInfo->eventsCorePC_2_3 = nullptr;
 
-        std::map<uint64_t /*row*/, TilePCInfo> rowMap;
+        std::map<uint64_t /*row*/, TilePCInfo*> rowMap;
         rowMap.emplace(row, tilePCInfo);
 
         spec.emplace(col, rowMap);
@@ -173,9 +195,9 @@ namespace xdp {
           info->perfCounterId = 0;
           info->perfCounterOffset = 0x0031520;
 
-          TilePCInfo tilePCInfo;
-          tilePCInfo.eventsCorePC_0_1 = info;
-          tilePCInfo.eventsCorePC_2_3 = nullptr;
+          TilePCInfo* tilePCInfo = new TilePCInfo;
+          tilePCInfo->eventsCorePC_0_1 = info;
+          tilePCInfo->eventsCorePC_2_3 = nullptr;
 
           itrSpec->second.emplace(row, tilePCInfo);
           nEntries++;
@@ -194,14 +216,14 @@ namespace xdp {
         if (itrTileInfo != itrSpec->second.end()) {
 
           // Check whether XAIE_EVENT_PC_2_CORE, XAIE_EVENT_PC_3_CORE configured for current column,row core tile
-          if (nullptr == itrTileInfo->second.eventsCorePC_2_3) {
-            itrTileInfo->second.eventsCorePC_2_3 = new PCInfo;
-            itrTileInfo->second.eventsCorePC_2_3->startPC = std::stoul(address[1], nullptr, 10);
-            itrTileInfo->second.eventsCorePC_2_3->endPC   = std::stoul(address[2], nullptr, 10);
-            itrTileInfo->second.eventsCorePC_2_3->startPCEvent = (XAie_Events)XAIE_EVENT_PC_2_CORE;
-            itrTileInfo->second.eventsCorePC_2_3->endPCEvent = (XAie_Events)XAIE_EVENT_PC_3_CORE;
-            itrTileInfo->second.eventsCorePC_2_3->perfCounterId = 1;
-            itrTileInfo->second.eventsCorePC_2_3->perfCounterOffset = 0x0031524;
+          if (nullptr == itrTileInfo->second->eventsCorePC_2_3) {
+            itrTileInfo->second->eventsCorePC_2_3 = new PCInfo;
+            itrTileInfo->second->eventsCorePC_2_3->startPC = std::stoul(address[1], nullptr, 10);
+            itrTileInfo->second->eventsCorePC_2_3->endPC   = std::stoul(address[2], nullptr, 10);
+            itrTileInfo->second->eventsCorePC_2_3->startPCEvent = (XAie_Events)XAIE_EVENT_PC_2_CORE;
+            itrTileInfo->second->eventsCorePC_2_3->endPCEvent = (XAie_Events)XAIE_EVENT_PC_3_CORE;
+            itrTileInfo->second->eventsCorePC_2_3->perfCounterId = 1;
+            itrTileInfo->second->eventsCorePC_2_3->perfCounterOffset = 0x0031524;
 
             nEntries++;
             continue;
@@ -244,39 +266,39 @@ namespace xdp {
 
     for (auto const &specEntry : spec) {
       for (auto const &rowEntry : specEntry.second) {
-        auto coreTile = XAie_TileLoc(specEntry.first, rowEntry.first);
+        auto coreTile = XAie_TileLoc(static_cast<uint8_t>(specEntry.first), static_cast<uint8_t>(rowEntry.first));
 
-        if (rowEntry.second.eventsCorePC_0_1) {
-          XAie_EventPCEnable(&aieDevInst, coreTile, 0, rowEntry.second.eventsCorePC_0_1->startPC);
-          XAie_EventPCEnable(&aieDevInst, coreTile, 1, rowEntry.second.eventsCorePC_0_1->endPC);
+        if (rowEntry.second->eventsCorePC_0_1) {
+          XAie_EventPCEnable(&aieDevInst, coreTile, 0, static_cast<uint16_t>(rowEntry.second->eventsCorePC_0_1->startPC));
+          XAie_EventPCEnable(&aieDevInst, coreTile, 1, static_cast<uint16_t>(rowEntry.second->eventsCorePC_0_1->endPC));
 
           // Reset Perf Counter
-          RC = XAie_PerfCounterReset(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second.eventsCorePC_0_1->perfCounterId);
+          RC = XAie_PerfCounterReset(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second->eventsCorePC_0_1->perfCounterId);
           if(RC != XAIE_OK) {
             xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "AIE Performance Counter Reset Failed.");
             return;
           }
          
-          RC = XAie_PerfCounterControlSet(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second.eventsCorePC_0_1->perfCounterId,
-                        rowEntry.second.eventsCorePC_0_1->startPCEvent, rowEntry.second.eventsCorePC_0_1->endPCEvent);
+          RC = XAie_PerfCounterControlSet(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second->eventsCorePC_0_1->perfCounterId,
+                        rowEntry.second->eventsCorePC_0_1->startPCEvent, rowEntry.second->eventsCorePC_0_1->endPCEvent);
 
           if(RC != XAIE_OK) {
             xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "AIE Performance Counter Set with Function Call and Return Failed.");
             return;          
           }
         } 
-        if (rowEntry.second.eventsCorePC_2_3) {
-          XAie_EventPCEnable(&aieDevInst, coreTile, 2, rowEntry.second.eventsCorePC_2_3->startPC);
-          XAie_EventPCEnable(&aieDevInst, coreTile, 3, rowEntry.second.eventsCorePC_2_3->endPC);
+        if (rowEntry.second->eventsCorePC_2_3) {
+          XAie_EventPCEnable(&aieDevInst, coreTile, 2, static_cast<uint16_t>(rowEntry.second->eventsCorePC_2_3->startPC));
+          XAie_EventPCEnable(&aieDevInst, coreTile, 3, static_cast<uint16_t>(rowEntry.second->eventsCorePC_2_3->endPC));
 
           // Reset Perf Counter
-          RC = XAie_PerfCounterReset(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second.eventsCorePC_2_3->perfCounterId);
+          RC = XAie_PerfCounterReset(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second->eventsCorePC_2_3->perfCounterId);
           if(RC != XAIE_OK) {
             xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "AIE Performance Counter Reset Failed.");
             return;
           }
-          RC = XAie_PerfCounterControlSet(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second.eventsCorePC_2_3->perfCounterId,
-                        rowEntry.second.eventsCorePC_2_3->startPCEvent, rowEntry.second.eventsCorePC_2_3->endPCEvent);
+          RC = XAie_PerfCounterControlSet(&aieDevInst, coreTile, XAIE_CORE_MOD, rowEntry.second->eventsCorePC_2_3->perfCounterId,
+                        rowEntry.second->eventsCorePC_2_3->startPCEvent, rowEntry.second->eventsCorePC_2_3->endPCEvent);
           if(RC != XAIE_OK) {
             xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "AIE Performance Counter Set with Function Call and Return Failed.");
             return;          
@@ -301,25 +323,25 @@ namespace xdp {
     uint32_t idx = 0;
     for (auto const &specEntry : spec) {
       for (auto const &rowEntry : specEntry.second) {
-        if (rowEntry.second.eventsCorePC_0_1) {
-          op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second.eventsCorePC_0_1->perfCounterOffset;
+        if (rowEntry.second->eventsCorePC_0_1) {
+          op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second->eventsCorePC_0_1->perfCounterOffset;
           idx++;
           std::stringstream msg;
           msg << " Adding perf counter address for PC event for Core "
-            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second.eventsCorePC_0_1->startPC << " End PC " << rowEntry.second.eventsCorePC_0_1->endPC 
-            << " using perf counter id " << rowEntry.second.eventsCorePC_0_1->perfCounterId
-            << " perf counter address " << std::hex << rowEntry.second.eventsCorePC_0_1->perfCounterOffset << std::dec
+            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second->eventsCorePC_0_1->startPC << " End PC " << rowEntry.second->eventsCorePC_0_1->endPC 
+            << " using perf counter id " << rowEntry.second->eventsCorePC_0_1->perfCounterId
+            << " perf counter address " << std::hex << rowEntry.second->eventsCorePC_0_1->perfCounterOffset << std::dec
             << std::endl;
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         }
-        if (rowEntry.second.eventsCorePC_2_3) {
-          op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second.eventsCorePC_2_3->perfCounterOffset;
+        if (rowEntry.second->eventsCorePC_2_3) {
+          op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second->eventsCorePC_2_3->perfCounterOffset;
           idx++;
           std::stringstream msg;
           msg << " Adding perf counter address for PC event for Core "
-            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second.eventsCorePC_2_3->startPC << " End PC " << rowEntry.second.eventsCorePC_2_3->endPC 
-            << " using perf counter id " << rowEntry.second.eventsCorePC_2_3->perfCounterId
-            << " perf counter address " << std::hex << rowEntry.second.eventsCorePC_2_3->perfCounterOffset << std::dec
+            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second->eventsCorePC_2_3->startPC << " End PC " << rowEntry.second->eventsCorePC_2_3->endPC 
+            << " using perf counter id " << rowEntry.second->eventsCorePC_2_3->perfCounterId
+            << " perf counter address " << std::hex << rowEntry.second->eventsCorePC_2_3->perfCounterOffset << std::dec
             << std::endl;
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         }
@@ -377,18 +399,18 @@ namespace xdp {
     for (auto const &specEntry : spec) {
       for (auto const &rowEntry : specEntry.second) {
 
-        if (rowEntry.second.eventsCorePC_0_1) {
+        if (rowEntry.second->eventsCorePC_0_1) {
           std::stringstream msg;
           msg << "Core " << specEntry.first << ", " << rowEntry.first 
-              << " PC " << rowEntry.second.eventsCorePC_0_1->startPC << ":" << rowEntry.second.eventsCorePC_0_1->endPC 
+              << " PC " << rowEntry.second->eventsCorePC_0_1->startPC << ":" << rowEntry.second->eventsCorePC_0_1->endPC 
               << " Counter address/values: 0x" << std::hex << op->data[idx].address << ": " << std::dec << output[idx];
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
           idx++;
         }
-        if (rowEntry.second.eventsCorePC_2_3) {
+        if (rowEntry.second->eventsCorePC_2_3) {
           std::stringstream msg;
           msg << "Core " << specEntry.first << ", " << rowEntry.first 
-              << " PC " << rowEntry.second.eventsCorePC_2_3->startPC << ":" << rowEntry.second.eventsCorePC_2_3->endPC 
+              << " PC " << rowEntry.second->eventsCorePC_2_3->startPC << ":" << rowEntry.second->eventsCorePC_2_3->endPC 
               << " Counter address/values: 0x" << std::hex << op->data[idx].address << ": " << std::dec << output[idx];
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
           idx++;

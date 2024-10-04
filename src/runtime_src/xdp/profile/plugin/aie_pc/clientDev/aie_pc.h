@@ -29,12 +29,7 @@ extern "C" {
 
 namespace xdp {
 
-  struct PCInfo;
-
-  struct TilePCInfo {
-    PCInfo* eventsCorePC_0_1 = nullptr;
-    PCInfo* eventsCorePC_2_3 = nullptr;
-  };
+  struct TilePCInfo;
 
   class AIEPCClientDevImpl : public AIEPCImpl
   {
@@ -43,12 +38,12 @@ namespace xdp {
     std::size_t sz;
     read_register_op_t* op;
 
-    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo>> spec;
+    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo*>> spec;
 
     public :
       AIEPCClientDevImpl(VPDatabase* dB);
 
-      ~AIEPCClientDevImpl() = default;
+      ~AIEPCClientDevImpl();
 
       virtual void updateDevice(void* hwCtxImpl);
       virtual void finishflushDevice(void* hwCtxImpl);
