@@ -171,12 +171,12 @@ namespace xdp {
         nEntries++;
 
         std::stringstream msg;
-        msg << " Configured PC event for Core "
+        msg << " Configure PC event for Core "
             << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
-            << " using perf counter id " << info->perfCounterId
+            << " using perf counter id " << std::to_string(info->perfCounterId)
             << " perf counter address " << std::hex << info->perfCounterOffset << std::dec
             << std::endl;
-        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());                    
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());                    
         continue;    
       }
 
@@ -203,12 +203,12 @@ namespace xdp {
           nEntries++;
 
           std::stringstream msg;
-          msg << " Configured PC event for Core "
+          msg << " Configure PC event for Core "
             << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
-            << " using perf counter id " << info->perfCounterId
+            << " using perf counter id " << std::to_string(info->perfCounterId)
             << " perf counter address " << std::hex << info->perfCounterOffset << std::dec
             << std::endl;
-          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
           continue;
         }
 
@@ -326,24 +326,10 @@ namespace xdp {
         if (rowEntry.second->eventsCorePC_0_1) {
           op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second->eventsCorePC_0_1->perfCounterOffset;
           idx++;
-          std::stringstream msg;
-          msg << " Adding perf counter address for PC event for Core "
-            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second->eventsCorePC_0_1->startPC << " End PC " << rowEntry.second->eventsCorePC_0_1->endPC 
-            << " using perf counter id " << rowEntry.second->eventsCorePC_0_1->perfCounterId
-            << " perf counter address " << std::hex << rowEntry.second->eventsCorePC_0_1->perfCounterOffset << std::dec
-            << std::endl;
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         }
         if (rowEntry.second->eventsCorePC_2_3) {
           op->data[idx].address = ((specEntry.first) << 25) /*col*/ + ((rowEntry.first) << 20) /*row*/ + rowEntry.second->eventsCorePC_2_3->perfCounterOffset;
           idx++;
-          std::stringstream msg;
-          msg << " Adding perf counter address for PC event for Core "
-            << specEntry.first << ", " << rowEntry.first << " Start PC " << rowEntry.second->eventsCorePC_2_3->startPC << " End PC " << rowEntry.second->eventsCorePC_2_3->endPC 
-            << " using perf counter id " << rowEntry.second->eventsCorePC_2_3->perfCounterId
-            << " perf counter address " << std::hex << rowEntry.second->eventsCorePC_2_3->perfCounterOffset << std::dec
-            << std::endl;
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         }
       }
     }
@@ -404,7 +390,7 @@ namespace xdp {
           msg << "Core " << specEntry.first << ", " << rowEntry.first 
               << " PC " << rowEntry.second->eventsCorePC_0_1->startPC << ":" << rowEntry.second->eventsCorePC_0_1->endPC 
               << " Counter address/values: 0x" << std::hex << op->data[idx].address << ": " << std::dec << output[idx];
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
           idx++;
         }
         if (rowEntry.second->eventsCorePC_2_3) {
@@ -412,7 +398,7 @@ namespace xdp {
           msg << "Core " << specEntry.first << ", " << rowEntry.first 
               << " PC " << rowEntry.second->eventsCorePC_2_3->startPC << ":" << rowEntry.second->eventsCorePC_2_3->endPC 
               << " Counter address/values: 0x" << std::hex << op->data[idx].address << ": " << std::dec << output[idx];
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
           idx++;
         }
       }
