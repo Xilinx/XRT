@@ -465,7 +465,7 @@ namespace xdp::aie::profile {
     // Note: As per run experiments on board, combo 3 FSM checks stop event in
     // every 4 clock cycles. We make sure stop event is in sync with FSM oddity
     // by rounding up total beats to nearest multiple of 4.
-    uint32_t max_beats = 4 * ((total_beats + 3) / 4);
+    uint32_t max_beats = (total_beats%4 == 0) ? total_beats : (total_beats + (4 - (total_beats%4)));
     return max_beats; 
   }
 
