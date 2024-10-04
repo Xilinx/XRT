@@ -47,14 +47,12 @@ void update_device(void* handle)
 #ifndef __HWEM__
   hal::update_device(handle);
   aie::update_device(handle);
+#else
+  hal::hw_emu::update_device(handle);
 #endif
 
   aie::ctr::update_device(handle);
   aie::sts::update_device(handle);
-
-#ifdef __HWEM__
-  hal::hw_emu::update_device(handle);
-#endif
 }
 
 // The flush_device callback should be called just before a new xclbin

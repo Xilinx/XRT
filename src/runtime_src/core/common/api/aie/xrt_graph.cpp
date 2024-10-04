@@ -204,6 +204,18 @@ public:
   {
     m_buffer_handle->sync(bos, dir, size, offset);
   }
+
+  void
+  async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const
+  {
+    m_buffer_handle->async(bos, dir, size, offset);
+  }
+
+  void
+  wait() const
+  {
+    m_buffer_handle->wait();
+  }
 };
 
 } // xrt::aie
@@ -467,18 +479,41 @@ buffer(const xrt::hw_context& hwctx, const std::string& name)
 
 void
 buffer::
-sync(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const
+sync(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const
 {
-  std::vector<xrt::bo> bos {bo};
+  std::vector<xrt::bo> bos {std::move(bo)};
   return get_handle()->sync(bos, dir, size, offset);
 }
 
 void
 buffer::
-sync(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+async(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const
 {
-  std::vector<xrt::bo> bos {ping,pong};
+  std::vector<xrt::bo> bos {std::move(bo)};
+  return get_handle()->async(bos, dir, size, offset);
+}
+
+void
+buffer::
+sync(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {std::move(ping),std::move(pong)};
   return get_handle()->sync(bos, dir, size, offset);
+}
+
+void
+buffer::
+async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {std::move(ping),std::move(pong)};
+  return get_handle()->async(bos, dir, size, offset);
+}
+
+void
+buffer::
+wait() const
+{
+  return get_handle()->wait();
 }
 
 } // xrt:aie

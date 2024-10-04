@@ -6,6 +6,8 @@ if (${XRT_BOOST_VERSION} VERSION_LESS 1.64.0)
 endif()
 
 xrt_add_subdirectory(xbutil2)
+xrt_add_subdirectory(xbtracer)
+xrt_add_subdirectory(xbreplay)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   xrt_add_subdirectory(xbmgmt2)
   if(NOT WIN32)

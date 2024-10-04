@@ -131,45 +131,14 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-20s : %s\n") % "BIOS Version" % _pt.get<std::string>("host.os.bios_version");
     _output << std::endl;
     _output << "XRT\n";
-    _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "Branch" % _pt.get<std::string>("host.xrt.branch", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "Hash" % _pt.get<std::string>("host.xrt.hash", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "Hash Date" % _pt.get<std::string>("host.xrt.build_date", "N/A");
-    const boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
-    for(auto& drv : available_drivers) {
-      const boost::property_tree::ptree& driver = drv.second;
-      std::string drv_name = driver.get<std::string>("name", "N/A");
-      std::string drv_hash = driver.get<std::string>("hash", "N/A");
-      if (!boost::iequals(drv_hash, "N/A")) {
-        _output << boost::format("  %-20s : %s, %s\n") % drv_name
-            % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
-      } else {
-        std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
-        _output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
-      }
-      if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
-        _output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
-    }
+    std::stringstream xrt_version_ss;
+    XBUtilities::fill_xrt_versions(_pt.get_child("host.xrt", empty_ptree), xrt_version_ss, available_devices);
+    _output << xrt_version_ss.str();
   }
   catch (const boost::property_tree::ptree_error &ex) {
     throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
          % ex.what()));
   }
-
-  try {
-    if (!available_devices.empty()) {
-      // This check depends on the assumption that if there is a RyzenAI device, it is on its own.
-      const boost::property_tree::ptree& dev = available_devices.begin()->second;
-      if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
-        _output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
-      else
-        _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
-    }
-  }
-  catch (...) {
-    //no device available
-  }
-
   _output << std::endl << "Device(s) Present\n";
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;

@@ -914,10 +914,15 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
 // because the dpu_kernel_id is the key in mapping between CU and PDI.
 bool
 XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
-  // Get AIE_PARTITION metadata
+  // Get AIE_PARTITION metadata only when AIE_PARTITION section is just added 
   std::set<std::string> allDpuKernelIDs;
   Section *pAIEPartition = xclbin.findSection(AIE_PARTITION);
   std::string jsonFile = pAIEPartition->getPathAndName();
+  // If the aie partition metadata file is not found,
+  // then AIE_PARTITION section has already been added hence no-op
+  if(jsonFile.empty()){
+    return true; 	  
+  }
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(jsonFile, pt);
   const boost::property_tree::ptree& ptAIEPartition = pt.get_child("aie_partition");
