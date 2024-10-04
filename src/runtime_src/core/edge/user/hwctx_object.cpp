@@ -21,6 +21,7 @@ hwctx_object(ZYNQ::shim* shim, slot_id slot_idx, xrt::uuid uuid, xrt::hw_context
 	  , m_uuid(std::move(uuid))
 	  , m_slot_idx(slot_idx)
 	  , m_mode(mode)
+	  , m_info(xrt_core::edge::aie::get_partition_info(xrt_core::get_userpf_device(m_shim).get(), m_uuid))
 {}
 
 #ifdef XRT_ENABLE_AIE
