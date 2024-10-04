@@ -410,7 +410,6 @@ namespace xdp {
         interfaceEvents = interfaceTileEventSets[metricSet];
       }
 
-      // Check ccore and memory events and interfaceEvents are empty & generated warning if so
       if (coreEvents.empty() && memoryEvents.empty() && interfaceEvents.empty()) {
         std::stringstream msg;
         msg << "Event trace is not available for " << tileName << " using metric set "
