@@ -3,6 +3,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "TestValidateUtilities.h"
 #include "TestTCTOneColumn.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
