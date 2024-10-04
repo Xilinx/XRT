@@ -129,9 +129,11 @@ PYBIND11_MODULE(pyxrt, m) {
                           return new xrt::device(bfd);
                       }))
         .def("load_xclbin", [](xrt::device& d, const std::string& xclbin) {
+                                py::gil_scoped_release release;
                                 return d.load_xclbin(xclbin);
                             }, "Load an xclbin given the path to the device")
         .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
+                                py::gil_scoped_release release;
                                 return d.load_xclbin(xclbin);
                             }, "Load the xclbin to the device")
         .def("register_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
