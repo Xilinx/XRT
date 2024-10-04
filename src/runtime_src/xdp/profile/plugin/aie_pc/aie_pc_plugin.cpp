@@ -41,7 +41,7 @@ namespace xdp {
     AIEPCPlugin::live = true;
 
     db->registerPlugin(this);
-    //db->registerInfo(info::aie_PC);
+    db->registerInfo(info::aie_pc);
   }
 
   AIEPCPlugin::~AIEPCPlugin()
