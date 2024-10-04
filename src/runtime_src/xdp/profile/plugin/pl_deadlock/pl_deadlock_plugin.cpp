@@ -167,12 +167,7 @@ namespace xdp {
 
   void PLDeadlockPlugin::flushDevice(void* hwCtxImpl)
   {
-    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-    auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
-
-    auto handle = coreDevice->get_device_handle();
-
-    uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
+    uint64_t deviceId = mHwCtxImplToDevIdMap[hwCtxImpl];
 
     mThreadCtrlMap[deviceId] = false;
     auto it = mThreadMap.find(deviceId);
@@ -181,6 +176,7 @@ namespace xdp {
       mThreadMap.erase(it);
       mThreadCtrlMap.erase(deviceId);
     }
+    mHwCtxImplToDevIdMap.erase(hwCtxImpl);
   }
 
   void PLDeadlockPlugin::updateDevice(void* hwCtxImpl)
@@ -191,6 +187,7 @@ namespace xdp {
     auto handle = coreDevice->get_device_handle();
 
     uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
+    mHwCtxImplToDevIdMap[hwCtxImpl] = deviceId;
 
     auto it = mThreadMap.find(deviceId);
     if (it != mThreadMap.end()) {

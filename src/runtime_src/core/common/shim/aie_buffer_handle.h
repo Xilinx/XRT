@@ -24,6 +24,18 @@ public:
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
 
+  virtual void
+  async(std::vector<xrt::bo>&, xclBOSyncDirection, size_t, size_t)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual void
+  wait()
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
 };
 
 } // xrt_core

@@ -522,7 +522,12 @@ int main_(int argc, const char** argv) {
     if (xclBin.findSection(ASK_GROUP_CONNECTIVITY) != nullptr)
       xclBin.removeSection("GROUP_CONNECTIVITY");
   }
-
+  
+  if (xclBin.findSection(IP_LAYOUT) != nullptr && xclBin.findSection(AIE_PARTITION) != nullptr){
+    if(!XUtil::checkAIEPartitionIPLayoutCompliance(xclBin)){
+      throw std::runtime_error("ERROR: The AIE_PARTITION section in the xclbin is not compliant with IP_LAYOUT section");
+    }
+  } 
   // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
   if ((bSkipBankGrouping == false) &&
       (xclBin.findSection(ASK_GROUP_TOPOLOGY) == nullptr) &&

@@ -261,12 +261,14 @@ namespace xdp {
       return;
     }
     
-    uint8_t rowOffset  = (mod == module_type::mem_tile) ? 1 : metadataReader->getAIETileRowOffset();
-    std::string modName = (mod == module_type::core) ? "aie" 
-                        : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
+    uint8_t rowOffset     = (mod == module_type::mem_tile) ? 1 : metadataReader->getAIETileRowOffset();
+    std::string entryName = (mod == module_type::mem_tile) ? "buffer" : "kernel";
+    std::string modName   = (mod == module_type::core) ? "aie" 
+                          : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidGraphs = metadataReader->getValidGraphs();
-    auto allValidKernels = metadataReader->getValidKernels();
+    auto allValidGraphs  = metadataReader->getValidGraphs();
+    std::vector<std::string> allValidEntries = (mod == module_type::mem_tile) ?
+      metadataReader->getValidBuffers() : metadataReader->getValidKernels();
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = metadataReader->getTiles("all", mod, "all");
@@ -302,14 +304,14 @@ namespace xdp {
         continue;
 
       if ((graphMetrics[i][1].compare("all") != 0) &&
-          (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1]
+        msg << "Could not find " << entryName << " " << graphMetrics[i][1]
             << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
+            << " The following " << entryName << "s are valid : " << allValidEntries[0];
 
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+        for (size_t j = 1; j < allValidEntries.size(); j++)
+          msg << ", " << allValidEntries[j];
 
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
@@ -343,14 +345,14 @@ namespace xdp {
         continue;
 
       if ((graphMetrics[i][1].compare("all") != 0) &&
-          (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1]
+        msg << "Could not find " << entryName << " " << graphMetrics[i][1]
             << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
+            << " The following " << entryName << "s are valid : " << allValidEntries[0];
 
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+        for (size_t j = 1; j < allValidEntries.size(); j++)
+          msg << ", " << allValidEntries[j];
 
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
@@ -926,12 +928,9 @@ namespace xdp {
         }
       }
 
-      std::vector<tile_type> tiles;
-      if (foundChannels)
-        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
-      else
-        tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], -1, true, minCol, maxCol);
-
+      int16_t channelNum = (foundChannels) ? channelId0 : -1;
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelNum, true, minCol, maxCol);
+      
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
         configChannel0[t] = channelId0;
@@ -967,30 +966,32 @@ namespace xdp {
         }
 
         // By-default select both the channels
+        bool foundChannels = false;
         uint8_t channelId0 = 0;
         uint8_t channelId1 = 1;
         uint32_t bytes = defaultTransferBytes;
-        if (metrics[i].size() >= 3) {
+        if (metrics[i].size() > 2) {
           if (profileAPIMetricSet(metrics[i][1])) {
             bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
           else {
             try {
+              foundChannels = true;
               channelId0 = aie::convertStringToUint8(metrics[i][2]);
               channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
             }
             catch (std::invalid_argument const&) {
               // Expected channel Id is not an integer, give warning and ignore
-              xrt_core::message::send(severity_level::warning, "XRT",
-                                      "Channel ID specification in "
-                                      "tile_based_interface_tile_metrics is not an integer "
-                                      "and hence ignored.");
+              foundChannels = false;
+              xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+                "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
             }
           }
         }
 
-        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0, true, col, col);
-
+        int16_t channelNum = (foundChannels) ? channelId0 : -1;
+        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelNum, true, col, col);
+        
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;

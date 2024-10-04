@@ -1214,7 +1214,7 @@ open_aie_context(xrt::aie::access_mode am)
 {
   auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
-  if (int ret; ret = drv->openAIEContext(am))
+  if (int ret = drv->openAIEContext(am))
     throw xrt_core::error(ret, "Fail to open AIE context");
 
   drv->setAIEAccessMode(am);
@@ -1228,6 +1228,7 @@ reset_aie()
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
+
   auto aie_array = drv->get_aie_array_shared();
 
   if (!aie_array->is_context_set())

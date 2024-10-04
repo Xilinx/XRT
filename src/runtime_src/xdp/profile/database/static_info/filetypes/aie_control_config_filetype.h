@@ -54,6 +54,9 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         std::vector<std::string>
         getValidKernels() const override;
 
+        std::vector<std::string>
+        getValidBuffers() const override;
+
         std::unordered_map<std::string, io_config>
         getTraceGMIOs() const;
 
