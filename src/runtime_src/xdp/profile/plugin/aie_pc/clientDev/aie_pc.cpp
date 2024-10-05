@@ -55,31 +55,9 @@ namespace xdp {
   };
 
   struct TilePCInfo {
-    PCInfo* eventsCorePC_0_1;
-    PCInfo* eventsCorePC_2_3;
-
-    TilePCInfo()
-      : eventsCorePC_0_1(nullptr),
-        eventsCorePC_2_3(nullptr)
-    {}
-
-    ~TilePCInfo()
-    {
-      delete eventsCorePC_0_1;
-      delete eventsCorePC_2_3;
-    }
+    std::unique_ptr<PCInfo> eventsCorePC_0_1;
+    std::unique_ptr<PCInfo> eventsCorePC_2_3;
   };
-
-  AIEPCClientDevImpl::~AIEPCClientDevImpl()
-  {
-    for (auto &specEntry : spec) {
-      for (auto &rowEntry : specEntry.second) {
-        delete rowEntry.second;
-      }
-      specEntry.second.clear();
-    }
-    spec.clear();
-  }
 
   AIEPCClientDevImpl::AIEPCClientDevImpl(VPDatabase*dB)
     : AIEPCImpl(dB)
@@ -125,8 +103,8 @@ namespace xdp {
     
     std::vector<std::string> addresses;
 
-    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo*>>::iterator itrSpec;
-    std::map<uint64_t /*row*/, TilePCInfo*>::iterator itrTileInfo;
+    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, std::unique_ptr<TilePCInfo>>>::iterator itrSpec;
+    std::map<uint64_t /*row*/, std::unique_ptr<TilePCInfo>>::iterator itrTileInfo;
 
     uint32_t nEntries = 0;
 
@@ -150,34 +128,31 @@ namespace xdp {
       itrSpec = spec.find(col);
       // No entries added for current column
       if (itrSpec == spec.end()) {
-        PCInfo* info = new PCInfo;
-
+        // Populate info
+        std::unique_ptr<PCInfo> info = std::make_unique<PCInfo>();
         info->startPC = std::stoul(address[1], nullptr, 10);
         info->endPC   = std::stoul(address[2], nullptr, 10);
         info->startPCEvent = (XAie_Events)XAIE_EVENT_PC_0_CORE;
         info->endPCEvent = (XAie_Events)XAIE_EVENT_PC_1_CORE;
         info->perfCounterId = 0;
         info->perfCounterOffset = 0x0031520;
-
-        TilePCInfo* tilePCInfo = new TilePCInfo;
-        tilePCInfo->eventsCorePC_0_1 = info;
-        tilePCInfo->eventsCorePC_2_3 = nullptr;
-
-        std::map<uint64_t /*row*/, TilePCInfo*> rowMap;
-        rowMap.emplace(row, tilePCInfo);
-
-        spec.emplace(col, rowMap);
-
-        nEntries++;
-
+        
         std::stringstream msg;
         msg << " Configure PC event for Core "
-            << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
-            << " using perf counter id " << std::to_string(info->perfCounterId)
-            << " perf counter address " << std::hex << info->perfCounterOffset << std::dec
-            << std::endl;
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());                    
-        continue;    
+          << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
+          << " using perf counter id " << std::to_string(info->perfCounterId)
+          << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+
+        // Add new map for current column
+        spec[col] = std::map<uint64_t /*row*/, std::unique_ptr<TilePCInfo>>();
+
+        // Add TilePCInfo entry for current column, row
+        spec[col][row] = std::make_unique<TilePCInfo>();
+        spec[col][row]->eventsCorePC_0_1 = std::move(info);
+
+        nEntries++;
+        continue;                  
       }
 
       // Entry found for current column
@@ -186,30 +161,28 @@ namespace xdp {
 
         // No entry found for current column,row core tile
         if (itrTileInfo == itrSpec->second.end()) {
-          PCInfo* info = new PCInfo;
-
+          // Populate info
+          std::unique_ptr<PCInfo> info = std::make_unique<PCInfo>();
           info->startPC = std::stoul(address[1], nullptr, 10);
           info->endPC   = std::stoul(address[2], nullptr, 10);
           info->startPCEvent = (XAie_Events)XAIE_EVENT_PC_0_CORE;
           info->endPCEvent = (XAie_Events)XAIE_EVENT_PC_1_CORE;
           info->perfCounterId = 0;
           info->perfCounterOffset = 0x0031520;
-
-          TilePCInfo* tilePCInfo = new TilePCInfo;
-          tilePCInfo->eventsCorePC_0_1 = info;
-          tilePCInfo->eventsCorePC_2_3 = nullptr;
-
-          itrSpec->second.emplace(row, tilePCInfo);
-          nEntries++;
-
+          
           std::stringstream msg;
           msg << " Configure PC event for Core "
             << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
             << " using perf counter id " << std::to_string(info->perfCounterId)
-            << " perf counter address " << std::hex << info->perfCounterOffset << std::dec
-            << std::endl;
+            << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-          continue;
+
+          // Add TilePCInfo entry for current column, row
+          itrSpec->second.emplace(row, std::make_unique<TilePCInfo>());
+          spec[col][row]->eventsCorePC_0_1 = std::move(info);
+
+          nEntries++;
+          continue;  
         }
 
         // Entry found for current column,row core tile
@@ -217,20 +190,30 @@ namespace xdp {
 
           // Check whether XAIE_EVENT_PC_2_CORE, XAIE_EVENT_PC_3_CORE configured for current column,row core tile
           if (nullptr == itrTileInfo->second->eventsCorePC_2_3) {
-            itrTileInfo->second->eventsCorePC_2_3 = new PCInfo;
-            itrTileInfo->second->eventsCorePC_2_3->startPC = std::stoul(address[1], nullptr, 10);
-            itrTileInfo->second->eventsCorePC_2_3->endPC   = std::stoul(address[2], nullptr, 10);
-            itrTileInfo->second->eventsCorePC_2_3->startPCEvent = (XAie_Events)XAIE_EVENT_PC_2_CORE;
-            itrTileInfo->second->eventsCorePC_2_3->endPCEvent = (XAie_Events)XAIE_EVENT_PC_3_CORE;
-            itrTileInfo->second->eventsCorePC_2_3->perfCounterId = 1;
-            itrTileInfo->second->eventsCorePC_2_3->perfCounterOffset = 0x0031524;
 
+            // Populate info
+            std::unique_ptr<PCInfo> info = std::make_unique<PCInfo>();
+            info->startPC = std::stoul(address[1], nullptr, 10);
+            info->endPC   = std::stoul(address[2], nullptr, 10);
+            info->startPCEvent = (XAie_Events)XAIE_EVENT_PC_2_CORE; 
+            info->endPCEvent = (XAie_Events)XAIE_EVENT_PC_3_CORE;
+            info->perfCounterId = 1;
+            info->perfCounterOffset = 0x0031524;
+
+            std::stringstream msg;
+            msg << " Configure PC event for Core "
+              << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
+              << " using perf counter id " << std::to_string(info->perfCounterId)
+              << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+
+            itrTileInfo->second->eventsCorePC_2_3 = std::move(info);
             nEntries++;
             continue;
           } else {
             std::string msg;
             msg += "\n Available Core PC Events for settings " + addresses[i] 
-                  + " is already used up for this core tile. So, it is ignored. Please use a different core for the Start/End PC addresses.\n ";
+                   + " is already used up for this core tile. So, it is ignored. Please use a different core for the Start/End PC addresses.\n ";
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
             continue;
           }

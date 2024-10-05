@@ -38,12 +38,12 @@ namespace xdp {
     std::size_t sz;
     read_register_op_t* op;
 
-    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, TilePCInfo*>> spec;
+    std::map<uint64_t /*col*/, std::map<uint64_t /*row*/, std::unique_ptr<TilePCInfo>>> spec;
 
     public :
       AIEPCClientDevImpl(VPDatabase* dB);
 
-      ~AIEPCClientDevImpl();
+      ~AIEPCClientDevImpl() = default;
 
       virtual void updateDevice(void* hwCtxImpl);
       virtual void finishflushDevice(void* hwCtxImpl);
