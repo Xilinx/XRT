@@ -611,7 +611,7 @@ namespace xdp {
             continue;
           perfCounters.push_back(perfCounter);
 
-          // Generate user_event_1 for this specific case
+          // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
