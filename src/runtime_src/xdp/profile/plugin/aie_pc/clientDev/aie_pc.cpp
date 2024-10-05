@@ -138,7 +138,7 @@ namespace xdp {
         info->perfCounterOffset = 0x0031520;
         
         std::stringstream msg;
-        msg << " Configure PC event for Core "
+        msg << "Configure PC event for Core "
           << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
           << " using perf counter id " << std::to_string(info->perfCounterId)
           << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
@@ -171,7 +171,7 @@ namespace xdp {
           info->perfCounterOffset = 0x0031520;
           
           std::stringstream msg;
-          msg << " Configure PC event for Core "
+          msg << "Configure PC event for Core "
             << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
             << " using perf counter id " << std::to_string(info->perfCounterId)
             << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
@@ -201,7 +201,7 @@ namespace xdp {
             info->perfCounterOffset = 0x0031524;
 
             std::stringstream msg;
-            msg << " Configure PC event for Core "
+            msg << "Configure PC event for Core "
               << col << ", " << row << " Start PC " << info->startPC << " End PC " << info->endPC 
               << " using perf counter id " << std::to_string(info->perfCounterId)
               << " perf counter address " << std::hex << info->perfCounterOffset << std::dec;
@@ -212,8 +212,8 @@ namespace xdp {
             continue;
           } else {
             std::string msg;
-            msg += "\n Available Core PC Events for settings " + addresses[i] 
-                   + " is already used up for this core tile. So, it is ignored. Please use a different core for the Start/End PC addresses.\n ";
+            msg += "Core PC Events for tile in settings " + addresses[i] 
+                   + " are already used up. So, it is ignored. Please use a different core for this Start/End PC addresses.\n";
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
             continue;
           }
