@@ -25,7 +25,6 @@ static constexpr uint32_t num_of_cores = 32;
 * Total OPs= = 196K OPs.
 */
 static constexpr uint32_t total_ops = 196608; //192K OPs
-static constexpr float float_scale_param = 1.077 // Scale parameter
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestGemm::TestGemm()
@@ -134,22 +133,38 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   int ipu_hclock_pre = 0;
   int ipu_hclock = 0;
   auto hclock_steady_counter = 0;
+  auto first_steady_state = -1, second_steady_state = -1;;
 
-  for (int i = 1; i < 10; ++i) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-
+  for(int i=0; i<100;i++){
     auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
     auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
     for (int c = 0; c < clock_topology->m_count; c++) {
       if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
         ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
     }
-    
-    hclock_steady_counter = (ipu_hclock == ipu_hclock_pre) ? hclock_steady_counter + 1 : 0;
-    if (hclock_steady_counter == 2) break; // Check if hclk is steady
-    ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
-  }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    //std::cout << "NPU clock: " << ipu_hclock <<std::endl;
 
+    hclock_steady_counter = (ipu_hclock == ipu_hclock_pre) ? hclock_steady_counter + 1 : 0;
+    if(hclock_steady_counter == 8 && first_steady_state == -1 && ipu_hclock >= 1810) {
+      //break;
+      first_steady_state = ipu_hclock_pre; 
+      hclock_steady_counter = 0;
+    }
+    
+    if(hclock_steady_counter == 8 && first_steady_state != -1 && second_steady_state == -1 && ipu_hclock > first_steady_state) {
+      //break;
+      second_steady_state = ipu_hclock; 
+      hclock_steady_counter = 0;
+    }
+    
+    if (hclock_steady_counter == 8 && second_steady_state != -1  && ipu_hclock > second_steady_state) {
+      break;  
+    }
+    
+    ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
+
+  }
 
   try {
     //run kernel
@@ -186,7 +201,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", test_token_failed);
       return ptree;
     }
-    auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * float_scale_param * 1000);
+    auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
     total_cycle_count = total_cycle_count + cycle_count;
     TOPS = TOPS + temp_TOPS_per_core;
     core_ptr++;
