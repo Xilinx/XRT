@@ -291,7 +291,7 @@ namespace xdp {
     }
 
     std::stringstream msg1;
-    msg1 << " Configuration completed for " << nEntries << " entries. " << std::endl;
+    msg1 << "Configuration completed for " << nEntries << " entries. " << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg1.str());
 
     uint8_t* txnBin = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
