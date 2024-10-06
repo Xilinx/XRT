@@ -20,7 +20,6 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 #include <map>
-#include <pair>
 
 namespace xdp {
 
