@@ -1224,11 +1224,11 @@ struct xrt_resource_raw : request
     switch (type)
     {
     case resource_type::ipu_clk_max:
-      return "Max H-Clocks";
+      return "Max Supported H-Clocks";
     case resource_type::ipu_tops_max:
-      return "Max TOPs";
+      return "Max Supported TOPs";
     case resource_type::ipu_task_max:
-      return "Max Tasks";
+      return "Max Supported Tasks";
     case resource_type::ipu_tops_curr:
       return "Current TOPs";
     case resource_type::ipu_task_curr:
