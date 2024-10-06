@@ -158,6 +158,13 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
   catch (xrt_core::query::no_such_key&) {
     pt.add("power_mode", "not supported");
   }
+    try {
+    const auto mode = (xrt_core::device_query<xq::preemption>(device) == 0) ? "disabled" : "enabled";
+      pt.add("force_preemption", mode);
+  } 
+  catch (xrt_core::query::no_such_key&) {
+    pt.add("force_preemption", "not supported");
+  }
 }
 
 static std::string
@@ -443,7 +450,6 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
-  add_clock_info(device, pt_platform);
   add_tops_info(device, pt_platform);
   add_status_info(device, pt_platform);
 
@@ -457,6 +463,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     else
       add_controller_info(device, pt_platform);
     add_mac_info(device, pt_platform);
+    add_clock_info(device, pt_platform);
     add_config_info(device, pt_platform);
     break;
   }

@@ -30,10 +30,23 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
+  try {
+    set_threshold(dev, ptree);
+    if(XBUtilities::getVerbose())
+      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
+  }
+  catch (const std::runtime_error& ex) {
+    logger(ptree, "Details", ex.what());
+    ptree.put("status", test_token_skipped);
+    return ptree;
+  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
-  if (!std::filesystem::exists(xclbin_path))
+  if (!std::filesystem::exists(xclbin_path)){
+    logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
+  }
 
   logger(ptree, "Xclbin", xclbin_path);
 
@@ -127,8 +140,8 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBUtilities::getVerbose()) { 
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'MB") % buffer_size_mb));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+    logger(ptree, "Details", boost::str(boost::format("Buffer size: %f MB") % buffer_size_mb));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -172,11 +185,12 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   end = std::chrono::high_resolution_clock::now();
-  float elapsedSecsAverage = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+  auto elapsedSecsAverage = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   elapsedSecsAverage /= itr_count;
-  float overhead = elapsedSecsAverage - elapsedSecsNoOpAverage; 
-  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: '%.1f'ms") % (overhead * 1000)));
+  double overhead = (elapsedSecsAverage - elapsedSecsNoOpAverage)*1000; //in ms
 
-  ptree.put("status", test_token_passed);
+  //check if the value is in range
+  result_in_range(overhead, get_threshold(), ptree);
+  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
   return ptree;
 }

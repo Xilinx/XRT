@@ -21,8 +21,9 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "aie_control_config_filetype.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
 namespace pt = boost::property_tree;
@@ -124,6 +125,32 @@ AIEControlConfigFiletype::getValidKernels() const
         std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
     }
     return kernels;
+}
+
+std::vector<std::string>
+AIEControlConfigFiletype::getValidBuffers() const
+{
+    if (getHardwareGeneration() == 1) 
+        return {};
+        
+    std::vector<std::string> buffers;
+
+    // Grab all shared buffers
+    auto sharedBufferTree =
+        aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
+    if (!sharedBufferTree) {
+        xrt_core::message::send(severity_level::info, "XRT", 
+            getMessage("TileMapping.SharedBufferToTileMapping"));
+        return {};
+    }
+
+    // Now parse all shared buffers
+    for (auto const &shared_buffer : sharedBufferTree.get()) {
+        std::string bufferStr = shared_buffer.second.get<std::string>("bufferName");
+        auto nameStr = bufferStr.substr(bufferStr.find_last_of(".") + 1);
+        buffers.push_back(nameStr);
+    }
+    return buffers;
 }
 
 std::unordered_map<std::string, io_config>
@@ -260,8 +287,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         {
             // Catch metric sets that don't follow above naming convention
             if ((metricStr != "packets") &&
-                (metricStr != "interface_tile_latency") &&
-                (metricStr != "start_to_bytes_transferred"))
+                (metricStr != METRIC_LATENCY) &&
+                (metricStr != METRIC_BYTE_COUNT))
                 continue;
         }
 
@@ -275,20 +302,27 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if ((specifiedId >= 0) && (specifiedId != idToCheck))
             continue;
 
-        tile_type tile = {0};
+        tile_type tile;
         tile.col = shimCol;
         tile.row = 0;
         tile.subtype = type;
+
+        auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
+        if ((type == io_type::PLIO) && (it != tiles.end())) {
+            std::string msg = "Interface tile " + std::to_string(shimCol)
+                            + " supports more than one PLIO, but only one can be monitored.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+
         // Grab stream ID and slave/master (used in configStreamSwitchPorts())
         tile.is_master = isMaster;
         tile.stream_id = streamId;
-
         tiles.emplace_back(std::move(tile));
     }
 
     if (tiles.empty() && (specifiedId >= 0)) {
-        std::string msg = "No tiles used specified ID " + std::to_string(specifiedId) 
-                        + ". Please specify a valid ID.";
+        std::string msg = "No shim tiles used specified ID " + std::to_string(specifiedId) 
+                        + ". Please specify a valid ID for AIE Profiling. ";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 

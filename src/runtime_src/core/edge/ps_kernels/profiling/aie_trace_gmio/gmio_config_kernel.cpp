@@ -134,7 +134,7 @@ int aie_trace_gmio(uint8_t* gmioInput, xrtHandles* constructs)
     return 0;
   }
 
-  constructs->aieDevInst = aieArray->getDevInst();
+  constructs->aieDevInst = aieArray->get_dev();
   if(!constructs->aieDevInst) {
     return 0;
   }

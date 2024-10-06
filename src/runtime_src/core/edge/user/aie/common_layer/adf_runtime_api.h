@@ -22,6 +22,7 @@
 
 #include <queue>
 #include <vector>
+#include <unordered_map>
 
 extern "C"
 {
@@ -68,7 +69,7 @@ private:
 
     std::vector<XAie_LocType> coreTiles;
     std::vector<XAie_LocType> iterMemTiles;
-    std::vector<int> asyncNotFirstTimePorts; // For AIE2, maintain a list of portIds already configured for asyn RTP
+    std::unordered_map<int, int> asyncRtpUpdateTimes; //For AIE-ML, maintain a map of async RTP portIds to the number of update calls
 };
 
 class gmio_api

@@ -711,6 +711,13 @@ get_force_program_xclbin()
   return value;
 }
 
+inline std::string
+get_hardware_context_type()
+{
+  static std::string value = detail::get_string_value("Runtime.hardware_context_type", "default");
+  return value;
+}
+
 inline bool
 get_is_enable_prep_target()
 {
@@ -959,6 +966,13 @@ inline bool
 get_aie_trace_settings_periodic_offload()
 {
   static bool value = detail::get_bool_value("AIE_trace_settings.periodic_offload", true);
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_trace_start_broadcast()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.trace_start_broadcast", true);
   return value;
 }
 

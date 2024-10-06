@@ -777,7 +777,7 @@ __attribute__((visibility("default"))) int aie2_trace_config(uint8_t* input, uin
   if (!aieArray)
     return 0;
 
-  constructs->aieDevInst = aieArray->getDevInst();
+  constructs->aieDevInst = aieArray->get_dev();
   if (!constructs->aieDevInst)
     return 0;
 

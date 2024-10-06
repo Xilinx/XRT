@@ -731,19 +731,42 @@ get_xrt_pretty_version()
   std::stringstream ss;
   boost::property_tree::ptree pt_xrt;
   xrt_core::sysinfo::get_xrt_info(pt_xrt);
-  boost::property_tree::ptree empty_ptree;
+  const boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
+  XBUtilities::fill_xrt_versions(pt_xrt, ss, available_devices);
+  return ss.str();
+}
 
-  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+void 
+XBUtilities::
+fill_xrt_versions(const boost::property_tree::ptree& pt_xrt, 
+                 std::stringstream& output, 
+                 const boost::property_tree::ptree& available_devices)
+{
+  boost::property_tree::ptree empty_ptree;
+  output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
-    boost::algorithm::to_upper(drv_name);
-    ss << boost::format("%-20s : %s, %s\n") % drv_name
-        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    std::string drv_hash = driver.get<std::string>("hash", "N/A");
+    if (!boost::iequals(drv_hash, "N/A")) {
+      output << boost::format("  %-20s : %s, %s\n") % drv_name
+          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    } else {
+      std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
+      output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
+    }
+    if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
+      output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
   }
-  return ss.str();
+  if (!available_devices.empty()) {
+    const boost::property_tree::ptree& dev = available_devices.begin()->second;
+    if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+      output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    else
+      output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+  }
 }

@@ -129,7 +129,7 @@ public:
     {}
 
     /**
-     * get_name() - Get tag name
+     * get_tag() - Get tag name
      *
      * @return
      *   Memory tag name
@@ -149,7 +149,7 @@ public:
     get_base_address() const;
 
     /**
-     * get_size() - Get the size of the memory in KB
+     * get_size_kb() - Get the size of the memory in KB
      *
      * @return
      *  Size of memory in KB, or -1 for invalid size

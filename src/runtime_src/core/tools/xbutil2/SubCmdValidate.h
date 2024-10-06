@@ -5,6 +5,7 @@
 #ifndef __SubCmdValidate_h_
 #define __SubCmdValidate_h_
 
+#include <boost/program_options.hpp>
 #include "tools/common/SubCmd.h"
 #include "tools/common/XBHelpMenus.h"
 
@@ -22,9 +23,13 @@ class SubCmdValidate : public SubCmd {
   std::string               m_output;
   std::string               m_param;
   std::string               m_xclbin_location;
+  std::string               m_pmode;
   bool                      m_help;
 
   void print_help_internal() const;
+  void handle_errors_and_validate_tests(boost::program_options::variables_map&, 
+                                        std::vector<std::string>&,
+                                        std::vector<std::string>&) const;
   XBUtilities::VectorPairStrings getTestNameDescriptions(const bool addAdditionOptions) const;
 };
 

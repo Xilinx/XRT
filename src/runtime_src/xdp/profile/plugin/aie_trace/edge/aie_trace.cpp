@@ -50,7 +50,7 @@ namespace {
     auto aieArray = drv->getAieArray();
     if (!aieArray)
       return nullptr;
-    return aieArray->getDevInst();
+    return aieArray->get_dev();
   }
 
   static void* allocateAieDevice(void* devHandle)
@@ -408,6 +408,15 @@ namespace xdp {
       }
       else if (type == module_type::shim) {
         interfaceEvents = interfaceTileEventSets[metricSet];
+      }
+
+      // Check ccore and memory events and interfaceEvents are empty & generated warning if so
+      if (coreEvents.empty() && memoryEvents.empty() && interfaceEvents.empty()) {
+        std::stringstream msg;
+        msg << "Event trace is not available for " << tileName << " using metric set "
+            << metricSet << " on hardware generation " << metadata->getHardwareGen() << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
       }
 
       // Check Resource Availability

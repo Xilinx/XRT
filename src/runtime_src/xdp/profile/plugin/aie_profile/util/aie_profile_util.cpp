@@ -117,8 +117,8 @@ namespace xdp::aie::profile {
       {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
       {"output_throughputs",        {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"start_to_bytes_transferred",{XAIE_EVENT_PORT_RUNNING_1_PL,     XAIE_EVENT_PORT_RUNNING_1_PL}},
-      {"interface_tile_latency",    {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {METRIC_BYTE_COUNT,{XAIE_EVENT_PORT_RUNNING_1_PL,     XAIE_EVENT_PORT_RUNNING_1_PL}},
+      {METRIC_LATENCY,              {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
     if (hwGen == 1) {
@@ -403,7 +403,7 @@ namespace xdp::aie::profile {
   {
     std::set<std::string> graphIterMetricSets = {
       "input_throughputs", "output_throughputs",
-      "start_to_bytes_transferred"
+      METRIC_BYTE_COUNT
     };
 
     return graphIterMetricSets.find(metricSet) != graphIterMetricSets.end();
@@ -426,7 +426,7 @@ namespace xdp::aie::profile {
    * re-usage of same broadcast channel again in other plugin flows.
    * TODO: All plugin broadcast usage should only query to FAL
    ***************************************************************************/
-  std::pair<int, XAie_Events> getPLBroadcastChannel()
+  std::pair<int, XAie_Events> getPreferredPLBroadcastChannel()
   {
     static std::vector<XAie_Events> broadcastEvents = {
       XAIE_EVENT_BROADCAST_A_0_PL, XAIE_EVENT_BROADCAST_A_1_PL,
@@ -449,5 +449,19 @@ namespace xdp::aie::profile {
     return bcPair;
   }
 
+
+
+  /****************************************************************************
+   * Convert user specified bytes to beats for provided metric set
+   ***************************************************************************/
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen)
+  {
+    if (metricSet != METRIC_BYTE_COUNT)
+      return bytes;
+
+    uint32_t streamWidth = aie::getStreamWidth(hw_gen);
+    uint32_t total_beats = static_cast<uint32_t>(std::ceil((static_cast<double>(bytes)*8) / streamWidth));
+    return total_beats; 
+  }
 
 } // namespace xdp::aie

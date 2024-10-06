@@ -17,10 +17,16 @@ namespace zynqaie {
       auto device{xrt_core::get_userpf_device(m_shim)};
       auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-      if (!drv->isAieRegistered())
-        throw xrt_core::error(-EINVAL, "No AIE presented");
-
-      aieArray = drv->get_aie_array_shared();
+#ifdef XRT_ENABLE_AIE
+      if (m_hwctx) {
+        m_aie_array = m_hwctx->get_aie_array_shared();
+        m_hwctx->get_aied()->register_graph(this);
+      }
+      else if (drv->isAieRegistered()) {
+        m_aie_array = drv->get_aie_array_shared();
+        drv->getAied()->register_graph(this);
+      }
+#endif
 
       id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctx);
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
@@ -36,21 +42,18 @@ namespace zynqaie {
       aie_config_api = std::make_shared<adf::graph_api>(&graph_config);
       aie_config_api->configure();
       state = graph_state::reset;
-      drv->getAied()->register_graph(this);
   }
 
   graph_object::~graph_object()
   {
     auto device{xrt_core::get_userpf_device(m_shim)};
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-    if (!drv || !drv->getAied()) {
-      std::stringstream warnMsg;
-      warnMsg << "There is no active device open. Unable to close Graph `" << name << "`";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", warnMsg.str());
-      return;
-    }
     drv->close_graph_context(m_hwctx, id);
-    drv->getAied()->deregister_graph(this);
+
+    if (m_hwctx) // hwctx specific
+      m_hwctx->get_aied()->deregister_graph(this);
+    else   // device specific
+      drv->getAied()->deregister_graph(this);    
   }
 
   std::string
@@ -74,7 +77,7 @@ namespace zynqaie {
       for (int i = 0; i < graph_config.coreColumns.size(); i++)
       {
         XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-        XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+        XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
       }
 
       state = graph_state::reset;
@@ -87,7 +90,7 @@ namespace zynqaie {
       XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[0], graph_config.coreRows[0] + adf::config_manager::s_num_reserved_rows + 1);
 
       uint64_t timeStamp;
-      AieRC rc = XAie_ReadTimer(aieArray->getDevInst(), coreTile, XAIE_CORE_MOD, &timeStamp);
+      AieRC rc = XAie_ReadTimer(m_aie_array->get_dev(), coreTile, XAIE_CORE_MOD, &timeStamp);
       if (rc != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Fail to read timestamp for Graph '" + name);
 
@@ -152,7 +155,7 @@ namespace zynqaie {
           }
 
           XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-          XAie_CoreReadDoneBit(aieArray->getDevInst(), coreTile, &done);
+          XAie_CoreReadDoneBit(m_aie_array->get_dev(), coreTile, &done);
           if (!done)
             break;
         }
@@ -166,7 +169,7 @@ namespace zynqaie {
               continue;
 
             XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-            XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+            XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
           }
           return 0;
         }
@@ -225,7 +228,7 @@ namespace zynqaie {
       for (int i = 0; i < graph_config.coreColumns.size(); i++)
       {
         XAie_LocType coreTile = XAie_TileLoc(graph_config.coreColumns[i], graph_config.coreRows[i] + adf::config_manager::s_num_reserved_rows + 1);
-        XAie_CoreDisable(aieArray->getDevInst(), coreTile);
+        XAie_CoreDisable(m_aie_array->get_dev(), coreTile);
       }
       state = graph_state::suspend;
   }

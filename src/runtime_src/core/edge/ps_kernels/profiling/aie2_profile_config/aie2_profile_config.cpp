@@ -543,7 +543,7 @@ int aie2_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtH
   if (!aieArray)
     return 0;
 
-  constructs->aieDevInst = aieArray->getDevInst();
+  constructs->aieDevInst = aieArray->get_dev();
 
   if (!constructs->aieDevInst)
     return 0;
