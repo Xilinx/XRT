@@ -4,6 +4,7 @@
 #define xrthip_memory_h
 
 #include "core/common/device.h"
+#include "core/common/unistd.h"
 #include "device.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_ext.h"
@@ -13,12 +14,16 @@
 
 namespace xrt::core::hip
 {
+  // memory_handle - opaque memory handle
+  using memory_handle = uint64_t;
+
   enum class memory_type : int
   {
     host = 0,
     device,
     managed,
     registered,
+    sub,
     invalid
   };
 
@@ -33,14 +38,20 @@ namespace xrt::core::hip
 
   public:
 
+    // Constructor for dummy memory
+    memory(memory_type type, size_t sz=0)
+      : m_bo(), m_device(nullptr), m_size(sz), m_type(type), m_flags(0)
+    {
+    }
+
     // allocate device memory
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz);
+    memory(device* dev, size_t sz);
 
     // allocate host memory
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags);
+    memory(device* dev, size_t sz, unsigned int flags);
 
     // allocate from user host buffer
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags);
+    memory(device* dev, size_t sz, void *host_mem, unsigned int flags);
     
     void*
     get_address();
@@ -57,6 +68,8 @@ namespace xrt::core::hip
     void
     sync(xclBOSyncDirection);
 
+    void
+    copy(const memory& src, size_t sz, size_t src_offset = 0, size_t dst_offset = 0);
 
     const xrt::bo&
     get_xrt_bo() const
@@ -82,17 +95,42 @@ namespace xrt::core::hip
       return m_size;
     }
 
+  protected:
+    xrt::bo m_bo;
+
   private:
-    std::shared_ptr<device>  m_device;
+    device*  m_device;
     size_t m_size;
     memory_type m_type;
     unsigned int m_flags;
-    xrt::bo m_bo;
 
     void
     init_xrt_bo();
   };
 
+  // sub_memory
+  class sub_memory : public memory
+  {
+  public:
+
+    // constructor for dummy sub_memory
+    sub_memory(size_t sz = 0)
+      : memory(memory_type::sub, sz)
+    {
+    }
+
+    void
+    init(std::shared_ptr<memory> parent, size_t size, size_t offset)
+    {
+      m_parent = parent;
+      m_bo = xrt::bo(parent->get_xrt_bo(), size, offset);
+    }
+
+  private:
+    std::shared_ptr<memory> m_parent;
+  };
+
+  // address_range_key is used for look up hip memory objects via an offseted address
   class address_range_key
   {
   public:
@@ -120,14 +158,16 @@ namespace xrt::core::hip
     }
   };
   
+  ////////////////////////////////////////////////////////////////////////////////////////////////
   using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
   
   class memory_database
   {
   private:
-    addr_map m_addr_map;
+    addr_map m_addr_map; // address lookup for regular xrt::bo
+    std::map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
     std::mutex m_mutex;
-  
+
   protected:
     memory_database();
   
@@ -141,17 +181,32 @@ namespace xrt::core::hip
   
     void
     insert(uint64_t addr, size_t size, std::shared_ptr<memory> hip_mem);
-  
+
     void
     remove(uint64_t addr);
-  
+
+    memory_handle
+    insert_sub_mem(std::shared_ptr<sub_memory> sub_mem);
+
+    std::shared_ptr<sub_memory>
+    get_sub_mem_from_handle(memory_handle h);
+
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
   
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(const void* addr);
   };
-  
+
+  // helper function to get page aligned size;
+  inline size_t
+  get_page_aligned_size(size_t sz)
+  {
+    size_t page_size = xrt_core::getpagesize();
+    size_t aligned_size = ((sz + page_size) / page_size) * page_size;
+    return aligned_size;
+  }
+
 } // xrt::core::hip
 
 #endif

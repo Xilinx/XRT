@@ -40,6 +40,12 @@ class handle_map<HandleType, std::shared_ptr<ImplType>>
   }
 
 public:
+  const std::map<HandleType, std::shared_ptr<ImplType>>&
+  get_map() const
+  {
+    return handles;
+  }
+
   const std::shared_ptr<ImplType>&
   get_or_error(HandleType handle) const
   {
@@ -105,6 +111,12 @@ class handle_map<HandleType, std::unique_ptr<ImplType>>
   std::map<HandleType, std::unique_ptr<ImplType>> handles;
 
 public:
+  const std::map<HandleType, std::unique_ptr<ImplType>>&
+  get_map() const
+  {
+    return handles;
+  }
+
   ImplType*
   get_or_error(HandleType handle) const
   {
@@ -152,6 +164,13 @@ public:
   {
     std::lock_guard<std::mutex> lk(mutex);
     return handles.count(handle);
+  }
+
+  size_t
+  size() const
+  {
+    std::lock_guard<std::mutex> lk(mutex);
+    return handles.size();
   }
 };
 

@@ -18,7 +18,7 @@ class stream;
 
 class context : public std::enable_shared_from_this<context>
 {
-  std::shared_ptr<device> m_device;
+  device* m_device;
   std::weak_ptr<stream> m_null_stream;
   std::vector<stream_handle> m_stream_handles;
   mutable std::mutex m_ctx_stream_lock;
@@ -26,7 +26,7 @@ class context : public std::enable_shared_from_this<context>
 public:
   context() = default;
 
-  context(std::shared_ptr<device> device);
+  context(device*);
 
   uint32_t
   get_dev_id() const
@@ -34,7 +34,7 @@ public:
     return m_device->get_device_id();
   }
 
-  const std::shared_ptr<device>
+  device*
   get_device() const
   {
     return m_device;
@@ -77,7 +77,7 @@ public:
 std::shared_ptr<context>
 get_current_context();
 
-std::shared_ptr<device>
+device*
 get_current_device();
 
 context_handle
