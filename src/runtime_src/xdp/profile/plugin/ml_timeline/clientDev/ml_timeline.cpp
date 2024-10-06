@@ -125,7 +125,7 @@ namespace xdp {
 
     uint32_t numEntries = max_count;
     std::stringstream msg;
-    msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size "
+    msg << "A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size 0x"
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
@@ -142,7 +142,7 @@ namespace xdp {
         ts64 |= (*ptr);
         if (0 == ts64 && 0 == id) {
           // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
-          std::string msgEntries = " Got " + std::to_string(i) + " records in buffer";
+          std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
           break;
         }

@@ -53,14 +53,14 @@ namespace xdp {
 
       } catch (const std::exception &e) {
         std::stringstream msg;
-        msg << "Invalid string specified for ML Timeline Buffer Size. "
+        msg << "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB."
             << e.what() << std::endl;
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       }
 
     } else {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                "Invalid string specified for ML Timeline Buffer Size");
+                "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB.");
     }
     return bufSz;
   }
@@ -116,8 +116,7 @@ namespace xdp {
     (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
 
-    mMultiImpl[hwCtxImpl] = std::make_pair<uint64_t, std::unique_ptr<MLTimelineImpl>>
-                                           (implId, std::make_unique<MLTimelineClientDevImpl>(db));
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->setHwContext(hwContext);
     mlImpl->setBufSize(mBufSz);
@@ -151,7 +150,7 @@ namespace xdp {
     for (auto &e : mMultiImpl) {
       if (nullptr == e.second.second)
         continue;
-      e.second.second->finishflushDevice(e.first, e.second.first)
+      e.second.second->finishflushDevice(e.first, e.second.first);
     }
     mMultiImpl.clear();
 #endif
