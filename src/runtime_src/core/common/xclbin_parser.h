@@ -391,11 +391,11 @@ std::vector<kernel_object>
 get_kernels(const axlf* top);
 
 /**
- * is_pdi_only() - If the xclbin has only one section and is PDI
+ * is_aie_only() - check if xclbin passed is aie only xclbin
  */
 XRT_CORE_COMMON_EXPORT
 bool
-is_pdi_only(const axlf* top);
+is_aie_only(const axlf* top);
 
 /**
  * get_vbnv() - Get VBNV of xclbin
