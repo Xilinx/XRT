@@ -260,7 +260,8 @@ namespace xdp {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
           auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = tile.stream_id;
+          uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
+              0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           if (aie::isDebugVerbosity()) {
@@ -339,8 +340,11 @@ namespace xdp {
     // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel/stream ID)
+      auto portnum = getPortNumberFromEvent(startEvent);
+      uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
+          0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+      uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
       uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
-      uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : tile.stream_id;
       return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) 
              | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | idToReport);
     }
