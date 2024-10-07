@@ -969,7 +969,7 @@ namespace xdp {
         continue;
       if (!isSupported(metrics[i][1], true))
         continue;
-        
+
       uint8_t col = 0;
 
       try {
@@ -1092,7 +1092,7 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(tileMetrics[i], tileMetricSettings[i], boost::is_any_of(":"));
 
-      if (tileMetrics[i].size() < 4 || tileMetrics[i].size()>5)
+      if ((tileMetrics[i].size() < 4) || (tileMetrics[i].size() > 5))
         continue;
 
       std::string g1 =  tileMetrics[i][0];
@@ -1103,9 +1103,15 @@ namespace xdp {
       auto tileSrc  =  metadataReader->getInterfaceTiles(g1, p1, metricName);
       auto tileDest =  metadataReader->getInterfaceTiles(g2, p2, metricName);
 
-      if(tileSrc.empty() || tileDest.empty() || (tileSrc[0]==tileDest[0])) {
+      if (tileSrc.empty() || tileDest.empty()) {
         continue;
-      } 
+      }
+      if (tileSrc[0] == tileDest[0]) {
+        xrt_core::message::send(severity_level::warning, "XRT", "The ports " + g1 + ":" + p1
+            + " and " + g2 + ":" + p2 + " were mapped to the same interface tile."
+            + " Latency measurement of these ports is not supported in 2024.2.");
+        continue;
+      }
       std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
         return;
@@ -1289,8 +1295,8 @@ namespace xdp {
       return 0;
 
     LatencyConfig latencyCfg = latencyConfigMap.at(tile);
-    return createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_id,
-                        latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_id);
+    return createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_ids.at(0),
+                        latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_ids.at(0));
   }
 
  std::vector<tile_type>
