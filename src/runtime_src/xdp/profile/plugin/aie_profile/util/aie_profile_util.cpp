@@ -460,8 +460,13 @@ namespace xdp::aie::profile {
       return bytes;
 
     uint32_t streamWidth = aie::getStreamWidth(hw_gen);
-    uint32_t total_beats = static_cast<uint32_t>(std::ceil((static_cast<double>(bytes)*8) / streamWidth));
-    return total_beats; 
+    uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
+
+    // Note: As per run experiments on board, combo 3 FSM checks stop event in
+    // every 4 clock cycles. We make sure stop event is in sync with FSM oddity
+    // by rounding up total beats to nearest multiple of 4.
+    uint32_t max_beats = 4 * ((total_beats + 3) / 4);
+    return max_beats; 
   }
 
 } // namespace xdp::aie

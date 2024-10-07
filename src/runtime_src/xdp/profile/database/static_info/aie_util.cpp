@@ -442,10 +442,10 @@ namespace xdp::aie {
    ***************************************************************************/
   uint32_t getStreamWidth(uint8_t hw_gen)
   {
-    // Stream width in bits
+    // Stream width in bytes
     static const std::unordered_map<uint8_t, uint8_t> streamWidthMap = {
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(32)},
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(32)}
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(4)},
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(4)}
     };
     uint32_t default_width = 32;
     
