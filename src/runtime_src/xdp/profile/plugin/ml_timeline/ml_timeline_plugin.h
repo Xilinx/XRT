@@ -17,11 +17,13 @@
 #ifndef XDP_ML_TIMELINE_PLUGIN_H
 #define XDP_ML_TIMELINE_PLUGIN_H
 
-#include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
+#include <map>
 
 namespace xdp {
+
+  class MLTimelineImpl;
 
   class MLTimelinePlugin : public XDPPlugin
   {
@@ -41,14 +43,9 @@ namespace xdp {
     private:
     static bool live;
 
-    struct DeviceData {
-      bool valid;
-      std::unique_ptr<MLTimelineImpl> implementation;
-    } DeviceDataEntry;
-
-    void* mHwCtxImpl = nullptr;
-    uint32_t mBufSz  = 0x20000;
-
+    uint32_t mBufSz;
+    std::map<void* /*hwCtxImpl*/,
+             std::pair<uint64_t /* deviceId */, std::unique_ptr<MLTimelineImpl>>> mMultiImpl;
   };
 
 } // end namespace xdp

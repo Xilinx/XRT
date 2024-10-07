@@ -92,7 +92,7 @@ namespace xdp {
               "Allocated buffer In MLTimelineClientDevImpl::updateDevice");
   }
 
-  void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
+  void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
@@ -125,7 +125,7 @@ namespace xdp {
 
     uint32_t numEntries = max_count;
     std::stringstream msg;
-    msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size "
+    msg << "A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size 0x"
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
@@ -142,7 +142,7 @@ namespace xdp {
         ts64 |= (*ptr);
         if (0 == ts64 && 0 == id) {
           // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
-          std::string msgEntries = " Got " + std::to_string(i) + " records in buffer";
+          std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
           break;
         }
@@ -167,14 +167,21 @@ namespace xdp {
     std::regex reg("\\\"((-?[0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
+    std::string outFName;
+    if (0 == implId) {
+      outFName = "record_timer_ts.json";
+    } else {
+      outFName = "record_timer_ts_" + std::to_string(implId) + ".json";
+    }
     std::ofstream fOut;
-    fOut.open("record_timer_ts.json");
+    fOut.open(outFName);
     fOut << result;
     fOut.close();
 
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Finished writing record_timer_ts.json in MLTimelineClientDevImpl::finishflushDevice");
-
+    std::stringstream msg1;
+    msg1 << "Finished writing " << outFName << " in MLTimelineClientDevImpl::finishflushDevice." << std::endl;
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+  
     /* Delete the result BO so that AIE Profile/Debug Plugins, if enabled,
      * can use their own Debug BO to capture their data.
      */
