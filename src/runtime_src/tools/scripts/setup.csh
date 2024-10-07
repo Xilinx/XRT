@@ -4,23 +4,27 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 
-set called=($_)
+#set called=($_)
 set script_path=""
 set xrt_dir=""
 
-# check if script is sourced or executed
-if ("$called" != "") then
-# sourced 
-    set script=$called[2]
-else
-# executed
-    set script=$0
-endif
+# revisit if there is a better way than lsof to obtain the script path
+# in non-interactive mode.  If lsof is needed, then revisit why
+# why sbin need to be prepended looks like some environment issue in
+# user shell, e.g. /usr/local/bin/mis_env: No such file or directory.
+# is because user path contain bad directories that are searched when
+# looking of lsof.
+set path=(/usr/sbin $path)
+set called=(`\lsof +p $$ |\grep setup.csh`)
 
-set script_rel_rootdir = `dirname $script`
-set script_path = `cd $script_rel_rootdir && pwd`
-
-set xrt_dir = $script_path
+# look for the right cmd component that contains setup.csh
+foreach x ($called)
+    if ( "$x" =~ *setup.csh ) then
+        set script_path=`readlink -f $x`
+        set xrt_dir=`dirname $script_path`
+    endif
+    if ( $xrt_dir =~ */xrt ) break
+end
 
 if ( $xrt_dir !~ */xrt ) then
     echo "Invalid location: $xrt_dir"
