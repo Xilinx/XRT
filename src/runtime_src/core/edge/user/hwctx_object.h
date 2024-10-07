@@ -20,12 +20,21 @@ namespace zynqaie {
   class aie_array;
   class aied;
 
+  struct partition_info
+  {
+    uint32_t start_column;
+    uint32_t num_columns;
+    uint32_t partition_id;
+    uint64_t base_address;
+  };
+
   class hwctx_object : public xrt_core::hwctx_handle
   {
     ZYNQ::shim* m_shim;
     xrt::uuid m_uuid;
     slot_id m_slot_idx;
     xrt::hw_context::access_mode m_mode;
+    partition_info m_info;
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<aie_array> m_aie_array;
     std::unique_ptr<zynqaie::aied> m_aied;
@@ -67,6 +76,12 @@ namespace zynqaie {
     get_hw_queue() override
     {
       return nullptr;
+    }
+
+    partition_info
+    get_partition_info() const
+    {
+      return m_info;
     }
 
     std::unique_ptr<xrt_core::buffer_handle>

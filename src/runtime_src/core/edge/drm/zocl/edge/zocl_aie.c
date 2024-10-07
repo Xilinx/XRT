@@ -249,6 +249,7 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 {
 	struct axlf_section_header *header = NULL;
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
+	int ret = 0;
 	while (header) {
 		int err = 0;
 		long start_col = 0, num_col = 0;
@@ -270,7 +271,11 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 		}
 
 		//Call the AIE Driver API 
-		int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, start_col, num_col, data_portion);
+	        if (zdev->aie->partition_id == FULL_ARRAY_PARTITION_ID)
+		    ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, start_col, num_col, data_portion);
+		else
+		    ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, 0, num_col, data_portion);
+
 		if (ret != 0) {
 			vfree(data_portion);
 			return ret;
@@ -283,7 +288,7 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen, uint32_t partition_id)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -334,11 +339,11 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 	}
 
 	/* TODO figure out the partition id and uid from xclbin or PDI */
-	req.partition_id = 1;
+	req.partition_id = partition_id;
 	req.uid = 0;
 	req.meta_data = 0;
 
-	if (aie_res) 
+	if (aie_res)
 		req.meta_data = (u64)aie_res;
 
 	if (zdev->aie->aie_dev) {
@@ -349,11 +354,6 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 
 	zdev->aie->aie_dev = aie_partition_request(&req);
 
-	if (!aie_res) {
-		int res = zocl_read_aieresbin(zdev, axlf, xclbin);
-		if (res)
-			goto done;
-	}
 
 	if (IS_ERR(zdev->aie->aie_dev)) {
 		rval = PTR_ERR(zdev->aie->aie_dev);
@@ -364,6 +364,12 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 
 	zdev->aie->partition_id = req.partition_id;
 	zdev->aie->uid = req.uid;
+
+	if (!aie_res) {
+		int res = zocl_read_aieresbin(zdev, axlf, xclbin);
+		if (res)
+			goto done;
+	}
 
 	/* Register AIE error call back function. */
 	/* only aie-1 supports error management*/

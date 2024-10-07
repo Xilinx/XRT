@@ -77,6 +77,7 @@
 #define __ZYNQ_IOCTL_H__
 
 #define CU_NAME_MAX_LEN	64
+#define FULL_ARRAY_PARTITION_ID 1
 
 #ifndef __KERNEL__
 #include <stdint.h>

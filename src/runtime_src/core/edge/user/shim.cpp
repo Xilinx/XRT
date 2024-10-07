@@ -731,7 +731,7 @@ xclLoadAxlf(const axlf *buffer)
 
     /* Get the AIE_METADATA and get the hw_gen information */
     uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+    auto partition_id = xrt_core::edge::aie::full_array_id;
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -1224,7 +1224,8 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 
 /* Get the AIE_METADATA and get the hw_gen information */
   uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-  uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+  auto part_info = xrt_core::edge::aie::get_partition_info(mCoreDevice.get(), buffer->m_header.uuid);
+  auto partition_id = part_info.partition_id;
 
   axlf_obj->za_xclbin_ptr = const_cast<axlf *>(buffer),
   axlf_obj->za_flags = flags,
