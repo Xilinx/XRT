@@ -204,8 +204,11 @@ namespace xdp {
     return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
   }
 
-
-  std::vector<std::pair<tile_type, std::string>> AieProfileMetadata::getConfigMetricsVec(const int module)
+  /****************************************************************************
+   * Get vector of configuration metrics
+   ***************************************************************************/
+  std::vector<std::pair<tile_type, std::string>>
+  AieProfileMetadata::getConfigMetricsVec(const int module)
   {
     if (module != static_cast<int>(module_type::shim))
       return {configMetrics[module].begin(), configMetrics[module].end()};
@@ -244,6 +247,20 @@ namespace xdp {
     return metadataReader->getDriverConfig();
   }
 
+  /****************************************************************************
+   * Check if metric set is supported
+   ***************************************************************************/
+  bool AieProfileMetadata::isSupported(const std::string metricSet, bool isTileBased)
+  {
+    if (isTileBased && (metricSet == METRIC_BYTE_COUNT)) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+                              "Metric set " + metricSet + " is not supported in "
+                              "tile-based settings. Please use graph-based settings.");
+      return false;
+    }
+    return true;
+  }
+  
   /****************************************************************************
    * Resolve metrics for AIE or Memory tiles
    ***************************************************************************/
@@ -834,6 +851,8 @@ namespace xdp {
 
       if (metrics[i][0].compare("all") != 0)
         continue;
+      if (!isSupported(metrics[i][1], true))
+        continue;
 
       // Process <tile|all>:start_to_bytes_transferred:<bytes>
       // By-default select both the channels
@@ -879,6 +898,8 @@ namespace xdp {
     // <minclumn>:<maxcolumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
+        continue;
+      if (!isSupported(metrics[i][1], true))
         continue;
 
       uint8_t maxCol = 0;
@@ -946,7 +967,9 @@ namespace xdp {
       // Skip range specification, invalid format, or already processed
       if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
         continue;
-
+      if (!isSupported(metrics[i][1], true))
+        continue;
+        
       uint8_t col = 0;
 
       try {
@@ -1035,6 +1058,9 @@ namespace xdp {
     }
   }
 
+  /****************************************************************************
+   * Get profile configuration
+   ***************************************************************************/
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
   {
     static const AIEProfileFinalConfig config(configMetrics, configChannel0,
@@ -1043,6 +1069,9 @@ namespace xdp {
     return config;
   }
 
+  /****************************************************************************
+   * Resolve metrics for Interface tiles (latency only)
+   ***************************************************************************/
   void AieProfileMetadata::getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
                                            const std::vector<std::string>& tileMetricSettings)
   {
