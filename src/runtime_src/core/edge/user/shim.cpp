@@ -505,7 +505,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret && !xrt_core::xclbin::is_pdi_only(top))
+  if (!ret && !xrt_core::xclbin::is_aie_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
@@ -747,7 +747,7 @@ xclLoadAxlf(const axlf *buffer)
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+  if (!xrt_core::xclbin::is_aie_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -1239,7 +1239,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
 
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+  if (!xrt_core::xclbin::is_aie_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -2521,7 +2521,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #endif
 
     /* If PDI is the only section, return here */
-    if (xrt_core::xclbin::is_pdi_only(buffer)) {
+    if (xrt_core::xclbin::is_aie_only(buffer)) {
         // Update the profiling library with the information on this new AIE xclbin
         // configuration on this device as appropriate (when profiling is enabled).
         xdp::update_device(handle);

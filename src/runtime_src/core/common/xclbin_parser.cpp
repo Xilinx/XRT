@@ -1089,18 +1089,14 @@ get_kernels(const axlf* top)
   return get_kernels(xml.first, xml.second);
 }
 
-// PDI only XCLBIN has PDI section only;
-// Or has AIE_METADATA and PDI sections only
+// AIE only xclbin has LOAD_AIE action mask
 bool
-is_pdi_only(const axlf* top)
+is_aie_only(const axlf* top)
 {
-  auto pdi = axlf_section_type<const char*>::get(top, axlf_section_kind::PDI);
-  auto aie_meta = axlf_section_type<const char*>::get(top, axlf_section_kind::AIE_METADATA);
-  auto aie_res = axlf_section_type<const char*>::get(top, axlf_section_kind::AIE_RESOURCES);
+  if ((top->m_header.m_actionMask & AM_LOAD_AIE))
+    return true;
 
-  return ((top->m_header.m_numSections == 1 && pdi != nullptr)
-          || (top->m_header.m_numSections == 2 && pdi != nullptr && aie_meta != nullptr)
-          || (top->m_header.m_numSections == 3 && pdi != nullptr && aie_meta != nullptr && aie_res != nullptr));
+  return false;
 }
 
 std::string
