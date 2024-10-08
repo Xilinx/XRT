@@ -3808,7 +3808,7 @@ struct performance_mode : request
 
 /*
  * this request force enables or disables pre-emption globally
- * 0: enable; 1: disable
+ * 1: enable; 0: disable
 */
 struct preemption : request
 {
