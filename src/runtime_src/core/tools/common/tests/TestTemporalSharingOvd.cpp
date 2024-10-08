@@ -4,7 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "tools/common/XBUtilities.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
-#include "TestHelper.h"
+#include "TestValidateUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
@@ -13,6 +13,7 @@
 #include <thread>
 
 namespace XBU = XBUtilities;
+static constexpr size_t buffer_size = 1024; //1 KB
 
 boost::property_tree::ptree 
 TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
@@ -65,13 +66,21 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  if (!std::filesystem::exists(dpu_instr))
+    return ptree;
+
+  logger(ptree, "DPU-Sequence", dpu_instr);
+
   // Run 1 
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  testcases.emplace_back(xclbin, kernelName, working_dev);
-  testcases.emplace_back(xclbin, kernelName, working_dev);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 8, buffer_size, 10000);
+  testcases.emplace_back(params);
+  testcases.emplace_back(params);
 
   initializeTests(testcases); 
 
@@ -102,19 +111,17 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   testcases.clear();
 
   // Run 2 
-  // Create three test cases and add them to the vector
-  testcases.emplace_back(xclbin, kernelName, working_dev);
-  testcases.emplace_back(xclbin, kernelName, working_dev);
-  testcases.emplace_back(xclbin, kernelName, working_dev);
+  // Create 4 test cases and add them to the vector
+  for (int i = 0; i < 4; i++)
+    testcases.emplace_back(params);
 
   initializeTests(testcases); 
 
   // Measure the latency for running the test cases in parallel
   start = std::chrono::high_resolution_clock::now(); 
-  // Create three threads to run the test cases
-  threads.emplace_back(runTestcase, std::ref(testcases[0]));
-  threads.emplace_back(runTestcase, std::ref(testcases[1]));
-  threads.emplace_back(runTestcase, std::ref(testcases[2]));
+  // Create four threads to run the test cases
+  for (int i = 0; i < testcases.size(); i++)
+    threads.emplace_back(runTestcase, std::ref(testcases[i]));
 
   for (uint32_t i = 0; i < threads.size(); i++) {
     threads[i].join();

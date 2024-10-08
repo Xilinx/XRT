@@ -5,7 +5,7 @@
 #define _TESTTEMPORALSHARINGOVD_
 
 #include "tools/common/TestRunner.h"
-#include "TestHelper.h"
+#include "TestValidateUtilities.h"
 
 /*   
   *  @brief Test control flow:
@@ -21,7 +21,7 @@
    * |--------------|------------|------------|------------|------------|------------|------------|------------|
    * |                      shared 4x1                     |                   shared 4x1                      |
    * |--------------|------------|------------|------------|------------|------------|------------|------------|
-   * |                      shared 4x1                     |                                                   |
+   * |                      shared 4x1                     |                   shared 4x1                      |
 */
 
 class TestTemporalSharingOvd : public TestRunner {
