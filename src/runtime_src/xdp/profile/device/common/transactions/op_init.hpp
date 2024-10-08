@@ -6,6 +6,7 @@
 #include <xaiengine.h>
 
 #include "op_types.h"
+#include <cstring>
 
 using namespace std;
 
