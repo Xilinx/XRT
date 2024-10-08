@@ -100,7 +100,9 @@ namespace xdp {
     return AIEStatusPlugin::live;
   }
 
-  // Get tiles to status
+  /****************************************************************************
+   * Gather list of tiles to check status
+   ***************************************************************************/
   void AIEStatusPlugin::getTilesForStatus()
   {
     // Capture all tiles across all graphs
@@ -110,7 +112,7 @@ namespace xdp {
       mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
     }
 
-   //Note: AIE Status is not released product on client. Whenever client support is needed,
+   // NOTE: AIE Status is not released product on client. Whenever client support is needed,
    // required dynamic column start shift should come from XRT and not compiler metadata
    uint8_t startColShift = metadataReader->getPartitionOverlayStartCols().front();
    aie::displayColShiftInfo(startColShift);
@@ -124,6 +126,8 @@ namespace xdp {
 
     // Report tiles (debug only)
     if (aie::isDebugVerbosity()) {
+      auto offset = metadataReader->getAIETileRowOffset();
+
       std::stringstream msg;
       msg << "Tiles used for AIE status:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
@@ -136,6 +140,9 @@ namespace xdp {
     }
   }
 
+  /****************************************************************************
+   * Convert core status register value to readable string
+   ***************************************************************************/
   std::string AIEStatusPlugin::getCoreStatusString(uint32_t status) {
     std::string statusStr;
 
@@ -191,6 +198,9 @@ namespace xdp {
     return statusStr;
   }
 
+  /****************************************************************************
+   * Poll core status values to detect deadlock
+   ***************************************************************************/
   void AIEStatusPlugin::pollDeadlock(uint64_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
@@ -384,6 +394,9 @@ namespace xdp {
     }
   }
 
+  /****************************************************************************
+   * Periodically write status of active tiles
+   ***************************************************************************/
   void AIEStatusPlugin::writeStatus(uint64_t index, void* handle, VPWriter* aieWriter)
   {
     auto it = mThreadCtrlMap.find(handle);
@@ -400,6 +413,9 @@ namespace xdp {
     }
   }
 
+  /****************************************************************************
+   * Update AIE device
+   ***************************************************************************/
   void AIEStatusPlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no debug/status is requested
@@ -455,6 +471,9 @@ namespace xdp {
     mStatusThreadMap[handle] = std::thread { [=] { writeStatus(deviceID, handle, aieWriter); } };
   }
 
+  /****************************************************************************
+   * End polling for device
+   ***************************************************************************/
   void AIEStatusPlugin::endPollforDevice(void* handle)
   {
     // Last chance at writing status reports
@@ -469,30 +488,11 @@ namespace xdp {
     // safely end all threads here, but this must be revisited if we extend
     // AIE status functionality to other types of platforms.
     endPoll();
-    /* 
-    // Ask threads to stop
-    mThreadCtrlMap[handle] = false;
-
-    {
-      auto it = mDeadlockThreadMap.find(handle);
-      if (it != mDeadlockThreadMap.end()) {
-        it->second.join();
-        mDeadlockThreadMap.erase(it);
-      }
-    }
-
-    {
-      auto it = mStatusThreadMap.find(handle);
-      if (it != mStatusThreadMap.end()) {
-        it->second.join();
-        mStatusThreadMap.erase(it);
-      }
-    }
-
-    mThreadCtrlMap.erase(handle);
-    */
   }
 
+  /****************************************************************************
+   * End all polling threads
+   ***************************************************************************/
   void AIEStatusPlugin::endPoll()
   {
     // Ask all threads to end
