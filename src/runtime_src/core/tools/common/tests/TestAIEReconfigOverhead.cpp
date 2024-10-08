@@ -2,6 +2,7 @@
 // Local - Include Files
 
 #include "TestAIEReconfigOverhead.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -104,7 +105,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XrtSmi::Validate::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -123,7 +124,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   argno++;
   xrt::bo bo_mc(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
 
-  init_instr_buf(bo_instr, dpu_instr);
+  XrtSmi::Validate::init_instr_buf(bo_instr, dpu_instr);
   //Create ctrlcode with NOPs
   std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
 
