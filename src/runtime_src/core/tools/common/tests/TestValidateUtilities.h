@@ -60,7 +60,6 @@ public:
   void initialize();
   void run();
 };
-#endif
 
 namespace XrtSmi{
 namespace Validate{
@@ -71,3 +70,4 @@ void wait_for_max_clock(int&, std::shared_ptr<xrt_core::device>);
 
 } //End of namespace Validate
 } //End of namespace XrtSmi
+#endif
