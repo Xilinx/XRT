@@ -20,13 +20,21 @@ namespace zynqaie {
   class aie_buffer_object: public xrt_core::aie_buffer_handle
   {
     std::string name;
-    std::shared_ptr<Aie> m_aie_array;
+    std::shared_ptr<aie_array> m_aie_array;
+    std::mutex mtx;
+    bool async_started = false;
 
   public:
-    aie_buffer_object(xrt_core::device* device , const xrt::uuid uuid, const char* name, const zynqaie::hwctx_object* hwctx=nullptr);
+    aie_buffer_object(xrt_core::device* device, const xrt::uuid uuid, const char* name, zynqaie::hwctx_object* hwctx=nullptr);
 
     void
     sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const;
+
+    void
+    async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset);
+
+    void
+    wait();
 
     std::string
     get_name() const;

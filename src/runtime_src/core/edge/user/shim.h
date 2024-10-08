@@ -80,16 +80,16 @@ public:
     xclBufferHandle m_hdl;
     zynqaie::hwctx_object* m_hwctx_obj{nullptr};
 
-#ifdef XRT_ENABLE_AIE    
-    std::shared_ptr<zynqaie::Aie> m_aie_array;
-#endif    
+#ifdef XRT_ENABLE_AIE
+    std::shared_ptr<zynqaie::aie_array> m_aie_array;
+#endif
 
   public:
     buffer_object(shim* shim, xclBufferHandle hdl, xrt_core::hwctx_handle* hwctx_hdl = nullptr)
       : m_shim{shim}
       , m_hdl{hdl}
     {
-#ifdef XRT_ENABLE_AIE       
+#ifdef XRT_ENABLE_AIE
       if (nullptr != hwctx_hdl) { // hwctx specific
         m_hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
 
@@ -179,9 +179,9 @@ public:
     }
 
     void
-    sync_aie_bo(xrt::bo& bo, const char *gmioName, bo_direction dir, size_t size, size_t offset) override
+    sync_aie_bo(xrt::bo& bo, const char *port_name, bo_direction dir, size_t size, size_t offset) override
     {
-#ifdef XRT_ENABLE_AIE       
+#ifdef XRT_ENABLE_AIE
       if (!m_aie_array->is_context_set()) {
         auto device = xrt_core::get_userpf_device(m_shim);
         m_aie_array->open_context(device.get(), m_hwctx_obj, xrt::aie::access_mode::primary);
@@ -193,14 +193,14 @@ public:
         throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
-      m_aie_array->sync_bo(bos, gmioName, dir, size, offset);
-#endif      
+      m_aie_array->sync_bo(bos, port_name, dir, size, offset);
+#endif
     }
 
     void
-    sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, bo_direction dir, size_t size, size_t offset) override
+    sync_aie_bo_nb(xrt::bo& bo, const char *port_name, bo_direction dir, size_t size, size_t offset) override
     {
-#ifdef XRT_ENABLE_AIE       
+#ifdef XRT_ENABLE_AIE
       if (!m_aie_array->is_context_set()) {
         auto device = xrt_core::get_userpf_device(m_shim);
         m_aie_array->open_context(device.get(), m_hwctx_obj, xrt::aie::access_mode::primary);
@@ -212,8 +212,8 @@ public:
         throw xrt_core::error(-EINVAL, "Sync AIE NBO fails: exceed BO boundary.");
 
       std::vector<xrt::bo> bos {bo};
-      m_aie_array->sync_bo_nb(bos, gmioName, dir, size, offset);
-#endif      
+      m_aie_array->sync_bo_nb(bos, port_name, dir, size, offset);
+#endif
     }
 
   }; // buffer_object
@@ -341,8 +341,8 @@ public:
   int secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top);
 
 #ifdef XRT_ENABLE_AIE
-  zynqaie::Aie* getAieArray();
-  std::shared_ptr<zynqaie::Aie> get_aie_array_shared();
+  zynqaie::aie_array* getAieArray();
+  std::shared_ptr<zynqaie::aie_array> get_aie_array_shared();
   zynqaie::aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
@@ -380,7 +380,7 @@ private:
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
 #ifdef XRT_ENABLE_AIE
-  std::shared_ptr<zynqaie::Aie> aieArray;
+  std::shared_ptr<zynqaie::aie_array> m_aie_array;
   std::unique_ptr<zynqaie::aied> aied;
   xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 #endif

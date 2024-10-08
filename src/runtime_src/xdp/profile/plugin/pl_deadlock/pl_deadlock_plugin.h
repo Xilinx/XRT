@@ -42,6 +42,7 @@ namespace xdp {
 
     std::map<uint64_t, std::thread> mThreadMap;
     std::map<uint64_t,std::atomic<bool>> mThreadCtrlMap;
+    std::unordered_map<void*, uint64_t> mHwCtxImplToDevIdMap;
 //    std::map<void*, std::thread> mThreadMap;
 //    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::mutex mWriteLock;

@@ -360,6 +360,35 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_tops_info(const xrt_core::device* device, ptree_type& pt)
+{
+  ptree_type pt_tops_array;
+
+  try
+  {
+    auto res_info = xrt_core::device_query<xq::xrt_resource_raw>(device);
+    if (res_info.empty())
+      return;
+
+    for (auto &res : res_info)
+    {
+      if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_tops_max)
+        continue;
+
+      ptree_type pt_tops;
+      pt_tops.add("id", xq::xrt_resource_raw::get_name(res.type));
+      pt_tops.add("value", res.data_double);
+      pt_tops_array.push_back(std::make_pair("", pt_tops));
+    }
+    pt.put_child("tops", pt_tops_array);
+  }
+  catch (const xq::no_such_key &)
+  {
+    // ignoring if not available: Edge Case
+  }
+}
+
+void
 add_electrical_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
@@ -421,7 +450,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
-  add_clock_info(device, pt_platform);
+  add_tops_info(device, pt_platform);
   add_status_info(device, pt_platform);
 
   const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
@@ -434,6 +463,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     else
       add_controller_info(device, pt_platform);
     add_mac_info(device, pt_platform);
+    add_clock_info(device, pt_platform);
     add_config_info(device, pt_platform);
     break;
   }

@@ -16,22 +16,37 @@ namespace ZYNQ {
 }
 
 namespace zynqaie {
-  class Aie;
+
+  class aie_array;
+  class aied;
+
+  struct partition_info
+  {
+    uint32_t start_column;
+    uint32_t num_columns;
+    uint32_t partition_id;
+    uint64_t base_address;
+  };
 
   class hwctx_object : public xrt_core::hwctx_handle
   {
     ZYNQ::shim* m_shim;
     xrt::uuid m_uuid;
-    slot_id m_slotidx;
+    slot_id m_slot_idx;
     xrt::hw_context::access_mode m_mode;
+    partition_info m_info;
 #ifdef XRT_ENABLE_AIE
-    std::shared_ptr<Aie> m_aie_array;
+    std::shared_ptr<aie_array> m_aie_array;
+    std::unique_ptr<zynqaie::aied> m_aied;
 #endif
 
   public:
-    hwctx_object(ZYNQ::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
+    hwctx_object(ZYNQ::shim* shim, slot_id slot_idx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
 
     ~hwctx_object();
+
+    void
+    init_aie();
 
     void
     update_access_mode(access_mode mode) override
@@ -42,7 +57,7 @@ namespace zynqaie {
     slot_id
     get_slotidx() const override
     {
-      return m_slotidx;
+      return m_slot_idx;
     }
 
     xrt::hw_context::access_mode
@@ -61,6 +76,12 @@ namespace zynqaie {
     get_hw_queue() override
     {
       return nullptr;
+    }
+
+    partition_info
+    get_partition_info() const
+    {
+      return m_info;
     }
 
     std::unique_ptr<xrt_core::buffer_handle>
@@ -88,8 +109,11 @@ namespace zynqaie {
     open_aie_buffer_handle(const char* name) override;
 
 #ifdef XRT_ENABLE_AIE
-    std::shared_ptr<Aie>
-    get_aie_array_shared() const;
+    std::shared_ptr<aie_array>
+    get_aie_array_shared();
+
+    aied*
+    get_aied() const;
 #endif
 
   }; // class hwctx_object

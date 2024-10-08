@@ -77,7 +77,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   
   if (m_isUserDomain)
     m_hiddenOptions.add_options()
-      ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+      ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken()->zero_tokens(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ;
 }
 
@@ -137,6 +137,9 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
     if (vm.count("report") && m_reportNames.empty())
       throw xrt_core::error("No report given to be produced");
+
+    if (vm.count("element") && m_elementsFilter.empty())
+      throw xrt_core::error("No element filter given to be produced");
 
     // DRC check
     // When json is specified, make sure an accompanying output file is also specified

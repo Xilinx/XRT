@@ -34,7 +34,6 @@ using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 using module_type = xrt_core::edge::aie::module_type;
 
-static constexpr uint32_t default_id = 1;
 static constexpr uint32_t default_start_column = 0;
 
 inline void
@@ -83,21 +82,37 @@ get_hw_gen(const pt::ptree& aie_meta)
   return aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
 }
 
-static uint32_t
-get_partition_id(const pt::ptree& aie_meta)
+static zynqaie::partition_info
+get_partition_info(const pt::ptree& aie_meta)
 {
-  auto num_col = aie_meta.get_child_optional("aie_metadata.driver_config.partition_num_cols");
-  if (!num_col) 
-    return default_id;
-  auto num_col_value = num_col->get_value<uint32_t>();
-  auto start_col = 0; 
-  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
-  if (overlay_start_cols && !overlay_start_cols->empty()) 
-    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+  zynqaie::partition_info info;
+  info.start_column = 0;
+  info.num_columns = aie_meta.get<uint32_t>("aie_metadata.driver_config.num_columns");
+  info.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
+  info.partition_id = xrt_core::edge::aie::full_array_id;
+  try {
+    auto partitions = aie_meta.get_child_optional("aie_metadata.driver_config.aie_partition_json.AIE.ai_engine_0.partitions");
 
-  // AIE Driver expects the partition id format as below
-  uint32_t part = (num_col_value << 8U) | (start_col & 0xffU);   
-  return part;
+    // if no partition info or morethan one partition, return full array
+    if (!partitions || partitions.get().size() > 1)
+      return info;
+
+    const auto partition = partitions->front();
+    auto start_column = partition.second.template get<uint32_t>("startColumn");
+    auto num_columns = partition.second.template get<uint32_t>("numColumns");
+    if ( info.start_column == start_column && info.num_columns == num_columns)
+      return info;
+
+    info.start_column = start_column;
+    info.num_columns = num_columns;
+    info.partition_id = (info.num_columns << 8U) | (info.start_column & 0xffU);
+    auto column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
+    info.base_address = (info.base_address + (info.start_column << column_shift));
+    return info;
+  }
+  catch(...) {
+  }
+  return info;
 }
 
 adf::aiecompiler_options
@@ -110,9 +125,12 @@ get_aiecompiler_options(const pt::ptree& aie_meta)
 }
 
 static uint8_t
-get_start_col(const pt::ptree& aie_meta)
+get_start_col(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
 {
   auto start_col = 0;
+  if (hwctx && hwctx->get_partition_info().partition_id != xrt_core::edge::aie::full_array_id)
+    return start_col;
+
   auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
   if (overlay_start_cols && !overlay_start_cols->empty())
     start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
@@ -146,10 +164,10 @@ get_partition_start_column(const pt::ptree& aie_meta, int column)
 }
 
 adf::graph_config
-get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
+get_graph(const pt::ptree& aie_meta, const std::string& graph_name, const zynqaie::hwctx_object* hwctx)
 {
   adf::graph_config graph_config;
-  auto start_col = get_start_col(aie_meta);
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -239,10 +257,10 @@ get_graphs(const pt::ptree& aie_meta)
 }
 
 std::vector<tile_type>
-get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
+get_tiles(const pt::ptree& aie_meta, const std::string& graph_name, const zynqaie::hwctx_object* hwctx)
 {
   std::vector<tile_type> tiles;
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -288,7 +306,7 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
-                module_type type)
+                module_type type, const zynqaie::hwctx_object* hwctx)
 {
   // Not supported yet
   if (type == module_type::shim)
@@ -297,7 +315,7 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
   const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
   const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
   
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   std::vector<tile_type> tiles;
  
@@ -323,10 +341,10 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
 }
 
 std::unordered_map<std::string, adf::rtp_config>
-get_rtp(const pt::ptree& aie_meta, int graph_id)
+get_rtp(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx_object* hwctx)
 {
   std::unordered_map<std::string, adf::rtp_config> rtps;
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
     if (rtp_node.second.get<int>("graph_id") != graph_id)
@@ -359,7 +377,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
     rtp.isAsync = rtp_node.second.get<bool>("is_asynchronous");
     rtp.isConnect = rtp_node.second.get<bool>("is_connected");
     rtp.hasLock = rtp_node.second.get<bool>("requires_lock");
-    rtp.blocking= rtp_node.second.get<bool>("blocking");
+    rtp.blocking= rtp_node.second.get<bool>("blocking", false);
 
     rtps[rtp.portName] = rtp;
     rtps[rtp.aliasName] = rtp;
@@ -369,10 +387,10 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
 }
 
 std::unordered_map<std::string, adf::gmio_config>
-get_gmios(const pt::ptree& aie_meta)
+get_gmios(const pt::ptree& aie_meta,const zynqaie::hwctx_object* hwctx)
 {
   std::unordered_map<std::string, adf::gmio_config> gmios;
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     adf::gmio_config gmio;
@@ -398,9 +416,9 @@ get_gmios(const pt::ptree& aie_meta)
 }
 
 std::unordered_map<std::string, adf::external_buffer_config>
-get_external_buffers(const pt::ptree& aie_meta)
+get_external_buffers(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
 {
-  auto start_col = get_start_col(aie_meta);
+  auto start_col = get_start_col(aie_meta, hwctx);
   std::unordered_map<std::string, adf::external_buffer_config> external_buffer_configs;
 
   auto ebuf_tree = aie_meta.get_child_optional("aie_metadata.ExternalBufferConfigs");
@@ -449,10 +467,10 @@ get_external_buffers(const pt::ptree& aie_meta)
 }
 
 std::unordered_map<std::string, adf::plio_config>
-get_plios(const pt::ptree& aie_meta)
+get_plios(const pt::ptree& aie_meta,const zynqaie::hwctx_object* hwctx)
 {
   std::unordered_map<std::string, adf::plio_config> plios;
-  auto start_col = get_start_col(aie_meta);
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
     adf::plio_config plio;
@@ -479,7 +497,7 @@ get_clock_freq_mhz(const pt::ptree& aie_meta)
 }
 
 std::vector<counter_type>
-get_profile_counter(const pt::ptree& aie_meta)
+get_profile_counter(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
 {
   // If counters not found, then return empty vector
   auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
@@ -488,7 +506,7 @@ get_profile_counter(const pt::ptree& aie_meta)
 
   // First grab clock frequency
   auto clockFreqMhz = get_clock_freq_mhz(aie_meta);
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
 
   std::vector<counter_type> counters;
 
@@ -515,13 +533,13 @@ get_profile_counter(const pt::ptree& aie_meta)
 }
 
 std::vector<gmio_type>
-get_trace_gmio(const pt::ptree& aie_meta)
+get_trace_gmio(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
 {
   auto trace_gmios = aie_meta.get_child_optional("aie_metadata.TraceGMIOs");
   if (!trace_gmios)
     return {};
 
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta, hwctx);
   std::vector<gmio_type> gmios;
 
   for (auto& gmio_node : trace_gmios.get()) {
@@ -581,7 +599,7 @@ get_graph(const xrt_core::device* device, const std::string& graph_name, const z
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_graph(aie_meta, graph_name);
+  return ::get_graph(aie_meta, graph_name, hwctx);
 }
 
 int
@@ -620,7 +638,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name, const z
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_tiles(aie_meta, graph_name);
+  return ::get_tiles(aie_meta, graph_name,hwctx);
 }
 
 std::vector<tile_type>
@@ -634,7 +652,7 @@ get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_event_tiles(aie_meta, graph_name, type);
+  return ::get_event_tiles(aie_meta, graph_name, type, hwctx);
 }
 
 std::unordered_map<std::string, adf::rtp_config>
@@ -647,7 +665,7 @@ get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_objec
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_rtp(aie_meta, graph_id);
+  return ::get_rtp(aie_meta, graph_id, hwctx);
 }
 
 std::unordered_map<std::string, adf::gmio_config>
@@ -660,7 +678,7 @@ get_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_gmios(aie_meta);
+  return ::get_gmios(aie_meta, hwctx);
 }
 
 std::unordered_map<std::string, adf::external_buffer_config>
@@ -673,7 +691,7 @@ get_external_buffers(const xrt_core::device* device, const zynqaie::hwctx_object
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_external_buffers(aie_meta);
+  return ::get_external_buffers(aie_meta, hwctx);
 }
 
 std::unordered_map<std::string, adf::plio_config>
@@ -686,7 +704,7 @@ get_plios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_plios(aie_meta);
+  return ::get_plios(aie_meta, hwctx);
 }
 
 double
@@ -712,7 +730,7 @@ get_profile_counters(const xrt_core::device* device, const zynqaie::hwctx_object
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_profile_counter(aie_meta);
+  return ::get_profile_counter(aie_meta, hwctx);
 }
 
 std::vector<gmio_type>
@@ -725,7 +743,7 @@ get_trace_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwc
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_trace_gmio(aie_meta);
+  return ::get_trace_gmio(aie_meta, hwctx);
 }
 /* hw_gen represents aie version 1.aie, 2.aie-ml etc */
 uint8_t
@@ -741,17 +759,16 @@ get_hw_gen(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
   return ::get_hw_gen(aie_meta);
 }
 
-uint32_t
-get_partition_id(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
+zynqaie::partition_info
+get_partition_info(const xrt_core::device* device, const xrt::uuid xclbin_uuid)
 {
-  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
   auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
-    return 1; 
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_partition_id(aie_meta);
+  return ::get_partition_info(aie_meta);
 }
 
 }}} // aie, edge, xrt_core

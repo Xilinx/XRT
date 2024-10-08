@@ -40,7 +40,7 @@ namespace xdp {
       virtual ~MLTimelineImpl() {}
 
       virtual void updateDevice(void*) = 0;
-      virtual void finishflushDevice(void*) = 0;
+      virtual void finishflushDevice(void*, uint64_t) = 0;
 
       void setHwContext(xrt::hw_context ctx)
       {

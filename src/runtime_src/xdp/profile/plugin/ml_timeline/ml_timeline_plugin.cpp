@@ -24,6 +24,7 @@
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
+#include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -52,27 +53,26 @@ namespace xdp {
 
       } catch (const std::exception &e) {
         std::stringstream msg;
-        msg << "Invalid string specified for ML Timeline Buffer Size. "
+        msg << "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB."
             << e.what() << std::endl;
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       }
 
     } else {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                "Invalid string specified for ML Timeline Buffer Size");
+                "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB.");
     }
     return bufSz;
   }
 
   MLTimelinePlugin::MLTimelinePlugin()
-    : XDPPlugin()
+    : XDPPlugin(),
+      mBufSz(0)
   {
     MLTimelinePlugin::live = true;
 
     db->registerPlugin(this);
     db->registerInfo(info::ml_timeline);
-
-    mBufSz = ParseMLTimelineBufferSizeConfig();
   }
 
   MLTimelinePlugin::~MLTimelinePlugin()
@@ -97,53 +97,62 @@ namespace xdp {
   void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
 #ifdef XDP_CLIENT_BUILD
-    if (mHwCtxImpl) {
-      // For client device flow, only 1 device and xclbin is supported now.
+
+    if (0 == mBufSz)
+      mBufSz = ParseMLTimelineBufferSizeConfig();
+
+    if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
+      // Same Hardware Context Implementation uses the same impl and buffer
       return;
     }
-    mHwCtxImpl = hwCtxImpl;
 
-    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    // Only one device for Client Device flow
-    uint64_t deviceId = db->addDevice("win_device");
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
-    (db->getStaticInfo()).setDeviceName(deviceId, "win_device");
+    uint64_t implId = mMultiImpl.size();
 
-    DeviceDataEntry.valid = true;
-    DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
-    DeviceDataEntry.implementation->setHwContext(hwContext);
-    DeviceDataEntry.implementation->setBufSize(mBufSz);
-    DeviceDataEntry.implementation->updateDevice(mHwCtxImpl);
+    std::string winDeviceName = "win_device" + std::to_string(implId);
+    uint64_t deviceId = db->addDevice(winDeviceName);
+    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
+
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db));
+    auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
+    mlImpl->setHwContext(hwContext);
+    mlImpl->setBufSize(mBufSz);
+    mlImpl->updateDevice(hwCtxImpl);
+
 #endif
   }
 
   void MLTimelinePlugin::finishflushDevice(void* hwCtxImpl)
   {
 #ifdef XDP_CLIENT_BUILD
-    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
+    std::map<void* /*hwCtxImpl*/,
+             std::pair<uint64_t /* deviceId */, std::unique_ptr<MLTimelineImpl>>>::iterator itr;
+
+    itr = mMultiImpl.find(hwCtxImpl);
+    if (itr == mMultiImpl.end() || nullptr == itr->second.second) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+          "Cannot retrieve ML Timeline data as a new HW Context Implementation is passed.");
       return;
     }
 
-    if (hwCtxImpl != mHwCtxImpl) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-          "Cannot retrieve ML Timeline data as a new HW Context Implementation is passed.");
-      return;
-    } 
-    DeviceDataEntry.valid = false;
-    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
+    itr->second.second->finishflushDevice(hwCtxImpl, itr->second.first);
+    itr->second.second.reset(nullptr);
+
 #endif
   }
 
   void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
 #ifdef XDP_CLIENT_BUILD
-    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
-      return;
+    for (auto &e : mMultiImpl) {
+      if (nullptr == e.second.second)
+        continue;
+      e.second.second->finishflushDevice(e.first, e.second.first);
     }
-    DeviceDataEntry.valid = false;
-    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
+    mMultiImpl.clear();
 #endif
   }
 

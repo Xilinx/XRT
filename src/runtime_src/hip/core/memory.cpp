@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #endif
 
-#include "core/common/unistd.h"
+#include "common.h"
 #include "device.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
@@ -17,8 +17,8 @@
 namespace xrt::core::hip
 {
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz)
-      : m_device(std::move(dev)),
+  memory::memory(device* dev, size_t sz)
+      : m_device(dev),
 	m_size(sz),
 	m_type(memory_type::device),
 	m_flags(0)
@@ -29,11 +29,8 @@ namespace xrt::core::hip
     init_xrt_bo();
   }
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz, void *host_mem, unsigned int flags)
-      : m_device(std::move(dev)),
-	m_size(sz),
-	m_type(memory_type::registered),
-	m_flags(flags)
+  memory::memory(device* dev, size_t sz, void *host_mem, unsigned int flags)
+      : m_device(dev), m_size(sz), m_type(memory_type::registered), m_flags(flags)
   {
     assert(m_device);
 
@@ -42,7 +39,7 @@ namespace xrt::core::hip
     m_bo = xrt::ext::bo(xrt_device, host_mem, m_size);
   }
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz, unsigned int flags)
+  memory::memory(device* dev, size_t sz, unsigned int flags)
       : m_device(std::move(dev)),
 	m_size(sz),
 	m_type(memory_type::host),
@@ -77,7 +74,7 @@ namespace xrt::core::hip
     if (!m_bo)
       return nullptr;
 
-    if (get_type() == memory_type::device)
+    if (get_type() == memory_type::device || get_type() == memory_type::sub)
       return reinterpret_cast<void *>(m_bo.address());
     else if (get_type() == memory_type::host || get_type() == memory_type::registered)
       return m_bo.map();
@@ -102,13 +99,11 @@ namespace xrt::core::hip
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
-
-    auto src_ptr = reinterpret_cast<const unsigned char *>(src);
+    // host memory
+    auto src_ptr = reinterpret_cast<const unsigned char*>(src);
     src_ptr += src_offset;
-    if (m_bo) {
-      m_bo.write(src_ptr, size, offset);
-      m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    }
+    m_bo.write(src_ptr, size, offset);
+    m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
   void
@@ -135,6 +130,12 @@ namespace xrt::core::hip
   }
 
   void
+  memory::copy(const memory& src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    m_bo.copy(src.get_xrt_bo(), sz, src_offset, dst_offset);
+  }
+
+  void
   memory::init_xrt_bo()
   {
     auto xrt_device = m_device->get_xrt_device();
@@ -142,7 +143,7 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
+  //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
   memory_database* memory_database::m_memory_database = nullptr; //NOLINT
 
   memory_database& memory_database::instance()
@@ -154,7 +155,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_addr_map()
+      : m_addr_map(), m_sub_mem_cache(), m_mutex()
   {
     if (m_memory_database) {
       throw std::runtime_error
@@ -180,13 +181,45 @@ namespace xrt::core::hip
   memory_database::remove(uint64_t addr)
   {
     std::lock_guard lock(m_mutex);
+
+    m_sub_mem_cache.erase(addr);
     m_addr_map.erase(address_range_key(addr, 0));
+  }
+
+  memory_handle
+  memory_database::insert_sub_mem(std::shared_ptr<sub_memory> sub_mem)
+  {
+    std::lock_guard lock(m_mutex);
+
+    // TODO: hip memory allocated from memory pool need to return a valid pointer before
+    //       actual allocation is done and user application may add an offset to this pointer,
+    //       hence the need for returning a handles/addresses which does not overlap
+    //       a more robust handle/pointer creation scheme might be neccessary 
+    static auto curr_start = get_page_aligned_size(0x10000);
+    size_t aligned_size = get_page_aligned_size(sub_mem->get_size());
+    memory_handle h = curr_start;
+    m_sub_mem_cache.insert({h, sub_mem});
+    curr_start += aligned_size;
+    return h;
+  }
+
+  std::shared_ptr<sub_memory>
+  memory_database::get_sub_mem_from_handle(memory_handle h)
+  {
+    std::lock_guard lock(m_mutex);
+
+    auto itr = m_sub_mem_cache.find(h);
+    if (itr != m_sub_mem_cache.end())
+      return itr->second;
+    else
+      return nullptr;
   }
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
     std::lock_guard lock(m_mutex);
+
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
@@ -201,6 +234,7 @@ namespace xrt::core::hip
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
     std::lock_guard lock(m_mutex);
+
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);

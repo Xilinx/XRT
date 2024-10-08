@@ -528,6 +528,11 @@ TestRunner::set_threshold(const std::shared_ptr<xrt_core::device>& dev,
 {
   //find the benchmark.json
   const auto pcie_id = xrt_core::device_query<xq::pcie_id>(dev);
+
+  //phoenix is not supported
+  if(xq::pcie_id::device_to_string(pcie_id).find("1502") != std::string::npos)
+    return;
+
   auto benchmark_fname = boost::str(boost::format("benchmark_%s_%s.json") 
                             % xq::pcie_id::device_to_string(pcie_id) % xq::pcie_id::revision_to_string(pcie_id));
   auto json_config = findPlatformFile(benchmark_fname, ptTest);

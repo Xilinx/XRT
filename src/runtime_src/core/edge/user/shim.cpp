@@ -130,6 +130,11 @@ shim(unsigned index)
 shim::
 ~shim()
 {
+#ifdef XRT_ENABLE_AIE
+  if (m_aie_array)  // Aie cleanup should be done before shim destroyed
+    m_aie_array.reset();
+#endif
+
   xclLog(XRT_INFO, "%s", __func__);
 
   // Flush all of the profiling information from the device to the profiling
@@ -500,7 +505,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret && !xrt_core::xclbin::is_pdi_only(top))
+  if (!ret && !xrt_core::xclbin::is_aie_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
@@ -726,7 +731,7 @@ xclLoadAxlf(const axlf *buffer)
 
     /* Get the AIE_METADATA and get the hw_gen information */
     uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+    auto partition_id = xrt_core::edge::aie::full_array_id;
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -742,7 +747,7 @@ xclLoadAxlf(const axlf *buffer)
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+  if (!xrt_core::xclbin::is_aie_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -1219,7 +1224,8 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 
 /* Get the AIE_METADATA and get the hw_gen information */
   uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-  uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+  auto part_info = xrt_core::edge::aie::get_partition_info(mCoreDevice.get(), buffer->m_header.uuid);
+  auto partition_id = part_info.partition_id;
 
   axlf_obj->za_xclbin_ptr = const_cast<axlf *>(buffer),
   axlf_obj->za_flags = flags,
@@ -1233,7 +1239,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
 
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+  if (!xrt_core::xclbin::is_aie_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -1304,22 +1310,9 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
-  #ifdef XRT_ENABLE_AIE
-  auto data = core_device->get_axlf_section(AIE_METADATA);
-  if(data.first && data.second)
-    drv->registerAieArray();
-  #endif
-
-  #ifndef __HWEM__
-    xdp::hal::update_device(handle);
-    xdp::aie::update_device(handle);
-  #endif
-    xdp::aie::ctr::update_device(handle);
-    xdp::aie::sts::update_device(handle);
+  xdp::update_device(handle);
   #ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
-  #else
-    xdp::hal::hw_emu::update_device(handle);
   #endif
 
   return 0;
@@ -1357,7 +1350,11 @@ create_hw_context(xclDeviceHandle handle,
     }
     //success
     mCoreDevice->register_axlf(buffer);
-    return std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode);
+
+    auto hwctx_obj_ptr{std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode)};
+    hwctx_obj_ptr->init_aie(); // just to make sure Aie instance created only once
+
+    return hwctx_obj_ptr;
   }
 }
 
@@ -1968,18 +1965,18 @@ resetDevice(xclResetKind kind)
 
 #ifdef XRT_ENABLE_AIE
 
-std::shared_ptr<zynqaie::Aie>
+std::shared_ptr<zynqaie::aie_array>
 shim::
 get_aie_array_shared()
 {
-  return aieArray;
+  return m_aie_array;
 }
 
-zynqaie::Aie*
+zynqaie::aie_array*
 shim::
 getAieArray()
 {
-  return aieArray.get();
+  return m_aie_array.get();
 }
 
 zynqaie::aied*
@@ -1993,8 +1990,8 @@ void
 shim::
 registerAieArray()
 {
-  if(aieArray == nullptr)
-      aieArray = std::make_shared<zynqaie::Aie>(mCoreDevice);
+  if(!m_aie_array)
+      m_aie_array = std::make_shared<zynqaie::aie_array>(mCoreDevice);
 
   aied = std::make_unique<zynqaie::aied>(mCoreDevice.get());
 }
@@ -2003,7 +2000,7 @@ bool
 shim::
 isAieRegistered()
 {
-  return (aieArray != nullptr);
+  return (m_aie_array != nullptr);
 }
 
 int
@@ -2524,7 +2521,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #endif
 
     /* If PDI is the only section, return here */
-    if (xrt_core::xclbin::is_pdi_only(buffer)) {
+    if (xrt_core::xclbin::is_aie_only(buffer)) {
         // Update the profiling library with the information on this new AIE xclbin
         // configuration on this device as appropriate (when profiling is enabled).
         xdp::update_device(handle);

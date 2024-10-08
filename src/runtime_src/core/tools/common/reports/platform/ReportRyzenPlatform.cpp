@@ -63,6 +63,16 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
       }
     }
 
+    const boost::property_tree::ptree& tops = pt_platform.get_child("tops", empty_ptree);
+    if (!tops.empty()) {
+      _output << "\nTOPs\n";
+      for (const auto& kt : tops) {
+        const boost::property_tree::ptree& pt_tops = kt.second;
+        std::string tops_name_type = pt_tops.get<std::string>("id");
+        _output << boost::format("  %-23s: %s Terabyte ops/second\n") % tops_name_type % pt_tops.get<std::string>("value");
+      }
+    }
+
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
     if (watts != "N/A")
       _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Power" % watts;
