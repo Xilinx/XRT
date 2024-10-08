@@ -309,10 +309,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-std::cout << "!!!!!!!!!! Adding to stream IDs" << std::endl;
             // Add to existing list of stream IDs
             it->stream_ids.push_back(streamId);
-std::cout << "!!!!!!!!!! Number of stream IDs: " << it->stream_ids.size() << std::endl;
         }
         else {
             // Grab first stream ID and add to list of tiles
