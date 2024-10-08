@@ -91,7 +91,12 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   }
   catch (const std::exception& ex)
   {
-    logger(ptree, "Error", ex.what());
+    std::string err_msg(ex.what());
+    if(err_msg.find(std::string("0xc01e0009")) != std::string::npos) //context creation failed
+      logger (ptree, "Error", "Not enough columns available. Please make sure not other workload is running on the device.");
+    else
+      logger(ptree, "Error", err_msg);
+  
     ptree.put("status", test_token_failed);
     return ptree;
   }
