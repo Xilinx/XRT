@@ -762,11 +762,17 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
       output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
   }
-  if (!available_devices.empty()) {
-    const boost::property_tree::ptree& dev = available_devices.begin()->second;
-    if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
-      output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
-    else
-      output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+
+  try {
+    if (!available_devices.empty()) {
+       const boost::property_tree::ptree& dev = available_devices.begin()->second;
+       if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+       else
+         output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    }
+  }
+  catch (...) {
+    //no device available
   }
 }
