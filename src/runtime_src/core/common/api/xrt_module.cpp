@@ -1404,18 +1404,15 @@ public:
       return;
     }
 
-    std::string dump_file_name = "preemption_scratchpad_mem" + std::to_string(get_id()) + ".bin";
-    std::ofstream ofs(dump_file_name, std::ios::out | std::ios::binary);
-    if (!ofs.is_open())
-      throw std::runtime_error("Failure opening file " + dump_file_name + " for writing!");
-
+    // sync data from device before dumping into file
     m_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    auto buf = m_scratch_pad_mem.map<char*>();
-    ofs.write(buf, m_scratch_pad_mem.size());
 
-    std::stringstream ss;
-    ss << "dumped file " << dump_file_name;
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+    std::string dump_file_name = "preemption_scratchpad_mem" + std::to_string(get_id()) + ".bin";
+    dump_bo(m_scratch_pad_mem, dump_file_name);
+
+    std::string msg {"dumped file "};
+    msg.append(dump_file_name);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
   }
 };
 

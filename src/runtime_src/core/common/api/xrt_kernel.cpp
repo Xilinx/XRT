@@ -2087,7 +2087,6 @@ class run_impl
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
-  bool m_dump_scratchpad_mem = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
 
   const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
   std::mutex m_mutex;                     // mutex synchronization
@@ -2479,7 +2478,8 @@ public:
     }
 
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    if (m_dump_scratchpad_mem)
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
       xrt_core::module_int::dump_scratchpad_mem(m_module);
 
     return state;
@@ -2507,8 +2507,10 @@ public:
 
     if (state == ERT_CMD_STATE_COMPLETED) {
       m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-      if (m_dump_scratchpad_mem)
+      static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+      if (dump)
         xrt_core::module_int::dump_scratchpad_mem(m_module);
+
       return std::cv_status::no_timeout;
     }
 
