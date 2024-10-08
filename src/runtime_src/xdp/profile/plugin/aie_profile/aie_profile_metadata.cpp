@@ -1106,7 +1106,7 @@ namespace xdp {
       if (tileSrc.empty() || tileDest.empty()) {
         continue;
       }
-      if (tileSrc[0] == tileDest[0]) {
+      if ((tileSrc[0].col == tileDest[0].col) && (tileSrc[0].row == tileDest[0].row)) {
         xrt_core::message::send(severity_level::warning, "XRT", "The ports " + g1 + ":" + p1
             + " and " + g2 + ":" + p2 + " were mapped to the same interface tile."
             + " Latency measurement of these ports is not supported in 2024.2.");

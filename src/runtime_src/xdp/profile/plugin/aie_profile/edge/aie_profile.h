@@ -67,7 +67,7 @@ namespace xdp {
                                  const module_type type,
                                  uint8_t column, 
                                  uint8_t row, 
-                                 XAie_Events startEvent,
+                                 uint16_t startEvent,
                                  const std::string metricSet,
                                  const uint8_t channel);
 

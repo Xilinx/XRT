@@ -22,7 +22,7 @@
 #include <set>
 
 #include "xdp/profile/plugin/aie_status/aie_status_plugin.h"
-
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/device/xdp_base_device.h"
@@ -123,13 +123,13 @@ namespace xdp {
    }
 
     // Report tiles (debug only)
-    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+    if (aie::isDebugVerbosity()) {
       std::stringstream msg;
       msg << "Tiles used for AIE status:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
         msg << kv.first << " : ";
         for (const auto& tile : kv.second)
-          msg << "(" << +tile.col << "," << +tile.row << "), ";
+          msg << "(" << +tile.col << "," << +(tile.row - offset) << "), ";
         msg << "\n";
       }
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
@@ -271,7 +271,7 @@ namespace xdp {
           // Read core status and PC value
           bool coreUnstalled = false;
           uint32_t coreStatus = 0;
-          auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
+          auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
           auto& coreStallCounter = coreStuckCountMap[tile];
@@ -310,7 +310,7 @@ namespace xdp {
           // Check for errors in tile
           // NOTE: warning is only issued once per tile
           if (errorTileSet.find(tile) == errorTileSet.end()) {
-            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
+            auto loc = XAie_TileLoc(tile.col, tile.row);
 
             // Memory module
             uint8_t memErrors = 0;
@@ -331,8 +331,8 @@ namespace xdp {
 
             if (memErrors || coreErrors0 || coreErrors1) {
               std::stringstream errorMessage;
-              errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
-                          << "). Please view status in Vitis Analyzer for specifics.";
+              errorMessage << "Error(s) found in tile (" << +tile.col << "," << +(tile.row - offset)
+                           << "). Please view status in Vitis Analyzer for specifics.";
               xrt_core::message::send(severity_level::warning, "XRT", errorMessage.str());
               errorTileSet.insert(tile);
             }
@@ -354,7 +354,7 @@ namespace xdp {
             // We have a stuck core within this graph
             warningMessage
             << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
-            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
+            << "Tile : " << "(" << +stuckTile.col << "," << +(stuckTile.row - offset) << ") "
             << "Status 0x" << std::hex << stuckCoreStatus << std::dec
             << " : " << getCoreStatusString(stuckCoreStatus);
 
@@ -364,12 +364,12 @@ namespace xdp {
         }
 
         // Print status for debug
-        if (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(severity_level::debug)) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           for (const auto& tile : graphTilesVec) {
             if (coreStuckCountMap[tile]) {
               msg
-                << "T(" << +tile.col <<"," << +tile.row << "):" << "<" << coreStuckCountMap[tile]
+                << "T(" << +tile.col <<"," << +(tile.row - offset) << "):" << "<" << coreStuckCountMap[tile]
                 << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
             }
           }
