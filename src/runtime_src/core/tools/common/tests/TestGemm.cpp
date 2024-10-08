@@ -99,7 +99,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   {
     std::string err_msg(ex.what());
     if(err_msg.find(std::string("0xc01e0009")) != std::string::npos) //context creation failed
-      logger (ptree, "Error", "Not enough columns available. Please make sure not other workload is running on the device.");
+      logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
     else
       logger(ptree, "Error", err_msg);
   
