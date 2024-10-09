@@ -94,7 +94,7 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
 {
   dev_inst_obj = {0};
   dev_inst = nullptr;
-  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get(), hwctx_obj);
 
   XAie_SetupConfig(ConfigPtr,
       driver_config.hw_gen,
@@ -136,23 +136,23 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
 
   dev_inst = &dev_inst_obj;
 
-  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get(), hwctx_obj);
   adf::config_manager::initialize(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
   fal_util::initialize(dev_inst); //resource manager initialization
   
   /* Initialize PLIO metadata */
-  plio_configs = xrt_core::edge::aie::get_plios(device.get());
+  plio_configs = xrt_core::edge::aie::get_plios(device.get(), hwctx_obj);
 
   /* Initialize gmio api instances */
-  gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+  gmio_configs = xrt_core::edge::aie::get_gmios(device.get(), hwctx_obj);
   for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
   {
     auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
     p_gmio_api->configure();
     gmio_apis[config_itr->first] = p_gmio_api;
   }
-  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
+  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get(), hwctx_obj);
 }
 
 aie_array::
