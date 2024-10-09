@@ -586,7 +586,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_free_userptr_bo(obj);
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
-		else if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA) {
+		else if (!zocl_obj->mm_node) {
 			/* Update memory usage statistics */
 			zocl_update_mem_stat(zdev, obj->size, -1,
 			    zocl_obj->mem_index);

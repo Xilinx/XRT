@@ -400,7 +400,7 @@ free:
 struct sg_table *zocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 {
         struct drm_zocl_bo *zocl_obj = to_zocl_bo(obj);
-	if (zocl_obj && (zocl_obj->flags & ZOCL_BO_FLAGS_CMA)) {
+	if (zocl_obj && !(zocl_obj->mm_node)) {
 		return drm_gem_dma_get_sg_table(&zocl_obj->cma_base);
 	}
         struct drm_device *drm = obj->dev;
