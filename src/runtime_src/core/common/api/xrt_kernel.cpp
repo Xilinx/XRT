@@ -2478,6 +2478,9 @@ public:
     }
 
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
+      xrt_core::module_int::dump_scratchpad_mem(m_module);
 
     return state;
   }
@@ -2504,6 +2507,10 @@ public:
 
     if (state == ERT_CMD_STATE_COMPLETED) {
       m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+      static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+      if (dump)
+        xrt_core::module_int::dump_scratchpad_mem(m_module);
+
       return std::cv_status::no_timeout;
     }
 

@@ -50,6 +50,10 @@ sync(const xrt::module&);
 ert_cmd_opcode
 get_ert_opcode(const xrt::module& module);
 
+// Dump scratch pad mem buffer
+void
+dump_scratchpad_mem(const xrt::module& module);
+
 } // xrt_core::module_int
 
 #endif
