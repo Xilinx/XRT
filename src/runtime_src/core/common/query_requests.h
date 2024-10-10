@@ -77,6 +77,7 @@ enum class key_type
   ip_layout_raw,
   debug_ip_layout_raw,
   clock_freq_topology_raw,
+  xrt_resource_raw,
   dma_stream,
   device_status,
   kds_cu_info,
@@ -1183,6 +1184,63 @@ struct clock_freq_topology_raw : request
 
   virtual std::any
   get(const device*) const = 0;
+};
+
+/**
+ * Return some of the resouces within a NPU device
+ */
+struct xrt_resource_raw : request
+{
+  /**
+   * enum class resource_type - represents the different types of resources
+   */
+  enum class resource_type
+  {
+    ipu_clk_max,   // Max H-Clocks, query returns uint64 value
+    ipu_tops_max,  // Max TOPs, query returns double value
+    ipu_task_max,  // Max Tasks, query returns uint64 value
+    ipu_tops_curr, // Current TOPs, query returns double value
+    ipu_task_curr  // Current Tasks, query returns uint64 value
+  };
+
+  /**
+   * The buffer that holds the resource query data
+   */
+  struct xrt_resource_query
+  {
+    resource_type type;
+    union
+    {
+      uint64_t data_uint64; // holds the value represented as uint64
+      double data_double;   // holds the value represented as double
+    };
+  };
+
+  using result_type = std::vector<xrt_resource_query>; // get value type
+  static const key_type key = key_type::xrt_resource_raw;
+
+  static std::string
+  get_name(xrt_core::query::xrt_resource_raw::resource_type type)
+  {
+    switch (type)
+    {
+    case resource_type::ipu_clk_max:
+      return "Max Supported H-Clocks";
+    case resource_type::ipu_tops_max:
+      return "Max Supported TOPs";
+    case resource_type::ipu_task_max:
+      return "Max Supported Tasks";
+    case resource_type::ipu_tops_curr:
+      return "Current TOPs";
+    case resource_type::ipu_task_curr:
+      return "Current Tasks";
+    default:
+      throw xrt_core::internal_error("enum value does not exists");
+    }
+  }
+
+  virtual std::any
+  get(const device *) const = 0;
 };
 
 struct xmc_version : request
@@ -3750,7 +3808,7 @@ struct performance_mode : request
 
 /*
  * this request force enables or disables pre-emption globally
- * 0: enable; 1: disable
+ * 1: enable; 0: disable
 */
 struct preemption : request
 {

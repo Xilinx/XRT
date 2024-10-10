@@ -186,11 +186,13 @@ struct patcher
   void
   patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
   {
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
       bd_data_ptr[1];
 
-    base_address += patch;
+    base_address += patch + ddr_aie_addr_offset;  //2G offset
     bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
     bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
   }
@@ -1392,6 +1394,26 @@ public:
   {
       return m_scratch_pad_mem;
   }
+
+  void
+  dump_scratchpad_mem()
+  {
+    if (m_scratch_pad_mem.size() == 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "preemption scratchpad memory is not available");
+      return;
+    }
+
+    // sync data from device before dumping into file
+    m_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    std::string dump_file_name = "preemption_scratchpad_mem" + std::to_string(get_id()) + ".bin";
+    dump_bo(m_scratch_pad_mem, dump_file_name);
+
+    std::string msg {"dumped file "};
+    msg.append(dump_file_name);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
+  }
 };
 
 } // namespace xrt
@@ -1466,6 +1488,16 @@ enum ert_cmd_opcode
 get_ert_opcode(const xrt::module& module)
 {
   return module.get_handle()->get_ert_opcode();
+}
+
+void
+dump_scratchpad_mem(const xrt::module& module)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  module_sram->dump_scratchpad_mem();
 }
 
 } // xrt_core::module_int

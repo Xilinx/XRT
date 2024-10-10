@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,22 +23,23 @@
 namespace xdp {
 namespace info {
 
-  const uint64_t aie_profile     = 0x0001 ;
-  const uint64_t aie_trace       = 0x0002 ;
-  const uint64_t device_offload  = 0x0004 ;
-  const uint64_t hal             = 0x0008 ;
-  const uint64_t lop             = 0x0010 ;
-  const uint64_t native          = 0x0020 ;
-  const uint64_t noc             = 0x0040 ;
-  const uint64_t opencl_counters = 0x0080 ;
-  const uint64_t opencl_trace    = 0x0100 ;
-  const uint64_t power           = 0x0200 ;
-  const uint64_t system_compiler = 0x0400 ;
-  const uint64_t user            = 0x0800 ;
-  const uint64_t vart            = 0x1000 ;
-  const uint64_t aie_status      = 0x2000 ;
-  const uint64_t ml_timeline     = 0x4000 ;
-  const uint64_t aie_halt        = 0x8000 ;
+  const uint64_t aie_profile     = 0x00001 ;
+  const uint64_t aie_trace       = 0x00002 ;
+  const uint64_t device_offload  = 0x00004 ;
+  const uint64_t hal             = 0x00008 ;
+  const uint64_t lop             = 0x00010 ;
+  const uint64_t native          = 0x00020 ;
+  const uint64_t noc             = 0x00040 ;
+  const uint64_t opencl_counters = 0x00080 ;
+  const uint64_t opencl_trace    = 0x00100 ;
+  const uint64_t power           = 0x00200 ;
+  const uint64_t system_compiler = 0x00400 ;
+  const uint64_t user            = 0x00800 ;
+  const uint64_t vart            = 0x01000 ;
+  const uint64_t aie_status      = 0x02000 ;
+  const uint64_t ml_timeline     = 0x04000 ;
+  const uint64_t aie_halt        = 0x08000 ;
+  const uint64_t aie_pc          = 0x10000 ;
 
 } // end namespace info
 } // end namespace xdp ;

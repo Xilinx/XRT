@@ -22,13 +22,9 @@ static constexpr size_t host_app = 1; //opcode
 static constexpr uint32_t num_of_cores = 32;
 
 /*
-* Essentially, we are doing 4 unrolled loop of 8x8_8x8 matmult.
-* Each 8x8_8x8 matmult involves 8x8x8=512 MAC or 512*2 OP=1024 OPs.
-* Total inner*outer loop count= 2*2*12*4 (4 for unrolled loop)=192.
-* Total OPs= 192*1024= 192K OPs.
+* Total OPs= = 196K OPs.
 */
-static constexpr uint32_t total_ops = ((8*8*8)*2)*(2*2*12*4); //192K OPs
-
+static constexpr uint32_t total_ops = 196608; //192K OPs
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestGemm::TestGemm()
@@ -133,11 +129,13 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  // wait until clock reaches the targeted frequency
-  auto const target_h_clock_freq = 1810;
+  // wait until clock reaches the max frequency
+  int ipu_hclock_pre = 0;
   int ipu_hclock = 0;
-  while (ipu_hclock < target_h_clock_freq) {
-    //get h-clock
+  auto hclock_steady_counter = 0;
+  auto first_steady_state = -1, second_steady_state = -1;;
+
+  for(int i=0; i<100;i++){
     auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
     auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
     for (int c = 0; c < clock_topology->m_count; c++) {
@@ -145,6 +143,27 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
         ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    //std::cout << "NPU clock: " << ipu_hclock <<std::endl;
+
+    hclock_steady_counter = (ipu_hclock == ipu_hclock_pre) ? hclock_steady_counter + 1 : 0;
+    if(hclock_steady_counter == 8 && first_steady_state == -1 && ipu_hclock >= 1810) {
+      //break;
+      first_steady_state = ipu_hclock_pre; 
+      hclock_steady_counter = 0;
+    }
+    
+    if(hclock_steady_counter == 8 && first_steady_state != -1 && second_steady_state == -1 && ipu_hclock > first_steady_state) {
+      //break;
+      second_steady_state = ipu_hclock; 
+      hclock_steady_counter = 0;
+    }
+    
+    if (hclock_steady_counter == 8 && second_steady_state != -1  && ipu_hclock > second_steady_state) {
+      break;  
+    }
+    
+    ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
+
   }
 
   try {
