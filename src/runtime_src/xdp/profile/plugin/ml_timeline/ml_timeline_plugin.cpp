@@ -160,7 +160,7 @@ namespace xdp {
     }
     mMultiImpl.clear();
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "In ML Timeline Plugin : All data have been dumped."
+        "In ML Timeline Plugin : All data have been dumped.");
 #endif
   }
 
