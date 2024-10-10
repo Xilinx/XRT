@@ -51,7 +51,12 @@ TestCase::initialize()
 {
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < queue_len; j++) {
-    auto kernel = xrt::kernel(hw_ctx, kernel_name);
+    xrt::kernel kernel;
+    try {
+      kernel = xrt::kernel(hw_ctx, kernel_name);
+    } catch (const std::exception& ) {
+      throw std::runtime_error("Not enough columns available. Please make sure no other workload is running on the device."); //rethrow
+    }
     auto bos = BO_set(device, kernel, buffer_size);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);

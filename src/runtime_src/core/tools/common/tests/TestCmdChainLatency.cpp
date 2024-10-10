@@ -88,14 +88,10 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     testker = xrt::kernel(hwctx, kernelName);
   }
-  catch (const std::exception& ex){
-    std::string err_msg(ex.what());
-    if(err_msg.find(std::string("0xc01e0009")) != std::string::npos) //context creation failed
-      logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    else
-      logger(ptree, "Error", err_msg);
-  
-    ptree.put("status", test_token_failed);
+  catch (const std::exception& )
+  {
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
 
