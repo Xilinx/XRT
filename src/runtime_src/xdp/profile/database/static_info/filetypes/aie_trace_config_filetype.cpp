@@ -187,7 +187,7 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
 
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && isAllKernel)
+    if (isAllKernel)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs
