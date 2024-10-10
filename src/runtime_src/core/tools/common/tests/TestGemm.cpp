@@ -113,7 +113,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = XrtSmi::Validate::get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -123,7 +123,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //Create Instruction BO
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  XrtSmi::Validate::init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   //Sync Instruction BO
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
@@ -132,7 +132,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   // wait until clock reaches the max frequency
   int ipu_hclock = 0;
-  XrtSmi::Validate::wait_for_max_clock(ipu_hclock, dev);
+  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
 
   try {
     //run kernel

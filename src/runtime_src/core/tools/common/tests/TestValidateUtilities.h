@@ -61,13 +61,12 @@ public:
   void run();
 };
 
-namespace XrtSmi{
-namespace Validate{
+
+namespace XBValidateUtils{
 
 void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
 size_t get_instr_size(const std::string& dpu_file);
 void wait_for_max_clock(int&, std::shared_ptr<xrt_core::device>);
 
-} //End of namespace Validate
-} //End of namespace XrtSmi
+} //End of namespace XBValidateUtils
 #endif

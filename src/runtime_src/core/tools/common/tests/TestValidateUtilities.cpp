@@ -24,7 +24,7 @@ BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::
     // Create a no-op instruction if no instruction file is provided
     std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
   } else {
-    size_t instr_size = XrtSmi::Validate::get_instr_size(dpu_instr); 
+    size_t instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
     bo_instr = xrt::bo(device, instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
   }
 }
@@ -88,8 +88,7 @@ TestCase::run()
   }
 }
 
-namespace XrtSmi{
-namespace Validate{
+namespace XBValidateUtils{
 
 // Copy values from text files into buff, expecting values are ascii encoded hex
 void 
@@ -169,5 +168,4 @@ wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
   }
 }
 
-}// end of namespace Validate
-}// end of namespace XrtSmi
+}// end of namespace XBValidateUtils
