@@ -79,6 +79,7 @@ namespace xdp {
   {
     if (VPDatabase::alive()) {
       try {
+        MLTimelinePlugin::live = false;
         writeAll(false);
       }
       catch (...) {
@@ -98,13 +99,13 @@ namespace xdp {
   {
 #ifdef XDP_CLIENT_BUILD
 
-    if (0 == mBufSz)
-      mBufSz = ParseMLTimelineBufferSizeConfig();
-
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
       // Same Hardware Context Implementation uses the same impl and buffer
       return;
     }
+
+    if (0 == mBufSz)
+      mBufSz = ParseMLTimelineBufferSizeConfig();
 
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
@@ -118,7 +119,6 @@ namespace xdp {
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
-    mlImpl->setHwContext(hwContext);
     mlImpl->setBufSize(mBufSz);
     mlImpl->updateDevice(hwCtxImpl);
 
@@ -128,11 +128,16 @@ namespace xdp {
   void MLTimelinePlugin::finishflushDevice(void* hwCtxImpl)
   {
 #ifdef XDP_CLIENT_BUILD
+    if (mMultiImpl.empty()) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+          "In ML Timeline Plugin : No active HW Context found. So no data flush done.");
+      return;   
+    }
     std::map<void* /*hwCtxImpl*/,
              std::pair<uint64_t /* deviceId */, std::unique_ptr<MLTimelineImpl>>>::iterator itr;
 
     itr = mMultiImpl.find(hwCtxImpl);
-    if (itr == mMultiImpl.end() || nullptr == itr->second.second) {
+    if (itr == mMultiImpl.end()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
           "Cannot retrieve ML Timeline data as a new HW Context Implementation is passed.");
       return;
@@ -140,7 +145,7 @@ namespace xdp {
 
     itr->second.second->finishflushDevice(hwCtxImpl, itr->second.first);
     itr->second.second.reset(nullptr);
-
+    mMultiImpl.erase(itr);
 #endif
   }
 
@@ -151,8 +156,11 @@ namespace xdp {
       if (nullptr == e.second.second)
         continue;
       e.second.second->finishflushDevice(e.first, e.second.first);
+      e.second.second.reset(nullptr);
     }
     mMultiImpl.clear();
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "In ML Timeline Plugin : All data have been dumped."
 #endif
   }
 
