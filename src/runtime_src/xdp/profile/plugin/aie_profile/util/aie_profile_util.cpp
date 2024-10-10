@@ -117,7 +117,7 @@ namespace xdp::aie::profile {
       {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
       {"output_throughputs",        {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {METRIC_BYTE_COUNT,{XAIE_EVENT_PORT_RUNNING_1_PL,     XAIE_EVENT_PORT_RUNNING_1_PL}},
+      {METRIC_BYTE_COUNT,           {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
       {METRIC_LATENCY,              {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
