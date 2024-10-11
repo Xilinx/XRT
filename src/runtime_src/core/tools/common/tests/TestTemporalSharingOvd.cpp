@@ -2,6 +2,11 @@
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
+
+// System - Include Files
+#include <thread>
+
+// Local - Include Files
 #include "tools/common/XBUtilities.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "TestValidateUtilities.h"
@@ -10,7 +15,6 @@
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 
-#include <thread>
 
 namespace XBU = XBUtilities;
 static constexpr size_t buffer_size = 1024; //1 KB
