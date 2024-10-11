@@ -25,7 +25,7 @@ namespace xdp {
   class ResultBOContainer;
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
-    ResultBOContainer* mResultBOHolder;
+    std::unique_ptr<ResultBOContainer> mResultBOHolder;
     public :
       MLTimelineClientDevImpl(VPDatabase* dB);
 

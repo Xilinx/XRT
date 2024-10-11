@@ -1,12 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __TestHelper_h_
-#define __TestHelper_h_
+#ifndef __TestValidateUtilities_h_
+#define __TestValidateUtilities_h_
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "tools/common/TestRunner.h"
+
+class TestParams {
+public:
+  xrt::xclbin xclbin;               // Xclbin object
+  xrt::device device;              
+  std::string kernel_name;
+  std::string dpu_file;
+  int queue_len;
+  size_t buffer_size;
+  int itr_count;
+  
+  TestParams(const xrt::xclbin& xclbin, xrt::device device, const std::string& kernel_name, const std::string& dpu_file, int queue_len, size_t buffer_size, int itr_count)
+    : xclbin(xclbin), device(device), kernel_name(kernel_name), dpu_file(dpu_file), queue_len(queue_len), buffer_size(buffer_size), itr_count(itr_count) {}
+};
 
 // Class representing a set of buffer objects (BOs)
 class BO_set {
@@ -20,7 +34,7 @@ class BO_set {
 
 public:
   // Constructor to initialize buffer objects
-  BO_set(const xrt::device&, const xrt::kernel&, size_t);
+  BO_set(const xrt::device&, const xrt::kernel&, const std::string&, size_t);
 
   // Method to set kernel arguments
   void set_kernel_args(xrt::run&) const;
@@ -32,23 +46,27 @@ public:
 
 // Class representing a test case, which is created for a single run on a single thread//
 class TestCase {
-  xrt::device device;               // Device object
-  xrt::xclbin xclbin;               // Xclbin object
-  std::string kernel_name;          // Name of the kernel
+  TestParams params;           // Test parameters
   xrt::hw_context hw_ctx;           // Hardware context
-  int queue_len;               // Queue length
-  size_t buffer_size;               // Size of the buffer
-  int itr_count;                    // Number of iterations
   std::vector<xrt::run> run_list;   // Collection of run objects
   std::vector<xrt::kernel> kernels; // Collection of kernel objects
   std::vector<BO_set> bo_set_list;  // Collection of buffer object sets
 
 public:
   // Constructor to initialize the test case with xclbin and kernel name with hardware context creation
-  TestCase(const xrt::xclbin& xclbin, const std::string& kernel, const xrt::device& device)
-      : device(device), xclbin(xclbin), kernel_name(kernel), hw_ctx(device, xclbin.get_uuid()), queue_len(4), buffer_size(1024), itr_count(1000) {}
+  TestCase(const TestParams& params)
+      : params(params) {}
 
   void initialize();
   void run();
-};;;
+};
+
+
+namespace XBValidateUtils{
+
+void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
+size_t get_instr_size(const std::string& dpu_file);
+void wait_for_max_clock(int&, std::shared_ptr<xrt_core::device>);
+
+} //End of namespace XBValidateUtils
 #endif

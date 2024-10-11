@@ -4,7 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestSpatialSharingOvd.h"
-#include "TestHelper.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -15,6 +15,7 @@
 namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
+static constexpr size_t buffer_size = 1024; //1 KB
 
 // Method to run the test
 // Parameters:
@@ -103,13 +104,20 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     }
   };
 
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  if (!std::filesystem::exists(dpu_instr))
+    return ptree;
+
+  logger(ptree, "DPU-Sequence", dpu_instr);
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  testcases.emplace_back(xclbin, kernelName, working_dev);
-  testcases.emplace_back(xclbin, kernelName, working_dev);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 8, buffer_size, 10000);
+  testcases.emplace_back(params);
+  testcases.emplace_back(params);
 
   for (uint32_t i = 0; i < testcases.size(); i++) {
     try{
@@ -140,7 +148,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   /* Run 2 */
   // Create a single test case and run it in a single thread
-  TestCase singleHardwareCtxTest(xclbin, kernelName, working_dev);
+  TestCase singleHardwareCtxTest(params);
   try{
     singleHardwareCtxTest.initialize();
   } 
@@ -160,15 +168,13 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   // Log the latencies and the overhead
   if(XBU::getVerbose()){
-    logger(ptree, "Details", boost::str(boost::format("Single context latency: '%.1f' ms") % (latencySingle * 1000)));
-    logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: '%.1f' ms") % (latencyShared * 1000)));
+    logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle * 1000)));
+    logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared * 1000)));
   }
   auto overhead = (latencyShared - latencySingle) * 1000;
-  logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % overhead));
+  logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
 
   //check if the value is in range
   result_in_range(overhead, get_threshold(), ptree);
-
-  logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f ms") % overhead));
   return ptree;
 }

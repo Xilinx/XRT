@@ -24,6 +24,7 @@
 #include <regex>
 
 #include "core/common/api/bo_int.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 
@@ -39,9 +40,11 @@ namespace xdp {
   {
     public:
       xrt::bo  mBO;
-      ResultBOContainer(xrt::hw_context hwCtx, uint32_t sz)
+      ResultBOContainer(void* hwCtxImpl, uint32_t sz)
       {
-        mBO = xrt_core::bo_int::create_debug_bo(hwCtx, sz);
+        mBO = xrt_core::bo_int::create_debug_bo(
+                xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl),
+                sz);
       }
       ~ResultBOContainer() {}
 
@@ -58,14 +61,13 @@ namespace xdp {
   };
 
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
-    : MLTimelineImpl(dB),
-      mResultBOHolder(nullptr)
+    : MLTimelineImpl(dB)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Created ML Timeline Plugin for Client Device.");
   }
 
-  void MLTimelineClientDevImpl::updateDevice(void* /*hwCtxImpl*/)
+  void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineClientDevImpl::updateDevice");
@@ -76,7 +78,7 @@ namespace xdp {
        * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
        * can use their own Debug BO to capture their data.
        */
-      mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
+      mResultBOHolder = std::make_unique<ResultBOContainer>(hwCtxImpl, mBufSz);
       memset(mResultBOHolder->map(), 0, mBufSz);
 
     } catch (std::exception& e) {
@@ -94,6 +96,9 @@ namespace xdp {
 
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
   {
+    if (!mResultBOHolder)
+      return;
+  
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
               
@@ -180,13 +185,12 @@ namespace xdp {
 
     std::stringstream msg1;
     msg1 << "Finished writing " << outFName << " in MLTimelineClientDevImpl::finishflushDevice." << std::endl;
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg1.str());
   
     /* Delete the result BO so that AIE Profile/Debug Plugins, if enabled,
      * can use their own Debug BO to capture their data.
      */
-    delete mResultBOHolder;
-    mResultBOHolder = nullptr;
+    mResultBOHolder.reset(nullptr);
   }
 }
 
