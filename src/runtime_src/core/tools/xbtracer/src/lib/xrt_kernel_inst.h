@@ -4,6 +4,7 @@
 #pragma once
 
 #include "xrt/xrt_kernel.h"
+#include "experimental/xrt_kernel.h"
 
 /*
  * Run class method aliases.
@@ -63,7 +64,7 @@ using xrt_kernel_ctor = xrt::kernel* (*)(void*, const xrt::device&,\
   const xrt::uuid&, const std::string&, xrt::kernel::cu_access_mode);
 using xrt_kernel_ctor2 = xrt::kernel* (*)(void*, const xrt::hw_context&,\
   const std::string&);
-/*TODO: Marked obselete - should be keep this ?*/
+/*TODO: Marked obselete - should we keep this ?*/
 using xrt_kernel_ctor_obs = xrt::kernel* (*)(void* cxt, xclDeviceHandle,\
   const xrt::uuid&, const std::string&, xrt::kernel::cu_access_mode);
 using xrt_kernel_group_id = int (xrt::kernel::*)(int) const;
@@ -89,4 +90,26 @@ struct xrt_kernel_ftbl
   xrt_kernel_get_name get_name;
   xrt_kernel_get_xclbin get_xclbin;
   xrt_kernel_dtor dtor;
+};
+
+/*
+ * Runlist class method aliases.
+ */
+using xrt_runlist_ctor = xrt::runlist (*)(void*, const xrt::hw_context&);
+using xrt_runlist_add = void (xrt::runlist::*)(const xrt::run&);
+using xrt_runlist_execute = void (xrt::runlist::*)(void);
+using xrt_runlist_wait = std::cv_status (xrt::runlist::*)\
+  (const std::chrono::milliseconds&) const;
+using xrt_runlist_reset = void (xrt::runlist::*)(void);
+
+/*
+ * struct xrt_runlist_ftbl definition.
+ */
+struct xrt_runlist_ftbl
+{
+  xrt_runlist_ctor ctor;
+  xrt_runlist_add add;
+  xrt_runlist_execute execute;
+  xrt_runlist_wait wait;
+  xrt_runlist_reset reset;
 };

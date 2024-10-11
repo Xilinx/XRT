@@ -6,6 +6,7 @@
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_xclbin.h"
 #include "experimental/xrt_ext.h"
+#include "experimental/xrt_kernel.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt.h"
 #include "xclbin.h"
@@ -61,6 +62,9 @@ class replay_xrt
   /*Map between handle from log and bo */
   std::unordered_map<uint64_t, std::shared_ptr<xrt::xclbin>> m_xclbin_hndle_map;
 
+  /*Map between handle from log and runlist */
+  std::unordered_map<uint64_t, std::shared_ptr<xrt::runlist>> m_runlist_hndle_map;
+
   /*Map between group id */
   std::unordered_map<uint64_t, xrt::memory_group> m_kernel_grp_id;
 
@@ -86,6 +90,9 @@ class replay_xrt
 
   /*Register hw_ctx class API's*/
   void register_hwctxt_class_func();
+
+  /* Registers runlist class API's */
+  void register_runlist_class_func();
 
   /* Validate's file path */
   bool is_file_exist(const std::string& fileName)
@@ -124,6 +131,9 @@ class replay_xrt
 
     /* Register HW CTX Class APIs*/
     register_hwctxt_class_func();
+
+    /*Register Runlist class API's */
+    register_runlist_class_func();
   }
 
   /*
@@ -159,6 +169,7 @@ class replay_xrt
     m_xclbin_hndle_map.clear();
     m_hwctx_hndle_map.clear();
     m_device_hndle_map.clear();
+    m_runlist_hndle_map.clear();
   }
 
   /*

@@ -105,6 +105,13 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::run::set_arg_at_index(int, xrt::bo const&)", (void **) &dtbl.run.set_arg2},
   {"xrt::run::update_arg_at_index(int, void const*, unsigned long)", (void **) &dtbl.run.update_arg3},
   {"xrt::run::update_arg_at_index(int, xrt::bo const&)", (void **) &dtbl.run.update_arg2},
+  
+  /* runlist class maps */
+  {"xrt::runlist::runlist(xrt::hw_context const&)", (void **) &dtbl.runlist.ctor},
+  {"xrt::runlist::add(xrt::run const&)", (void **) &dtbl.runlist.add},
+  {"xrt::runlist::execute()", (void **) &dtbl.runlist.execute},
+  {"xrt::runlist::wait(std::chrono::duration<long, std::ratio<1l, 1000l> > const&) const", (void **) &dtbl.runlist.wait},
+  {"xrt::runlist::reset()", (void **) &dtbl.runlist.reset},
 
   /* kernel class maps */
   {"xrt::kernel::kernel(xrt::device const&, xrt::uuid const&, std::string const&, xrt::kernel::cu_access_mode)", (void **) &dtbl.kernel.ctor},
