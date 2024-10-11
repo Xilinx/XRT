@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestTCTOneColumn.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -105,7 +106,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -118,7 +119,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   xrt::bo bo_ofm(working_dev, 4*buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
 
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
 
   // map input buffer
   auto ifm_mapped = bo_ifm.map<int*>();
