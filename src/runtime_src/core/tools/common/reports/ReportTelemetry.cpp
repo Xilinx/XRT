@@ -33,7 +33,7 @@ generate_rtos_dtlb_string(const boost::property_tree::ptree& pt)
   std::stringstream ss;
 
   boost::property_tree::ptree rtos_tasks = pt.get_child("rtos_tasks", empty_ptree);
-  boost::property_tree::ptree rtos_dtlb_data = pt.get_child("rtos_tasks..dtlb_data", empty_ptree);
+  boost::property_tree::ptree rtos_dtlb_data = pt.get_child("rtos_tasks.dtlb_data", empty_ptree);
   if(rtos_tasks.empty() && rtos_dtlb_data.empty())
     return ss.str();
 
@@ -65,6 +65,46 @@ generate_rtos_dtlb_string(const boost::property_tree::ptree& pt)
 
   ss << "  RTOS DTLBs\n";
   ss << rtos_dtlb_table.toString("  ") << "\n";
+
+  return ss.str();
+}
+
+static std::string
+generate_preemption_data_string(const boost::property_tree::ptree& pt)
+{
+  std::stringstream ss;
+  boost::property_tree::ptree rtos_tasks = pt.get_child("rtos_tasks", empty_ptree);
+  boost::property_tree::ptree rtos_preemption_data = pt.get_child("rtos_tasks.preemption_data", empty_ptree);
+  if(rtos_tasks.empty() && rtos_preemption_data.empty())
+    return ss.str();
+
+  std::vector<Table2D::HeaderData> preempt_headers = {
+    {"User Task", Table2D::Justification::left},
+    {"Ctx ID", Table2D::Justification::left},
+    {"Set Hints", Table2D::Justification::left},
+    {"Unset Hints", Table2D::Justification::left},
+    {"Checkpoint Events", Table2D::Justification::left},
+    {"Frame Boundary Events", Table2D::Justification::left},
+  };
+  Table2D preemption_table(preempt_headers);
+
+  int index = 0;
+  for (const auto& [name, rtos_task] : rtos_preemption_data) {
+    const std::vector<std::string> rtos_data = {
+      std::to_string(index),
+      std::to_string(rtos_task.get<uint64_t>("slot_index")),
+      std::to_string(rtos_task.get<uint64_t>("preemption_flag_set")),
+      std::to_string(rtos_task.get<uint64_t>("preemption_flag_unset")),
+      std::to_string(rtos_task.get<uint64_t>("preemption_checkpoint_event")),
+      std::to_string(rtos_task.get<uint64_t>("frame_boundary_preemption_events")),
+    };
+    preemption_table.addEntry(rtos_data);
+
+    index++;
+  }
+
+  ss << "  Premption Table\n";
+  ss << preemption_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -225,6 +265,7 @@ ReportTelemetry::writeReport(const xrt_core::device* /*_pDevice*/,
   _output << generate_misc_string(telemetry_pt);
   _output << generate_rtos_string(telemetry_pt);
   _output << generate_rtos_dtlb_string(telemetry_pt);
+  _output << generate_preemption_data_string(telemetry_pt);
   _output << generate_opcode_string(telemetry_pt);
   _output << generate_stream_buffer_string(telemetry_pt);
   _output << generate_aie_string(telemetry_pt);

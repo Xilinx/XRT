@@ -1815,6 +1815,14 @@ struct rtos_telemetry : request
     uint64_t misses;
   };
 
+  struct preempt_data {
+    uint64_t slot_index;
+    uint64_t preemption_flag_set;
+    uint64_t preemption_flag_unset;
+    uint64_t preemption_checkpoint_event;
+    uint64_t frame_boundary_preemption_events;
+  };
+
   struct data {
     uint64_t context_starts;
     uint64_t schedules;
@@ -1822,6 +1830,7 @@ struct rtos_telemetry : request
     uint64_t dma_access;
     uint64_t resource_acquisition;
     std::vector<dtlb_data> dtlbs;
+    std::vector<preempt_data> preemption_data;
   };
 
   using result_type = std::vector<data>;
@@ -3812,8 +3821,8 @@ struct performance_mode : request
 */
 struct preemption : request
 {
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t;   // put value type
+  using result_type = bool;  // get value type
+  using value_type = bool;   // put value type
 
   static const key_type key = key_type::preemption;
 

@@ -34,6 +34,27 @@ add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
     }
     pt_rtos_inst.add_child("dtlb_data", pt_dtlbs);
 
+    boost::property_tree::ptree pt_preempts;
+    for (auto& kp : rtos_task.preemption_data) {
+      boost::property_tree::ptree pt_preempt;
+
+      //add a check for not supported
+      if(static_cast<int>(kp.preemption_flag_set) == -1) 
+        return; //not supported
+      if(static_cast<int>(kp.slot_index) == -1) 
+        pt_preempt.put("slot_index", kp.slot_index);
+      pt_preempt.put("preemption_flag_set", kp.preemption_flag_set);
+      if(static_cast<int>(kp.preemption_flag_unset) == -1) 
+        pt_preempt.put("preemption_flag_unset", kp.preemption_flag_unset);
+      if(static_cast<int>(kp.preemption_checkpoint_event) == -1) 
+        pt_preempt.put("preemption_checkpoint_event", kp.preemption_checkpoint_event);
+      if(static_cast<int>(kp.frame_boundary_preemption_events) == -1) 
+        pt_preempt.put("frame_boundary_preemption_events", kp.frame_boundary_preemption_events);
+
+      pt_preempts.push_back({"", pt_preempt});
+    }
+    pt_rtos_inst.add_child("preemption_data", pt_preempts);
+
     pt_rtos_array.push_back({"", pt_rtos_inst});
   }
   pt.add_child("rtos_tasks", pt_rtos_array);

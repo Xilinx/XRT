@@ -85,10 +85,10 @@ OO_Preemption::execute(const SubCmdOptions& _options) const
 
   try {
     if (boost::iequals(m_action, "enable")) {
-      xrt_core::device_update<xrt_core::query::preemption>(device.get(), static_cast<uint32_t>(1)); // default
+      xrt_core::device_update<xrt_core::query::preemption>(device.get(), static_cast<bool>(1)); // default
     }
     else if (boost::iequals(m_action, "disable")) {
-      xrt_core::device_update<xrt_core::query::preemption>(device.get(), static_cast<uint32_t>(0));
+      xrt_core::device_update<xrt_core::query::preemption>(device.get(), static_cast<bool>(0));
     }
     else {
       throw xrt_core::error(boost::str(boost::format("Invalid force-preemption value: '%s'\n") % m_action));
