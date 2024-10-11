@@ -91,7 +91,7 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         profileTiles[tile_idx].col = tileMetric.first.col;
         profileTiles[tile_idx].row = tileMetric.first.row;
-        profileTiles[tile_idx].stream_id = tileMetric.first.stream_id;
+        profileTiles[tile_idx].stream_ids = tileMetric.first.stream_ids;
         profileTiles[tile_idx].is_master = tileMetric.first.is_master;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;

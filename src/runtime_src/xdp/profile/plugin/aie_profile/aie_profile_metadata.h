@@ -104,7 +104,6 @@ class AieProfileMetadata {
       {METRIC_LATENCY,     static_cast<uint16_t>(3601)}
     };
 
-
     std::map<tile_type, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
@@ -132,7 +131,8 @@ class AieProfileMetadata {
                                            const std::vector<std::string> graphMetricsSettings);
     int getPairModuleIndex(const std::string& metricSet, module_type mod);
     uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
-    
+    bool isSupported(const std::string metricSet, bool isTileBased);
+
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
      std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module);
 

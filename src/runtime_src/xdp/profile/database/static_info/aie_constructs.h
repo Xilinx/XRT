@@ -68,7 +68,7 @@ namespace xdp {
   {
     uint8_t  row = 0;
     uint8_t  col = 0;
-    uint8_t  stream_id = 0;
+    std::vector<uint8_t> stream_ids;
     uint8_t  is_master = 0;
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;

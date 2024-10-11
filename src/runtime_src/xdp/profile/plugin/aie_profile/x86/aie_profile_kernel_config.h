@@ -17,6 +17,8 @@
 #ifndef AIE_PROFILE_CONFIG_DOT_H
 #define AIE_PROFILE_CONFIG_DOT_H
 
+#include <vector>
+
 namespace xdp {
   namespace built_in {
 
@@ -63,7 +65,7 @@ namespace xdp {
     struct ProfileTileType {
       uint16_t row;
       uint16_t col;
-      uint16_t stream_id;
+      std::vector<uint8_t> stream_ids;
       uint16_t is_master;
       uint64_t itr_mem_addr;
       bool is_trigger;

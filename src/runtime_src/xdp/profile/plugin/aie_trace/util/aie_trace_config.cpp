@@ -93,14 +93,15 @@ namespace xdp::aie::trace {
           // Interface tiles (e.g., PLIO, GMIO)
           auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
           std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
-          auto streamPortId  = static_cast<uint8_t>(tile.stream_id);
+          uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
+              0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " stream port " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = channel;
+          config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
 
           if (tile.is_master == 0)
@@ -138,6 +139,14 @@ namespace xdp::aie::trace {
         switchPortRsc->start();
         streamPorts.push_back(switchPortRsc);
       }
+    }
+
+    if ((type == module_type::shim) && (tile.subtype == io_type::PLIO) &&
+        (switchPortMap.size() < tile.stream_ids.size())) {
+      std::string msg = "Interface tile " + std::to_string(tile.col) + " has more "
+                      + "PLIO than can be monitored by metric set " + metricSet + "."
+                      + "Please run again with different settings or choose a different set.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 
     switchPortMap.clear();

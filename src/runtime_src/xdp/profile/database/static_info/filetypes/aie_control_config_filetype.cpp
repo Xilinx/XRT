@@ -305,19 +305,20 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         tile_type tile;
         tile.col = shimCol;
         tile.row = 0;
-        tile.subtype = type;
-
+        
+        // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
-        if ((type == io_type::PLIO) && (it != tiles.end())) {
-            std::string msg = "Interface tile " + std::to_string(shimCol)
-                            + " supports more than one PLIO, but only one can be monitored.";
-            xrt_core::message::send(severity_level::warning, "XRT", msg);
+        if (it != tiles.end()) {
+            // Add to existing list of stream IDs
+            it->stream_ids.push_back(streamId);
         }
-
-        // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-        tile.is_master = isMaster;
-        tile.stream_id = streamId;
-        tiles.emplace_back(std::move(tile));
+        else {
+            // Grab first stream ID and add to list of tiles
+            tile.stream_ids.push_back(streamId);
+            tile.subtype = type;
+            tile.is_master = isMaster;
+            tiles.emplace_back(std::move(tile));
+        }
     }
 
     if (tiles.empty() && (specifiedId >= 0)) {
@@ -411,7 +412,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).stream_id = xdp::aie::convertStringToUint8(node.second.data());
+            tiles.at(count++).stream_ids.push_back(xdp::aie::convertStringToUint8(node.second.data()));
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;
