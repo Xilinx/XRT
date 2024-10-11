@@ -19,6 +19,7 @@
 #else
 # include <sys/stat.h>
 # include <unistd.h>
+# include <cstring>
 #endif /* #ifdef _WIN32 */
 
 #ifdef _WIN32
@@ -76,6 +77,8 @@ class launcher
   PROCESS_INFORMATION m_pi;
   LPTHREAD_START_ROUTINE m_idt_fixup = nullptr;
   HMODULE m_hlib = nullptr;
+#else
+  std::vector<char*> new_environ;
 #endif /* #ifdef _WIN32 */
 
   // Delete copy constructor and assignment operator
@@ -390,11 +393,17 @@ int set_envs(launcher& app)
 #ifndef _WIN32
   if (!app.m_lib_path.empty())
   {
-    if (set_env("LD_PRELOAD", app.m_lib_path.c_str()))
-      log_d("Environment variable set successfully: LD_PRELOAD = ",
-        app.m_lib_path);
-    else
-      log_f("Failed to set environment variable: LD_PRELOAD");
+    char** env_ptr = environ;
+    while (*env_ptr != NULL)
+    {
+      app.new_environ.push_back(*env_ptr);
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+      ++env_ptr;
+    }
+    std::string xb_tracer_preload = "LD_PRELOAD=" + app.m_lib_path;
+    app.new_environ.push_back(strdup(xb_tracer_preload.c_str()));
+    app.new_environ.push_back(NULL);
+
     print_trace_location(app);
   }
   else
@@ -699,8 +708,7 @@ int launch_process(launcher& app)
   convert_to_c_array(app.m_child_cmd_args, command_args, max_cmd_args);
 
   // NOLINTNEXTLINE - this is a c-api call
-  execve(app.m_child_cmd_args.front().data(), command_args,
-    (char* const*)environ);
+  execve(app.m_child_cmd_args.front().data(), command_args, app.new_environ.data());
   perror("execve");
 
   return 0;

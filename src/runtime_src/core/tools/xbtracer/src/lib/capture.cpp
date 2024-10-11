@@ -187,6 +187,11 @@ class router
   {
     load_symbols();
     load_func_addr();
+    /**
+     * Unseting the LD_PRELOAD to avoid the multiple instance of loading same library.
+     */
+    // NOLINTNEXTLINE(concurrency-mt-unsafe)
+    unsetenv("LD_PRELOAD");
   }
 
   ~router()
@@ -226,7 +231,7 @@ static std::string demangle(const char* mangled_name)
               "std::allocator<char> >", "std::string"},
         {"[abi:cxx11]", ""},
         {"std::map<std::string, unsigned int, std::less<std::string >, "
-            "std::allocator<std::pair<std::string const, unsigned int> > >", 
+            "std::allocator<std::pair<std::string const, unsigned int> > >",
             "xrt::hw_context::cfg_param_type"}
       };
 
