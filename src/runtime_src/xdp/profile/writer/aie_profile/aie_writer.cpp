@@ -57,8 +57,7 @@ namespace xdp {
   void AIEProfilingWriter::writeMetricSettings()
   {
     auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
-    uint8_t col_partition_shift = metadataReader->getPartitionOverlayStartCols().front();
-    std::cout << "!!! col_partition_shift: " << +col_partition_shift << std::endl;
+    uint8_t col_shift = metadataReader->getPartitionOverlayStartCols().front();
     auto validConfig = (db->getStaticInfo()).getProfileConfig();
 
     std::map<module_type, std::vector<std::string>> filteredConfig;
@@ -72,7 +71,7 @@ namespace xdp {
 
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
-        metrics.push_back(std::to_string(+elm.first.col+col_partition_shift) + "," + \
+        metrics.push_back(std::to_string(+(elm.first.col+col_shift)) + "," + \
                           aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) \
                           + "," + elm.second);
         if (i == module_type::shim && elm.second == METRIC_BYTE_COUNT) {
