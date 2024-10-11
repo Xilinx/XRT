@@ -101,7 +101,7 @@ namespace xdp::aie::trace {
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = channel;
+          config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
 
           if (tile.is_master == 0)
