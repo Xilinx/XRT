@@ -60,7 +60,7 @@ TestCase::initialize()
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
     try {
-      kernel = xrt::kernel(hw_ctx, kernel_name);
+      kernel = xrt::kernel(hw_ctx, params.kernel_name);
     } catch (const std::exception& ) {
       throw std::runtime_error("Not enough columns available. Please make sure no other workload is running on the device."); //rethrow
     }
