@@ -124,7 +124,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   // Measure the latency for running the test cases in parallel
   start = std::chrono::high_resolution_clock::now(); 
   // Create four threads to run the test cases
-  for (int i = 0; i < testcases.size(); i++)
+  for (unsigned int i = 0; i < testcases.size(); i++)
     threads.emplace_back(runTestcase, std::ref(testcases[i]));
 
   for (uint32_t i = 0; i < threads.size(); i++) {
