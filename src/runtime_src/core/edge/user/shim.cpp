@@ -130,10 +130,6 @@ shim(unsigned index)
 shim::
 ~shim()
 {
-#ifdef XRT_ENABLE_AIE
-  if (m_aie_array)  // Aie cleanup should be done before shim destroyed
-    m_aie_array.reset();
-#endif
 
   xclLog(XRT_INFO, "%s", __func__);
 
