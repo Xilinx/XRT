@@ -76,7 +76,7 @@ else()
   endif()
 
   if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-    set(AIERT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aie-rt)
+    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt)
     set(XAIENGINE_BUILD_SHARED OFF)
     xrt_add_subdirectory(aie-rt/driver/src aie-rt)
     # This makes aiebu submodule use aie-rt from XRT-MCDM
