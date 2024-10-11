@@ -88,75 +88,6 @@ is_aie_only(struct axlf *axlf)
 	return false;
 }
 
-static bool
-is_pl_only(struct axlf *axlf)
-{
-	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
-		!xrt_xclbin_get_section_num(axlf, AIE_METADATA))
-		return true;
-
-	return false;
-}
-
-static int
-zocl_resolver(struct drm_zocl_dev *zdev, struct axlf *axlf, xuid_t *xclbin_id,
-	      uint32_t qos, uint32_t *slot_id)
-{
-	struct drm_zocl_slot *slot = NULL;
-	uint32_t s_id = 0;
-	uint32_t zocl_xclbin_type = 0;
-
-	/* Slots need to be decided based on interface ID. But currently this
-	 * functionality is not yet ready. Hence we are hard coding the Slots
-	 * based on the type of XCLBIN. This logic need to be updated in future.
-	 */
-	/* Right now the hard coded logic as follows:
-	 * Slot - 0 : FULL XCLBIN (Both PL and AIE) / PL Only XCLBIN
-	 * Slot - 1 : AIE Only XCLBIN
-	 */
-	if (is_aie_only(axlf)) {
-		/* For AIE only XCLBIN always download */
-		s_id = ZOCL_AIE_ONLY_XCLBIN_SLOT;
-		zocl_xclbin_type = ZOCL_XCLBIN_TYPE_AIE_ONLY;
-		goto done;
-	}
-	else {
-		s_id = ZOCL_DEFAULT_XCLBIN_SLOT;
-		if (is_pl_only(axlf))
-			zocl_xclbin_type = ZOCL_XCLBIN_TYPE_PL_ONLY;
-		else
-			zocl_xclbin_type = ZOCL_XCLBIN_TYPE_FULL;
-	}
-
-	slot = zdev->pr_slot[s_id];
-	if (!slot) {
-		DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", s_id);
-		return -EINVAL;
-	}
-
-	mutex_lock(&slot->slot_xclbin_lock);
-	slot->xclbin_type = zocl_xclbin_type;
-	if (zocl_xclbin_same_uuid(slot, xclbin_id)) {
-		if (qos & DRM_ZOCL_FORCE_PROGRAM) {
-			// We come here if user sets force_xclbin_program
-			// option "true" in xrt.ini under [Runtime] section
-			DRM_WARN("%s Force xclbin download", __func__);
-		} else {
-			*slot_id = s_id;
-			DRM_INFO("Exists xclbin %pUb to slot %d",
-							xclbin_id, s_id);
-			mutex_unlock(&slot->slot_xclbin_lock);
-			return -EEXIST;
-		}
-	}
-
-	mutex_unlock(&slot->slot_xclbin_lock);
-done:
-	*slot_id = s_id;
-	DRM_INFO("Loading xclbin %pUb to slot %d", xclbin_id, *slot_id);
-	return 0;
-}
-
 /*
  * This function is the main entry point to load xclbin. It's takes an userspace
  * pointer of xclbin and copy the xclbin data to kernel space. Then load that
@@ -171,7 +102,7 @@ done:
  */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
-	struct kds_client *client, int *slot_idx)
+	struct kds_client *client, int slot_id)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -183,7 +114,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *aie_res = 0;
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
-	int slot_id = 0;
 	uint32_t qos = 0;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
@@ -225,23 +155,22 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* TODO : qos need to define */
 	qos |= axlf_obj->za_flags;
-	ret = zocl_resolver(zdev, axlf, &axlf_head.m_header.uuid, qos, &slot_id);
-	if (ret) {
-		if (ret == -EEXIST) {
+	slot = zdev->pr_slot[slot_id];
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	if (zocl_xclbin_same_uuid(slot,  &axlf_head.m_header.uuid)) {
+		if (qos & DRM_ZOCL_FORCE_PROGRAM) {
+			// We come here if user sets force_xclbin_program
+			// option "true" in xrt.ini under [Runtime] section
+			DRM_WARN("%s Force xclbin download", __func__);
+		} else {
 			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
-			*slot_idx = slot_id;
 			vfree(axlf);
+			mutex_unlock(&slot->slot_xclbin_lock);
 			return 0;
 		}
-
-		DRM_ERROR("Download xclbin failed\n");
-		ret = -EINVAL;
-		goto out0;
 	}
 
-	*slot_idx = slot_id;
-	slot = zdev->pr_slot[slot_id];
-	mutex_lock(&slot->slot_xclbin_lock);
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
@@ -281,9 +210,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	} else
 #endif
 	if (is_aie_only(axlf)) {
-		zocl_cleanup_aie(zdev);
+		zocl_cleanup_aie(slot);
 
-		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
+		ret = zocl_load_aie_only_pdi(zdev, slot, axlf, xclbin, client);
 		if (ret)
 			goto out0;
 
@@ -312,7 +241,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  */
 			if (zocl_xclbin_get_uuid(slot) != NULL) {
 				zocl_destroy_cu_slot(zdev, slot->slot_idx);
-				zocl_cleanup_aie(zdev);
+				zocl_cleanup_aie(slot);
 			}
 
 			/*
@@ -370,7 +299,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, slot);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf, xclbin, aie_res, hw_gen, axlf_obj->partition_id);
+	zocl_create_aie(slot, axlf, xclbin, aie_res, hw_gen, axlf_obj->partition_id);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.

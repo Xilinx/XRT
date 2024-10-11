@@ -116,32 +116,32 @@ is_cached_error(struct aie_error_cache *zerr, struct aie_error *err)
 static void
 zocl_aie_error_cb(void *arg)
 {
-	struct drm_zocl_dev *zdev = arg;
+	struct drm_zocl_slot *slot = arg;
 	struct aie_errors *errors;
 	int i;
 
-	if (!zdev) {
-		DRM_WARN("%s: zdev is not initialized\n", __func__);
+	if (!slot) {
+		DRM_ERROR("%s: slot is not initialized\n", __func__);
 		return;
 	}
 
-	mutex_lock(&zdev->aie_lock);
-	if (!zdev->aie) {
-		DRM_WARN("%s: AIE image is not loaded.\n", __func__);
-		mutex_unlock(&zdev->aie_lock);
+	mutex_lock(&slot->aie_lock);
+	if (!slot->aie) {
+		DRM_ERROR("%s: AIE image is not loaded.\n", __func__);
+		mutex_unlock(&slot->aie_lock);
 		return;
 	}
 
-	if (!zdev->aie->aie_dev) {
-		DRM_WARN("%s: No available AIE partition.\n", __func__);
-		mutex_unlock(&zdev->aie_lock);
+	if (!slot->aie->aie_dev) {
+		DRM_ERROR("%s: No available AIE partition.\n", __func__);
+		mutex_unlock(&slot->aie_lock);
 		return;
 	}
 
-	errors = aie_get_errors(zdev->aie->aie_dev);
+	errors = aie_get_errors(slot->aie->aie_dev);
 	if (IS_ERR(errors)) {
-		DRM_WARN("%s: aie_get_errors failed\n", __func__);
-		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("%s: aie_get_errors failed\n", __func__);
+		mutex_unlock(&slot->aie_lock);
 		return;
 	}
 
@@ -157,7 +157,7 @@ zocl_aie_error_cb(void *arg)
 		    errors->errors[i].loc.row
 		    );
 
-		if (is_cached_error(&zdev->aie->err, &((errors->errors)[i])))
+		if (is_cached_error(&slot->aie->err, &((errors->errors)[i])))
 			continue;
 
 		err_code = XRT_ERROR_CODE_BUILD(
@@ -168,44 +168,80 @@ zocl_aie_error_cb(void *arg)
 		    XRT_ERROR_CLASS_AIE
 		    );
 
-		zocl_insert_error_record(zdev, err_code);
-		zocl_aie_cache_error(&zdev->aie->err, &((errors->errors)[i]));
+		//TODO
+		//zocl_insert_error_record(zdev, err_code);
+		zocl_aie_cache_error(&slot->aie->err, &((errors->errors)[i]));
 	}
 
 	aie_free_errors(errors);
 
-	mutex_unlock(&zdev->aie_lock);
+	mutex_unlock(&slot->aie_lock);
 }
 
+static struct drm_zocl_slot*
+get_slot(struct drm_zocl_dev * zdev, struct kds_client* client, int hw_ctx_id)
+{
+	int slot_idx = 0;
+	struct drm_zocl_slot* slot = NULL;
+	struct kds_client_hw_ctx *kds_hw_ctx = NULL;
+	mutex_lock(&client->lock);
+	kds_hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
+	if (kds_hw_ctx) {
+		slot_idx = kds_hw_ctx->slot_idx;
+	}
+
+	if (slot_idx >= MAX_PR_SLOT_NUM) {
+		DRM_ERROR("%s: Invalid client", __func__);
+		return NULL;
+	}
+
+	slot = zdev->pr_slot[slot_idx];
+	mutex_unlock(&client->lock);
+	return slot;
+}
 int
-zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)
+zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data,  struct drm_file *filp)
 {
 	struct drm_zocl_aie_fd *args = data;
 	int fd;
 	int rval = 0;
+	struct drm_zocl_slot *slot = NULL;
+	struct kds_client *client = filp->driver_priv;
 
-	mutex_lock(&zdev->aie_lock);
+	if (!client) {
+		DRM_ERROR("%s: Invalid client", __func__);
+		return -EINVAL;
+	}
 
-	if (!zdev->aie) {
-		DRM_ERROR("AIE image is not loaded.\n");
+	slot = get_slot(zdev, client, args->hw_ctx_id);
+
+	if (!slot) {
+		DRM_ERROR("%s: Invalid slot", __func__);
+		return -EINVAL;
+	}
+
+	mutex_lock(&slot->aie_lock);
+
+	if (!slot->aie) {
+		DRM_ERROR("%s: AIE image is not loaded.", __func__);
 		rval = -ENODEV;
 		goto done;
 	}
 
-	if (!zdev->aie->aie_dev) {
-		DRM_ERROR("No available AIE partition.\n");
+	if (!slot->aie->aie_dev) {
+		DRM_ERROR("%s: No available AIE partition.", __func__);
 		rval = -ENODEV;
 		goto done;
 	}
 
-	if (zdev->aie->partition_id != args->partition_id) {
+	if (slot->aie->partition_id != args->partition_id) {
 		DRM_ERROR("AIE partition %d does not exist.\n",
 		    args->partition_id);
 		rval = -ENODEV;
 		goto done;
 	}
 
-	fd = aie_partition_get_fd(zdev->aie->aie_dev);
+	fd = aie_partition_get_fd(slot->aie->aie_dev);
 	if (fd < 0) {
 		DRM_ERROR("Get AIE partition %d fd: %d\n",
 		    args->partition_id, fd);
@@ -215,37 +251,148 @@ zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)
 
 	args->fd = fd;
 
-	zdev->aie->fd_cnt++;
+	slot->aie->fd_cnt++;
 
 done:
-	mutex_unlock(&zdev->aie_lock);
+	mutex_unlock(&slot->aie_lock);
 
 	return rval;
 }
 
-int
-zocl_cleanup_aie(struct drm_zocl_dev *zdev)
+
+static void
+zocl_aie_reset_work(struct work_struct *aie_work)
 {
+	struct aie_work_data *data = container_of(aie_work,
+	    struct aie_work_data, work);
+	struct drm_zocl_slot *slot= data->slot;
+	if (!slot) {
+		DRM_ERROR("%s: Invalid slot", __func__);
+		return;
+	}
+	int i;
+
+	/*
+	 * Note: we can not hold lock here because this
+	 *       work thread is invoked within a lock and
+	 *       that lock will not be relased until the
+	 *       work is flushed.
+	 */
+
+	/*
+	 * Reset AIE by releasing AIE partition. The times we
+	 * release AIE partition is based on the # of fd is
+	 * requested + 1.
+	 */
+	for (i = 0; i < slot->aie->fd_cnt + 1; i++)
+		aie_partition_release(slot->aie->aie_dev);
+
+	slot->aie->fd_cnt = 0;
+}
+
+int
+zocl_aie_slot_reset(struct drm_zocl_slot* slot)
+{
+	if (!slot) {
+		DRM_ERROR("%s: Invalid slot", __func__);
+		return -EINVAL;
+	}
+	struct aie_partition_req req;
+	bool aie_available = false;
+	struct aie_work_data *data;
+	int count;
+
+	mutex_lock(&slot->aie_lock);
+
+	if (!slot->aie) {
+		mutex_unlock(&slot->aie_lock);
+		DRM_ERROR("AIE image is not loaded.\n");
+		return -ENODEV;
+	}
+
+	if (!slot->aie->aie_dev) {
+		mutex_unlock(&slot->aie_lock);
+		DRM_ERROR("No available AIE partition.\n");
+		return -ENODEV;
+	}
+
+	data = kmalloc(sizeof(struct aie_work_data), GFP_KERNEL);
+	if (!data) {
+		mutex_unlock(&slot->aie_lock);
+		DRM_ERROR("Can not allocate memory,\n");
+		return -ENOMEM;
+	}
+	data->slot = slot;
+
+	/*
+	 * Per the requrirement of current AIE driver, we
+	 * need to release the partition in a separate thread.
+	 */
+	INIT_WORK(&data->work, zocl_aie_reset_work);
+	queue_work(slot->aie->wq, &data->work);
+
+	/* Make sure the reset thread is done */
+	flush_workqueue(slot->aie->wq);
+	kfree(data);
+
+	req.partition_id = slot->aie->partition_id;
+	req.uid = slot->aie->uid;
+
+	/* Check if AIE partition is available in a given time */
+	count = 0;
+	while (1) {
+		aie_available = aie_partition_is_available(&req);
+		if (aie_available)
+			break;
+		count++;
+		if (count == ZOCL_AIE_RESET_TIMEOUT_NUMBER) {
+			mutex_unlock(&slot->aie_lock);
+			DRM_ERROR("AIE Reset fail: timeout.");
+			return -ETIME;
+		}
+		msleep(ZOCL_AIE_RESET_TIMEOUT_INTERVAL);
+	}
+
+	slot->aie->aie_dev = NULL;
+	slot->aie->aie_reset = true;
+	slot->aie->err.num = 0;
+
+	mutex_unlock(&slot->aie_lock);
+
+	DRM_INFO("AIE Reset successfully finished.");
+	return 0;
+
+}
+
+int
+zocl_cleanup_aie(struct drm_zocl_slot *slot)
+{
+	if (!slot)
+	{
+		DRM_ERROR("%s: Invalid slot", __func__);
+		return 0;
+	}
+
 	int ret = 0;
 
-	if (zdev->aie) {
+	if (slot->aie) {
 		/*
 		 * Dont reset if aie is already in reset state
 		 */
-		if( !zdev->aie->aie_reset) {
-			ret = zocl_aie_reset(zdev);
+		if( !slot->aie->aie_reset) {
+			ret = zocl_aie_slot_reset(slot);
 			if (ret)
 				return ret;
 		}
 
-		zocl_destroy_aie(zdev);
+		zocl_destroy_aie(slot);
 	}
 
 	return 0;
 }
 
-int 
-zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *xclbin)
+int
+zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *xclbin)
 {
 	struct axlf_section_header *header = NULL;
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
@@ -271,10 +418,10 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 		}
 
 		//Call the AIE Driver API 
-	        if (zdev->aie->partition_id == FULL_ARRAY_PARTITION_ID)
-		    ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, start_col, num_col, data_portion);
+	        if (slot->aie->partition_id == FULL_ARRAY_PARTITION_ID)
+		    ret = aie_part_rscmgr_set_static_range(slot->aie->aie_dev, start_col, num_col, data_portion);
 		else
-		    ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, 0, num_col, data_portion);
+		    ret = aie_part_rscmgr_set_static_range(slot->aie->aie_dev, 0, num_col, data_portion);
 
 		if (ret != 0) {
 			vfree(data_portion);
@@ -288,7 +435,7 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen, uint32_t partition_id)
+zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen, uint32_t partition_id)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -298,40 +445,40 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
-	mutex_lock(&zdev->aie_lock);
+	mutex_lock(&slot->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
-	if (zdev->aie && zdev->aie->aie_reset) {
+	if (slot->aie && slot->aie->aie_reset) {
 		rval = -ENODEV;
 		DRM_ERROR("PDI is not loaded after AIE reset.\n");
 		goto done;
 	}
 
-	if (!zdev->aie) {
-		zdev->aie = vzalloc(sizeof (struct zocl_aie));
-		if (!zdev->aie) {
+	if (!slot->aie) {
+		slot->aie = vzalloc(sizeof (struct zocl_aie));
+		if (!slot->aie) {
 			rval = -ENOMEM;
 			DRM_ERROR("Fail to allocate memory.\n");
 			goto done;
 		}
 
-		zdev->aie->err.errors = vzalloc(sizeof (struct aie_error) *
+		slot->aie->err.errors = vzalloc(sizeof (struct aie_error) *
 		    ZOCL_AIE_ERROR_CACHE_CAP);
-		if (!zdev->aie->err.errors) {
+		if (!slot->aie->err.errors) {
 			rval = -ENOMEM;
-			vfree(zdev->aie);
+			vfree(slot->aie);
 			DRM_ERROR("Fail to allocate memory.\n");
 			goto done;
 		}
 
-		zdev->aie->err.num = 0;
-		zdev->aie->err.cap = ZOCL_AIE_ERROR_CACHE_CAP;
+		slot->aie->err.num = 0;
+		slot->aie->err.cap = ZOCL_AIE_ERROR_CACHE_CAP;
 
 	}
 
-	if (!zdev->aie->wq) {
-		zdev->aie->wq = create_singlethread_workqueue("aie-workq");
-		if (!zdev->aie->wq) {
+	if (!slot->aie->wq) {
+		slot->aie->wq = create_singlethread_workqueue("aie-workq");
+		if (!slot->aie->wq) {
 			rval = -ENOMEM;
 			DRM_ERROR("Fail to create work queue.\n");
 			goto done;
@@ -346,27 +493,27 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 	if (aie_res)
 		req.meta_data = (u64)aie_res;
 
-	if (zdev->aie->aie_dev) {
+	if (slot->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
 		    req.partition_id);
 		goto done;
 	}
 
-	zdev->aie->aie_dev = aie_partition_request(&req);
+	slot->aie->aie_dev = aie_partition_request(&req);
 
 
-	if (IS_ERR(zdev->aie->aie_dev)) {
-		rval = PTR_ERR(zdev->aie->aie_dev);
+	if (IS_ERR(slot->aie->aie_dev)) {
+		rval = PTR_ERR(slot->aie->aie_dev);
 		DRM_ERROR("Request AIE partition %d, %d\n",
 		    req.partition_id, rval);
 		goto done;
 	}
 
-	zdev->aie->partition_id = req.partition_id;
-	zdev->aie->uid = req.uid;
+	slot->aie->partition_id = req.partition_id;
+	slot->aie->uid = req.uid;
 
 	if (!aie_res) {
-		int res = zocl_read_aieresbin(zdev, axlf, xclbin);
+		int res = zocl_read_aieresbin(slot, axlf, xclbin);
 		if (res)
 			goto done;
 	}
@@ -374,165 +521,89 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 	/* Register AIE error call back function. */
 	/* only aie-1 supports error management*/
 	if (hw_gen == 1) {
-		rval = aie_register_error_notification(zdev->aie->aie_dev,
-		zocl_aie_error_cb, zdev);
+		rval = aie_register_error_notification(slot->aie->aie_dev,
+		zocl_aie_error_cb, slot);
 	}
-	mutex_unlock(&zdev->aie_lock);
+	mutex_unlock(&slot->aie_lock);
 
-	zocl_init_aie(zdev);
+	zocl_init_aie(slot);
 
 	DRM_INFO("AIE create successfully finished.");
 	return 0;
 
 done:
-	mutex_unlock(&zdev->aie_lock);
+	mutex_unlock(&slot->aie_lock);
 
 	return rval;
 }
 
 void
-zocl_destroy_aie(struct drm_zocl_dev *zdev)
+zocl_destroy_aie(struct drm_zocl_slot* slot)
 {
-	if (!zdev->aie_information)
+	if (!slot->aie_information)
 		return;
 
-	mutex_lock(&zdev->aie_lock);
-	vfree(zdev->aie_information);
-	zdev->aie_information = NULL;
+	mutex_lock(&slot->aie_lock);
+	vfree(slot->aie_information);
+	slot->aie_information = NULL;
 
-	if (!zdev->aie) {
-		mutex_unlock(&zdev->aie_lock);
+	if (!slot->aie) {
+		mutex_unlock(&slot->aie_lock);
 		return;
 	}
 
-	if (zdev->aie->aie_dev)
-		aie_partition_release(zdev->aie->aie_dev);
+	if (slot->aie->aie_dev)
+		aie_partition_release(slot->aie->aie_dev);
 
-	if (zdev->aie->wq)
-		destroy_workqueue(zdev->aie->wq);
+	if (slot->aie->wq)
+		destroy_workqueue(slot->aie->wq);
 
-	vfree(zdev->aie->err.errors);
-	vfree(zdev->aie);
-	zdev->aie = NULL;
-	mutex_unlock(&zdev->aie_lock);
+	vfree(slot->aie->err.errors);
+	vfree(slot->aie);
+	slot->aie = NULL;
+	mutex_unlock(&slot->aie_lock);
 }
 
-static void
-zocl_aie_reset_work(struct work_struct *aie_work)
-{
-	struct aie_work_data *data = container_of(aie_work,
-	    struct aie_work_data, work);
-	struct drm_zocl_dev *zdev= data->zdev;
-	int i;
 
-	/*
-	 * Note: we can not hold lock here because this
-	 *       work thread is invoked within a lock and
-	 *       that lock will not be relased until the
-	 *       work is flushed.
-	 */
-
-	/*
-	 * Reset AIE by releasing AIE partition. The times we
-	 * release AIE partition is based on the # of fd is
-	 * requested + 1.
-	 */
-	for (i = 0; i < zdev->aie->fd_cnt + 1; i++)
-		aie_partition_release(zdev->aie->aie_dev);
-
-	zdev->aie->fd_cnt = 0;
-}
 
 int
-zocl_aie_reset(struct drm_zocl_dev *zdev)
+zocl_aie_reset(struct drm_zocl_dev *zdev, void *data, struct drm_file *filp)
 {
-	struct aie_partition_req req;
-	bool aie_available = false;
-	struct aie_work_data *data;
-	int count;
-
-	mutex_lock(&zdev->aie_lock);
-
-	if (!zdev->aie) {
-		mutex_unlock(&zdev->aie_lock);
-		DRM_ERROR("AIE image is not loaded.\n");
-		return -ENODEV;
-	}
-
-	if (!zdev->aie->aie_dev) {
-		mutex_unlock(&zdev->aie_lock);
-		DRM_ERROR("No available AIE partition.\n");
-		return -ENODEV;
-	}
-
-	data = kmalloc(sizeof(struct aie_work_data), GFP_KERNEL);
-	if (!data) {
-		mutex_unlock(&zdev->aie_lock);
-		DRM_ERROR("Can not allocate memory,\n");
-		return -ENOMEM;
-	}
-	data->zdev = zdev;
-
-	/*
-	 * Per the requrirement of current AIE driver, we
-	 * need to release the partition in a separate thread.
-	 */
-	INIT_WORK(&data->work, zocl_aie_reset_work);
-	queue_work(zdev->aie->wq, &data->work);
-
-	/* Make sure the reset thread is done */
-	flush_workqueue(zdev->aie->wq);
-	kfree(data);
-
-	req.partition_id = zdev->aie->partition_id;
-	req.uid = zdev->aie->uid;
-
-	/* Check if AIE partition is available in a given time */
-	count = 0;
-	while (1) {
-		aie_available = aie_partition_is_available(&req);
-		if (aie_available)
-			break;
-		count++;
-		if (count == ZOCL_AIE_RESET_TIMEOUT_NUMBER) {
-			mutex_unlock(&zdev->aie_lock);
-			DRM_ERROR("AIE Reset fail: timeout.");
-			return -ETIME;
-		}
-		msleep(ZOCL_AIE_RESET_TIMEOUT_INTERVAL);
-	}
-
-	zdev->aie->aie_dev = NULL;
-	zdev->aie->aie_reset = true;
-	zdev->aie->err.num = 0;
-
-	mutex_unlock(&zdev->aie_lock);
-
-	DRM_INFO("AIE Reset successfully finished.");
-	return 0;
+	struct drm_zocl_aie_reset *args = data;
+	struct drm_zocl_slot *slot = NULL;
+	struct kds_client *client = filp->driver_priv;
+	slot = get_slot(zdev, client, args->hw_ctx_id);
+	return zocl_aie_slot_reset(slot);
 }
 
-int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
+int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data, struct drm_file *filp)
 {
-	struct drm_zocl_aie_freq_scale *args= data;
+	struct drm_zocl_aie_freq_scale *args = data;
+	struct drm_zocl_slot *slot = NULL;
+	struct kds_client *client = filp->driver_priv;
+	slot = get_slot(zdev, client, args->hw_ctx_id);
+	if (!slot) {
+		DRM_ERROR("%s: slot is not initialized\n", __func__);
+		return -EINVAL;
+	}
 	int ret = 0;
 
-	mutex_lock(&zdev->aie_lock);
+	mutex_lock(&slot->aie_lock);
 
-	if (!zdev->aie) {
-		mutex_unlock(&zdev->aie_lock);
+	if (!slot->aie) {
+		mutex_unlock(&slot->aie_lock);
 		DRM_ERROR("AIE image is not loaded.\n");
 		return -ENODEV;
 	}
 
-	if (!zdev->aie->aie_dev) {
-		mutex_unlock(&zdev->aie_lock);
+	if (!slot->aie->aie_dev) {
+		mutex_unlock(&slot->aie_lock);
 		DRM_ERROR("No available AIE partition.\n");
 		return -ENODEV;
 	}
 
-	if (zdev->aie->partition_id != args->partition_id) {
-		mutex_unlock(&zdev->aie_lock);
+	if (slot->aie->partition_id != args->partition_id) {
+		mutex_unlock(&slot->aie_lock);
 		DRM_ERROR("AIE partition %d does not exist.\n",
 		    args->partition_id);
 		return -ENODEV;
@@ -540,16 +611,16 @@ int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
 
 	if(!args->dir) {
 		// Read frequency from requested aie partition
-		ret = aie_partition_get_freq(zdev->aie->aie_dev, &args->freq);
-		mutex_unlock(&zdev->aie_lock);
+		ret = aie_partition_get_freq(slot->aie->aie_dev, &args->freq);
+		mutex_unlock(&slot->aie_lock);
 		if(ret)
 			DRM_ERROR("Reading clock frequency from AIE partition(%d) failed with error %d\n",
 				args->partition_id, ret);
 		return ret;
 	} else {
 		// Send Set frequency request for aie partition
-		ret = aie_partition_set_freq_req(zdev->aie->aie_dev, args->freq);
-		mutex_unlock(&zdev->aie_lock);
+		ret = aie_partition_set_freq_req(slot->aie->aie_dev, args->freq);
+		mutex_unlock(&slot->aie_lock);
 		if(ret)
 			DRM_ERROR("Setting clock frequency for AIE partition(%d) failed with error %d\n",
 				args->partition_id, ret);
@@ -769,9 +840,16 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct aie_info *aie = zdev->aie_information;
+	struct drm_zocl_slot *slot = NULL;
+	struct kds_client *client = filp->driver_priv;
 	struct aie_info_cmd *acmd;
 	struct drm_zocl_aie_cmd *kdata = data;
+	slot = get_slot(zdev, client, kdata->hw_ctx_id);
+	if (!slot) {
+		DRM_ERROR("%s: slot is not initialized\n", __func__);
+		return -EINVAL;
+	}
+	struct aie_info *aie = slot->aie_information;
 
 	if(aie == NULL)
 		return -EAGAIN;
@@ -808,10 +886,18 @@ int
 zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct aie_info *aie = zdev->aie_information;
+	struct drm_zocl_slot *slot = NULL;
+	struct kds_client *client = filp->driver_priv;
 	struct aie_info_cmd *acmd;
 	struct drm_zocl_aie_cmd *kdata = data;
+	slot = get_slot(zdev, client, kdata->hw_ctx_id);
 	struct aie_info_packet *cmd;
+
+	if (!slot) {
+		DRM_ERROR("%s: slot is not initialized\n", __func__);
+		return -EINVAL;
+	}
+	struct aie_info *aie = slot->aie_information;
 
 	if(aie == NULL)
 		return -EAGAIN;
@@ -833,12 +919,12 @@ zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 }
 
 int
-zocl_init_aie(struct drm_zocl_dev *zdev)
+zocl_init_aie(struct drm_zocl_slot *slot)
 {
 	struct aie_info *aie;
 	aie = vzalloc(sizeof(struct aie_info));
 	if (!aie) {
-		zdev->aie_information = NULL;
+		slot->aie_information = NULL;
 		return -ENOMEM;
 	}
 
@@ -846,7 +932,7 @@ zocl_init_aie(struct drm_zocl_dev *zdev)
 	INIT_LIST_HEAD(&aie->aie_cmd_list);
 	init_waitqueue_head(&aie->aie_wait_queue);
 	aie->cmd_inprogress = NULL;
-	zdev->aie_information = aie;
+	slot->aie_information = aie;
 
 	return 0;
 }

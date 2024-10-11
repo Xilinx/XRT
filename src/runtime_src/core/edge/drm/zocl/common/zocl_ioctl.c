@@ -14,10 +14,154 @@
  */
 
 #include <drm/drm_file.h>
+#include <linux/errno.h>
 #include "zocl_drv.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 #include "zocl_hwctx.h"
+#include "xrt_xclbin.h"
+
+static bool
+is_aie_only(struct axlf *axlf)
+{
+        if ((axlf->m_header.m_actionMask & AM_LOAD_AIE))
+                return true;
+
+        return false;
+}
+
+static bool
+is_pl_only(struct axlf *axlf)
+{
+        if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
+                !xrt_xclbin_get_section_num(axlf, AIE_METADATA))
+                return true;
+
+        return false;
+}
+
+static int
+get_legacy_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
+{
+        struct drm_zocl_slot *slot = NULL;
+        uint32_t s_id = 0;
+        uint32_t zocl_xclbin_type = 0;
+
+        /* Slots need to be decided based on interface ID. But currently this
+         * functionality is not yet ready. Hence we are hard coding the Slots
+         * based on the type of XCLBIN. This logic need to be updated in future.
+         */
+        /* Right now the hard coded logic as follows:
+         * Slot - 0 : FULL XCLBIN (Both PL and AIE) / PL Only XCLBIN
+         * Slot - 1 : AIE Only XCLBIN
+         */
+        if (is_aie_only(axlf)) {
+                s_id = ZOCL_AIE_ONLY_XCLBIN_SLOT;
+                zocl_xclbin_type = ZOCL_XCLBIN_TYPE_AIE_ONLY;
+        }
+        else {
+                s_id = ZOCL_DEFAULT_XCLBIN_SLOT;
+                if (is_pl_only(axlf))
+                        zocl_xclbin_type = ZOCL_XCLBIN_TYPE_PL_ONLY;
+                else
+                        zocl_xclbin_type = ZOCL_XCLBIN_TYPE_FULL;
+        }
+        slot = zdev->pr_slot[s_id];
+        if (!slot) {
+                DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", s_id);
+                return -EINVAL;
+        }
+
+        mutex_lock(&slot->slot_xclbin_lock);
+        slot->xclbin_type = zocl_xclbin_type;
+        mutex_unlock(&slot->slot_xclbin_lock);
+	*slot_id = s_id;
+	DRM_INFO("Found free Slot-%d is selected for xclbin \n", s_id);
+        return 0;
+}
+
+static int
+get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
+{
+	/* xclbin contains PL section use fixed slot */
+	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT)) {
+                DRM_WARN("Xclbin contains PL section Using Slot-0");
+		*slot_id = ZOCL_DEFAULT_XCLBIN_SLOT;
+		return 0;
+	}
+
+        struct drm_zocl_slot *slot = NULL;
+	for (int i = 1; i < MAX_PR_SLOT_NUM; i++) {
+		if (!(zdev->slot_mask & (1 << i))) {
+			zdev->slot_mask |= 1 << i;
+			*slot_id = i;
+			slot = zdev->pr_slot[i];
+		        if (!slot) {
+				DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", i);
+				return -EINVAL;
+			}
+			DRM_INFO("Found free Slot-%d is selected for xclbin \n", i);
+			return 0;
+		}
+	}
+	return -ENOMEM; // All bits are set
+}
+
+static int zocl_identify_slot(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
+        struct kds_client *client, int* slot_id, bool hw_ctx_flow)
+{
+        struct axlf axlf_head;
+        struct axlf *axlf = NULL;
+        long axlf_size;
+        char __user *xclbin = NULL;
+        size_t size_of_header;
+        size_t num_of_sections;
+        int ret = 0;
+
+        /* Download the XCLBIN from user space to kernel space and validate */
+        if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
+            sizeof(struct axlf))) {
+                DRM_WARN("copy_from_user failed for za_xclbin_ptr");
+                return -EFAULT;
+        }
+
+        if (memcmp(axlf_head.m_magic, "xclbin2", 8)) {
+                DRM_WARN("xclbin magic is invalid %s", axlf_head.m_magic);
+                return -EINVAL;
+        }
+
+        /* Get full axlf header */
+        size_of_header = sizeof(struct axlf_section_header);
+        num_of_sections = axlf_head.m_header.m_numSections - 1;
+        axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
+        axlf = vmalloc(axlf_size);
+
+	if (!axlf) {
+                DRM_WARN("read xclbin fails: no memory");
+                return -ENOMEM;
+        }
+
+        if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
+                DRM_WARN("read xclbin: fail copy from user memory");
+                vfree(axlf);
+                return -EFAULT;
+        }
+
+        xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
+        ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
+        if (ret) {
+                DRM_WARN("read xclbin: fail the access check");
+                vfree(axlf);
+                return -EFAULT;
+        }
+	if( hw_ctx_flow)
+		ret = get_free_slot(zdev, axlf, slot_id);
+	else
+		ret = get_legacy_slot(zdev, axlf, slot_id);
+
+        vfree(axlf);
+        return ret;
+}
 
 /*
  * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
@@ -29,8 +173,15 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
 	struct kds_client *client = filp->driver_priv;
 	int slot_id = -1;
+	int ret = 0;
+	ret = zocl_identify_slot(zdev, axlf_obj, client, &slot_id, false /*hw_ctx_flow*/);
+	if (ret < 0) {
+		DRM_WARN("Unable to allocate slot for xclbin.");
+		return ret;
+	}
+	DRM_INFO(" Allocated slot %d to load xclbin in device\n.", slot_id);
 
-	return zocl_xclbin_read_axlf(zdev, axlf_obj, client, &slot_id);
+	return zocl_xclbin_read_axlf(zdev, axlf_obj, client, slot_id);
 }
 
 /*
@@ -49,8 +200,14 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file
 		DRM_WARN("copy_from_user failed for axlf_ptr");
 		return -EFAULT;
 	}
+	ret = zocl_identify_slot(zdev, &axlf_obj, client, &slot_id, true /*hw_ctx_flow*/);
+	if (ret < 0) {
+		DRM_WARN("Unable to allocate slot for xclbin.");
+		return ret;
+	}
+	DRM_INFO(" Allocated slot %d to load xclbin in hw_context\n.", slot_id);
 
-	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client, &slot_id);
+	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client, slot_id);
 	if (ret) {
 		DRM_WARN("xclbin download FAILED.");
 		return ret;
@@ -66,8 +223,23 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
-
-	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, filp);
+	int ret = 0;
+	int slot_id = -1;
+	struct kds_client_hw_ctx *kds_hw_ctx = NULL;
+	struct kds_client *client = filp->driver_priv;
+	mutex_lock(&client->lock);
+	kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_hw_ctx->hw_context);
+	if (!kds_hw_ctx) {
+		DRM_ERROR("%s: No valid hw context is open", __func__);
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+	slot_id = kds_hw_ctx->slot_idx;
+	mutex_unlock(&client->lock);
+	ret = zocl_destroy_hw_ctx(zdev, drm_hw_ctx, filp);
+	//TODO do it under lock
+	zdev->slot_mask &= ~(1 << slot_id);
+	return ret;
 }
 
 /*
@@ -207,22 +379,17 @@ zocl_error_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 int
 zocl_aie_fd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
-	struct drm_zocl_aie *args = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
-	int ret = 0;
 
-	ret = zocl_aie_request_part_fd(zdev, args);
-	return ret;
+	return zocl_aie_request_part_fd(zdev, data, filp);
 }
 
 int
 zocl_aie_reset_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
-	int ret;
 
-	ret = zocl_aie_reset(zdev);
-	return ret;
+	return zocl_aie_reset(zdev, data , filp);
 }
 
 int
@@ -230,7 +397,7 @@ zocl_aie_freqscale_ioctl(struct drm_device *dev, void *data, struct drm_file *fi
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 
-	return zocl_aie_freqscale(zdev, data);
+	return zocl_aie_freqscale(zdev, data, filp);
 }
 
 int

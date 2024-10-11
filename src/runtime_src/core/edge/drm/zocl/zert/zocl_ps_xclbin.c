@@ -360,16 +360,16 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	slot->aie_data = aie_data;
 
 	/* Mark AIE out of reset state after load PDI */
-	if (zdev->aie) {
-		mutex_lock(&zdev->aie_lock);
-		zdev->aie->aie_reset = false;
-		mutex_unlock(&zdev->aie_lock);
+	if (slot->aie) {
+		mutex_lock(&slot->aie_lock);
+		slot->aie->aie_reset = false;
+		mutex_unlock(&slot->aie_lock);
 	}
 
 	// Cache full xclbin
 	//last argument represents aie generation. 1. aie, 2. aie-ml ...
 	DRM_INFO("AIE Device set to gen %d", hw_gen);
-	zocl_create_aie(zdev, axlf, xclbin, aie_res, hw_gen, FULL_ARRAY_PARTITION_ID);
+	zocl_create_aie(slot, axlf, xclbin, aie_res, hw_gen, FULL_ARRAY_PARTITION_ID);
 
 
 	ret = zocl_kernel_cache_xclbin(zdev, slot, axlf);

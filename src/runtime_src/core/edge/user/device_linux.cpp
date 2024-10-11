@@ -518,7 +518,7 @@ struct aie_reg_read
   /* TODO get aie partition id and uid from XCLBIN or PDI, currently not supported*/
   uint32_t partition_id = 1;
   uint32_t uid = 0;
-  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+  drm_zocl_aie_fd aiefd = {0, partition_id, uid, 0 };
   if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd))
     throw xrt_core::error(-errno, "Create AIE failed. Can not get AIE fd");
 
@@ -589,6 +589,7 @@ struct aie_get_freq
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.hw_ctx_id = 0;
     aie_arg.partition_id = std::any_cast<uint32_t>(partition_id);
     aie_arg.freq = 0;
     aie_arg.dir = 0;

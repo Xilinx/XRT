@@ -505,6 +505,9 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
                 /* Free sections before load the new xclbin */
                 zocl_free_sections(zdev, z_slot);
 
+		/* Cleanup the AIE here */
+		zocl_cleanup_aie(z_slot);
+
                 /* Cleanup the slot */
                 vfree(z_slot->slot_xclbin->zx_uuid);
                 z_slot->slot_xclbin->zx_uuid = NULL;
@@ -516,8 +519,6 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
                 mutex_unlock(&z_slot->slot_xclbin_lock);
         }
 
-	/* Cleanup the AIE here */
-	zocl_cleanup_aie(zdev);
 
 #define PL_RESET_ADDRESS                0x00F1260330
 #define PL_HOLD_VAL                     0xF
