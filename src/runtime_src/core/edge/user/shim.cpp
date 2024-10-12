@@ -1046,6 +1046,7 @@ xclAIEPutCmd(xclAIECmd *cmd)
   int ret;
   drm_zocl_aie_cmd scmd;
 
+  scmd.hw_ctx_id = 0;
   scmd.opcode = cmd->opcode;
   scmd.size = cmd->size;
   snprintf(scmd.info, cmd->size, "%s",cmd->info);
@@ -1278,12 +1279,6 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
       off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
   }
-
-#ifdef __HWEM__
-  if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
-    return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
-  }
-#endif //__HWEM__
 
   return 0;
 }

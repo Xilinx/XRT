@@ -352,16 +352,19 @@ struct drm_zocl_ctx {
 };
 
 struct drm_zocl_aie_fd {
+	uint32_t hw_ctx_id;
 	uint32_t partition_id;
 	uint32_t uid;
 	int fd;
 };
 
 struct drm_zocl_aie_reset {
+	uint32_t hw_ctx_id;
 	uint32_t partition_id;
 };
 
 struct drm_zocl_aie_freq_scale {
+	uint32_t hw_ctx_id;
 	uint32_t partition_id;
 	uint64_t freq;
 	bool dir;
@@ -614,6 +617,7 @@ enum aie_info_code {
  * @info         : information to transfer
  */
 struct drm_zocl_aie_cmd {
+	uint32_t        hw_ctx_id;
 	uint32_t	opcode;
 	uint32_t	size;
 	char		info[AIE_INFO_SIZE];

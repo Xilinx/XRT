@@ -217,11 +217,14 @@ static ssize_t graph_status_show(struct device *dev,
 	struct aie_info_cmd *acmd;
 	struct aie_info_packet *aiec_packet;
 	ssize_t nread = 0;
+	struct drm_zocl_slot* slot = NULL;
 	zdev = dev_get_drvdata(dev);
 	if (!zdev)
 		return 0;
 
-	aie = zdev->aie_information;
+	// TODO hardcoding slot to 0
+	slot = zdev->pr_slot[0];
+	aie = slot->aie_information;
 	if (!aie)
 		return 0;
 
