@@ -32,68 +32,63 @@ extern "C"
 namespace adf
 {
 
-class config_manager
-{
-public:
-    static err_code initialize(XAie_DevInst* devInst, size_t num_reserved_rows, bool broadcast_enable_core);
-
-    static XAie_DevInst* s_pDevInst;
-
-    static bool s_bInitialized;
-    static size_t s_num_reserved_rows;
-    static bool s_broadcast_enable_core;
-};
-
 class graph_api
 {
 public:
-    graph_api(const graph_config* pConfig);
-    virtual ~graph_api() {}
+  graph_api(const graph_config* pConfig, const std::shared_ptr<config_manager> cfg);
+  virtual ~graph_api() {}
 
-    err_code configure();
-    err_code run();
-    err_code run(int testIter);
-    err_code wait();
-    err_code wait(unsigned long long cycleTimeout);
-    err_code resume();
-    err_code end();
-    err_code end(unsigned long long cycleTimeout);
-    err_code update(const rtp_config* pRTPConfig, const void* pValue, size_t numBytes);
-    err_code read(const rtp_config* pRTPConfig, void* pValue, size_t numBytes);
+  err_code configure();
+  err_code run();
+  err_code run(int testIter);
+  err_code wait();
+  err_code wait(unsigned long long cycleTimeout);
+  err_code resume();
+  err_code end();
+  err_code end(unsigned long long cycleTimeout);
+  err_code update(const rtp_config* pRTPConfig, const void* pValue, size_t numBytes);
+  err_code read(const rtp_config* pRTPConfig, void* pValue, size_t numBytes);
 
 private:
-    const graph_config* pGraphConfig;
-    bool isConfigured;
-    bool isRunning;
-    unsigned long long startTime;
+  const graph_config* pGraphConfig;
+  bool isConfigured;
+  bool isRunning;
+  unsigned long long startTime;
 
-    std::vector<XAie_LocType> coreTiles;
-    std::vector<XAie_LocType> iterMemTiles;
-    std::unordered_map<int, int> asyncRtpUpdateTimes; //For AIE-ML, maintain a map of async RTP portIds to the number of update calls
+  std::vector<XAie_LocType> coreTiles;
+  std::vector<XAie_LocType> iterMemTiles;
+  std::unordered_map<int, int> asyncRtpUpdateTimes; //For AIE-ML, maintain a map of async RTP portIds to the number of update calls
+  std::shared_ptr<config_manager> config;
 };
 
 class gmio_api
 {
 public:
-    gmio_api(const gmio_config* pConfig);
-    virtual ~gmio_api() {}
+  gmio_api(const gmio_config* pConfig, std::shared_ptr<config_manager> cfg);
+  virtual ~gmio_api() {}
 
-    err_code configure();
-    err_code enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size);
-    err_code wait();
-    err_code enqueueTask(std::vector<dma_api::buffer_descriptor> bdParams, uint32_t repeatCount, bool enableTaskCompleteToken);
+  err_code configure();
+  err_code enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size);
+  err_code wait();
+  err_code enqueueTask(std::vector<dma_api::buffer_descriptor> bdParams, uint32_t repeatCount, bool enableTaskCompleteToken);
+  std::shared_ptr<config_manager>
+  get_config()
+  {
+    return config;
+  }
 private:
-    /// GMIO shim DMA physical configuration compiled by the AIE compiler
-    const gmio_config* pGMIOConfig;
+  // GMIO shim DMA physical configuration compiled by the AIE compiler
+  const gmio_config* pGMIOConfig;
 
-    /// C_RTS Shim DMA to where this GMIO object is mapped
-    XAie_DmaDesc shimDmaInst;
-    XAie_LocType gmioTileLoc;
+  // C_RTS Shim DMA to where this GMIO object is mapped
+  XAie_DmaDesc shimDmaInst;
+  XAie_LocType gmioTileLoc;
 
-    bool isConfigured;
-    uint8_t dmaStartQMaxSize;
-    std::queue<size_t> enqueuedBDs;
-    std::queue<size_t> availableBDs;
+  bool isConfigured;
+  uint8_t dmaStartQMaxSize;
+  std::queue<size_t> enqueuedBDs;
+  std::queue<size_t> availableBDs;
+  std::shared_ptr<config_manager> config;
 };
 
 err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_config* pGraphConfig, size_t numBytes, bool isRunning = false);
