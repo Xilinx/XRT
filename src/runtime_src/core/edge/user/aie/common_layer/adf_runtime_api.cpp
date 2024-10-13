@@ -45,30 +45,22 @@ static constexpr unsigned LOCK_TIMEOUT = 0x7FFFFFFF;
 
 /********************************* config_manager *************************************/
 
-XAie_DevInst* config_manager::s_pDevInst = nullptr;
-bool config_manager::s_bInitialized = false;
-size_t config_manager::s_num_reserved_rows = 0;
-bool config_manager::s_broadcast_enable_core = false;
-
-err_code config_manager::initialize(XAie_DevInst* devInst, size_t num_reserved_rows, bool broadcast_enable_core)
-{
-    if (!s_bInitialized)
-    {
-        if (!devInst)
-            return errorMsg(err_code::internal_error, "ERROR: config_manager::initialize: Cannot initialize device instance.");
-
-        s_pDevInst = devInst;
-        s_num_reserved_rows = num_reserved_rows;
-        s_broadcast_enable_core = broadcast_enable_core;
-        s_bInitialized = true;
-    }
-    return err_code::ok;
-}
+config_manager::
+config_manager(XAie_DevInst* dev_inst, size_t num_reserved_rows, bool broadcast_enable_core)
+  : m_aie_dev(dev_inst)
+  , m_num_reserved_rows(num_reserved_rows)
+  , m_broadcast_enable_core(broadcast_enable_core)
+{}
 
 /************************************ graph_api ************************************/
 
-graph_api::graph_api(const graph_config* pConfig)
-    : pGraphConfig(pConfig), isConfigured(false), isRunning(false), startTime(0)
+graph_api::
+graph_api(const graph_config* pConfig, const std::shared_ptr<config_manager> cfg)
+  : pGraphConfig(pConfig)
+  , isConfigured(false)
+  , isRunning(false)
+  , startTime(0)
+  , config(std::move(cfg))
 {}
 
 err_code graph_api::configure()
@@ -86,7 +78,7 @@ err_code graph_api::configure()
     iterMemTiles.resize(numCores);
     for (int i = 0; i < numCores; i++)
     {
-        size_t numReservedRows = config_manager::s_num_reserved_rows;
+        size_t numReservedRows = config->get_num_reserved_rows();
         coreTiles[i] = XAie_TileLoc(pGraphConfig->coreColumns[i], pGraphConfig->coreRows[i] + numReservedRows + 1);
         iterMemTiles[i] = XAie_TileLoc(pGraphConfig->iterMemColumns[i], pGraphConfig->iterMemRows[i] + numReservedRows + 1);
     }
@@ -105,48 +97,48 @@ err_code graph_api::run()
 
     // Record a snapshot of the graph cores startup/enable time
     if (numCores)
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&startTime));
+        driverStatus |= XAie_ReadTimer(config->get_dev(), coreTiles[0], XAIE_CORE_MOD, (u64*)(&startTime));
 
     infoMsg("Enabling core(s) of graph " + pGraphConfig->name);
 
-    if (config_manager::s_broadcast_enable_core)
+    if (config->get_broadcast_enable_core())
     {
-        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
+        XAie_StartTransaction(config->get_dev(), XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
             // Clear disable event occurred bit of Enable_Event
-            XAie_ClearCoreDisableEventOccurred(config_manager::s_pDevInst, coreTiles[i]);
+            XAie_ClearCoreDisableEventOccurred(config->get_dev(), coreTiles[i]);
             //Set Enable_Event to XAIE_EVENT_BROADCAST_7_CORE. The resources have been acquired by aiecompiler.
-            XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
+            XAie_CoreConfigureEnableEvent(config->get_dev(), coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
         }
-        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
+        XAie_SubmitTransaction(config->get_dev(), nullptr);
 
         //Trigger event XAIE_EVENT_BROADCAST_A_8_PL in shim_tile at column 0 by writing to Event_Generate. The resources have been acquired by aiecompiler.
         // In case of multi-partition flow still XAie_TileLoc(0, 0) will be used to generate event trigger, but here (0,0) indicates the relative
         // tile location i.e. absolute bottom left tile post translation by partition start column is always 0,0.
-        XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
+        XAie_EventGenerate(config->get_dev(), XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
 
         // Waiting for 150 cycles to reset the core enable event
         unsigned long long StartTime, CurrentTime = 0;
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&StartTime));
+        driverStatus |= XAie_ReadTimer(config->get_dev(), XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&StartTime));
         do {
-            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
+            driverStatus |= XAie_ReadTimer(config->get_dev(), XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
         } while ((CurrentTime - StartTime) <= 150);
 
-        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
+        XAie_StartTransaction(config->get_dev(), XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
             //Set Enable_Event to 0
-            XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_NONE_CORE);
+            XAie_CoreConfigureEnableEvent(config->get_dev(), coreTiles[i], XAIE_EVENT_NONE_CORE);
         }
-        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
+        XAie_SubmitTransaction(config->get_dev(), nullptr);
     }
     else
     {
-        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
+        XAie_StartTransaction(config->get_dev(), XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
-            driverStatus |= XAie_CoreEnable(config_manager::s_pDevInst, coreTiles[i]);
-        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
+            driverStatus |= XAie_CoreEnable(config->get_dev(), coreTiles[i]);
+        XAie_SubmitTransaction(config->get_dev(), nullptr);
     }
 
     if (driverStatus != AieRC::XAIE_OK)
@@ -167,10 +159,10 @@ err_code graph_api::run(int iterations)
     infoMsg("Set iterations for the core(s) of graph " + pGraphConfig->name);
 
     int numCores = coreTiles.size();
-    XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
+    XAie_StartTransaction(config->get_dev(), XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
     for (int i = 0; i < numCores; i++)
-        driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i], (u32)iterations);
-    XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
+        driverStatus |= XAie_DataMemWrWord(config->get_dev(), iterMemTiles[i], pGraphConfig->iterMemAddrs[i], (u32)iterations);
+    XAie_SubmitTransaction(config->get_dev(), nullptr);
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::run: AIE driver error.");
@@ -194,8 +186,8 @@ err_code graph_api::wait()
         {
             // Default timeout is 500us. The timeout is counted on AIE clock.
             // So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT.
-            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
-            driverStatus |= XAie_CoreDisable(config_manager::s_pDevInst, coreTiles[i]);
+            while (XAie_CoreWaitForDone(config->get_dev(), coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
+            driverStatus |= XAie_CoreDisable(config->get_dev(), coreTiles[i]);
         }
     }
 
@@ -225,17 +217,17 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
     {
         // Adjust the cycle-timeout value
         unsigned long long elapsedTime;
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&elapsedTime));
+        driverStatus |= XAie_ReadTimer(config->get_dev(), coreTiles[0], XAIE_CORE_MOD, (u64*)(&elapsedTime));
         elapsedTime -= startTime;
         if (cycleTimeout > elapsedTime)
-            driverStatus |= XAie_WaitCycles(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (cycleTimeout - elapsedTime));
+            driverStatus |= XAie_WaitCycles(config->get_dev(), coreTiles[0], XAIE_CORE_MOD, (cycleTimeout - elapsedTime));
     }
 
     infoMsg("core(s) execution timed out");
     infoMsg("Disabling core(s) of graph " + pGraphConfig->name);
 
     for (int i = 0; i < numCores; i++)
-        driverStatus |= XAie_CoreDisable (config_manager::s_pDevInst, coreTiles[i]);
+        driverStatus |= XAie_CoreDisable (config->get_dev(), coreTiles[i]);
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::wait: AIE driver error.");
@@ -255,14 +247,14 @@ err_code graph_api::resume()
 
     int numCores = coreTiles.size();
     if (numCores) // Reset the graph timer
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&startTime));
+        driverStatus |= XAie_ReadTimer(config->get_dev(), coreTiles[0], XAIE_CORE_MOD, (u64*)(&startTime));
 
     for (int i = 0; i < numCores; i++)
     {
         bool isDone = false;
-        driverStatus |= XAie_CoreReadDoneBit(config_manager::s_pDevInst, coreTiles[i], (u8*)(&isDone));
+        driverStatus |= XAie_CoreReadDoneBit(config->get_dev(), coreTiles[i], (u8*)(&isDone));
         if (!isDone)
-            driverStatus |= XAie_CoreEnable (config_manager::s_pDevInst, coreTiles[i]); //Core Enable will clear Core_Done status bit
+            driverStatus |= XAie_CoreEnable (config->get_dev(), coreTiles[i]); //Core Enable will clear Core_Done status bit
     }
 
     if (driverStatus != AieRC::XAIE_OK)
@@ -289,13 +281,13 @@ err_code graph_api::end()
         //if the end sequence is done before, do not do it again. this is to allow multiple g.end(), g.end() ...
         if (isRunningBefore && !pGraphConfig->triggered[i])
         {
-            driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
-            driverStatus |= XAie_CoreEnable(config_manager::s_pDevInst, coreTiles[i]);
+            driverStatus |= XAie_DataMemWrWord(config->get_dev(), iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
+            driverStatus |= XAie_CoreEnable(config->get_dev(), coreTiles[i]);
 
             // Default timeout is 500us. The timeout is counted on AIE clock.
             // So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT.
-            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
-            driverStatus |= XAie_CoreDisable(config_manager::s_pDevInst, coreTiles[i]);
+            while (XAie_CoreWaitForDone(config->get_dev(), coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
+            driverStatus |= XAie_CoreDisable(config->get_dev(), coreTiles[i]);
         }
     }
 
@@ -319,7 +311,7 @@ err_code graph_api::end(unsigned long long cycleTimeout)
     int numCores = iterMemTiles.size();
     //set the end signal in sync_buffer[0] (which is 4 byte before iteration address)
     for (int i = 0; i < numCores; i++)
-        driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
+        driverStatus |= XAie_DataMemWrWord(config->get_dev(), iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::end: AIE driver error.");
@@ -378,7 +370,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
 
     ///////////////////////////// Configuration //////////////////////////////
 
-    size_t numReservedRows = config_manager::s_num_reserved_rows;
+    size_t numReservedRows = config->get_num_reserved_rows();
     XAie_LocType selectorTile = XAie_TileLoc(pRTPConfig->selectorColumn, pRTPConfig->selectorRow + numReservedRows + 1);
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
     XAie_LocType pongTile = XAie_TileLoc(pRTPConfig->pongColumn, pRTPConfig->pongRow + numReservedRows + 1);
@@ -394,7 +386,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     bool relSelLock = true;
     bool relBufLock = true;
 
-    if (config_manager::s_pDevInst->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
         {
@@ -448,34 +440,34 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
 
     // sync ports acquire selector lock for WRITE, async ports acquire selector lock unconditionally
     if (pRTPConfig->hasLock && bAcquireLock && pRTPConfig->blocking)
-        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
+        driverStatus |= XAie_LockAcquire(config->get_dev(), selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
 
     // Read the selector value
     u32 selector;
-    driverStatus |= XAie_DataMemRdWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, ((u32*)&selector));
+    driverStatus |= XAie_DataMemRdWord(config->get_dev(), selectorTile, pRTPConfig->selectorAddr, ((u32*)&selector));
     selector = 1 - selector;
 
     if (selector == 1) //pong
     {
         // sync ports acquire buffer lock for WRITE, async ports acquire buffer lock unconditionally
         if (pRTPConfig->hasLock && bAcquireLock)
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, bufAcqVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config->get_dev(), pongTile, XAie_LockInit(pRTPConfig->pongLockId, bufAcqVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config->get_dev(), pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     }
     else //ping
     {
         // sync ports acquire buffer lock for WRITE, async ports acquire buffer lock unconditionally
         if (pRTPConfig->hasLock && bAcquireLock)
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, bufAcqVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config->get_dev(), pingTile, XAie_LockInit(pRTPConfig->pingLockId, bufAcqVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config->get_dev(), pingTile, pRTPConfig->pingAddr, pValue, numBytes);
     }
 
     if (pRTPConfig->hasLock && bAcquireLock && !pRTPConfig->blocking)
-        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
+        driverStatus |= XAie_LockAcquire(config->get_dev(), selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, selAcqVal), LOCK_TIMEOUT);
     // write the new selector value
-    driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, selector);
+    driverStatus |= XAie_DataMemWrWord(config->get_dev(), selectorTile, pRTPConfig->selectorAddr, selector);
 
     if (pRTPConfig->hasLock)
     {
@@ -483,7 +475,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         // still need to release async RTP selector lock FOR_READ even when the graph is suspended;
         // otherwise, the ME side may deadlock in acquiring selector lock FOR_READ
         if (relSelLock)
-            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockRelease(config->get_dev(), selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
 
         // still need to release async RTP buffer lock FOR_READ even when the graph is suspended;
         // otherwise, the AIE side may deadlock in acquiring buffer lock FOR_READ
@@ -491,9 +483,9 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (relBufLock)
         {
             if (selector == 1) //pong
-                driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
+                driverStatus |= XAie_LockRelease(config->get_dev(), pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
             else //ping
-                driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
+                driverStatus |= XAie_LockRelease(config->get_dev(), pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
         }
     }
 
@@ -545,12 +537,12 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     int8_t acquireVal = ACQ_READ; //Versal
     int8_t releaseVal = (pRTPConfig->isAsync ? REL_READ : REL_WRITE); //Versal
 
-    size_t numReservedRows = config_manager::s_num_reserved_rows;
+    size_t numReservedRows = config->get_num_reserved_rows();
     XAie_LocType selectorTile = XAie_TileLoc(pRTPConfig->selectorColumn, pRTPConfig->selectorRow + numReservedRows + 1);
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
     XAie_LocType pongTile = XAie_TileLoc(pRTPConfig->pongColumn, pRTPConfig->pongRow + numReservedRows + 1);
 
-    if (config_manager::s_pDevInst->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
             acquireVal = AIE_ML_ASYNC_ACQ;
@@ -567,41 +559,41 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     if (bHasAndAcquireLock)
     {
         // synchronous RTP acquires lock for READ, async RTP requiring first-time sync acquires lock for READ
-        driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, acquireVal), LOCK_TIMEOUT);
+        driverStatus |= XAie_LockAcquire(config->get_dev(), selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, acquireVal), LOCK_TIMEOUT);
     }
 
     // Read the selector value
     u32 selector;
-    driverStatus |= XAie_DataMemRdWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, ((u32*)&selector));
+    driverStatus |= XAie_DataMemRdWord(config->get_dev(), selectorTile, pRTPConfig->selectorAddr, ((u32*)&selector));
 
     if (bHasAndAcquireLock)
     {
         // synchronous RTP acquires buffer for READ, async RTP requiring first-time sync acquires lock for READ
         if (selector == 1) //pong
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config->get_dev(), pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
         else //ping
-            driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockAcquire(config->get_dev(), pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
     }
 
     //if lock was aquired, release the selector lock
     if (bHasAndAcquireLock)
     {
         // synchronous RTP releases lock for WRITE, async RTP requiring first-time sync release lock for READ
-        driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
+        driverStatus |= XAie_LockRelease(config->get_dev(), selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
     }
 
     if (selector == 1) //pong
-        driverStatus |= XAie_DataMemBlockRead(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockRead(config->get_dev(), pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     else //ping
-        driverStatus |= XAie_DataMemBlockRead(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockRead(config->get_dev(), pingTile, pRTPConfig->pingAddr, pValue, numBytes);
 
     //release buffer lock
     if (bHasAndAcquireLock)
     {
         if (selector == 1) //pong
-            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockRelease(config->get_dev(), pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
         else //ping
-            driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
+            driverStatus |= XAie_LockRelease(config->get_dev(), pingTile, XAie_LockInit(pRTPConfig->pingLockId, releaseVal), LOCK_TIMEOUT);
     }
 
     if (driverStatus != AieRC::XAIE_OK)
@@ -626,7 +618,12 @@ size_t frontAndPop(std::queue<size_t>& bdQueue)
     return bd;
 }
 
-gmio_api::gmio_api(const gmio_config* pConfig) : pGMIOConfig(pConfig), isConfigured(false), dmaStartQMaxSize(4)
+gmio_api::
+gmio_api(const gmio_config* pConfig, const std::shared_ptr<config_manager> cfg) 
+  : pGMIOConfig(pConfig)
+  , isConfigured(false)
+  , dmaStartQMaxSize(4)
+  , config(std::move(cfg))
 {}
 
 err_code gmio_api::configure()
@@ -638,10 +635,10 @@ err_code gmio_api::configure()
     {
         int driverStatus = AieRC::XAIE_OK; //0
         gmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);
-        driverStatus |= XAie_DmaDescInit(config_manager::s_pDevInst, &shimDmaInst, gmioTileLoc);
+        driverStatus |= XAie_DmaDescInit(config->get_dev(), &shimDmaInst, gmioTileLoc);
         //enable shim DMA channel, need to start first so the status is correct
-        driverStatus |= XAie_DmaChannelEnable(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
-        driverStatus |= XAie_DmaGetMaxQueueSize(config_manager::s_pDevInst, gmioTileLoc, &dmaStartQMaxSize);
+        driverStatus |= XAie_DmaChannelEnable(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
+        driverStatus |= XAie_DmaGetMaxQueueSize(config->get_dev(), gmioTileLoc, &dmaStartQMaxSize);
 
         //decide 4 BD numbers to use for this GMIO based on channel number (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
         for (int j = 0; j < dmaStartQMaxSize; j++)
@@ -675,7 +672,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     while (availableBDs.empty())
     {
         u8 numPendingBDs = 0;
-        driverStatus |= XAie_DmaGetPendingBdCount(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
+        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
 
         int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
         //move completed BDs from enqueuedBDs to availableBDs
@@ -692,7 +689,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     //set up BD
     driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
 
-    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
+    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
     else
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
@@ -700,10 +697,10 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
     //write BD
-    driverStatus |= XAie_DmaWriteBd(config_manager::s_pDevInst, &shimDmaInst, gmioTileLoc, bdNumber);
+    driverStatus |= XAie_DmaWriteBd(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
 
     //enqueue BD
-    driverStatus |= XAie_DmaChannelPushBdToQueue(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+    driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id "
@@ -727,7 +724,7 @@ err_code gmio_api::wait()
 
     debugMsg("gmio_api::wait::XAie_DmaWaitForDone ...");
 
-    while (XAie_DmaWaitForDone(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
+    while (XAie_DmaWaitForDone(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
 
     while (!enqueuedBDs.empty())
     {
@@ -740,11 +737,11 @@ err_code gmio_api::wait()
 
 /************************************ dma_api ************************************/
 
-static uint8_t relativeToAbsoluteRow(int tileType, uint8_t row)
+static uint8_t relativeToAbsoluteRow(const std::shared_ptr<config_manager> config, int tileType, uint8_t row)
 {
     uint8_t absoluteRow = row;
     if (tileType == 0) //aie tile
-        absoluteRow += (1 + config_manager::s_num_reserved_rows);
+        absoluteRow += (1 + config->get_num_reserved_rows());
     else if (tileType == 2) //memory_tile
         absoluteRow += 1;
     return absoluteRow;
@@ -754,7 +751,7 @@ err_code dma_api::configureBdWaitQueueEnqueueTask(int tileType, uint8_t column, 
 {
     int status = (int)err_code::ok;
 
-    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIE)
+    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE)
         return errorMsg(err_code::internal_error, "ERROR: adf::dma_api::enqueueTask: Does not support AIE architecture.");
 
     if (bdParams.empty())
@@ -780,9 +777,9 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
 {
     int driverStatus = XAIE_OK; //0
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "dma_api::configureBD" << std::endl).str());
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
     XAie_DmaDesc dmaInst;
-    driverStatus |= XAie_DmaDescInit(config_manager::s_pDevInst, &dmaInst, tileLoc);
+    driverStatus |= XAie_DmaDescInit(config->get_dev(), &dmaInst, tileLoc);
 
     //address, length, stepsize, wrap, 
     std::vector<XAie_DmaDimDesc> dimDescs;
@@ -851,7 +848,7 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
     driverStatus |= XAie_DmaEnableBd(&dmaInst);
 
     //write bd
-    driverStatus |= XAie_DmaWriteBd(config_manager::s_pDevInst, &dmaInst, tileLoc, bdId);
+    driverStatus |= XAie_DmaWriteBd(config->get_dev(), &dmaInst, tileLoc, bdId);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaWriteBd " << (uint16_t)bdId << std::endl).str());
 
     // Update status after using AIE driver
@@ -864,10 +861,10 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
 err_code dma_api::enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
 {
     int driverStatus = XAIE_OK; //0
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
     //start queue
-    driverStatus |= XAie_DmaChannelSetStartQueue(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, startBdId, repeatCount, enableTaskCompleteToken);
+    driverStatus |= XAie_DmaChannelSetStartQueue(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, startBdId, repeatCount, enableTaskCompleteToken);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaChannelSetStartQueue " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir
         << ", startBD " << (uint16_t)startBdId << ", repeat count " << repeatCount << ", enable task complete token " << enableTaskCompleteToken << std::endl).str());
 
@@ -881,7 +878,7 @@ err_code dma_api::enqueueTask(int tileType, uint8_t column, uint8_t row, int dir
 err_code dma_api::waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
 {
     int driverStatus = XAIE_OK; //0
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_DmaGetPendingBdCount " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir << std::endl).str());
 
@@ -889,7 +886,7 @@ err_code dma_api::waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t 
     while (numPendingBDs > 3)
     {
         //FIXME this driver API plus one if there is a BD running, what's needed us just the queue size register
-        driverStatus |= XAie_DmaGetPendingBdCount(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, &numPendingBDs);
+        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, &numPendingBDs);
     }
 
     // Update status after using AIE driver
@@ -902,11 +899,11 @@ err_code dma_api::waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t 
 err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
 {
     int driverStatus = XAIE_OK; //0
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_DmaWaitForDone " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir << std::endl).str());
 
-    while (XAie_DmaWaitForDone(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, 0) != XAIE_OK) {}
+    while (XAie_DmaWaitForDone(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, 0) != XAIE_OK) {}
 
     // Update status after using AIE driver
     if (driverStatus != AieRC::XAIE_OK)
@@ -918,7 +915,7 @@ err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, 
 err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint8_t bdId, uint64_t offset)
 {
   int driverStatus = XAIE_OK;
-  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(1, row));
+  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, 1, row));
 
   driverStatus |= XAie_DmaUpdateBdAddrOff(memInst, tileLoc ,offset, bdId);
 
@@ -931,9 +928,9 @@ err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uin
 err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address)
 {
   int driverStatus = XAIE_OK; //0
-  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+  XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
-  driverStatus |= XAie_DmaUpdateBdAddr(config_manager::s_pDevInst, tileLoc, address, bdId);
+  driverStatus |= XAie_DmaUpdateBdAddr(config->get_dev(), tileLoc, address, bdId);
   debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaUpdateBdAddr " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", address " << std::hex << address << std::dec << ", bdId " << bdId << std::endl).str());
 
   if (driverStatus != AieRC::XAIE_OK)
@@ -945,8 +942,8 @@ err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uin
 
 err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
 {
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
-    int driverStatus = XAie_LockSetValue(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, initVal));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
+    int driverStatus = XAie_LockSetValue(config->get_dev(), tileLoc, XAie_LockInit(lockId, initVal));
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockSetValue " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
         << ", lock id " << lockId << ", value " << (uint16_t)initVal << std::endl).str());
 
@@ -958,10 +955,10 @@ err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, uns
 
 err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
 {
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_LockAcquire " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
         << ", lock id " << lockId << ", acquire value " << (uint16_t)acqVal << std::endl).str());
-    int driverStatus = XAie_LockAcquire(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, acqVal), LOCK_TIMEOUT);
+    int driverStatus = XAie_LockAcquire(config->get_dev(), tileLoc, XAie_LockInit(lockId, acqVal), LOCK_TIMEOUT);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockAcquire " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
         << ", lock id " << lockId << ", acquire value " << (uint16_t)acqVal << std::endl).str());
 
@@ -973,8 +970,8 @@ err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, unsign
 
 err_code lock_api::releaseLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
 {
-    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
-    int driverStatus = XAie_LockRelease(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, relVal), LOCK_TIMEOUT);
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
+    int driverStatus = XAie_LockRelease(config->get_dev(), tileLoc, XAie_LockInit(lockId, relVal), LOCK_TIMEOUT);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockRelease " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
         << ", lock id " << lockId << ", release value " << (uint16_t)relVal << std::endl).str());
 

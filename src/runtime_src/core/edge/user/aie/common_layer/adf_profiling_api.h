@@ -21,6 +21,11 @@
 
 #include <memory>
 
+extern "C"
+{
+#include "xaiengine/xaiegbl.h"
+}
+
 namespace xaiefal
 {
 class XAieRsc;
@@ -31,25 +36,25 @@ namespace adf
 
 struct shim_config
 {
-    shim_config();
-    shim_config(const gmio_config* pConfig);
-    shim_config(const plio_config* pConfig);
+  shim_config();
+  shim_config(const gmio_config* pConfig);
+  shim_config(const plio_config* pConfig);
 
-    int shimColumn;
-    int streamPortId;
-    uint8_t slaveOrMaster; //0:slave, 1:master
+  int shimColumn;
+  int streamPortId;
+  uint8_t slaveOrMaster; //0:slave, 1:master
 };
 
 class profiling
 {
 public:
-    static err_code profile_stream_running_to_idle_cycles(shim_config shimConfig, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
-    static err_code profile_stream_start_to_transfer_complete_cycles(shim_config shimConfig, uint32_t numBytes, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
-    static err_code profile_start_time_difference_btw_two_streams(shim_config shimConfig1, shim_config shimConfig2, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
-    static err_code profile_stream_running_event_count(shim_config shimConfig, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
+  static err_code profile_stream_running_to_idle_cycles(XAie_DevInst* dev, shim_config shimConfig, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
+  static err_code profile_stream_start_to_transfer_complete_cycles(XAie_DevInst* dev, shim_config shimConfig, uint32_t numBytes, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
+  static err_code profile_start_time_difference_btw_two_streams(XAie_DevInst* dev, shim_config shimConfig1, shim_config shimConfig2, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
+  static err_code profile_stream_running_event_count(XAie_DevInst* dev, shim_config shimConfig, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources);
 
-    static uint64_t read(std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources, bool startTimeDifference = false);
-    static err_code stop(std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources, bool startTimeDifference = false);
+  static uint64_t read(XAie_DevInst* dev, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources, bool startTimeDifference = false);
+  static err_code stop(XAie_DevInst* dev, std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquiredResources, bool startTimeDifference = false);
 };
 
 }
