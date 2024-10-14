@@ -90,13 +90,12 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   }
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
-
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::tct_one_column);
   auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))

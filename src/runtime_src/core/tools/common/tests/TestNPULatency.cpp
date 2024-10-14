@@ -88,12 +88,12 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     testker = xrt::kernel(hwctx, kernelName);
   }
-  catch (const std::exception& ex){
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+  catch (const std::exception& )
+  {
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
-
   xrt::xclbin::ip cu;
   for (const auto& ip : xclbin.get_ips()) {
     if (ip.get_type() != xrt::xclbin::ip::ip_type::ps)
@@ -148,6 +148,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
+    return ptree;
   }
 
   // Calculate end-to-end latency of one job execution

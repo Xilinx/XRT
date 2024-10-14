@@ -482,13 +482,13 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format)->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output)->implicit_value(""), "Direct the output to the given file")
-    ("pmode", boost::program_options::value<decltype(m_pmode)>(&m_pmode)->implicit_value(""), "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_hiddenOptions.add_options()
     ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location)->implicit_value(""), "Path to the directory containing validate xclbins")
     ("param", boost::program_options::value<decltype(m_param)>(&m_param)->implicit_value(""), (std::string("Extended parameter for a given test. Format: <test-name>:<key>:<value>\n") + extendedKeysOptions()).c_str())
+    ("pmode", boost::program_options::value<decltype(m_pmode)>(&m_pmode)->implicit_value(""), "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes")
   ;
 
   m_commonOptions.add(common_options);
@@ -728,10 +728,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       else {
         throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % m_pmode));
       }
+      XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % m_pmode));
     }
     else {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+      XBU::verbose("Setting power mode to `performance`\n");
     }
+    
   }
   catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
