@@ -31,6 +31,10 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 pcie_info(const xrt_core::device* device);
 
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+get_clock_info(const xrt_core::device* device);
+
 }} // platform, xrt
 
 #endif

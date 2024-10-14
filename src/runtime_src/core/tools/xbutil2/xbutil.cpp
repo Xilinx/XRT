@@ -62,7 +62,7 @@ R"(
     }]
   },{
     "advanced":[{
-      "suboption": ["read-aie-reg", "aie-clock"]
+      "suboption": ["read-aie-reg", "aie-clock", "report"]
     }]
   },{
     "validate": [{
