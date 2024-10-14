@@ -151,7 +151,8 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   TestCase singleHardwareCtxTest(params);
   try{
     singleHardwareCtxTest.initialize();
-  } catch (const std::exception& ex) {
+  } 
+  catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
     return ptree;

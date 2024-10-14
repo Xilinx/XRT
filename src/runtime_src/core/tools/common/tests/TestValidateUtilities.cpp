@@ -58,7 +58,12 @@ TestCase::initialize()
   hw_ctx = xrt::hw_context(params.device, params.xclbin.get_uuid());
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < params.queue_len; j++) {
-    auto kernel = xrt::kernel(hw_ctx, params.kernel_name);
+    xrt::kernel kernel;
+    try {
+      kernel = xrt::kernel(hw_ctx, params.kernel_name);
+    } catch (const std::exception& ) {
+      throw std::runtime_error("Not enough columns available. Please make sure no other workload is running on the device."); //rethrow
+    }
     auto bos = BO_set(params.device, kernel, params.dpu_file, params.buffer_size);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);

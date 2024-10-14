@@ -90,10 +90,10 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   }
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
 

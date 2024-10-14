@@ -79,7 +79,12 @@ void  main_(int argc, char** argv,
   // Parse the command line arguments
   po::variables_map vm;
   po::command_line_parser parser(argc, argv);
-  auto subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+  SubCmd::SubCmdOptions subcmd_options;
+  try {
+    subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+  } catch (po::error& ex) {
+    std::cerr << ex.what() << std::endl;
+  }
 
   if(bVersion) {
     std::cout << XBU::get_xrt_pretty_version();
