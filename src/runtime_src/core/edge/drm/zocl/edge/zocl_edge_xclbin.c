@@ -192,6 +192,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Free sections before load the new xclbin */
 	zocl_free_sections(zdev, slot);
+	
+	/* Destroy the aie information from slot and create new */
+	zocl_destroy_aie(slot);
+
 
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
