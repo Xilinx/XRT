@@ -44,7 +44,7 @@ namespace xdp {
     void configStreamSwitchPorts(
       const tile_type& tile, const XAie_LocType& loc,
       const module_type& type, const std::string& metricSet,
-      const uint8_t channel
+      const uint8_t channel, const XAie_Events startEvent
     );
    private:
       const std::vector<XAie_ModuleType> falModuleTypes = {
