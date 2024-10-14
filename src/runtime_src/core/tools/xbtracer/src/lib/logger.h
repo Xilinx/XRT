@@ -13,9 +13,11 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #include "experimental/xrt_hw_context.h"
 #include "experimental/xrt_xclbin.h"
+#include "experimental/xrt_module.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -36,6 +38,8 @@ extern std::unordered_map<void*, std::string> fptr2fname_map;
 // Function to perform find and replace operations
 std::string find_and_replace_all(std::string str,
   const std::vector<std::pair<std::string, std::string>>& replacements);
+
+void read_file(const std::string& fnm, std::vector<unsigned char>& buffer);
 
 /*
  * enumration to identify the log type (Entry/Exit)
@@ -107,6 +111,10 @@ class logger
                          std::string>> m_bo_ref_tracker;
   std::vector<std::tuple<std::shared_ptr<hw_context_impl>, std::thread::id,
                          std::string>> m_hw_cnxt_ref_tracker;
+  std::vector<std::tuple<std::shared_ptr<module_impl>, std::thread::id,
+                         std::string>> m_mod_ref_tracker;
+  std::vector<std::tuple<std::shared_ptr<elf_impl>, std::thread::id,
+                         std::string>> m_elf_ref_tracker;
 
   template <typename T>
   bool check_ref_count(std::vector<std::tuple<std::shared_ptr<T>,
@@ -190,6 +198,18 @@ class logger
           std::this_thread::get_id(), "xrt::bo::~bo()"));
   }
 
+  void set_pimpl(std::shared_ptr<module_impl> hpimpl)
+  {
+    m_mod_ref_tracker.emplace_back(std::make_tuple(hpimpl,
+          std::this_thread::get_id(), "xrt::module::~module()"));
+  }
+
+  void set_pimpl(std::shared_ptr<elf_impl> hpimpl)
+  {
+    m_elf_ref_tracker.emplace_back(std::make_tuple(hpimpl,
+          std::this_thread::get_id(), "xrt::elf::~elf()"));
+  }
+
   void set_pimpl(std::shared_ptr<xclbin_impl>&)
   {
   }
@@ -250,10 +270,10 @@ std::string concat_args(const Args&... args)
   bool first = true;
 
   // Folding expression with type check for membuf
-  ((oss << (first ? "" : ", ") 
-    << (std::is_same_v<membuf, std::decay_t<Args>> 
-    ? mb_stringify(args) 
-    : stringify_args(args)), 
+  ((oss << (first ? "" : ", ")
+    << (std::is_same_v<membuf, std::decay_t<Args>>
+    ? mb_stringify(args)
+    : stringify_args(args)),
     first = false), ...);
 
   return oss.str();
