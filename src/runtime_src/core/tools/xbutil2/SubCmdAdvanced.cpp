@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -8,6 +8,7 @@
 #include "OO_AieRegRead.h"
 #include "OO_MemRead.h"
 #include "OO_MemWrite.h"
+#include "OO_Reports.h"
 #include "SubCmdAdvanced.h"
 
 #include "common/device.h"
@@ -51,6 +52,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
 
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));
+  addSubOption(std::make_shared<OO_Reports>("report"));
 // Only defined for embedded platform
 #ifndef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
   addSubOption(std::make_shared<OO_AieRegRead>("read-aie-reg"));

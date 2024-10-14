@@ -334,32 +334,6 @@ enum_to_str(CLOCK_TYPE type)
 }
 
 void
-add_clock_info(const xrt_core::device* device, ptree_type& pt)
-{
-  ptree_type pt_clock_array;
-
-  try {
-    auto raw = xrt_core::device_query<xq::clock_freq_topology_raw>(device);
-    if (raw.empty())
-      return;
-
-    ptree_type pt_clocks;
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int i = 0; i < clock_topology->m_count; i++) {
-      ptree_type pt_clock;
-      pt_clock.add("id", clock_topology->m_clock_freq[i].m_name);
-      pt_clock.add("description", enum_to_str(static_cast<CLOCK_TYPE>(clock_topology->m_clock_freq[i].m_type)));
-      pt_clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
-      pt_clock_array.push_back(std::make_pair("", pt_clock));
-    }
-    pt.put_child("clocks", pt_clock_array);
-  }
-  catch (const xq::no_such_key&) {
-    // ignoring if not available: Edge Case
-  }
-}
-
-void
 add_tops_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_tops_array;
@@ -463,7 +437,8 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     else
       add_controller_info(device, pt_platform);
     add_mac_info(device, pt_platform);
-    add_clock_info(device, pt_platform);
+    auto pt_clock_array = xrt_core::platform::get_clock_info(device);
+    pt_platform.put_child("clocks", pt_clock_array);
     add_config_info(device, pt_platform);
     break;
   }
@@ -483,6 +458,33 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 } //unnamed namespace
 
 namespace xrt_core { namespace platform {
+
+ptree_type
+get_clock_info(const xrt_core::device* device)
+{
+  ptree_type pt;
+
+  try {
+    auto raw = xrt_core::device_query<xq::clock_freq_topology_raw>(device);
+    if (raw.empty())
+      return pt;
+
+    ptree_type pt_clock_array;
+    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+    for (int i = 0; i < clock_topology->m_count; i++) {
+      ptree_type pt_clock;
+      pt_clock.add("id", clock_topology->m_clock_freq[i].m_name);
+      pt_clock.add("description", enum_to_str(static_cast<CLOCK_TYPE>(clock_topology->m_clock_freq[i].m_type)));
+      pt_clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
+      pt_clock_array.push_back(std::make_pair("", pt_clock));
+    }
+    pt.put_child("clocks", pt_clock_array);
+  }
+  catch (const xq::no_such_key&) {
+    // ignoring if not available: Edge Case
+  }
+  return pt;
+}
 
 ptree_type
 platform_info(const xrt_core::device* device)
