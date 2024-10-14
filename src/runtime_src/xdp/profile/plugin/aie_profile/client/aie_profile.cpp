@@ -188,7 +188,7 @@ namespace xdp {
 
           aie::profile::configGroupEvents(&aieDevInst, loc, mod, type, metricSet, startEvent, channel0);
           if (aie::profile::isStreamSwitchPortEvent(startEvent))
-            configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0);
+            configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0, startEvent);
 
           // Convert enums to physical event IDs for reporting purposes
           uint8_t tmpStart;
@@ -257,10 +257,11 @@ namespace xdp {
   // NOTE: Used to monitor streams: trace, interfaces, and MEM tiles
   void
   AieProfile_WinImpl::configStreamSwitchPorts(const tile_type& tile, const XAie_LocType& loc,
-    const module_type& type, const std::string& metricSet, const uint8_t channel)
+    const module_type& type, const std::string& metricSet, const uint8_t channel, const XAie_Events startEvent)
   {
     // Hardcoded
     uint8_t rscId = 0;
+    uint8_t portnum = aie::profile::getPortNumberFromEvent(startEvent);
     // AIE Tiles (e.g., trace streams)
     if (type == module_type::core) {
       auto slaveOrMaster = (metricSet.find("mm2s") != std::string::npos) ?
@@ -278,7 +279,10 @@ namespace xdp {
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = tile.stream_id;
+      uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
+                             0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+      
+      // auto streamPortId  = tile.stream_id;
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       std::stringstream msg;

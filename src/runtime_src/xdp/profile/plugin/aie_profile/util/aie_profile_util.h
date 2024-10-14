@@ -134,6 +134,8 @@ namespace xdp::aie::profile {
    */
   bool isPortTlastEvent(const XAie_Events event);
 
+  uint8_t getPortNumberFromEvent(const XAie_Events event);
+  
   /**
    * @brief Get XAie module enum at the module index 
    * @param moduleIndex module index
