@@ -3,7 +3,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "OO_ReportClock.h"
+#include "OO_Reports.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenusCore.h"
@@ -17,7 +17,7 @@ using bpt = boost::property_tree::ptree;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_ReportClock::OO_ReportClock( const std::string &_longName, bool _isHidden )
+OO_Reports::OO_Reports( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Hidden reports")
     , m_device("")
     , m_action("")
@@ -35,7 +35,7 @@ OO_ReportClock::OO_ReportClock( const std::string &_longName, bool _isHidden )
 }
 
 void
-OO_ReportClock::execute(const SubCmdOptions& _options) const
+OO_Reports::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: report");
 

@@ -49,7 +49,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_HostMem.cpp"
   "OO_Performance.cpp"
   "OO_Preemption.cpp"
-  "OO_ReportClock.cpp"
+  "OO_Reports.cpp"
 )
 
 # Merge the files into one collection
