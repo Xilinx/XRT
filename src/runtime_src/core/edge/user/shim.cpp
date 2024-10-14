@@ -743,7 +743,8 @@ xclLoadAxlf(const axlf *buffer)
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_aie_only(buffer)) {
+  auto xml_header = xclbin::get_axlf_section(buffer, axlf_section_kind::EMBEDDED_METADATA);
+  if (xml_header) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -1236,50 +1237,54 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
 
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_aie_only(buffer)) {
-    auto kernels = xrt_core::xclbin::get_kernels(buffer);
-    /* Calculate size of kernels */
-    for (auto& kernel : kernels) {
-      axlf_obj->za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-    }
-
-    /* Check PCIe's shim.cpp for details of kernels binary */
-    krnl_binary.resize(axlf_obj->za_ksize);
-    axlf_obj->za_kernels = krnl_binary.data();
-    for (auto& kernel : kernels) {
-      auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->za_kernels + off);
-      if (kernel.name.size() > sizeof(krnl->name))
-          return -EINVAL;
-      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-      krnl->name[sizeof(krnl->name)-1] = '\0';
-      krnl->range = kernel.range;
-      krnl->anums = kernel.args.size();
-
-      krnl->features = 0;
-      if (kernel.sw_reset)
-        krnl->features |= KRNL_SW_RESET;
-
-      int ai = 0;
-      for (auto& arg : kernel.args) {
-        if (arg.name.size() > sizeof(krnl->args[ai].name)) {
-          xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
-          return -EINVAL;
-        }
-        std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-        krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
-        krnl->args[ai].offset = arg.offset;
-        krnl->args[ai].size   = arg.size;
-        // XCLBIN doesn't define argument direction yet and it only support
-        // input arguments.
-        // Driver use 1 for input argument and 2 for output.
-        // Let's refine this line later.
-        krnl->args[ai].dir    = 1;
-        ai++;
-      }
-      off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-    }
+  auto xml_header = xclbin::get_axlf_section(buffer, axlf_section_kind::EMBEDDED_METADATA);
+  //return success even if there is no embedded metadata.AIE overlay xclbins
+  //wont have embedded metadata
+  if (!xml_header)
+    return 0;
+  auto kernels = xrt_core::xclbin::get_kernels(buffer);
+  /* Calculate size of kernels */
+  for (auto& kernel : kernels) {
+    axlf_obj->za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
   }
 
+  /* Check PCIe's shim.cpp for details of kernels binary */
+  krnl_binary.resize(axlf_obj->za_ksize);
+  axlf_obj->za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
+    auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->za_kernels + off);
+    if (kernel.name.size() > sizeof(krnl->name))
+        return -EINVAL;
+    std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+    krnl->name[sizeof(krnl->name)-1] = '\0';
+    krnl->range = kernel.range;
+    krnl->anums = kernel.args.size();
+
+    krnl->features = 0;
+    if (kernel.sw_reset)
+      krnl->features |= KRNL_SW_RESET;
+
+    int ai = 0;
+    for (auto& arg : kernel.args) {
+      if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+        xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
+        return -EINVAL;
+      }
+      std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+      krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+      krnl->args[ai].offset = arg.offset;
+      krnl->args[ai].size   = arg.size;
+      // XCLBIN doesn't define argument direction yet and it only support
+      // input arguments.
+      // Driver use 1 for input argument and 2 for output.
+      // Let's refine this line later.
+      krnl->args[ai].dir    = 1;
+      ai++;
+    }
+    off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+  
+  
   return 0;
 }
 
