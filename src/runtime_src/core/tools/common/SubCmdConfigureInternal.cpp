@@ -349,6 +349,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
   }
 
   if (optionOption) {
+    optionOption->setGlobalOptions(getGlobalOptions());
     optionOption->execute(_options);
     return;
   }
