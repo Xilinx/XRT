@@ -5,7 +5,7 @@
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
 #include <boost/property_tree/ptree.hpp>
-#include <memory>
+#include <vector>
 
 #include "xdp/profile/device/common/client_transaction.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -21,27 +21,17 @@ extern "C" {
 
 namespace xdp {
 
-  class AieDebugPlugin : public XDPPlugin
-  {
+  class AieDebug_EdgeImpl : public AieDebugImpl {
   public:
-    AieDebugPlugin();
-    ~AieDebugPlugin();
+    AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
+    ~AieDebug_EdgeImpl() = default;
     void updateAIEDevice(void* handle);
     void endAIEDebugRead(void* handle);
-    static bool alive();
-
+  
   private:
     void poll();
-    
-    static bool live;
-    struct AIEData {
-      uint64_t deviceID;
-      bool valid;
-      std::unique_ptr<AieDebugImpl> implementation;
-      std::shared_ptr<AieDebugMetadata> metadata;
-    };
-    std::map<void*, AIEData> handleToAIEData;
 
+    std::map<xdp::tile_type, uint64_t> debugAddresses;
   };
 
 } // end namespace xdp

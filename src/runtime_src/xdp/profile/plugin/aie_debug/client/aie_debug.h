@@ -21,27 +21,24 @@ extern "C" {
 
 namespace xdp {
 
-  class AieDebugPlugin : public XDPPlugin
-  {
+  class AieDebug_WinImpl : public AieDebugImpl {
   public:
-    AieDebugPlugin();
-    ~AieDebugPlugin();
+    AieDebug_WinImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
+    ~AieDebug_WinImpl() = default;
     void updateAIEDevice(void* handle);
     void endAIEDebugRead(void* handle);
-    static bool alive();
-
+  
   private:
     void poll();
-    
-    static bool live;
-    struct AIEData {
-      uint64_t deviceID;
-      bool valid;
-      std::unique_ptr<AieDebugImpl> implementation;
-      std::shared_ptr<AieDebugMetadata> metadata;
-    };
-    std::map<void*, AIEData> handleToAIEData;
+    std::vector<std::string> getSettingsVector(std::string settingsString);
+    std::map<module_type, std::vector<uint64_t>> parseMetrics();
 
+    xrt::hw_context hwContext;
+    std::unique_ptr<aie::ClientTransaction> transactionHandler;
+    uint8_t* txn_ptr;
+    XAie_DevInst aieDevInst = {0};
+    read_register_op_t* op;
+    std::size_t op_size;
   };
 
 } // end namespace xdp
