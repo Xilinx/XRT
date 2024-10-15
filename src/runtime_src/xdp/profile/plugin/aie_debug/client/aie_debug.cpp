@@ -3,7 +3,8 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/plugin/aie_debug/client/aie_debug.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -27,7 +28,7 @@ namespace xdp {
   /****************************************************************************
    * Client constructor
    ***************************************************************************/
-  AieDebug_WinImpl::AieDebug_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+  AieDebug_WinImpl::AieDebug_WinImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
   {
     hwContext = metadata->getHwContext();

@@ -3,7 +3,14 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/plugin/aie_debug/edge/aie_debug.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -27,7 +34,7 @@ namespace xdp {
   /****************************************************************************
    * Client constructor
    ***************************************************************************/
-  AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+  AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
   {
     // Do nothing

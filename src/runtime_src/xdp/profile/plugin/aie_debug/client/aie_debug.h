@@ -7,6 +7,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
 
+#include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
 #include "xdp/profile/device/common/client_transaction.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
