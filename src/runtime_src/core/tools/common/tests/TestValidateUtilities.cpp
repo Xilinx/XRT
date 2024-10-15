@@ -136,7 +136,28 @@ get_instr_size(const std::string& dpu_file) {
 }
 
 void
-wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
+wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev, double& target_h_clock_freq) {
+  auto res_info = xrt_core::device_query<xrt_core::query::xrt_resource_raw>(dev);
+  if (res_info.empty())
+    return;
+
+  for (auto &res : res_info)
+  {
+    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_clk_max)
+      continue;
+    target_h_clock_freq = res.data_double;
+  }
+  while (ipu_hclock < target_h_clock_freq) {
+    //get h-clock
+    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
+    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+    for (int c = 0; c < clock_topology->m_count; c++) {
+      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
+        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  /*
   int ipu_hclock_pre = 0;
   auto hclock_steady_counter = 0;
   auto first_steady_state = -1, second_steady_state = -1;;
@@ -170,7 +191,7 @@ wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
     
     ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
 
-  }
+  }*/
 }
 
 }// end of namespace XBValidateUtils
