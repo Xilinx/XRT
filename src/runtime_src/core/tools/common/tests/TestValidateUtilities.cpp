@@ -135,12 +135,22 @@ get_instr_size(const std::string& dpu_file) {
   return size;
 }
 
-void
-wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
+/**
+ * @brief Waits for the IPU clock frequency to reach the target maximum clock frequency.
+ *
+ * This function queries the device for the target maximum clock frequency and then
+ * continuously checks the current IPU clock frequency until it reaches the target.
+ *
+ * @param dev A shared pointer to the xrt_core::device.
+ * @return The IPU clock frequency when it reaches the target maximum clock frequency.
+ */
+uint64_t
+wait_for_max_clock(std::shared_ptr<xrt_core::device> dev) {
   uint64_t target_h_clock_freq = 0;
+  uint64_t ipu_hclock = 0;
   auto res_info = xrt_core::device_query<xrt_core::query::xrt_resource_raw>(dev);
   if (res_info.empty())
-    return;
+    return ipu_hclock;
 
   for (auto &res : res_info)
   {
@@ -158,6 +168,6 @@ wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+  return ipu_hclock;
 }
-
 }// end of namespace XBValidateUtils

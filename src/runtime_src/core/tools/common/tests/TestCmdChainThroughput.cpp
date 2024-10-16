@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestCmdChainThroughput.h"
 #include "tools/common/XBUtilities.h"
-#include "TestValidateUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
@@ -137,8 +136,6 @@ TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
   for (auto& run : runs)
     runlist.add(run);
 
-  int ipu_hclock = 0;
-  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; ++i) {
     try {

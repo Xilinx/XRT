@@ -90,8 +90,6 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
     }
   };
 
-  int ipu_hclock = 0;
-  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
   // Measure the latency for running the test cases in parallel
   auto start = std::chrono::high_resolution_clock::now(); 
   // Create two threads to run the test cases
