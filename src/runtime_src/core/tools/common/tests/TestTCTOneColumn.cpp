@@ -123,7 +123,6 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
     logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
-
   auto start = std::chrono::high_resolution_clock::now();
   try {
     auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);

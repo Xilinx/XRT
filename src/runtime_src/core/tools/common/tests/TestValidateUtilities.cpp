@@ -148,7 +148,7 @@ uint64_t
 wait_for_max_clock(std::shared_ptr<xrt_core::device> dev) {
   uint64_t target_h_clock_freq = 0;
   uint64_t ipu_hclock = 0;
-  auto res_info = xrt_core::device_query<xrt_core::query::xrt_resource_raw>(dev);
+  auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
   if (res_info.empty())
     return ipu_hclock;
 
