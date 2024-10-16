@@ -119,9 +119,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  // wait until clock reaches the max frequency
-  int ipu_hclock = 0;
-  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
+  // wait until clock reaches the max frequency. The performance metrics for a test
+  // are valid only when the clock reaches the max frequency.
+  uint64_t ipu_hclock = XBValidateUtils::wait_for_max_clock(dev);
 
   try {
     //run kernel
