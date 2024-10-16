@@ -2,6 +2,7 @@
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_API_SOURCE
 #include "capture.h"
 #include "logger.h"
 
@@ -60,7 +61,7 @@ xrt::hw_context xrt::module::get_hw_context() const
 {
   auto func = "xrt::module::get_hw_context()";
   XRT_TOOLS_XBT_FUNC_ENTRY(func);
-  xrt::hw_context  hwctx;
+  xrt::hw_context hwctx;
   XRT_TOOLS_XBT_CALL_METD_RET(dtbl.module.get_hw_context, hwctx);
   XRT_TOOLS_XBT_FUNC_EXIT_RET(func, hwctx.get_handle().get());
   return hwctx;

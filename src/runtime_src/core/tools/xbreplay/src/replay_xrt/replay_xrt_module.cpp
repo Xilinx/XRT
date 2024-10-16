@@ -43,9 +43,7 @@ void replay_xrt::register_module_class_func()
         auto hwctx = m_hwctx_hndle_map[std::stoull(args[1].second)];
 
         if (parent && hwctx)
-        {
           m_module_hndle_map[msg->m_handle] = std::make_shared<xrt::module>(*parent, *hwctx);
-        }
         else
           throw std::runtime_error("Failed to get module handle or hwctx handle");
       }

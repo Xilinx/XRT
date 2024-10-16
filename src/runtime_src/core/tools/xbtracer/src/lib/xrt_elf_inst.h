@@ -8,8 +8,8 @@
 /*
  * elf class method aliases.
  * */
-using xrt_elf_ctor_str = xrt::elf* (*) (void*, const std::string& fnm);
-using xrt_elf_ctor_ist = xrt::elf* (*) (void*, std::istream& stream);
+using xrt_elf_ctor_str = xrt::elf* (*) (void*, const std::string&);
+using xrt_elf_ctor_ist = xrt::elf* (*) (void*, std::istream&);
 using xrt_elf_get_cfg_uuid = xrt::uuid (xrt::elf::*) (void) const;
 
 /*

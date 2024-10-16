@@ -2,6 +2,7 @@
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_API_SOURCE
 #include "capture.h"
 #include "logger.h"
 
@@ -31,8 +32,8 @@ elf::elf(const std::string& fnm)
   std::vector<unsigned char> buffer;
   xtx::read_file(fnm, buffer);
 
-  xtx::membuf data_dump(buffer.data(), buffer.size());
-  XRT_TOOLS_XBT_FUNC_EXIT(func, "data_dump", data_dump);
+  xtx::membuf data(buffer.data(), buffer.size());
+  XRT_TOOLS_XBT_FUNC_EXIT(func, "data", data);
 }
 
 elf::elf(std::istream& stream)
@@ -53,11 +54,11 @@ elf::elf(std::istream& stream)
   // Read the data from the stream into the vector's buffer
   stream.read(reinterpret_cast<char*>(buffer.data()), size);
 
-  xtx::membuf data_dump(buffer.data(), buffer.size());
-  XRT_TOOLS_XBT_FUNC_EXIT(func, "data_dump", data_dump);
+  xtx::membuf data(buffer.data(), buffer.size());
+  XRT_TOOLS_XBT_FUNC_EXIT(func, "data", data);
 }
 
-xrt::uuid xrt::elf::get_cfg_uuid() const
+xrt::uuid elf::get_cfg_uuid() const
 {
   auto func = "xrt::elf::get_cfg_uuid()";
   XRT_TOOLS_XBT_FUNC_ENTRY(func);

@@ -240,9 +240,7 @@ void read_file(const std::string& fnm, std::vector<unsigned char>& buffer)
 {
   std::ifstream file(fnm, std::ios::binary);
   if (!file)
-  {
     throw std::runtime_error("Failed to open " + fnm + "\n");
-  }
 
   auto file_size = std::filesystem::file_size(fnm);
   buffer.resize(file_size);

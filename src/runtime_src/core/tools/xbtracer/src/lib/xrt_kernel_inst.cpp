@@ -4,6 +4,7 @@
 #include <iostream>
 
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_API_SOURCE
 #include "capture.h"
 #include "logger.h"
 
