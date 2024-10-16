@@ -136,7 +136,8 @@ get_instr_size(const std::string& dpu_file) {
 }
 
 void
-wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev, double& target_h_clock_freq) {
+wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev) {
+  uint64_t target_h_clock_freq = 0;
   auto res_info = xrt_core::device_query<xrt_core::query::xrt_resource_raw>(dev);
   if (res_info.empty())
     return;
@@ -145,7 +146,7 @@ wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev, doubl
   {
     if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_clk_max)
       continue;
-    target_h_clock_freq = res.data_double;
+    target_h_clock_freq = res.data_uint64;
   }
   while (ipu_hclock < target_h_clock_freq) {
     //get h-clock
@@ -157,41 +158,6 @@ wait_for_max_clock(int& ipu_hclock, std::shared_ptr<xrt_core::device> dev, doubl
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-  /*
-  int ipu_hclock_pre = 0;
-  auto hclock_steady_counter = 0;
-  auto first_steady_state = -1, second_steady_state = -1;;
-
-  for(int i=0; i<100;i++){
-    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int c = 0; c < clock_topology->m_count; c++) {
-      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
-        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    //std::cout << "NPU clock: " << ipu_hclock <<std::endl;
-
-    hclock_steady_counter = (ipu_hclock == ipu_hclock_pre) ? hclock_steady_counter + 1 : 0;
-    if(hclock_steady_counter == 8 && first_steady_state == -1 && ipu_hclock >= 1810) {
-      //break;
-      first_steady_state = ipu_hclock_pre; 
-      hclock_steady_counter = 0;
-    }
-    
-    if(hclock_steady_counter == 8 && first_steady_state != -1 && second_steady_state == -1 && ipu_hclock > first_steady_state) {
-      //break;
-      second_steady_state = ipu_hclock; 
-      hclock_steady_counter = 0;
-    }
-    
-    if (hclock_steady_counter == 8 && second_steady_state != -1  && ipu_hclock > second_steady_state) {
-      break;  
-    }
-    
-    ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
-
-  }*/
 }
 
 }// end of namespace XBValidateUtils

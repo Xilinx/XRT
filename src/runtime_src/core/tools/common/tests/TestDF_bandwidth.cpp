@@ -128,6 +128,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
+  int ipu_hclock = 0;
+  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
     try {

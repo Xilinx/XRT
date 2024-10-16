@@ -121,9 +121,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   // wait until clock reaches the max frequency
   int ipu_hclock = 0;
-  auto target_h_clock_freq = 0.0;
-  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev, target_h_clock_freq);
-  logger(ptree, "Details", boost::str(boost::format("target IPU H-clock: %d MHz") % target_h_clock_freq));
+  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
 
   try {
     //run kernel
