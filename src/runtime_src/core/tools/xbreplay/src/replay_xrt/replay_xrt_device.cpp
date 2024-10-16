@@ -62,7 +62,7 @@ void replay_xrt::register_device_class_func()
   [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
-    unsigned long  axlf_ref = std::stoul(args[0].second);
+    auto axlf_ref = std::stoull(args[0].second);
 
     /*get axlf handle */
     auto axlf_hndle = m_axlf_hndle_map[axlf_ref];
@@ -80,7 +80,7 @@ void replay_xrt::register_device_class_func()
   [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
-    unsigned long  xclbin_ref = std::stoul(args[0].second);
+    auto xclbin_ref = std::stoull(args[0].second);
 
     /*get axlf handle */
     auto xclbin_hndle = m_xclbin_hndle_map[xclbin_ref];

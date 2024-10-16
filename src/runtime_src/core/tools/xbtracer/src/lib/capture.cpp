@@ -115,6 +115,7 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::kernel::read_register(unsigned int) const",  (void **) &dtbl.kernel.read_register},
   {"xrt::kernel::get_name() const",  (void **) &dtbl.kernel.get_name},
   {"xrt::kernel::get_xclbin() const",  (void **) &dtbl.kernel.get_xclbin},
+  {"xrt::ext::kernel::kernel(xrt::hw_context const&, xrt::module const&, std::string const&)", (void **) &dtbl.ext.kernel_ctor_ctx_m_s},
 
   /* xclbin class maps */
   {"xrt::xclbin::xclbin(std::string const&)", (void **) &dtbl.xclbin.ctor_fnm },
@@ -126,6 +127,18 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::hw_context::hw_context(xrt::device const&, xrt::uuid const&, xrt::hw_context::access_mode)", (void **) &dtbl.hw_context.ctor_frm_mode},
   {"xrt::hw_context::update_qos(xrt::hw_context::cfg_param_type const&)", (void **) &dtbl.hw_context.update_qos},
   // NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
+
+  /*module class maps*/
+  {"xrt::module::module(xrt::elf const&)", (void **) &dtbl.module.ctor_elf},
+  {"xrt::module::module(void*, size_t, xrt::uuid const&)", (void **) &dtbl.module.ctor_usr_sz_uuid},
+  {"xrt::module::module(xrt::module const&, xrt::hw_context const&);", (void **) &dtbl.module.ctor_mod_ctx},
+  {"xrt::module::get_cfg_uuid();", (void **) &dtbl.module.get_cfg_uuid},
+  {"xrt::module::get_module();", (void **) &dtbl.module.get_hw_context},
+
+    /*elf class maps*/
+  {"xrt::elf::elf(std::string const&)", (void **) &dtbl.elf.ctor_str},
+  {"xrt::elf::elf(std::istream& stream)", (void **) &dtbl.elf.ctor_ist},
+  {"xrt::elf::get_cfg_uuid();", (void **) &dtbl.elf.get_cfg_uuid},
 };
 
 } //namespace xrt::tools::xbtracer

@@ -9,6 +9,8 @@
 #include "xrt_hw_context_inst.h"
 #include "xrt_kernel_inst.h"
 #include "xrt_xclbin_inst.h"
+#include "xrt_module_inst.h"
+#include "xrt_elf_inst.h"
 
 namespace xrt::tools::xbtracer {
 
@@ -22,6 +24,8 @@ class xrt_ftbl
   xrt_xclbin_ftbl     xclbin;
   xrt_hw_context_ftbl hw_context;
   xrt_ext_ftbl        ext;
+  xrt_module_ftbl     module;
+  xrt_elf_ftbl        elf;
 
   static xrt_ftbl& get_instance();
 

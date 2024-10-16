@@ -8,6 +8,8 @@ add_library(xrt_capture SHARED
   xrt_bo_inst.cpp
   xrt_hw_context_inst.cpp
   xrt_xclbin_inst.cpp
+  xrt_module_inst.cpp
+  xrt_elf_inst.cpp
 )
 
 if(WIN32)
