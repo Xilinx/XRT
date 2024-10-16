@@ -162,6 +162,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   }
   auto overhead = (latencyShared - latencySingle) * 1000;
   logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
+  ptree.put("status", test_token_passed);
 
   return ptree;
 }
