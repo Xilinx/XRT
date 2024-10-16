@@ -127,4 +127,17 @@ hwctx_object::open_aie_buffer_handle(const char* name)
 #endif
 }
 
+void
+hwctx_object::reset_array() const
+{
+  if (!m_aie_array)
+    throw xrt_core::error(-EINVAL, "No AIE present in hw_context to reset");
+
+  auto device{xrt_core::get_userpf_device(m_shim)};
+  if (!m_aie_array->is_context_set())
+    m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
+
+  m_aie_array->reset(device.get(), m_slot_idx, m_info.partition_id);
+}
+
 }
