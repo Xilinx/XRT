@@ -1779,8 +1779,6 @@ struct misc_telemetry : request
 {
   struct data {
     uint64_t l1_interrupts;
-    uint64_t preemption_flag_set;
-    uint64_t preemption_flag_unset;
   };
 
   using result_type = data;
@@ -1815,6 +1813,14 @@ struct rtos_telemetry : request
     uint64_t misses;
   };
 
+  struct preempt_data {
+    uint64_t slot_index;
+    uint64_t preemption_flag_set;
+    uint64_t preemption_flag_unset;
+    uint64_t preemption_checkpoint_event;
+    uint64_t preemption_frame_boundary_events;
+  };
+
   struct data {
     uint64_t context_starts;
     uint64_t schedules;
@@ -1822,6 +1828,7 @@ struct rtos_telemetry : request
     uint64_t dma_access;
     uint64_t resource_acquisition;
     std::vector<dtlb_data> dtlbs;
+    preempt_data preemption_data;
   };
 
   using result_type = std::vector<data>;
