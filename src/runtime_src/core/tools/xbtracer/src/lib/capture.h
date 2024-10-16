@@ -19,6 +19,7 @@ class xrt_ftbl
   xrt_bo_ftbl         bo;
   xrt_kernel_ftbl     kernel;
   xrt_run_ftbl        run;
+  xrt_runlist_ftbl    runlist;
   xrt_xclbin_ftbl     xclbin;
   xrt_hw_context_ftbl hw_context;
   xrt_ext_ftbl        ext;

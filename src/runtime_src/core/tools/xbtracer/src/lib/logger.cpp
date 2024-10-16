@@ -174,6 +174,7 @@ void logger::synth_dtor_trace_fn()
     run |= check_ref_count(m_krnl_ref_tracker);
     run |= check_ref_count(m_bo_ref_tracker);
     run |= check_ref_count(m_hw_cnxt_ref_tracker);
+    run |= check_ref_count(m_runlist_ref_tracker);
 
     if (m_is_destructing == false)
 	run = true;

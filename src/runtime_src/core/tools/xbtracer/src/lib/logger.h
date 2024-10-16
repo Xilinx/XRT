@@ -19,6 +19,7 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
+#include "experimental/xrt_kernel.h"
 
 #ifdef _WIN32
 # include <windows.h>
@@ -103,6 +104,8 @@ class logger
                          std::string>> m_krnl_ref_tracker;
   std::vector<std::tuple<std::shared_ptr<run_impl>, std::thread::id,
                          std::string>> m_run_ref_tracker;
+  std::vector<std::tuple<std::shared_ptr<runlist_impl>, std::thread::id,
+                         std::string>> m_runlist_ref_tracker;
   std::vector<std::tuple<std::shared_ptr<bo_impl>, std::thread::id,
                          std::string>> m_bo_ref_tracker;
   std::vector<std::tuple<std::shared_ptr<hw_context_impl>, std::thread::id,
@@ -176,6 +179,12 @@ class logger
   {
     m_run_ref_tracker.emplace_back(std::make_tuple(hpimpl,
           std::this_thread::get_id(), "xrt::run::~run()"));
+  }
+
+  void set_pimpl(std::shared_ptr<runlist_impl> hpimpl)
+  {
+    m_runlist_ref_tracker.emplace_back(std::make_tuple(hpimpl,
+          std::this_thread::get_id(), "xrt::runlist::~runlist()"));
   }
 
   void set_pimpl(std::shared_ptr<hw_context_impl> hpimpl)

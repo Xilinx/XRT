@@ -4,6 +4,7 @@
 #include <iostream>
 
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_API_SOURCE
 #include "capture.h"
 #include "logger.h"
 
@@ -13,7 +14,7 @@ namespace xtx = xrt::tools::xbtracer;
 const xtx::xrt_ftbl& dtbl = xtx::xrt_ftbl::get_instance();
 
 /*
- *  kernel/run class instrumented methods
+ *  kernel/run/runlist class instrumented methods
  * */
 namespace xrt {
 XCL_DRIVER_DLLESPEC
@@ -252,6 +253,54 @@ xrt::xclbin kernel::get_xclbin() const
   XRT_TOOLS_XBT_CALL_METD_RET(dtbl.kernel.get_xclbin, xclbin);
   XRT_TOOLS_XBT_FUNC_EXIT_RET(func, &xclbin);
   return xclbin;
+}
+
+XRT_API_EXPORT
+runlist::runlist(const xrt::hw_context& hwctx)
+{
+  auto func = "xrt::runlist::runlist(const xrt::hw_context&)";
+  XRT_TOOLS_XBT_CALL_CTOR(dtbl.runlist.ctor, this, hwctx);
+  /* As pimpl will be updated only after ctor call */
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, hwctx.get_handle().get());
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+XRT_API_EXPORT
+void runlist::add(const xrt::run& run)
+{
+  auto func = "xrt::runlist::add(const xrt::run&)";
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, run.get_handle().get());
+  XRT_TOOLS_XBT_CALL_METD(dtbl.runlist.add, run);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+XRT_API_EXPORT
+void runlist::execute()
+{
+  auto func = "xrt::runlist::execute()";
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, this);
+  XRT_TOOLS_XBT_CALL_METD(dtbl.runlist.execute);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+XRT_API_EXPORT
+std::cv_status runlist::wait(const std::chrono::milliseconds& timeout) const
+{
+  auto func = "xrt::runlist::wait(const std::chrono::milliseconds&)";
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, timeout.count());
+  std::cv_status status = std::cv_status::no_timeout;
+  XRT_TOOLS_XBT_CALL_METD_RET(dtbl.runlist.wait, status, timeout);
+  XRT_TOOLS_XBT_FUNC_EXIT_RET(func, (int)status);
+  return status;
+}
+
+XRT_API_EXPORT
+void runlist::reset()
+{
+  auto func = "xrt::runlist::reset()";
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, this);
+  XRT_TOOLS_XBT_CALL_METD(dtbl.runlist.reset);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
 }
 
 }  // namespace xrt
