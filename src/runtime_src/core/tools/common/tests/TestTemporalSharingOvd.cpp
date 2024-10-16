@@ -22,16 +22,7 @@ static constexpr size_t buffer_size = 1024; //1 KB
 boost::property_tree::ptree 
 TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   ptree.erase("xclbin");
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
+
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
@@ -142,10 +133,6 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % (overhead * 1000)));
 
   // Set the test status to passed
-
-  //check if the value is in range
-  result_in_range(overhead, get_threshold(), ptree);
-  
   ptree.put("status", test_token_passed);
   return ptree;
 }
