@@ -11,8 +11,6 @@
 #include "core/common/info_telemetry.h"
 #include "tools/common/Table2D.h"
 
-#include <boost/property_tree/json_parser.hpp>
-
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -24,7 +22,6 @@ static void
 print_preemption_telemetry(const xrt_core::device* device)
 {
   boost::property_tree::ptree telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(device);
-  boost::property_tree::json_parser::write_json( std::cout , telemetry_pt);
   if (telemetry_pt.empty()) {
     std::cout << "  No telemetry information available\n\n";
     return;
