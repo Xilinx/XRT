@@ -51,7 +51,6 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
-    _output << boost::format("  %-23s: %s \n") % "Preemption" % pt_status.get<std::string>("force_preemption");
 
     const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if (!clocks.empty()) {

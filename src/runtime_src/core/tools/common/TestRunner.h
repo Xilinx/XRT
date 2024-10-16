@@ -46,9 +46,6 @@ class TestRunner : public JSONConfigurable {
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
     int validate_binary_file(const std::string& binaryfile);
-    void result_in_range(double value, double threshold, boost::property_tree::ptree& ptTest);
-    void set_threshold(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
-    double get_threshold(){return m_threshold;};
 
     const std::string test_token_skipped = "SKIPPED";
     const std::string test_token_failed = "FAILED";
@@ -67,7 +64,6 @@ class TestRunner : public JSONConfigurable {
     std::string m_name;
     std::string m_description;
     bool m_explicit;
-    double m_threshold;
 
 };
   
