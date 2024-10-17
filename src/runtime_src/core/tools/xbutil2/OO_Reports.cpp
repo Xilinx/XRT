@@ -21,15 +21,13 @@ namespace {
 static void
 print_preemption_telemetry(const xrt_core::device* device)
 {
-  boost::property_tree::ptree telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(device);
-  if (telemetry_pt.empty()) {
-    std::cout << "  No telemetry information available\n\n";
-    return;
-  }
-
   boost::property_tree::ptree empty_ptree;
   std::stringstream ss;
-  boost::property_tree::ptree rtos_tasks = telemetry_pt.get_child("telemetry", empty_ptree);
+  boost::property_tree::ptree telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(device).get_child("telemetry", empty_ptree);
+  if (telemetry_pt.empty()) {
+    std::cout << "No HW context is running\n\n";
+    return;
+  }
 
   std::vector<Table2D::HeaderData> preempt_headers = {
     {"User Task", Table2D::Justification::left},
@@ -42,7 +40,7 @@ print_preemption_telemetry(const xrt_core::device* device)
   Table2D preemption_table(preempt_headers);
 
   int index = 0;
-  for (const auto& [name, rtos_task] : rtos_tasks) {
+  for (const auto& [name, rtos_task] : telemetry_pt) {
     const std::vector<std::string> rtos_data = {
       std::to_string(index),
       std::to_string(rtos_task.get<uint64_t>("slot_index")),
