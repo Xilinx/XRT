@@ -33,9 +33,9 @@ namespace xdp::aie {
       int  getGroupID(int id) {return kernel.group_id(id); }
 
     private:
-      std::string transactionName;
       xrt::kernel kernel;
       xrt::hw_context context;
+      std::string transactionName;
   };
 
 } // namespace xdp::aie
