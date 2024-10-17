@@ -35,7 +35,8 @@ namespace po = boost::program_options;
 
 SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("advanced", 
-             "Low level command operations")
+             "Low level command operations"),
+      m_device("")
 {
   const std::string longDescription = "Low level command operations.";
   setLongDescription(longDescription);
@@ -89,5 +90,5 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   optionOption->setGlobalOptions(getGlobalOptions());
   
   // Execute the option
-  optionOption->execute(topOptions);
+  optionOption->execute(_options);
 }

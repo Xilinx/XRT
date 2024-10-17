@@ -17,6 +17,7 @@ class SubCmdAdvanced : public SubCmd {
 
   private:
     bool m_help;
+    std::string m_device;
 };
 
 #endif
