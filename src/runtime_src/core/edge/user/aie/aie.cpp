@@ -403,7 +403,7 @@ clear_bd(aie_bd& bd)
 
 void
 aie_array::
-reset(const xrt_core::device* device)
+reset(const xrt_core::device* device, uint32_t hw_context_id, uint32_t partition_id)
 {
   if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
@@ -416,11 +416,7 @@ reset(const xrt_core::device* device)
 
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  /* TODO get partition id and uid from XCLBIN or PDI */
-  uint32_t partition_id = 1;
-
-  //TODO create similar function for hw_context
-  drm_zocl_aie_reset reset = { 0 , partition_id };
+  drm_zocl_aie_reset reset = { hw_context_id , partition_id };
   int ret = drv->resetAIEArray(reset);
   if (ret)
     throw xrt_core::error(ret, "Fail to reset AIE Array");

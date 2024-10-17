@@ -264,3 +264,17 @@ hw_context::
 {}
 
 } // xrt
+
+////////////////////////////////////////////////////////////////
+// xrt_aie_hw_context C++ API implmentations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt::aie {
+
+void
+hw_context::
+reset_array()
+{
+  auto core_handle = get_handle()->get_hwctx_handle();
+  core_handle->reset_array();
+}
+} //xrt::aie
