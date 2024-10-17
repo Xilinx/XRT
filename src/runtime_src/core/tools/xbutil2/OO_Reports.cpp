@@ -67,7 +67,7 @@ print_preemption_telemetry(const xrt_core::device* device)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Reports::OO_Reports( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Hidden reports")
+    : OptionOptions(_longName, _isHidden, "Reports to generate: clocks, preemption")
     , m_device("")
     , m_action("")
     , m_help(false)
@@ -75,8 +75,10 @@ OO_Reports::OO_Reports( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: clocks, preemption")
   ;
+
+  m_optionsHidden.add_options()
+    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: clocks, preemption");
 
   m_positionalOptions.
     add("mode", 1 /* max_count */)
@@ -100,25 +102,17 @@ OO_Reports::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
+  process_arguments(vm, _options);
 
-  try {
-    po::options_description all_options("All Options");
-    all_options.add(m_optionsDescription);
-    po::command_line_parser parser(_options);
-    XBUtilities::process_arguments(vm, parser, all_options, m_positionalOptions, true);
-  } catch(boost::program_options::error&) {
-      if(m_help) {
-        printHelp();
-        throw xrt_core::error(std::errc::operation_canceled);
-      }
-      // Exit if neither action or device specified
-      if(m_action.empty()) {
-        std::cerr << boost::format("ERROR: the required argument for option '--report' is missing\n");
-        printHelp();
-        throw xrt_core::error(std::errc::operation_canceled);
-      }
+  if (m_help) {
+    printHelp();
+    return;
   }
-
+  if(m_action.empty()) {
+    std::cerr << boost::format("ERROR: the required argument for option '--report' is missing\n");
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
