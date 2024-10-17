@@ -121,7 +121,7 @@ public:
   wait_gmio(const std::string& gmioName);
 
   void
-  reset(const xrt_core::device* device);
+  reset(const xrt_core::device* device, uint32_t hw_context_id, uint32_t partition_id);
 
   int
   start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);

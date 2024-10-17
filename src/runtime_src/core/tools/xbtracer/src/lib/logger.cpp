@@ -174,6 +174,9 @@ void logger::synth_dtor_trace_fn()
     run |= check_ref_count(m_krnl_ref_tracker);
     run |= check_ref_count(m_bo_ref_tracker);
     run |= check_ref_count(m_hw_cnxt_ref_tracker);
+    run |= check_ref_count(m_mod_ref_tracker);
+    run |= check_ref_count(m_elf_ref_tracker);
+
 
     if (m_is_destructing == false)
 	run = true;
@@ -231,6 +234,19 @@ std::string find_and_replace_all(std::string str,
     }
   }
   return str;
+}
+
+void read_file(const std::string& fnm, std::vector<unsigned char>& buffer)
+{
+  std::ifstream file(fnm, std::ios::binary);
+  if (!file)
+    throw std::runtime_error("Failed to open " + fnm + "\n");
+
+  auto file_size = std::filesystem::file_size(fnm);
+  buffer.resize(file_size);
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-reinterpret-cast)
+  if (!file.read(reinterpret_cast<char*>(buffer.data()), file_size))
+    throw std::runtime_error("Failed to read " + fnm + "\n");
 }
 
 } // namespace xrt::tools::xbtracer

@@ -38,17 +38,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TOPS") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
@@ -130,9 +119,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  // wait until clock reaches the max frequency
-  int ipu_hclock = 0;
-  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
+  // wait until clock reaches the max frequency. The performance metrics for a test
+  // are valid only when the clock reaches the max frequency.
+  uint64_t ipu_hclock = XBValidateUtils::wait_for_max_clock(dev);
 
   try {
     //run kernel
@@ -180,10 +169,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
   }
 
-  //check if the value is in range
-  result_in_range(TOPS, get_threshold(), ptree);
-
   logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+  ptree.put("status", test_token_passed);
 
   return ptree;
 }

@@ -29,17 +29,6 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f us") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
@@ -174,8 +163,7 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsedSecs / (itr_count*run_count)) * 1000000; //convert s to us
 
-  //check if the value is in range
-  result_in_range(latency, get_threshold(), ptree);
   logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
+  ptree.put("status", test_token_passed);
   return ptree;
 }

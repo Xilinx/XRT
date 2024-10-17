@@ -193,7 +193,7 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
 		zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
 			zocl_free_sections(zdev, zocl_slot);
-			zocl_destroy_aie(zocl_slot);
+			zocl_cleanup_aie(zocl_slot);
 			mutex_destroy(&zocl_slot->slot_xclbin_lock);
 			mutex_destroy(&zocl_slot->aie_lock);
 			zocl_xclbin_fini(zdev, zocl_slot);

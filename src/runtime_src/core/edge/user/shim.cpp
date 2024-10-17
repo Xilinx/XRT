@@ -1283,8 +1283,6 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
     }
     off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
   }
-  
-  
   return 0;
 }
 

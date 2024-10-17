@@ -268,7 +268,6 @@ int zocl_cleanup_aie(struct drm_zocl_slot *slot);
 int zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclbin,
 		void *aie_res, uint8_t hw_gen, uint32_t partition_id);
 int zocl_init_aie(struct drm_zocl_slot* slot);
-void zocl_destroy_aie(struct drm_zocl_slot *slot);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data,struct drm_file* filp );
 int zocl_aie_reset(struct drm_zocl_dev *zdev, void* data, struct drm_file* file);
 int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data, struct drm_file* filp);

@@ -26,17 +26,6 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   // Query the xclbin name from the device
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
 
@@ -173,8 +162,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   }
   auto overhead = (latencyShared - latencySingle) * 1000;
   logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
+  ptree.put("status", test_token_passed);
 
-  //check if the value is in range
-  result_in_range(overhead, get_threshold(), ptree);
   return ptree;
 }

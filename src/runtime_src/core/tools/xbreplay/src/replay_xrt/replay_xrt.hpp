@@ -69,6 +69,12 @@ class replay_xrt
 
   std::map <std::string, std::function < void (std::shared_ptr<utils::message>)>> m_api_map;
 
+  /*Map between handle from log and xrt::module */
+  std::unordered_map<uint64_t, std::shared_ptr<xrt::module>> m_module_hndle_map;
+
+  /*Map between handle from log and xrt::elf */
+  std::unordered_map<uint64_t, std::shared_ptr<xrt::elf>> m_elf_hndle_map;
+
   /* Registers device class API's */
   void register_device_class_func();
 
@@ -86,6 +92,12 @@ class replay_xrt
 
   /*Register hw_ctx class API's*/
   void register_hwctxt_class_func();
+
+  /*Register module class API s */
+  void register_module_class_func();
+
+  /*Register elf class API s */
+  void register_elf_class_func();
 
   /* Validate's file path */
   bool is_file_exist(const std::string& fileName)

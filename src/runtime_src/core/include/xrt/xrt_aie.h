@@ -255,6 +255,29 @@ public:
   }
 };
 
+class hw_context : public xrt::hw_context
+{
+public:
+
+  /**
+   * hw_context() - Constructor that is used for AIE hw_context.
+   *
+   * @param arg
+   *  Arguments to construct hw_context (xrt_hw_context.h).
+   */
+  template <typename ...Args>
+  hw_context(Args&&... args)
+    : xrt::hw_context(std::forward<Args>(args)...)
+  {}
+
+  /**
+   * reset_array() - reset the AIE Array used for this hw_context
+   *
+   */
+  void
+  reset_array();
+};
+
 class profiling_impl;
 class profiling : public detail::pimpl<profiling_impl>
 {

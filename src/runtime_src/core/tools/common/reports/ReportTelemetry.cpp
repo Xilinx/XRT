@@ -33,7 +33,7 @@ generate_rtos_dtlb_string(const boost::property_tree::ptree& pt)
   std::stringstream ss;
 
   boost::property_tree::ptree rtos_tasks = pt.get_child("rtos_tasks", empty_ptree);
-  boost::property_tree::ptree rtos_dtlb_data = pt.get_child("rtos_tasks..dtlb_data", empty_ptree);
+  boost::property_tree::ptree rtos_dtlb_data = pt.get_child("rtos_tasks.dtlb_data", empty_ptree);
   if(rtos_tasks.empty() && rtos_dtlb_data.empty())
     return ss.str();
 

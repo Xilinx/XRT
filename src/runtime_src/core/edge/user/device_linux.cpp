@@ -1235,7 +1235,7 @@ reset_aie()
   if (!aie_array->is_context_set())
     aie_array->open_context(this, xrt::aie::access_mode::primary);
 
-  aie_array->reset(this);
+  aie_array->reset(this, 0 /*hw_context_id*/, xrt_core::edge::aie::full_array_id);
 }
 
 void

@@ -108,6 +108,9 @@ namespace zynqaie {
     std::unique_ptr<xrt_core::aie_buffer_handle>
     open_aie_buffer_handle(const char* name) override;
 
+    void
+    reset_array() const override;
+
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<aie_array>
     get_aie_array_shared();

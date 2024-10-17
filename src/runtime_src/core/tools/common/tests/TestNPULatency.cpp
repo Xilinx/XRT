@@ -179,6 +179,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
+
   logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
   ptree.put("status", test_token_passed);
   return ptree;

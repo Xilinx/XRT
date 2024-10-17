@@ -22,6 +22,8 @@ add_library(xbreplay_objects OBJECT
   src/replay_xrt/replay_xrt_kernel.cpp
   src/replay_xrt/replay_xrt_run.cpp
   src/replay_xrt/replay_xrt_xclbin.cpp
+  src/replay_xrt/replay_xrt_module.cpp
+  src/replay_xrt/replay_xrt_elf.cpp
 )
 
 target_include_directories(xbreplay_objects PRIVATE
