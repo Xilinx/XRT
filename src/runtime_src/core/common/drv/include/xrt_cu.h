@@ -413,19 +413,19 @@ static inline char *prot2str(enum CU_PROTOCOL prot)
 	}
 }
 
-static void inline xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
+static inline void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
 {
 	if (xcu->funcs)
 		xcu->funcs->enable_intr(xcu->core, intr_type);
 }
 
-static void inline xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
+static inline void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
 {
 	if (xcu->funcs)
 		xcu->funcs->disable_intr(xcu->core, intr_type);
 }
 
-static u32 inline xrt_cu_clear_intr(struct xrt_cu *xcu)
+static inline u32 xrt_cu_clear_intr(struct xrt_cu *xcu)
 {
 	return xcu->funcs ? xcu->funcs->clear_intr(xcu->core) : 0;
 }
