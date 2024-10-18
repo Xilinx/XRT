@@ -10,6 +10,9 @@
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 #include <experimental/xrt_kernel.h>
+#include "experimental/xrt_elf.h"
+#include "experimental/xrt_ext.h"
+#include "experimental/xrt_module.h"
 namespace XBU = XBUtilities;
 
 #include <filesystem>
@@ -47,42 +50,75 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", test_token_failed);
     return ptree;
   }
-
-  // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr!=xkernels.end())
-    xkernel = *itr;
-  else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
-    return ptree;
-  }
-  auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
-
+  
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
   xrt::hw_context hwctx;
   xrt::kernel testker;
-  try {
-    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
-    testker = xrt::kernel(hwctx, kernelName);
+ 
+  if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("npu3") == std::string::npos) {
+  // Determine The DPU Kernel Name
+    auto xkernels = xclbin.get_kernels();
+
+    auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+      auto name = k.get_name();
+      return name.rfind("DPU",0) == 0; // Starts with "DPU"
+    });
+
+    xrt::xclbin::kernel xkernel;
+    if (itr!=xkernels.end())
+      xkernel = *itr;
+    else {
+      logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
+    auto kernelName = xkernel.get_name();
+    if(XBU::getVerbose())
+      logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
+
+    try {
+      hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+      testker = xrt::kernel(hwctx, kernelName);
+    }
+    catch (const std::exception& ex){
+      logger(ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
   }
-  catch (const std::exception& )
-  {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
-    return ptree;
+  else {
+    //Elf flow
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
+    auto elf_path = findPlatformFile(elf_name, ptree);
+    if (!std::filesystem::exists(elf_path))
+      return ptree;
+
+    logger(ptree, "Elf", elf_path);
+
+    xrt::elf elf;
+    try {
+      elf = xrt::elf(elf_path);
+    }
+    catch (const std::runtime_error& ex) {
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
+
+    xrt::module mod{elf};
+    try {
+      hwctx = xrt::hw_context{working_dev, xclbin.get_uuid()};
+      testker = xrt::ext::kernel{hwctx, mod, "dpu:{nop}"};
+    }
+    catch (const std::exception& ex){
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
   }
+
   xrt::xclbin::ip cu;
   for (const auto& ip : xclbin.get_ips()) {
     if (ip.get_type() != xrt::xclbin::ip::ip_type::ps)
@@ -116,7 +152,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   } 
 
   //Log
-  if(XBU::getVerbose()) {
+  if (XBU::getVerbose()) {
     logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
     logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
@@ -142,7 +178,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
-
+  
   logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
   ptree.put("status", test_token_passed);
   return ptree;
