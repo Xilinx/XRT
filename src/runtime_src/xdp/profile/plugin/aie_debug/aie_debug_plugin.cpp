@@ -14,10 +14,19 @@
 #include "core/common/message.h"
 #include "core/include/experimental/xrt-next.h"
 
+#include "xdp/profile/device/utility.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+
+#ifdef XDP_CLIENT_BUILD
+#include "client/aie_debug.h"
+#else
+#include "core/edge/user/shim.h"
+#include "edge/aie_debug.h"
+#endif
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -41,7 +50,13 @@ namespace xdp {
    ***************************************************************************/
   AieDebugPlugin::~AieDebugPlugin()
   {
-    endAIEDebugRead();
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug destructor.");
+
+    for (const auto& kv : handleToAIEData)
+      endPollforDevice(kv.first);
+
+    XDPPlugin::endWrite();
+    handleToAIEData.clear();
 
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
@@ -55,6 +70,22 @@ namespace xdp {
   bool AieDebugPlugin::alive()
   {
     return AieDebugPlugin::live;
+  }
+
+  /****************************************************************************
+   * Get device ID from handle
+   ***************************************************************************/
+  uint64_t AieDebugPlugin::getDeviceIDFromHandle(void* handle)
+  {
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
+
+#ifdef XDP_CLIENT_BUILD
+    return db->addDevice("win_device");
+#else
+    return db->addDevice(util::getDebugIpLayoutPath(handle));
+#endif
   }
 
   /****************************************************************************
@@ -98,7 +129,7 @@ namespace xdp {
     auto& AIEData = handleToAIEData[handle];
 
     AIEData.deviceID = deviceID;
-    AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
+    AIEData.metadata = std::make_shared<AieDebugMetadata>(deviceID, handle);
     if (AIEData.metadata->aieMetadataEmpty())
     {
       AIEData.valid = false;
@@ -109,14 +140,15 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);
 #else
-    AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieDebug_EdgeImpl>(db, AIEData.metadata);
 #endif
     
     auto& implementation = AIEData.implementation;
     implementation->updateDevice();
 
+    // TODO: need to create and use writer for this plugin
 #if 0
     // Open the writer for this device
     auto time = std::time(nullptr);
@@ -148,8 +180,27 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
-    handleToAIEData[handle].implementation->poll();
+    handleToAIEData[handle].implementation->poll(mIndex-1, handle);
   }
 
+  /****************************************************************************
+   * End polling
+   ***************************************************************************/
+  void AieDebugPlugin::endPollforDevice(void* handle)
+  {
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug endPollforDevice.");
+    if (handleToAIEData.empty())
+      return;
+
+    auto& AIEData = handleToAIEData[handle];
+    if(!AIEData.valid)
+      return;
+
+#ifdef XDP_CLIENT_BUILD
+    AIEData.implementation->poll(0, handle);
+#endif
+
+    handleToAIEData.erase(handle);
+  }
 }  // end namespace xdp
 

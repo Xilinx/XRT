@@ -15,10 +15,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include "core/common/message.h"
+#include "core/common/time.h"
+#include "core/edge/user/shim.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
-#include "core/common/message.h"
 #include "core/include/experimental/xrt-next.h"
 
 #include "xdp/profile/database/static_info/aie_util.h"
@@ -26,13 +29,41 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr ;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return nullptr;
+    return aieArray->get_dev();
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle));
+    if (!aieDevInst)
+      return nullptr;
+    return new xaiefal::XAieDev(aieDevInst, false);
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    auto object = static_cast<xaiefal::XAieDev*>(aieDevice);
+    if (object != nullptr)
+      delete object;
+  }
+} // end anonymous namespace
+
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using tile_type = xdp::tile_type;
   using module_type = xdp::module_type;
 
   /****************************************************************************
-   * Client constructor
+   * Edge constructor
    ***************************************************************************/
   AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
@@ -43,34 +74,41 @@ namespace xdp {
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_EdgeImpl::poll()
+  void AieDebug_EdgeImpl::poll(const uint32_t index, void* handle)
   {
+    // Wait until xclbin has been loaded and device has been updated in database
+    if (!(db->getStaticInfo().isDeviceReady(index)))
+      return;
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    if (!aieDevInst)
+      return;
+
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
     for (auto& tileAddr : debugAddresses) {
-      auto addr = tileAddr.second;
-      auto tile = tileAddr.first;
+      auto tile    = tileAddr.first;
+      auto addrVec = tileAddr.second;
       
-      uint32_t value = 0;
-      XAie_Read32(aieDevInst, addr, &value);
+      for (auto& addr : addrVec) {
+        uint32_t value = 0;
+        XAie_Read32(aieDevInst, addr, &value);
 
-      msg << "Debug tile (" << tile.col << ", " << tile.row << ") "
-          << "hex address/values: 0x" << std::hex << addr << " : 0x"
-          << value << std::dec;
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+        std::stringstream msg;
+        msg << "Debug tile (" << tile.col << ", " << tile.row << ") "
+            << "hex address/values: 0x" << std::hex << addr << " : 0x"
+            << value << std::dec;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
     }
   }
 
   /****************************************************************************
-   * Finish debugging
+   * Update device
    ***************************************************************************/
-  void AieDebug_EdgeImpl::endAIEDebugRead(void* /*handle*/)
+  void AieDebug_EdgeImpl::updateDevice() 
   {
-    static bool finished = false;
-    if (!finished) {
-      finished = true;
-      poll();
-    }
+    // Do nothing for now
   }
 
   /****************************************************************************
@@ -80,6 +118,8 @@ namespace xdp {
   {
     if (!xrt_core::config::get_aie_debug())
       return;
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
     // Traverse all module types
     int counterId = 0;
@@ -88,8 +128,9 @@ namespace xdp {
       if (configMetrics.empty())
         continue;
       
-      XAie_ModuleType mod = aie::profile::getFalModuleType(module);
-      auto name = moduleTypes[mod];
+      module_type mod = metadata->getModuleType(module);
+      //XAie_ModuleType mod = falModuleTypes[module];
+      auto name = moduleTypes.at(mod);
 
       std::stringstream msg;
       msg << "AIE Debug monitoring tiles of type " << name << ":\n";
@@ -106,7 +147,7 @@ namespace xdp {
         uint32_t offset = 0;
 
         auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-        debugAddresses.push_back(tileOffset + offset);
+        debugAddresses[tile].push_back(tileOffset + offset);
       }
     }
   }

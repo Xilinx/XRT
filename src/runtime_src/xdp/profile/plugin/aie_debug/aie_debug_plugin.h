@@ -4,20 +4,13 @@
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
-#include <boost/property_tree/ptree.hpp>
 #include <memory>
 
-#include "xdp/profile/device/common/client_transaction.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-
-#include "core/include/xrt/xrt_hw_context.h"
-
-extern "C" {
-  #include <xaiengine.h>
-  #include <xaiengine/xaiegbl_params.h>
-}
 
 namespace xdp {
 
@@ -26,14 +19,17 @@ namespace xdp {
   public:
     AieDebugPlugin();
     ~AieDebugPlugin();
+    static bool alive();
     void updateAIEDevice(void* handle);
     void endAIEDebugRead(void* handle);
-    static bool alive();
+    void endPollforDevice(void* handle);
 
   private:
-    void poll();
-    
+    uint64_t getDeviceIDFromHandle(void* handle);
+
     static bool live;
+    uint32_t mIndex = 0;
+
     struct AIEData {
       uint64_t deviceID;
       bool valid;

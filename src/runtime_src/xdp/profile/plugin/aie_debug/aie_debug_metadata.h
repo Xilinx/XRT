@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -50,17 +50,24 @@ class AieDebugMetadata {
   public:
     AieDebugMetadata(uint64_t deviceID, void* handle);
 
+    module_type getModuleType(int mod) {return moduleTypes[mod];}
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
-    
-    std::map<tile_type, std::string> getConfigMetrics(const int module) {return configMetrics[module];}
+
+    std::map<tile_type, std::string> getConfigMetrics(const int module) {
+      return configMetrics[module];
+    }
+    std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module) {
+      return {configMetrics[module].begin(), configMetrics[module].end()};
+    }
     xdp::aie::driver_config getAIEConfigMetadata();
 
-    uint8_t getAIETileRowOffset() const {return (metadataReader == nullptr) ? 0 : metadataReader->getAIETileRowOffset(); }
-    int getHardwareGen() const {return (metadataReader == nullptr) ? 0 : metadataReader->getHardwareGeneration(); }
+    bool aieMetadataEmpty() const {return (metadataReader == nullptr);}
+    uint8_t getAIETileRowOffset() const {return (metadataReader == nullptr) ? 0 : metadataReader->getAIETileRowOffset();}
+    int getHardwareGen() const {return (metadataReader == nullptr) ? 0 : metadataReader->getHardwareGeneration();}
 
     int getNumModules() {return NUM_MODULES;}
-    xrt::hw_context getHwContext(){return hwContext;}
+    xrt::hw_context getHwContext() {return hwContext;}
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }

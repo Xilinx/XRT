@@ -3439,26 +3439,6 @@ const unsigned int shim_dma_mm2s_1_response_fifo_parity_error_injection = 0x0000
 const unsigned int shim_dma_pause = 0x00009348;
 // Lock Request. 16kB address space: 0xC000 - 0xFFFC, Lock_Id [13:10], Acq_Rel (9), Change_Value [8:2]
 const unsigned int shim_lock_request = 0x0000c000;
-// DMA BD0 Config Register 0
-const unsigned int shim_dma_bd0_0 = 0x0001d000;
-// DMA BD0 Config Register 1
-const unsigned int shim_dma_bd0_1 = 0x0001d004;
-// DMA BD0 Config Register 2
-const unsigned int shim_dma_bd0_2 = 0x0001d008;
-// DMA BD0 Config Register 3
-const unsigned int shim_dma_bd0_3 = 0x0001d00c;
-// DMA BD0 Config Register 4
-const unsigned int shim_dma_bd0_4 = 0x0001d010;
-// DMA BD0 Config Register 5
-const unsigned int shim_dma_bd0_5 = 0x0001d014;
-// DMA BD0 Config Register 6
-const unsigned int shim_dma_bd0_6 = 0x0001d018;
-// DMA BD0 Config Register 7
-const unsigned int shim_dma_bd0_7 = 0x0001d01c;
-// DMA S2MM Channel 0 Control
-const unsigned int shim_dma_s2mm_0_ctrl = 0x0001d200;
-// DMA S2MM Channel 0 Start Queue
-const unsigned int shim_dma_s2mm_0_task_queue = 0x0001d204;
 // Performance Counters 1-0 Start and Stop Event
 const unsigned int shim_performance_control0 = 0x00031000;
 // Performance Counters 1-0 Reset Eventss

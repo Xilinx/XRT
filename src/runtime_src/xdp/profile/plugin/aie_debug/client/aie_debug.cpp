@@ -38,7 +38,7 @@ namespace xdp {
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_WinImpl::poll()
+  void AieDebug_WinImpl::poll(const uint32_t /*index*/, void* /*handle*/)
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
@@ -85,18 +85,6 @@ namespace xdp {
           << "hex address/values: " << std::hex << reg << " : "
           << output[i] << std::dec;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-    }
-  }
-
-  /****************************************************************************
-   * Finish debugging
-   ***************************************************************************/
-  void AieDebug_WinImpl::endAIEDebugRead(void* /*handle*/)
-  {
-    static bool finished = false;
-    if (!finished) {
-      finished = true;
-      poll();
     }
   }
 
@@ -154,6 +142,14 @@ namespace xdp {
   }
 
   /****************************************************************************
+   * Update device
+   ***************************************************************************/
+  void AieDebug_WinImpl::updateDevice() 
+  {
+    // Do nothing for now
+  }
+
+  /****************************************************************************
    * Update AIE device
    ***************************************************************************/
   void AieDebug_WinImpl::updateAIEDevice(void* handle) 
@@ -171,7 +167,7 @@ namespace xdp {
       if (configMetrics.empty())
         continue;
       
-      XAie_ModuleType mod = aie::profile::getFalModuleType(module);
+      XAie_ModuleType mod = getFalModuleType(module);
       auto name = moduleTypes[mod];
 
       // List of registers to read for current module

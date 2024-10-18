@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
-#define XDP_AIE_DEBUG_PLUGIN_DOT_H
+#ifndef AIE_DEBUG_H
+#define AIE_DEBUG_H
 
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
@@ -26,11 +26,11 @@ namespace xdp {
   public:
     AieDebug_WinImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
     ~AieDebug_WinImpl() = default;
+    void updateDevice();
     void updateAIEDevice(void* handle);
-    void endAIEDebugRead(void* handle);
-  
+    void poll(const uint32_t index, void* handle);
+
   private:
-    void poll();
     std::vector<std::string> getSettingsVector(std::string settingsString);
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
 

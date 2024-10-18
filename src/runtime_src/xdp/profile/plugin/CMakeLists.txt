@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022-2023 Advanced Micro Devices, Inc.  All rights reserved.
+# Copyright (C) 2022-2024 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
@@ -38,6 +38,7 @@ if (NOT WIN32)
 add_subdirectory(aie_status)
 add_subdirectory(aie_profile)
 add_subdirectory(aie_trace)
+add_subdirectory(aie_debug)
 add_subdirectory(device_offload/hw_emu)
 add_subdirectory(noc)
 add_subdirectory(power)
