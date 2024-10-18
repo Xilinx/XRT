@@ -57,6 +57,7 @@ enum class key_type
   device_class,
   xclbin_name,
   sequence_name,
+  elf_name,
 
   dma_threads_raw,
 
@@ -594,6 +595,36 @@ struct sequence_name : request
   using result_type = std::string;
   static const key_type key = key_type::sequence_name;
   static const char* name() { return "sequence_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const = 0;
+};
+
+/**
+ * Used to retrieve the path to the elf file required for the
+ * current device assuming a valid elf "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ */
+struct elf_name : request
+{
+  enum class type {
+    nop
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::nop:
+        return "nop";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::elf_name;
+  static const char* name() { return "elf_name"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const = 0;
