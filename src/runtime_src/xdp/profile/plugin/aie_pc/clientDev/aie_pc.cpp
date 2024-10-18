@@ -64,6 +64,9 @@ namespace xdp {
   {
   }
 
+  AIEPCClientDevImpl::~AIEPCClientDevImpl()
+  {}
+
   void AIEPCClientDevImpl::updateDevice(void* hwCtxImpl)
   {
     (void)hwCtxImpl;
