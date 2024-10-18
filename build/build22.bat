@@ -7,7 +7,7 @@ set BUILDDIR=%SCRIPTDIR%
 
 set DEBUG=1
 set RELEASE=1
-set EXT_DIR=C:/Xilinx/XRT/ext
+set EXT_DIR=C:/Xilinx/XRT/ext.new
 set CREATE_PACKAGE=0
 set CMAKEFLAGS=
 set NOCMAKE=0
