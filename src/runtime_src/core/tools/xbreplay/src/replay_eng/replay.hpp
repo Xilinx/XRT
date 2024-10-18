@@ -74,8 +74,10 @@ class replay_master
         /* {"API to Look for", "API to Skip" } */
         {"xrt::device::load_xclbin(const std::string&)",
                                  "xrt::xclbin::xclbin(const axlf*)"},
+#ifdef __linux__
         {"xrt::device::register_xclbin(const xrt::xclbin&)",
                                  "xrt::xclbin::xclbin(const axlf*)"},
+#endif
      };
   }
 

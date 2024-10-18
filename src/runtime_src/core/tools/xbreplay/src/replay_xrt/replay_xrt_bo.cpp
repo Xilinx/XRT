@@ -18,7 +18,7 @@ void replay_xrt::register_bo_class_func()
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
     /* get dev handle */
-    unsigned long dev_handle = std::stoul(args[0].second, nullptr, utils::base_hex);
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
 
     /* From handle obtained from log get the corresponding device
      * handle from map
@@ -54,7 +54,7 @@ void replay_xrt::register_bo_class_func()
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
     /* get dev handle */
-    auto dev_handle = std::stoul(args[0].second, nullptr, utils::base_hex);
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
 
     /* From handle obtained from log get the corresponding device
      * handle from map
@@ -81,7 +81,7 @@ void replay_xrt::register_bo_class_func()
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
     /* get dev handle */
-    unsigned long dev_handle = std::stoul(args[0].second,nullptr, utils::base_hex);
+    auto dev_handle = std::stoull(args[0].second,nullptr, utils::base_hex);
 
     /* From handle obtained from log get the corresponding device
      * handle from map
@@ -107,7 +107,7 @@ void replay_xrt::register_bo_class_func()
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
 
     /* get dev handle */
-    unsigned long dev_handle = std::stoul(args[0].second,nullptr, utils::base_hex);
+    auto dev_handle = std::stoull(args[0].second,nullptr, utils::base_hex);
 
     /* From handle obtained from log get the corresponding device
      * handle from map
