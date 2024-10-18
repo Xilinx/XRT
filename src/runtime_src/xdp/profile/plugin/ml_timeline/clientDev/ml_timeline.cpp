@@ -67,6 +67,12 @@ namespace xdp {
               "Created ML Timeline Plugin for Client Device.");
   }
 
+  MLTimelineClientDevImpl::~MLTimelineClientDevImpl()
+  {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "In destructor for ML Timeline Plugin for Client Device.");
+  }
+
   void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
