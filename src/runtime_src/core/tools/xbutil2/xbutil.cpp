@@ -106,11 +106,11 @@ int main( int argc, char** argv )
 
   // -- Program Description
   const std::string description = 
-  "The Xilinx (R) Run Time - System Management Interface (xrt-smi) is a standalone"
-  " command line utility that is included with the Xilinx Run Time (XRT) installation"
+  "The XRT - System Management Interface (xrt-smi) is a standalone"
+  " command line utility that is included with the XRT installation"
   " package. It includes multiple commands to identify and validate the installed"
-  " card(s).\n\nThis information can be used for both card administration and"
-  " application debugging.";
+  " device(s).\n\nThe reports produced by xrt-smi may be used for device administration,"
+  " monitoring and troubleshooting application behavior application debugging.";
 
   // -- Ready to execute the code
   try {
