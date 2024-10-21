@@ -10,12 +10,9 @@ BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
-XRT=/mnt/c/Xilinx/xrt
-BOOST=$XRT/ext.new
-KHRONOS=$XRT/ext.new
-
-BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
-KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
+EXT_DIR=/mnt/c/Xilinx/xrt/ext.new
+BOOST=$EXT_DIR
+KHRONOS=$EXT_DIR
 
 usage()
 {
@@ -24,7 +21,7 @@ usage()
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
     echo "[-cmake]                   CMAKE executable (default: $CMAKE)"
-    echo "[-xrt]                     XRT root directory (default: $XRT)"
+    echo "[-ext]                     Location of link dependencies (default: $EXT_DIR)"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
     echo "[-noabi]                   Do compile with ABI version check"
@@ -56,9 +53,11 @@ while [ $# -gt 0 ]; do
 	    CMAKE="$1"
 	    shift
 	    ;;
-	-xrt)
+	-ext)
 	    shift
-	    XRT="$1"
+	    EXT_DIR="$1"
+            BOOST=$EXT_DIR
+            KHRONOS=$EXT_DIR
 	    shift
 	    ;;
         -dbg)
@@ -99,6 +98,9 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
+KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
 
 here=$PWD
 cd $BUILDDIR
