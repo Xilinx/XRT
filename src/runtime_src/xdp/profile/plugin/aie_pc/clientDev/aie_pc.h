@@ -43,7 +43,7 @@ namespace xdp {
     public :
       AIEPCClientDevImpl(VPDatabase* dB);
 
-      ~AIEPCClientDevImpl() = default;
+      ~AIEPCClientDevImpl();
 
       virtual void updateDevice(void* hwCtxImpl);
       virtual void finishflushDevice(void* hwCtxImpl);
