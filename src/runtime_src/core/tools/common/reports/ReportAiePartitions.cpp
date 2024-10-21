@@ -44,7 +44,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("egops", qos.egops);
     pt_entry.put("fps", qos.fps);
     pt_entry.put("latency", qos.latency);
-    pt_entry.put("priority", qos.priority);
+    pt_entry.put("priority", xrt_core::query::aie_partition_info::parse_priority_status(qos.priority));
 
     partition.first->second.push_back(std::make_pair("", pt_entry));
   }
@@ -170,7 +170,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
         std::to_string(hw_context.get<uint64_t>("errors")),
-        std::to_string(hw_context.get<uint64_t>("priority")),
+        hw_context.get<std::string>("priority"),
         std::to_string(hw_context.get<uint64_t>("gops")),
         std::to_string(hw_context.get<uint64_t>("egops")),
         std::to_string(hw_context.get<uint64_t>("fps")),

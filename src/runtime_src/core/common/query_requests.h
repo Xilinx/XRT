@@ -1752,6 +1752,23 @@ struct aie_partition_info : request
 
   virtual std::any
   get(const device* device) const = 0;
+
+  static std::string
+  parse_priority_status(const uint64_t prio_status)
+  {
+    switch(prio_status) {
+      case 256: //0x100
+        return "Realtime";
+      case 384: //0x180
+        return "High";
+      case 512: //0x200
+        return "Normal";
+      case 640: //0x280
+        return "Low";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid priority status: " + std::to_string(prio_status));
+    }
+  }
 };
 
 // Retrieves the AIE telemetry info for the device
@@ -1822,6 +1839,7 @@ struct rtos_telemetry : request
   };
 
   struct data {
+    uint64_t user_task;
     uint64_t context_starts;
     uint64_t schedules;
     uint64_t syscalls;

@@ -47,14 +47,19 @@ aie2_preemption_info(const xrt_core::device* device)
   for (const auto& kp : data) {
   boost::property_tree::ptree pt_preempt;
 
-  //add a check for not supported
-  if(static_cast<int>(kp.preemption_data.preemption_flag_set) == -1) 
-    return pt_rtos_array; //not supported
-  pt_preempt.put("slot_index", kp.preemption_data.slot_index);
-  pt_preempt.put("preemption_flag_set", kp.preemption_data.preemption_flag_set);
-  pt_preempt.put("preemption_flag_unset", kp.preemption_data.preemption_flag_unset);
-  pt_preempt.put("preemption_checkpoint_event", kp.preemption_data.preemption_checkpoint_event);
-  pt_preempt.put("preemption_frame_boundary_events", kp.preemption_data.preemption_frame_boundary_events);
+    auto populate_value = [](uint64_t value) {
+      return (value == static_cast<uint64_t>(-1) || value == UINT64_MAX) ? "N/A" : std::to_string(value);
+    };
+
+  //add check if a workload is running
+  if(static_cast<int>(kp.preemption_data.slot_index) == -1) 
+    continue;
+  pt_preempt.put("user_task", populate_value(kp.user_task));
+  pt_preempt.put("slot_index", populate_value(kp.preemption_data.slot_index));
+  pt_preempt.put("preemption_flag_set", populate_value(kp.preemption_data.preemption_flag_set));
+  pt_preempt.put("preemption_flag_unset", populate_value(kp.preemption_data.preemption_flag_unset));
+  pt_preempt.put("preemption_checkpoint_event", populate_value(kp.preemption_data.preemption_checkpoint_event));
+  pt_preempt.put("preemption_frame_boundary_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
 
   pt_rtos_array.push_back({"", pt_preempt});
   }
