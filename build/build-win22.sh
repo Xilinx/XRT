@@ -11,8 +11,8 @@ CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
 XRT=/mnt/c/Xilinx/xrt
-BOOST=$XRT/ext
-KHRONOS=$XRT/ext
+BOOST=$XRT/ext.new
+KHRONOS=$XRT/ext.new
 
 BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
 KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
