@@ -117,10 +117,6 @@ class AIETraceOffload
     XAie_DevInst aieDevInst = {0};
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
 
-    std::shared_ptr<AieTraceMetadata> metadata;
-    std::vector<xrt::bo> xrt_bos;
-    xrt::hw_context context;
-
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;
     uint64_t offloadIntervalUs;
@@ -132,6 +128,10 @@ class AIETraceOffload
     //Circular Buffer Tracking
     bool mEnCircularBuf;
     bool mCircularBufOverwrite;
+
+    xrt::hw_context context;
+    std::shared_ptr<AieTraceMetadata> metadata;
+    std::vector<xrt::bo> xrt_bos;
 
   private:
     void readTraceGMIO(bool final);
