@@ -109,7 +109,7 @@ int main( int argc, char** argv )
   "The XRT - System Management Interface (xrt-smi) is a standalone"
   " command-line utility that is included with the XRT runtime"
   " package. It includes multiple commands to configure, examine, and validate"
-  " the device(s).\n\nThe reports produced by xrt-smi may be used for device" 
+  " the supported device(s).\n\nThe reports produced by xrt-smi may be used for device" 
   " administration, monitoring, and troubleshooting application behavior.";
 
   // -- Ready to execute the code
