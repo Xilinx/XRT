@@ -580,7 +580,7 @@ static int mem_hbm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mem_hbm_remove(struct platform_device *pdev)
+static int __mem_hbm_remove(struct platform_device *pdev)
 {
 	struct xocl_mem_hbm	*mem_hbm;
 
@@ -599,6 +599,15 @@ static int mem_hbm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mem_hbm_remove(struct platform_device *pdev)
+{
+	__mem_hbm_remove(pdev);
+}
+#else
+#define mem_hbm_remove __mem_hbm_remove
+#endif
 
 struct xocl_drv_private mem_hbm_priv = {
 	.ops = &mem_hbm_ops,

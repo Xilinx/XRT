@@ -83,7 +83,7 @@ static struct xocl_iores_funcs iores_ops = {
 	.get_offset = get_offset,
 };
 
-static int iores_remove(struct platform_device *pdev)
+static int __iores_remove(struct platform_device *pdev)
 {
 	struct iores *iores;
 	int i;
@@ -103,6 +103,15 @@ static int iores_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void iores_remove(struct platform_device *pdev)
+{
+	__iores_remove(pdev);
+}
+#else
+#define iores_remove __iores_remove
+#endif
 
 static int iores_probe(struct platform_device *pdev)
 {

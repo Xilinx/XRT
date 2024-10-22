@@ -79,7 +79,7 @@ static struct xocl_pcie_firewall_funcs firewall_ops = {
 	.unblock = firewall_unblock,
 };
 
-static int firewall_remove(struct platform_device *pdev)
+static int __firewall_remove(struct platform_device *pdev)
 {
 	struct firewall *firewall;
 	void *hdl;
@@ -100,6 +100,15 @@ static int firewall_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void firewall_remove(struct platform_device *pdev)
+{
+	__firewall_remove(pdev);
+}
+#else
+#define firewall_remove __firewall_remove
+#endif
 
 static int firewall_probe(struct platform_device *pdev)
 {

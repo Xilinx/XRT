@@ -166,7 +166,7 @@ static int icap_cntrl_sysfs_create(struct icap_cntrl *ic)
 	return 0;
 }
 
-static int icap_cntrl_remove(struct platform_device *pdev)
+static int __icap_cntrl_remove(struct platform_device *pdev)
 {
 	struct icap_cntrl *icap_cntrl;
 	void *hdl;
@@ -189,6 +189,15 @@ static int icap_cntrl_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void icap_cntrl_remove(struct platform_device *pdev)
+{
+	__icap_cntrl_remove(pdev);
+}
+#else
+#define icap_cntrl_remove __icap_cntrl_remove
+#endif
 
 static int icap_cntrl_probe(struct platform_device *pdev)
 {

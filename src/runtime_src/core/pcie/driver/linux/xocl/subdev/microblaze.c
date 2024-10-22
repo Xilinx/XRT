@@ -612,7 +612,7 @@ static struct xocl_mb_funcs mb_ops = {
 
 
 
-static int mb_remove(struct platform_device *pdev)
+static int __mb_remove(struct platform_device *pdev)
 {
 	struct xocl_mb *mb;
 	int	i;
@@ -647,6 +647,15 @@ static int mb_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mb_remove(struct platform_device *pdev)
+{
+	__mb_remove(pdev);
+}
+#else
+#define mb_remove __mb_remove
+#endif
 
 static int mb_probe(struct platform_device *pdev)
 {

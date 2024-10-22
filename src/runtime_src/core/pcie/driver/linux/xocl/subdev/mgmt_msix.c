@@ -322,7 +322,7 @@ failed:
 	return ret;
 }
 
-static int mgmt_msix_remove(struct platform_device *pdev)
+static int __mgmt_msix_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev;
 	struct xocl_mgmt_msix *mgmt_msix;
@@ -354,6 +354,15 @@ static int mgmt_msix_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mgmt_msix_remove(struct platform_device *pdev)
+{
+	__mgmt_msix_remove(pdev);
+}
+#else
+#define mgmt_msix_remove __mgmt_msix_remove
+#endif
 
 struct xocl_drv_private mgmt_msix_priv = {
 	.ops = &mgmt_msix_ops,

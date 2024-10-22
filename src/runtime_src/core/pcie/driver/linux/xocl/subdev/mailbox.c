@@ -3101,7 +3101,7 @@ static const struct file_operations mailbox_fops = {
 };
 
 /* Tearing down driver in the exact reverse order as driver setting up. */
-static int mailbox_remove(struct platform_device *pdev)
+static int __mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	void *hdl;
@@ -3122,6 +3122,15 @@ static int mailbox_remove(struct platform_device *pdev)
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mailbox_remove(struct platform_device *pdev)
+{
+	__mailbox_remove(pdev);
+}
+#else
+#define mailbox_remove __mailbox_remove
+#endif
 
 static int mailbox_probe(struct platform_device *pdev)
 {

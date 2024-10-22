@@ -629,7 +629,7 @@ failed:
     return err;
 }
 
-static int nifd_remove(struct platform_device *pdev)
+static int __nifd_remove(struct platform_device *pdev)
 {
     struct xocl_nifd *nifd;
     struct xocl_dev_core *core;
@@ -653,6 +653,15 @@ static int nifd_remove(struct platform_device *pdev)
 
     return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void nifd_remove(struct platform_device *pdev)
+{
+    __nifd_remove(pdev);
+}
+#else
+#define nifd_remove __nifd_remove
+#endif
 
 struct xocl_drv_private nifd_priv = {
 	.ops = NULL,

@@ -363,7 +363,7 @@ failed:
 }
 
 
-static int sysmon_remove(struct platform_device *pdev)
+static int __sysmon_remove(struct platform_device *pdev)
 {
 	struct xocl_sysmon	*sysmon;
 
@@ -383,6 +383,15 @@ static int sysmon_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void sysmon_remove(struct platform_device *pdev)
+{
+	__sysmon_remove(pdev);
+}
+#else
+#define sysmon_remove __sysmon_remove
+#endif
 
 struct xocl_drv_private sysmon_priv = {
 	.ops = &sysmon_ops,

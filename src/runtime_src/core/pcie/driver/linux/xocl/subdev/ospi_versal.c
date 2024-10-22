@@ -403,7 +403,7 @@ static int xfer_versal_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int xfer_versal_remove(struct platform_device *pdev)
+static int __xfer_versal_remove(struct platform_device *pdev)
 {
 	struct xfer_versal *xv = platform_get_drvdata(pdev);
 	void *hdl;
@@ -424,6 +424,15 @@ static int xfer_versal_remove(struct platform_device *pdev)
 	XV_INFO(xv, "return: %d", ret);
 	return ret;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xfer_versal_remove(struct platform_device *pdev)
+{
+	__xfer_versal_remove(pdev);
+}
+#else
+#define xfer_versal_remove __xfer_versal_remove
+#endif
 
 static int xfer_versal_probe(struct platform_device *pdev)
 {

@@ -267,7 +267,7 @@ static struct xocl_clock_counter_funcs clock_counter_ops = {
 	.get_freq_counter = clock_counter_get_freq,
 };
 
-static int clock_counter_remove(struct platform_device *pdev)
+static int __clock_counter_remove(struct platform_device *pdev)
 {
 	struct clock_counter *clock_c;
 
@@ -287,6 +287,15 @@ static int clock_counter_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void clock_counter_remove(struct platform_device *pdev)
+{
+	__clock_counter_remove(pdev);
+}
+#else
+#define clock_counter_remove __clock_counter_remove
+#endif
 
 static int clock_counter_probe(struct platform_device *pdev)
 {

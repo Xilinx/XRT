@@ -391,7 +391,7 @@ failed:
 }
 
 
-static int addr_translator_remove(struct platform_device *pdev)
+static int __addr_translator_remove(struct platform_device *pdev)
 {
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 
@@ -410,6 +410,15 @@ static int addr_translator_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void addr_translator_remove(struct platform_device *pdev)
+{
+	__addr_translator_remove(pdev);
+}
+#else
+#define addr_translator_remove __addr_translator_remove
+#endif
 
 struct xocl_drv_private addr_translator_priv = {
 	.ops = &addr_translator_ops,
