@@ -861,7 +861,11 @@ static const struct i2c_algorithm xiic_algorithm = {
 
 static struct i2c_adapter xiic_adapter = {
 	.owner = THIS_MODULE,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+	.class = I2C_CLASS_HWMON,
+#else
 	.class = I2C_CLASS_HWMON | I2C_CLASS_SPD,
+#endif
 	.algo = &xiic_algorithm,
 };
 
