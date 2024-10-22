@@ -88,7 +88,7 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 	void __iomem *map = NULL;
 
 	if (!slot->pr_isolation_addr) {
-		DRM_ERROR("PR isolation address is not set");
+		DRM_INFO("PR isolation address is not set");
 	} else {
 		map = ioremap(slot->pr_isolation_addr, PR_ISO_SIZE);
 		if (IS_ERR_OR_NULL(map)) {
