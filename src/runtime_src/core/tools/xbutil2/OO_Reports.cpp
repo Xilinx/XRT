@@ -78,7 +78,7 @@ OO_Reports::OO_Reports( const std::string &_longName, bool _isHidden )
   ;
 
   m_optionsHidden.add_options()
-    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: clocks, preemption");
+    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->implicit_value(""), "Reports to generate: clocks, preemption");
 
   m_positionalOptions.
     add("mode", 1 /* max_count */)
