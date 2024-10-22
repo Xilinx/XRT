@@ -589,7 +589,7 @@ static struct xocl_firewall_funcs fw_ops = {
 	.get_data = af_get_data,
 };
 
-static int firewall_remove(struct platform_device *pdev)
+static int __firewall_remove(struct platform_device *pdev)
 {
 	struct firewall *fw;
 	int     i;
@@ -610,6 +610,15 @@ static int firewall_remove(struct platform_device *pdev)
 	devm_kfree(&pdev->dev, fw);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void firewall_remove(struct platform_device *pdev)
+{
+	__firewall_remove(pdev);
+}
+#else
+#define firewall_remove __firewall_remove
+#endif
 
 static void get_fw_ep_name(const char *res_name, char *result)
 {

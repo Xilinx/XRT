@@ -64,7 +64,7 @@ static long train_clock(struct trace_funnel *trace_funnel, void __user *arg)
 	return 0;
 }
 
-static int trace_funnel_remove(struct platform_device *pdev)
+static int __trace_funnel_remove(struct platform_device *pdev)
 {
 	struct trace_funnel *trace_funnel;
 	void *hdl;
@@ -86,6 +86,15 @@ static int trace_funnel_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void trace_funnel_remove(struct platform_device *pdev)
+{
+	__trace_funnel_remove(pdev);
+}
+#else
+#define trace_funnel_remove __trace_funnel_remove
+#endif
 
 static int trace_funnel_probe(struct platform_device *pdev)
 {

@@ -1030,7 +1030,7 @@ failed:
 	return ret;
 }
 
-static int xiic_remove(struct platform_device *pdev)
+static int __xiic_remove(struct platform_device *pdev)
 {
 	struct xiic_i2c *i2c;
 
@@ -1053,6 +1053,15 @@ static int xiic_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xiic_remove(struct platform_device *pdev)
+{
+	__xiic_remove(pdev);
+}
+#else
+#define xiic_remove __xiic_remove
+#endif
 
 struct platform_device_id xiic_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_XIIC), 0 },

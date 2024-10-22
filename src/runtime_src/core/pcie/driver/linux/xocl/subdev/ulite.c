@@ -564,7 +564,7 @@ done:
  * `return`.
  * https://elixir.bootlin.com/linux/latest/source/include/linux/platform_device.h#L211
  */
-static int ulite_remove(struct platform_device *pdev)
+static int __ulite_remove(struct platform_device *pdev)
 {
 	struct uart_port *port = platform_get_drvdata(pdev);
 	struct uartlite_data *pdata;
@@ -588,6 +588,15 @@ static int ulite_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ulite_remove(struct platform_device *pdev)
+{
+	__ulite_remove(pdev);
+}
+#else
+#define ulite_remove __ulite_remove
+#endif
 
 struct xocl_drv_private ulite_priv = {
 	.ops = NULL,

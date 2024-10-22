@@ -119,7 +119,7 @@ static int version_ctrl_sysfs_create(struct version_ctrl *vc)
 	return 0;
 }
 
-static int version_ctrl_remove(struct platform_device *pdev)
+static int __version_ctrl_remove(struct platform_device *pdev)
 {
 	struct version_ctrl *version_ctrl;
 	void *hdl;
@@ -141,6 +141,15 @@ static int version_ctrl_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void version_ctrl_remove(struct platform_device *pdev)
+{
+	__version_ctrl_remove(pdev);
+}
+#else
+#define version_ctrl_remove __version_ctrl_remove
+#endif
 
 static struct xocl_version_ctrl_funcs vc_ops = {
 	.flat_shell_check = flat_shell_check,

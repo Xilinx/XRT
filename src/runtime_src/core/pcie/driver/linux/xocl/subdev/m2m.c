@@ -217,7 +217,7 @@ struct platform_device_id m2m_id_table[] = {
 	{ },
 };
 
-static int m2m_remove(struct platform_device *pdev)
+static int __m2m_remove(struct platform_device *pdev)
 {
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct xocl_m2m	*m2m;
@@ -252,6 +252,15 @@ static int m2m_remove(struct platform_device *pdev)
 	devm_kfree(&pdev->dev, m2m);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void m2m_remove(struct platform_device *pdev)
+{
+	__m2m_remove(pdev);
+}
+#else
+#define m2m_remove __m2m_remove
+#endif
 
 static int m2m_probe(struct platform_device *pdev)
 {

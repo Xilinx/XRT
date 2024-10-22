@@ -61,7 +61,7 @@ static long get_numbytes(struct trace_fifo_lite *fifo, void __user *arg)
 	return 0;
 }
 
-static int trace_fifo_lite_remove(struct platform_device *pdev)
+static int __trace_fifo_lite_remove(struct platform_device *pdev)
 {
 	struct trace_fifo_lite *trace_fifo_lite;
 	void *hdl;
@@ -83,6 +83,15 @@ static int trace_fifo_lite_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void trace_fifo_lite_remove(struct platform_device *pdev)
+{
+	__trace_fifo_lite_remove(pdev);
+}
+#else
+#define trace_fifo_lite_remove __trace_fifo_lite_remove
+#endif
 
 static int trace_fifo_lite_probe(struct platform_device *pdev)
 {

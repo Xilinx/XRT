@@ -173,7 +173,7 @@ static int calib_storage_probe(struct platform_device *pdev)
 }
 
 
-static int calib_storage_remove(struct platform_device *pdev)
+static int __calib_storage_remove(struct platform_device *pdev)
 {
 	struct calib_storage *calib_storage = platform_get_drvdata(pdev);
 
@@ -189,6 +189,15 @@ static int calib_storage_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void calib_storage_remove(struct platform_device *pdev)
+{
+	__calib_storage_remove(pdev);
+}
+#else
+#define calib_storage_remove __calib_storage_remove
+#endif
 
 struct xocl_drv_private calib_storage_priv = {
 	.ops = &calib_storage_ops,

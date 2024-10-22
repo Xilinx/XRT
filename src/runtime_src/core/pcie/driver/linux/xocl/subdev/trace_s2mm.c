@@ -123,7 +123,7 @@ static long get_wordcount(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
 	return 0;
 }
 
-static int trace_s2mm_remove(struct platform_device *pdev)
+static int __trace_s2mm_remove(struct platform_device *pdev)
 {
 	struct xocl_trace_s2mm *trace_s2mm;
 	void *hdl;
@@ -145,6 +145,15 @@ static int trace_s2mm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void trace_s2mm_remove(struct platform_device *pdev)
+{
+	__trace_s2mm_remove(pdev);
+}
+#else
+#define trace_s2mm_remove __trace_s2mm_remove
+#endif
 
 static int trace_s2mm_probe(struct platform_device *pdev)
 {
