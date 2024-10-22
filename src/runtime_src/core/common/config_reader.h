@@ -250,7 +250,7 @@ get_ml_timeline()
 inline std::string
 get_ml_timeline_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "128K");
+  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "192K");
   return value;
 }
 
