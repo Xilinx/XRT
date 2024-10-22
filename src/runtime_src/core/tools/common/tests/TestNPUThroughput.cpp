@@ -36,8 +36,6 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  logger(ptree, "Xclbin", xclbin_path);
-
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
@@ -65,8 +63,6 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);

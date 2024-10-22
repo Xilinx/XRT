@@ -128,7 +128,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << boost::str(boost::format("Total Column Utilization: %s\n") % _pt.get<std::string>("aie_partitions.total_col_utilization"));
+  _output << boost::str(boost::format("Total Column Occupancy: %s\n") % _pt.get<std::string>("aie_partitions.total_col_utilization"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
