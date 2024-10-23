@@ -315,9 +315,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   int test_idx = 0;
 
-  if (testObjectsToRun.size() == 1)
-    XBU::setVerbose(true);// setting verbose true for single_case.
-
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 

@@ -38,8 +38,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  logger(ptree, "Xclbin", xclbin_path);
-
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
@@ -67,8 +65,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  if(XBUtilities::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -89,8 +85,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
-
-  logger(ptree, "DPU-Sequence", dpu_instr);
 
   size_t instr_size = 0;
   try {

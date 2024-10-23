@@ -36,8 +36,6 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  logger(ptree, "Xclbin", xclbin_path);
-
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
@@ -65,8 +63,6 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -80,7 +76,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   catch (const std::exception& )
   {
     logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+    ptree.put("status", test_token_failed);
     return ptree;
   }
   xrt::xclbin::ip cu;
