@@ -24,24 +24,27 @@ static void
 print_clock_info(const xrt_core::device* device, bool is_json)
 {
   bpt empty_tree;
+  std::stringstream ss;
   auto clocks = xrt_core::platform::get_clock_info(device);
   const bpt& pt_clock_array = clocks.get_child("clocks", empty_tree);
+  ss << "Clocks\n";
   if (pt_clock_array.empty()) {
-    std::cout << "  No clock information available\n\n";
+    ss << "  No clock information available\n\n";
+    std::cout << ss.str();
     return;
   }
 
   // if json format is requested, print it to console and exit
   if(is_json) {
-    boost::property_tree::write_json(std::cout, pt_clock_array, true);
+    boost::property_tree::write_json(std::cout, clocks, true);
     return;
   }  
-  std::cout << std::endl << "Clocks" << std::endl;
+  
   for (const auto& kc : pt_clock_array) {
     const bpt& pt_clock = kc.second;
-    std::string clock_name_type = pt_clock.get<std::string>("id");
-    std::cout << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
+    ss << boost::format("  %-23s: %3s MHz\n") % pt_clock.get<std::string>("id") % pt_clock.get<std::string>("freq_mhz");
   }
+  std::cout << ss.str();
 }
 
 static void
@@ -49,9 +52,10 @@ print_preemption_telemetry(const xrt_core::device* device, bool is_json)
 {
   bpt empty_ptree;
   std::stringstream ss;
-  bpt telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(device).get_child("telemetry", empty_ptree);
+  bpt telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(device);
+  bpt telemetry_array = telemetry_pt.get_child("telemetry", empty_ptree);
   ss << "Premption Telemetry Data\n";
-  if (telemetry_pt.empty()) {
+  if (telemetry_array.empty()) {
     ss << " No hardware contexts running on device\n\n";
     std::cout << ss.str();
     return;
@@ -73,7 +77,7 @@ print_preemption_telemetry(const xrt_core::device* device, bool is_json)
   };
   Table2D preemption_table(preempt_headers);
 
-  for (const auto& [name, user_task] : telemetry_pt) {
+  for (const auto& [name, user_task] : telemetry_array) {
     const std::vector<std::string> rtos_data = {
       user_task.get<std::string>("user_task"),
       user_task.get<std::string>("slot_index"),
@@ -90,7 +94,7 @@ print_preemption_telemetry(const xrt_core::device* device, bool is_json)
   std::cout << ss.str();
 }
 
-} //end namespace;
+} //end namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
