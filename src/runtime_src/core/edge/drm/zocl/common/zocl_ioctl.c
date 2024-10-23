@@ -116,7 +116,7 @@ get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 	if (s_id > 0) {
 		slot = zdev->pr_slot[s_id];
 		if (!slot) {
-			DRM_ERROR("%s: slot: %d doesn't exists or invaid slot", __func__, s_id);
+			DRM_ERROR("%s: slot %d doesn't exists or invalid", __func__, s_id);
 			return -EINVAL;
 		}
 		DRM_INFO("Found a free slot %d for XCLBIN %pUb", s_id, &axlf->m_header.uuid);
@@ -245,23 +245,8 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
-	int ret = 0;
-	int slot_id = -1;
-	struct kds_client_hw_ctx *kds_hw_ctx = NULL;
-	struct kds_client *client = filp->driver_priv;
-	mutex_lock(&client->lock);
-	kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_hw_ctx->hw_context);
-	if (!kds_hw_ctx) {
-		DRM_ERROR("%s: No valid hw context is open", __func__);
-		mutex_unlock(&client->lock);
-		return -EINVAL;
-	}
-	slot_id = kds_hw_ctx->slot_idx;
-	mutex_unlock(&client->lock);
-	ret = zocl_destroy_hw_ctx(zdev, drm_hw_ctx, filp);
-	//TODO do it under lock
-	zdev->slot_mask &= ~(1 << slot_id);
-	return ret;
+
+	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, filp);
 }
 
 /*

@@ -43,6 +43,8 @@ int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx 
         goto error_out;
     }
     drm_hw_ctx->hw_context = kds_hw_ctx->hw_ctx_idx;
+    //increase the count for this slot. decrease the count for destroy hw ctx
+    slot->hwctx_ref_cnt++;
 
 error_out:
     mutex_unlock(&client->lock);
@@ -77,6 +79,11 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
         return -EINVAL;
     }
     ret = kds_free_hw_ctx(client, kds_hw_ctx);
+    if (--slot->hwctx_ref_cnt == 0) {
+        zdev->slot_mask &= ~(1 << kds_hw_ctx->slot_idx);
+        DRM_INFO("++ Released the slot %d", kds_hw_ctx->slot_idx);
+    }
+
     mutex_unlock(&client->lock);
     return ret;
 }
