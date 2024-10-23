@@ -447,7 +447,7 @@ SubCmdValidate::getTestNameDescriptions(const bool addAdditionOptions) const
 static boost::program_options::options_description common_options;
 static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
 static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
-static const std::pair<std::string, std::string> quick_test = {"quick", "Only the first 4 tests will be executed"};
+static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
