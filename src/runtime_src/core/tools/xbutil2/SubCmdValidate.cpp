@@ -451,7 +451,7 @@ static const std::pair<std::string, std::string> quick_test = {"quick", "Run a s
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
-             "Validates the basic shell acceleration functionality")
+             "Validates the basic device acceleration functionality")
     , m_device("")
     , m_tests_to_run({"all"})
     , m_format("JSON")
