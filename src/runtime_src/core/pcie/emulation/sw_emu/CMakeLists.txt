@@ -38,9 +38,13 @@ add_library(xrt_swemu_static STATIC ${CURR_SOURCE}
 set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+find_package(absl REQUIRED)
+
 target_link_libraries(xrt_swemu
   PRIVATE
   ${PROTOBUF_LIBRARY}
+  absl::log
+  absl::check
   xrt_coreutil
   common_em
   rt
@@ -50,6 +54,8 @@ target_link_libraries(xrt_swemu
 target_link_libraries(xrt_swemu_static
   INTERFACE
   ${PROTOBUF_LIBRARY}
+  absl::log
+  absl::check
   xrt_coreutil_static
   rt
   uuid
