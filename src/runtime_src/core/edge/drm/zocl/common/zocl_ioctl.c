@@ -83,6 +83,7 @@ get_legacy_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 static int
 get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 {
+	int s_id = -1;
 	/* xclbin contains PL section use fixed slot */
 	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT)) {
                 DRM_WARN("Xclbin contains PL section Using Slot-0");
@@ -92,17 +93,38 @@ get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 
         struct drm_zocl_slot *slot = NULL;
 	for (int i = 1; i < MAX_PR_SLOT_NUM; i++) {
-		if (!(zdev->slot_mask & (1 << i))) {
-			zdev->slot_mask |= 1 << i;
-			*slot_id = i;
+		if (zdev->slot_mask & (1 << i)) {
 			slot = zdev->pr_slot[i];
-		        if (!slot) {
-				DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", i);
-				return -EINVAL;
+			if (slot) {
+				mutex_lock(&slot->slot_xclbin_lock);
+				if (zocl_xclbin_same_uuid(slot, &axlf->m_header.uuid)) {
+					// xclbin already downloaded to ith slot
+					DRM_INFO("The XCLBIN %pUb already loaded to slot %d", &axlf->m_header.uuid, i);
+					*slot_id = i;
+					mutex_unlock(&slot->slot_xclbin_lock);
+					return 0;
+				}
+				mutex_unlock(&slot->slot_xclbin_lock);
 			}
-			DRM_INFO("Found free Slot-%d is selected for xclbin \n", i);
-			return 0;
 		}
+		else if (!(zdev->slot_mask & (1 << i)) && (s_id < 0)) {
+			// found a free slot
+			s_id = i;
+		}
+	}
+
+	if (s_id > 0) {
+		slot = zdev->pr_slot[s_id];
+		if (!slot) {
+			DRM_ERROR("%s: slot: %d doesn't exists or invaid slot", __func__, s_id);
+			return -EINVAL;
+		}
+		DRM_INFO("Found a free slot %d for XCLBIN %pUb", s_id, &axlf->m_header.uuid);
+		// acquiring the free slot
+		zdev->slot_mask |= 1 << s_id;
+		*slot_id = s_id;
+		return 0;
+
 	}
 	return -ENOMEM; // All bits are set
 }
@@ -175,11 +197,11 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	int slot_id = -1;
 	int ret = 0;
 	ret = zocl_identify_slot(zdev, axlf_obj, client, &slot_id, false /*hw_ctx_flow*/);
-	if (ret < 0) {
+	if (ret < 0 || slot_id < 0) {
 		DRM_WARN("Unable to allocate slot for xclbin.");
 		return ret;
 	}
-	DRM_INFO(" Allocated slot %d to load xclbin in device\n.", slot_id);
+	DRM_INFO("Allocated slot %d to load xclbin in device.\n", slot_id);
 
 	return zocl_xclbin_read_axlf(zdev, axlf_obj, client, slot_id);
 }
@@ -201,11 +223,11 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file
 		return -EFAULT;
 	}
 	ret = zocl_identify_slot(zdev, &axlf_obj, client, &slot_id, true /*hw_ctx_flow*/);
-	if (ret < 0) {
+	if (ret < 0 || slot_id < 0) {
 		DRM_WARN("Unable to allocate slot for xclbin.");
 		return ret;
 	}
-	DRM_INFO(" Allocated slot %d to load xclbin in hw_context\n.", slot_id);
+	DRM_INFO("Allocated slot %d to load xclbin in hw_context.\n", slot_id);
 
 	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client, slot_id);
 	if (ret) {
