@@ -398,7 +398,7 @@ public:
 
   // Managed start uses command manager for monitoring command
   // completion
-  void
+  virtual void
   managed_start(xrt_core::command* cmd)
   {
     get_cmd_manager()->launch(cmd);
@@ -425,6 +425,16 @@ public:
     : m_hwctx(std::move(hwctx))
     , m_qhdl(qhdl)
   {}
+
+  // Managed start is invoked when application has added a callback
+  // function for notification of command completion. This is not
+  // supported for platforms that implement hwqueue_handle (see
+  // details in wait(size_t) comments.
+  void
+  managed_start(xrt_core::command*) override
+  {
+    throw std::runtime_error("Managed execution is not supported for this device");
+  }
 
   std::cv_status
   wait(size_t /*timeout_ms*/) override
