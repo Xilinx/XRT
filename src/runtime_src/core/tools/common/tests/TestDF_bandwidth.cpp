@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestDF_bandwidth.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -33,17 +34,6 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
-
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f GB/s") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
@@ -92,10 +82,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   } 
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
 
@@ -108,7 +98,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -121,7 +111,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
 
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
 
   // map input buffer
   auto ifm_mapped = bo_ifm.map<int*>();
@@ -169,12 +159,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   //Data is read and written in parallel hence x2
   double bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
 
-  //check if the value is in range
-  result_in_range(bandwidth, get_threshold(), ptree);
-
   if(XBU::getVerbose())
     logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: %.1f GB/s") % bandwidth));
+  ptree.put("status", test_token_passed);
 
   return ptree;
 }

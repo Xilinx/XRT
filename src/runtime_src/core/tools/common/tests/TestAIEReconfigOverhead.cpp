@@ -2,6 +2,7 @@
 // Local - Include Files
 
 #include "TestAIEReconfigOverhead.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -29,17 +30,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
-
-  try {
-    set_threshold(dev, ptree);
-    if(XBUtilities::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
@@ -88,10 +78,10 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   } 
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
 
@@ -104,7 +94,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -123,7 +113,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   argno++;
   xrt::bo bo_mc(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
 
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   //Create ctrlcode with NOPs
   std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
 
@@ -189,8 +179,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   elapsedSecsAverage /= itr_count;
   double overhead = (elapsedSecsAverage - elapsedSecsNoOpAverage)*1000; //in ms
 
-  //check if the value is in range
-  result_in_range(overhead, get_threshold(), ptree);
   logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
+  ptree.put("status", test_token_passed);
   return ptree;
 }

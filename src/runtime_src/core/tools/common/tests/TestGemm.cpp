@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestGemm.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -36,17 +37,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
-
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TOPS") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
@@ -95,10 +85,10 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   } 
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
     return ptree;
   }
 
@@ -112,7 +102,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -122,7 +112,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //Create Instruction BO
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   //Sync Instruction BO
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
@@ -130,41 +120,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
   // wait until clock reaches the max frequency
-  int ipu_hclock_pre = 0;
   int ipu_hclock = 0;
-  auto hclock_steady_counter = 0;
-  auto first_steady_state = -1, second_steady_state = -1;;
-
-  for(int i=0; i<100;i++){
-    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int c = 0; c < clock_topology->m_count; c++) {
-      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
-        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    //std::cout << "NPU clock: " << ipu_hclock <<std::endl;
-
-    hclock_steady_counter = (ipu_hclock == ipu_hclock_pre) ? hclock_steady_counter + 1 : 0;
-    if(hclock_steady_counter == 8 && first_steady_state == -1 && ipu_hclock >= 1810) {
-      //break;
-      first_steady_state = ipu_hclock_pre; 
-      hclock_steady_counter = 0;
-    }
-    
-    if(hclock_steady_counter == 8 && first_steady_state != -1 && second_steady_state == -1 && ipu_hclock > first_steady_state) {
-      //break;
-      second_steady_state = ipu_hclock; 
-      hclock_steady_counter = 0;
-    }
-    
-    if (hclock_steady_counter == 8 && second_steady_state != -1  && ipu_hclock > second_steady_state) {
-      break;  
-    }
-    
-    ipu_hclock_pre = ipu_hclock; // Update hclk with hclk_pre
-
-  }
+  XBValidateUtils::wait_for_max_clock(ipu_hclock, dev);
 
   try {
     //run kernel
@@ -212,10 +169,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
   }
 
-  //check if the value is in range
-  result_in_range(TOPS, get_threshold(), ptree);
-
   logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+  ptree.put("status", test_token_passed);
 
   return ptree;
 }

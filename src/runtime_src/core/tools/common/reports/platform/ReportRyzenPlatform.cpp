@@ -51,7 +51,6 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
-    _output << boost::format("  %-23s: %s \n") % "Preemption" % pt_status.get<std::string>("force_preemption");
 
     const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if (!clocks.empty()) {
@@ -60,16 +59,6 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
         const boost::property_tree::ptree& pt_clock = kc.second;
         std::string clock_name_type = pt_clock.get<std::string>("id");
         _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
-      }
-    }
-
-    const boost::property_tree::ptree& tops = pt_platform.get_child("tops", empty_ptree);
-    if (!tops.empty()) {
-      _output << "\nTOPs\n";
-      for (const auto& kt : tops) {
-        const boost::property_tree::ptree& pt_tops = kt.second;
-        std::string tops_name_type = pt_tops.get<std::string>("id");
-        _output << boost::format("  %-23s: %s Terabyte ops/second\n") % tops_name_type % pt_tops.get<std::string>("value");
       }
     }
 

@@ -62,11 +62,11 @@ R"(
     }]
   },{
     "advanced":[{
-      "suboption": ["read-aie-reg", "aie-clock"]
+      "suboption": ["read-aie-reg", "aie-clock", "report"]
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead", "temporal-sharing-overhead"]
     }]
   }]
 }]
@@ -106,11 +106,11 @@ int main( int argc, char** argv )
 
   // -- Program Description
   const std::string description = 
-  "The Xilinx (R) Run Time - System Management Interface (xrt-smi) is a standalone"
-  " command line utility that is included with the Xilinx Run Time (XRT) installation"
-  " package. It includes multiple commands to identify and validate the installed"
-  " card(s).\n\nThis information can be used for both card administration and"
-  " application debugging.";
+  "The XRT - System Management Interface (xrt-smi) is a standalone"
+  " command-line utility that is included with the XRT runtime"
+  " package. It includes multiple commands to configure, examine, and validate"
+  " supported device(s).\n\nThe reports produced by xrt-smi may be used for device" 
+  " administration, monitoring, and troubleshooting application behavior.";
 
   // -- Ready to execute the code
   try {
