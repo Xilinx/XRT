@@ -703,10 +703,6 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
-    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id "
-        << pGMIOConfig->id << ") enqueue BD num " << bdNumber << " to shim DMA channel " << pGMIOConfig->channelNum
-        << ", DDR offset " << std::hex << offset << ", transaction size " << std::dec << size).str());
-
     // Update status after using AIE driver
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::gmio_api::enqueueBD: AIE driver error.");
