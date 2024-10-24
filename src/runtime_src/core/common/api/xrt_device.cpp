@@ -387,11 +387,12 @@ namespace xrt::aie {
 // of that partition. Get patition info using the context id passed and
 // convert relative column index to absolute using this info
 static uint16_t
-get_abs_col(const xrt_core::device* device, uint16_t context_id, uint16_t col)
+get_abs_col(const xrt_core::device* device, pid_t pid, uint16_t context_id, uint16_t col)
 {
   auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
   for (const auto& entry : data) {
-    if (std::stoi(entry.metadata.id) != context_id)
+    // compare PID and context id
+    if (entry.pid != pid || std::stoi(entry.metadata.id) != context_id)
       continue;
 
     auto abs_col = col + entry.start_col;
@@ -427,13 +428,13 @@ open_context(xrt::aie::device::access_mode am)
 
 std::vector<char>
 device::
-read_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
+read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
 {
   return xdp::native::profiling_wrapper("xrt::aie::device::read_aie_mem",
-    [this, &col, row, offset, size, context_id] {
+    [this, &col, row, offset, size, context_id, pid] {
       try {
         // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), context_id, col);
+        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(offset); // DRC check
         return get_handle()->read_aie_mem(abs_col, row, offset, size);
       }
@@ -445,13 +446,13 @@ read_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, u
 
 size_t
 device::
-write_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data)
+write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data)
 {
   return xdp::native::profiling_wrapper("xrt::aie::device::write_aie_mem",
-    [this, &col, row, offset, &data, context_id] {
+    [this, &col, row, offset, &data, context_id, pid] {
       try {
         // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), context_id, col);
+        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(offset); // DRC check
         return get_handle()->write_aie_mem(abs_col, row, offset, data);
       }
@@ -462,13 +463,13 @@ write_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, 
 }
 uint32_t
 device::
-read_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
+read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
 {
   return xdp::native::profiling_wrapper("xrt::device::read_aie_reg",
-    [this, &col, row, reg_addr, context_id] {
+    [this, &col, row, reg_addr, context_id, pid] {
       try {
         // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), context_id, col);
+        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(reg_addr); // DRC check
         return get_handle()->read_aie_reg(abs_col, row, reg_addr);
       }
@@ -480,13 +481,13 @@ read_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr)
 
 bool
 device::
-write_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val)
+write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val)
 {
   return xdp::native::profiling_wrapper("xrt::device::write_aie_reg",
-    [this, &col, row, reg_addr, &reg_val, context_id] {
+    [this, &col, row, reg_addr, &reg_val, context_id, pid] {
       try {
         // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), context_id, col);
+        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(reg_addr); // DRC check
         return get_handle()->write_aie_reg(abs_col, row, reg_addr, reg_val);
       }
