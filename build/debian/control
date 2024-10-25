@@ -21,6 +21,7 @@ Build-Depends: cmake,
                libssl-dev,
                libudev-dev,
                libxml2-dev,
+	       libxaiengine,
                libyaml-dev,
                lsb-release,
                ocl-icd-dev,
@@ -31,6 +32,7 @@ Build-Depends: cmake,
                rapidjson-dev,
                systemtap-sdt-dev,
                uuid-dev,
+	       xaiefal,
 Standards-Version: 4.5.0
 
 Package: xrt
