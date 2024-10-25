@@ -121,11 +121,14 @@ namespace xdp {
 
     boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
-    ptSchema.put("minor", "0");
+    ptSchema.put("minor", "1");
     ptSchema.put("patch", "0");
     ptHeader.add_child("schema_version", ptSchema);
     ptHeader.put("device", "Client");
     ptHeader.put("clock_freq_MHz", 1000);
+    ptHeader.put("id_size", sizeof(uint32_t));
+    ptHeader.put("cycle_size", 2*sizeof(uint32_t));
+    ptHeader.put("buffer_size", mBufSz);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
