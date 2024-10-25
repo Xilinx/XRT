@@ -86,39 +86,6 @@ convert_to_mailbox_type(const std::string& str)
   return (*itr).second;
 }
 
-
-// Kernel mailbox
-// Needed until meta-data support (Vitis-1147)
-// Format is "[/kernel_name/]*"
-// mailbox="/kernel1_name/kernel2_name/"
-static xrt_core::xclbin::kernel_properties::mailbox_type
-get_mailbox_from_ini(const std::string& kname)
-{
-  static auto mailbox_kernels = xrt_core::config::get_mailbox_kernels();
-  return (mailbox_kernels.find("/" + kname + "/") != std::string::npos)
-    ? xrt_core::xclbin::kernel_properties::mailbox_type::inout
-    : xrt_core::xclbin::kernel_properties::mailbox_type::none;
-}
-
-// Kernel auto restart counter offset
-// Needed until meta-data support (Vitis-1147)
-static xrt_core::xclbin::kernel_properties::restart_type
-get_restart_from_ini(const std::string& kname)
-{
-  static auto restart_kernels = xrt_core::config::get_auto_restart_kernels();
-  return (restart_kernels.find("/" + kname + "/") != std::string::npos)
-    ? 1
-    : 0;
-}
-
-// Kernel software reset
-static bool
-get_sw_reset_from_ini(const std::string& kname)
-{
-  static auto reset_kernels = xrt_core::config::get_sw_reset_kernels();
-  return (reset_kernels.find("/" + kname + "/") != std::string::npos);
-}
-
 static bool
 is_sw_emulation()
 {
@@ -986,6 +953,38 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
 {
   auto xml = get_xml_section(top);
   return get_kernel_arguments(xml.first, xml.second, kname);
+}
+
+// Kernel mailbox
+// Needed until meta-data support (Vitis-1147)
+// Format is "[/kernel_name/]*"
+// mailbox="/kernel1_name/kernel2_name/"
+kernel_properties::mailbox_type
+get_mailbox_from_ini(const std::string& kname)
+{
+  static auto mailbox_kernels = xrt_core::config::get_mailbox_kernels();
+  return (mailbox_kernels.find("/" + kname + "/") != std::string::npos)
+    ? xrt_core::xclbin::kernel_properties::mailbox_type::inout
+    : xrt_core::xclbin::kernel_properties::mailbox_type::none;
+}
+
+// Kernel auto restart counter offset
+// Needed until meta-data support (Vitis-1147)
+kernel_properties::restart_type
+get_restart_from_ini(const std::string& kname)
+{
+  static auto restart_kernels = xrt_core::config::get_auto_restart_kernels();
+  return (restart_kernels.find("/" + kname + "/") != std::string::npos)
+    ? 1
+    : 0;
+}
+
+// Kernel software reset
+bool
+get_sw_reset_from_ini(const std::string& kname)
+{
+  static auto reset_kernels = xrt_core::config::get_sw_reset_kernels();
+  return (reset_kernels.find("/" + kname + "/") != std::string::npos);
 }
 
 kernel_properties

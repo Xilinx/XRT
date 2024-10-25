@@ -9,6 +9,8 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+#include "experimental/xrt_elf.h"
+
 #ifdef __cplusplus
 
 #include <map>
@@ -80,13 +82,66 @@ public:
   hw_context() = default;
 
   /**
+   * hw_context() - Constructor with QoS control and access control
+   * 
+   * @param device
+   *  Device where context is created
+   * @param cfg_param
+   *  Configuration Parameters (incl. Quality of Service)
+   * @param mode
+   *  Access control for the context
+   * 
+   * When application uses this constructor no hw resources are allocated
+   * It acts as placeholder and used for setting QoS and access control
+   * The QoS definition is subject to change, so this API is not guaranteed
+   * to be ABI compatible in future releases
+   */
+  XRT_API_EXPORT
+  hw_context(const xrt::device& device, const cfg_param_type& cfg_param, access_mode mode);
+
+  /**
+   * hw_context() - Constructor with Elf file
+   *
+   * @param device
+   *  Device where context is created
+   * @param elf
+   *  XRT Elf object created from config Elf file
+   * @param cfg_param
+   *  Configuration Parameters (incl. Quality of Service)
+   * @param mode
+   *  Access control for the context
+   *
+   * The QoS definition is subject to change, so this API is not guaranteed
+   * to be ABI compatible in future releases. When cfg_param and access_mode
+   * are not passed hw context with shared access mode is created.
+   */
+  XRT_API_EXPORT
+  hw_context(const xrt::device& device, const xrt::elf& elf,
+             const cfg_param_type& cfg_param = cfg_param_type{},
+             access_mode mode = access_mode::shared);
+
+  /**
+   * add_config() - adds config Elf file to the context
+   * 
+   * @param elf
+   *  XRT Elf object created from config Elf file
+   * 
+   * Adds config Elf to context if it is the first config added
+   * If config already exists, it will be added only when configuration matches
+   * with existing one else an exception is thrown
+   */
+  XRT_API_EXPORT
+  void
+  add_config(const xrt::elf& elf);
+
+  /**
    * hw_context() - Constructor with QoS control
    *
    * @param device
    *  Device where context is created
    * @param xclbin_id
    *  UUID of xclbin that should be assigned to HW resources
-   * @cfg_param
+   * @param cfg_param
    *  Configuration Parameters (incl. Quality of Service)
    *
    * The QoS definition is subject to change, so this API is not guaranteed
@@ -172,6 +227,7 @@ public:
 
   /**
    * get_xclbin_uuid() - UUID of xclbin from which context was created
+   * Returns empty uuid if context was created without xclbin (created with Elf)
    */
   XRT_API_EXPORT
   xrt::uuid
@@ -179,6 +235,7 @@ public:
 
   /**
    * get_xclbin() - Retrieve underlying xclbin matching the UUID
+   * Returns empty xclbin if context was created without xclbin (created with Elf)
    */
   XRT_API_EXPORT
   xrt::xclbin
