@@ -38,7 +38,7 @@ module::module(void* userptr, size_t sz, const xrt::uuid& uuid)
   XRT_TOOLS_XBT_FUNC_EXIT(func);
 }
 
-module::module(const xrt::module& parent, const xrt::hw_context& hwctx)
+module::module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t /*ctrl_code_idx*/)
 {
   auto func = "xrt::module::module(const xrt::module&, const xrt::hw_context&)";
   XRT_TOOLS_XBT_CALL_CTOR(dtbl.module.ctor_mod_ctx, this, parent, hwctx);

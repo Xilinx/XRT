@@ -10,6 +10,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 
+#include "ert.h"
+
 #include <string>
 
 namespace xrt_core::module_int {
@@ -33,7 +35,8 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // of the control code buffer.
 XRT_CORE_COMMON_EXPORT
 void
-patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*);
+patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*,
+      uint32_t index = 0);
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT
@@ -53,6 +56,16 @@ get_ert_opcode(const xrt::module& module);
 // Dump scratch pad mem buffer
 void
 dump_scratchpad_mem(const xrt::module& module);
+
+std::string
+get_kernel_signature(const xrt::module& module);
+
+std::string
+get_kernel_name(const xrt::module& module);
+
+// Get partition size if ELF has info
+uint32_t
+get_partition_size(const xrt::module& module);
 
 } // xrt_core::module_int
 
