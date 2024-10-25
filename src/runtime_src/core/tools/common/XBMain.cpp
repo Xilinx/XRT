@@ -59,7 +59,7 @@ void  main_(int argc, char** argv,
   globalOptions.add(globalSubCmdOptions);
 
   // Hidden Options
-  const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
+  const std::string device_default = xrt_core::get_total_devices(false).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
