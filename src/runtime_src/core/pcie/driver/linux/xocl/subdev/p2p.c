@@ -1470,7 +1470,7 @@ static int p2p_sysfs_create(struct p2p *p2p)
 	return 0;
 }
 
-static int p2p_remove(struct platform_device *pdev)
+static int __p2p_remove(struct platform_device *pdev)
 {
 	struct p2p *p2p;
 	struct pci_dev *pcidev;
@@ -1502,6 +1502,15 @@ static int p2p_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void p2p_remove(struct platform_device *pdev)
+{
+	__p2p_remove(pdev);
+}
+#else
+#define p2p_remove __p2p_remove
+#endif
 
 static int p2p_probe(struct platform_device *pdev)
 {

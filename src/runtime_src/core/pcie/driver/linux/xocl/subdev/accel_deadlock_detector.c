@@ -61,7 +61,7 @@ static struct attribute_group accel_deadlock_detector_attr_group = {
     .attrs = accel_deadlock_detector_attrs,
 };
 
-static int accel_deadlock_detector_remove(struct platform_device *pdev)
+static int __accel_deadlock_detector_remove(struct platform_device *pdev)
 {
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
     void *hdl = NULL;
@@ -86,6 +86,15 @@ static int accel_deadlock_detector_remove(struct platform_device *pdev)
 
     return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void accel_deadlock_detector_remove(struct platform_device *pdev)
+{
+    __accel_deadlock_detector_remove(pdev);
+}
+#else
+#define accel_deadlock_detector_remove __accel_deadlock_detector_remove
+#endif
 
 static int accel_deadlock_detector_probe(struct platform_device *pdev)
 {
