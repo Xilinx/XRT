@@ -39,9 +39,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
 
@@ -50,8 +50,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -67,8 +67,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
@@ -84,13 +84,13 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   } 
   catch (const std::exception& )
   {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::gemm_int8);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
@@ -99,8 +99,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -124,8 +124,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     run.wait2();
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -135,8 +135,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //Calculate TOPS
   if (ipu_hclock == 0) {
-    logger(ptree, "Error", "IPU H-clock is 0");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "IPU H-clock is 0");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   double ipu_hclck_period = 1000000000.0 / (ipu_hclock * 1000000); // MHz to ns
@@ -148,8 +148,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   for (uint32_t n = 0 ; n < num_of_cores; n++) {
     auto cycle_count = *core_ptr;
     if(cycle_count == 0) {
-      logger(ptree, "Error", "cycle count is 0");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "cycle count is 0");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
     auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
@@ -159,12 +159,12 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
-    logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
   }
 
-  logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
-  ptree.put("status", test_token_passed);
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
 }

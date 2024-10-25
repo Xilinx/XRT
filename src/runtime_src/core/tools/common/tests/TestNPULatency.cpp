@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestNPULatency.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -30,9 +31,9 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
 
@@ -41,10 +42,30 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
+
+  // Determine The DPU Kernel Name
+  auto xkernels = xclbin.get_kernels();
+
+  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    auto name = k.get_name();
+    return name.rfind("DPU",0) == 0; // Starts with "DPU"
+  });
+
+  xrt::xclbin::kernel xkernel;
+  if (itr!=xkernels.end())
+    xkernel = *itr;
+  else {
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    return ptree;
+  }
+  auto kernelName = xkernel.get_name();
+  if(XBU::getVerbose())
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -58,8 +79,8 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     testker = get_kernel(hwctx, sequence);
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -97,8 +118,8 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if (XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   // Run the test to compute latency where we submit one job at a time and wait for its completion before
@@ -115,15 +136,15 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     elapsed_secs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
   
-  logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
-  ptree.put("status", test_token_passed);
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

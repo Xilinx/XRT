@@ -24,7 +24,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
 
@@ -33,8 +33,8 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch(const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto xkernels = xclbin.get_kernels();
@@ -48,8 +48,8 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
@@ -58,7 +58,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   working_dev.register_xclbin(xclbin);
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
@@ -78,8 +78,8 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
     try {
       test.run();
     } catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
   };
@@ -120,14 +120,14 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   // End of Run 2 
 
   if(XBU::getVerbose()){
-    logger(ptree, "Details", boost::str(boost::format("Spatially shared contexts latency: '%.1f' ms") % (latencySpatial * 1000)));
-    logger(ptree, "Details", boost::str(boost::format("Temporally shared contexts latency: '%.1f' ms") % (latencyTemporal * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared contexts latency: '%.1f' ms") % (latencySpatial * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared contexts latency: '%.1f' ms") % (latencyTemporal * 1000)));
   }
   auto overhead = (latencyTemporal - latencySpatial); 
-  logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % (overhead * 1000)));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % (overhead * 1000)));
 
   // Set the test status to passed
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }
 
@@ -137,8 +137,8 @@ TestTemporalSharingOvd::initializeTests(std::vector<TestCase>& testcases) {
     try{
       testcases[i].initialize();
     } catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
   } 

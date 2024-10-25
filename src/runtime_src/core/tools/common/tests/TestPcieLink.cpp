@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestPcieLink.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -20,10 +21,10 @@ TestPcieLink::run(std::shared_ptr<xrt_core::device> dev)
   const uint64_t width     = xrt_core::device_query<xrt_core::query::pcie_express_lane_width>(dev);
   const uint64_t max_width = xrt_core::device_query<xrt_core::query::pcie_express_lane_width_max>(dev);
   if (speed != max_speed || width != max_width) {
-    logger(ptree, "Warning", "Link is active");
-    logger(ptree, "Warning", boost::str(boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
+    XBValidateUtils::logger(ptree, "Warning", "Link is active");
+    XBValidateUtils::logger(ptree, "Warning", boost::str(boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
                                           % max_speed % max_width % speed % width % "Lower performance maybe experienced"));
   }
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

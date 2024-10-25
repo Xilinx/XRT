@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestVerify.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -28,21 +29,21 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
   ptree = get_test_header();
   xrt::device device(dev);
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
   if (test_path.empty()) {
-    logger(ptree, "Error", "Platform test path was not found.");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Platform test path was not found.");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
-  const std::string b_file = findXclbinPath(dev, ptree);
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
   if (!logic_uuid.empty() && !std::filesystem::exists(b_file)) {
-    logger(ptree, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
   auto xclbin_uuid = device.load_xclbin(b_file);
@@ -54,8 +55,8 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
     try {
       krnl = xrt::kernel(device, xclbin_uuid, "hello");
     } catch (const std::exception&) {
-      logger(ptree, "Error", "Kernel could not be found.");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "Kernel could not be found.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
@@ -77,10 +78,10 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
   // Compare received data against expected data
   std::string expected_data = "Hello World\n";
   if (std::memcmp(received_data, expected_data.data(), expected_data.size())) {
-    logger(ptree, "Error", "Value read back does not match reference");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Value read back does not match reference");
+    ptree.put("status", XBValidateUtils::test_token_failed);
   }
 
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

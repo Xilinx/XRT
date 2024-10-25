@@ -5,7 +5,16 @@
 // Local - Include Files
 #include <fstream>
 #include <thread>
+#include <regex>
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
+#include "core/common/query_requests.h"
+#include "core/common/module_loader.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/XBUtilitiesCore.h"
+
 #include "TestValidateUtilities.h"
+namespace xq = xrt_core::query;
 
 // Constructor for BO_set
 // BO_set is a collection of all the buffer objects so that the operations on all buffers can be done from a single object
@@ -169,5 +178,196 @@ wait_for_max_clock(std::shared_ptr<xrt_core::device> dev) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
   return ipu_hclock;
+}
+/*
+ * mini logger to log errors, warnings and details produced by the test cases
+ */
+void 
+logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const std::string& msg)
+{
+  boost::property_tree::ptree _ptLog;
+  boost::property_tree::ptree _ptExistingLog;
+  boost::optional<boost::property_tree::ptree&> _ptChild = _ptTest.get_child_optional("log");
+  if (_ptChild)
+    _ptExistingLog = _ptChild.get();
+
+  _ptLog.put(tag, msg);
+  _ptExistingLog.push_back(std::make_pair("", _ptLog));
+  _ptTest.put_child("log", _ptExistingLog);
+}
+
+std::string
+findPlatformFile(const std::string& file_path,
+                             boost::property_tree::ptree& ptTest)
+{
+  try {
+    return xrt_core::environment::platform_path(file_path).string();
+  }
+  catch (const std::exception&) {
+    XBValidateUtils::logger(ptTest, "Details", boost::str(boost::format("%s not available") % file_path));
+    ptTest.put("status", test_token_skipped);
+    return "";
+  }
+}
+
+/**
+ * @deprecated
+ * This function should be used ONLY for any legacy devices. IE versal/alveo only.
+ * Ideally this will be removed soon.
+ * 
+ * Children of TestRunner should call into findPlatformFile
+ */
+std::string
+findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
+                           boost::property_tree::ptree& ptTest)
+{
+  const std::string xclbin_name = ptTest.get<std::string>("xclbin", "");
+  const auto config_dir = ptTest.get<std::string>("xclbin_directory", "");
+  const std::filesystem::path platform_path = !config_dir.empty() ? config_dir : findPlatformPath(dev, ptTest);
+
+  const auto xclbin_path = platform_path / xclbin_name;
+  if (std::filesystem::exists(xclbin_path))
+    return xclbin_path.string();
+
+  XBValidateUtils::logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
+  ptTest.put("status", test_token_skipped);
+  return "";
+}
+
+/**
+ * @deprecated
+ * This function should be used ONLY for any legacy devices. IE versal/alveo only.
+ * Ideally this will be removed soon.
+ * 
+ * Children of TestRunner should call into findPlatformFile
+ */
+std::string
+findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
+                             boost::property_tree::ptree& ptTest)
+{
+  const auto logic_uuid = xrt_core::device_query_default<xq::logic_uuids>(dev, {});
+  if (!logic_uuid.empty())
+    return searchSSV2Xclbin(logic_uuid.front(), ptTest);
+  else {
+    auto vendor = xrt_core::device_query<xq::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xq::rom_vbnv>(dev);
+    return searchLegacyXclbin(vendor, name, ptTest);
+  }
+}
+
+static const std::string
+getXsaPath(const uint16_t vendor)
+{
+  if (vendor == 0 || (vendor == INVALID_ID))
+    return std::string();
+
+  std::string vendorName;
+  switch (vendor) {
+    case ARISTA_ID:
+      vendorName = "arista";
+      break;
+    default:
+    case XILINX_ID:
+      vendorName = "xilinx";
+      break;
+  }
+  return "/opt/" + vendorName + "/xsa/";
+}
+/*
+ * search for xclbin for a legacy platform
+ */
+std::string
+searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name,
+                    boost::property_tree::ptree& _ptTest)
+{
+#ifdef XRT_INSTALL_PREFIX
+  #define DSA_DIR XRT_INSTALL_PREFIX "/dsa/"
+#else
+  #define DSA_DIR "/opt/xilinx/dsa/"
+#endif
+  const std::string dsapath(DSA_DIR);
+  const std::string xsapath(getXsaPath(vendor));
+
+  if (!std::filesystem::is_directory(dsapath) && !std::filesystem::is_directory(xsapath)) {
+    const auto fmt = boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath;
+    logger(_ptTest, "Error", boost::str(fmt));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", test_token_failed);
+    XBUtilities::throw_cancel(fmt);
+  }
+
+  //create possible xclbin paths
+  std::string xsaXclbinPath = xsapath + dev_name + "/test/";
+  std::string dsaXclbinPath = dsapath + dev_name + "/test/";
+  std::filesystem::path xsa_xclbin(xsaXclbinPath);
+  std::filesystem::path dsa_xclbin(dsaXclbinPath);
+  if (std::filesystem::exists(xsa_xclbin))
+    return xsaXclbinPath;
+  else if (std::filesystem::exists(dsa_xclbin))
+    return dsaXclbinPath;
+
+  const std::string fmt = "Platform path not available. Skipping validation";
+  XBValidateUtils::logger(_ptTest, "Details", fmt);
+  _ptTest.put("status", test_token_skipped);
+  XBUtilities::throw_cancel(fmt);
+  return "";
+}
+/*
+ * search for xclbin for an SSV2 platform
+ */
+std::string
+searchSSV2Xclbin(const std::string& logic_uuid,
+                             boost::property_tree::ptree& _ptTest)
+{
+#ifdef XRT_INSTALL_PREFIX
+  #define FW_DIR XRT_INSTALL_PREFIX "/firmware/"
+#else
+  #define FW_DIR "/opt/xilinx/firmware/"
+#endif
+  std::string formatted_fw_path(FW_DIR);
+  std::filesystem::path fw_dir(formatted_fw_path);
+  if (!std::filesystem::is_directory(fw_dir)) {
+    XBValidateUtils::logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
+    XBValidateUtils::logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", test_token_failed);
+    return "";
+  }
+
+  std::vector<std::string> suffix = { "dsabin", "xsabin" };
+
+  for (const std::string& t : suffix) {
+    std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
+    for (std::filesystem::recursive_directory_iterator iter(fw_dir), end; iter != end;) {
+      std::string name = iter->path().string();
+      std::smatch cm;
+      if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {
+        iter.disable_recursion_pending();
+      }
+
+      std::regex_match(name, cm, e);
+      if (cm.size() > 0) {
+        auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
+        if (dtbbuf.empty()) {
+          ++iter;
+          continue;
+        }
+        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.data());
+        if (!uuids.size()) {
+          ++iter;
+		    }
+        else if (uuids[0].compare(logic_uuid) == 0) {
+          return cm.str(1) + "test/";
+        }
+      }
+      else if (iter.depth() > 4) {
+        iter.pop();
+        continue;
+      }
+		  ++iter;
+    }
+  }
+  XBValidateUtils::logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
+  _ptTest.put("status", test_token_skipped);
+  return "";
 }
 }// end of namespace XBValidateUtils

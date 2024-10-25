@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestBist.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -25,14 +26,14 @@ TestBist::run(std::shared_ptr<xrt_core::device> dev)
   try {
    ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(dev);
   } catch (const std::exception&) {
-      logger(ptree, "Details", "ERT validate is not available");
-      ptree.put("status", test_token_skipped);
+      XBValidateUtils::logger(ptree, "Details", "ERT validate is not available");
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return ptree;
   }
 
   if (ert_cfg_gpio < 0) {
-      logger(ptree, "Details", "This platform does not support ERT validate feature");
-      ptree.put("status", test_token_skipped);
+      XBValidateUtils::logger(ptree, "Details", "This platform does not support ERT validate feature");
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return ptree;
   }
 
@@ -43,12 +44,12 @@ TestBist::run(std::shared_ptr<xrt_core::device> dev)
   XBU::xclbin_lock xclbin_lock(dev.get());
 
   if (!clock_calibration(dev, ptree))
-     ptree.put("status", test_token_failed);
+     ptree.put("status", XBValidateUtils::test_token_failed);
 
   if (!ert_validate(dev, ptree))
-    ptree.put("status", test_token_failed);
+    ptree.put("status", XBValidateUtils::test_token_failed);
 
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }
 
@@ -67,15 +68,15 @@ TestBist::bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& d
   }
 
   if (!boh) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Couldn't allocate BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
 
   auto boptr = static_cast<char*>(boh->map(xrt_core::buffer_handle::map_type::write));
   if (boptr == nullptr) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Couldn't map BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't map BO");
     return false;
   }
 
@@ -90,7 +91,7 @@ TestBist::bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& d
     device->exec_buf(boh.get());
   }
   catch (const std::exception&) {
-    logger(_ptTest, "Error", "Couldn't map BO");
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't map BO");
     return false;
   }
 
@@ -123,7 +124,7 @@ TestBist::clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, boost
 
   /* Calculate the clock frequency in MHz*/
   double freq = static_cast<double>(((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max())) / (1.0 * sleep_secs*one_million);
-  logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
+  XBValidateUtils::logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
 
   return true;
 }
@@ -143,30 +144,30 @@ TestBist::ert_validate(const std::shared_ptr<xrt_core::device>& _dev, boost::pro
   auto cu_read_cnt = xrt_core::device_query<xrt_core::query::ert_cu_read>(_dev);
   auto data_integrity = xrt_core::device_query<xrt_core::query::ert_data_integrity>(_dev);
 
-  logger(_ptTest, "Details",  boost::str(boost::format("CQ read %4d bytes: %4d cycles") % 4 % cq_read_cnt));
-  logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
-  logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
-  logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
-  logger(_ptTest, "Details",  boost::str(boost::format("Data Integrity Test:   %s") % xrt_core::query::ert_data_integrity::to_string(data_integrity)));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("CQ read %4d bytes: %4d cycles") % 4 % cq_read_cnt));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("Data Integrity Test:   %s") % xrt_core::query::ert_data_integrity::to_string(data_integrity)));
 
   const uint32_t go_sleep = 1, wake_up = 0;
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);
   auto mb_status = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   if (!mb_status) {
-      _ptTest.put("status", test_token_failed);
-      logger(_ptTest, "Error", "Failed to put ERT to sleep");
+      _ptTest.put("status", XBValidateUtils::test_token_failed);
+      XBValidateUtils::logger(_ptTest, "Error", "Failed to put ERT to sleep");
       return false;
   }
 
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), wake_up);
   auto mb_sleep = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   if (mb_sleep) {
-      _ptTest.put("status", test_token_failed);
-      logger(_ptTest, "Error", "Failed to wake up ERT");
+      _ptTest.put("status", XBValidateUtils::test_token_failed);
+      XBValidateUtils::logger(_ptTest, "Error", "Failed to wake up ERT");
       return false;
   }
 
-  logger(_ptTest, "Details",  boost::str(boost::format("ERT sleep/wake successfully")));
+  XBValidateUtils::logger(_ptTest, "Details",  boost::str(boost::format("ERT sleep/wake successfully")));
 
 
   return true;

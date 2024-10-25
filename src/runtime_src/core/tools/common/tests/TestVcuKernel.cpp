@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestVcuKernel.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -23,7 +24,7 @@ TestVcuKernel::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestVcuKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  logger(ptree, "Details", "Test not supported.");
-  ptree.put("status", test_token_skipped);
+  XBValidateUtils::logger(ptree, "Details", "Test not supported.");
+  ptree.put("status", XBValidateUtils::test_token_skipped);
   return;
 }

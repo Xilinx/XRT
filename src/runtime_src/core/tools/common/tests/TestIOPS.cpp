@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestIOPS.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -118,8 +119,8 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
     try {
       hello = xrt::kernel(device, uuid.get(), krnl.name);
     } catch (const std::exception&) {
-      logger(ptree, "Error", "Kernel could not be found.");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "Kernel could not be found.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
   }
@@ -150,31 +151,31 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
   for (int i = 0; i < threadNumber; i++) {
     if (verbose) {
       duration = static_cast<double>((std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count());
-      logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id), 
+      XBValidateUtils::logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id), 
                     boost::str(boost::format("Commands: %d IOPS: %f") % total % boost::io::group(std::setprecision(0), std::fixed, (total * 1000000.0 / duration))));
     }
     overallCommands += total;
   }
 
   duration = static_cast<double>((std::chrono::duration_cast<ms_t>(end - start)).count());
-  logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d, IOPS: %f (%s)")
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d, IOPS: %f (%s)")
                 % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }
 
 void
 TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const std::string test_path = findPlatformPath(dev, ptree);
-  std::string b_file = findXclbinPath(dev, ptree); // verify.xclbin
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
+  std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree); // verify.xclbin
   const int threadNumber = 2;
   const int queueLength = 128;
   const int total = 50000;
 
   if (b_file.empty()) {
     if (test_path.empty()) {
-      logger(ptree, "Error", "Platform test path could not be found.");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "Platform test path could not be found.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
     b_file = (std::filesystem::path(test_path) / "verify.xclbin").string();
@@ -186,7 +187,7 @@ TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::p
   const std::string xclbin_fn = b_file;
   auto retVal = validate_binary_file(xclbin_fn);
   if (retVal == EOPNOTSUPP) {
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
@@ -197,10 +198,10 @@ TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::p
     return;
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
+    XBValidateUtils::logger(ptree, "Error", ex.what());
   }
   catch (...) {
     // Test failed.
   }
-  ptree.put("status", test_token_failed);
+  ptree.put("status", XBValidateUtils::test_token_failed);
 }
