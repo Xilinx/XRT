@@ -254,6 +254,23 @@ public:
    */
   XRT_API_EXPORT
   kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name);
+
+  /**
+   * kernel() - Constructor from kernel name
+   *
+   * @param ctx
+   *   The hardware context that this kernel is created in
+   * @param name
+   *   Name of kernel function to construct
+   *
+   * Constructs a kernel object by searching through all the ELF files
+   * that are registered with the provided context. The function looks
+   * for an ELF file that contains a kernel with the specified name.
+   * Once a matching ELF file is found, it is used to construct the
+   * kernel object.
+   */
+  XRT_API_EXPORT
+  kernel(const xrt::hw_context& ctx, const std::string& name);
 };
 
 } // xrt::ext

@@ -424,6 +424,15 @@ get_project_name(const axlf* top);
 std::string
 get_fpga_device_name(const char* xml_data, size_t xml_size);
 
+kernel_properties::mailbox_type
+get_mailbox_from_ini(const std::string& kname);
+
+kernel_properties::restart_type
+get_restart_from_ini(const std::string& kname);
+
+bool
+get_sw_reset_from_ini(const std::string& kname);
+
 }} // xclbin, xrt_core
 
 #endif

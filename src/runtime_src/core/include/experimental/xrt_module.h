@@ -85,6 +85,8 @@ public:
    *   Parent module with instruction buffer to move into hwctx
    * @param hwctx
    *   Hardware context to associate with module
+   * @param ctrl_code_idx
+   *   index of control code inside the parent module
    *
    * Copy content of existing module into an allocation associated
    * with the specified hardware context.
@@ -92,7 +94,7 @@ public:
    * Throws if module is not compatible with hardware context
    */
   XRT_API_EXPORT
-  module(const xrt::module& parent, const xrt::hw_context& hwctx);
+  module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx = 0);
 
   /**
    * get_cfg_uuid() - Get the uuid of the hardware configuration
