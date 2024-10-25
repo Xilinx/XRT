@@ -47,26 +47,6 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr!=xkernels.end())
-    xkernel = *itr;
-  else {
-    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-  auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
-
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
