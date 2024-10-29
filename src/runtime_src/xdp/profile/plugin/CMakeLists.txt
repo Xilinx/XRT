@@ -6,13 +6,16 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
   add_subdirectory(native)
   add_subdirectory(user)
-  add_subdirectory(aie_profile)
-  add_subdirectory(aie_trace)
-  add_subdirectory(aie_debug)
-  add_subdirectory(aie_halt)
-  add_subdirectory(aie_pc)
   add_subdirectory(ml_timeline)
- 
+
+  if (WIN32)
+    add_subdirectory(aie_profile)
+    add_subdirectory(aie_trace)
+    add_subdirectory(aie_debug)
+    add_subdirectory(aie_halt)
+    add_subdirectory(aie_pc)
+  endif()
+   
 else()
 
 # =========================================================
