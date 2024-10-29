@@ -15,7 +15,7 @@ concurrency:
   
 jobs:
   authorize:
-    runs-on: Ubuntu-22.04
+    runs-on: [self-hosted, Ubuntu-22.04]
     steps:
       - name: Checkout private repository      
         uses: actions/checkout@v4   
@@ -41,7 +41,9 @@ jobs:
           - os: centos8      
             packageType: rpm      
           - os: rhel9      
-            packageType: rpm      
+            packageType: rpm  
+          - os: rhel8.10      
+            packageType: rpm
           - os: ubuntu2004      
             packageType: deb      
           - os: hip      

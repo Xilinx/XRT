@@ -53,12 +53,12 @@ usage()
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-hip]                      Enable hip bindings"
-    echo "[-noalveo]                  Disable bundling of Alveo Linux drivers"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
+    echo "[-npu]                      Build for NPU only. Disable bundling of Alveo Linux drivers. Do not treat missing ERT FW as a build error. Compile XDP plugins for NPU."
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
     echo "[-pskernel]                 Enable building of POC ps kernel"
@@ -156,9 +156,12 @@ while [ $# -gt 0 ]; do
             shift
             cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
-	-noalveo)
+	-npu)
             shift
 	    alveo=0
+	    noert=1
+	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
+	    cmake_flags+=" -DNPU=1"
             ;;
         -opt)
             dbg=0
@@ -403,8 +406,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.18.0/driver/xocl"
-    make -C usr/src/xrt-2.18.0/driver/xocl
+    echo "make -C usr/src/xrt-2.19.0/driver/xocl"
+    make -C usr/src/xrt-2.19.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -434,7 +437,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.18.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.19.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`
