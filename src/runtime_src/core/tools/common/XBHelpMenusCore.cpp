@@ -11,6 +11,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/program_options/cmdline.hpp>
 #include <boost/format.hpp>
 namespace po = boost::program_options;
 
@@ -640,7 +641,11 @@ XBUtilities::process_arguments( po::variables_map& vm,
   all_positionals.add("__unreg", -1);
 
   // Parse the given options and hold onto the results
-  auto parsed_options = parser.options(all_options).positional(all_positionals).allow_unregistered().run();
+  auto parsed_options = parser.options(all_options)
+                        .positional(all_positionals)
+                        .allow_unregistered()
+                        .style(~po::command_line_style::allow_guessing)
+                        .run();
 
   if (validate_arguments) {
     // This variables holds options denoted with a '-' or '--' that were not registered
