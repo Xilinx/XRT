@@ -33,7 +33,7 @@ populate_aie_partition(const xrt_core::device* device)
     boost::property_tree::ptree pt_entry;
     pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
-    pt_entry.put("status", entry.is_suspended ? "IDLE" : "ACTIVE");
+    pt_entry.put("status", entry.is_suspended ? "Idle" : "Active");
     pt_entry.put("instr_bo_mem", entry.instruction_mem);
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
