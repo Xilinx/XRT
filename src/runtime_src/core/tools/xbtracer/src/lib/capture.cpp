@@ -65,6 +65,8 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::bo::bo(xrt::device const&, void*, unsigned long, unsigned int)",  (void **) &dtbl.bo.ctor_dev_up_s_g},
   {"xrt::bo::bo(xrt::device const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_f_g},
   {"xrt::bo::bo(xrt::device const&, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_g},
+  {"xrt::bo::bo(xrt::device const&, export_handle)", (void **) &dtbl.bo.ctor_dev_ehdl},
+  {"xrt::bo::bo(xrt::device const&, xrt::pid_type, export_handle)", (void **) &dtbl.bo.ctor_dev_pid_ehdl},
   {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_f_g},
   {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_g},
   {"xrt::bo::bo(xrt::hw_context const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_s_f_g},
@@ -85,7 +87,13 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::bo::read(void*, unsigned long, unsigned long)", (void **) &dtbl.bo.read},
   {"xrt::bo::copy(xrt::bo const&, unsigned long, unsigned long, unsigned long)", (void **) &dtbl.bo.copy},
   {"xrt::bo::bo(void*)", (void **) &dtbl.bo.ctor_xcl_bh},
+  {"xrt::ext::bo::bo(xrt::device const&,void*, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_dev_up_s_a},
+  {"xrt::ext::bo::bo(xrt::device const&,void*, unsigned long)", (void **) &dtbl.ext.bo_ctor_dev_up_s},
+  {"xrt::ext::bo::bo(xrt::device const&, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_dev_s_a},
+  {"xrt::ext::bo::bo(xrt::device const&, unsigned long)", (void **) &dtbl.ext.bo_ctor_dev_s},
+  {"xrt::ext::bo(xrt::device const&, xrt::pid_type, xrt::bo::export_handle)", (void **) &dtbl.ext.bo_ctor_dev_pid_ehdl},
   {"xrt::ext::bo::bo(xrt::hw_context const&, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_cxt_s_a},
+  {"xrt::ext::bo::bo(xrt::hw_context const&, unsigned long)", (void **) &dtbl.ext.bo_ctor_cxt_s},
 
   /* run class maps */
   {"xrt::run::run(xrt::kernel const&)", (void **)  &dtbl.run.ctor},
@@ -449,6 +457,7 @@ namespace xrt::tools::xbtracer {
 
       std::string demangled_and_conditioned_str =
           find_and_replace_all(demangled_str, replacements);
+
       return demangled_and_conditioned_str;
     }
     else
