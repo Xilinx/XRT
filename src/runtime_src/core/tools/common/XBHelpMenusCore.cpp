@@ -644,7 +644,7 @@ XBUtilities::process_arguments( po::variables_map& vm,
   auto parsed_options = parser.options(all_options)
                         .positional(all_positionals)
                         .allow_unregistered()
-                        .style(~po::command_line_style::allow_guessing)
+                        .style(po::command_line_style::default_style & ~po::command_line_style::allow_guessing)
                         .run();
 
   if (validate_arguments) {
