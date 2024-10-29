@@ -1114,8 +1114,8 @@ namespace xdp {
     driverStatus |= XAie_EventBroadcast(aieDevInst, loc, XAIE_CORE_MOD, brodcastId, bcEvent);
     if (driverStatus != XAIE_OK) {
       std::stringstream msg;
-      msg <<"Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
-          <<" is unavailable, graph ieration profiling will not be available.\n";
+      msg << "Configuration of graph iteration event from core tile "<< +loc.Col << "," << +loc.Row
+          << " is unavailable, graph ieration profiling will not be available.\n";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
@@ -1124,6 +1124,9 @@ namespace xdp {
     bcChannelEvent = channelEvent;
   }
 
+  /****************************************************************************
+   * Get physical event IDs for metric set
+   ***************************************************************************/
   std::pair<uint16_t, uint16_t>
   AieProfile_EdgeImpl::getEventPhysicalId(XAie_LocType& tileLoc,
                      XAie_ModuleType& xaieModType, module_type xdpModType,
@@ -1144,6 +1147,9 @@ namespace xdp {
     return std::make_pair(phyStartEvent, phyEndEvent);
   }
 
+  /****************************************************************************
+   * Initialize broadcast channels
+   ***************************************************************************/
   std::pair<int, XAie_Events>
   AieProfile_EdgeImpl::setupBroadcastChannel(const tile_type& currTileLoc)
   {
@@ -1163,6 +1169,10 @@ namespace xdp {
     return adfAPIBroadcastEventsMap.at(srcTile);
   }
 
+  /****************************************************************************
+   * Get and configure broadcast channels from source to destination tiles
+   * NOTE: This function applies to interface tiles only
+   ***************************************************************************/
   std::pair<int, XAie_Events>
   AieProfile_EdgeImpl::getPLBroadcastChannel(const tile_type& srcTile)
   {
@@ -1171,17 +1181,16 @@ namespace xdp {
     tile_type destTile;
     
     metadata->getDestTile(srcTile, destTile);
-    auto& tile = aieDevice->tile(srcTile.col, srcTile.row);
-    XAie_LocType srctileLocation  = XAie_TileLoc(srcTile.col, srcTile.row);
-    XAie_LocType DesttileLocation = XAie_TileLoc(destTile.col, destTile.row);
+    XAie_LocType destTileLocation = XAie_TileLoc(destTile.col, destTile.row);
 
-    std::vector<XAie_LocType> vL;
-    vL.push_back(srctileLocation);
-    vL.push_back(DesttileLocation);
-    XAie_ModuleType StartM = XAIE_PL_MOD;
-	  XAie_ModuleType EndM = XAIE_PL_MOD;
+    // Include all tiles between source and destination
+    std::vector<XAie_LocType> bcTileVec;
+    for (uint8_t c = std::min(srcTile.col, destTile.col); c <= std::max(srcTile.col, destTile.col); ++c) {
+      auto tileLocation = XAie_TileLoc(c, srcTile.row);
+      bcTileVec.push_back(tileLocation);
+    }
     
-    auto BC  = aieDevice->broadcast(vL, StartM, EndM);
+    auto BC = aieDevice->broadcast(bcTileVec, XAIE_PL_MOD, XAIE_PL_MOD);
     if (!BC)
       return rc;
     bcResourcesLatency.push_back(BC);
@@ -1199,7 +1208,7 @@ namespace xdp {
 
     uint8_t bcId = BC->getBc();
     XAie_Events bcEvent;
-    RC = BC->getEvent(DesttileLocation, XAIE_PL_MOD, bcEvent);
+    RC = BC->getEvent(destTileLocation, XAIE_PL_MOD, bcEvent);
     if (RC != XAIE_OK)
       return rc;
 
@@ -1207,18 +1216,21 @@ namespace xdp {
     return bcPairSelected;
   }
 
+  /****************************************************************************
+   * Display start to bytes or latency results to output transcript
+   ***************************************************************************/
   void AieProfile_EdgeImpl::displayAdfAPIResults()
   {
-    for(auto &adfAPIType : adfAPIResourceInfoMap) {
+    for (auto &adfAPIType : adfAPIResourceInfoMap) {
       if (adfAPIType.first == aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED) {
-        for(auto &adfApiResource : adfAPIType.second) {
+        for (auto &adfApiResource : adfAPIType.second) {
           std::stringstream msg;
           msg << "Total start to bytes transferred for tile " << adfApiResource.first << " is " 
-              << +adfApiResource.second.profileResult <<" clock cycles for specified bytes.";
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+              << +adfApiResource.second.profileResult << " clock cycles for specified bytes.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
-      else if(adfAPIType.first == aie::profile::adfAPI::INTF_TILE_LATENCY) {
+      else if (adfAPIType.first == aie::profile::adfAPI::INTF_TILE_LATENCY) {
         for(auto &adfApiResource : adfAPIType.second) {
           GraphPortPair graphPortPair;
           try {
@@ -1227,15 +1239,16 @@ namespace xdp {
           catch (...) {
             continue;
           }
+
           std::stringstream msg;
-          msg << "Total latency between specified first beat of " <<graphPortPair.srcGraphName << ":" <<graphPortPair.srcGraphPort
-              << " to first beat of " <<graphPortPair.destGraphName << ":" <<graphPortPair.destGraphPort << " is " 
-              << +adfApiResource.second.profileResult <<" clock cycles.";
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          msg << "Total latency between " << graphPortPair.srcGraphName 
+              << ":" << graphPortPair.srcGraphPort << " and "
+              << graphPortPair.destGraphName << ":" << graphPortPair.destGraphPort 
+              << " is " << +adfApiResource.second.profileResult << " clock cycles.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
     }
   }
-
 
   }
