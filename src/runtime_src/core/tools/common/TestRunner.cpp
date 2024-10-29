@@ -380,6 +380,60 @@ TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& d
   return true;
 }
 
+/*
+ * Runs dpu sequence or elf flow for xrt_smi tests
+*/
+std::string
+TestRunner::dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
+              boost::property_tree::ptree& ptTest)
+{
+  if (xrt_core::device_query<xrt_core::query::pcie_id>(dev).device_id != 5696) { // device ID for npu3 in decimal
+  // Determine The DPU Kernel Name
+    auto xkernels = xclbin.get_kernels();
+
+    auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+      auto name = k.get_name();
+      return name.rfind("DPU",0) == 0; // Starts with "DPU"
+    });
+
+    xrt::xclbin::kernel xkernel;
+    if (itr!=xkernels.end())
+      xkernel = *itr;
+    else {
+      logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
+      ptTest.put("status", test_token_failed);
+    }
+    auto kernelName = xkernel.get_name();
+
+    return kernelName;
+  }
+  else {
+  // Elf flow
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
+    auto elf_path = findPlatformFile(elf_name, ptTest);
+
+    return elf_path;
+  }
+}
+
+/*
+ * Gets kernel depending on if 2nd param is dpu sequence or elf file
+ */
+xrt::kernel
+TestRunner::get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf)
+{
+  if (kernel_or_elf.find(".elf") == std::string::npos) {
+    return xrt::kernel(hwctx, kernel_or_elf);
+  }
+  else {
+    xrt::elf elf;
+    elf = xrt::elf(kernel_or_elf);
+    xrt::module mod{elf};
+
+    return xrt::ext::kernel{hwctx, mod, "dpu:{nop}"};
+  }
+}
+
 /**
  * @deprecated
  * This function should be used ONLY for any legacy devices. IE versal/alveo only.

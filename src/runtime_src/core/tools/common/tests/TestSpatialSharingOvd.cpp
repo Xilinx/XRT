@@ -36,9 +36,6 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
 
-  // Log the xclbin path
-  logger(ptree, "Xclbin", xclbin_path);
-
   // Create an xclbin object
   xrt::xclbin xclbin;
   try {
@@ -74,10 +71,6 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   // Get the name of the found kernel
   auto kernelName = xkernel.get_name();
 
-  // If verbose mode is enabled, log the kernel name
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
-
   // Create a working device from the provided device
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -98,7 +91,6 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
-  logger(ptree, "DPU-Sequence", dpu_instr);
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;

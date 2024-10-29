@@ -67,6 +67,12 @@ namespace xdp {
               "Created ML Timeline Plugin for Client Device.");
   }
 
+  MLTimelineClientDevImpl::~MLTimelineClientDevImpl()
+  {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "In destructor for ML Timeline Plugin for Client Device.");
+  }
+
   void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
@@ -115,11 +121,14 @@ namespace xdp {
 
     boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
-    ptSchema.put("minor", "0");
+    ptSchema.put("minor", "1");
     ptSchema.put("patch", "0");
     ptHeader.add_child("schema_version", ptSchema);
     ptHeader.put("device", "Client");
     ptHeader.put("clock_freq_MHz", 1000);
+    ptHeader.put("id_size", sizeof(uint32_t));
+    ptHeader.put("cycle_size", 2*sizeof(uint32_t));
+    ptHeader.put("buffer_size", mBufSz);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON

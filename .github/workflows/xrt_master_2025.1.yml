@@ -1,7 +1,7 @@
-name: XRT Master (2024.2)
+name: XRT Master (2025.1)
 
 env:  
-  RELEASE: '2024.2'  
+  RELEASE: '2025.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod'
 
@@ -23,7 +23,10 @@ jobs:
             os_ver: centos_8.1      
           - os: rhel9      
             packageType: rpm
-            os_ver: rhel_9.1      
+            os_ver: rhel_9.1   
+          - os: rhel8.10      
+            packageType: rpm
+            os_ver: rhel_8.10  
           - os: ubuntu2004      
             packageType: deb
             os_ver: ubuntu_20.04      

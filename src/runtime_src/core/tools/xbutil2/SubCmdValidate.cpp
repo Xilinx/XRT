@@ -315,9 +315,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   int test_idx = 0;
 
-  if (testObjectsToRun.size() == 1)
-    XBU::setVerbose(true);// setting verbose true for single_case.
-
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
@@ -447,11 +444,11 @@ SubCmdValidate::getTestNameDescriptions(const bool addAdditionOptions) const
 static boost::program_options::options_description common_options;
 static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
 static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
-static const std::pair<std::string, std::string> quick_test = {"quick", "Only the first 4 tests will be executed"};
+static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
-             "Validates the basic shell acceleration functionality")
+             "Validates the basic device acceleration functionality")
     , m_device("")
     , m_tests_to_run({"all"})
     , m_format("JSON")

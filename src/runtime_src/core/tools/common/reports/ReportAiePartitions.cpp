@@ -44,7 +44,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("egops", qos.egops);
     pt_entry.put("fps", qos.fps);
     pt_entry.put("latency", qos.latency);
-    pt_entry.put("priority", qos.priority);
+    pt_entry.put("priority", xrt_core::query::aie_partition_info::parse_priority_status(qos.priority));
 
     partition.first->second.push_back(std::make_pair("", pt_entry));
   }
@@ -87,8 +87,8 @@ calculate_col_utilization(const xrt_core::device* device, boost::property_tree::
   // If this check is true, at least two contexts were active on the same column at once.
   if (total_active_cols > total_device_cols)
     total_active_cols = total_device_cols;
-  double total_col_utilization = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
-  return boost::str(boost::format("%.0f%%") % total_col_utilization);
+  double total_col_occupancy = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
+  return boost::str(boost::format("%.0f%%") % total_col_occupancy);
 }
 
 void
@@ -109,7 +109,7 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
   boost::property_tree::ptree pt;
   pt.put("description", "AIE Partition Information");
   pt.add_child("partitions", populate_aie_partition(_pDevice));
-  pt.put("total_col_utilization", calculate_col_utilization(_pDevice, pt));
+  pt.put("total_col_occupancy", calculate_col_utilization(_pDevice, pt));
   _pt.add_child("aie_partitions", pt);
 }
 
@@ -128,7 +128,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << boost::str(boost::format("Total Column Utilization: %s\n") % _pt.get<std::string>("aie_partitions.total_col_utilization"));
+  _output << boost::str(boost::format("Total Column Occupancy: %s\n") % _pt.get<std::string>("aie_partitions.total_col_occupancy"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
@@ -170,7 +170,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
         std::to_string(hw_context.get<uint64_t>("errors")),
-        std::to_string(hw_context.get<uint64_t>("priority")),
+        hw_context.get<std::string>("priority"),
         std::to_string(hw_context.get<uint64_t>("gops")),
         std::to_string(hw_context.get<uint64_t>("egops")),
         std::to_string(hw_context.get<uint64_t>("fps")),

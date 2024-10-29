@@ -1,3 +1,3 @@
 # When updating Petalinux build please file a SH ticket to retain the build
 # https://jira.xilinx.com/secure/CreateIssue!default.jspa
-PETALINUX=/proj/petalinux/2024.2/petalinux-v2024.2_10101427/tool/petalinux-v2024.2-final
+PETALINUX=/proj/petalinux/2024.2/petalinux-v2024.2_10241236/tool/petalinux-v2024.2-final

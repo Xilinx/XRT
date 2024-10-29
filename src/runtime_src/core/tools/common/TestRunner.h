@@ -9,6 +9,9 @@
 #include "JSONConfigurable.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
+#include "experimental/xrt_ext.h"
+#include "experimental/xrt_module.h"
+#include "experimental/xrt_elf.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -46,6 +49,9 @@ class TestRunner : public JSONConfigurable {
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
     int validate_binary_file(const std::string& binaryfile);
+    std::string dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
+                           boost::property_tree::ptree& ptTest);
+    xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf);
 
     const std::string test_token_skipped = "SKIPPED";
     const std::string test_token_failed = "FAILED";

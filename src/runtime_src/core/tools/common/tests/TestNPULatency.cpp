@@ -36,8 +36,6 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  logger(ptree, "Xclbin", xclbin_path);
-
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
@@ -48,41 +46,23 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr!=xkernels.end())
-    xkernel = *itr;
-  else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
-    return ptree;
-  }
-  auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
-
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
   xrt::hw_context hwctx;
   xrt::kernel testker;
+
   try {
+    std::string sequence = dpu_or_elf(dev, xclbin, ptree);
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
-    testker = xrt::kernel(hwctx, kernelName);
+    testker = get_kernel(hwctx, sequence);
   }
-  catch (const std::exception& )
-  {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+  catch (const std::exception& ex) {
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
     return ptree;
   }
+
   xrt::xclbin::ip cu;
   for (const auto& ip : xclbin.get_ips()) {
     if (ip.get_type() != xrt::xclbin::ip::ip_type::ps)
@@ -116,7 +96,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   } 
 
   //Log
-  if(XBU::getVerbose()) {
+  if (XBU::getVerbose()) {
     logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
     logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
@@ -142,7 +122,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsed_secs / itr_count) * 1000000; //convert s to us
-
+  
   logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
   ptree.put("status", test_token_passed);
   return ptree;
