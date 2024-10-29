@@ -382,7 +382,7 @@ update_device(void* handle)
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
    */
-
+  #ifdef _WIN32
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
       || xrt_core::config::get_aie_trace()
@@ -398,6 +398,7 @@ update_device(void* handle)
       return;
     }
   }
+  #endif
 
   if (xrt_core::config::get_aie_halt()) {
     try {
