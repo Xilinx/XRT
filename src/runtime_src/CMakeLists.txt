@@ -4,18 +4,6 @@
 
 # Note: Add Windows compilation directives at the END of this file
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt)
-  set(XAIENGINE_BUILD_SHARED OFF)
-  xrt_add_subdirectory(aie-rt/driver/src aie-rt)
-  # This enables aiebu submodule use aie-rt from higher level
-  set(AIEBU_AIE_RT_BIN_DIR ${AIERT_DIR})
-  set(AIEBU_AIE_RT_HEADER_DIR ${AIERT_DIR}/include)
-  message("-- Exporting AIEBU_AIE_RT_BIN_DIR=${AIEBU_AIE_RT_BIN_DIR}")
-  message("-- Exporting AIEBU_AIE_RT_HEADER_DIR=${AIEBU_AIE_RT_HEADER_DIR}")
-endif()
-
-
 if( NOT WIN32)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
@@ -85,6 +73,17 @@ else()
     # lots of warnings and all warnings as errors
     # add_compile_options(-Wall -Wextra -pedantic -Werror)
     add_compile_options( ${XRT_WARN_OPTS} )
+  endif()
+
+  if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt)
+    set(XAIENGINE_BUILD_SHARED OFF)
+    xrt_add_subdirectory(aie-rt/driver/src aie-rt)
+    # This enables aiebu submodule use aie-rt from higher level
+    set(AIEBU_AIE_RT_BIN_DIR ${AIERT_DIR})
+    set(AIEBU_AIE_RT_HEADER_DIR ${AIERT_DIR}/include)
+    message("-- Exporting AIEBU_AIE_RT_BIN_DIR=${AIEBU_AIE_RT_BIN_DIR}")
+    message("-- Exporting AIEBU_AIE_RT_HEADER_DIR=${AIEBU_AIE_RT_HEADER_DIR}")
   endif()
 
   # Build Subdirectories
