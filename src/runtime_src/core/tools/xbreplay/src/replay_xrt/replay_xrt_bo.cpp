@@ -5,6 +5,12 @@
 
 namespace xrt_core::tools::xbreplay {
 
+#ifdef _WIN32
+using export_handle = uint64_t;
+#else
+using export_handle = int32_t;
+#endif /* #ifdef _WIN32 */
+
 /**
  * Replay maintains a map where each member function of the XRT classes is associated
  * with a corresponding lambda function. This API adds a lambda function entry for each
@@ -120,6 +126,51 @@ void replay_xrt::register_bo_class_func()
       auto mgrp = std::stoi(args[2].second);
       auto mgroup = m_kernel_grp_id[mgrp];
       m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::bo>(*dev,sz, mgroup);
+    }
+    else
+      throw std::runtime_error("failed to get dev handle");
+  };
+
+  m_api_map["xrt::bo::bo(const xrt::device&, export_handle)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector<std::pair<std::string, std::string>>& args = msg->m_args;
+
+    /* get dev handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      auto ehdl = static_cast<export_handle>(std::stoull(args[1].second, nullptr, utils::base_hex));
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::bo>(*dev, ehdl);
+    }
+    else
+      throw std::runtime_error("failed to get dev handle");
+  };
+
+  m_api_map["xrt::bo::bo(const xrt::device&, xrt::pid_type, export_handle)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector<std::pair<std::string, std::string>>& args = msg->m_args;
+
+    /* get dev handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      xrt::pid_type pid{std::stoi(args[1].second)};
+      auto ehdl = static_cast<export_handle>(std::stoull(args[2].second, nullptr, utils::base_hex));
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::bo>(*dev, pid, ehdl);
     }
     else
       throw std::runtime_error("failed to get dev handle");
@@ -324,7 +375,127 @@ void replay_xrt::register_bo_class_func()
       throw std::runtime_error("failed to get pbo handle");
   };
 
-  m_api_map["ext::bo::bo(constxrt::hw_context&, size_t, xrt::ext::bo::access_mode)"] =
+  m_api_map["ext::bo::bo(const xrt::device&, void*, size_t, xrt::ext::bo::access_mode)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get device handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      void* userptr = reinterpret_cast<void*>(std::stoull(args[1].second, nullptr, utils::base_hex));
+      size_t sz = std::stoull(args[2].second);
+      auto acc_mode = static_cast<xrt::ext::bo::access_mode>(std::stol(args[3].second));
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*dev, userptr, sz, acc_mode);
+    }
+    else
+      throw std::runtime_error("failed to get device handle");
+  };
+
+  m_api_map["ext::bo::bo(const xrt::device&, void*, size_t)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get device handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      void* userptr = reinterpret_cast<void*>(std::stoull(args[1].second, nullptr, utils::base_hex));
+      size_t sz = std::stoull(args[2].second);
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*dev, userptr, sz);
+    }
+    else
+      throw std::runtime_error("failed to get device handle");
+  };
+
+  m_api_map["ext::bo::bo(const xrt::device&, size_t, xrt::ext::bo::access_mode)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get device handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      size_t sz = std::stoull(args[1].second);
+      auto acc_mode = static_cast<xrt::ext::bo::access_mode>(std::stol(args[2].second));
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*dev, sz, acc_mode);
+    }
+    else
+      throw std::runtime_error("failed to get device handle");
+  };
+
+  m_api_map["ext::bo::bo(const xrt::device&, size_t)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get device handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      size_t sz = std::stoull(args[1].second);
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*dev, sz);
+    }
+    else
+      throw std::runtime_error("failed to get device handle");
+  };
+
+  m_api_map["ext::bo::bo(const xrt::device&, xrt::pid_type, xrt::bo::export_handle)"] =
+  [this] (std::shared_ptr<utils::message> msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get device handle */
+    auto dev_handle = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding device
+     * handle from map
+     */
+    std::shared_ptr<xrt::device> dev = m_device_hndle_map[dev_handle];
+
+    if (dev)
+    {
+      xrt::pid_type pid{std::stoi(args[1].second)};
+      auto ehdl = static_cast<xrt::bo::export_handle>(std::stoull(args[2].second, nullptr, utils::base_hex));
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*dev, pid, ehdl);
+    }
+    else
+      throw std::runtime_error("failed to get device handle");
+  };
+
+  m_api_map["ext::bo::bo(const xrt::hw_context&, size_t, xrt::ext::bo::access_mode)"] =
   [this] (std::shared_ptr<utils::message>msg)
   {
     const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
@@ -340,13 +511,36 @@ void replay_xrt::register_bo_class_func()
     if (hw_ctx)
     {
       size_t sz = std::stoi(args[1].second);
-      auto acc_mode = static_cast<xrt::ext::bo::access_mode>(stol(args[2].second));
+      auto acc_mode = static_cast<xrt::ext::bo::access_mode>(std::stol(args[2].second));
 
       m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*hw_ctx, sz, acc_mode);
     }
     else
       throw std::runtime_error("failed to get hw_ctx handle");
   };
+
+  m_api_map["ext::bo::bo(const xrt::hw_context&, size_t)"] =
+  [this] (std::shared_ptr<utils::message>msg)
+  {
+    const std::vector <std::pair<std::string, std::string>> &args = msg->m_args;
+
+    /* get hwctx handle */
+    auto hwctx_hdl = std::stoull(args[0].second, nullptr, utils::base_hex);
+
+    /* From handle obtained from log get the corresponding hw_context
+     * handle from map
+     */
+    auto hw_ctx = m_hwctx_hndle_map[hwctx_hdl];
+
+    if (hw_ctx)
+    {
+      size_t sz = std::stoull(args[1].second);
+
+      m_bo_hndle_map[msg->m_handle] = std::make_shared<xrt::ext::bo>(*hw_ctx, sz);
+    }
+    else
+      throw std::runtime_error("failed to get hw_ctx handle");
+  };  
 
   m_api_map["xrt::bo::~bo()"] =
   [this] (std::shared_ptr<utils::message>msg)

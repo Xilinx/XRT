@@ -23,6 +23,10 @@ using xrt_bo_ctor_dev_s_f_g = xrt::bo* (*)(void*, const xrt::device&, size_t,\
         xrt::bo::flags, xrt::memory_group);
 using xrt_bo_ctor_dev_s_g = xrt::bo* (*)(void*, const xrt::device&, size_t,\
         xrt::memory_group);
+using xrt_bo_ctor_dev_ehdl = xrt::bo* (*)(void*, const xrt::device&,\
+        export_handle);
+using xrt_bo_ctor_dev_pid_ehdl = xrt::bo* (*)(void*, const xrt::device&,\
+        xrt::pid_type, export_handle);
 using xrt_bo_ctor_cxt_up_s_f_g = xrt::bo* (*)(void*, const xrt::hw_context&,\
         void*, size_t, xrt::bo::flags, xrt::memory_group);
 using xrt_bo_ctor_cxt_up_s_g = xrt::bo* (*)(void*, const xrt::hw_context&,\
@@ -69,6 +73,8 @@ struct xrt_bo_ftbl
   xrt_bo_ctor_dev_up_s_g ctor_dev_up_s_g;
   xrt_bo_ctor_dev_s_f_g ctor_dev_s_f_g;
   xrt_bo_ctor_dev_s_g ctor_dev_s_g;
+  xrt_bo_ctor_dev_ehdl ctor_dev_ehdl;
+  xrt_bo_ctor_dev_pid_ehdl ctor_dev_pid_ehdl;
   xrt_bo_ctor_cxt_up_s_f_g ctor_cxt_up_s_f_g;
   xrt_bo_ctor_cxt_up_s_g ctor_cxt_up_s_g;
   xrt_bo_ctor_cxt_s_f_g ctor_cxt_s_f_g;
