@@ -33,6 +33,7 @@ populate_aie_partition(const xrt_core::device* device)
     boost::property_tree::ptree pt_entry;
     pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
+    pt_entry.put("status", entry.is_suspended ? "IDLE" : "ACTIVE");
     pt_entry.put("instr_bo_mem", entry.instruction_mem);
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
@@ -62,35 +63,6 @@ populate_aie_partition(const xrt_core::device* device)
   return pt;
 }
 
-static std::string
-calculate_col_utilization(const xrt_core::device* device, boost::property_tree::ptree &_pt)
-{
-  auto total_device_cols = xrt_core::device_query_default<xrt_core::query::total_cols>(device, 0);
-  if (total_device_cols == 0)
-    return "N/A";
-
-  boost::property_tree::ptree empty_ptree;
-  uint64_t total_active_cols = 0;
-  const boost::property_tree::ptree pt_partitions = _pt.get_child("partitions", empty_ptree);
-  for (auto& pt_partition : pt_partitions) {
-    auto& partition = pt_partition.second;
-    const auto num_cols = partition.get<uint64_t>("num_cols");
-    for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
-      const auto& hw_context = pt_hw_context.second;
-      // We consider a context and its columns active if there are more cmd submissions than completions.
-      if (hw_context.get<uint64_t>("command_submissions") > hw_context.get<uint64_t>("command_completions")) {
-        total_active_cols += num_cols;
-        break;
-      }
-    }
-  }
-  // If this check is true, at least two contexts were active on the same column at once.
-  if (total_active_cols > total_device_cols)
-    total_active_cols = total_device_cols;
-  double total_col_occupancy = ((static_cast<double>(total_active_cols) / total_device_cols) * 100);
-  return boost::str(boost::format("%.0f%%") % total_col_occupancy);
-}
-
 void
 ReportAiePartitions::
 getPropertyTreeInternal(const xrt_core::device* _pDevice, 
@@ -109,7 +81,6 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
   boost::property_tree::ptree pt;
   pt.put("description", "AIE Partition Information");
   pt.add_child("partitions", populate_aie_partition(_pDevice));
-  pt.put("total_col_occupancy", calculate_col_utilization(_pDevice, pt));
   _pt.add_child("aie_partitions", pt);
 }
 
@@ -128,8 +99,6 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << boost::str(boost::format("Total Column Occupancy: %s\n") % _pt.get<std::string>("aie_partitions.total_col_occupancy"));
-
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
 
@@ -145,6 +114,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     const std::vector<Table2D::HeaderData> table_headers = {
       {"PID", Table2D::Justification::left},
       {"Ctx ID", Table2D::Justification::left},
+      {"Status", Table2D::Justification::left},
       {"Instr BO", Table2D::Justification::left},
       {"Sub", Table2D::Justification::left},
       {"Compl", Table2D::Justification::left},
@@ -165,6 +135,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       const std::vector<std::string> entry_data = {
         hw_context.get<std::string>("pid"),
         hw_context.get<std::string>("context_id"),
+        hw_context.get<std::string>("status"),
         xrt_core::utils::unit_convert(hw_context.get<uint64_t>("instr_bo_mem")),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),

@@ -37,7 +37,7 @@ void
 Table2D::appendToOutput(std::string& output, const std::string& prefix, const std::string& suffix, const ColumnData& column, const std::string& data) const
 {
   // Format for table data
-  boost::format fmt("%s|%s%s%s%s|");
+  boost::format fmt("%s%s%s%s%s");
   size_t left_blanks = 0;
   size_t right_blanks = 0;
   getBlankSizes(column, data.size(), left_blanks, right_blanks);
