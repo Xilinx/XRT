@@ -37,7 +37,7 @@ void
 Table2D::appendToOutput(std::string& output, const std::string& prefix, const std::string& suffix, const ColumnData& column, const std::string& data) const
 {
   // Format for table data
-  boost::format fmt("%s%s%s%s%s");
+  boost::format fmt("%s%s%s%s%s|");
   size_t left_blanks = 0;
   size_t right_blanks = 0;
   getBlankSizes(column, data.size(), left_blanks, right_blanks);
@@ -57,7 +57,9 @@ Table2D::toString(const std::string& prefix) const
 
       // The first column must align with the user desires
       // All other columns should only use the previous lines space suffix
-      const std::string column_prefix = (col == 0) ? prefix : "";
+      std::string column_prefix = "";
+      if (col == 0)
+         column_prefix = prefix + '|';
 
       // For the first row add the headers
       const auto space_suffix = std::string(m_inter_entry_padding, ' ');
