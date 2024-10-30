@@ -51,7 +51,9 @@ namespace xdp {
           bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_mb;
         }
         if (0 != (bufSz % RECORD_TIMER_ENTRY_SZ_IN_BYTES)) {
-          /* Adjusting given ML Timeline Buffer Size for alignment */
+          /* Adjusting given ML Timeline Buffer Size for alignment to avoid incorrect reads when Host Buffer
+           * gets overwritten with excess record timer data.
+           */
           std::stringstream msg;
           msg << "Adjusting given ML Timeline Buffer Size (in bytes) 0x" << std::hex << bufSz << std::dec;
           bufSz = (bufSz / RECORD_TIMER_ENTRY_SZ_IN_BYTES) * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
