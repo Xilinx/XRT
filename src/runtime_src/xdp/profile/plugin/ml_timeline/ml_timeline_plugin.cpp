@@ -38,7 +38,7 @@ namespace xdp {
 
   uint32_t ParseMLTimelineBufferSizeConfig()
   {
-    uint32_t bufSz = 0x20000;
+    uint32_t bufSz = 0x30000;
     std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
     std::smatch subStr;
 
@@ -50,17 +50,25 @@ namespace xdp {
         } else if ("M" == subStr[2] || "m" == subStr[2]) {
           bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_mb;
         }
+        if (0 != (bufSz % RECORD_TIMER_ENTRY_SZ_IN_BYTES)) {
+          /* Adjusting given ML Timeline Buffer Size for alignment */
+          std::stringstream msg;
+          msg << "Adjusting given ML Timeline Buffer Size (in bytes) 0x" << std::hex << bufSz << std::dec;
+          bufSz = (bufSz / RECORD_TIMER_ENTRY_SZ_IN_BYTES) * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+          msg << " to 0x" << std::hex << bufSz << std::dec << " for alignment." << std::endl;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+        }
 
       } catch (const std::exception &e) {
         std::stringstream msg;
-        msg << "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB."
+        msg << "Invalid string specified for ML Timeline Buffer Size. Using default size of 192KB."
             << e.what() << std::endl;
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       }
 
     } else {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                "Invalid string specified for ML Timeline Buffer Size. Using default size of 128KB.");
+                "Invalid string specified for ML Timeline Buffer Size. Using default size of 192KB.");
     }
     return bufSz;
   }
@@ -117,9 +125,8 @@ namespace xdp {
     (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
 
-    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db));
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
-    mlImpl->setBufSize(mBufSz);
     mlImpl->updateDevice(hwCtxImpl);
 
 #endif
