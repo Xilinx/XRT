@@ -38,40 +38,47 @@ namespace xdp {
 
   uint32_t ParseMLTimelineBufferSizeConfig()
   {
-    uint32_t bufSz = 0x30000;
+    uint32_t bufSz = 0;
     std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
     std::smatch subStr;
 
+    std::stringstream msg;
+
     const std::regex validSzRegEx("\\s*([0-9]+)\\s*(K|k|M|m|)\\s*");
     if (std::regex_match(szCfgStr, subStr, validSzRegEx)) {
+      uint32_t szKB = 0;
       try {
         if ("K" == subStr[2] || "k" == subStr[2]) {
-          bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_kb;
+          szKB = (uint32_t)std::stoull(subStr[1]);
         } else if ("M" == subStr[2] || "m" == subStr[2]) {
-          bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_mb;
+          // Convert to KB now
+          szKB = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_kb;
         }
-        if (0 != (bufSz % RECORD_TIMER_ENTRY_SZ_IN_BYTES)) {
-          /* Adjusting given ML Timeline Buffer Size for alignment to avoid incorrect reads when Host Buffer
+        if (0 != (szKB % RECORD_TIMER_ENTRY_SZ_IN_BYTES)) {
+          /* Adjust given ML Timeline Buffer Size for alignment to avoid incorrect reads when Host Buffer
            * gets overwritten with excess record timer data.
            */
-          std::stringstream msg;
-          msg << "Adjusting given ML Timeline Buffer Size (in bytes) 0x" << std::hex << bufSz << std::dec;
-          bufSz = (bufSz / RECORD_TIMER_ENTRY_SZ_IN_BYTES) * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
-          msg << " to 0x" << std::hex << bufSz << std::dec << " for alignment." << std::endl;
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+          uint32_t q = szKB / RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+          // Round up to next 12KB aligned size 
+          szKB = (q + 1) * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+          bufSz = szKB * uint_constants::one_kb;
+          std::stringstream amsg;
+          amsg << "Adjusting given ML Timeline Buffer Size " << szCfgStr
+               << " to 0x" << std::hex << bufSz << std::dec << " (in bytes) for alignment." << std::endl;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", amsg.str());
+        } else if (szKB) {
+          bufSz = szKB * uint_constants::one_kb;
         }
-
       } catch (const std::exception &e) {
-        std::stringstream msg;
-        msg << "Invalid string specified for ML Timeline Buffer Size. Using default size of 192KB."
-            << e.what() << std::endl;
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        msg << "Hit exception " << e.what() << ". ";
       }
-
-    } else {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                "Invalid string specified for ML Timeline Buffer Size. Using default size of 192KB.");
     }
+    if (0 == bufSz) {
+      bufSz = 0x30000;
+      msg << "Invalid string " << szCfgStr << " specified for ML Timeline Buffer Size. Using default size of 192KB." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+    }
+    
     return bufSz;
   }
 
