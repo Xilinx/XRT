@@ -41,15 +41,23 @@
 #endif
 
 #if defined(_WIN32)
-#ifdef XCL_DRIVER_DLL_EXPORT
-#define XCL_DRIVER_DLLESPEC __declspec(dllexport)
-#else
-#define XCL_DRIVER_DLLESPEC __declspec(dllimport)
+# ifndef XRT_STATIC_BUILD
+#  ifdef XCL_DRIVER_DLL_EXPORT
+#   define XCL_DRIVER_DLLESPEC __declspec(dllexport)
+#  else
+#   define XCL_DRIVER_DLLESPEC __declspec(dllimport)
+#  endif
+# endif
+# define XCL_DRIVER_DLLHIDDEN
 #endif
-#define XCL_DRIVER_DLLHIDDEN
-#else
-#define XCL_DRIVER_DLLESPEC __attribute__((visibility("default")))
-#define XCL_DRIVER_DLLHIDDEN __attribute__((visibility("hidden")))
+
+#ifdef __linux__
+# define XCL_DRIVER_DLLESPEC __attribute__((visibility("default")))
+# define XCL_DRIVER_DLLHIDDEN __attribute__((visibility("hidden")))
+#endif
+
+#ifndef XCL_DRIVER_DLLESPEC
+# define XCL_DRIVER_DLLESPEC
 #endif
 
 #ifdef __cplusplus
