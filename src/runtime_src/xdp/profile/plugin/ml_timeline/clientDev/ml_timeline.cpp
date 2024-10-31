@@ -60,8 +60,8 @@ namespace xdp {
       }
   };
 
-  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
-    : MLTimelineImpl(dB)
+  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, uint32_t sz)
+    : MLTimelineImpl(dB, sz)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Created ML Timeline Plugin for Client Device.");
@@ -134,16 +134,16 @@ namespace xdp {
     // Record Timer TS in JSON
     // Assuming correct Stub has been called and Write Buffer contains valid data
     
-    uint32_t max_count = mBufSz / (3*sizeof(uint32_t));
+    uint32_t maxCount = mBufSz / RECORD_TIMER_ENTRY_SZ_IN_BYTES;
     // Each record timer entry has 32bit ID and 32bit AIE High Timer + 32bit AIE Low Timer value.
 
-    uint32_t numEntries = max_count;
+    uint32_t numEntries = maxCount;
     std::stringstream msg;
     msg << "A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size 0x"
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
-    if (numEntries <= max_count) {
+    if (numEntries <= maxCount) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
         uint32_t id = *ptr;
