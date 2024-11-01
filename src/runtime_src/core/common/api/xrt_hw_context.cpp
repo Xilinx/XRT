@@ -7,8 +7,8 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
-#include "core/include/experimental/xrt_module.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/experimental/xrt_module.h"
 #include "hw_context_int.h"
 #include "module_int.h"
 #include "xclbin_int.h"
@@ -78,7 +78,7 @@ public:
 
     // creation successful, store the module in the map
     auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
-    m_module_map[kernel_name] = std::move(module);
+    m_module_map.emplace(std::move(kernel_name), std::move(module));
   }
 
   std::shared_ptr<hw_context_impl>
@@ -122,9 +122,8 @@ public:
     auto part_size = xrt_core::module_int::get_partition_size(module);
 
     // create hw ctx handle if not already created
-    if (m_hdl == nullptr) {
-      m_module_map[kernel_name] = std::move(module);
-
+    if (!m_hdl) {
+      m_module_map.emplace(std::move(kernel_name), std::move(module));
       m_partition_size = part_size;
       m_hdl = m_core_device->create_hw_context(m_partition_size, m_cfg_param, m_mode);
       return;
@@ -192,10 +191,10 @@ public:
   xrt::module
   get_module(const std::string& kname) const
   {
-    auto itr = m_module_map.find(kname);
-    if (itr == m_module_map.end())
-      throw std::runtime_error("no module found with given kernel name in ctx");
-    return itr->second;
+    if (auto itr = m_module_map.find(kname); itr != m_module_map.end())
+      return itr->second;
+
+    throw std::runtime_error("no module found with given kernel name in ctx");
   }
 };
 
@@ -246,56 +245,38 @@ get_module(const xrt::hw_context& ctx, const std::string& kname)
 // xrt_hwcontext C++ API implmentations (xrt_hw_context.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
-
+// common function called with hw ctx created from different ways
 static std::shared_ptr<hw_context_impl>
-alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param);
-
   // Update device is called with a raw pointer to dyanamically
   // link to callbacks that exist in XDP via a C-style interface
   // The create_hw_context_from_implementation function is then 
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
-
   handle->get_usage_logger()->log_hw_ctx_info(handle.get());
-
   return handle;
+}
+
+static std::shared_ptr<hw_context_impl>
+alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param));
 }
 
 static std::shared_ptr<hw_context_impl>
 alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::access_mode mode)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode);
-
-  // Update device is called with a raw pointer to dyanamically
-  // link to callbacks that exist in XDP via a C-style interface
-  // The create_hw_context_from_implementation function is then 
-  // called in XDP create a hw_context to the underlying implementation
-  xrt_core::xdp::update_device(handle.get());
-
-  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
-
-  return handle;
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode));
 }
 
 static std::shared_ptr<hw_context_impl>
 alloc_empty_hwctx(const xrt::device& device, const xrt::hw_context::cfg_param_type& cfg_param, xrt::hw_context::access_mode mode)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), cfg_param, mode);
-
-  // Update device is called with a raw pointer to dyanamically
-  // link to callbacks that exist in XDP via a C-style interface
-  // The create_hw_context_from_implementation function is then 
-  // called in XDP create a hw_context to the underlying implementation
-  xrt_core::xdp::update_device(handle.get());
-
-  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
-
-  return handle;
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), cfg_param, mode));
 }
 
 static std::shared_ptr<hw_context_impl>
@@ -303,17 +284,7 @@ alloc_hwctx_from_elf(const xrt::device& device, const xrt::elf& elf, const xrt::
                      xrt::hw_context::access_mode mode)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), elf, cfg_param, mode);
-
-  // Update device is called with a raw pointer to dyanamically
-  // link to callbacks that exist in XDP via a C-style interface
-  // The create_hw_context_from_implementation function is then 
-  // called in XDP create a hw_context to the underlying implementation
-  xrt_core::xdp::update_device(handle.get());
-
-  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
-
-  return handle;
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), elf, cfg_param, mode));
 }
 
 hw_context::
