@@ -1088,7 +1088,7 @@ private:
     size_t size;   // size in bytes of argument per xclbin
 
     explicit
-    global_type(size_t bytes = 0)
+    global_type(size_t bytes)
       : size(bytes)
     {}
 
@@ -1507,39 +1507,13 @@ private:
     return data;  // no skipping
   }
 
-  xrt::module
-  get_module(const xrt::hw_context& ctx, const std::string& kname)
+  static uint32_t
+  get_ctrlcode_idx(const std::string& name)
   {
-    // ELF use case, identify module from ctx that has given kernel name and
-    // get kernel signature from the module to construct kernel args etc
-    // kernel name will be of format - <kernel_name>:<index>
-    auto i = kname.find(":");
-    if (i == std::string::npos) {
-      // default case - ctrl code 0 will be used
-      name = kname.substr(0, kname.size());
-      m_ctrl_code_index = 0;
-    }
-    else {
-      name = kname.substr(0, i);
-      m_ctrl_code_index = std::stoul(kname.substr(i+1, kname.size()-i-1));
-    }
-
-    return xrt_core::hw_context_int::get_module(ctx, name);
-  }
-
-  const property_type&
-  get_elf_kernel_properties()
-  {
-    // Get kernel info from module
-    const auto& kernel_info = xrt_core::module_int::get_kernel_info(m_module);
-    if (name != kernel_info.props.name)
-      throw std::runtime_error("Kernel name mismatch, incorrect module picked\n");
-
-    // set kernel args
-    for (auto& arg : kernel_info.args)
-      args.emplace_back(arg);
-
-    return kernel_info.props;
+    // kernel name will be of format - <kernel_name>:<ctrl code index>
+    if (auto i = name.find(":"); i != std::string::npos)
+      return std::stoul(name.substr(i+1, name.size()-i-1));
+    return 0; // default case
   }
 
   static uint32_t
@@ -1618,14 +1592,20 @@ public:
   }
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
-    : device(std::move(dev))                    // share ownership
-    , hwctx(std::move(ctx))                     // hw context
-    , hwqueue(hwctx)                            // hw queue
-    , m_module(get_module(hwctx, nm))           // module object with matching kernel name
-    , properties(get_elf_kernel_properties())   // kernel info present in Elf
+    : name(nm.substr(0, nm.find(":")))                                  // kernel name
+    , device(std::move(dev))                                            // share ownership
+    , hwctx(std::move(ctx))                                             // hw context
+    , hwqueue(hwctx)                                                    // hw queue
+    , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
+    , properties(xrt_core::module_int::get_kernel_info(m_module).props) // kernel info present in Elf
     , uid(create_uid())
+    , m_ctrl_code_index(get_ctrlcode_idx(nm))                           // control code index
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
+
+    // get kernel info from module and initialize kernel args
+    for (auto& arg : xrt_core::module_int::get_kernel_info(m_module).args)
+      args.emplace_back(arg);
 
     // amend args with computed data based on kernel protocol
     amend_args();
@@ -1994,8 +1974,11 @@ class run_impl
     return count++;
   }
 
-  // This function copies the module into a hw_context.  The module
+  // This function copies the module into a hw_context. The module
   // will be associated with hwctx specific memory.
+  // If module has multiple control codes, index is used to identify
+  // the control code that needs to be run.
+  // By default control code at zeroth index is picked
   static xrt::module
   copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx)
   {
@@ -3491,7 +3474,7 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     xrt::kernel::cu_access_mode mode)
 {
   auto amode = hwctx_access_mode(mode);  // legacy access mode to hwctx qos
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, name);
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, xrt::module{}, name);
 }
 
 static std::shared_ptr<xrt::kernel_impl>

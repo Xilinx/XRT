@@ -37,6 +37,8 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // Note that if size passed in is 0, real buffer size required will be returned
 // without any patching. This is useful if caller wishes to discover the exact size
 // of the control code buffer.
+// New ELfs pack multiple control codes info in it, to identify which control code
+// to run we use index
 XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*,
