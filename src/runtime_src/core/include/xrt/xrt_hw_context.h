@@ -92,7 +92,8 @@ public:
    *  Access control for the context
    * 
    * When application uses this constructor no hw resources are allocated
-   * It acts as placeholder and used for setting QoS and access control
+   * It acts as placeholder and is used for setting QoS and access control
+   * Applications can later add configuration Elfs using add_config api.
    * The QoS definition is subject to change, so this API is not guaranteed
    * to be ABI compatible in future releases
    */

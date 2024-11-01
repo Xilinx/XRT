@@ -1308,7 +1308,7 @@ private:
   xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;           // CU context locks
-  property_type properties;            // Kernel properties from XML meta
+  const property_type& properties;     // Kernel properties from XML meta
   std::bitset<max_cus> cumask;         // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
   size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
@@ -1507,6 +1507,41 @@ private:
     return data;  // no skipping
   }
 
+  xrt::module
+  get_module(const xrt::hw_context& ctx, const std::string& kname)
+  {
+    // ELF use case, identify module from ctx that has given kernel name and
+    // get kernel signature from the module to construct kernel args etc
+    // kernel name will be of format - <kernel_name>:<index>
+    auto i = kname.find(":");
+    if (i == std::string::npos) {
+      // default case - ctrl code 0 will be used
+      name = kname.substr(0, kname.size());
+      m_ctrl_code_index = 0;
+    }
+    else {
+      name = kname.substr(0, i);
+      m_ctrl_code_index = std::stoul(kname.substr(i+1, kname.size()-i-1));
+    }
+
+    return xrt_core::hw_context_int::get_module(ctx, name);
+  }
+
+  const property_type&
+  get_elf_kernel_properties()
+  {
+    // Get kernel info from module
+    const auto& kernel_info = xrt_core::module_int::get_kernel_info(m_module);
+    if (name != kernel_info.props.name)
+      throw std::runtime_error("Kernel name mismatch, incorrect module picked\n");
+
+    // set kernel args
+    for (auto& arg : kernel_info.args)
+      args.emplace_back(arg);
+
+    return kernel_info.props;
+  }
+
   static uint32_t
   create_uid()
   {
@@ -1521,64 +1556,6 @@ private:
       return krnl;
 
     throw xrt_core::error("No such kernel '" + nm + "'");
-  }
-
-  static std::vector<std::string>
-  split(const std::string& s, char delimiter)
-  {
-    std::vector<std::string> tokens;
-    std::stringstream ss(s);
-    std::string item;
-
-    while (getline(ss, item, delimiter))
-      tokens.push_back(item);
-
-    return tokens;
-  }
-
-  void
-  construct_elf_kernel_args(const std::string& kernel_name)
-  {
-    // kernel signature - name(argtype, argtype ...)
-    size_t start_pos = kernel_name.find('(');
-    size_t end_pos = kernel_name.find(')', start_pos);
-
-    if (start_pos == std::string::npos || end_pos == std::string::npos || start_pos > end_pos)
-      throw std::runtime_error("Failed to construct kernel args");
-
-    std::string argstring = kernel_name.substr(start_pos + 1, end_pos - start_pos - 1);
-    std::vector<std::string> argstrings = split(argstring, ',');
-
-    size_t count = 0;
-    size_t offset = 0;
-    for (const std::string& str : argstrings) {
-      xrt_core::xclbin::kernel_argument arg;
-      arg.name = "argv" + std::to_string(count);
-      arg.hosttype = "no-type";
-      arg.port = "no-port";
-      arg.index = count;
-      arg.offset = offset;
-      arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
-      // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
-      arg.type = (str.find('*') != std::string::npos)
-               ? xrt_core::xclbin::kernel_argument::argtype::global
-               : xrt_core::xclbin::kernel_argument::argtype::scalar;
-
-      // At present only global args are supported
-      // TODO : Add support for scalar args in ELF flow
-      if (arg.type == xrt_core::xclbin::kernel_argument::argtype::scalar)
-        throw std::runtime_error("scalar args are not yet supported for this kind of kernel");
-      else {
-        // global arg
-        static constexpr size_t global_arg_size = 0x8;
-        arg.size = global_arg_size;        
-
-        offset += global_arg_size;
-      }
-
-      args.emplace_back(arg);
-      count++;
-    }
   }
 
 public:
@@ -1641,51 +1618,17 @@ public:
   }
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
-    : device(std::move(dev))    // share ownership
-    , hwctx(std::move(ctx))     // hw context
-    , hwqueue(hwctx)            // hw queue
+    : device(std::move(dev))                    // share ownership
+    , hwctx(std::move(ctx))                     // hw context
+    , hwqueue(hwctx)                            // hw queue
+    , m_module(get_module(hwctx, nm))           // module object with matching kernel name
+    , properties(get_elf_kernel_properties())   // kernel info present in Elf
     , uid(create_uid())
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
-    // ELF use case, identify module from ctx that has given kernel name and
-    // get kernel signature from the module to construct kernel args etc
-  
-    // kernel name will be of format - <kernel_name>:<index>
-    auto i = nm.find(":");
-    if (i == std::string::npos) {
-      // default case - ctrl code 0 will be used
-      name = nm.substr(0, nm.size());
-      m_ctrl_code_index = 0;
-    }
-    else {
-      name = nm.substr(0, i);
-      m_ctrl_code_index = std::stoul(nm.substr(i+1, nm.size()-i-1));
-    }
-
-    m_module = xrt_core::hw_context_int::get_module(hwctx, name);
-    auto demangled_name = xrt_core::module_int::get_kernel_signature(m_module);
-      
-    // extract kernel name
-    size_t pos = demangled_name.find('(');
-    if (pos == std::string::npos)
-      throw std::runtime_error("Failed to get kernel - " + nm);
-
-    if (name != demangled_name.substr(0, pos))
-      throw std::runtime_error("Kernel name mismatch, incorrect module picked\n");
-    
-    construct_elf_kernel_args(demangled_name);
-
-    // fill kernel properties
-    properties.name = name;
-    properties.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
-    properties.counted_auto_restart = xrt_core::xclbin::get_restart_from_ini(name);
-    properties.mailbox = xrt_core::xclbin::get_mailbox_from_ini(name);
-    properties.sw_reset = xrt_core::xclbin::get_sw_reset_from_ini(name);
-
     // amend args with computed data based on kernel protocol
     amend_args();
-
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
@@ -2176,7 +2119,7 @@ class run_impl
     auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
     auto payload = kernel->initialize_command(pkt);
     if (kcmd->opcode == ERT_START_DPU || kcmd->opcode == ERT_START_NPU || kcmd->opcode == ERT_START_NPU_PREEMPT ||
-        kcmd->opcode == ERT_START_NPU_PDI_IN_ELF) {
+        kcmd->opcode == ERT_START_NPU_PREEMPT_ELF) {
       auto payload_past_dpu = initialize_dpu(payload);
 
       // adjust count to include the prepended ert_dpu_data structures
