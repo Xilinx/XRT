@@ -1,5 +1,5 @@
 // PDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_API_HW_CONTEXT_INT_H
 #define XRT_COMMON_API_HW_CONTEXT_INT_H
 
