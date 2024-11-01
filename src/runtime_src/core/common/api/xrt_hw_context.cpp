@@ -70,12 +70,15 @@ public:
     , m_cfg_param{std::move(cfg_param)}
     , m_mode{mode}
   {
+    // Create module object to parse Elf
     auto module = xrt::module(elf);
-    auto kernel_name = xrt_core::module_int::get_kernel_name(module);
-    m_module_map[kernel_name] = std::move(module);
-
-    m_partition_size = xrt_core::module_int::get_partition_size(m_module_map.begin()->second);
+    // Get partition size and pass it to diver for hw ctx creation
+    m_partition_size = xrt_core::module_int::get_partition_size(module);
     m_hdl = m_core_device->create_hw_context(m_partition_size, m_cfg_param, mode);
+
+    // creation successful, store the module in the map
+    auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
+    m_module_map[kernel_name] = std::move(module);
   }
 
   std::shared_ptr<hw_context_impl>
@@ -115,7 +118,7 @@ public:
   add_config(const xrt::elf& elf)
   {
     auto module = xrt::module(elf);
-    auto kernel_name = xrt_core::module_int::get_kernel_name(module);
+    auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
     auto part_size = xrt_core::module_int::get_partition_size(module);
 
     // create hw ctx handle if not already created
@@ -132,10 +135,8 @@ public:
       throw std::runtime_error("can not add config to ctx with different configuration\n");
 
     // add module to map if kernel name is different, else throw
-    for (const auto& m : m_module_map) {
-      if (kernel_name == xrt_core::module_int::get_kernel_name(m.second))
-        throw std::runtime_error("config with kernel already exists, cannot add this config\n");
-    }
+    if (m_module_map.find(kernel_name) != m_module_map.end())
+      throw std::runtime_error("config with kernel already exists, cannot add this config\n");
     m_module_map[kernel_name] = std::move(module);
   }
 
@@ -191,11 +192,10 @@ public:
   xrt::module
   get_module(const std::string& kname) const
   {
-    for (const auto& m : m_module_map) {
-      if (kname == xrt_core::module_int::get_kernel_name(m.second))
-        return m.second;
-    }
-    throw std::runtime_error("no module found with given kernel name in ctx");
+    auto itr = m_module_map.find(kname);
+    if (itr == m_module_map.end())
+      throw std::runtime_error("no module found with given kernel name in ctx");
+    return itr->second;
   }
 };
 

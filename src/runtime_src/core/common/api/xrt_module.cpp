@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_module.h
 #define XRT_API_SOURCE         // exporting xrt_module.h
@@ -580,16 +580,9 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // get kernel signature in demmangled format
-  [[nodiscard]] virtual std::string
-  get_kernel_signature() const
-  {
-    throw std::runtime_error("Not supported");
-  }
-
-  // get only kernel name without args from kernel signature
-  [[nodiscard]] virtual std::string
-  get_kernel_name() const
+  // get kernel info (name, properties and args) if elf has the info
+  [[nodiscard]] virtual const xrt_core::module_int::kernel_info&
+  get_kernel_info() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -743,7 +736,8 @@ class module_elf_aie2p : public module_elf
   
   size_t m_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
-  std::string m_kernel_signature;
+
+  xrt_core::module_int::kernel_info m_kernel_info;
 
   static uint32_t
   get_section_name_index(const std::string& name)
@@ -775,14 +769,15 @@ class module_elf_aie2p : public module_elf
     m_partition_size = std::stoul(std::string{static_cast<char*>(desc), desc_size});
   }
 
-  void
-  initialize_kernel_signature()
+  std::string
+  get_kernel_signature()
   {
     static constexpr const char* symtab_section_name {".symtab"};
+    std::string kernel_signature = "";
 
     ELFIO::section* symtab = m_elfio.sections[symtab_section_name];
     if (!symtab)
-      return; // elf doesn't have .symtab section, kernel_signature will be empty string
+      return kernel_signature; // elf doesn't have .symtab section, kernel_signature will be empty string
 
     // Get the symbol table
     const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
@@ -801,11 +796,95 @@ class module_elf_aie2p : public module_elf
         // there will be only 1 kernel signature symbol entry in .symtab section whose
         // type is FUNC
         if (type == ELFIO::STT_FUNC) {
-          m_kernel_signature = demangle(name);
+          kernel_signature = demangle(name);
           break;
         }
       }
     }
+    return kernel_signature;
+  }
+
+  static std::vector<std::string>
+  split(const std::string& s, char delimiter)
+  {
+    std::vector<std::string> tokens;
+    std::stringstream ss(s);
+    std::string item;
+
+    while (getline(ss, item, delimiter))
+      tokens.push_back(item);
+
+    return tokens;
+  }
+
+  static std::vector<xrt_core::xclbin::kernel_argument>
+  construct_kernel_args(const std::string& signature)
+  {
+    std::vector<xrt_core::xclbin::kernel_argument> args;
+
+    // kernel signature - name(argtype, argtype ...)
+    size_t start_pos = signature.find('(');
+    size_t end_pos = signature.find(')', start_pos);
+
+    if (start_pos == std::string::npos || end_pos == std::string::npos || start_pos > end_pos)
+      throw std::runtime_error("Failed to construct kernel args");
+
+    std::string argstring = signature.substr(start_pos + 1, end_pos - start_pos - 1);
+    std::vector<std::string> argstrings = split(argstring, ',');
+
+    size_t count = 0;
+    size_t offset = 0;
+    for (const std::string& str : argstrings) {
+      xrt_core::xclbin::kernel_argument arg;
+      arg.name = "argv" + std::to_string(count);
+      arg.hosttype = "no-type";
+      arg.port = "no-port";
+      arg.index = count;
+      arg.offset = offset;
+      arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
+      // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
+      arg.type = (str.find('*') != std::string::npos)
+               ? xrt_core::xclbin::kernel_argument::argtype::global
+               : xrt_core::xclbin::kernel_argument::argtype::scalar;
+
+      // At present only global args are supported
+      // TODO : Add support for scalar args in ELF flow
+      if (arg.type == xrt_core::xclbin::kernel_argument::argtype::scalar)
+        throw std::runtime_error("scalar args are not yet supported for this kind of kernel");
+      else {
+        // global arg
+        static constexpr size_t global_arg_size = 0x8;
+        arg.size = global_arg_size;
+
+        offset += global_arg_size;
+      }
+
+      args.emplace_back(arg);
+      count++;
+    }
+    return args;
+  }
+
+  void
+  initialize_kernel_info()
+  {
+    auto kernel_signature = get_kernel_signature();
+    // extract kernel name
+    size_t pos = kernel_signature.find('(');
+    if (pos == std::string::npos)
+      return; // Elf doesn't contain kernel info aie2p type
+    std::string kernel_name = kernel_signature.substr(0, pos);
+
+    // construct kernel args and properties and cache them
+    // this info is used at the time of xrt::kernel object creation
+    m_kernel_info.args = construct_kernel_args(kernel_signature);
+
+    // fill kernel properties
+    m_kernel_info.props.name = kernel_name;
+    m_kernel_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+    m_kernel_info.props.counted_auto_restart = xrt_core::xclbin::get_restart_from_ini(kernel_name);
+    m_kernel_info.props.mailbox = xrt_core::xclbin::get_mailbox_from_ini(kernel_name);
+    m_kernel_info.props.sw_reset = xrt_core::xclbin::get_sw_reset_from_ini(kernel_name);
   }
 
   // Extract buffer from ELF sections without assuming anything
@@ -966,7 +1045,7 @@ public:
     : module_elf(elf)
   {
     initialize_partition_size();
-    initialize_kernel_signature();
+    initialize_kernel_info();
     initialize_buf(patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(patcher::buf_type::ctrldata, m_ctrl_packet_map);
 
@@ -987,7 +1066,7 @@ public:
   get_ert_opcode() const override
   {
     if (!m_pdi_buf_map.empty())
-      return ERT_START_NPU_PDI_IN_ELF;
+      return ERT_START_NPU_PREEMPT_ELF;
 
     if (m_save_buf_exist && m_restore_buf_exist)
       return ERT_START_NPU_PREEMPT;
@@ -1054,23 +1133,13 @@ public:
     return m_partition_size;
   }
 
-  [[nodiscard]] virtual std::string
-  get_kernel_signature() const override
+  [[nodiscard]] virtual const xrt_core::module_int::kernel_info&
+  get_kernel_info() const override
   {
-    if (m_kernel_signature.empty())
-      throw std::runtime_error("No kernel signature available, wrong ELF passed\n");
-    return m_kernel_signature;
-  }
-
-  [[nodiscard]] virtual std::string
-  get_kernel_name() const override
-  {
-    std::string demangled_name = get_kernel_signature();
-    // extract kernel name
-    size_t pos = demangled_name.find('(');
-    if (pos == std::string::npos)
-      throw std::runtime_error("Failed to get kernel name");
-    return demangled_name.substr(0, pos);
+    // sanity to check if kernel info is available by checking kernel name is empty
+    if (m_kernel_info.props.name.empty())
+      throw std::runtime_error("No kernel info available, wrong ELF passed\n");
+    return m_kernel_info;
   }
 };
 
@@ -1757,16 +1826,19 @@ public:
   {
     auto os_abi = m_parent.get()->get_os_abi();
 
-    if (os_abi == Elf_Amd_Aie2ps)
+    switch (os_abi) {
+    case Elf_Amd_Aie2p :
+      if (m_preempt_save_bo && m_preempt_restore_bo)
+        return fill_ert_aie2p_preempt_data(payload);
+      else
+        return fill_ert_aie2p_non_preempt_data(payload);
+    case Elf_Amd_Aie2p_config :
+      return fill_ert_aie2p_preempt_data(payload);
+    case Elf_Amd_Aie2ps :
       return fill_ert_aie2ps(payload);
-    else if (os_abi == Elf_Amd_Aie2p_config)
-      return fill_ert_aie2p_preempt_data(payload);
-
-    // os abi is Elf_Amd_Aie2p
-    if (m_preempt_save_bo && m_preempt_restore_bo)
-      return fill_ert_aie2p_preempt_data(payload);
-    else
-      return fill_ert_aie2p_non_preempt_data(payload);
+    default :
+      throw std::runtime_error("unknown ELF type passed\n");
+    }
   }
 
   xrt::bo&
@@ -1842,13 +1914,14 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<st
   size_t orig_sz = *sz;
   const buf* inst = nullptr;
   uint32_t patch_index = UINT32_MAX;
+  auto os_abi = hdl->get_os_abi();
 
-  if (hdl->get_os_abi() == Elf_Amd_Aie2p || Elf_Amd_Aie2p_config) {
-    instr_buf buf;
-    std::tie(patch_index, buf) = hdl->get_instr(idx);
-    inst = &buf;
+  if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+    const auto& buf_info = hdl->get_instr(idx);
+    patch_index = buf_info.first;
+    inst = &(buf_info.second);
   }
-  else if(hdl->get_os_abi() == Elf_Amd_Aie2ps) {
+  else if(os_abi == Elf_Amd_Aie2ps) {
     const auto& instr_buf = hdl->get_data();
     if (instr_buf.size() != 1)
       throw std::runtime_error{"Patch failed: only support patching single column"};
@@ -1905,16 +1978,10 @@ dump_scratchpad_mem(const xrt::module& module)
   module_sram->dump_scratchpad_mem();
 }
 
-std::string
-get_kernel_name(const xrt::module& module)
+const xrt_core::module_int::kernel_info&
+get_kernel_info(const xrt::module& module)
 {
-  return module.get_handle()->get_kernel_name();
-}
-
-std::string
-get_kernel_signature(const xrt::module& module)
-{
-  return module.get_handle()->get_kernel_signature();
+  return module.get_handle()->get_kernel_info();
 }
 
 uint32_t
