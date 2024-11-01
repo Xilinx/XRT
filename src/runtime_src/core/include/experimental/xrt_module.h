@@ -78,6 +78,22 @@ public:
   XRT_API_EXPORT
   module(void* userptr, size_t sz, const xrt::uuid& uuid);
 
+    /**
+   * module() - Constructor associate module with hardware context
+   *
+   * @param parent
+   *   Parent module with instruction buffer to move into hwctx
+   * @param hwctx
+   *   Hardware context to associate with module
+   *
+   * Copy content of existing module into an allocation associated
+   * with the specified hardware context.
+   *
+   * Throws if module is not compatible with hardware context
+   */
+  XRT_API_EXPORT
+  module(const xrt::module& parent, const xrt::hw_context& hwctx);
+
   /**
    * module() - Constructor associate module with hardware context
    *
@@ -90,11 +106,13 @@ public:
    *
    * Copy content of existing module into an allocation associated
    * with the specified hardware context.
+   * If module has multiple control codes, index is used to identify
+   * the control code that needs to be run.
    *
    * Throws if module is not compatible with hardware context
    */
   XRT_API_EXPORT
-  module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx = 0);
+  module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx);
 
   /**
    * get_cfg_uuid() - Get the uuid of the hardware configuration
