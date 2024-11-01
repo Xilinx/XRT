@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Xilinx Runtime (XRT) Experimental APIs
 
@@ -7,6 +7,7 @@
 #define _XRT_COMMON_MODULE_INT_H_
 
 // This file defines implementation extensions to the XRT Kernel APIs.
+#include "core/common/xclbin_parser.h"
 #include "core/include/experimental/xrt_bo.h"
 #include "core/include/experimental/xrt_module.h"
 
@@ -15,6 +16,10 @@
 #include <string>
 
 namespace xrt_core::module_int {
+struct kernel_info {
+  std::vector<xrt_core::xclbin::kernel_argument> args;
+  xrt_core::xclbin::kernel_properties props;
+};
 
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
@@ -57,13 +62,14 @@ get_ert_opcode(const xrt::module& module);
 void
 dump_scratchpad_mem(const xrt::module& module);
 
-std::string
-get_kernel_signature(const xrt::module& module);
+// Returns kernel info extracted from demangled kernel signature
+// eg : DPU(void*, void*, void*)
+// returns kernel name (DPU), kernel args and kernel properties
+// throws exception if Elf passed has no kernel info
+const kernel_info&
+get_kernel_info(const xrt::module& module);
 
-std::string
-get_kernel_name(const xrt::module& module);
-
-// Get partition size if ELF has info
+// Get partition size if ELF has the info
 uint32_t
 get_partition_size(const xrt::module& module);
 
