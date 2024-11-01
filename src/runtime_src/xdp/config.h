@@ -22,41 +22,43 @@
 //------------------Enable dynamic linking on windows-----------------------// 
 
 #ifdef _WIN32
-  #ifdef XDP_CORE_SOURCE
-    #define XDP_CORE_EXPORT __declspec(dllexport)
-  #else
-    #define XDP_CORE_EXPORT __declspec(dllimport)
-  #endif  
+# ifdef XDP_CORE_SOURCE
+#  define XDP_CORE_EXPORT __declspec(dllexport)
+# else
+#  define XDP_CORE_EXPORT __declspec(dllimport)
+# endif  
 #endif
+
 #ifdef __linux__
-  #ifdef XDP_CORE_SOURCE
-    #define XDP_CORE_EXPORT __attribute__ ((visibility("default")))
-  #else
-    #define XDP_CORE_EXPORT
-  #endif
+# ifdef XDP_CORE_SOURCE
+#  define XDP_CORE_EXPORT __attribute__ ((visibility("default")))
+# else
+# define XDP_CORE_EXPORT
+# endif
 #endif
 
 #ifndef XDP_CORE_EXPORT
-  #define XDP_CORE_EXPORT
+# define XDP_CORE_EXPORT
 #endif
 
 #ifdef _WIN32
-  #ifdef XDP_PLUGIN_SOURCE
-    #define XDP_PLUGIN_EXPORT __declspec(dllexport)
-  #else
-    #define XDP_PLUGIN_EXPORT __declspec(dllimport)
-  #endif  
+# ifdef XDP_PLUGIN_SOURCE
+#  define XDP_PLUGIN_EXPORT __declspec(dllexport)
+# else
+#  define XDP_PLUGIN_EXPORT __declspec(dllimport)
+# endif  
 #endif
+
 #ifdef __linux__
-  #ifdef XDP_PLUGIN_SOURCE
-    #define XDP_PLUGIN_EXPORT __attribute__ ((visibility("default")))
-  #else
-    #define XDP_PLUGIN_EXPORT
-  #endif
+# ifdef XDP_PLUGIN_SOURCE
+#  define XDP_PLUGIN_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define XDP_PLUGIN_EXPORT
+# endif
 #endif
 
 #ifndef XDP_PLUGIN_EXPORT
-  #define XDP_PLUGIN_EXPORT
+# define XDP_PLUGIN_EXPORT
 #endif
 
 #endif

@@ -21,10 +21,12 @@
 //------------------Enable dynamic linking on windows-------------------------//
 
 #ifdef _WIN32
-# ifdef XRT_CORE_COMMON_SOURCE
-#  define XRT_CORE_COMMON_EXPORT __declspec(dllexport)
-# else
-#  define XRT_CORE_COMMON_EXPORT __declspec(dllimport)
+# ifndef XRT_STATIC_BUILD
+#  ifdef XRT_CORE_COMMON_SOURCE
+#   define XRT_CORE_COMMON_EXPORT __declspec(dllexport)
+#  else
+#   define XRT_CORE_COMMON_EXPORT __declspec(dllimport)
+#  endif
 # endif
 #endif
 #ifdef __linux__
