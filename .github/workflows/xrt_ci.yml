@@ -48,6 +48,8 @@ jobs:
             packageType: deb      
           - os: hip      
             packageType: deb  
+          - os: npu      
+            packageType: deb
           - os: ubuntu2404      
             packageType: deb     
         
