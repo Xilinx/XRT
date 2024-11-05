@@ -258,6 +258,7 @@ namespace xdp {
         }
         // Interface tiles (e.g., PLIO, GMIO)
         else if (type == module_type::shim) {
+          // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
           if (portnum >= tile.stream_ids.size())
             continue;
           // Grab slave/master and stream ID
@@ -266,7 +267,7 @@ namespace xdp {
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           if (aie::isDebugVerbosity()) {
-            std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master"; 
+            std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master";
             std::string msg = "Configuring interface tile stream switch to monitor " 
                             + typeName + " stream port " + std::to_string(streamPortId);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
@@ -346,11 +347,10 @@ namespace xdp {
           0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
       uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
-      //NOTE: is_master_vec should always have an associated entry at portnum index.
       uint8_t isMaster   = (portnum >= tile.stream_ids.size()) ?
           0 : static_cast<uint8_t>(tile.is_master_vec.at(portnum));
-          
-      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT) 
+
+      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT)
              | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | idToReport);
     }
 

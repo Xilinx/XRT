@@ -97,7 +97,7 @@ namespace xdp {
 
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "!!! Calling AIE Profile update AIE device.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;

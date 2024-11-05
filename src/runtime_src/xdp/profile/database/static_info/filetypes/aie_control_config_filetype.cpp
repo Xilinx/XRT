@@ -329,8 +329,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 
-    std::cout << "!!! Total shim tiles: " << tiles.size() << std::endl;
-
     return tiles;
 }
 

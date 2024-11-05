@@ -89,15 +89,14 @@ namespace xdp::aie::trace {
           else
             config.mm2s_channels[channelNum] = channelNum;
         }
+        // Interface tiles (e.g., PLIO, GMIO)
         else if (type == module_type::shim) {
-          // Interface tiles (e.g., PLIO, GMIO)
+          // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
           if (portnum >= tile.stream_ids.size())
             continue;
 
           auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0)   ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master"; 
-          // uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
-          //     0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+          std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master";
           uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
 
           std::string msg = "Configuring interface tile stream switch to monitor " 

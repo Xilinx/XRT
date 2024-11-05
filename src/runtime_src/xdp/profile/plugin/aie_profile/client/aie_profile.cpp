@@ -279,6 +279,7 @@ namespace xdp {
 
     // Interface tiles (e.g., PLIO, GMIO)
     if (type == module_type::shim) {
+      // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
       if (portnum >= tile.stream_ids.size())
         continue;
       // Grab slave/master and stream ID
