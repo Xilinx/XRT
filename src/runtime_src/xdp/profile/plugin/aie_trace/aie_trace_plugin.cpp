@@ -177,9 +177,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     if (device != nullptr) {
       for (auto &gmioEntry : AIEData.metadata->get_trace_gmios()) {
         auto gmio = gmioEntry.second;
-        (db->getStaticInfo())
-            .addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum,
-                          gmio.streamId, gmio.burstLength);
+        // Get the column shift for partition
+        // NOTE: If partition is not used, this value is zero.
+        // This is later required for GMIO trace offload.
+        uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
+        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
+                                           gmio.channelNum, gmio.streamId, gmio.burstLength);
       }
     }
 
