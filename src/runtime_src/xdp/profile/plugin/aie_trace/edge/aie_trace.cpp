@@ -295,6 +295,8 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
 
+    // Get the column shift for partition
+    // NOTE: If partition is not used, this value is zero.
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
     aie::displayColShiftInfo(startColShift);
 
