@@ -989,10 +989,20 @@ namespace xdp {
       }
     }
 
+    // std::cout << "!!! configMetrics: before " << std::endl;
+    // for(auto &t : configMetrics)
+    //   std::cout << +t.col << "," << +t.row << std::endl;
+
     // Remove all the "off" tiles
     for (auto& t : offTiles) {
       configMetrics.erase(t);
     }
+
+    std::cout << "!!! configMetrics: after " << std::endl;
+    for(auto &t : configMetrics)
+      std::cout << +t.first.col << "," << +t.first.row << std::endl;
+
+
   }
 
   aie::driver_config 

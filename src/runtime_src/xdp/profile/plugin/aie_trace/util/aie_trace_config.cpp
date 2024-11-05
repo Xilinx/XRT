@@ -91,10 +91,15 @@ namespace xdp::aie::trace {
         }
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
-          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
-          uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
-              0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+          if (portnum >= tile.stream_ids.size())
+            continue;
+
+          auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0)   ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master"; 
+          // uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
+          //     0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+          uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
+
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " stream port " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
@@ -102,9 +107,9 @@ namespace xdp::aie::trace {
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
-          config.port_trace_is_master[portnum] = (tile.is_master != 0);
+          config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
 
-          if (tile.is_master == 0)
+          if (tile.is_master_vec.at(portnum) == 0)
             config.mm2s_channels[channelNum] = channel;
           else
             config.s2mm_channels[channelNum] = channel;

@@ -66,7 +66,7 @@ namespace xdp {
       uint16_t row;
       uint16_t col;
       std::vector<uint8_t> stream_ids;
-      uint16_t is_master;
+      std::vector<uint16_t> is_master_vec;
       uint64_t itr_mem_addr;
       bool is_trigger;
       uint8_t metricSet;

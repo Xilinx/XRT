@@ -311,12 +311,14 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if (it != tiles.end()) {
             // Add to existing list of stream IDs
             it->stream_ids.push_back(streamId);
+            // Add to existing list of master/slave
+            it->is_master_vec.push_back(isMaster);
         }
         else {
             // Grab first stream ID and add to list of tiles
             tile.stream_ids.push_back(streamId);
+            tile.is_master_vec.push_back(isMaster);
             tile.subtype = type;
-            tile.is_master = isMaster;
             tiles.emplace_back(std::move(tile));
         }
     }
@@ -326,6 +328,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                         + ". Please specify a valid ID for AIE Profiling. ";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
+
+    std::cout << "!!! Total shim tiles: " << tiles.size() << std::endl;
 
     return tiles;
 }
@@ -407,7 +411,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).is_master = xdp::aie::convertStringToUint8(node.second.data());
+            tiles.at(count++).is_master_vec.push_back(xdp::aie::convertStringToUint8(node.second.data()));
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
