@@ -347,7 +347,7 @@ namespace xdp {
           0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
       uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
-      uint8_t isMaster   = (portnum >= tile.stream_ids.size()) ?
+      uint8_t isMaster   = (portnum >= tile.is_master_vec.size()) ?
           0 : static_cast<uint8_t>(tile.is_master_vec.at(portnum));
 
       return ((isMaster << PAYLOAD_IS_MASTER_SHIFT)
