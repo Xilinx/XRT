@@ -71,8 +71,7 @@ namespace {
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
         tile.stream_ids = params->tiles[i].stream_ids;
-        tile.is_master_vec = std::vector<uint8_t>(params->tiles[i].is_master_vec.begin(), params->tiles[i].is_master_vec.end());
-
+        tile.is_master_vec = params->tiles[i].is_master_vec;
         tile.itr_mem_addr = params->tiles[i].itr_mem_addr;
         tile.is_trigger = params->tiles[i].is_trigger;
         tiles.insert({tile, params->tiles[i].metricSet});
