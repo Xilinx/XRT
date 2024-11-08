@@ -69,7 +69,7 @@ namespace {
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
         tile.stream_ids = params->tiles[i].stream_ids;
-        tile.is_master = params->tiles[i].is_master;
+        tile.is_master_vec = params->tiles[i].is_master_vec;
         tile.itr_mem_addr = params->tiles[i].itr_mem_addr;
         tile.is_trigger = params->tiles[i].is_trigger;
         tiles.insert({tile, params->tiles[i].metricSet});
@@ -152,7 +152,7 @@ namespace {
 
     // Grab slave/master and stream ID
     // NOTE: stored in getTilesForProfiling() above
-    auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+    auto slaveOrMaster = (tile.is_master_vec.at(0) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
     auto streamPortId  = static_cast<uint8_t>(tile.stream_ids.at(0));
 
     // Define stream switch port to monitor PLIO 
@@ -169,7 +169,7 @@ namespace {
         || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
         || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
         || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
-      return ((tile.is_master << 8) | tile.stream_ids.at(0));
+      return ((tile.is_master_vec.at(0) << 8) | tile.stream_ids.at(0));
 
     // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)

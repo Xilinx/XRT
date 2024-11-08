@@ -256,16 +256,18 @@ namespace xdp {
               xrt_core::message::send(severity_level::debug, "XRT", msg.str());
           }
         }
+        // Interface tiles (e.g., PLIO, GMIO)
         else if (type == module_type::shim) {
-          // Interface tiles (e.g., PLIO, GMIO)
+          // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
+          if (portnum >= tile.stream_ids.size())
+            continue;
           // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
-              0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+          auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           if (aie::isDebugVerbosity()) {
-            std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
+            std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master";
             std::string msg = "Configuring interface tile stream switch to monitor " 
                             + typeName + " stream port " + std::to_string(streamPortId);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
@@ -345,7 +347,10 @@ namespace xdp {
           0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
       uint8_t isChannel  = (tile.subtype == io_type::GMIO) ? 1 : 0;
-      return ((tile.is_master << PAYLOAD_IS_MASTER_SHIFT) 
+      uint8_t isMaster   = (portnum >= tile.is_master_vec.size()) ?
+          0 : static_cast<uint8_t>(tile.is_master_vec.at(portnum));
+
+      return ((isMaster << PAYLOAD_IS_MASTER_SHIFT)
              | (isChannel << PAYLOAD_IS_CHANNEL_SHIFT) | idToReport);
     }
 
