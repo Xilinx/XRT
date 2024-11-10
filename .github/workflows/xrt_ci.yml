@@ -41,11 +41,15 @@ jobs:
           - os: centos8      
             packageType: rpm      
           - os: rhel9      
-            packageType: rpm      
+            packageType: rpm  
+          - os: rhel8.10      
+            packageType: rpm
           - os: ubuntu2004      
             packageType: deb      
           - os: hip      
             packageType: deb  
+          - os: npu      
+            packageType: deb
           - os: ubuntu2404      
             packageType: deb     
         

@@ -23,11 +23,17 @@ jobs:
             os_ver: centos_8.1      
           - os: rhel9      
             packageType: rpm
-            os_ver: rhel_9.1      
+            os_ver: rhel_9.1   
+          - os: rhel8.10      
+            packageType: rpm
+            os_ver: rhel_8.10  
           - os: ubuntu2004      
             packageType: deb
             os_ver: ubuntu_20.04      
           - os: hip      
+            packageType: deb
+            os_ver: ubuntu_22.04 
+          - os: npu      
             packageType: deb
             os_ver: ubuntu_22.04    
           - os: ubuntu2404      

@@ -1768,6 +1768,7 @@ struct aie_partition_info : request
     uint64_t    start_col;
     uint64_t    num_cols;
     int         pid;
+    bool        is_suspended;
     uint64_t    instruction_mem;
     uint64_t    command_submissions;
     uint64_t    command_completions;

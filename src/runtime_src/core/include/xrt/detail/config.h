@@ -6,10 +6,12 @@
 //------------------Enable dynamic linking on windows-------------------------//
 
 #ifdef _WIN32
-# ifdef XRT_API_SOURCE
-#  define XRT_API_EXPORT __declspec(dllexport)
-# else
-#  define XRT_API_EXPORT __declspec(dllimport)
+# ifndef XRT_STATIC_BUILD
+#  ifdef XRT_API_SOURCE
+#   define XRT_API_EXPORT __declspec(dllexport)
+#  else
+#   define XRT_API_EXPORT __declspec(dllimport)
+#  endif
 # endif
 #endif
 #ifdef __linux__

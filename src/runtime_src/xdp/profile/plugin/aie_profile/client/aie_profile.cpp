@@ -279,11 +279,13 @@ namespace xdp {
 
     // Interface tiles (e.g., PLIO, GMIO)
     if (type == module_type::shim) {
+      // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
+      if (portnum >= tile.stream_ids.size())
+        return;
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
-      auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
-                             0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+      auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
       
       // auto streamPortId  = tile.stream_id;
       // Define stream switch port to monitor interface 

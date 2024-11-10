@@ -32,8 +32,8 @@ endif
 
 ccflags-y += -Wall
 
-# Version adjusted to 2.18 for 2024.2
-XRT_DRIVER_VERSION ?= 2.18.0
+# Version adjusted to 2.19 for 2025.1
+XRT_DRIVER_VERSION ?= 2.19.0
 
 # Add patch number in version if 'XRT_VERSION_PATCH' env variable is defined
 ifneq ($(XRT_VERSION_PATCH),)

@@ -149,6 +149,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
 		zocl_slot->slot_type = ZOCL_SLOT_TYPE_PHY;
+		zocl_slot->hwctx_ref_cnt = 0;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
