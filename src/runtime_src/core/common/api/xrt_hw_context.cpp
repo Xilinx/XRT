@@ -136,7 +136,8 @@ public:
     // add module to map if kernel name is different, else throw
     if (m_module_map.find(kernel_name) != m_module_map.end())
       throw std::runtime_error("config with kernel already exists, cannot add this config\n");
-    m_module_map[kernel_name] = std::move(module);
+
+    m_module_map.emplace(std::move(kernel_name), std::move(module));
   }
 
   void
