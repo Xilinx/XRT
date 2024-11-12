@@ -1513,6 +1513,7 @@ private:
     // kernel name will be of format - <kernel_name>:<ctrl code index>
     if (auto i = name.find(":"); i != std::string::npos)
       return std::stoul(name.substr(i+1, name.size()-i-1));
+
     return 0; // default case
   }
 
