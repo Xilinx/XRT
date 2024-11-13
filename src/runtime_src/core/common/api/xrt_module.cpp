@@ -882,9 +882,6 @@ class module_elf_aie2p : public module_elf
     // fill kernel properties
     m_kernel_info.props.name = kernel_name;
     m_kernel_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
-    m_kernel_info.props.counted_auto_restart = xrt_core::xclbin::get_restart_from_ini(kernel_name);
-    m_kernel_info.props.mailbox = xrt_core::xclbin::get_mailbox_from_ini(kernel_name);
-    m_kernel_info.props.sw_reset = xrt_core::xclbin::get_sw_reset_from_ini(kernel_name);
   }
 
   // Extract buffer from ELF sections without assuming anything
