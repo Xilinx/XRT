@@ -693,6 +693,9 @@ class module_elf_aie2p : public module_elf
   size_t m_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
 
+  std::vector<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
+  std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
+
   xrt_core::module_int::kernel_info m_kernel_info;
 
   static uint32_t
@@ -891,6 +894,20 @@ class module_elf_aie2p : public module_elf
     return false;
   }
 
+  // Extract ctrlpkt preemption buffers from ELF sections
+  // and store it in map with section name as key
+  void
+  initialize_ctrlpkt_pm_bufs()
+  {
+    for (const auto& sec : m_elfio.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrlpkt_pm)) == std::string::npos)
+        continue;
+
+      m_ctrlpkt_pm_bufs[name].append_section_data(sec.get());
+    }
+  }
+
   std::pair<size_t, patcher::buf_type>
   determine_section_type(const std::string& section_name)
   {
@@ -954,6 +971,12 @@ class module_elf_aie2p : public module_elf
         m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
       }
 
+      static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
+      if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
+        // store ctrlpkt preemption symbols which is later used for patching instr buf
+        m_ctrlpkt_pm_dynsyms.emplace_back(symname);
+      }
+
       // Get control code section referenced by the symbol, col, and page
       auto section = m_elfio.sections[sym->st_shndx];
       if (!section)
@@ -1012,6 +1035,7 @@ public:
       throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
     initialize_pdi_buf();
+    initialize_ctrlpkt_pm_bufs();
     initialize_arg_patchers();
   }
 
@@ -1064,6 +1088,18 @@ public:
     if (it != m_ctrl_packet_map.end())
       return it->second;
     return std::make_pair(UINT32_MAX, control_packet::get_empty_buf());
+  }
+
+  [[nodiscard]] const std::vector<std::string>&
+  get_ctrlpkt_pm_dynsyms() const override
+  {
+    return m_ctrlpkt_pm_dynsyms;
+  }
+
+  [[nodiscard]] virtual const std::map<std::string, buf>&
+  get_ctrlpkt_pm_bufs() const override
+  {
+    return m_ctrlpkt_pm_bufs;
   }
 
   [[nodiscard]] virtual size_t
@@ -1489,7 +1525,7 @@ class module_sram : public module_impl
       auto bo_itr = m_ctrlpkt_pm_bos.find(sec_name);
       if (bo_itr == m_ctrlpkt_pm_bos.end())
         throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
-      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, patcher::buf_type::ctrltext);
+      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, patcher::buf_type::ctrltext, m_instr_sec_idx);
     }
 
     XRT_DEBUGF("<- module_sram::create_instr_buf()\n");
