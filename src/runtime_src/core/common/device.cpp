@@ -220,7 +220,7 @@ update_cu_info()
     std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
     std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
 
-    for (const auto& d : cudata) {
+    for (auto& d : cudata) {
       auto& cu2idx = m_cu2idx[d.slot_index];
       cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
     }
@@ -228,7 +228,7 @@ update_cu_info()
     // Soft kernels, not an error if query doesn't exist (edge)
     try {
       auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
-      for (const auto& d : scudata) {
+      for (auto& d : scudata) {
         auto& cu2idx = m_scu2idx[d.slot_index];
         cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
       }

@@ -40,25 +40,27 @@
 #include <vector>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 4505 )
+# pragma warning( disable : 4244 4100 4996 4505 26813)
 #endif
 
+// This file uses static globals, which clang-tidy warns about.  We
+// disable the warning for this file.
 namespace {
 
-XRT_CORE_UNUSED
+[[maybe_unused]]
 static bool
 is_noop_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
   static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
   return noop;
 }
 
-XRT_CORE_UNUSED
+[[maybe_unused]]
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
   static bool swemu = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
   return swemu;
 }
@@ -374,6 +376,7 @@ public:
       }
     }
     catch (const std::exception&) {
+      // try next option
     }
 
     // try copying with kdma
@@ -1547,8 +1550,7 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 }
 
 bo::
-~bo()
-{}
+~bo() = default;
 
 } // xrt
 
@@ -2003,4 +2005,3 @@ xrtBOAddress(xrtBufferHandle bhdl)
   }
   return std::numeric_limits<uint64_t>::max();
 }
-
