@@ -50,10 +50,10 @@ struct aie_core_tile_status
   std::vector<aie_dma_status> dma;
   std::vector<uint32_t> core_mode_events;
   std::vector<uint32_t> mem_mode_events;
-  uint32_t core_status;
-  uint32_t program_counter;
-  uint32_t stack_ptr;
-  uint32_t link_reg;
+  uint32_t core_status = 0;
+  uint32_t program_counter = 0;
+  uint32_t stack_ptr = 0;
+  uint32_t link_reg = 0;
   std::vector<uint8_t> lock_value;
 
   // Get the size of this structure using aie tiles metadata
@@ -730,7 +730,7 @@ aie_info_sanity_check(const aie_tiles_info& info)
 
 struct aie_status {
   std::vector<aie_tiles_status> status;
-  uint32_t columns_filled;
+  uint32_t columns_filled = 0;
 };
 
 static aie_status

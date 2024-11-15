@@ -76,7 +76,7 @@ struct kernel_metrics
   uint32_t total_runs = 0;
   std::chrono::microseconds total_time = {};
   std::unordered_map<const xrt::run_impl*, timestamp> exec_times; // run handle ptr is used for indexing
-  size_t num_args;
+  size_t num_args = 0;
 
   void
   log_kernel_exec_time(const xrt::run_impl* run_hdl, const tp& tp_now, ert_cmd_state state)

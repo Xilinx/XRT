@@ -1062,7 +1062,7 @@ struct sdm_sensor_info : request
     uint32_t highest {};
     std::string status;
     std::string units;
-    int8_t unitm;
+    int8_t unitm {};
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
@@ -1735,7 +1735,7 @@ struct aie_tiles_status_info : request
      * A one indicates to an active column.
      * Ex. 00001100 Indicates columns 3 and 4 are active.
      */
-    uint32_t cols_filled;
+    uint32_t cols_filled = 0;
   };
 
   using result_type = result;
@@ -1752,7 +1752,6 @@ struct aie_tiles_status_info : request
 // Hardware contexts may share the same aie partition.
 struct aie_partition_info : request
 {
-
   struct qos_info {
     uint64_t    gops;           // Giga operations per second
     uint64_t    egops;          // Effective giga operations per second
@@ -1762,21 +1761,22 @@ struct aie_partition_info : request
     uint64_t    frame_exec_time;// Frame execution time
     uint64_t    priority;       // Request priority
   };
+  
   struct data
   {
     hw_context_info::metadata metadata;
-    uint64_t    start_col;
-    uint64_t    num_cols;
-    int         pid;
-    bool        is_suspended;
-    uint64_t    instruction_mem;
-    uint64_t    command_submissions;
-    uint64_t    command_completions;
-    uint64_t    migrations;
-    uint64_t    preemptions;
-    uint64_t    errors;
-    uint64_t    pasid;
-    qos_info    qos;
+    uint64_t    start_col = 0;
+    uint64_t    num_cols = 0;
+    int         pid = -1;
+    bool        is_suspended = false;
+    uint64_t    instruction_mem = 0;
+    uint64_t    command_submissions = 0;
+    uint64_t    command_completions = 0;
+    uint64_t    migrations = 0;
+    uint64_t    preemptions = 0;
+    uint64_t    errors = 0;
+    uint64_t    pasid = 0;
+    qos_info    qos {};
   };
 
   using result_type = std::vector<struct data>;
@@ -1871,14 +1871,14 @@ struct rtos_telemetry : request
   };
 
   struct data {
-    uint64_t user_task;
-    uint64_t context_starts;
-    uint64_t schedules;
-    uint64_t syscalls;
-    uint64_t dma_access;
-    uint64_t resource_acquisition;
+    uint64_t user_task = 0;
+    uint64_t context_starts = 0;
+    uint64_t schedules = 0;
+    uint64_t syscalls = 0;
+    uint64_t dma_access = 0;
+    uint64_t resource_acquisition = 0;
     std::vector<dtlb_data> dtlbs;
-    preempt_data preemption_data;
+    preempt_data preemption_data {};
   };
 
   using result_type = std::vector<data>;

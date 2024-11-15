@@ -110,7 +110,7 @@ struct adapter
   }
 
   // Movable
-  adapter(adapter&& rhs)
+  adapter(adapter&& rhs) noexcept
     : m_info(std::move(rhs.m_info))
   {
     // Avoid double close

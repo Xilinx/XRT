@@ -131,11 +131,11 @@ private:
 public:
   static constexpr int invalid_handle = -1;
 
-  profiling_impl(std::shared_ptr<xrt_core::device> device)
+  explicit profiling_impl(std::shared_ptr<xrt_core::device> device)
     : m_profile_handle{device->open_profile_handle()}
   {}
 
-  profiling_impl(const xrt::hw_context& hwctx)
+  explicit profiling_impl(const xrt::hw_context& hwctx)
   {
     auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hwctx);
     m_profile_handle = hwctx_handle->open_profile_handle();
@@ -143,8 +143,13 @@ public:
 
   ~profiling_impl()
   {
-    stop();
+    try {
+      stop();
+    }
+    catch (...) {
+    }
   }
+
   profiling_impl() = delete;
   profiling_impl(const profiling_impl&) = delete;
   profiling_impl(profiling_impl&&) = delete;
@@ -335,7 +340,7 @@ void
 graph::
 reset() const
 {
-  xdp::native::profiling_wrapper("xrt::graph::reset", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::reset", [this]{
     handle->reset();
   });
 }
@@ -344,14 +349,14 @@ uint64_t
 graph::
 get_timestamp() const
 {
-  return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [=]{return (handle->get_timestamp());});
+  return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [this]{return (handle->get_timestamp());});
 }
 
 void
 graph::
 run(uint32_t iterations)
 {
-  xdp::native::profiling_wrapper("xrt::graph::run", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::run", [this, iterations]{
     handle->run(iterations);
   });
 }
@@ -360,7 +365,7 @@ void
 graph::
 wait(std::chrono::milliseconds timeout_ms)
 {
-  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::wait", [this, timeout_ms]{
     if (timeout_ms.count() == 0)
       handle->wait(static_cast<uint64_t>(0));
     else
@@ -372,7 +377,7 @@ void
 graph::
 wait(uint64_t cycles)
 {
-  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::wait", [this, cycles]{
     handle->wait(cycles);
   });
 }
@@ -381,7 +386,7 @@ void
 graph::
 suspend()
 {
-  xdp::native::profiling_wrapper("xrt::graph::suspend", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::suspend", [this]{
     handle->suspend();
   });
 }
@@ -390,7 +395,7 @@ void
 graph::
 resume()
 {
-  xdp::native::profiling_wrapper("xrt::graph::resume", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::resume", [this]{
     handle->resume();
   });
 }
@@ -399,7 +404,7 @@ void
 graph::
 end(uint64_t cycles)
 {
-  xdp::native::profiling_wrapper("xrt::graph::end", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::end", [this, cycles]{
     handle->end(cycles);
   });
 }
@@ -408,7 +413,7 @@ void
 graph::
 update_port(const std::string& port_name, const void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper("xrt::graph::update_port", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::update_port", [this, port_name, value, bytes]{
     handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
   });
 }
@@ -417,7 +422,7 @@ void
 graph::
 read_port(const std::string& port_name, void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper("xrt::graph::read_port", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::read_port", [this, port_name, value, bytes]{
     handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
   });
 }

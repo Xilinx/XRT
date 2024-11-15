@@ -89,12 +89,12 @@ struct kernel_object
 // @sk_buf: pointer to the soft kernel buffer
 struct softkernel_object
 {
-  uint32_t ninst;
+  uint32_t ninst = 0;
   std::string mpo_name;
   std::string mpo_version;
   std::string symbol_name;
-  size_t size;
-  char *sk_buf;
+  size_t size = 0;
+  char *sk_buf = nullptr;
 };
 
 // struct aie_cdo_obj - wrapper for an AIE CDO group object
