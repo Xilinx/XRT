@@ -19,10 +19,6 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
-if (DEFINED NPU)
-  SET(CPACK_PACKAGE_NAME "npu")
-endif()
-
 # When the rpmbuild occurs for packaging, it uses a default version of
 # python to perform a python byte compilation.  For the CentOS 7.x OS, this
 # is python2.  Being that the XRT python code is for python3, this results in
@@ -80,7 +76,7 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
   SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), dkms (>= 2.2.0), udev, python3")
 
-  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
+  if ((${XRT_DEV_COMPONENT} STREQUAL "xrt") OR (${XRT_DEV_COMPONENT} STREQUAL "npu"))
     # applications link with -luuid
     SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS
       "${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS},  \
@@ -161,7 +157,7 @@ elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinu
     SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
   endif()
 
-  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
+  if ((${XRT_DEV_COMPONENT} STREQUAL "xrt") OR (${XRT_DEV_COMPONENT} STREQUAL "npu"))
     # xrt is also development package
     SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "${CPACK_RPM_XRT_PACKAGE_REQUIRES}, ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
   else()
