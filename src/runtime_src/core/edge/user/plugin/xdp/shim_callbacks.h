@@ -31,6 +31,7 @@
 #include "aie_profile.h"
 #include "aie_status.h"
 #include "hal_device_offload.h"
+#include "aie_debug.h"
 
 #ifdef __HWEM__
 #include "hw_emu_device_offload.h"
@@ -45,14 +46,14 @@ inline
 void update_device(void* handle)
 {
 #ifndef __HWEM__
-  hal::update_device(handle);
-  aie::update_device(handle);
+  hal::update_device(handle); //PL device offload
+  aie::update_device(handle); //trace
 #else
-  hal::hw_emu::update_device(handle);
+  hal::hw_emu::update_device(handle); //PL device offload
 #endif
-
-  aie::ctr::update_device(handle);
-  aie::sts::update_device(handle);
+  aie::dbg::update_device(handle); //debug
+  aie::ctr::update_device(handle); //counters=profiling
+  aie::sts::update_device(handle); //status
 }
 
 // The flush_device callback should be called just before a new xclbin
@@ -86,6 +87,7 @@ void finish_flush_device(void* handle)
   aie::finish_flush_device(handle);
 #endif
   aie::ctr::end_poll(handle);
+  aie::dbg::end_poll(handle);
 }
 
 } // end namespace xdp
