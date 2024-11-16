@@ -39,13 +39,13 @@ namespace xdp {
       deviceID(deviceID), handle(handle)
   {
     xrt_core::message::send(severity_level::info,
-                            "XRT", "Parsing AIE Debug Metadata.");
+                            "XRT", "!!!!! Parsing AIE Debug Metadata.");
     VPDatabase* db = VPDatabase::Instance();
 
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader)
       return;
-    
+
     // Process all module types
     for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
@@ -55,13 +55,18 @@ namespace xdp {
         tiles = metadataReader->getInterfaceTiles("all", "all", "input_output");
       else
         tiles = metadataReader->getTiles("all", type, "all");
-      
-      for (auto& t : tiles)
-        configMetrics[module][t] = "tiles_debug";
+
+      std::map<tile_type, std::string> m;
+      for (auto& t : tiles){
+        //configMetrics[module][t] = "tiles_debug"; Old code TODO delete
+        //configMetrics.push_back(std::make_pair(t,"tiles_debug"));//  Old code TODO delete
+        m[t]= "tiles_debug";
+        }
+      configMetrics.push_back(m);
     }
 
     xrt_core::message::send(severity_level::info,
-                            "XRT", "Finished Parsing AIE Debug Metadata."); 
+                            "XRT", "!!!! Finished Parsing AIE Debug Metadata.");
   }
 
   /****************************************************************************

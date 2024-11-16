@@ -23,12 +23,18 @@
 #include <set>
 
 #include "core/common/device.h"
+#include "core/common/message.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp {
 
@@ -73,6 +79,128 @@ class AieDebugMetadata {
     }
 
     const AIEProfileFinalConfig& getAIEProfileConfig() const ;
+};
+
+class BaseReadableTile {
+  public:
+    std::vector <uint32_t> values;
+    int col;
+    int row;
+    std::vector<uint64_t> relativeOffsets;
+    std::vector<uint64_t> absoluteOffsets;
+
+    virtual void readValues(XAie_DevInst* aieDevInst)=0;
+    //virtual void readValues(){}
+
+    void insertOffsets(uint64_t rel, uint64_t ab) {
+      relativeOffsets.push_back(rel);
+      absoluteOffsets.push_back(ab);
+    }
+
+    void printValues(){
+      int i=0;
+      for (auto& absoluteOffset : absoluteOffsets){
+        //std::cout<< "Debug tile (" << col << ", " << row << ") "
+        //<< "hex address/values: 0x" << std::hex << absoluteOffset << " "
+        //<< values[i++] << std::endl;
+        std::stringstream msg;
+        msg << "!!! Debug tile (" << col << ", " << row << ") "
+            << "hex address/values: 0x" << std::hex << absoluteOffset << " : "
+            << values[i++] << std::dec;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+    }
+  };
+
+  class UsedRegisters {
+
+  public:
+
+  std::vector<uint64_t> core_addresses;
+  std::vector<uint64_t> interface_addresses ;
+  std::vector<uint64_t> memory_addresses;
+  std::vector<uint64_t> memory_tile_addresses;
+    virtual void populateProfileRegisters()=0;
+    virtual void populateTraceRegisters()=0;
+    void populateAllRegisters() {
+      populateProfileRegisters();
+      populateTraceRegisters();
+    }
+};
+
+class AIE1UsedRegisters : public UsedRegisters {
+ public:
+  void populateProfileRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateTraceRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+
+};
+
+class AIE2pUsedRegisters : public UsedRegisters {
+ public:
+  void populateProfileRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateTraceRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+
+};
+class AIE2psUsedRegisters : public UsedRegisters {
+ public:
+  void populateProfileRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateTraceRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+
+};
+
+class AIE4UsedRegisters : public UsedRegisters {
+ public:
+  void populateProfileRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateTraceRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+
 };
 
 } // end XDP namespace

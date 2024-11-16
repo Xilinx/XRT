@@ -50,7 +50,7 @@ namespace xdp {
    ***************************************************************************/
   AieDebugPlugin::~AieDebugPlugin()
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug destructor.");
+    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling ~AieDebugPlugin destructor.");
 
     for (const auto& kv : handleToAIEData)
       endPollforDevice(kv.first);
@@ -77,6 +77,7 @@ namespace xdp {
    ***************************************************************************/
   uint64_t AieDebugPlugin::getDeviceIDFromHandle(void* handle)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling AIE DEBUG AieDebugPlugin::getDeviceIDFromHandle.");
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
@@ -84,28 +85,31 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
 #else
-    return db->addDevice(util::getDebugIpLayoutPath(handle));
+    //return db->addDevice(util::getDebugIpLayoutPath(handle));
+    return db->addDevice("temp_edge_device");
 #endif
   }
 
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AieDebugPlugin::updateAIEDevice(void* handle) 
+  void AieDebugPlugin::updateAIEDevice(void* handle)
   {
     if (!xrt_core::config::get_aie_debug() || !handle)
       return;
-    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
+    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling AIE DEBUG update AIE device.");
 
     // Handle relates to HW context in case of Client XRT
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
-    auto device = xrt_core::get_userpf_device(handle);
+
 #endif
     auto deviceID = getDeviceIDFromHandle(handle);
-
+    std::stringstream msg;
+    msg<<"AieDebugPlugin::updateAIEDevice. Device Id =. "<<deviceID;
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
     // Update the static database with information from xclbin
     {
 #ifdef XDP_CLIENT_BUILD
@@ -133,7 +137,7 @@ namespace xdp {
     if (AIEData.metadata->aieMetadataEmpty())
     {
       AIEData.valid = false;
-      xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
+      xrt_core::message::send(severity_level::debug, "XRT", "AIE DEBUG : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
       return;
     }
     AIEData.valid = true;
@@ -144,13 +148,12 @@ namespace xdp {
 #else
     AIEData.implementation = std::make_unique<AieDebug_EdgeImpl>(db, AIEData.metadata);
 #endif
-    
-    auto& implementation = AIEData.implementation;
-    implementation->updateDevice();
 
-    // TODO: need to create and use writer for this plugin
+    auto& implementation = AIEData.implementation;
+    implementation->updateAIEDevice(handle);
+
+
 #if 0
-    // Open the writer for this device
     auto time = std::time(nullptr);
 #ifdef _WIN32
     std::tm tm{};
@@ -172,7 +175,7 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
 #endif
 
-    mIndex++;
+    //mIndex++;
   }
 
   /****************************************************************************
@@ -180,7 +183,12 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
-    handleToAIEData[handle].implementation->poll(mIndex-1, handle);
+    xrt_core::message::send(severity_level::info, "XRT", "!!! AieDebugPlugin::endAIEDebugRead.");
+    auto deviceID = getDeviceIDFromHandle(handle);
+    std::stringstream msg;
+    msg << "!!!! AieDebugPlugin::endAIEDebugRead deviceID is= "<<deviceID;
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    handleToAIEData[handle].implementation->poll(deviceID, handle);
   }
 
   /****************************************************************************
@@ -188,7 +196,7 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endPollforDevice(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug endPollforDevice.");
+    xrt_core::message::send(severity_level::info, "XRT", "!!! Calling AIE Debug AieDebugPlugin::endPollforDevice.");
     if (handleToAIEData.empty())
       return;
 

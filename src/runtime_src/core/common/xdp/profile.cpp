@@ -39,26 +39,26 @@ namespace xrt_core::xdp::aie::profile {
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_poll_cb;
 
-void 
+void
 register_callbacks(void* handle)
-{  
+{
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-  #else 
+  #else
     (void)handle;
   #endif
 
 }
 
-void 
+void
 warning_callbacks()
 {
 }
 
-void 
+void
 load()
 {
   static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
@@ -67,14 +67,14 @@ load()
 }
 
 // Make connections
-void 
+void
 update_device(void* handle)
 {
   if (update_device_cb)
     update_device_cb(handle);
 }
 
-void 
+void
 end_poll(void* handle)
 {
   if (end_poll_cb)
@@ -88,25 +88,25 @@ namespace xrt_core::xdp::aie::debug {
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_debug_cb;
 
-void 
+void
 register_callbacks(void* handle)
-{  
+{
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     end_debug_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugRead"));
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
-  #else 
+  #else
     (void)handle;
   #endif
 }
 
-void 
+void
 warning_callbacks()
 {
 }
 
-void 
+void
 load()
 {
   static xrt_core::module_loader xdp_aie_debug_loader("xdp_aie_debug_plugin",
@@ -115,7 +115,7 @@ load()
 }
 
 // Make connections
-void 
+void
 update_device(void* handle)
 {
   if (update_device_cb)
@@ -139,7 +139,7 @@ std::function<void (void*)> finish_flush_device_cb;
 
 void
 register_callbacks(void* handle)
-{ 
+{
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
@@ -188,7 +188,7 @@ std::function<void (void*)> finish_flush_device_cb;
 
 void
 register_callbacks(void* handle)
-{ 
+{
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
@@ -237,7 +237,7 @@ std::function<void (void*)> finish_flush_device_cb;
 
 void
 register_callbacks(void* handle)
-{ 
+{
   #ifdef XDP_CLIENT_BUILD
     (void)handle;	// Not supported on Client Devices.
   #else
@@ -285,25 +285,25 @@ std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_trace_cb;
 
 
-void 
+void
 register_callbacks(void* handle)
-{  
+{
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
-  #else 
+  #else
     (void)handle;
   #endif
 }
 
-void 
+void
 warning_callbacks()
 {
 }
 
-void 
+void
 load()
 {
   static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
@@ -312,14 +312,14 @@ load()
 }
 
 // Make connections
-void 
+void
 update_device(void* handle)
 {
   if (update_device_cb)
     update_device_cb(handle);
 }
 
-void 
+void
 end_trace(void* handle)
 {
   if (end_trace_cb)
@@ -374,7 +374,7 @@ finish_flush_device(void* handle)
 
 namespace xrt_core::xdp {
 
-void 
+void
 update_device(void* handle)
 {
 
@@ -412,7 +412,7 @@ update_device(void* handle)
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
-    } 
+    }
     catch (...) {
       return;
     }
@@ -422,18 +422,18 @@ update_device(void* handle)
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
-    } 
+    }
     catch (...) {
       return;
     }
     xrt_core::xdp::aie::trace::update_device(handle);
-    
+
   }
 
   if (xrt_core::config::get_aie_debug()) {
     try {
       xrt_core::xdp::aie::debug::load();
-    } 
+    }
     catch (...) {
       return;
     }
@@ -462,7 +462,19 @@ update_device(void* handle)
 
 #else
 
-  if (xrt_core::config::get_pl_deadlock_detection() 
+/* Commenting this portion out (TODO delete)
+  if (xrt_core::config::get_aie_debug()) {
+    try {
+      xrt_core::xdp::aie::debug::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::aie::debug::update_device(handle);
+  }
+*/
+
+  if (xrt_core::config::get_pl_deadlock_detection()
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
     try {
       xrt_core::xdp::pl_deadlock::load();
@@ -475,7 +487,7 @@ update_device(void* handle)
 #endif
 }
 
-void 
+void
 finish_flush_device(void* handle)
 {
 
@@ -500,6 +512,10 @@ finish_flush_device(void* handle)
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
     xrt_core::xdp::pl_deadlock::finish_flush_device(handle);
   }
+/* Commenting this portion out (TODO delete)
+  if (xrt_core::config::get_aie_debug())
+    xrt_core::xdp::aie::debug::end_debug(handle);
+*/
 #endif
 }
 

@@ -42,6 +42,17 @@ namespace xdp {
     std::size_t op_size;
   };
 
+class ClientReadableTile : public BaseReadableTile {
+  public:
+    ClientReadableTile(int r, int c) {
+      row=r;
+      col=c;
+    }
+  void readValues(XAie_DevInst* aieDevInst){
+    //Different Implementation. everything else same
+     }
+};
+
 } // end namespace xdp
 
 #endif

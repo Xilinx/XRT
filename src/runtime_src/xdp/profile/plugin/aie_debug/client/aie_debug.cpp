@@ -80,7 +80,7 @@ namespace xdp {
       int col = (op->data[i].address >> 25) & 0x1F;
       int row = (op->data[i].address >> 20) & 0x1F;
       int reg = (op->data[i].address) & 0xFFFFF;
-      
+
       msg << "Debug tile (" << col << ", " << row << ") "
           << "hex address/values: " << std::hex << reg << " : "
           << output[i] << std::dec;
@@ -122,6 +122,7 @@ namespace xdp {
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_registers());
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
+    //{"",""...}
 
     unsigned int module = 0;
     for (auto const& kv : moduleTypes) {
@@ -144,7 +145,7 @@ namespace xdp {
   /****************************************************************************
    * Update device
    ***************************************************************************/
-  void AieDebug_WinImpl::updateDevice() 
+  void AieDebug_WinImpl::updateDevice()
   {
     // Do nothing for now
   }
@@ -152,7 +153,7 @@ namespace xdp {
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AieDebug_WinImpl::updateAIEDevice(void* handle) 
+  void AieDebug_WinImpl::updateAIEDevice(void* handle)
   {
     if (!xrt_core::config::get_aie_debug())
       return;
@@ -166,7 +167,7 @@ namespace xdp {
       auto configMetrics = metadata->getConfigMetricsVec(module);
       if (configMetrics.empty())
         continue;
-      
+
       XAie_ModuleType mod = getFalModuleType(module);
       auto name = moduleTypes[mod];
 
@@ -189,7 +190,7 @@ namespace xdp {
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
-  
+
         for (int i = 0; i < Regs.size(); i++) {
           op_debug_data.emplace_back(register_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20)});
           counterId++;

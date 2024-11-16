@@ -21,21 +21,45 @@ extern "C" {
 }
 
 namespace xdp {
+  class EdgeReadableTile;
 
   class AieDebug_EdgeImpl : public AieDebugImpl {
   public:
     AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
-    ~AieDebug_EdgeImpl() = default;
+    //~AieDebug_EdgeImpl() = default;
+    ~AieDebug_EdgeImpl();
     void updateDevice();
     void updateAIEDevice(void* handle);
     void poll(const uint32_t index, void* handle);
 
   private:
-    std::map<xdp::tile_type, std::vector<uint64_t>> debugAddresses;
 
+    std::vector<std::string> getSettingsVector(std::string settingsString);
+    std::map<module_type, std::vector<uint64_t>> parseMetrics();
+    std::vector<uint64_t> stringToRegList(std::string stringEntry, module_type t);
+
+    std::map<xdp::tile_type, std::vector<uint64_t>> debugAddresses; //TODO delete this
+    UsedRegisters* usedRegisters;
+    //std::vector<BaseReadableTile> debugTiles;
+    //std::map<xdp::tile_type, EdgeReadableTile*> debugTileMap; // TODO delete this unique pointer will take care of the deletion of all the pointers created
+    std::map<xdp::tile_type, std::unique_ptr<EdgeReadableTile>> debugTileMap;
     const std::vector<XAie_ModuleType> falModuleTypes = {
       XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
   };
+
+  class EdgeReadableTile: public  BaseReadableTile{
+  public:
+    EdgeReadableTile(int r, int c) {
+      row=r;
+      col=c;
+    }
+
+    void readValues(XAie_DevInst* aieDevInst){
+      int i=0;
+      for(auto& absoluteOffset : absoluteOffsets) {
+        XAie_Read32(aieDevInst, absoluteOffset, &values[i++]); }
+    }
+};
 
 } // end namespace xdp
 

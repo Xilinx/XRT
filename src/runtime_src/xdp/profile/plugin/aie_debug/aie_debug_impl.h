@@ -22,7 +22,7 @@
 
 namespace xdp {
 
-  // AIE debugging can be done in different ways depending on the platform. 
+  // AIE debugging can be done in different ways depending on the platform.
   class AieDebugImpl
   {
 
@@ -38,6 +38,7 @@ namespace xdp {
     virtual ~AieDebugImpl() {};
 
     virtual void updateDevice() = 0;
+    virtual void updateAIEDevice(void* handle)=0;
     virtual void poll(const uint32_t index, void* handle) = 0;
 
     const std::map<module_type, const char*> moduleTypes = {
