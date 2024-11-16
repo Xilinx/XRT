@@ -1061,6 +1061,9 @@ namespace xdp {
     XAie_Events counterEvent;
     pc->getCounterEvent(mod, counterEvent);
 
+    if (pc->start() != XAIE_OK)
+      return false;
+
     // performance counter event to use it later for broadcasting
     retCounterEvent = counterEvent;
     return true;
