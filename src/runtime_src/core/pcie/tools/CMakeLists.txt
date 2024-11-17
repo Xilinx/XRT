@@ -3,5 +3,7 @@
 #
 if(NOT WIN32)
   add_subdirectory(cloud-daemon)
-  add_subdirectory(xbflash.qspi)
+  if (NOT DEFINED NPU)
+    add_subdirectory(xbflash.qspi)
+  endif(NOT DEFINED NPU)
 endif(NOT WIN32)
