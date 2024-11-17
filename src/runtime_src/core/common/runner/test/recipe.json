@@ -1,0 +1,83 @@
+{
+  "header": {
+    "xclbin_path": "design.xclbin"
+  },
+  "resources": {
+    "buffers": [
+      {
+        "name": "wts",
+        "type": "input"
+      },
+      {
+        "name": "ifm",
+        "type": "input"
+      },
+      {
+        "name": "ifm_int",
+        "type": "internal",
+        "size": "1536"
+      },
+      {
+        "name": "ofm_int",
+        "type": "internal",
+        "size": "320"
+      },
+      {
+        "name": "ofm",
+        "type": "output"
+      }
+    ],
+    "cpus": [
+      {
+          "name": "convert_ifm",
+          "library_path": "cpulib"
+      },
+      {
+          "name": "convert_ofm",
+          "library_path": "cpulib"
+      }
+    ],
+    "kernels": [
+      {
+        "name": "k1",
+        "xclbin_kernel_name": "DPU",
+        "ctrlcode": "no-ctrl-packet.elf"
+      }
+    ]
+  },
+  "execution": {
+    "runs": [
+      {
+          "name": "convert_ifm",
+          "where": "cpu",
+          "arguments" : [
+              { "name": "ifm", "argidx": 0 },
+              { "name": "ifm_int", "argidx": 1 }
+          ]
+      },
+      {
+        "name": "k1",
+        "arguments" : [
+            { "name": "wts", "argidx": 4 },
+            { "name": "ifm_int", "argidx": 3 },
+            { "name": "ofm_int", "argidx": 5 }
+        ],
+        "constants": [
+            { "value": "3", "type": "int", "argidx": 0 },
+            { "value": "0", "type": "int", "argidx": 1 },
+            { "value": "0", "type": "int", "argidx": 2 },
+            { "value": "0", "type": "int", "argidx": 6 },
+            { "value": "0", "type": "int", "argidx": 7 }
+        ]
+      },
+      {
+          "name": "convert_ofm",
+          "where": "cpu",
+          "arguments" : [
+              { "name": "ofm_int", "argidx": 0 },
+              { "name": "ofm", "argidx": 1 }
+          ]
+      }
+    ]
+  }
+}

@@ -30,7 +30,6 @@ modernize-*,
 
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 User:            sonals
 CheckOptions:
@@ -124,6 +123,8 @@ CheckOptions:
     value:           llvm
   - key:             cert-oop54-cpp.WarnOnlyIfThisHasSuspiciousField
     value:           '0'
+  - key:             cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage
+    value:           '1'
   - key:             cppcoreguidelines-avoid-magic-numbers.IgnoredFloatingPointValues
     value:           '1.0;100.0;'
   - key:             cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
