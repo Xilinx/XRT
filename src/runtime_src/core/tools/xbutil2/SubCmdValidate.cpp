@@ -21,7 +21,6 @@
 #include "tools/common/tests/TestSCVersion.h"
 #include "tools/common/tests/TestVerify.h"
 #include "tools/common/tests/TestDMA.h"
-#include "tools/common/tests/TestIOPS.h"
 #include "tools/common/tests/TestBandwidthKernel.h"
 #include "tools/common/tests/Testp2p.h"
 #include "tools/common/tests/Testm2m.h"
@@ -94,7 +93,6 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestSCVersion>(),
   std::make_shared<TestVerify>(),
   std::make_shared<TestDMA>(),
-  std::make_shared<TestIOPS>(),
   std::make_shared<TestBandwidthKernel>(),
   std::make_shared<Testp2p>(),
   std::make_shared<Testm2m>(),
