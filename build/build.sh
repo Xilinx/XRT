@@ -90,7 +90,6 @@ usage()
 }
 
 clean=0
-ccache=0
 ci=0
 docs=0
 verbose=""
@@ -190,8 +189,8 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -ccache)
-            cmake_flags+=" -DRDI_CCACHE=1"
-            ccache=1
+            export CCACHE_DIR=${CCACHE_DIR:-/scratch/ccache/$USER}
+            cmake_flags+=" -DXRT_CCACHE=1"
             shift
             ;;
         -cppstd)
@@ -275,19 +274,6 @@ if [[ $clean == 1 ]]; then
     echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
     /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
-fi
-
-if [[ $ccache == 1 ]]; then
-    SRCROOT=`readlink -f $BUILDDIR/../src`
-    export RDI_ROOT=$SRCROOT
-    export RDI_BUILDROOT=$SRCROOT
-    export RDI_CCACHEROOT=/scratch/ccache/$USER
-    mkdir -p $RDI_CCACHEROOT
-    # Run cleanup script once a day
-    # Clean cache dir for stale files older than 30 days
-    if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
-        /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
-    fi
 fi
 
 if [[ ! -z $ertbsp ]]; then

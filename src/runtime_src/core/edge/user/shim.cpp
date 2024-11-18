@@ -1181,7 +1181,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR || buffer->m_header.m_actionMask & AM_LOAD_PDI);
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
-  auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+  auto force_program = xrt_core::config::get_force_program_xclbin() || buffer->m_header.m_actionMask & AM_LOAD_PDI;
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
 
   if (is_pr_platform)

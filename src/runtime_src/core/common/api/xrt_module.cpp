@@ -120,11 +120,13 @@ struct patcher
   };
 
   enum class buf_type {
-    ctrltext = 0,   // control code
-    ctrldata = 1,       // control packet
-    preempt_save = 2,   // preempt_save
+    ctrltext = 0,        // control code
+    ctrldata = 1,        // control packet
+    preempt_save = 2,    // preempt_save
     preempt_restore = 3, // preempt_restore
-    buf_type_count = 4   // total number of buf types
+    pdi = 4,             // pdi
+    ctrlpkt_pm = 5,      // preemption ctrl pkt
+    buf_type_count = 6   // total number of buf types
   };
 
   inline static const char*
@@ -133,7 +135,9 @@ struct patcher
     static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
                                                                                           ".ctrldata",
                                                                                           ".preempt_save",
-                                                                                          ".preempt_restore" };
+                                                                                          ".preempt_restore",
+                                                                                          ".pdi",
+                                                                                          ".ctrlpkt.pm"};
 
     return Section_Name_Array[static_cast<int>(bt)];
   }
@@ -218,7 +222,7 @@ struct patcher
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |                      // NOLINT
       ((static_cast<uint64_t>(bd_data_ptr[1])));
 
     base_address = base_address + patch + ddr_aie_addr_offset;
@@ -345,6 +349,18 @@ public:
 
   [[nodiscard]] virtual const control_packet&
   get_ctrlpkt() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual const std::vector<std::string>&
+  get_ctrlpkt_pm_dynsyms() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual const std::map<std::string, buf>&
+  get_ctrlpkt_pm_bufs() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -483,6 +499,9 @@ class module_elf : public module_impl
   bool m_restore_buf_exist = false;
   size_t m_scratch_pad_mem_size = 0;
 
+  std::vector<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
+  std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
+
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
   // section name, default to single column and page when nothing
@@ -565,6 +584,20 @@ class module_elf : public module_impl
     }
 
     return false;
+  }
+
+  // Extract ctrlpkt preemption buffers from ELF sections
+  // and store it in map with section name as key
+  void
+  initialize_ctrlpkt_pm_bufs(const ELFIO::elfio& elf)
+  {
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrlpkt_pm)) == std::string::npos)
+        continue;
+
+      m_ctrlpkt_pm_bufs[name].append_section_data(sec.get());
+    }
   }
 
   // Extract control code from ELF sections without assuming anything
@@ -684,6 +717,12 @@ class module_elf : public module_impl
 
         if (!m_scratch_pad_mem_size && (strcmp(symname, Scratch_Pad_Mem_Symbol) == 0)) {
             m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
+        }
+
+        static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
+        if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
+          // store ctrlpkt preemption symbols which is later used for patching instr buf
+          m_ctrlpkt_pm_dynsyms.emplace_back(symname);
         }
 
         // Get control code section referenced by the symbol, col, and page
@@ -855,6 +894,7 @@ public:
       if (m_save_buf_exist != m_restore_buf_exist)
         throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
+      initialize_ctrlpkt_pm_bufs(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
@@ -893,6 +933,18 @@ public:
   get_ctrlpkt() const override
   {
     return m_ctrl_packet;
+  }
+
+  [[nodiscard]] const std::vector<std::string>&
+  get_ctrlpkt_pm_dynsyms() const override
+  {
+    return m_ctrlpkt_pm_dynsyms;
+  }
+
+  [[nodiscard]] virtual const std::map<std::string, buf>&
+  get_ctrlpkt_pm_bufs() const override
+  {
+    return m_ctrlpkt_pm_bufs;
   }
 
   [[nodiscard]] size_t
@@ -967,6 +1019,11 @@ class module_sram : public module_impl
   xrt::bo m_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
+
+  // map of ctrlpkt preemption buffers
+  // key : dynamic symbol patch name of ctrlpkt-pm
+  // value : xrt::bo filled with corresponding section data
+  std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
 
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
@@ -1131,6 +1188,19 @@ class module_sram : public module_impl
     if (m_ctrlpkt_bo) {
       patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
+
+    // patch ctrlpkt pm buffers
+    for (const auto& dynsym : parent->get_ctrlpkt_pm_dynsyms()) {
+      // get xrt::bo corresponding to this dynsym to patch its address in instr bo
+      // convert sym name to sec name eg: ctrlpkt-pm-0 to .ctrlpkt.pm.0
+      std::string sec_name = "." + dynsym;
+      std::replace(sec_name.begin(), sec_name.end(), '-', '.');
+      auto bo_itr = m_ctrlpkt_pm_bos.find(sec_name);
+      if (bo_itr == m_ctrlpkt_pm_bos.end())
+        throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
+      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, patcher::buf_type::ctrltext);
+    }
+
     XRT_DEBUGF("<- module_sram::create_instr_buf()\n");
   }
 
@@ -1156,6 +1226,17 @@ class module_sram : public module_impl
         std::stringstream ss;
         ss << "dumped file " << dump_file_name;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+    }
+  }
+
+  void
+  create_ctrlpkt_pm_bufs(const module_impl* parent)
+  {
+    const auto& ctrlpkt_pm_info = parent->get_ctrlpkt_pm_bufs();
+
+    for (const auto& [key, buf] : ctrlpkt_pm_info) {
+      m_ctrlpkt_pm_bos[key] = xrt::ext::bo{ m_hwctx, buf.size() };
+      fill_bo_with_data(m_ctrlpkt_pm_bos[key], buf);
     }
   }
 
@@ -1366,9 +1447,10 @@ public:
     auto os_abi = m_parent.get()->get_os_abi();
 
     if (os_abi == Elf_Amd_Aie2p) {
-      // make sure to create control-packet buffer frist because we may
+      // make sure to create control-packet buffers first because we may
       // need to patch control-packet address to instruction buffer
       create_ctrlpkt_buf(m_parent.get());
+      create_ctrlpkt_pm_bufs(m_parent.get());
       create_instr_buf(m_parent.get());
       fill_bo_addresses();
     }
