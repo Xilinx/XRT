@@ -169,6 +169,9 @@
 #endif
 
 #if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
+#define RHEL_9_5_GE
+#endif
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 4)
 #define RHEL_9_4_GE
 #endif
