@@ -57,7 +57,10 @@ namespace xdp {
     void readValues(XAie_DevInst* aieDevInst){
       int i=0;
       for(auto& absoluteOffset : absoluteOffsets) {
-        XAie_Read32(aieDevInst, absoluteOffset, &values[i++]); }
+        //XAie_Read32(aieDevInst, absoluteOffset, &values[i++]);
+        uint32_t val = 0;
+        XAie_Read32(aieDevInst, absoluteOffset, &val);
+        values.push_back(val); }
     }
 };
 

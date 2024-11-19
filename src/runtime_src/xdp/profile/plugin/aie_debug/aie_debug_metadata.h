@@ -132,18 +132,27 @@ class AIE1UsedRegisters : public UsedRegisters {
  public:
   void populateProfileRegisters(){
  //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+    std::vector<uint64_t> profile_core_addresses={0x00031020,0x00031024,0x00031028,0x0003102c};
+    std::vector<uint64_t> profile_interface_addresses={0x0003ff00,0x0003ff04};
+    std::vector<uint64_t> profile_memory_addresses={0x00011000,0x00011008};
+    std::vector<uint64_t> profile_memory_tile_addresses={0x0};
+    core_addresses.insert(std::end(core_addresses), std::begin(profile_core_addresses), std::end(profile_core_addresses));
+    interface_addresses.insert(std::end(interface_addresses), std::begin(profile_interface_addresses), std::end(profile_interface_addresses));
+    memory_addresses.insert(std::end(memory_addresses), std::begin(profile_memory_addresses), std::end(profile_memory_addresses));
+    memory_tile_addresses.insert(std::end(memory_tile_addresses), std::begin(profile_memory_tile_addresses), std::end(profile_memory_tile_addresses));
   }
   void populateTraceRegisters(){
  //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+    std::vector<uint64_t> trace_core_addresses={0x00034500,0x00034504};
+    std::vector<uint64_t> trace_interface_addresses={0x0003ff00,0x0003ff04};
+    std::vector<uint64_t> trace_memory_addresses={0x00014050,0x00014060,0x00014070,0x00014080};
+    std::vector<uint64_t> trace_memory_tile_addresses={0x00011000};
+    core_addresses.insert(std::end(core_addresses), std::begin(trace_core_addresses), std::end(trace_core_addresses));
+    interface_addresses.insert(std::end(interface_addresses), std::begin(trace_interface_addresses), std::end(trace_interface_addresses));
+    memory_addresses.insert(std::end(memory_addresses), std::begin(trace_memory_addresses), std::end(trace_memory_addresses));
+    memory_tile_addresses.insert(std::end(memory_tile_addresses), std::begin(trace_memory_tile_addresses), std::end(trace_memory_tile_addresses));
   }
+
 
 };
 
@@ -151,7 +160,7 @@ class AIE2pUsedRegisters : public UsedRegisters {
  public:
   void populateProfileRegisters(){
  //populate the correct usedregisters
-    core_addresses={0x00031500};
+    core_addresses={0x00032500};
     interface_addresses={0x0003FF00};
     memory_addresses={0x00011000};
     memory_tile_addresses={0x00011000};

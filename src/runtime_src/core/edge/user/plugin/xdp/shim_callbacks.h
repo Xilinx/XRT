@@ -48,6 +48,7 @@ void update_device(void* handle)
 #ifndef __HWEM__
   hal::update_device(handle); //PL device offload
   aie::update_device(handle); //trace
+  //aie::dbg::update_device(handle); //debug
 #else
   hal::hw_emu::update_device(handle); //PL device offload
 #endif
@@ -85,6 +86,7 @@ void finish_flush_device(void* handle)
 {
 #ifndef __HWEM__
   aie::finish_flush_device(handle);
+  //aie::dbg::end_poll(handle);
 #endif
   aie::ctr::end_poll(handle);
   aie::dbg::end_poll(handle);
