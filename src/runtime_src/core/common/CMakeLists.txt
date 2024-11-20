@@ -3,6 +3,7 @@
 # Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(api)
 add_subdirectory(xdp)
+add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
@@ -62,12 +63,14 @@ target_include_directories(core_common_objects
 
 add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   )
 
 add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   )
