@@ -25,9 +25,8 @@
 #ifndef AIE2PS_REGISTERS_H_
 #define AIE2PS_REGISTERS_H_
 
-namespace aie2ps
-{
-	
+namespace aie2ps {
+
 // Register definitions for AIE2PS
 // ###################################
 

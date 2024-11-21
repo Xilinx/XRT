@@ -74,6 +74,9 @@ namespace xdp {
     if (hwGen==1){
         usedRegisters=new AIE1UsedRegisters();
     }
+    else if (hwGen==3){
+        usedRegisters=new AIE2UsedRegisters();
+    }
     else if (hwGen==4 || hwGen==8 || hwGen==9){
         usedRegisters=new AIE2pUsedRegisters();
     }
@@ -83,6 +86,7 @@ namespace xdp {
     else if (hwGen>= 40){
         usedRegisters=new AIE4UsedRegisters();
     }
+    usedRegisters->populateRegNameToValueMap();
   }
 
   /****************************************************************************
@@ -176,10 +180,18 @@ namespace xdp {
       {
         usedRegisters->populateAllRegisters();
       }
-    else{
-      std::stringstream msg;
-      msg << "Error Parsing Debug plugin Metric String. Please enter exact register address, or one of trace_config/profile_config/all. ";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    else {
+      //first dealing with specific register names
+      if(usedRegisters->regNametovalues.find(stringEntry) != usedRegisters->regNametovalues.end()) {
+        uint64_t tmpRedAddr = usedRegisters->regNametovalues[stringEntry];
+        listofRegisters.push_back(tmpRedAddr);
+      }
+      else {
+        std::stringstream msg;
+        msg << "Error Parsing Debug plugin Metric String. Please enter exact register address, register name, or either of trace_config/profile_config/all. ";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+      return listofRegisters;
     }
 
     if (t==module_type::core){

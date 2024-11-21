@@ -26,8 +26,7 @@
 #ifndef AIE1_REGISTERS_H_
 #define AIE1_REGISTERS_H_
 
-namespace aie1 
-{
+namespace aie1 {
 
 // Register definitions for AIE1
 // ###################################

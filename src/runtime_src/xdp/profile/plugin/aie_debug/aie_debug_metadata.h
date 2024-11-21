@@ -30,6 +30,9 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -120,8 +123,10 @@ class BaseReadableTile {
   std::vector<uint64_t> interface_addresses ;
   std::vector<uint64_t> memory_addresses;
   std::vector<uint64_t> memory_tile_addresses;
+  std::map<std::string, uint64_t> regNametovalues;
     virtual void populateProfileRegisters()=0;
     virtual void populateTraceRegisters()=0;
+    virtual void populateRegNameToValueMap()=0;
     void populateAllRegisters() {
       populateProfileRegisters();
       populateTraceRegisters();
@@ -152,7 +157,36 @@ class AIE1UsedRegisters : public UsedRegisters {
     memory_addresses.insert(std::end(memory_addresses), std::begin(trace_memory_addresses), std::end(trace_memory_addresses));
     memory_tile_addresses.insert(std::end(memory_tile_addresses), std::begin(trace_memory_tile_addresses), std::end(trace_memory_tile_addresses));
   }
+  void populateRegNameToValueMap(){
+    //some implementation
+    regNametovalues=  {
+#include "xdp/profile/plugin/aie_debug/generations/pythonlogfile1.txt"
+                      };
+  }
 
+};
+
+class AIE2UsedRegisters : public UsedRegisters {
+ public:
+  void populateProfileRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00032500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateTraceRegisters(){
+ //populate the correct usedregisters
+    core_addresses={0x00031500};
+    interface_addresses={0x0003FF00};
+    memory_addresses={0x00011000};
+    memory_tile_addresses={0x00011000};
+  }
+  void populateRegNameToValueMap(){
+    regNametovalues=  {
+#include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2.txt"
+                      };
+  }
 
 };
 
@@ -172,8 +206,16 @@ class AIE2pUsedRegisters : public UsedRegisters {
     memory_addresses={0x00011000};
     memory_tile_addresses={0x00011000};
   }
+  void populateRegNameToValueMap(){
+    //Dont know which ones are exactly for AIE2p. Populating with AIE2 ones for now
+    //TODO: populate correct registers with python script
+    regNametovalues=  {
+#include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2.txt"
+                      };
+  }
 
 };
+
 class AIE2psUsedRegisters : public UsedRegisters {
  public:
   void populateProfileRegisters(){
@@ -189,6 +231,11 @@ class AIE2psUsedRegisters : public UsedRegisters {
     interface_addresses={0x0003FF00};
     memory_addresses={0x00011000};
     memory_tile_addresses={0x00011000};
+  }
+  void populateRegNameToValueMap(){
+    regNametovalues=  {
+#include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2ps.txt"
+                      };
   }
 
 };
@@ -208,6 +255,11 @@ class AIE4UsedRegisters : public UsedRegisters {
     interface_addresses={0x0003FF00};
     memory_addresses={0x00011000};
     memory_tile_addresses={0x00011000};
+  }
+  void populateRegNameToValueMap(){
+    //some implementation
+    //dummy one for now
+    regNametovalues=  { {"None",aie2ps::cm_core_bmll0_part1}};
   }
 
 };
