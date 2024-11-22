@@ -624,6 +624,7 @@ namespace xdp {
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
+            XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
           }
 
           // Convert enums to physical event IDs for reporting purposes
@@ -901,7 +902,7 @@ namespace xdp {
 
     // Set up the combo event with FSM type using 4 events state machine
     XAie_Events eventA = (resetEvent != XAIE_EVENT_NONE_CORE) ? resetEvent : XAIE_EVENT_USER_EVENT_1_PL;
-    XAie_Events eventB = startEvent;
+    XAie_Events eventB = XAIE_EVENT_USER_EVENT_1_PL;
     XAie_Events eventC = startEvent;
     XAie_Events eventD = endEvent;
 
