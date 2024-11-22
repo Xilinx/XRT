@@ -112,7 +112,8 @@ public:
    * @var svm
    *  Create a BO for SVM (supported on specific platforms only)
    * @var device_memory
-   *  Create a BO with a carveout memory buffer. It is an extra separate pool of memory that is assigned for NPU use. 
+   *  Create a BO from device memory, which is a separate pool of
+   *  memory that is supported on specific platforms only.
    * 
    * The flags used by xrt::bo are compatible with XCL style
    * flags as define in ``xrt_mem.h``
