@@ -623,6 +623,9 @@ namespace xdp {
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
+            //      to transition the FSM from Idle->State0->State1.
+            //      eventC = Port Running and eventD = stop event (counter event).
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
           }
