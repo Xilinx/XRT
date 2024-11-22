@@ -453,7 +453,7 @@ action_migrate_memobjects(size_t num, const cl_mem* memobjs, cl_mem_migration_fl
   throw_if_error();
   std::vector<cl_mem> mo(memobjs,memobjs+num);
 
-  return [mo,flags](xocl::event* ev) {
+  return [mo = std::move(mo), flags](xocl::event* ev) {
     XOCL_DEBUG(std::cout,"launching migrate DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();

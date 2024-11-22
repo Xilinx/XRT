@@ -263,7 +263,7 @@ public:
   }
 
   // Managed imported handle
-  bo_impl(device_type dev, xrt_core::shared_handle::export_handle ehdl)
+  bo_impl(const device_type& dev, xrt_core::shared_handle::export_handle ehdl)
     : bo_impl(dev, pid_type{0}, ehdl)
   {}
 

@@ -189,16 +189,16 @@ struct PrintfArg
     PrintfArg(int64_t val);
     PrintfArg(uint64_t val);
     PrintfArg(double val);
-    PrintfArg(std::vector<int8_t> vec);
-    PrintfArg(std::vector<uint8_t> vec);
-    PrintfArg(std::vector<int16_t> vec);
-    PrintfArg(std::vector<uint16_t> vec);
-    PrintfArg(std::vector<int32_t> vec);
-    PrintfArg(std::vector<uint32_t> vec);
-    PrintfArg(std::vector<int64_t> vec);
-    PrintfArg(std::vector<uint64_t> vec);
-    PrintfArg(std::vector<float> vec);
-    PrintfArg(std::vector<double> vec);
+    PrintfArg(const std::vector<int8_t>& vec);
+    PrintfArg(const std::vector<uint8_t>& vec);
+    PrintfArg(const std::vector<int16_t>& vec);
+    PrintfArg(const std::vector<uint16_t>& vec);
+    PrintfArg(const std::vector<int32_t>& vec);
+    PrintfArg(const std::vector<uint32_t>& vec);
+    PrintfArg(const std::vector<int64_t>& vec);
+    PrintfArg(const std::vector<uint64_t>& vec);
+    PrintfArg(const std::vector<float>& vec);
+    PrintfArg(const std::vector<double>& vec);
 
     TypeInfo m_typeInfo;
     void *ptr;
@@ -324,7 +324,7 @@ std::string convertArg(PrintfArg& arg, ConversionSpec& conversion);
 // Given format string and args, create and return a string (similar to sprintf). 
 // This exercises the round trip internal printf and is used to test breaking down
 // a format and printing arguments.
-std::string string_printf(const std::string& formatStr, std::vector<PrintfArg> args);
+std::string string_printf(const std::string& formatStr, const std::vector<PrintfArg>& args);
 
 // Throws an exception with the given error message. Put as a utility function 
 // because I am not sure on the exception throwing and error reporting standards
