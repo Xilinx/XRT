@@ -115,10 +115,14 @@ struct xcl_bo_flags
  * The use flag is for internal use only. A debug BO
  * is supported only on some platforms to communicate
  * data from driver / firmware back to user space.
+ * The flag `XRT_BO_USE_KMD`  indicates that the buffer 
+ * content can be shared with the kernel mode driver.
+ * This flag controls how the shim level constructs the 
+ * allocation for the buffer.
  */
 #define XRT_BO_USE_NORMAL 0
 #define XRT_BO_USE_DEBUG  1
-#define XRT_BO_USE_KMD    2
+#define XRT_BO_USE_KMD    2 
 
 /**
  * XRT Native BO flags
