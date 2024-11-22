@@ -3,7 +3,7 @@
 #
 if(NOT WIN32)
   add_subdirectory(cloud-daemon)
-  if (NOT DEFINED NPU)
+  if (XRT_DKMS_ALVEO STREQUAL "ON")
     add_subdirectory(xbflash.qspi)
-  endif(NOT DEFINED NPU)
+  endif()
 endif(NOT WIN32)

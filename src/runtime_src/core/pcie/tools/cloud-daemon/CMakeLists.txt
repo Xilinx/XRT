@@ -80,8 +80,8 @@ install (FILES ${XRT_HEADER_SRC}
   COMPONENT ${XRT_DEV_COMPONENT}
 )        
 
-if (NOT DEFINED NPU)
+if (XRT_DKMS_ALVEO STREQUAL "ON")
   add_subdirectory(aws)
   add_subdirectory(azure)
   add_subdirectory(container)
-endif(NOT DEFINED NPU)
+endif()
