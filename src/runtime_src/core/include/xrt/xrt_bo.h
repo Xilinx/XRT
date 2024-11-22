@@ -117,12 +117,13 @@ public:
    */
   enum class flags : uint32_t
   {
-    normal      = 0,
-    cacheable   = XRT_BO_FLAGS_CACHEABLE,
-    device_only = XRT_BO_FLAGS_DEV_ONLY,
-    host_only   = XRT_BO_FLAGS_HOST_ONLY,
-    p2p         = XRT_BO_FLAGS_P2P,
-    svm         = XRT_BO_FLAGS_SVM,
+    normal        = 0,
+    cacheable     = XRT_BO_FLAGS_CACHEABLE,
+    device_only   = XRT_BO_FLAGS_DEV_ONLY,
+    host_only     = XRT_BO_FLAGS_HOST_ONLY,
+    p2p           = XRT_BO_FLAGS_P2P,
+    svm           = XRT_BO_FLAGS_SVM,
+    device_memory = XRT_BO_FLAGS_CARVEOUT,
   };
 
 #ifdef _WIN32

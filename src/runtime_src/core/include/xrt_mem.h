@@ -70,8 +70,8 @@ struct xcl_bo_flags
       // extension
       uint32_t access : 2;  // [33-32]
       uint32_t dir    : 2;  // [35-34]
-      uint32_t use    : 1;  // [36]
-      uint32_t unused : 27; // [63-35]
+      uint32_t use    : 2;  // [37-36]
+      uint32_t unused : 26; // [63-38]
     };
   };
 };
@@ -118,6 +118,7 @@ struct xcl_bo_flags
  */
 #define XRT_BO_USE_NORMAL 0
 #define XRT_BO_USE_DEBUG  1
+#define XRT_BO_USE_KMD    2
 
 /**
  * XRT Native BO flags
@@ -130,6 +131,7 @@ struct xcl_bo_flags
 #define XRT_BO_FLAGS_HOST_ONLY XCL_BO_FLAGS_HOST_ONLY
 #define XRT_BO_FLAGS_P2P       XCL_BO_FLAGS_P2P
 #define XRT_BO_FLAGS_SVM       XCL_BO_FLAGS_SVM
+#define XRT_BO_FLAGS_CARVEOUT  XCL_BO_FLAGS_KERNBUF
 
 /**
  * This is the legacy usage of XCL DDR Flags.
