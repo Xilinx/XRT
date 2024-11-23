@@ -197,12 +197,6 @@ namespace xdp {
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId,std::move(std::make_unique<HalDevice>(handle)), handle);
-      {
-        std::string deviceName = util::getDeviceName(handle);
-        if(deviceName != "") {
-          (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
-        }
-      }
     }
 
     PLDeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
