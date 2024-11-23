@@ -204,7 +204,7 @@ class recipe
     read_xclbin(const boost::property_tree::ptree& pt, const artifacts::repo& repo)
     {
       auto path = pt.get<std::string>("xclbin_path");
-      auto data = repo.get(path);
+      auto& data = repo.get(path);
       return xrt::xclbin{data};
     }
 
@@ -551,7 +551,7 @@ class recipe
           , m_argidx{pt.get<int>("argidx")}
           , m_xrt_bo{create_xrt_bo(m_buffer, m_offset, m_size)}
         {
-          XRT_DEBUGF("recipe::execution::run::argument(%s, %d, %d, %d) bound(%s)\n",
+          XRT_DEBUGF("recipe::execution::run::argument(%s, %lu, %lu, %d) bound(%s)\n",
                      m_buffer.get_name().c_str(), m_offset, m_size, m_argidx, m_xrt_bo ? "true" : "false");
         }
 

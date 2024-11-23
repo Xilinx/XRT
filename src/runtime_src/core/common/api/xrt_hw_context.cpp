@@ -64,15 +64,20 @@ public:
     // This trace point measures the time to tear down a hw context on the device
     XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
 
-    // finish_flush_device should only be called when the underlying 
-    // hw_context_impl is destroyed. The xdp::update_device cannot exist
-    // in the hw_context_impl constructor because an existing
-    // shared pointer must already exist to call get_shared_ptr(),
-    // which is not true at that time.
-    xrt_core::xdp::finish_flush_device(this);
-
-    // Reset within scope of dtor for trace point to measure time to reset
-    m_hdl.reset(); 
+    try {
+      // finish_flush_device should only be called when the underlying 
+      // hw_context_impl is destroyed. The xdp::update_device cannot exist
+      // in the hw_context_impl constructor because an existing
+      // shared pointer must already exist to call get_shared_ptr(),
+      // which is not true at that time.
+      xrt_core::xdp::finish_flush_device(this);
+      
+      // Reset within scope of dtor for trace point to measure time to reset
+      m_hdl.reset();
+    }
+    catch (...) {
+      // ignore, dtor cannot throw
+    }
   }
 
   hw_context_impl() = delete;

@@ -964,7 +964,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
     const std::string port2 = port2Name ? port2Name : "";
     auto hdl = event->start(option, port1, port2, value);
     if (hdl != xrt::aie::profiling_impl::invalid_handle) {
-      profiling_cache[hdl] = event;
+      profiling_cache[hdl] = std::move(event);
       return hdl;
     }
     else

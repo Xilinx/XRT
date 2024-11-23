@@ -502,6 +502,8 @@ class ip_context
       // collect the memory connections for each IP argument
       for (const auto& arg : ip.get_args()) {
         auto argidx = arg.get_index();
+        if (argidx == xrt_core::xclbin::kernel_argument::no_index)
+          throw xrt_core::error("Invalid kernel argument index in xclbin");
 
         for (const auto& mem : arg.get_mems()) {
           auto memidx = mem.get_index();
@@ -587,7 +589,7 @@ public:
     return ipctx;
   }
 
-  [[nodiscard]] access_mode
+  access_mode
   get_access_mode() const
   {
     return cu_access_mode(m_hwctx.get_mode());
@@ -598,31 +600,31 @@ public:
   close()
   {}
 
-  [[nodiscard]] size_t
+  size_t
   get_size() const
   {
     return m_size;
   }
 
-  [[nodiscard]] uint64_t
+  uint64_t
   get_address() const
   {
     return m_address;
   }
 
-  [[nodiscard]] xrt_core::cuidx_type
+  xrt_core::cuidx_type
   get_index() const
   {
     return m_idx;
   }
 
-  [[nodiscard]] unsigned int
+  unsigned int
   get_cuidx() const
   {
     return m_idx.domain_index; // index used for execution cumask
   }
 
-  [[nodiscard]] slot_id
+  slot_id
   get_slot() const
   {
     auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
@@ -639,7 +641,7 @@ public:
   // Get default memory bank for argument at specified index The
   // default memory bank is the connection with the highest group
   // connectivity index
-  [[nodiscard]] int32_t
+  int32_t
   arg_memidx(size_t argidx) const
   {
     return m_args.get_arg_memidx(argidx);
