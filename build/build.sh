@@ -58,7 +58,7 @@ usage()
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
-    echo "[-npu]                      Build for NPU only. Disable bundling of Alveo Linux drivers. Do not treat missing ERT FW as a build error. Compile XDP plugins for NPU."
+    echo "[-npu]                      Build for NPU only, implies -noert and disables bundling of Alveo Linux drivers"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
     echo "[-pskernel]                 Enable building of POC ps kernel"
@@ -160,7 +160,7 @@ while [ $# -gt 0 ]; do
 	    alveo=0
 	    noert=1
 	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
-	    cmake_flags+=" -DNPU=1"
+	    cmake_flags+=" -DXRT_NPU=1"
             ;;
         -opt)
             dbg=0
@@ -190,6 +190,7 @@ while [ $# -gt 0 ]; do
             ;;
         -ccache)
             export CCACHE_DIR=${CCACHE_DIR:-/scratch/ccache/$USER}
+            mkdir -p $CCACHE_DIR
             cmake_flags+=" -DXRT_CCACHE=1"
             shift
             ;;
@@ -262,8 +263,10 @@ cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 # set CMAKE_INSTALL_PREFIX
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
+# Set CMake variable indicating build for Alveo
+# Specifying '-npu' disables Alveo
 if [[ $alveo == 1 ]]; then
-    cmake_flags+=" -DXRT_DKMS_ALVEO=ON"
+    cmake_flags+=" -DXRT_ALVEO=1"
 fi
 
 here=$PWD

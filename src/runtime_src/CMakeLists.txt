@@ -36,7 +36,8 @@ xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
 xrt_add_subdirectory(xrt)
 
-if (XRT_DKMS_ALVEO STREQUAL "ON")
+if (XRT_ALVEO)
+  # Enable building of ERT firmware for Alveo
   xrt_add_subdirectory(ert)
 endif()
 
