@@ -348,7 +348,10 @@ namespace xdp {
     std::string destGraphPort;
 
     GraphPortPair() = default;
-    GraphPortPair(std::string g1, std::string p1, std::string g2, std::string p2):
+    GraphPortPair(const std::string& g1,
+                  const std::string& p1,
+                  const std::string& g2,
+                  const std::string& p2) :
                   srcGraphName(g1), srcGraphPort(p1), destGraphName(g2), destGraphPort(p2) {}
   };
 
