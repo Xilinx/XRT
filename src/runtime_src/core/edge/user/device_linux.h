@@ -91,6 +91,9 @@ public:
   virtual void
   wait_ip_interrupt(xclInterruptNotifyHandle);
 
+  virtual std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout);
+
   virtual std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,
                     const xrt::hw_context::cfg_param_type& cfg_param,
