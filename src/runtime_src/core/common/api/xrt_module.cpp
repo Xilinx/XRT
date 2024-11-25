@@ -817,7 +817,11 @@ class module_elf : public module_impl
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+        std::string key_string = generate_key_string(argnm, buf_type);
+        if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{ctrlcode_offset, 0, 0});
+        else
+          arg2patcher.emplace(std::move(key_string), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
       }
     }
 
