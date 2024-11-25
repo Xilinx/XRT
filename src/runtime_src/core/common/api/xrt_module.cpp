@@ -818,6 +818,14 @@ class module_elf : public module_impl
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
         std::string key_string = generate_key_string(argnm, buf_type);
+
+	// - One arg may need to be patched at multiple offsets of control code
+	// - arg2patcher map contains a key & value pair of arg & patcher object
+	// - patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
+	// - this vector size would be equal to number of places which needs patching
+	// - On first occurrence of arg, Create a new patcher object and
+	// - Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
+	// - On all further occurences of arg, add patch_info structure to existing vector
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{ctrlcode_offset, 0, 0});
         else
