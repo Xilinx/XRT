@@ -1118,8 +1118,8 @@ namespace xdp {
       }
 
       // Update the latencyConfigMap to store the complete config.
-      latencyConfigMap[tileSrc[0]]  = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true, g1, p1, g2, p2);
-      latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2);
+      latencyConfigMap[tileSrc[0]]  = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true, g1, p1, g2, p2));
+      latencyConfigMap[tileDest[0]] = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2));
 
       // Also update the common configMetrics 
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;

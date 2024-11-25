@@ -2367,7 +2367,7 @@ namespace xdp {
     // Following functions require configInfo to be created first.
     if (readAIEdata)
       setAIEClockRateMHz(deviceId, xrtXclbin);
-    initializeProfileMonitors(devInfo, xrtXclbin);
+    initializeProfileMonitors(devInfo, std::move(xrtXclbin));
 
     devInfo->isReady = true;
 
