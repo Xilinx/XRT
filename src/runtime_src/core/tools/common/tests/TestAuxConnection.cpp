@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestAuxConnection.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -38,16 +39,16 @@ TestAuxConnection::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   if (!auxDevice) {
-      logger(ptree, "Details", "Aux power connector is not available on this board");
-      ptree.put("status", test_token_skipped);
+      XBValidateUtils::logger(ptree, "Details", "Aux power connector is not available on this board");
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return ptree;
   }
 
   //check aux cable if board u200, u250, u280
   if (max_power == 0) {
-    logger(ptree, "Warning", "Aux power is not connected");
-    logger(ptree, "Warning", "Device is not stable for heavy acceleration tasks");
+    XBValidateUtils::logger(ptree, "Warning", "Aux power is not connected");
+    XBValidateUtils::logger(ptree, "Warning", "Device is not stable for heavy acceleration tasks");
   }
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

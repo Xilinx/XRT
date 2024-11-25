@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestCmdChainLatency.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -30,9 +31,9 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
 
@@ -41,8 +42,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -58,8 +59,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
@@ -75,8 +76,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   }
   catch (const std::exception& )
   {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -124,8 +125,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of commands: %f") % (itr_count*run_count)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of commands: %f") % (itr_count*run_count)));
   }
 
   // Start via runlist
@@ -139,8 +140,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
       runlist.execute();
     }
     catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
 
@@ -148,8 +149,8 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
       runlist.wait();
     }
     catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
@@ -159,7 +160,7 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   // Calculate end-to-end latency of one job execution
   const double latency = (elapsedSecs / (itr_count*run_count)) * 1000000; //convert s to us
 
-  logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
-  ptree.put("status", test_token_passed);
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

@@ -36,9 +36,9 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
 
@@ -47,8 +47,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -64,8 +64,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
@@ -80,13 +80,13 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   } 
   catch (const std::exception& )
   {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
@@ -95,8 +95,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -118,8 +118,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) { 
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: %f GB") % buffer_size_gb));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f GB") % buffer_size_gb));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -130,8 +130,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
       run.wait2();
     }
     catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
@@ -143,7 +143,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   for (size_t i = 0; i < word_count; i++) {
     if (ofm_mapped[i] != ifm_mapped[i]) {
       auto msg = boost::str(boost::format("Data mismatch at out buffer[%d]") % i);
-      logger(ptree, "Error", msg);
+      XBValidateUtils::logger(ptree, "Error", msg);
       return ptree;
     }
   }
@@ -154,9 +154,9 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   double bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
 
   if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % elapsedSecs));
-  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: %.1f GB/s") % bandwidth));
-  ptree.put("status", test_token_passed);
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % elapsedSecs));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: %.1f GB/s") % bandwidth));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
 }

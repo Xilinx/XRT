@@ -21,13 +21,10 @@
 #include "tools/common/tests/TestSCVersion.h"
 #include "tools/common/tests/TestVerify.h"
 #include "tools/common/tests/TestDMA.h"
-#include "tools/common/tests/TestIOPS.h"
 #include "tools/common/tests/TestBandwidthKernel.h"
 #include "tools/common/tests/Testp2p.h"
 #include "tools/common/tests/Testm2m.h"
 #include "tools/common/tests/TestHostMemBandwidthKernel.h"
-#include "tools/common/tests/TestBist.h"
-#include "tools/common/tests/TestVcuKernel.h"
 #include "tools/common/tests/TestAiePl.h"
 #include "tools/common/tests/TestAiePs.h"
 #include "tools/common/tests/TestPsPlVerify.h"
@@ -96,13 +93,10 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestSCVersion>(),
   std::make_shared<TestVerify>(),
   std::make_shared<TestDMA>(),
-  std::make_shared<TestIOPS>(),
   std::make_shared<TestBandwidthKernel>(),
   std::make_shared<Testp2p>(),
   std::make_shared<Testm2m>(),
   std::make_shared<TestHostMemBandwidthKernel>(),
-  std::make_shared<TestBist>(),
-  std::make_shared<TestVcuKernel>(),
   std::make_shared<TestAiePl>(),
   std::make_shared<TestAiePs>(),
   std::make_shared<TestPsPlVerify>(),
