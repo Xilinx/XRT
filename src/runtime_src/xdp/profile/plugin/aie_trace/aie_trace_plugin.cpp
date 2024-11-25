@@ -127,10 +127,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #else
   // Update the static database with information from xclbin
   (db->getStaticInfo()).updateDevice(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
-  std::string deviceName = util::getDeviceName(handle);
-  if (deviceName != "")
-    (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
-
 #endif
 
   // Metadata depends on static information from the database
