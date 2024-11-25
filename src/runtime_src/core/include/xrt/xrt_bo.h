@@ -112,8 +112,9 @@ public:
    * @var svm
    *  Create a BO for SVM (supported on specific platforms only)
    * @var carveout
-   *  Create a BO from a special memory pool dedicated to the device.
-   *  For AMD Ryzen NPU this memory is allocated from the host memory carveout pool.
+   *  Create a BO from a reserved memory pool. Supported for specific
+   *  platforms only. For AMD Ryzen NPU this memory is allocated from
+   *  a host memory carveout pool.
    * 
    * The flags used by xrt::bo are compatible with XCL style
    * flags as define in ``xrt_mem.h``
