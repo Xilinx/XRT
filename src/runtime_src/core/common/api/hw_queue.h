@@ -38,11 +38,13 @@ public:
   hw_queue() = default;
 
   // Construct from hwctx
+  explicit
   hw_queue(const xrt::hw_context& hwctx);
 
   // Legacy construction for internal support of command execution
   // that is not tied to kernel execution, .e.g for copy_bo_with_kdma
   XRT_CORE_COMMON_EXPORT
+  explicit
   hw_queue(const xrt_core::device* device);
 
   // Start a command and manage its execution by monitoring

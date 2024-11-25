@@ -241,10 +241,9 @@ update_cu_info()
     // It assumes that m_xclbin is the single xclbin and that
     // there is only one default slot with number 0.
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
-    auto& cu2idx = m_cu2idx[0u]; // default slot 0
     if (ip_layout != nullptr) {
       m_cus = xclbin::get_cus(ip_layout);
-      cu2idx = xclbin::get_cu_indices(ip_layout);
+      m_cu2idx[0u] = xclbin::get_cu_indices(ip_layout); // default slot 0
     }
   }
 }

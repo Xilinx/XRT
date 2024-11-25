@@ -880,7 +880,7 @@ public:
 
   public:
     /**
-     * iterator - Default constructor from implmentation
+     * iterator - Converting default constructor from implmentation
      */
     iterator(std::shared_ptr<iterator_impl> handle)
       : detail::pimpl<iterator_impl>(std::move(handle))

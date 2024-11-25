@@ -54,11 +54,12 @@ class queue
     {
       Callable m_held;
 
+      explicit
       task_holder(Callable&& t)
         : m_held(std::move(t))
       {}
 
-      void execute()
+      void execute() override
       {
         m_held();
       }
@@ -122,11 +123,12 @@ public:
     {
       std::shared_future<ValueType> m_held;
 
+      explicit
       event_holder(std::shared_future<ValueType>&& e)
         : m_held(std::move(e))
       {}
 
-      void wait() const
+      void wait() const override
       {
         m_held.wait();
       }
