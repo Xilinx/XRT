@@ -111,22 +111,22 @@ public:
    *  Create a BO for peer-to-peer use
    * @var svm
    *  Create a BO for SVM (supported on specific platforms only)
-   * @var device_memory
-   *  Create a BO from device memory, which is a separate pool of
-   *  memory that is supported on specific platforms only.
+   * @var carveout
+   *  Create a BO from a special memory pool dedicated to the device.
+   *  For AMD Ryzen NPU this memory is allocated from the host memory carveout pool.
    * 
    * The flags used by xrt::bo are compatible with XCL style
    * flags as define in ``xrt_mem.h``
    */
   enum class flags : uint32_t
   {
-    normal        = 0,
-    cacheable     = XRT_BO_FLAGS_CACHEABLE,
-    device_only   = XRT_BO_FLAGS_DEV_ONLY,
-    host_only     = XRT_BO_FLAGS_HOST_ONLY,
-    p2p           = XRT_BO_FLAGS_P2P,
-    svm           = XRT_BO_FLAGS_SVM,
-    device_memory = XRT_BO_FLAGS_CARVEOUT,
+    normal       = 0,
+    cacheable    = XRT_BO_FLAGS_CACHEABLE,
+    device_only  = XRT_BO_FLAGS_DEV_ONLY,
+    host_only    = XRT_BO_FLAGS_HOST_ONLY,
+    p2p          = XRT_BO_FLAGS_P2P,
+    svm          = XRT_BO_FLAGS_SVM,
+    carveout     = XRT_BO_FLAGS_CARVEOUT,
   };
 
 #ifdef _WIN32
