@@ -623,6 +623,10 @@ namespace xdp {
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
+            //      to transition the FSM from Idle->State0->State1.
+            //      eventC = Port Running and eventD = stop event (counter event).
+            XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
           }
 
@@ -901,7 +905,7 @@ namespace xdp {
 
     // Set up the combo event with FSM type using 4 events state machine
     XAie_Events eventA = (resetEvent != XAIE_EVENT_NONE_CORE) ? resetEvent : XAIE_EVENT_USER_EVENT_1_PL;
-    XAie_Events eventB = startEvent;
+    XAie_Events eventB = XAIE_EVENT_USER_EVENT_1_PL;
     XAie_Events eventC = startEvent;
     XAie_Events eventD = endEvent;
 
@@ -1060,6 +1064,9 @@ namespace xdp {
 
     XAie_Events counterEvent;
     pc->getCounterEvent(mod, counterEvent);
+
+    if (pc->start() != XAIE_OK)
+      return false;
 
     // performance counter event to use it later for broadcasting
     retCounterEvent = counterEvent;
