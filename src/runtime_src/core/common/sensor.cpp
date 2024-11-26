@@ -157,9 +157,8 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& tmp : voltage) {
-    auto desc = tmp.label;
-    pt.put("id", desc);
-    pt.put("description", desc);
+    pt.put("id", tmp.label);
+    pt.put("description", tmp.label);
     /*
      * Use below calculation for sensor values:
      * actual sensor value = sensor_value * (10 ^ (unit_modifier))

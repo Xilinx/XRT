@@ -1463,7 +1463,7 @@ bo::
 size() const
 {
   return xdp::native::profiling_wrapper("xrt::bo::size", [this]{
-    return handle->get_size();
+    return handle ? handle->get_size() : 0;
   }) ;
 }
 

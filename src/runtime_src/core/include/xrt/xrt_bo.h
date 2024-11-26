@@ -67,6 +67,12 @@ struct pid_type { pid_t pid; };
 class device;
 class hw_context;
 class bo_impl;
+/*!
+ * @class bo
+ * 
+ * @brief
+ * xrt::bo represents a buffer object that can be used as kernel argument
+ */
 class bo
 {
 public:
@@ -138,6 +144,12 @@ public:
 
   /**
    * bo() - Constructor for empty bo
+   *
+   * A default constructed bo can be assigned to and can be used in a
+   * Boolean check along with comparison.  
+   *
+   * Unless otherwise noted, it is undefined behavior to use xrt::bo
+   * APIs on a default constructed object.
    */
   bo()
   {}
@@ -469,6 +481,8 @@ public:
    *
    * @return
    *  Size of buffer in bytes
+   *
+   * Returns 0 for a default constructed xrt::bo.
    */
   XCL_DRIVER_DLLESPEC
   size_t
@@ -498,7 +512,7 @@ public:
    * get_flags() - Get the flags with which this buffer was constructed
    *
    * @return
-   *  The xrt::bo::Flgas used when the buffer was contructed
+   *  The xrt::bo::flags used when the buffer was contructed
    */
   XCL_DRIVER_DLLESPEC
   flags

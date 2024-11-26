@@ -34,6 +34,7 @@ public:
   elf() = default;
 
   XRT_API_EXPORT
+  explicit
   elf(const std::string& fnm);
 
   /**
@@ -44,6 +45,7 @@ public:
    *
    */
   XRT_API_EXPORT
+  explicit
   elf(std::istream& stream);
 
   XRT_API_EXPORT
