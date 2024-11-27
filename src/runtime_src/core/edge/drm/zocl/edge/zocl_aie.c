@@ -302,6 +302,8 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	/* only aie-1 supports resources */
 	if (hw_gen == 1)
 		req.meta_data = (u64)aie_res;
+	else
+		req.meta_data = 0;
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
