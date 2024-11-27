@@ -48,7 +48,7 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-    auto retVal = validate_binary_file(path);
+    auto retVal = XBValidateUtils::validate_binary_file(path);
     if (retVal == EOPNOTSUPP) {
       ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
@@ -58,7 +58,7 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
   // Load ps kernel onto device
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   if (retVal == EOPNOTSUPP) {
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
