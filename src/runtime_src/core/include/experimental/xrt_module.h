@@ -56,6 +56,7 @@ public:
    * The constructor retains ownership of the elf object.
    */
   XRT_API_EXPORT
+  explicit
   module(const xrt::elf& elf);
 
   /**

@@ -3816,7 +3816,7 @@ add_callback(ert_cmd_state state,
   // the key. Note that the callback cannot pass *this (xrt::run) as
   // these objects are transient.
   auto key = handle.get();
-  handle->add_callback([=](ert_cmd_state state) { fcn(key, state, data); });
+  handle->add_callback([fn = std::move(fcn), key, data](ert_cmd_state state) { fn(key, state, data); });
 }
 
 ert_packet*

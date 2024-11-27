@@ -136,7 +136,7 @@ mac_addr_to_value(std::string mac_addr);
 
 XRT_CORE_COMMON_EXPORT
 std::string
-value_to_mac_addr(const uint64_t mac_addr_value);
+value_to_mac_addr(uint64_t mac_addr_value);
 
 XRT_CORE_COMMON_EXPORT
 int

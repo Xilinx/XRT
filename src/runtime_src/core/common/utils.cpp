@@ -317,7 +317,7 @@ mac_addr_to_value(std::string mac_addr)
 }
 
 std::string
-value_to_mac_addr(const uint64_t mac_addr_value)
+value_to_mac_addr(uint64_t mac_addr_value)
 {
   // Any bits higher than position 48 will be ignored
   // If any are set throw an error as they cannot be placed into the mac address

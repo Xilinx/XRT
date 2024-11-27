@@ -352,7 +352,7 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     auto mac_addr_first = xrt_core::device_query<xq::mac_addr_first>(device);
 
     // new flow
-    if (mac_contiguous_num!=0 && !mac_addr_first.empty()) {
+    if (mac_contiguous_num != 0 && !mac_addr_first.empty()) {
       // Convert the mac address into a number
       uint64_t mac_addr_first_value = xrt_core::utils::mac_addr_to_value(mac_addr_first);
 

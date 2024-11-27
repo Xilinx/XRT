@@ -90,6 +90,7 @@ public:
    * Throws is invariant per run object hwctx requirement is violated.
    */
   XRT_API_EXPORT
+  explicit
   runlist(const xrt::hw_context& hwctx);
 
   /**

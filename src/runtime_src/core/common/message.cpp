@@ -278,7 +278,7 @@ sendv(severity_level l, const char* tag, const char* format, va_list args)
   }
   ++len; //To include null terminator
   std::vector<char> buf(len, 0);
-  std::vsnprintf(buf.data(), len, format, args);
+  std::ignore = std::vsnprintf(buf.data(), len, format, args);
   send(l, tag, buf.data());
 }
 
