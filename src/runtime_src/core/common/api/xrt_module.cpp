@@ -29,6 +29,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
@@ -139,10 +140,10 @@ struct patcher
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
 
-  inline static const std::string&
+  inline static const std::string_view
   section_name_to_string(buf_type bt)
   {
-    static const std::array<std::string, static_cast<int>(buf_type::buf_type_count)> Section_Name_Array =
+    static constexpr std::array<std::string_view, static_cast<int>(buf_type::buf_type_count)> Section_Name_Array =
       { ".ctrltext",
         ".ctrldata",
         ".preempt_save",
@@ -747,7 +748,7 @@ class module_elf : public module_impl
                                  patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
                                  patcher::patch_info{ offset, add_end_higher_28bit, 0 };
 
-        std::string key_string = generate_key_string(argnm, buf_type);
+        auto key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
@@ -818,7 +819,7 @@ class module_elf : public module_impl
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
 
-        const std::string key_string = generate_key_string(argnm, buf_type);
+        auto key_string = generate_key_string(argnm, buf_type);
 
 	// One arg may need to be patched at multiple offsets of control code
 	// arg2patcher map contains a key & value pair of arg & patcher object
@@ -831,7 +832,7 @@ class module_elf : public module_impl
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{ctrlcode_offset, 0, 0});
         else
-          arg2patcher.emplace(key_string, patcher{symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{ctrlcode_offset, 0}}, buf_type});
       }
     }
 
@@ -841,7 +842,7 @@ class module_elf : public module_impl
   bool
   patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
   {
-    const std::string key_string = generate_key_string(argnm, type);
+    auto key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
     auto not_found_use_argument_name = (it == m_arg2patcher.end());
     if (not_found_use_argument_name) {// Search using index
