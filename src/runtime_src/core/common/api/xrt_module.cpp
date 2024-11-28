@@ -17,7 +17,6 @@
 #include "ert.h"
 #include "module_int.h"
 #include "core/common/debug.h"
-#include "core/common/error.h"
 
 #include <boost/format.hpp>
 #include <elfio/elfio.hpp>
@@ -30,6 +29,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
@@ -54,7 +54,7 @@ struct buf
   std::vector<uint8_t> m_data;
 
   void
-  append_section_data(ELFIO::section* sec)
+  append_section_data(const ELFIO::section* sec)
   {
     auto sz = sec->get_size();
     auto sdata = sec->get_data();
@@ -129,19 +129,6 @@ struct patcher
     buf_type_count = 6   // total number of buf types
   };
 
-  inline static const char*
-  section_name_to_string(buf_type bt)
-  {
-    static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
-                                                                                          ".ctrldata",
-                                                                                          ".preempt_save",
-                                                                                          ".preempt_restore",
-                                                                                          ".pdi",
-                                                                                          ".ctrlpkt.pm"};
-
-    return Section_Name_Array[static_cast<int>(bt)];
-  }
-
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
@@ -153,6 +140,20 @@ struct patcher
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
 
+  inline static const std::string_view
+  section_name_to_string(buf_type bt)
+  {
+    static constexpr std::array<std::string_view, static_cast<int>(buf_type::buf_type_count)> Section_Name_Array =
+      { ".ctrltext",
+        ".ctrldata",
+        ".preempt_save",
+        ".preempt_restore",
+        ".pdi",
+        ".ctrlpkt.pm"};
+
+    return Section_Name_Array[static_cast<int>(bt)];
+  }
+
   patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
     : m_buf_type(t)
     , m_symbol_type(type)
@@ -163,7 +164,7 @@ struct patcher
 // For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
 // To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
   void
-  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
+  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
   {
     if ((reinterpret_cast<uintptr_t>(data_to_patch) & 0x3) != 0)
       throw std::runtime_error("address is not 4 byte aligned for patch32");
@@ -174,7 +175,7 @@ struct patcher
   }
 
   void
-  patch57(uint32_t* bd_data_ptr, uint64_t patch)
+  patch57(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |                       // NOLINT
@@ -188,7 +189,7 @@ struct patcher
   }
 
   void
-  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
+  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
@@ -202,7 +203,7 @@ struct patcher
   }
 
   void
-  patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
+  patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
@@ -216,7 +217,7 @@ struct patcher
     bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
-  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
+  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
@@ -231,7 +232,7 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t new_value)
+  patch_it(uint8_t* base, uint64_t new_value)
   {
     for (auto item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
@@ -272,7 +273,7 @@ struct patcher
       throw std::runtime_error("Failure opening file " + filename + " for writing!");
 
     auto buf = bo.map<char*>();
-    ofs.write(buf, bo.size());
+    ofs.write(buf, static_cast<std::streamsize>(bo.size()));
   }
 
   XRT_CORE_UNUSED std::string
@@ -330,19 +331,19 @@ public:
   }
 
   [[nodiscard]] virtual const buf&
-      get_preempt_save() const
+  get_preempt_save() const
   {
       throw std::runtime_error("Not supported");
   }
 
   [[nodiscard]] virtual const buf&
-      get_preempt_restore() const
+  get_preempt_restore() const
   {
       throw std::runtime_error("Not supported");
   }
 
   [[nodiscard]] virtual size_t
-      get_scratch_pad_mem_size() const
+  get_scratch_pad_mem_size() const
   {
       throw std::runtime_error("Not supported");
   }
@@ -436,7 +437,7 @@ public:
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
+  patch_it(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -747,7 +748,7 @@ class module_elf : public module_impl
                                  patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
                                  patcher::patch_info{ offset, add_end_higher_28bit, 0 };
 
-        std::string key_string = generate_key_string(argnm, buf_type);
+        auto key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
@@ -817,7 +818,8 @@ class module_elf : public module_impl
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        std::string key_string = generate_key_string(argnm, buf_type);
+
+        auto key_string = generate_key_string(argnm, buf_type);
 
 	// One arg may need to be patched at multiple offsets of control code
 	// arg2patcher map contains a key & value pair of arg & patcher object
@@ -830,7 +832,7 @@ class module_elf : public module_impl
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{ctrlcode_offset, 0, 0});
         else
-          arg2patcher.emplace(std::move(key_string), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{ctrlcode_offset, 0}}, buf_type});
       }
     }
 
@@ -838,9 +840,9 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
+  patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
   {
-    const std::string key_string = generate_key_string(argnm, type);
+    auto key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
     auto not_found_use_argument_name = (it == m_arg2patcher.end());
     if (not_found_use_argument_name) {// Search using index
@@ -851,7 +853,7 @@ class module_elf : public module_impl
         return false;
     }
 
-    it->second.patch(base, patch);
+    it->second.patch_it(base, patch);
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
@@ -936,7 +938,7 @@ public:
       return m_restore_buf;
   }
 
-  [[nodiscard]] virtual size_t
+  [[nodiscard]] size_t
       get_scratch_pad_mem_size() const override
   {
       return m_scratch_pad_mem_size;
@@ -954,7 +956,7 @@ public:
     return m_ctrlpkt_pm_dynsyms;
   }
 
-  [[nodiscard]] virtual const std::map<std::string, buf>&
+  [[nodiscard]] const std::map<std::string, buf>&
   get_ctrlpkt_pm_bufs() const override
   {
     return m_ctrlpkt_pm_bufs;
@@ -1274,7 +1276,7 @@ class module_sram : public module_impl
     fill_instruction_buffer(m_buffer, data);
   }
 
-  virtual void
+  void
   patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
   {
     patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type);
@@ -1287,15 +1289,15 @@ class module_sram : public module_impl
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
-        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
+        if (m_parent->patch_it(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch_it(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
+    else if (m_parent->patch_it(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
       patched = true;
 
     if (patched) {
@@ -1307,7 +1309,7 @@ class module_sram : public module_impl
   void
   patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(bo.map<uint8_t*>(), argnm, index, value, type))
+    if (!m_parent->patch_it(bo.map<uint8_t*>(), argnm, index, value, type))
       return;
 
     m_dirty = true;
@@ -1324,7 +1326,7 @@ class module_sram : public module_impl
   {
     if (size > 8) // NOLINT
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
-    
+
     auto arg_value = *static_cast<const uint64_t*>(value);
     patch_value(argnm, index, arg_value);
   }
@@ -1484,7 +1486,7 @@ public:
     return fill_ert_aie2ps(payload);
   }
 
-  [[nodiscard]] virtual xrt::bo&
+  [[nodiscard]] xrt::bo&
       get_scratch_pad_mem() override
   {
       return m_scratch_pad_mem;
@@ -1561,7 +1563,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<st
 
   size_t index = 0;
   for (auto& [arg_name, arg_addr] : *args) {
-    if (!hdl->patch(ibuf, arg_name, index, arg_addr, patcher::buf_type::ctrltext))
+    if (!hdl->patch_it(ibuf, arg_name, index, arg_addr, patcher::buf_type::ctrltext))
       throw std::runtime_error{"Failed to patch " + arg_name};
     index++;
   }
