@@ -80,6 +80,38 @@ set_target_properties(xrt_coreutil PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   )
 
+################################################################
+# Define include directories and definitions needed by any target that
+# links with xrt_coreutil
+# BUILD_INTERFACE is for targets within XRT that link with xrt_coreutil
+# INSTALL_INTERFACE is for external targets that link XRT::xrt_coreutil
+target_include_directories(xrt_coreutil
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
+  )
+  
+target_include_directories(xrt_coreutil_static
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
+  )
+
+target_compile_definitions(xrt_coreutil_static
+  PUBLIC
+  $<BUILD_INTERFACE:XRT_STATIC_BUILD>
+  $<INSTALL_INTERFACE:XRT_STATIC_BUILD>
+  )
+
+# Linking with xrt_coreutil_static requires that applications link
+# with the same runtime library as xrt_coreutil_static
+if (WIN32)
+  target_compile_options(xrt_coreutil_static
+    PUBLIC
+    $<INSTALL_INTERFACE:/MT$<$<CONFIG:Debug>:d>>
+    )
+endif()
+
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
@@ -89,6 +121,7 @@ if (NOT WIN32)
   # system libraries
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
 endif()
+################################################################
 
 install(TARGETS xrt_coreutil
   EXPORT xrt-targets
