@@ -524,12 +524,12 @@ zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclb
 		}
 	}
 
-	/* TODO figure out the partition id and uid from xclbin or PDI */
+	/* TODO figure out the uid from xclbin or PDI */
 	req.partition_id = partition_id;
 	req.uid = 0;
 	req.meta_data = 0;
 
-	if (aie_res)
+	if (hw_gen == 1)
 		req.meta_data = (u64)aie_res;
 
 	if (slot->aie->aie_dev) {
