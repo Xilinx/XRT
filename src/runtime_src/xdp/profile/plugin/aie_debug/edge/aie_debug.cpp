@@ -87,6 +87,7 @@ namespace xdp {
         usedRegisters=new AIE4UsedRegisters();
     }
     usedRegisters->populateRegNameToValueMap();
+    usedRegisters->populateRegValueToNameMap();
   }
 
   /****************************************************************************
@@ -141,9 +142,12 @@ namespace xdp {
    for (auto& tileAddr : debugTileMap){
       xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! Reading values for all tiles ");
       tileAddr.second->readValues(aieDevInst);
-      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! PRINTING values for all tiles ");
-      tileAddr.second->printValues();
+      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! PRINTING values for all tiles in the writer");
+      tileAddr.second->printValues(deviceID);
+
    }
+
+
   }
 
   /****************************************************************************

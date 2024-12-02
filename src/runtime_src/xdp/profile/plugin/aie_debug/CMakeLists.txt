@@ -17,6 +17,8 @@ file(GLOB AIE_DEBUG_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/aie_debug/*.h"
   "${PROFILE_DIR}/plugin/aie_debug/*.cpp"
   "${PROFILE_DIR}/plugin/aie_debug/generations/*.h"
+  "${PROFILE_DIR}/writer/aie_debug/*.h"
+  "${PROFILE_DIR}/writer/aie_debug/*.cpp"
   "${IMPL_DIR}/*.h"
   "${IMPL_DIR}/*.cpp"
 )

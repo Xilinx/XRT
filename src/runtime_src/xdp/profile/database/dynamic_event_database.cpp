@@ -26,7 +26,7 @@
 #include <iostream>
 
 namespace xdp {
-  
+
   VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
     db(d), eventId(1)
   {
@@ -289,6 +289,27 @@ namespace xdp {
   {
     auto device_db = getDeviceDB(deviceId);
     return device_db->moveAIESamples();
+  }
+
+  void VPDynamicDatabase::addAIEDebugSample(uint64_t deviceId, uint64_t col,
+          uint64_t row, uint64_t rel, uint64_t abslt, uint64_t val)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    device_db->addAIEDebugSample(col,row,rel,abslt,val);
+  }
+
+  std::vector<xdp::aie::AIEDebugDataType>
+  VPDynamicDatabase::getAIEDebugSamples(uint64_t deviceId)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    return device_db->getAIEDebugSamples();
+  }
+
+  std::vector<xdp::aie::AIEDebugDataType>
+  VPDynamicDatabase::moveAIEDebugSamples(uint64_t deviceId)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    return device_db->moveAIEDebugSamples();
   }
 
   void VPDynamicDatabase::addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,

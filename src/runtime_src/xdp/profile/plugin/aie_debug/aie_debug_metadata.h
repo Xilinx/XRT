@@ -100,17 +100,22 @@ class BaseReadableTile {
       absoluteOffsets.push_back(ab);
     }
 
-    void printValues(){
+
+    void printValues( uint32_t deviceID){
       int i=0;
       for (auto& absoluteOffset : absoluteOffsets){
         //std::cout<< "Debug tile (" << col << ", " << row << ") "
         //<< "hex address/values: 0x" << std::hex << absoluteOffset << " "
         //<< values[i++] << std::endl;
+        /*
         std::stringstream msg;
         msg << "!!! Debug tile (" << col << ", " << row << ") "
             << "hex address/values: 0x" << std::hex << absoluteOffset << " : "
             << values[i++] << std::dec;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+        */
+        db->getDynamicInfo().addAIEDebugSample(deviceId, col,row,absoluteOffset,relativeOffsets[i],values[i]);
+        i++;
       }
     }
   };
@@ -124,9 +129,11 @@ class BaseReadableTile {
   std::vector<uint64_t> memory_addresses;
   std::vector<uint64_t> memory_tile_addresses;
   std::map<std::string, uint64_t> regNametovalues;
+  std::map<uint64_t, std::string> regValueToName;
     virtual void populateProfileRegisters()=0;
     virtual void populateTraceRegisters()=0;
     virtual void populateRegNameToValueMap()=0;
+    virtual void populateRegValueToNameMap()=0;
     void populateAllRegisters() {
       populateProfileRegisters();
       populateTraceRegisters();
@@ -164,6 +171,13 @@ class AIE1UsedRegisters : public UsedRegisters {
                       };
   }
 
+  void populateRegValueToNameMap(){
+    //some implementation
+    regValueToName=  {
+#include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen1.txt"
+                      };
+  }
+
 };
 
 class AIE2UsedRegisters : public UsedRegisters {
@@ -185,6 +199,13 @@ class AIE2UsedRegisters : public UsedRegisters {
   void populateRegNameToValueMap(){
     regNametovalues=  {
 #include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2.txt"
+                      };
+  }
+
+  void populateRegValueToNameMap(){
+    //some implementation
+    regValueToName=  {
+#include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2.txt"
                       };
   }
 
@@ -214,6 +235,13 @@ class AIE2pUsedRegisters : public UsedRegisters {
                       };
   }
 
+  void populateRegValueToNameMap(){
+    //some implementation
+    regValueToName=  {
+#include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2.txt"
+                      };
+  }
+
 };
 
 class AIE2psUsedRegisters : public UsedRegisters {
@@ -235,6 +263,13 @@ class AIE2psUsedRegisters : public UsedRegisters {
   void populateRegNameToValueMap(){
     regNametovalues=  {
 #include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2ps.txt"
+                      };
+  }
+
+  void populateRegValueToNameMap(){
+    //some implementation
+    regValueToName=  {
+#include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2ps.txt"
                       };
   }
 
@@ -260,6 +295,10 @@ class AIE4UsedRegisters : public UsedRegisters {
     //some implementation
     //dummy one for now
     regNametovalues=  { {"None",aie2ps::cm_core_bmll0_part1}};
+  }
+  void populateRegValueToNameMap(){
+    //some implementation
+    regValueToName=  { {0x00009320,"None"}  };
   }
 
 };

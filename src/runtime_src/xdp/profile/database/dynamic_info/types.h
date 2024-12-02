@@ -82,6 +82,15 @@ namespace xdp::aie {
 
   typedef std::vector<TraceDataType*> TraceDataVector;
 
+  struct AIEDebugDataType
+  {
+    uint64_t tile_col;
+    uint64_t tile_row;
+    uint64_t rel_offset;
+    uint64_t abs_offset;
+    uint64_t value;
+  };
+
 } // end namespace xdp::aie
 
 #endif
