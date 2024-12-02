@@ -27,12 +27,20 @@ include(CMake/settings.cmake)
 # set to something different then a development component will be created with
 # link libraries and header which are then excluded from runtime component
 set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
-
+  
 # Enable development package by specifying development component name
 # If XRT_DEV_COMPONENT is same DEFAULT_COMPONENT then only that package
 # is created with both development and run-time content.
 #set (XRT_DEV_COMPONENT "xrt-dev")
+set (XRT_COMPONENT "xrt")
 set (XRT_DEV_COMPONENT "xrt")
+
+# For NPU builds the defalt component is "npu".
+if (XRT_NPU)
+  set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "npu")
+  set (XRT_COMPONENT "npu")
+  set (XRT_DEV_COMPONENT "npu")
+endif(XRT_NPU)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${XRT_SOURCE_DIR}/CMake/")
 

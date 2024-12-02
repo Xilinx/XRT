@@ -79,7 +79,9 @@ install (FILES ${XRT_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
   COMPONENT ${XRT_DEV_COMPONENT}
 )        
-                                                                                
-add_subdirectory(aws)
-add_subdirectory(azure)
-add_subdirectory(container)
+
+if (XRT_ALVEO)
+  add_subdirectory(aws)
+  add_subdirectory(azure)
+  add_subdirectory(container)
+endif()
