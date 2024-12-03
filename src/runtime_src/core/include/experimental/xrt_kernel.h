@@ -77,6 +77,9 @@ public:
    * runlist() - Construct empty runlist object
    *
    * Can be used as lvalue in assignment.
+   *
+   * It is undefined behavior to use a default constructed runlist
+   * for anything but assignment.
    */
   runlist() = default;
 

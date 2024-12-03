@@ -127,6 +127,9 @@ public:
    * run() - Construct empty run object
    *
    * Can be used as lvalue in assignment.
+   *
+   * It is undefined behavior to use a default constructed run object
+   * for anything but assignment.
    */
   run() = default;
 
@@ -141,6 +144,8 @@ public:
 
   /**
    * run() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   run(const run&) = default;
 
@@ -157,6 +162,8 @@ public:
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy assignment, sharing data with the source
    */
   run&
   operator=(const run&) = default;
@@ -394,6 +401,12 @@ public:
    * by multiple xrt::run objects.
    *
    * Any number of callbacks are supported.
+   *
+   * Execution a run object with callback functions is referred to as
+   * managed execution.  Managed execution is supported on Alveo style
+   * platforms only. If targeted platform does not supported managed
+   * execution, then an exception is thrown when the run object is
+   * submitted for execution.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -695,6 +708,9 @@ public:
 
   /**
    * kernel() - Construct for empty kernel
+   *
+   * It is undefined behavior to use a default constructed kernel object
+   * for anything but assignment.
    */
   kernel() = default;
 
@@ -745,6 +761,8 @@ public:
 
   /**
    * kernel() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   kernel(const kernel&) = default;
 
@@ -761,6 +779,8 @@ public:
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy assignment, sharing data with the source
    */
   kernel&
   operator=(const kernel&) = default;
