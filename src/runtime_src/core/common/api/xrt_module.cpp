@@ -354,7 +354,7 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const std::vector<std::string>&
+  [[nodiscard]] virtual const std::set<std::string>&
   get_ctrlpkt_pm_dynsyms() const
   {
     throw std::runtime_error("Not supported");
@@ -500,7 +500,7 @@ class module_elf : public module_impl
   bool m_restore_buf_exist = false;
   size_t m_scratch_pad_mem_size = 0;
 
-  std::vector<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
+  std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
   std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
 
   // The ELF sections embed column and page information in their
@@ -723,7 +723,7 @@ class module_elf : public module_impl
         static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
         if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
           // store ctrlpkt preemption symbols which is later used for patching instr buf
-          m_ctrlpkt_pm_dynsyms.emplace_back(symname);
+          m_ctrlpkt_pm_dynsyms.emplace(symname);
         }
 
         // Get control code section referenced by the symbol, col, and page
@@ -950,7 +950,7 @@ public:
     return m_ctrl_packet;
   }
 
-  [[nodiscard]] const std::vector<std::string>&
+  [[nodiscard]] const std::set<std::string>&
   get_ctrlpkt_pm_dynsyms() const override
   {
     return m_ctrlpkt_pm_dynsyms;
