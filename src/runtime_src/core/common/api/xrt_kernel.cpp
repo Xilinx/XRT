@@ -3809,7 +3809,7 @@ add_callback(ert_cmd_state state,
 {
   XRT_DEBUGF("run::add_callback run(%d)\n", handle->get_uid());
   if (state != ERT_CMD_STATE_COMPLETED)
-    throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
+    throw xrt_core::error(-EINVAL, "Cannot add callback, run state may only be ERT_CMD_STATE_COMPLETED");
   // The function callback is passed a key that uniquely identifies
   // run objects referring to the same implmentation.  This allows
   // upstream to associate key with some run object that represents
@@ -3969,6 +3969,9 @@ void
 runlist::
 add(const xrt::run& run)
 {
+  if (!handle)
+    throw xrt_core::error("cannot add run object to uninitialized runlist");
+
   handle->add(run);
 }
 

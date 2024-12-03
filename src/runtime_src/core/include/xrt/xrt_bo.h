@@ -438,11 +438,15 @@ public:
 
   /**
    * bo() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   bo(const bo& rhs) = default;
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy, sharing data with the source
    */
   bo&
   operator=(const bo& rhs) = default;
