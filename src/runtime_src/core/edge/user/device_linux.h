@@ -26,8 +26,8 @@ public:
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
 
-  virtual void read(uint64_t addr, void* buf, uint64_t len) const;
-  virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
+  virtual void read(uint64_t addr, void* buf, uint64_t len) const override;
+  virtual void write(uint64_t addr, const void* buf, uint64_t len) const override;
   virtual void reset(const query::reset_type) const;
 
   ////////////////////////////////////////////////////////////////
@@ -70,26 +70,29 @@ public:
   // Custom ip interrupt handling
   // Redefined from xrt_core::ishim
   ////////////////////////////////////////////////////////////////
-  virtual xclInterruptNotifyHandle
-  open_ip_interrupt_notify(unsigned int ip_index)
+  xclInterruptNotifyHandle
+  open_ip_interrupt_notify(unsigned int ip_index) override
   {
     return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
   }
 
-  virtual void
-  close_ip_interrupt_notify(xclInterruptNotifyHandle handle)
+  void
+  close_ip_interrupt_notify(xclInterruptNotifyHandle handle) override
   {
     xclCloseIPInterruptNotify(get_device_handle(), handle);
   }
 
-  virtual void
-  enable_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  enable_ip_interrupt(xclInterruptNotifyHandle) override;
 
-  virtual void
-  disable_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  disable_ip_interrupt(xclInterruptNotifyHandle) override;
 
-  virtual void
-  wait_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  wait_ip_interrupt(xclInterruptNotifyHandle) override;
+
+  std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
   virtual std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,
