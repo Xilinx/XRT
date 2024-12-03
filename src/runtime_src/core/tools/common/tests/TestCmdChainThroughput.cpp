@@ -16,8 +16,11 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 
 static constexpr size_t buffer_size = 20;
-static constexpr int itr_count = 10;
-static constexpr int run_count = 1000;
+
+// It is important to keep the iteration count fairly large
+// in order to hide the ramp-up time of clock scaling. 
+static constexpr int itr_count = 1000;
+static constexpr int run_count = 100;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestCmdChainThroughput::TestCmdChainThroughput()
@@ -122,30 +125,37 @@ TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
     runs.push_back(std::move(run));
   }
 
-  //Log
+  // Log
   if(XBU::getVerbose()) {
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of commands: %f") % (itr_count*run_count)));
   }
 
-  // Start via runlist
-  xrt::runlist runlist{hwctx};
-  for (auto& run : runs)
-    runlist.add(run);
+  // For throughput, create two runlist and start them in parallel,
+  // then wait and start each one again. This ensures NPU is always
+  // busy.
+  xrt::runlist runlist1{hwctx};
+  xrt::runlist runlist2{hwctx};
+  for (int i = 0; i < run_count; ++i) {
+    if (i % 2 == 0)
+      runlist1.add(runs[i]);
+    else
+      runlist2.add(runs[i]);
+  }
 
   auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < itr_count; ++i) {
-    try {
-      runlist.execute();
-    }
-    catch (const std::exception& ex) {
-      XBValidateUtils::logger(ptree, "Error", ex.what());
-      ptree.put("status", XBValidateUtils::test_token_failed);
-      return ptree;
-    }
 
+  // start the two runlists
+  runlist1.execute();
+  runlist2.execute();
+
+  // iterate wait and start
+  for (int i = 1; i < itr_count; ++i) {
     try {
-      runlist.wait();
+      runlist1.wait();
+      runlist1.execute();
+      runlist2.wait();
+      runlist2.execute();
     }
     catch (const std::exception& ex) {
       XBValidateUtils::logger(ptree, "Error", ex.what());
@@ -153,6 +163,11 @@ TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
       return ptree;
     }
   }
+
+  // wait for last iteration to finish
+  runlist1.wait();
+  runlist2.wait();
+
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
 
