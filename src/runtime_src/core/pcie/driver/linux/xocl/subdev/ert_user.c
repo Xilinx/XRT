@@ -1464,7 +1464,7 @@ add_event:
 }
 
 
-static int ert_user_remove(struct platform_device *pdev)
+static int __ert_user_remove(struct platform_device *pdev)
 {
 	struct xocl_ert_user *ert_user;
 	void *hdl;
@@ -1491,6 +1491,15 @@ static int ert_user_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ert_user_remove(struct platform_device *pdev)
+{
+	__ert_user_remove(pdev);
+}
+#else
+#define ert_user_remove __ert_user_remove
+#endif
 
 static int ert_user_probe(struct platform_device *pdev)
 {
