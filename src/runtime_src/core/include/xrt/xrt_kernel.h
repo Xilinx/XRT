@@ -395,18 +395,18 @@ public:
    * ``ERT_CMD_STATE_COMPLETED`` is supported currently.
    *
    * The function object's first parameter is a unique 'key'
-   * for this xrt::run object implmentation on which the callback
+   * for this xrt::run object implementation on which the callback
    * was added. This 'key' can be used to identify an actual run
    * object that refers to the implementaion that is maybe shared
    * by multiple xrt::run objects.
    *
    * Any number of callbacks are supported.
    *
-   * Execution a run object with callback functions is referred to as
-   * managed execution.  Managed execution is supported on Alveo style
-   * platforms only. If targeted platform does not supported managed
-   * execution, then an exception is thrown when the run object is
-   * submitted for execution.
+   * Execution of a run object with callback functions is referred to
+   * as managed execution.  Managed execution is supported on Alveo
+   * style platforms only. If targeted platform does not support
+   * managed execution, then an exception is thrown when the run
+   * object is submitted for execution.
    */
   XCL_DRIVER_DLLESPEC
   void
