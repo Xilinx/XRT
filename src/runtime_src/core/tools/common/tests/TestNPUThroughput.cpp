@@ -112,15 +112,21 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
 
   try {
     auto start = std::chrono::high_resolution_clock::now();
-    //enqueue 9 commnds
-    for(int i = 0; i < run_buffer; i++) {
+
+    // enqueue 9 commnds
+    for (int i = 0; i < run_buffer; i++)
       run_handles[i%run_buffer].start();
-    }
-    //wait for each command to finish and add them to the queue
-    for(int i = 0; i < (itr_count_throughput-run_buffer); i++) {
+
+    // wait for each command to finish, then start immediately
+    for (int i = 0; i < (itr_count_throughput - run_buffer); i++) {
       run_handles[i%run_buffer].wait2();
       run_handles[i%run_buffer].start();
     }
+
+    // wait for the last 9 commands to finish
+    for (int i = 0; i < run_buffer; i++)
+      run_handles[i%run_buffer].wait2();
+
     auto end = std::chrono::high_resolution_clock::now();
     elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   }
