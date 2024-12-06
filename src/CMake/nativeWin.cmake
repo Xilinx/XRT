@@ -24,10 +24,10 @@ ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
 
-# --- Boost ---
-#set(Boost_DEBUG 1)
+# XRT install components
+include(CMake/components.cmake)
 
-INCLUDE (FindBoost)
+include(FindBoost)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost
@@ -73,10 +73,10 @@ if (MSVC)
 endif()
 
 
-INCLUDE (FindGTest)
+include(FindGTest)
 
 # --- XRT Variables ---
-include (CMake/xrtVariables.cmake)
+include(CMake/xrtVariables.cmake)
 
 # --- Release: eula ---
 file(GLOB XRT_EULA
@@ -86,16 +86,16 @@ install (FILES ${XRT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/licen
 message("-- XRT EA eula files  ${XRT_SOURCE_DIR}/../LICENSE")
 
 # -- CPack
-include (CMake/cpackWin.cmake)
+include(CMake/cpackWin.cmake)
 
 # --- Create Version header and JSON file ---
-include (CMake/version.cmake)
+include(CMake/version.cmake)
 
-message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
+message("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)
 
 # --- Find Package Support ---
-include (CMake/findpackage.cmake)
+include(CMake/findpackage.cmake)
 
 # --- Python bindings ---
 xrt_add_subdirectory(python)
