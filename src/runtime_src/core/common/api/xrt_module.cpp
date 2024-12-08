@@ -27,6 +27,7 @@
 #include <cstring>
 #include <numeric>
 #include <map>
+#include <regex>
 #include <set>
 #include <string>
 #include <string_view>
@@ -117,6 +118,7 @@ struct patcher
     control_packet_48 = 4,              // patching scheme needed by firmware to patch control packet
     shim_dma_48 = 5,                    // patching scheme needed by firmware to patch instruction buffer
     shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
+    control_packet_57 = 7,              // patching scheme needed by firmware to patch control packet for aie2ps
     unknown_symbol_kind = 8
   };
 
@@ -151,7 +153,7 @@ struct patcher
         ".preempt_save",
         ".preempt_restore",
         ".pdi",
-        ".ctrlpkt.pm"};
+        ".ctrlpkt.pm",
         ".pad"};
 
     return Section_Name_Array[static_cast<int>(bt)];
@@ -206,6 +208,19 @@ struct patcher
   }
 
   void
+  patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch) const
+  {
+    //TODO need to change below logic to patch 57 bits
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2])));
+
+    base_address = base_address + patch;
+    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
+    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
+  }
+
+  void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     // This patching scheme is originated from NPU firmware
@@ -252,6 +267,10 @@ struct patcher
       case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
         // new_value is a bo address
         patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        break;
+      case symbol_type::control_packet_57:
+        // new_value is a bo address
+        patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
@@ -820,10 +839,14 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
         auto symname = dynstr->get_data() + dynstr_offset;
 
-        // Get control code section referenced by the symbol, col, and page
-        auto ctrl_sec = elf.sections[sym->st_shndx];
-        if (!ctrl_sec)
+        // patching can be done to ctrlcode or ctrlpkt section
+        auto patch_sec = elf.sections[sym->st_shndx];
+        if (!patch_sec)
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
+
+        auto patch_sec_name = patch_sec->get_name();
+        size_t abs_offset = 0;
+        patcher::buf_type buf_type;
 
         if (patch_sec_name.find(patcher::section_name_to_string(patcher::buf_type::pad)) != std::string::npos) {
           auto col = get_col_idx(patch_sec_name);
@@ -870,9 +893,9 @@ class module_elf : public module_impl
 	// On all further occurences of arg, add patch_info structure to existing vector
 
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
-          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{ctrlcode_offset, 0, 0});
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, 0, 0});
         else
-          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{abs_offset, 0}}, buf_type});
       }
     }
 
@@ -1363,13 +1386,14 @@ class module_sram : public module_impl
     }
   }
 
-  void
+  bool  
   patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
     if (!m_parent->patch_it(bo.map<uint8_t*>(), argnm, index, value, type))
-      return;
+      return false;
 
     m_dirty = true;
+    return true;
   }
 
   void
