@@ -28,11 +28,11 @@
 #include "windows/types.h"
 #endif
 
-#include "xclbin.h"
-#include "xclerr.h"
-#include "xclhal2_mem.h"
+#include "xrt/detail/xclbin.h"
+#include "xrt/deprecated/xclerr.h"
+//#include "xclhal2_mem.h"
 
-#include "deprecated/xcl_app_debug.h"
+//#include "deprecated/xcl_app_debug.h"
 
 #ifdef __GNUC__
 # define XRT_DEPRECATED __attribute__ ((deprecated))
@@ -869,12 +869,14 @@ int
 xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
                        size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
 
+#if 0
 /* Not supported */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 size_t
 xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                      void* debugResults);
+#endif
 
 /*
  * This function is for internal use. We don't want outside user to use it.

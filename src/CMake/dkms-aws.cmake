@@ -65,10 +65,10 @@ SET (XRT_DKMS_AWS_DRIVER_INCLUDES
 
 # includes relative to core
 SET (XRT_DKMS_AWS_CORE_INCLUDES
-  include/ert.h
+  include/xrt/detail/ert.h
+  include/xrt/detail/xclbin.h
+  include/xrt/deprecated/xclerr.h
   include/xclfeatures.h
-  include/xclbin.h
-  include/xclerr.h
   )
 
 foreach (DKMS_FILE ${XRT_DKMS_AWS_DRIVER_SRCS})

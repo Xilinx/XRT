@@ -1,30 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-set(XRT_HEADER_SRC
-  ert.h
-  xclbin.h
+# These headers were moved from runtime_src/core/include/deprecated.
+# Must be installed to legacy include dir for legacy xrt package as
+# well as xrt/deprecated include dir for base package
+set(XRT_DEPRECATED_HEADER_SRC
   xrt.h
-  xrt_mem.h
-  xrt_error_code.h
-  xgq_cmd_common.h
-  xgq_cmd_ert.h
-  xgq_impl.h
-  xgq_resp_parser.h)
+  xclerr.h
+  )
 
-install (FILES ${XRT_HEADER_SRC}
+# Legacy deprecated install
+install (FILES ${XRT_DEPRECATED_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
   COMPONENT ${XRT_DEV_COMPONENT})
 
-install (FILES ${XRT_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
-  COMPONENT ${XRT_BASE_DEV_COMPONENT})
-
-add_subdirectory(xrt)
+# Legacy experimental
 add_subdirectory(experimental)
-add_subdirectory(deprecated)
-if(WIN32)
-add_subdirectory(windows)
-endif()
-add_subdirectory(unittests)
+
+# Exported includes
+add_subdirectory(xrt)
+

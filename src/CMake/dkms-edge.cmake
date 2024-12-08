@@ -98,16 +98,16 @@ SET (XRT_DKMS_DRIVER_SRCS
 
 # includes relative to core
 SET (XRT_DKMS_CORE_INCLUDES
-  include/ert.h
+  include/xrt/detail/ert.h
+  include/xrt/detail/xclbin.h
+  include/xrt/detail/xrt_error_code.h
+  include/xrt/detail/xrt_mem.h
+  include/xrt/deprecated/xclerr.h
   include/ps_kernel.h
   include/types.h
   include/xclfeatures.h
-  include/xclbin.h
-  include/xclerr.h
   include/xclerr_int.h
   include/xclhal2_mem.h
-  include/xrt_error_code.h
-  include/xrt_mem.h
   include/xgq_cmd_common.h
   include/xgq_cmd_ert.h
   include/xgq_cmd_vmr.h
