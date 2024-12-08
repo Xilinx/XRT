@@ -247,69 +247,84 @@ ub_package_list()
 
 fd_package_list()
 {
-    FD_LIST=(\
-     boost-devel \
-     boost-filesystem \
-     boost-program-options \
-     boost-static \
-     cmake \
-     cppcheck \
-     curl \
-     dkms \
-     dmidecode \
-     elfutils-devel \
-     elfutils-libs \
-     gcc \
-     gcc-c++ \
-     gdb \
-     git \
-     glibc-static \
-     gnuplot \
-     gnutls-devel \
-     gtest-devel \
-     json-glib-devel \
-     kernel-devel-$(uname -r) \
-     kernel-headers-$(uname -r) \
-     libcurl-devel \
-     libdrm-devel \
-     libffi-devel \
-     libjpeg-turbo-devel \
-     libpng12-devel \
-     libstdc++-static \
-     libtiff-devel \
-     libudev-devel \
-     libuuid-devel \
-     libyaml-devel \
-     lm_sensors \
-     make \
-     ncurses-devel \
-     ocl-icd \
-     ocl-icd-devel \
-     opencl-headers \
-     opencv \
-     openssl-devel \
-     openssl-static \
-     pciutils \
-     perl \
-     pkgconfig \
-     protobuf-compiler \
-     protobuf-devel \
-     protobuf-static \
-     python \
-     python-pip \
-     python2-sphinx \
-     python3 \
-     python3-pip \
-     redhat-lsb \
-     rapidjson-devel \
-     rpm-build \
-     strace \
-     systemd-devel \
-     systemd-devel \
-     systemtap-sdt-devel \
-     unzip \
-     zlib-static \
-    )
+	FD_LIST=(\
+		boost-devel \
+		boost-filesystem \
+		boost-program-options \
+		cmake \
+		cppcheck \
+		curl \
+		dkms \
+		dmidecode \
+		elfutils-devel \
+		elfutils-libs \
+		gcc \
+		gcc-c++ \
+		gdb \
+		git \
+		glibc-static \
+		gnuplot \
+		gnutls-devel \
+		gtest-devel \
+		json-glib-devel \
+		kernel-devel-$(uname -r) \
+		kernel-headers-$(uname -r) \
+		libcurl-devel \
+		libdrm-devel \
+		libffi-devel \
+		libjpeg-turbo-devel \
+		libpng12-devel \
+		libstdc++-static \
+		libtiff-devel \
+		libudev-devel \
+		libuuid-devel \
+		libyaml-devel \
+		lm_sensors \
+		make \
+		ncurses-devel \
+		ocl-icd \
+		ocl-icd-devel \
+		opencl-headers \
+		opencv \
+		openssl-devel \
+		pciutils \
+		perl \
+		pkgconfig \
+		protobuf-compiler \
+		protobuf-devel \
+		python \
+		python-pip \
+		python3 \
+		python3-pip \
+		redhat-lsb \
+		rapidjson-devel \
+		rpm-build \
+		strace \
+		systemd-devel \
+		systemtap-sdt-devel \
+		unzip \
+		zlib-static \
+	)
+
+	# Detect Fedora version
+	FEDORA_VERSION=$(grep "^VERSION_ID=" /etc/os-release | cut -d'=' -f2 | tr -d '"')
+	
+	# Add openssl-static if Fedora <= 35
+	if (( FEDORA_VERSION <= 35 )); then
+		FD_LIST+=("openssl-static")
+	fi
+	
+	# Add protobuf-static if Fedora <= 38
+	if (( FEDORA_VERSION <= 38 )); then
+		FD_LIST+=("protobuf-static")
+	fi
+	
+	# Add python2-sphinx if Fedora < 32, else python3-sphinx
+	if (( FEDORA_VERSION < 32 )); then
+		FD_LIST+=("python2-sphinx")
+	else
+		FD_LIST+=("python3-sphinx")
+	fi
 }
 
 
