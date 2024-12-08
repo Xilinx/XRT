@@ -824,12 +824,6 @@ class module_elf : public module_impl
         auto ctrl_sec = elf.sections[sym->st_shndx];
         if (!ctrl_sec)
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
-        auto [col, page] = get_column_and_page(ctrl_sec->get_name());
-
-        auto column_ctrlcode_size = ctrlcodes.at(col).size();
-        auto column_ctrlcode_offset = page * column_page_size + rela->r_offset + 16; // NOLINT magic number 16??
-        if (column_ctrlcode_offset >= column_ctrlcode_size)
-          throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(column_ctrlcode_offset));
 
         if (patch_sec_name.find(patcher::section_name_to_string(patcher::buf_type::pad)) != std::string::npos) {
           auto col = get_col_idx(patch_sec_name);
@@ -862,7 +856,6 @@ class module_elf : public module_impl
 
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
 
