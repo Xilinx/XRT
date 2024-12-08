@@ -1188,7 +1188,7 @@ class module_sram : public module_impl
       // find the control-code-* sym-name and patch it in instruction buffer
       // This name is an agreement between aiebu and XRT
       auto sym_name = std::string(Control_Code_Symbol) + "-" + std::to_string(i);
-      if (patch_instr_value(m_buffer, sym_name, 0, m_buffer.address() + offset, patcher::buf_type::ctrltext))
+      if (patch_instr_value(m_buffer, sym_name, std::numeric_limits<size_t>::max() , m_buffer.address() + offset, patcher::buf_type::ctrltext))
         m_patched_args.insert(sym_name);
       offset += col_data[i].size();
     }
