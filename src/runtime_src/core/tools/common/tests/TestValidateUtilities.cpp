@@ -34,7 +34,8 @@ BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::
     std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
   } else {
     size_t instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
-    bo_instr = xrt::bo(device, instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+    bo_instr = xrt::bo(device, instr_size * sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   }
 }
 
@@ -57,7 +58,7 @@ void BO_set::set_kernel_args(xrt::run& run) const {
   run.set_arg(3, bo_ofm);
   run.set_arg(4, bo_inter);
   run.set_arg(5, bo_instr);
-  run.set_arg(6, buffer_size/sizeof(int));
+  run.set_arg(6, bo_instr.size()/sizeof(int));
   run.set_arg(7, bo_mc);
 }
 
