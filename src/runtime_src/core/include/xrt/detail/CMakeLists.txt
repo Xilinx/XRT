@@ -24,11 +24,6 @@ set(XRT_XRT_DETAIL_LEGACY_SRC
   xrt_error_code.h
   xrt_mem.h)
   
-# xrt component deprecated install
-install (FILES ${XRT_XRT_DETAIL_LEGACY_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
-  COMPONENT ${XRT_DEV_COMPONENT})
-
 # xrt component install
 install (FILES ${XRT_XRT_DETAIL_LEGACY_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail

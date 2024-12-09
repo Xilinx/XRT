@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-# These headers were moved from runtime_src/core/include/deprecated.
-# Must be installed to legacy include dir for legacy xrt package as
-# well as xrt/deprecated include dir for base package
+# These headers must be installed to legacy include dir for legacy xrt
+# package as well as under xrt/ for base package and also xrt legacy
+# The includes simply refer into include/xrt
 set(XRT_DEPRECATED_HEADER_SRC
+  ert.h
   xrt.h
+  xclbin.h
   xclerr.h
+  xrt_error_code.h
+  xrt_mem.h
   )
 
 # Legacy deprecated install
