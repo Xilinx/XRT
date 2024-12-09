@@ -38,7 +38,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/api/xclbin_int.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #define XDP_CORE_SOURCE
 

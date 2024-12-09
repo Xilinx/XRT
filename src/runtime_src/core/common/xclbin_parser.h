@@ -18,7 +18,7 @@
 
 #include "config.h"
 #include "cuidx_type.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "core/include/xrt/xrt_uuid.h"
 
 #include <array>

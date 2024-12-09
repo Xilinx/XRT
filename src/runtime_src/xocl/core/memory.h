@@ -26,7 +26,7 @@
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
 #include "core/common/api/bo.h"
-#include "core/include/experimental/xrt_bo.h"
+#include "core/include/xrt/xrt_bo.h"
 
 #include <map>
 

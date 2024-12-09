@@ -6,12 +6,6 @@
 #include "core/common/config.h"
 #include "xrt/detail/pimpl.h"
 
-#include "experimental/xrt_fence.h"
-#include "experimental/xrt_kernel.h"
-
-#include "core/common/shim/buffer_handle.h"
-
-#include <chrono>
 #include <condition_variable>
 #include <vector>
 
@@ -22,6 +16,7 @@ class hw_context;
 
 namespace xrt_core {
 
+class buffer_handle;
 class command;
 class device;
 class fence;

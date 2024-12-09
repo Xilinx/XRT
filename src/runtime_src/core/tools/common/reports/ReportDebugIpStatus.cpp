@@ -30,7 +30,7 @@ namespace XBU = XBUtilities;
 #include "core/common/utils.h"
 #include "core/common/error.h"
 #include "core/common/xrt_profiling.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"

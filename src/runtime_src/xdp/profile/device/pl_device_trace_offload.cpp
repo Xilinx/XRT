@@ -19,7 +19,7 @@
 
 #include "xdp/profile/device/pl_device_trace_offload.h"
 #include "xdp/profile/device/pl_device_trace_logger.h"
-#include "experimental/xrt_profile.h"
+#include "xrt/experimental/xrt_profile.h"
 
 namespace xdp {
 

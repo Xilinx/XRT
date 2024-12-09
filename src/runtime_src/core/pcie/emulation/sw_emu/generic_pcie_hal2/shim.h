@@ -15,7 +15,7 @@
 
 #include "swscheduler.h"
 #include "unix_socket.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 
@@ -28,7 +28,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/graph_handle.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include <fcntl.h>
 #include <stdarg.h>

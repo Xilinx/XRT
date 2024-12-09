@@ -8,17 +8,17 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_kernel.h"
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/experimental/xrt_ext.h"
-#include "core/include/experimental/xrt_mailbox.h"
-#include "core/include/experimental/xrt_module.h"
-#include "core/include/experimental/xrt_xclbin.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/include/xrt/experimental/xrt_mailbox.h"
+#include "core/include/xrt/experimental/xrt_module.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
+#include "core/include/xrt/detail/ert.h"
 #include "core/include/ert_fa.h"
 
 #include "bo.h"

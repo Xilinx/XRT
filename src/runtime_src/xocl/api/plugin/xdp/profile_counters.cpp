@@ -21,7 +21,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/program.h"

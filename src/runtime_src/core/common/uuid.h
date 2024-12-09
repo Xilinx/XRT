@@ -17,7 +17,7 @@
 #ifndef xrt_core_uuid_h_
 #define xrt_core_uuid_h_
 
-#include "core/include/experimental/xrt_uuid.h"
+#include "xrt/xrt_uuid.h"
 
 namespace xrt_core {
 

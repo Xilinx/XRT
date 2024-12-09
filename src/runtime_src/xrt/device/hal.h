@@ -11,14 +11,15 @@
 #include "xrt/util/uuid.h"
 #include "core/common/device.h"
 #include "core/include/xrt.h"
-#include "core/include/experimental/xrt_device.h"
+#include "core/include/xrt/xrt_device.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 #include "core/include/xdp/app_debug.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
 #include "core/include/xdp/trace.h"
 
-#include "ert.h"
+#include "xrt/detail/ert.h"
 
 #include <memory>
 #include <string>

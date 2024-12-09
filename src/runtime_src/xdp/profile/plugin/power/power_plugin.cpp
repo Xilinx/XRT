@@ -24,7 +24,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_device.h"
 

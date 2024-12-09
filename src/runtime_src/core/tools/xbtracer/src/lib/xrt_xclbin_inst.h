@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "experimental/xrt_xclbin.h"
+#include "xrt/experimental/xrt_xclbin.h"
 
 /*
  * xclbin class method aliases.

@@ -34,7 +34,7 @@
 #include <cstdint>
 #include <iostream>
 #include <map>
-#include "xrt_mem.h"
+#include "xrt/detail/xrt_mem.h"
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)
