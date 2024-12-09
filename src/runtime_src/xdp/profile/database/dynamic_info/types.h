@@ -88,7 +88,7 @@ namespace xdp::aie {
     uint64_t tile_row;
     uint64_t rel_offset;
     uint64_t abs_offset;
-    uint64_t value;
+    uint32_t value;
   };
 
 } // end namespace xdp::aie

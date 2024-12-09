@@ -12,19 +12,24 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations
  * under the License.
- */S
+ */
+#include <fstream>
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 namespace xdp {
     AIEDebugWriter::AIEDebugWriter(const char* fileName,
                                    const char* deviceName,
-                                   uint64_t deviceIndex):
+                                   uint64_t deviceIndex,
+                                   AieDebugPlugin* AieDebugPluginPtr):
                                     VPWriter(fileName)
                                    , mDeviceName(deviceName)
                                    , mDeviceIndex(deviceIndex)
-                                   , mHeaderWritten(false) {
+                                   , mHeaderWritten(false)
+                                   , ptrtoAieDebugPlugin(AieDebugPluginPtr) {
   }
 
   void AIEDebugWriter::writeHeader()
@@ -32,7 +37,7 @@ namespace xdp {
     // Updated offsets for AIE mem, shim and mem_tile to 1000, 2000, 3000 respectively.
     float fileVersion = 1.1f;
 
-    // Report HW generation to inform analysis how to interpret event IDs
+    // Report HW generation to inform analysis how to interpret register addresses
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
 
     fout << "HEADER"<<"\n";
@@ -41,13 +46,13 @@ namespace xdp {
     fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
   }
 
-  void AIEProfilingWriter::writerDataColumnHeader()
+  void AIEDebugWriter::writerDataColumnHeader()
   {
     // Write data columns header
     fout << "Value at Respective Registers" << "\n";
     fout << "Tile column"       << ","
-         << "Tile row"          << ","
-         << "Relative Offset"<< ","
+         << "Tile row"          << ", "
+         << "Relative Offset"<< ", "
          << "Absolute Offset"<< ","
          << "value"        << ",\n";
   }
@@ -62,15 +67,17 @@ namespace xdp {
     }
 
     // Write all data elements
-    std::vector<counters::Sample> samples =
+    std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
+      std::string registerName= ptrtoAieDebugPlugin->lookupRegistername(sample.rel_offset);
       fout << sample.tile_col << ",";
-      fout << sample.tile_row << ",";
-      fout << sample.rel_offset << ",";
-      fout << sample.abs_offset << ",";
-      fout << sample.value << ",";
+      fout << sample.tile_row << ", 0x";
+      fout << std::hex<< sample.rel_offset << ", 0x";
+      fout << std::hex<< sample.abs_offset << ",";
+      fout << registerName << ",";
+      fout  << sample.value << std::dec;
       fout << "\n";
     }
     fout.flush();

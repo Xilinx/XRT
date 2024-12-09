@@ -69,25 +69,7 @@ namespace xdp {
   AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
   {
-    auto hwGen = metadata->getHardwareGen();
-    //UsedRegisters* usedRegisters;
-    if (hwGen==1){
-        usedRegisters=new AIE1UsedRegisters();
-    }
-    else if (hwGen==3){
-        usedRegisters=new AIE2UsedRegisters();
-    }
-    else if (hwGen==4 || hwGen==8 || hwGen==9){
-        usedRegisters=new AIE2pUsedRegisters();
-    }
-    else if (hwGen==5){
-        usedRegisters=new AIE2psUsedRegisters();
-    }
-    else if (hwGen>= 40){
-        usedRegisters=new AIE4UsedRegisters();
-    }
-    usedRegisters->populateRegNameToValueMap();
-    usedRegisters->populateRegValueToNameMap();
+
   }
 
   /****************************************************************************
@@ -95,7 +77,6 @@ namespace xdp {
    ***************************************************************************/
   AieDebug_EdgeImpl::~AieDebug_EdgeImpl(){
     xrt_core::message::send(severity_level::info, "XRT", "!! Calling AIE DebugAieDebug_EdgeImpl Destructor");
-    delete usedRegisters;
   }
 
   /****************************************************************************
@@ -143,7 +124,7 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! Reading values for all tiles ");
       tileAddr.second->readValues(aieDevInst);
       xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! PRINTING values for all tiles in the writer");
-      tileAddr.second->printValues(deviceID);
+      tileAddr.second->printValues(deviceID,db);
 
    }
 
@@ -158,122 +139,7 @@ namespace xdp {
     // Do nothing for now
   }
 
-  /****************************************************************************
-   * Convert each xrt.ini entry to actual list of registers
-   ***************************************************************************/
-  std::vector<uint64_t>
-  AieDebug_EdgeImpl::stringToRegList(std::string stringEntry, module_type t)
-  { //core=trace_config,0x3400
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::stringToRegList");
-    std::vector<uint64_t> listofRegisters;
-    if (stringEntry.rfind("0x", 0) == 0) {
-      // if it starts with "0x" that means a particular register address is specified
-      uint64_t val = stoul(stringEntry,nullptr,16);
-      listofRegisters.push_back(val);
-      return listofRegisters;
-    }
-    else if(stringEntry=="trace_config")
-      {
-        usedRegisters->populateTraceRegisters();
-      }
-    else if (stringEntry=="profile_config")
-      {
-        usedRegisters->populateProfileRegisters();
-      }
-    else if (stringEntry=="all")
-      {
-        usedRegisters->populateAllRegisters();
-      }
-    else {
-      //first dealing with specific register names
-      if(usedRegisters->regNametovalues.find(stringEntry) != usedRegisters->regNametovalues.end()) {
-        uint64_t tmpRedAddr = usedRegisters->regNametovalues[stringEntry];
-        listofRegisters.push_back(tmpRedAddr);
-      }
-      else {
-        std::stringstream msg;
-        msg << "Error Parsing Debug plugin Metric String. Please enter exact register address, register name, or either of trace_config/profile_config/all. ";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      }
-      return listofRegisters;
-    }
 
-    if (t==module_type::core){
-      listofRegisters.insert( listofRegisters.end(), usedRegisters->core_addresses.begin(),
-                             usedRegisters->core_addresses.end() );
-    }
-    else if (t==module_type::dma){
-      listofRegisters.insert( listofRegisters.end(), usedRegisters->memory_addresses.begin(),
-                             usedRegisters->memory_addresses.end() );
-    }
-    else if (t==module_type::shim){
-      listofRegisters.insert( listofRegisters.end(), usedRegisters->interface_addresses.begin(),
-                             usedRegisters->interface_addresses.end() );
-    }
-    else if (t==module_type::mem_tile){
-      listofRegisters.insert( listofRegisters.end(), usedRegisters->memory_tile_addresses.begin(),
-                             usedRegisters->memory_tile_addresses.end() );
-    }
-    return listofRegisters;
-  }
-
-  /****************************************************************************
-   * Convert xrt.ini setting to vector
-   ***************************************************************************/
-  std::vector<std::string>
-  AieDebug_EdgeImpl::getSettingsVector(std::string settingsString)
-  {
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::getSettingsVector");
-    if (settingsString.empty())
-      return {};
-
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::string> settingsVector;
-    boost::replace_all(settingsString, " ", "");
-    boost::split(settingsVector, settingsString, boost::is_any_of(","));
-    return settingsVector;
-  }
-
-  /****************************************************************************
-   * Parse AIE metrics
-   ***************************************************************************/
-  std::map<module_type, std::vector<uint64_t>>
-  AieDebug_EdgeImpl::parseMetrics()
-  {
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::parseMetrics");
-    //TODO: change regValues to set to prevent duplication
-    std::map<module_type, std::vector<uint64_t>> regValues {
-      {module_type::core, {}},
-      {module_type::dma, {}},
-      {module_type::shim, {}},
-      {module_type::mem_tile, {}}
-    };
-    std::vector<std::string> metricsConfig;
-
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
-
-    unsigned int module = 0;
-    for (auto const& kv : moduleTypes) {
-      auto type = kv.first;
-      std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module++]);
-
-      for (auto& s : metricsSettings) {
-        try {
-          //uint64_t val = stoul(s,nullptr,16); //old code
-          std::vector<uint64_t> regValList = stringToRegList(s,type);
-          for(auto val:regValList)
-            regValues[type].push_back(val);
-        } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT", "Error Parsing Metric String.");
-        }
-      }
-    }
-
-    return regValues;
-  }
 
   /****************************************************************************
    * Compile list of registers to read
@@ -286,7 +152,8 @@ namespace xdp {
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    auto regValues = parseMetrics();
+    std::unique_ptr<AieDebugPlugin> debugPlugin;
+    auto regValues = metadata->getParsedRegValues();
 
     // Traverse all module types
     int counterId = 0;
@@ -310,21 +177,8 @@ namespace xdp {
         msg << tileMetric.first.col << "," << tileMetric.first.row << " ";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-      /*
-      Old code
-      // Traverse all active tiles for this module type
-      for (auto& tileMetric : configMetrics) {
-        auto& metricSet  = tileMetric.second;
-        auto tile        = tileMetric.first;
 
-        // TODO: replace with gen-specific addresses
-        uint32_t offset = 0;
-
-        auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-        debugAddresses[tile].push_back(tileOffset + offset);
-      }
-      */
-     //Rewriting it to populate a map debugTileMap <xdp::tile_type,EdgeReadableTile>
+     //populate a map debugTileMap <xdp::tile_type,EdgeReadableTile>
      for (auto& tileMetric : configMetrics) {
         auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;

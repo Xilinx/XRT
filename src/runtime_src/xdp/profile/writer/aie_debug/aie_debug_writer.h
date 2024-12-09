@@ -17,6 +17,7 @@
 #define AIE_DEBUG_WRITER_DOT_H
 
 #include "xdp/profile/writer/vp_base/vp_writer.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 #include <string>
 
 namespace xdp {
@@ -24,8 +25,8 @@ class AIEDebugWriter : public VPWriter
   {
 public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
-                    uint64_t deviceIndex);
-    ~AIEDebugWriter();
+                    uint64_t deviceIndex,AieDebugPlugin* AieDebugPluginPtr);
+    ~AIEDebugWriter()=default;
 
     void writeHeader();
     void writerDataColumnHeader();
@@ -34,9 +35,10 @@ public:
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;
-    int mHardwareGen;
+    //int mHardwareGen;
     bool mHeaderWritten;
-    bool mWroteValidData;
+    //bool mWroteValidData;
+    AieDebugPlugin* ptrtoAieDebugPlugin;
   };
 } // end namespace xdp
 

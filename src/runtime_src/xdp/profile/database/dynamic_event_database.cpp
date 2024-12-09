@@ -292,7 +292,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIEDebugSample(uint64_t deviceId, uint64_t col,
-          uint64_t row, uint64_t rel, uint64_t abslt, uint64_t val)
+          uint64_t row, uint64_t rel, uint64_t abslt, uint32_t val)
   {
     auto device_db = getDeviceDB(deviceId);
     device_db->addAIEDebugSample(col,row,rel,abslt,val);

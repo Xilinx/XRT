@@ -20,6 +20,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_debug.h"
@@ -58,8 +59,11 @@ namespace xdp {
     XDPPlugin::endWrite();
     handleToAIEData.clear();
 
-    if (VPDatabase::alive())
-      db->unregisterPlugin(this);
+    if (VPDatabase::alive()) {
+      for (auto w : writers) {
+        w->write(false);
+      }
+      db->unregisterPlugin(this);}
 
     AieDebugPlugin::live = false;
   }
@@ -123,6 +127,7 @@ namespace xdp {
 #endif
     }
 
+
     // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
 #ifdef XDP_CLIENT_BUILD
@@ -133,7 +138,7 @@ namespace xdp {
     auto& AIEData = handleToAIEData[handle];
 
     AIEData.deviceID = deviceID;
-    AIEData.metadata = std::make_shared<AieDebugMetadata>(deviceID, handle);
+    AIEData.metadata = std::make_unique<AieDebugMetadata>(deviceID, handle);
     if (AIEData.metadata->aieMetadataEmpty())
     {
       AIEData.valid = false;
@@ -141,6 +146,32 @@ namespace xdp {
       return;
     }
     AIEData.valid = true;
+
+   //TODO insert hw gen specific code and parse metrics pushed up from edge impl
+    auto hwGen = AIEData.metadata->getHardwareGen();
+    //UsedRegisters* usedRegisters;
+    if (hwGen==1){
+        usedRegisters=std::make_unique<AIE1UsedRegisters>();
+    }
+    else if (hwGen==3){
+        usedRegisters=std::make_unique<AIE2UsedRegisters>();
+    }
+    else if (hwGen==4 || hwGen==8 || hwGen==9){
+        usedRegisters=std::make_unique<AIE2pUsedRegisters>();
+    }
+    else if (hwGen==5){
+        usedRegisters=std::make_unique<AIE2psUsedRegisters>();
+    }
+    else if (hwGen>= 40){
+        usedRegisters=std::make_unique<AIE4UsedRegisters>();
+    }
+    usedRegisters->populateRegNameToValueMap();
+    usedRegisters->populateRegValueToNameMap();
+
+    //const module_type* moduleTypes = AIEData.metadata->getmoduleTypes();
+    auto parsedMetrics = parseMetrics();
+    AIEData.metadata->setParsedRegValues(parsedMetrics);
+   //************************************************** */
 
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
@@ -152,8 +183,8 @@ namespace xdp {
     auto& implementation = AIEData.implementation;
     implementation->updateAIEDevice(handle);
 
-
-#if 0
+// Open the writer for this device
+//#if 0
     auto time = std::time(nullptr);
 #ifdef _WIN32
     std::tm tm{};
@@ -169,13 +200,13 @@ namespace xdp {
     std::string timestamp = timeOss.str();
 
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
-
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
+//#if 0
+    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex,this);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
-#endif
+//#endif
 
-    //mIndex++;
+    mIndex++;
   }
 
   /****************************************************************************
@@ -210,5 +241,133 @@ namespace xdp {
 
     handleToAIEData.erase(handle);
   }
+
+ /****************************************************************************
+   * Convert each xrt.ini entry to actual list of registers
+  ***************************************************************************/
+  std::vector<uint64_t>
+  AieDebugPlugin::stringToRegList(std::string stringEntry, module_type t)
+  { //core=trace_config,0x3400
+    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::stringToRegList");
+    std::vector<uint64_t> listofRegisters;
+    if (stringEntry.rfind("0x", 0) == 0) {
+      // if it starts with "0x" that means a particular register address is specified
+      uint64_t val = stoul(stringEntry,nullptr,16);
+      listofRegisters.push_back(val);
+      return listofRegisters;
+    }
+    else if(stringEntry=="trace_config")
+      {
+        usedRegisters->populateTraceRegisters();
+      }
+    else if (stringEntry=="profile_config")
+      {
+        usedRegisters->populateProfileRegisters();
+      }
+    else if (stringEntry=="all")
+      {
+        usedRegisters->populateAllRegisters();
+      }
+    else {
+      //first dealing with specific register names
+
+      //if(usedRegisters->regNametovalues.find(stringEntry) != usedRegisters->regNametovalues.end()) {
+      //  uint64_t tmpRedAddr = usedRegisters->regNametovalues[stringEntry];
+      //  listofRegisters.push_back(tmpRedAddr);
+      //}
+      uint64_t tmpRedAddr=lookupRegisterAddr(stringEntry);
+      if(tmpRedAddr!=-1){
+        listofRegisters.push_back(tmpRedAddr);
+      }
+      else {
+        std::stringstream msg;
+        msg << "Error Parsing Debug plugin Metric String. Please enter exact register address, register name, or either of trace_config/profile_config/all. ";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+      return listofRegisters;
+    }
+
+    if (t==module_type::core){
+      auto coreAddressList=usedRegisters->getCoreAddresses();
+      listofRegisters.insert( listofRegisters.end(), coreAddressList.begin(),
+                             coreAddressList.end() );
+    }
+    else if (t==module_type::dma){
+      auto memoryAddressList = usedRegisters->getMemoryAddresses();
+      listofRegisters.insert( listofRegisters.end(), memoryAddressList.begin(),
+                             memoryAddressList.end() );
+    }
+    else if (t==module_type::shim){
+      auto interfaceAddressList = usedRegisters->getInterfaceAddresses();
+      listofRegisters.insert( listofRegisters.end(), interfaceAddressList.begin(),
+                             interfaceAddressList.end() );
+    }
+    else if (t==module_type::mem_tile){
+      auto memoryTileAddressList= usedRegisters->getMemoryTileAddresses();
+      listofRegisters.insert( listofRegisters.end(), memoryTileAddressList.begin(),
+                             memoryTileAddressList.end() );
+    }
+    return listofRegisters;
+  }
+
+  /****************************************************************************
+   * Convert xrt.ini setting to vector
+   ***************************************************************************/
+  std::vector<std::string>
+  AieDebugPlugin::getSettingsVector(std::string settingsString)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::getSettingsVector");
+    if (settingsString.empty())
+      return {};
+
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::string> settingsVector;
+    boost::replace_all(settingsString, " ", "");
+    boost::split(settingsVector, settingsString, boost::is_any_of(","));
+    return settingsVector;
+  }
+
+  /****************************************************************************
+   * Parse AIE metrics
+   ***************************************************************************/
+  std::map<module_type, std::vector<uint64_t>>
+  AieDebugPlugin::parseMetrics()
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::parseMetrics");
+    //TODO: change regValues to set to prevent duplication
+    std::map<module_type, std::vector<uint64_t>> regValues {
+      {module_type::core, {}},
+      {module_type::dma, {}},
+      {module_type::shim, {}},
+      {module_type::mem_tile, {}}
+    };
+    std::vector<std::string> metricsConfig;
+
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
+
+    unsigned int module = 0;
+
+    for (auto const& kv : moduleTypes) {
+      auto type = kv.first;
+      std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module++]);
+
+      for (auto& s : metricsSettings) {
+        try {
+          //uint64_t val = stoul(s,nullptr,16); //old code
+          std::vector<uint64_t> regValList = stringToRegList(s,type);
+          for(auto val:regValList)
+            regValues[type].push_back(val);
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT", "Error Parsing Metric String.");
+        }
+      }
+    }
+
+    return regValues;
+  }
+
 }  // end namespace xdp
 

@@ -60,7 +60,7 @@ namespace xdp {
     { timerSamples.addSample({timestamp1, timestamp2, values}); }
 
     inline
-    void addAIEDebugSample(uint64_t col, uint64_t row, uint64_t rel, uint64_t abslt, uint64_t val)
+    void addAIEDebugSample(uint64_t col, uint64_t row, uint64_t rel, uint64_t abslt, uint32_t val)
     { aieDebugSamples.addAIEDebugData({col, row, rel, abslt, val}); }
 
     inline

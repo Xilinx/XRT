@@ -33,6 +33,7 @@
 #include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -54,7 +55,9 @@ class AieDebugMetadata {
     uint64_t deviceID;
     xrt::hw_context hwContext;
     std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<module_type, std::vector<uint64_t>> parsedRegValues;
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
+
 
   public:
     AieDebugMetadata(uint64_t deviceID, void* handle);
@@ -62,9 +65,18 @@ class AieDebugMetadata {
     module_type getModuleType(int mod) {return moduleTypes[mod];}
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
+    const module_type* getmoduleTypes() {
+        return moduleTypes;
+    }
 
     std::map<tile_type, std::string> getConfigMetrics(const int module) {
       return configMetrics[module];
+    }
+    std::map<module_type, std::vector<uint64_t>>& getParsedRegValues(){
+      return parsedRegValues;
+    }
+    void setParsedRegValues(std::map<module_type, std::vector<uint64_t>>& m) {
+      parsedRegValues = m;
     }
     std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module) {
       return {configMetrics[module].begin(), configMetrics[module].end()};
@@ -82,8 +94,14 @@ class AieDebugMetadata {
     }
 
     const AIEProfileFinalConfig& getAIEProfileConfig() const ;
+    //std::map<module_type, std::vector<uint64_t>> parsedRegValues;
 };
 
+/*****************************************************************
+The BaseReadableTile is created to simplify the retrieving of value at
+each tile. This class encapsulates all the data (row, col, list of registers
+to read) pertaining to a particuar tile, for easy extraction of tile by tile data.
+****************************************************************** */
 class BaseReadableTile {
   public:
     std::vector <uint32_t> values;
@@ -101,35 +119,50 @@ class BaseReadableTile {
     }
 
 
-    void printValues( uint32_t deviceID){
+    void printValues( uint32_t deviceID,VPDatabase* db){
       int i=0;
       for (auto& absoluteOffset : absoluteOffsets){
-        //std::cout<< "Debug tile (" << col << ", " << row << ") "
-        //<< "hex address/values: 0x" << std::hex << absoluteOffset << " "
-        //<< values[i++] << std::endl;
-        /*
         std::stringstream msg;
         msg << "!!! Debug tile (" << col << ", " << row << ") "
             << "hex address/values: 0x" << std::hex << absoluteOffset << " : "
-            << values[i++] << std::dec;
+            << values[i] << std::dec;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-        */
-        db->getDynamicInfo().addAIEDebugSample(deviceId, col,row,absoluteOffset,relativeOffsets[i],values[i]);
+
+        db->getDynamicInfo().addAIEDebugSample(deviceID, col,row,relativeOffsets[i],absoluteOffset,values[i]);
         i++;
       }
     }
   };
 
+/*************************************************************************************
+The class UsedRegisters is what gives us AIE hw generation specific data. The base class
+has virtual functions which populate the correct registers and their addresses according
+to the AIE hw generation in the derived classes. Thus we can dynamically populate the
+correct registers and their addresses at runtime.
+**************************************************************************************/
   class UsedRegisters {
 
-  public:
 
+  protected:
   std::vector<uint64_t> core_addresses;
   std::vector<uint64_t> interface_addresses ;
   std::vector<uint64_t> memory_addresses;
   std::vector<uint64_t> memory_tile_addresses;
+  public:
   std::map<std::string, uint64_t> regNametovalues;
   std::map<uint64_t, std::string> regValueToName;
+  std::vector<uint64_t> getCoreAddresses() {
+    return core_addresses;
+  }
+  std::vector<uint64_t> getInterfaceAddresses() {
+    return interface_addresses;
+  }
+  std::vector<uint64_t> getMemoryAddresses() {
+    return memory_addresses;
+  }
+  std::vector<uint64_t> getMemoryTileAddresses() {
+    return memory_tile_addresses;
+  }
     virtual void populateProfileRegisters()=0;
     virtual void populateTraceRegisters()=0;
     virtual void populateRegNameToValueMap()=0;
