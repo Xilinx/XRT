@@ -9,7 +9,7 @@
 #if defined(XRT_BUILD) && !defined(DISABLE_ABI_CHECK)
 # include "version.h"
 #elif !defined(XRT_BUILD)
-# include "xrt/include/detail/version.h"
+# include "xrt/detail/version.h"
 #endif
 
 #ifdef __cplusplus
