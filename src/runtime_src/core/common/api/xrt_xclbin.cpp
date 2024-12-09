@@ -34,7 +34,7 @@
 #include <mutex>
 
 #ifdef _WIN32
-# include "windows/uuid.h"
+# include "xrt/detail/windows/uuid.h"
 # pragma warning( disable : 4244 4267 4996)
 #else
 # include <linux/uuid.h>

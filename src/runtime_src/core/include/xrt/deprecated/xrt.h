@@ -25,7 +25,7 @@
 #if defined (_WIN32)
 #define NOMINMAX
 #include <windows.h>
-#include "windows/types.h"
+#include "xrt/detail/windows/types.h"
 #endif
 
 #include "xrt/detail/xclbin.h"

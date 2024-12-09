@@ -61,11 +61,11 @@
 #  include <cstdlib>
 #  include <cstdint>
 #  include <algorithm>
-#  include <windows/uuid.h>
+#  include <xrt/detail/windows/uuid.h>
 # else
 #  include <stdlib.h>
 #  include <stdint.h>
-#  include <windows/uuid.h>
+#  include <xrt/detail/windows/uuid.h>
 # endif
 #endif
 

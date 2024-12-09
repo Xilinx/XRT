@@ -28,7 +28,7 @@
 #include <iosfwd>
 
 #ifdef _WIN32
-# include "core/include/windows/types.h"
+# include "core/include/xrt/detail/windows/types.h"
 # pragma warning( push )
 # pragma warning ( disable : 4100 )
 #endif
