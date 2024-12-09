@@ -36,6 +36,11 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+#Set XRT_HEAD_COMMITS to default value if above command is not executed
+if (NOT XRT_HEAD_COMMITS)
+set (XRT_HEAD_COMMITS -1)
+endif()
+
 # Get number of commits between HEAD and master
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD ^origin/master
@@ -43,6 +48,11 @@ execute_process(
   OUTPUT_VARIABLE XRT_BRANCH_COMMITS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+#Set XRT_BRANCH_COMMITS to default value if above command is not executed
+if (NOT XRT_BRANCH_COMMITS)
+set (XRT_BRANCH_COMMITS -1)
+endif()
 
 # Get the latest abbreviated commit hash date of the working branch
 execute_process(
