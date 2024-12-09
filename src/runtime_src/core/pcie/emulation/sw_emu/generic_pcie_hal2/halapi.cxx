@@ -7,7 +7,8 @@
 #include "core/include/xdp/app_debug.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 namespace {
 

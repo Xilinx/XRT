@@ -22,7 +22,7 @@
 #include "xocl/core/memory.h"
 #include "xocl/xclbin/xclbin.h"
 
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "core/common/api/kernel_int.h"
 
 #include "xrt/util/td.h"

@@ -1,35 +1,32 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-set(XRT_HEADER_SRC
+# These headers must be installed to legacy include dir for legacy xrt
+# package as well as under xrt/ for base package and also xrt legacy
+# The includes simply refer into include/xrt
+set(XRT_CORE_HEADER_SRC
   ert.h
-  xstream.h
-  types.h
-  xcl_axi_checker_codes.h
+  xrt.h
   xclbin.h
   xclerr.h
-  xclfeatures.h
-  xclhal2.h
-  xrt.h
-  xcl_app_debug.h
-  xcl_macros.h
-  xcl_app_debug.h
-  xclperf.h
-  xclhal2_mem.h
-  xrt_mem.h
   xrt_error_code.h
+  xrt_mem.h
+
+  # unknown where used
   xgq_cmd_common.h
   xgq_cmd_ert.h
   xgq_impl.h
   xgq_resp_parser.h)
 
-install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR} COMPONENT ${XRT_DEV_COMPONENT})
 
-add_subdirectory(xrt)
+# Legacy deprecated install
+install (FILES ${XRT_CORE_HEADER_SRC}
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT})
+
+# Legacy experimental
 add_subdirectory(experimental)
-add_subdirectory(deprecated)
-if(WIN32)
-add_subdirectory(windows)
-endif()
-add_subdirectory(unittests)
+
+# Exported includes
+add_subdirectory(xrt)
+

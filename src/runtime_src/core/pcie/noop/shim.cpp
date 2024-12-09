@@ -11,7 +11,7 @@
 #define XRT_CORE_PCIE_NOOP_SOURCE
 #include "shim.h"                  // This file implements shim.h
 #include "core/include/shim_int.h" // This file implements shim_int.h
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/device.h"

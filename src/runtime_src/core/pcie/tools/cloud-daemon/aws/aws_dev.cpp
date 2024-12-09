@@ -24,7 +24,7 @@
 #include <exception>
 #include <future>
 #include <uuid/uuid.h>
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "aws_dev.h"
 
 static std::map<std::string, size_t>index_map;

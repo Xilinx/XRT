@@ -3,10 +3,10 @@
 #ifndef XRT_CORE_FENCE_HANDLE_H
 #define XRT_CORE_FENCE_HANDLE_H
 
+#include "xrt/experimental/xrt_fence.h"
+
 #include "core/common/shim/shared_handle.h"
 #include "core/common/error.h"
-
-#include "experimental/xrt_fence.h"
 
 #include <cstdint>
 #include <memory>

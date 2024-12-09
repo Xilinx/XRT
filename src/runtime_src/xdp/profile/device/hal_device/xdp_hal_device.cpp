@@ -23,8 +23,8 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 
-#include "core/include/experimental/xrt-next.h"
-#include "core/include/experimental/xrt_device.h"
+#include "core/include/xrt/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt_device.h"
 
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"

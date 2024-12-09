@@ -18,11 +18,11 @@
 #define runtime_src_xocl_xclbin_h_
 
 #include "xocl/config.h"
-#include "core/include/xclbin.h" // definition of binary structs
+#include "core/include/xrt/detail/xclbin.h" // definition of binary structs
 #include "core/common/device.h"
 #include "core/common/uuid.h"
 
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include <map>
 #include <string>

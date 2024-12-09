@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-
+#include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_uuid.h"
-#include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/cuidx_type.h"
 #include <memory>

@@ -23,7 +23,7 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 
 #include "core/common/message.h"
-#include "experimental/xrt_profile.h"
+#include "xrt/experimental/xrt_profile.h"
 
 #ifdef _WIN32
 #pragma warning (disable : 4244)

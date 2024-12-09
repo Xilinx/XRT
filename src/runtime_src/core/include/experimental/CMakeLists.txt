@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt-next.h
   xrt_aie.h
@@ -28,4 +28,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xclbin_util.h
   xclbin-util.h)
 
-install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental COMPONENT ${XRT_DEV_COMPONENT})
+# Legacy deprecated install
+install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC}
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental
+  COMPONENT ${XRT_DEV_COMPONENT})

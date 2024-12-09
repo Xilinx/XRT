@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "experimental/xrt_ext.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/experimental/xrt_ext.h"
 
 #ifdef _WIN32
 using export_handle = uint64_t;

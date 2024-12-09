@@ -38,7 +38,7 @@
 // Local/XRT headers
 #include "config.h"
 #include "shim.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 // C++ headers
 #include <algorithm>
 #include <cassert>

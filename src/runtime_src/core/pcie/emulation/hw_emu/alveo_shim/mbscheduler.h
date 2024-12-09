@@ -11,7 +11,7 @@
 #include <cmath>
 #include <cstdint>
 #include <queue>
-#include "ert.h"
+#include "xrt/detail/ert.h"
 
 #define XOCL_U32_MASK 0xFFFFFFFF
 

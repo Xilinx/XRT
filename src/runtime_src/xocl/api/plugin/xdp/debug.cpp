@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "core/common/dlfcn.h"
 #include "plugin/xdp/debug.h"
 #include "core/common/module_loader.h"

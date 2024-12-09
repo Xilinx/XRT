@@ -10,7 +10,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/experimental/xrt_ext.h"
+#include "core/include/xrt/detail/xrt_mem.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 
 #include "native_profile.h"
 #include "bo.h"
@@ -19,7 +20,6 @@
 #include "handle.h"
 #include "hw_context_int.h"
 #include "kernel_int.h"
-#include "xrt_mem.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"

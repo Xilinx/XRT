@@ -5,16 +5,17 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "experimental/xrt_module.h"
-#include "experimental/xrt_elf.h"
-#include "experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_module.h"
+#include "xrt/experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_ext.h"
 
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
 
+#include "xrt/detail/ert.h"
+
 #include "elf_int.h"
-#include "ert.h"
 #include "module_int.h"
 #include "core/common/debug.h"
 

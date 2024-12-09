@@ -19,7 +19,7 @@
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
 #include "core/include/xrt.h"
-#include "core/include/experimental/xrt_message.h"
+#include "core/include/xrt/experimental/xrt_message.h"
 #include <string>
 #include <cstdio>
 #include <vector>

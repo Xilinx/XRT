@@ -24,7 +24,7 @@
 #include "xocl/core/object.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/execution_context.h"
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include <utility>
 #include <string>
 #include <set>

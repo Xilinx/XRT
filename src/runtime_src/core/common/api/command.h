@@ -7,8 +7,8 @@
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/buffer_handle.h"
-#include "xrt.h"
-#include "ert.h"
+#include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/deprecated/xrt.h"
 
 /**
  * class command - Command API expected by sws and kds command monitor

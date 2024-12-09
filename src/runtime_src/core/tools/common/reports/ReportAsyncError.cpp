@@ -20,8 +20,8 @@
 #include "core/common/device.h"
 #include "core/common/time.h"
 #include "core/common/api/error_int.h"
-#include "core/include/experimental/xrt_error.h"
-#include "core/include/xrt_error_code.h"
+#include "core/include/xrt/experimental/xrt_error.h"
+#include "core/include/xrt/detail/xrt_error_code.h"
 #include "core/common/query_requests.h"
 
 #include <boost/algorithm/string.hpp>

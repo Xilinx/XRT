@@ -27,7 +27,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"

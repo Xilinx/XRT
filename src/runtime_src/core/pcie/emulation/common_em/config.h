@@ -4,7 +4,7 @@
 //XRT/Local includes
 #include "em_defines.h"
 #include "xbar_sys_parameters.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "xclfeatures.h"
 #include "xclhal2.h"
 //std includes

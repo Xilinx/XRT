@@ -18,8 +18,8 @@
 #define core_include_types_h_
 
 #if defined(_WIN32)
-# include "windows/types.h"
-# include "windows/uuid.h"
+# include "xrt/detail/windows/types.h"
+# include "xrt/detail/windows/uuid.h"
 #endif
 
 #endif

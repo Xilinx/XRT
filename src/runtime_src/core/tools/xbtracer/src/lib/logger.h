@@ -15,9 +15,9 @@
 #include <vector>
 #include <filesystem>
 
-#include "experimental/xrt_hw_context.h"
-#include "experimental/xrt_xclbin.h"
-#include "experimental/xrt_module.h"
+#include "xrt/xrt_hw_context.h"
+#include "xrt/experimental/xrt_xclbin.h"
+#include "xrt/experimental/xrt_module.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"

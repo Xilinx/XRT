@@ -6,7 +6,7 @@
 // core/include/experimental/xrt_queue.h
 #define XRT_API_SOURCE         // exporting xrt_queue.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_queue.h"
+#include "core/include/xrt/experimental/xrt_queue.h"
 
 #include <memory>
 #include <mutex>

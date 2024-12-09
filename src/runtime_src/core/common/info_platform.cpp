@@ -6,7 +6,7 @@
 #include "query_requests.h"
 #include "sensor.h"
 #include "utils.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include <boost/algorithm/string.hpp>
 

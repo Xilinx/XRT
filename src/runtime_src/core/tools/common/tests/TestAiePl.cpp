@@ -13,7 +13,7 @@ namespace XBU = XBUtilities;
 #include "aie_pl_util/pl_controller_aie2.hpp"
 
 // XRT includes
-#include "experimental/xrt_system.h"
+#include "xrt/experimental/xrt_system.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"

@@ -10,7 +10,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
-#include <experimental/xrt_kernel.h>
+#include "xrt/experimental/xrt_kernel.h"
 namespace XBU = XBUtilities;
 
 #include <filesystem>

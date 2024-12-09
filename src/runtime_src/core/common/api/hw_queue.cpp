@@ -13,11 +13,11 @@
 #include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 #include "core/include/xrt_hwqueue.h"
 
 #include "xrt/xrt_hw_context.h"
-#include "experimental/xrt_fence.h"
+#include "xrt/experimental/xrt_fence.h"
 
 #include <algorithm>
 #include <atomic>

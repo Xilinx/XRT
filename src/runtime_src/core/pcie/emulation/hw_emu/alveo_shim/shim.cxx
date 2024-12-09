@@ -5,7 +5,7 @@
 #include "system_hwemu.h"
 #include "plugin/xdp/device_offload.h"
 
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include "core/common/AlignedAllocator.h"
 #include "core/common/xclbin_parser.h"

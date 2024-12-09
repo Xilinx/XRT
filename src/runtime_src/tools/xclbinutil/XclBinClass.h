@@ -23,7 +23,7 @@
 #include <vector>
 #include <boost/property_tree/ptree.hpp>
 
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "ParameterSectionData.h"
 
 class Section;

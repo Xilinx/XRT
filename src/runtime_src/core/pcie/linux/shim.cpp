@@ -5,10 +5,10 @@
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
 
-#include "ert.h"
+#include "xrt/detail/ert.h"
+#include "xrt/detail/xclbin.h"
 #include "pcidev.h"
 #include "system_linux.h"
-#include "xclbin.h"
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
@@ -17,7 +17,7 @@
 #include "core/include/shim_int.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"

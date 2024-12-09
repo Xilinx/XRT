@@ -6,7 +6,7 @@
 #define XRT_BO_H_
 
 #include "xrt.h"
-#include "xrt_mem.h"
+#include "xrt/detail/xrt_mem.h"
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus

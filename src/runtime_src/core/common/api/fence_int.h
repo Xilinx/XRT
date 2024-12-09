@@ -5,7 +5,7 @@
 #define _XRT_COMMON_FENCE_INT_H_
 
 // This file defines implementation extensions to the XRT Kernel APIs.
-#include "core/include/experimental/xrt_fence.h"
+#include "core/include/xrt/experimental/xrt_fence.h"
 #include "core/common/shim/fence_handle.h"
 
 namespace xrt_core::fence_int {

@@ -9,8 +9,8 @@
 #include "xrt/util/range.h"
 #include "core/common/device.h"
 #include "core/include/xdp/common.h"
-#include "xclbin.h"
-#include "ert.h"
+#include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include <set>
 #include <vector>

@@ -9,9 +9,9 @@
 #include "JSONConfigurable.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
-#include "experimental/xrt_ext.h"
-#include "experimental/xrt_module.h"
-#include "experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_module.h"
+#include "xrt/experimental/xrt_elf.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>

@@ -14,9 +14,9 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
-#include "experimental/xrt_message.h"
-#include "experimental/xrt_system.h"
-#include "experimental/xrt_xclbin.h"
+#include "xrt/experimental/xrt_message.h"
+#include "xrt/experimental/xrt_system.h"
+#include "xrt/experimental/xrt_xclbin.h"
 
 // Pybind11 includes
 #include <pybind11/pybind11.h>

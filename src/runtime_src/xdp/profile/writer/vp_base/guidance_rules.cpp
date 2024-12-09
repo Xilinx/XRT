@@ -27,7 +27,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "core/common/time.h"
 
 // An anonymous namespace for all of the different guidance rules

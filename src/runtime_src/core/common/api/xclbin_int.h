@@ -6,7 +6,7 @@
 #define _XRT_COMMON_XCLBIN_INT_H_
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"

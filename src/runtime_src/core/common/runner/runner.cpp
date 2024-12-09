@@ -16,12 +16,12 @@
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/include/experimental/xrt_elf.h"
-#include "core/include/experimental/xrt_ext.h"
-#include "core/include/experimental/xrt_kernel.h"
-#include "core/include/experimental/xrt_module.h"
-#include "core/include/experimental/xrt_queue.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_elf.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/include/xrt/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_module.h"
+#include "core/include/xrt/experimental/xrt_queue.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #ifdef _WIN32
 # pragma warning (push)

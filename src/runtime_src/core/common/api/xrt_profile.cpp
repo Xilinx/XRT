@@ -21,7 +21,7 @@
 
 #define XCL_DRIVER_DLL_EXPORT 
 #define XRT_CORE_COMMON_SOURCE
-#include "core/include/experimental/xrt_profile.h"
+#include "core/include/xrt/experimental/xrt_profile.h"
 
 #include "core/common/dlfcn.h"
 #include "core/common/error.h"

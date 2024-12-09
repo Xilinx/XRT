@@ -6,7 +6,7 @@
 
 // This file defines implementation extensions to the XRT BO APIs.
 #include "core/common/config.h"
-#include "core/include/experimental/xrt_ip.h"
+#include "core/include/xrt/experimental/xrt_ip.h"
 
 namespace xrt_core::ip_int {
 

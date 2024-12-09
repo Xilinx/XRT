@@ -18,7 +18,7 @@
  * Embedded runtime scheduler
  */
 
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 // includes from bsp
 #ifndef ERT_HW_EMU
 #include <xil_printf.h>

@@ -40,7 +40,7 @@
 #include "core/include/xdp/axi_checker_codes.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include <map>
 #include <sstream>

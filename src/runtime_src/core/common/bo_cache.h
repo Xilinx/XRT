@@ -8,7 +8,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/shim/buffer_handle.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include <vector>
 #include <utility>

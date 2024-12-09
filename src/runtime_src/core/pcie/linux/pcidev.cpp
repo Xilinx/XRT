@@ -3,7 +3,7 @@
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "pcidev.h"
 #include "pcidrv.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include "core/common/utils.h"
 

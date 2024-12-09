@@ -6,17 +6,17 @@
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
 
-#include "ert.h"
-#include "xrt.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+#include "xrt/detail/ert.h"
+#include "xrt/deprecated/xrt.h"
 
 #ifdef __cplusplus
-# include "experimental/xrt_exception.h"
-# include "experimental/xrt_fence.h"
-# include "experimental/xrt_hw_context.h"
+# include "xrt/experimental/xrt_exception.h"
+# include "xrt/experimental/xrt_fence.h"
+# include "xrt/experimental/xrt_hw_context.h"
 # include <chrono>
 # include <condition_variable>
 # include <cstdint>

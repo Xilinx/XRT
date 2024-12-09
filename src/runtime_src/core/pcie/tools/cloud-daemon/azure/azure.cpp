@@ -26,7 +26,7 @@
 #include <exception>
 #include <regex>
 #include <future>
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "azure.h"
 
 /*

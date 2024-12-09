@@ -10,7 +10,7 @@
 #include "core/common/scope_guard.h"
 #include "core/common/system.h"
 #include "core/common/thread.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include <boost/format.hpp>
 

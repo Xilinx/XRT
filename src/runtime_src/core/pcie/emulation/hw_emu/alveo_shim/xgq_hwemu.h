@@ -47,8 +47,8 @@
 #include <vector>
 
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/detail/ert.h"
 #include "em_defines.h"
-#include "ert.h"
 #include "xgq_cmd_common.h"
 #include "xgq_hwemu_plat.h"
 

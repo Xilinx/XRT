@@ -6,8 +6,8 @@
 
 // This file defines implementation extensions to the XRT BO APIs.
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/detail/ert.h"
 #include "core/common/config.h"
-#include "core/include/ert.h"
 
 namespace xrt_core { namespace bo {
 

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "experimental/xrt_module.h"
+#include "xrt/experimental/xrt_module.h"
 
 /*
  * module class method aliases.

@@ -4,7 +4,7 @@
 
 #include "pcidev.h"
 #include "shim.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include "core/common/message.h"
 #include "core/include/xdp/aim.h"
@@ -14,6 +14,7 @@
 #include "core/include/xdp/counters.h"
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 #include <algorithm>
 #include <cstdio>

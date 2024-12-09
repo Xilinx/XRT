@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_xclbin.h"
-#include "experimental/xrt_ext.h"
-#include "xrt/xrt_kernel.h"
-#include "xrt.h"
-#include "xclbin.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+#include "xrt/experimental/xrt_xclbin.h"
+#include "xrt/experimental/xrt_ext.h"
+#include "xrt/deprecated/xrt.h"
+#include "xrt/detail/xclbin.h"
 #include "utils/message.hpp"
 
 #include <functional>

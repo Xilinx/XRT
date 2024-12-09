@@ -18,7 +18,7 @@
 #define xocl_core_compute_unit_h_
 
 #include "xocl/xclbin/xclbin.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/common/api/xclbin_int.h"
 #include <string>
 

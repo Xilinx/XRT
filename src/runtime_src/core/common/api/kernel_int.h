@@ -8,12 +8,12 @@
 #define _XRT_COMMON_KERNEL_INT_H_
 
 // This file defines implementation extensions to the XRT Kernel APIs.
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/shim/buffer_handle.h"
-#include "core/include/experimental/xrt_xclbin.h"
 
 #include <bitset>
 #include <cstdint>

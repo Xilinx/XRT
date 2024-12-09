@@ -21,7 +21,7 @@
 
 #include "FormattedOutput.h"
 #include "ParameterSectionData.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "XclBinClass.h"
 #include "XclBinSignature.h"
 #include "XclBinUtilities.h"

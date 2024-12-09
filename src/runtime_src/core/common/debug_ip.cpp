@@ -20,7 +20,7 @@
 #include "debug_ip.h"
 
 #include "core/common/device.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "core/include/xdp/add.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"

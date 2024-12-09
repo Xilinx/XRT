@@ -20,8 +20,8 @@
 #include "config_reader.h"
 #include "xclbin_parser.h"
 #include "message.h"
-#include "ert.h"
-#include "types.h"
+#include "core/include/types.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include <memory>
 #include <string>

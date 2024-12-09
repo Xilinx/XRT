@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_elf.h"
 
 /*
  * elf class method aliases.
