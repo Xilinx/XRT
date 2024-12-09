@@ -25,7 +25,7 @@ Testm2m::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  if (!search_and_program_xclbin(dev, ptree)) {
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree)) {
     return ptree;
   }
 

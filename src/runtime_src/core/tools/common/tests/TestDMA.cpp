@@ -26,7 +26,7 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
 
   ptree.put("status", XBValidateUtils::test_token_skipped);
-  if (!search_and_program_xclbin(dev, ptree))
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree))
     return ptree;
 
   // get DDR bank count from mem_topology if possible

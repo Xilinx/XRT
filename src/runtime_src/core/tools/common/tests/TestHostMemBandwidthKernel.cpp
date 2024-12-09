@@ -68,10 +68,10 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree); // bandwidth.xclbin
   std::string old_b_file = "/slavebridge.xclbin";
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
   auto old_binary_file = std::filesystem::path(test_path) / old_b_file;
-  auto check_old_b_file = validate_binary_file(old_binary_file.string());
+  auto check_old_b_file = XBValidateUtils::validate_binary_file(old_binary_file.string());
   if (retVal == EOPNOTSUPP) {
     if (check_old_b_file == EOPNOTSUPP) {
       XBValidateUtils::logger(ptree, "Details", "Test is not supported on this device.");

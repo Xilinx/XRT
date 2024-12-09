@@ -144,7 +144,7 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   auto no_dma = xrt_core::device_query_default<xrt_core::query::nodma>(dev, 0);
 
-  if (!search_and_program_xclbin(dev, ptree)) {
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree)) {
     return ptree;
   }
 

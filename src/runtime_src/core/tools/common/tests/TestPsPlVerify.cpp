@@ -45,7 +45,7 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
 
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-      auto retVal = validate_binary_file(path);
+      auto retVal = XBValidateUtils::validate_binary_file(path);
       if (retVal == EOPNOTSUPP) {
         ptree.put("status", XBValidateUtils::test_token_skipped);
         return;
@@ -59,7 +59,7 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
   }
 
   // Load ps kernel onto device
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   if (flag_s || retVal == EOPNOTSUPP) {
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return;

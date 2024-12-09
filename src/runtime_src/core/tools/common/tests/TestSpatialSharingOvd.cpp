@@ -15,7 +15,7 @@
 namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size = 1024; //1 KB
+static constexpr size_t buffer_size = 1024 * 1024 * 1024; //1 GB
 
 // Method to run the test
 // Parameters:
@@ -96,7 +96,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 8, buffer_size, 10000);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 2, buffer_size, 10);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 

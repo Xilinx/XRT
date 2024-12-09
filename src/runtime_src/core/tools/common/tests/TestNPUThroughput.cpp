@@ -54,7 +54,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   xrt::kernel testker;
 
   try {
-    std::string sequence = dpu_or_elf(dev, xclbin, ptree);
+    std::string sequence = XBValidateUtils::dpu_or_elf(dev, xclbin, ptree);
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     testker = get_kernel(hwctx, sequence);
   }
