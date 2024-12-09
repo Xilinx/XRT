@@ -1798,7 +1798,7 @@ struct aie_partition_info : request
       case 640: //0x280
         return "Low";
       default:
-        throw xrt_core::system_error(EINVAL, "Invalid priority status: " + std::to_string(prio_status));
+        return "N/A";
     }
   }
 };

@@ -29,7 +29,7 @@ class device;
 
 namespace edge { namespace aie {
 
-constexpr auto full_array_id = 1;
+constexpr uint32_t full_array_id = 1;
 
 enum class module_type {
   core = 0,
