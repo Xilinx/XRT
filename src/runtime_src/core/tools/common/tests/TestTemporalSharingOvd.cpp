@@ -120,11 +120,11 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   // End of Run 2 
 
   if(XBU::getVerbose()){
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared contexts latency: '%.1f' ms") % (latencySpatial * 1000)));
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared contexts latency: '%.1f' ms") % (latencyTemporal * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared contexts latency: %.1f ms") % (latencySpatial * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared contexts latency: %.1f ms") % (latencyTemporal * 1000)));
   }
   auto overhead = (latencyTemporal - latencySpatial); 
-  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' ms") % (overhead * 1000)));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % (overhead * 1000)));
 
   // Set the test status to passed
   ptree.put("status", XBValidateUtils::test_token_passed);
