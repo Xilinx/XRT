@@ -144,6 +144,7 @@ correct registers and their addresses at runtime.
 
 
   protected:
+  //TODO make the vectors into sets
   std::vector<uint64_t> core_addresses;
   std::vector<uint64_t> interface_addresses ;
   std::vector<uint64_t> memory_addresses;
@@ -177,6 +178,7 @@ class AIE1UsedRegisters : public UsedRegisters {
  public:
   void populateProfileRegisters(){
  //populate the correct usedregisters
+ //TODO add to the set directly
     std::vector<uint64_t> profile_core_addresses={0x00031020,0x00031024,0x00031028,0x0003102c};
     std::vector<uint64_t> profile_interface_addresses={0x0003ff00,0x0003ff04};
     std::vector<uint64_t> profile_memory_addresses={0x00011000,0x00011008};
@@ -244,38 +246,6 @@ class AIE2UsedRegisters : public UsedRegisters {
 
 };
 
-class AIE2pUsedRegisters : public UsedRegisters {
- public:
-  void populateProfileRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00032500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
-  }
-  void populateTraceRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
-  }
-  void populateRegNameToValueMap(){
-    //Dont know which ones are exactly for AIE2p. Populating with AIE2 ones for now
-    //TODO: populate correct registers with python script
-    regNametovalues=  {
-#include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2.txt"
-                      };
-  }
-
-  void populateRegValueToNameMap(){
-    //some implementation
-    regValueToName=  {
-#include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2.txt"
-                      };
-  }
-
-};
 
 class AIE2psUsedRegisters : public UsedRegisters {
  public:
@@ -304,34 +274,6 @@ class AIE2psUsedRegisters : public UsedRegisters {
     regValueToName=  {
 #include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2ps.txt"
                       };
-  }
-
-};
-
-class AIE4UsedRegisters : public UsedRegisters {
- public:
-  void populateProfileRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
-  }
-  void populateTraceRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
-  }
-  void populateRegNameToValueMap(){
-    //some implementation
-    //dummy one for now
-    regNametovalues=  { {"None",aie2ps::cm_core_bmll0_part1}};
-  }
-  void populateRegValueToNameMap(){
-    //some implementation
-    regValueToName=  { {0x00009320,"None"}  };
   }
 
 };

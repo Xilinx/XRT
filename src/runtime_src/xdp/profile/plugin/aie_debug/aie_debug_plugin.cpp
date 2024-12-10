@@ -147,24 +147,18 @@ namespace xdp {
     }
     AIEData.valid = true;
 
-   //TODO insert hw gen specific code and parse metrics pushed up from edge impl
     auto hwGen = AIEData.metadata->getHardwareGen();
     //UsedRegisters* usedRegisters;
     if (hwGen==1){
         usedRegisters=std::make_unique<AIE1UsedRegisters>();
     }
-    else if (hwGen==3){
-        usedRegisters=std::make_unique<AIE2UsedRegisters>();
-    }
-    else if (hwGen==4 || hwGen==8 || hwGen==9){
-        usedRegisters=std::make_unique<AIE2pUsedRegisters>();
-    }
     else if (hwGen==5){
         usedRegisters=std::make_unique<AIE2psUsedRegisters>();
     }
-    else if (hwGen>= 40){
-        usedRegisters=std::make_unique<AIE4UsedRegisters>();
+    else if (hwGen>=2 && hwGen<10){
+        usedRegisters=std::make_unique<AIE2UsedRegisters>();
     }
+    //TODO include populateRegNameToValueMap & populateRegValueToNameMap right in the
     usedRegisters->populateRegNameToValueMap();
     usedRegisters->populateRegValueToNameMap();
 
