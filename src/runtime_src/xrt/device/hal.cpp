@@ -18,7 +18,7 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
-#include "core/include/experimental/xrt_system.h"
+#include "core/include/xrt/experimental/xrt_system.h"
 
 #include <filesystem>
 

@@ -19,7 +19,7 @@
 #define __XclBinUtilities_h_
 
 // Include files
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>

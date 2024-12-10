@@ -4,8 +4,9 @@
 #define XRT_COMMON_API_HW_CONTEXT_INT_H
 
 #include "core/common/config.h"
+
 // This file defines implementation extensions to the XRT XCLBIN APIs.
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include <cstdint>
 

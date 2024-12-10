@@ -16,9 +16,9 @@
 #ifndef XRT_CL2XRT_HPP
 #define XRT_CL2XRT_HPP
 
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_kernel.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
 
 #include <CL/cl.h>
 

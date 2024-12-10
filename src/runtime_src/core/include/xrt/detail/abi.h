@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 Xilinx, Inc. All rights reserved.
-
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_DETAIL_ABI_H
 #define XRT_DETAIL_ABI_H
 
-#ifndef DISABLE_ABI_CHECK
+// Generated version.h file is installed into include/xrt/detail/version.h
+// but at build time it is picked up from compile include search path
+#if defined(XRT_BUILD) && !defined(DISABLE_ABI_CHECK)
 # include "version.h"
+#elif !defined(XRT_BUILD)
+# include "xrt/detail/version.h"
 #endif
 
 #ifdef __cplusplus

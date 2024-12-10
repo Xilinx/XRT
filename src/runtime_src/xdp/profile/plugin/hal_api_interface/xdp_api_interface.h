@@ -24,7 +24,7 @@
 
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/database/database.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 
 namespace xdp {
 

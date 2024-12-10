@@ -27,7 +27,7 @@
 #include "filetypes/aie_trace_config_filetype.h"
 
 #include "core/common/api/xclbin_int.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include <algorithm>
 #include <boost/property_tree/json_parser.hpp>

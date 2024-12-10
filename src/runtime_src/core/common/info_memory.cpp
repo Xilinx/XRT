@@ -7,7 +7,7 @@
 #include "ps_kernel.h"
 #include "query_requests.h"
 #include "utils.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include <boost/algorithm/string.hpp>
 

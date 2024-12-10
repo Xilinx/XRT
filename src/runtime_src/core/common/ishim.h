@@ -20,8 +20,8 @@
 #include "xrt/xrt_graph.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
-#include "experimental/xrt_fence.h"
-#include "experimental/xrt-next.h"
+#include "xrt/experimental/xrt_fence.h"
+#include "xrt/experimental/xrt-next.h"
 
 #include <stdexcept>
 #include <condition_variable>

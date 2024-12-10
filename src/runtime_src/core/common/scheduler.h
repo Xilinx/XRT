@@ -18,7 +18,7 @@
 #define core_common_scheduler_h_
 
 #include "core/include/xrt.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler
 // when XRT C++ code is refactored.

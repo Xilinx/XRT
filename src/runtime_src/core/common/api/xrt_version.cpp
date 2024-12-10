@@ -5,7 +5,7 @@
 // core/include/experimental/xrt_version.h
 #define XRT_API_SOURCE         // exporting xrt_version.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_version.h"
+#include "core/include/xrt/experimental/xrt_version.h"
 #include "version.h"
 
 #ifdef major

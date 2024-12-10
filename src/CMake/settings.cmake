@@ -9,6 +9,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 
+# Indicate that we are building XRT
+add_compile_definitions("XRT_BUILD")
+
 set(XRT_NATIVE_BUILD "yes")
 if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
   set(XRT_NATIVE_BUILD "no")

@@ -12,9 +12,9 @@
 #include "core/include/xrt/xrt_graph.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_device.h"
 #include "core/include/xcl_graph.h"
 
-#include "core/include/experimental/xrt_device.h"
 #include "core/common/api/device_int.h"
 #include "core/common/api/native_profile.h"
 #include "core/common/device.h"

@@ -12,10 +12,10 @@
 #include "core/common/memalign.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
-#include "experimental/xrt-next.h"
-#include "experimental/xrt_bo.h"
-#include "xrt.h"
-#include "xclbin.h"
+#include "xrt/experimental/xrt-next.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/deprecated/xrt.h"
+#include "xrt/detail/xclbin.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files

@@ -26,8 +26,8 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
-#include "core/include/xclbin.h"
-#include "core/include/experimental/xclbin_util.h"
+#include "core/include/xrt/detail/xclbin.h"
+#include "core/include/xrt/experimental/xclbin_util.h"
 
 #include <exception>
 #include <string>

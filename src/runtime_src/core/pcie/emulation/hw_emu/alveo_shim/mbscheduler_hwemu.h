@@ -14,7 +14,7 @@
 #include <thread>
 #include <condition_variable>
 #include <boost/pool/object_pool.hpp>
-#include "ert.h"
+#include "xrt/detail/ert.h"
 
 #define MAX_CUS	  128
 #define	MAX_SLOTS 128

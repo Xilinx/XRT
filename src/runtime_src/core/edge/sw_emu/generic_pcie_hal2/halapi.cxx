@@ -6,6 +6,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/include/xdp/app_debug.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 #include "xcl_graph.h"
 
 namespace {

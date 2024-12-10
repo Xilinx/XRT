@@ -13,11 +13,11 @@
 #include "xclbin_parser.h"
 #include "xclbin_swemu.h"
 
-#include "core/include/ert.h"
-#include "core/include/xrt.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/detail/xclbin.h"
+#include "core/include/xrt/deprecated/xrt.h"
 #include "core/include/xrt/xrt_uuid.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/api/hw_queue.h"
 #include "core/common/api/xclbin_int.h"

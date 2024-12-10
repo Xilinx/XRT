@@ -85,20 +85,20 @@ if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
   set(XRT_STATIC_BUILD ON)
 endif()
 
-# --- Boost ---
-#set(Boost_DEBUG 1)
+# XRT install components
+include (CMake/components.cmake)
 
-# --- Boost Libraries ---
+# Boost Libraries
 include (CMake/boostUtil.cmake)
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
-# --- Curses ---
+# Curses
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-# --- XRT Variables ---
+# XRT Variables
 include (CMake/xrtVariables.cmake)
 
 # Define RPATH for embedding in libraries and executables.  This allows

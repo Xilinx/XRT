@@ -7,7 +7,7 @@ include $(SRCDIR)/../ert.mk
 # Extract to build dir in includes target
 # Also update the MicroBlaze linker script when it changes
 RTS := $(SRCDIR)/../..
-HEADERS := $(SRCDIR)/*.h $(RTS)/core/include/xgq_impl.h $(RTS)/core/include/ert.h
+HEADERS := $(SRCDIR)/*.h $(RTS)/core/include/xgq_impl.h $(RTS)/core/include/xrt/detail/ert.h
 SRC := $(SRCDIR)/sched.c $(HEADERS)
 XGQ_CTRL_SRC := $(SRCDIR)/xgq_ctrl.c $(HEADERS)
 XGQ_CU_SRC := $(SRCDIR)/xgq_cu.c $(HEADERS)

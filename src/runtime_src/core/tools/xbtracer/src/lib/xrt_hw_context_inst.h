@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "experimental/xrt_hw_context.h"
+#include "xrt/xrt_hw_context.h"
 
 /*
  * hw_context class method aliases.

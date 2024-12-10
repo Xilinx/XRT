@@ -18,7 +18,7 @@
 #define xrt_uuid_h_
 
 #ifdef _WIN32
-# include "windows/uuid.h"
+# include "xrt/detail/windows/uuid.h"
 #else
 # include <uuid/uuid.h>
 typedef uuid_t xuid_t;

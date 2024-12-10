@@ -21,7 +21,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
 #include "core/include/xdp/trace.h"

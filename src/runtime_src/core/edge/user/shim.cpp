@@ -12,6 +12,7 @@
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 #include "core/edge/common/aie_parser.h"
 
@@ -738,7 +739,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
       .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
-      .partition_id = partition_id,
+      .partition_id = static_cast<unsigned int>(partition_id),
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();

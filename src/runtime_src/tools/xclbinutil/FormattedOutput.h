@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 #include <boost/property_tree/ptree.hpp>
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 
 // #includes here - please keep these to a bare minimum!
