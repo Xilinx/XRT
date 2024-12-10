@@ -18,7 +18,7 @@
 // % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o xrt.exe xrt.cpp -lxrt_coreutil -pthread
 
 // This test demonstrates application signal handler to
-// catch xbutil reset, close device, and exit gracefully
+// catch xrt-smi reset, close device, and exit gracefully
 #include "xrt/xrt_device.h"
 
 #include <atomic>
@@ -43,7 +43,7 @@ usage()
   std::cout << "xrt.exe [-d <device>]\n";
 }
 
-// sigbus handler to capture 'xbutil reset'
+// sigbus handler to capture 'xrt-smi reset'
 static void
 SigBusHandler(int sig)
 {

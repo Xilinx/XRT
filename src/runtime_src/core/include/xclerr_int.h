@@ -34,7 +34,7 @@
 /**
  * DOC: Device last / latest error status related structs and defines
  * This file is used by both userspace and kernel driver.
- * This file is used by xbutil, xocl, zocl and xbmgmt.
+ * This file is used by xrt-smi, xocl, zocl and xbmgmt.
  */
 
 #ifndef XCLERR_INT_H_

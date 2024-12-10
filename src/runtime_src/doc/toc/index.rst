@@ -68,7 +68,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
 
    xclbintools.rst
-   xbutil.rst
+   xrt-smi.rst
    xbmgmt.rst
    xbflash2.rst
    xball.rst

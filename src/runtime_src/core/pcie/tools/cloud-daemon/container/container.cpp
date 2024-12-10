@@ -117,7 +117,7 @@ int Container::xclLoadXclBin(const xclBin *buffer)
      * That means, the input xclbin file is downloaded as-is. This is also
      * useful in xrt container deployment case, with which, only the user PF
      * is granted to the container, and mgmt is left at host, but within
-     * container users can use xbutil and/or openCL without seeing any
+     * container users can use xrt-smi and/or openCL without seeing any
      * difference compared to within host.
      *
      * If container platform vendors, say Nimbix, want to have xclbin proction,

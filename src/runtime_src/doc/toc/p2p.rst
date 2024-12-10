@@ -45,7 +45,7 @@ Some Mother board BIOS setup allows administrator to set IO Memory base address 
 Enable/Disable P2P
 ~~~~~~~~~~~~~~~~~~
 
-XRT ``xbutil`` is used to enable/disable P2P feature and check current configuration. P2P configuration is persistent across warm reboot. Enabling or disabling P2P requires root privilege.
+XRT ``xrt-smi`` is used to enable/disable P2P feature and check current configuration. P2P configuration is persistent across warm reboot. Enabling or disabling P2P requires root privilege.
 
 Enabling P2P after cold boot is likly to fail because it resizes an exisitng P2P PCIe BAR to a large size and usually Linux will not reserve large IO memory for the PCIe bridges. XRT driver checks the maximum IO memory allowed by host BIOS setup and returns error if there is not enough IO memory for P2P. A warm reboot is required in this scenario after which BIOS and Linux will reassign the required expanded IO memory resource for P2P BAR.
 If a system stops responding after enabling P2P and warm reboot does not recover the host then power cycle is required to recover the host.
@@ -57,11 +57,11 @@ The IO memory region will not be completely released after disabling P2P. Thus, 
 Current P2P Configuration
 .........................
 
-``P2P Enabled`` is shown within ``xbutil examine`` output as below.
+``P2P Enabled`` is shown within ``xrt-smi examine`` output as below.
 
 ::
 
- # xbutil examine --device 0000:03:00.1
+ # xrt-smi examine --device 0000:03:00.1
 
   . . . 
   P2P Status             : disabled
@@ -84,10 +84,10 @@ The command for enabling p2p is as below
 
 :: 
 
- # sudo xbutil configure --device 0000:b3:00.1 --p2p enable
+ # sudo xrt-smi configure --device 0000:b3:00.1 --p2p enable
 
 
-When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through ``xbutil examine`` that would show P2P status is ``no iomem``
+When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through ``xrt-smi examine`` that would show P2P status is ``no iomem``
 
 
 Disable P2P
@@ -97,7 +97,7 @@ The commands for disabling p2p is as below
 
 :: 
  
- # sudo xbutil configure --device 0000:b3:00.1 --p2p disable
+ # sudo xrt-smi configure --device 0000:b3:00.1 --p2p disable
 
 
 Disabling and re-enabling P2P work without a warm reboot in-between. 
