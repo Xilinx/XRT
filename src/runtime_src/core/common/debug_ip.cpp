@@ -97,7 +97,7 @@ std::vector<uint64_t>
 get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   // read counter values
-  // These are in "xbutil" order
+  // These are in "xrt-smi" order
   static const uint64_t am_offsets[] = {
     xdp::IP::AM::AXI_LITE::EXECUTION_COUNT,
     xdp::IP::AM::AXI_LITE::EXECUTION_CYCLES,
@@ -109,7 +109,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
     xdp::IP::AM::AXI_LITE::TOTAL_CU_START
   };
 
-  // These are in "xbutil" order
+  // These are in "xrt-smi" order
   static const uint64_t am_upper_offsets[] = {
     xdp::IP::AM::AXI_LITE::EXECUTION_COUNT_UPPER,
     xdp::IP::AM::AXI_LITE::EXECUTION_CYCLES_UPPER,

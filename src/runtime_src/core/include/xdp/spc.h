@@ -16,7 +16,7 @@
 
 // This file captures all the constants used to access the
 // AXI Stream Protocol Checker cores that may exist in the design.
-// These values are shared between xbutil and the XDP library.
+// These values are shared between xrt-smi and the XDP library.
 
 #ifndef SPC_DOT_H
 #define SPC_DOT_H

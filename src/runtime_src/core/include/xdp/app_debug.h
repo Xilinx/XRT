@@ -30,7 +30,7 @@
 
 namespace xdp {
 
-// The structs declared in this file are used in xbutil and application
+// The structs declared in this file are used in xrt-smi and application
 // debug in order to read all the debug counter values from the
 // debug/profile IP.
 

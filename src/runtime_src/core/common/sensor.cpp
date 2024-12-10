@@ -542,7 +542,7 @@ read_mechanical(const xrt_core::device * device)
 }} // sensor,xrt
 
 
-// The following namespace is only used by legacy xbutil dump
+// The following namespace is only used by legacy xrt-smi dump
 namespace sensor_tree {
 
 // Singleton

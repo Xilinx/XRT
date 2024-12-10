@@ -16,7 +16,7 @@
 
 // This file captures all the constants used to access the AXI Stream Monitor
 // cores that may exist in the design.  These values are shared between
-// the xbutil code base and the XDP library
+// the xrt-smi code base and the XDP library
 
 #ifndef ASM_DOT_H
 #define ASM_DOT_H

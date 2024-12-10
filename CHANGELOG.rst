@@ -75,17 +75,17 @@ Removed
 Added
 .....
 
-**xbutil/xbmgmt**
+**xrt-smi/xbmgmt**
 
-* Added ``xball`` helper script to execute a common set of utility commands (e.g., ``xbutil`` & ``xbmgmt``) across a filtered set of devices.  More information can be found using ``--help`` or in the XRT documents.
+* Added ``xball`` helper script to execute a common set of utility commands (e.g., ``xrt-smi`` & ``xbmgmt``) across a filtered set of devices.  More information can be found using ``--help`` or in the XRT documents.
 * Auto-selecting a device if only one device exits.  If the option ``--device`` or ``-d`` is specified and there is only one device installed, it will be automatically selected and used.
 * All failing operations will now return an error code.  Note: An error will also be returned if there are validation failures.
 * Improved error reporting.
 * Legacy commands have been deprecated.
 * Various report output improvements.
-* ``xbutil configure`` *root* level command introduced.  Added ``host_mem`` and ``p2p`` as commands to configure.
+* ``xrt-smi configure`` *root* level command introduced.  Added ``host_mem`` and ``p2p`` as commands to configure.
 * ``--force`` option support for all operations.
-* ``xbutil validate`` now supports alternative platform validation directories.
+* ``xrt-smi validate`` now supports alternative platform validation directories.
 
 **xclbin**
 
@@ -134,7 +134,7 @@ Added
 * API errors are now propagated up the stack as ``std::system_error`` exceptions with POSIX error code.
 * Added C++ APIs for AIE graph control and execution.
 * XRT driver debug trace support through debugfs ``/sys/kernel/debug/xclmgmt/...`` and ``/sys/kernel/debug/xocl/...``
-* Greatly improved and feature full next generation xbutil and xbmgmt utilities are now the default. The legacy version of the tools can be invoked by passing *--legacy* as the first switch to xbutil or xbmgmt invocation.
+* Greatly improved and feature full next generation xrt-smi and xbmgmt utilities are now the default. The legacy version of the tools can be invoked by passing *--legacy* as the first switch to xrt-smi or xbmgmt invocation.
 * KDS scheduler in xocl has been refactored to significantly improve the throughput across hundreds of processes exercising multiple compute units across multiple devices concurrently.
 * Initial support for PS Kernel -- where a helper application running on APU on platforms like U30 and VCK5000 can be controlled from PCIe host -- has been added.
 * Initial pybind11 bindings for XRT C++ APIs. See ``tests/python/22_verify/22_verify.py`` for an example.
@@ -186,12 +186,12 @@ Added
 * Support for data driven *two stage* platforms have been added.
 * Slimmed down XRT RPM/DEB package dependencies. XRT package does not depend on other **dev/devel** packages anymore.
 * Enabled LPDDR for edge platforms
-* xbutil for edge platforms (use xbutil --new)
+* xrt-smi for edge platforms (use xrt-smi --new)
 
 Removed
 .......
 
-* xbsak, please use xbutil
+* xbsak, please use xrt-smi
 
 
 2.7.0 (202010.2.7.x)
@@ -221,8 +221,8 @@ Added
 * Support for data-driven platforms have been added. XRT uses PCIe VSEC to identify data-driven platforms. For these class of platforms XRT uses device tree to discover IPs in the shell and then initialize them.
 * Experimental APIs have been added for AIE control for edge platforms. The APIs are defined in header file ``xrt_aie.h``.
 * Support for U30 video acceleration offload device has been added.
-* Early access versions of next generation utilities, *xbutil* and *xbmgmt* are available. They can be invoked via *--new* switch as ``xbutil --new``.
-* Utilties xbutil and xbmgmt now give a warning when they detect an unsupported Linux distribution version and kernel version.
+* Early access versions of next generation utilities, *xrt-smi* and *xbmgmt* are available. They can be invoked via *--new* switch as ``xrt-smi --new``.
+* Utilties xrt-smi and xbmgmt now give a warning when they detect an unsupported Linux distribution version and kernel version.
 * Error code paths for clPollStreams() API has been improved.
 
 
@@ -230,7 +230,7 @@ Removed
 .......
 
 * Deprecated utilties xclbincat and xclbinsplit have been removed. Please use xclbinutil to work with xclbin files.
-* ``xclResetDevice()`` has been marked as deprecated in this release and will be removed in a future release. Please use xbutil reset to reset device.
+* ``xclResetDevice()`` has been marked as deprecated in this release and will be removed in a future release. Please use xrt-smi reset to reset device.
 * ``xclUpgradeFirmware()``, ``xclUpgradeFirmware2()`` and ``xclUpgradeFirmwareXSpi()`` have been marked as deprecated in this release and will be removed in a future release. Please use xbmgmt utility to flash device.
 * ``xclBootFPGA()``, ``xclRemoveAndScanFPGA()`` and ``xclRegisterInterruptNotify()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
 * ``xclLockDevice()`` and ``xclUnlockDevice()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
@@ -263,13 +263,13 @@ Added
 * Edge platforms based on MPSoC now support M2M feature via **Zynqmp built-in DMA engine**. M2M for both PCIe and edge platforms can be performed using ``xclCopyBO()`` XRT API or ``clEnqueueCopyBuffers()`` OCL API. Note that the same APIs can also be used to copy buffers between two devices using PCIe peer-to-peer transfer.
 * For edge platforms XRT now supports ACC (adapter execution model).
 * XRT documentation has been reorganized and significantly updated.
-* XRT now natively supports fully virtualized environments where management physical function (PF0) is completely hidden in host and only user physical function (PF1) is exported to the guest. End-user applications based on libxrt_core and xbutil command line utility do not need directly interact with xclmgmt driver. Communication between xocl driver and xclmgmt driver is done over hardware mailbox and MPD/MSD framework. For more information refer to MPD/MSD and Mailbox sections in XRT documentation.
-* Management Physical Function (PF0) should now be managed using ``xbmgmt`` utility which is geared towards system adminstrators. ``xbutil`` continues to be end-user facing utility.
+* XRT now natively supports fully virtualized environments where management physical function (PF0) is completely hidden in host and only user physical function (PF1) is exported to the guest. End-user applications based on libxrt_core and xrt-smi command line utility do not need directly interact with xclmgmt driver. Communication between xocl driver and xclmgmt driver is done over hardware mailbox and MPD/MSD framework. For more information refer to MPD/MSD and Mailbox sections in XRT documentation.
+* Management Physical Function (PF0) should now be managed using ``xbmgmt`` utility which is geared towards system adminstrators. ``xrt-smi`` continues to be end-user facing utility.
 * Support has been added for device memory only buffer with no backing shadow buffer in host on PCIe platforms. To allocate such buffers use ``XCL_BO_FLAGS_DEV_ONLY`` in flags field of xclAllocBO() or ``CL_MEM_HOST_NO_ACCESS`` in flags field of OCL API.
 * XRT now has integrated support for Linux hwmon. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
 * XRT now has production support for edge platforms. The following non DFX platforms edge platforms are supported: zcu102_base, zcu104_base, zc702, zc706. In addition zcu102_base_dfx platform has DFX support.
 * Emulation and HW profiling support has been enabled for all the above mentioned edge platforms. Zynq MPSoC platforms: zcu102_base, zcu104_base and zcu102_base_dfx also has emulation profiling enabled.
-* Improved handling of PCIe reset via ``xbutil reset`` which resolves system crash observed on some servers.
+* Improved handling of PCIe reset via ``xrt-smi reset`` which resolves system crash observed on some servers.
 * Resource management has been moved out of XMA library.
 * Only signed xclbins can be loaded on systems running in UEFI secure boot mode. You can use DKMS key used to sign XRT drivers to sign xclbins as well. As root please use the following command to sign xclbin with DKMS UEFI key--
   ``xclbinutil --private-key /var/lib/shim-signed/mok/MOK.priv --certificate /var/lib/shim-signed/mok/MOK.der --input a.xclbin --output signed.xclbin``
@@ -281,7 +281,7 @@ Known Issue
 * On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This sets the P2P BAR size back to the value before downloading XCLBIN.
 * On edge platforms intermittent hang is observed when downloading different xclbins multiple times while CU interrupt is enabled.
 * Dynamic clock scaling is not enabled for edge platforms.
-* On PPC64LE ``xbutil reset`` uses PCIe fundamental reset effectively reloading the platform from PROM. Note on x86_64 ``xbutil reset`` continues to use PCIe warm reset which just resets the shell and the dynamic region without reloading the platform from PROM.
+* On PPC64LE ``xrt-smi reset`` uses PCIe fundamental reset effectively reloading the platform from PROM. Note on x86_64 ``xrt-smi reset`` continues to use PCIe warm reset which just resets the shell and the dynamic region without reloading the platform from PROM.
 
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
@@ -303,7 +303,7 @@ Added
 * OCL can perform automatic binding of cl_mem to DDR bank by using several heuristics like kernel argument index and kernel instance information. The API ``clCreateKernel`` is enhanced to accept annotated CU name(s) to fetch asymmetrical compute units (If all the CUs of a kernel have exact same port maps or port connections they are symmetrical compute units, otherwise CUs are asymmetrical) and streaming compute units.
 * XRT will give error if it cannot identify the buffer location (in earlier releases it used to assume a default location). Remedies: a) Check kernel XCLBIN to make sure kernel argument corresponding to the buffer is mapped to device memory properly b) Use ``clSetKernelArg`` before any enqueue operation on buffer
 * Host applications directly linking with libxilinxopencl.so must use ``-Wl,-rpath-link,$(XILINX_XRT)/lib`` in the linker line. Host applications linking with ICD loader, libOpenCL.so do not need to change.
-* ``xbutil top`` now reports live CU usage metric.
+* ``xrt-smi top`` now reports live CU usage metric.
 * ``xclbincat`` and ``xclbinsplit`` are deprecated by ``xclbinutil``.  These deprecated tools are currently scheduled to be obsoleted in the next release.
 * Profiling subsystem has been enhanced to show dataflow, PCIe peer to peer transfers, M2M transfers and kernel to kernel streaming information.
 * XRT has switched to new header file ``xrt.h`` in place of ``xclhal2.h``. The latter is still around for backwards compatibility but hash includes xrt.h for all definitions. A new file ``xrt-next.h`` has been added for experimental features.
@@ -315,7 +315,7 @@ Added
 Added
 .....
 
-* xbutil can now generate output in JSON format for easy parsing by other tools. Use ``xbutil dump`` to generate JSON output on stdout.
+* xrt-smi can now generate output in JSON format for easy parsing by other tools. Use ``xrt-smi dump`` to generate JSON output on stdout.
 * Initial support for PCIe peer-to-peer transactions has been added. Please consult https://xilinx.github.io/XRT/2018.3/html/p2p.html for details.
 * 64-bit BARs in Alveo shells are natively supported.
 * Initial implementation of XRT logging API, xclLogMsg() for use by XRT clients.
@@ -326,7 +326,7 @@ Added
 Fixed
 .....
 
-* ``xbutil flash -a`` PROM corruption issue with multiple Alveo boards.
+* ``xrt-smi flash -a`` PROM corruption issue with multiple Alveo boards.
 * XRT scheduling bug with multiple boards on AWS F1 when scheduler was serializing board access.
 * xocl kernel driver bugs in handling multiple processes accessing the same device.
 * PPC64LE build failure.

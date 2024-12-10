@@ -344,7 +344,7 @@ failed:
 /*
  * Reset command should support following cases
  * case 1) When device is not in ready state
- *  - xbutil should not send any request to the xocl.
+ *  - xrt-smi should not send any request to the xocl.
  *  - It should just return fail status from userspace itself
  * case 2) When device is ready & device offline status is true
  *  - Need to check when we hit this case
@@ -359,12 +359,12 @@ failed:
  *  d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
  *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
  *     - xocl assumes that reset is successful,
- *     - xbutil waits on the device ready state in a loop.
- *     - xbutil reset would be in waiting state forever.
- *     - Need to handle this case to exit xbutil reset gracefully.
+ *     - xrt-smi waits on the device ready state in a loop.
+ *     - xrt-smi reset would be in waiting state forever.
+ *     - Need to handle this case to exit xrt-smi reset gracefully.
  *  e) Reset is issued to mgmt/mpd, but mgmt/mpd reset properly
  *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
- *     - Device becomes ready and xbutil reset successful.
+ *     - Device becomes ready and xrt-smi reset successful.
  */
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 {
@@ -724,7 +724,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		userpf_info(xdev,
 			"AXI Firewall %llu tripped", fw_status.err_detected_level);
 		userpf_info(xdev,
-			"Card is in a BAD state, please issue xbutil reset");
+			"Card is in a BAD state, please issue xrt-smi reset");
 		err_last.pid = 0;
 		err_last.ts = fw_status.err_detected_time;
 		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP,
@@ -1661,7 +1661,7 @@ int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *c
 			goto unlock;
 		} else {
 			DRM_ERROR("HOST MEM already allocated, size 0x%llx", allocated_size);
-			DRM_ERROR("Please run xbutil host disable first");
+			DRM_ERROR("Please run xrt-smi host disable first");
 			err = -EBUSY;
 			goto unlock;
 		}
@@ -1803,7 +1803,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	store_pcie_link_info(xdev);
 
 	/*
-	 * sysfs has to be the last thing to init because xbutil
+	 * sysfs has to be the last thing to init because xrt-smi
 	 * relies it to report if the card is ready. Driver should
 	 * only announce ready after syncing metadata and creating
 	 * all subdevices

@@ -16,7 +16,7 @@
 
 // This file captures all the constants used to access the
 // Lightweight AXI Protocol Checker cores that may exist in the design.
-// These values are shared between xbutil and the XDP library.
+// These values are shared between xrt-smi and the XDP library.
 
 #ifndef LAPC_DOT_H
 #define LAPC_DOT_H

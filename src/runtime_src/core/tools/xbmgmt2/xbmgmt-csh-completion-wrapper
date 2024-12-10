@@ -3,7 +3,7 @@
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
-# Enable autocompletion for the xbutil and xbmgmt commands
+# Enable autocompletion for the xrt-smi and xbmgmt commands
 alias __xbmgmt_completion_csh tcsh $XILINX_XRT/share/completions/xbmgmt-csh-completion
 # TCSH is very unfriendly when performing file completions inside the aliased script
 # to get around this we add certain options that default to file/directory searches here

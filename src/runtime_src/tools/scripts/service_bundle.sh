@@ -85,9 +85,9 @@ core_dumps()
 # $1 output directory
 xbutil_output()
 {
-	xbutil examine -d $DEVICE_BDF:0 > $1/xbutil_examine.txt
-	xbutil examine -d $DEVICE_BDF:0 -r all > $1/xbutil_examine_all.txt
-	xbutil validate -d $DEVICE_BDF:0 -r quick --verbose> $1/xbutil_validate.txt
+	xrt-smi examine -d $DEVICE_BDF:0 > $1/xbutil_examine.txt
+	xrt-smi examine -d $DEVICE_BDF:0 -r all > $1/xbutil_examine_all.txt
+	xrt-smi validate -d $DEVICE_BDF:0 -r quick --verbose> $1/xbutil_validate.txt
 }
 
 # $1 output directory

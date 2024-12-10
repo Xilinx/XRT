@@ -16,7 +16,7 @@
 
 // This file captures all the constants used to access the
 // Accelerator Monitor cores that may exist in the design.  These
-// values are shared between xbutil and the XDP library.
+// values are shared between xrt-smi and the XDP library.
 
 #ifndef AM_DOT_H
 #define AM_DOT_H
@@ -25,7 +25,7 @@ namespace xdp::IP::AM {
 
 // The total number of 64-bit counters accessible on the IP
 constexpr int NUM_COUNTERS = 10;
-// The number of 64-bit counters displayed (as when accessed via xbutil)
+// The number of 64-bit counters displayed (as when accessed via xrt-smi)
 constexpr int NUM_COUNTERS_REPORT = 8;
 
 namespace AXI_LITE {

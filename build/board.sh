@@ -141,7 +141,7 @@ if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export OCL_ICD_VENDORS=$XILINX_XRT/lib/libxilinxopencl.so
 fi
 
-export DSA=`${XILINX_XRT}/bin/xbutil scan | grep '\[0\]' | cut -d':' -f5 | cut -d'(' -f1`
+export DSA=`${XILINX_XRT}/bin/xrt-smi scan | grep '\[0\]' | cut -d':' -f5 | cut -d'(' -f1`
 
 echo "XILINX_XRT      = $XILINX_XRT"
 echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"

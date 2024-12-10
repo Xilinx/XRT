@@ -16,7 +16,7 @@
 
 // This file captures all the constants used to access the 
 // AXI Interface Monitor cores that may exist in the design.
-// These values are shared between xbutil and the XDP library.
+// These values are shared between xrt-smi and the XDP library.
 
 #ifndef AIM_DOT_H
 #define AIM_DOT_H
@@ -25,7 +25,7 @@ namespace xdp::IP::AIM {
 
 // The total number of 64-bit counters accessible on the IP
 constexpr int NUM_COUNTERS = 13;
-// The number of 64-bit counters displayed (as when accessed via xbutil)
+// The number of 64-bit counters displayed (as when accessed via xrt-smi)
 constexpr int NUM_COUNTERS_REPORT = 9;
 
 namespace AXI_LITE {
@@ -94,7 +94,7 @@ namespace report {
 // When we are reporting the status of this IP, we
 // strip away the write latency, write busy, read latency, and 
 // read busy cycle information.  The numbers here represent the
-// index into the array used by xbutil and XDP to access the register value
+// index into the array used by xrt-smi and XDP to access the register value
 constexpr int WRITE_BYTES        = 0;
 constexpr int WRITE_TRANX        = 1;
 constexpr int READ_BYTES         = 2;

@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// These AXI error codes are used in both xbutil and the gdb application
+// These AXI error codes are used in both xrt-smi and the gdb application
 // debug extensions
 
 #ifndef AXI_CHECKER_CODES_H

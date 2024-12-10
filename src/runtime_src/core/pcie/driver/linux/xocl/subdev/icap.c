@@ -2284,7 +2284,7 @@ static int icap_calib_and_check(struct platform_device *pdev, uint32_t slot_id)
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
 	if (icap->data_retention)
-		ICAP_WARN(icap, "xbutil reclock may not retain data");
+		ICAP_WARN(icap, "xrt-smi reclock may not retain data");
 
 	icap_calib(icap, slot_id, false);
 

@@ -424,7 +424,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* TODO: For CU stat command, there are few things to refine.
 	 * 1. Define size of the command
 	 * 2. Define CU status enum/macro in a header file
-	 * 	a. xocl/zocl/MB/RPU/xbutil can shared
+	 * 	a. xocl/zocl/MB/RPU/xrt-smi can shared
 	 * 	b. parser helper function if need
 	 */
 

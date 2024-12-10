@@ -826,7 +826,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 
 	/*
 	 * if the reset mailbox opcode is disabled, we don't allow
-	 * user run 'xbutil reset'
+	 * user run 'xrt-smi reset'
 	 */
 	xocl_mailbox_get(xdev, CHAN_DISABLE, &chan_disable);
 	if (chan_disable & (1 << XCL_MAILBOX_REQ_HOT_RESET))

@@ -2,7 +2,7 @@
  Copyright (C) 2020 Xilinx, Inc
 
  Ctypes based based bandwidth testcase used with every platform as part of
- xbutil validate
+ xrt-smi validate
 
  Licensed under the Apache License, Version 2.0 (the "License"). You may
  not use this file except in compliance with the License. A copy of the

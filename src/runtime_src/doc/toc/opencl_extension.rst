@@ -68,7 +68,7 @@ Here is an example of specifying explicit name of the bank, this works for only 
 2. Specify a Buffer location by memory bank index
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xbutil query.
+This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xrt-smi query.
 
 .. code:: c++
 

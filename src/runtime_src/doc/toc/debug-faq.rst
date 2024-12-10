@@ -18,7 +18,7 @@ Tools of the Trade
    Capture stack trace of an XRT application
 ``lspci``
    Enumerate Xilinx® PCIe devices
-``xbutil``
+``xrt-smi``
    Query status of Xilinx® PCIe device
 ``xclbinutil``
    Retrieve info from an xclbin
@@ -40,16 +40,16 @@ Board Enumeration
 
   Check if XRT can see the board and reports sane values ::
 
-    xbutil examine
+    xrt-smi examine
 
 XSA Sanity Test
   Card validation on kernel, bandwidth, dmatest and etc. (--device <bdf> for pointing a specific board) ::
 
-    xbutil validate --device <bdf>
+    xrt-smi validate --device <bdf>
 
   Check DDR and PCIe bandwidth ::
 
-    xbutil validate --device <bdf> --run dma
+    xrt-smi validate --device <bdf> --run dma
 
 Common Reasons For Failures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,8 +66,8 @@ Memory Read Before Write
 
 Read-Before-Write in 5.0+ XSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if -- since the last bitstream download which results in MIG initialization -- no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
-1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbutil examine --device <bdf> --report dynamic-regions`` will show that the CU is stuck in *BUSY* state and not making progress.
-2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbutil examine --device <bdf> --report firewall`` will show if an AXI Firewall has indeed tripped including its timestamp.
+1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xrt-smi examine --device <bdf> --report dynamic-regions`` will show that the CU is stuck in *BUSY* state and not making progress.
+2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xrt-smi examine --device <bdf> --report firewall`` will show if an AXI Firewall has indeed tripped including its timestamp.
 
 Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.
 
@@ -86,18 +86,18 @@ kernels will demonstrate weird behavior.
 3. When run several times, a CU may produce correct results a few times and incorrect results rest of the time
 4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.
 
-Users should check the frequency of the board with ``xbutil examine --device <bdf> --report platform`` and compare it against the metadata in xclbin. ``xclbinutil`` may be used to extract metadata from xclbin.
+Users should check the frequency of the board with ``xrt-smi examine --device <bdf> --report platform`` and compare it against the metadata in xclbin. ``xclbinutil`` may be used to extract metadata from xclbin.
 
 CU Deadlock
 ...........
 
-HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbutil examine --device <bdf> --report dynamic-regions`` where the CU will appear stuck in *START* or *---* state (can also be observed through debug-ip using the command ``xbutil examine --device <bdf> --report debug-ip-status``). Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
+HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xrt-smi examine --device <bdf> --report dynamic-regions`` where the CU will appear stuck in *START* or *---* state (can also be observed through debug-ip using the command ``xrt-smi examine --device <bdf> --report debug-ip-status``). Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
 
 
 AXI Bus Deadlock
 ................
 
-AXI Bus deadlocks can be caused by `Memory Read Before Write`_ or `CU Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil examine --device --report dynamic-regions`` and ``xbutil examine --device --report firewall`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. 
+AXI Bus deadlocks can be caused by `Memory Read Before Write`_ or `CU Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xrt-smi examine --device --report dynamic-regions`` and ``xrt-smi examine --device --report firewall`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. 
 
 
 Platform Bugs
@@ -120,15 +120,15 @@ Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~
 
 When board is in crashed state PCIe read operations start returning
-``0XFF``. In this state ``xbutil examine`` would show bizarre
+``0XFF``. In this state ``xrt-smi examine`` would show bizarre
 metrics. For example ``Temp`` would be very high. Boards in crashed state
 may be recovered with PCIe hot reset ::
 
-  xbutil reset
+  xrt-smi reset
 
 If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in `Validating a Working Setup`_
 
-If for some reason communication between xocl driver and management driver gets disrupted, ``xbutil reset`` may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge
+If for some reason communication between xocl driver and management driver gets disrupted, ``xrt-smi reset`` may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge
 
 1) unload xocl driver (also shut down VM if xocl is running on a VM)
 2) Run ``xbmgmt reset``
@@ -148,7 +148,7 @@ Writing Good Bug Reports
 When creating bug reports please include the following:
 
 1. Output of ``dmesg``
-2. Output of ``xbutil examine --device --report all``
+2. Output of ``xrt-smi examine --device --report all``
 3. Application binaries: xclbin, host executable and code, any data files used by the application
 4. XRT version
 5. XSA name and version

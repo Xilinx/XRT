@@ -44,7 +44,7 @@ The following picture illustrates how a xclbin file is downloaded on baremetal m
 
 As shown by the red arrows in the picture, the flow of the download in this case is as following:
 
-1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API
+1. User requests xclbin download from ‘xrt-smi program’ cmdline or OpenCL API
 2. Shim layer issues ioctl to xocl driver
 3. Xocl driver subdev icap sends the req to subdev mailbox (the xclbin file is in host memory, the req  size is very small)
 4. Mailbox transfers the req to the peer in xclmgmt through hw mailbox
@@ -97,7 +97,7 @@ The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as 
 
 As shown by the green arrows in the picture, the flow of the download in this case is as following:
 
-1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API
+1. User requests xclbin download from ‘xrt-smi program’ cmdline or OpenCL API
 2. Shim layer issues ioctl to xocl driver
 3. Xocl driver subdev icap sends the req to subdev mailbox
 4. Mailbox transfers the req  and xclbin file to MPD as mailbox message

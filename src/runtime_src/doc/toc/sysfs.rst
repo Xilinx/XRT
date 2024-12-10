@@ -17,7 +17,7 @@ xocl
 
 The ``xocl`` driver exposes various sections of the ``xclbin`` image
 including the ``xclbinuuid`` on ``sysfs``. This makes it very
-convenient for tools (such as ``xbutil``) to discover characteristics
+convenient for tools (such as ``xrt-smi``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
 ``runtime/core/include`` directory. Platform drivers XDMA, ICAP,
@@ -401,7 +401,7 @@ xclmgmt
 
 The ``xclmgmt`` driver exposes various sections of the ``xclbin`` image
 including the ``xclbinuuid`` on ``sysfs``. This makes it very
-convenient for tools (such as ``xbutil``) to discover characteristics
+convenient for tools (such as ``xrt-smi``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
 ``runtime/core/include`` directory. Platform drivers ICAP, FPGA Manager,
@@ -856,7 +856,7 @@ zocl
 Similar to PCIe drivers ``zocl`` driver used in embedded platforms
 exposes various sections of the ``xclbin`` image
 including the ``xclbinuuid`` on ``sysfs``. This makes it very
-convenient for tools (such as ``xbutil``) to discover characteristics
+convenient for tools (such as ``xrt-smi``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
 ``runtime/core/include`` directory.
