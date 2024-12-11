@@ -36,7 +36,6 @@
 #include "x86/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #else
-#include "core/edge/user/shim.h"
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #endif
