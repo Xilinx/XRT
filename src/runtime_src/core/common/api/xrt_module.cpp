@@ -787,15 +787,20 @@ class module_elf : public module_impl
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
-        // rela addend have offset to base_bo_addr info along with schema
-        // rela addend 4-31 bits are used for base_bo_addr 0-27 bits and
-        // rela info type 4-7 bits are used for base_bo_addr 28-31 bits
-        uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
-        uint32_t add_end_addr = (((type >> 4) & 0xF) << 28) | add_end_higher_28bit; // NOLINT
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
-
         patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
                                  // st_size is is encoded using register value mask for scaler_32
                                  // for other pacthing scheme it is encoded using size of dma
