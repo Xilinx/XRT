@@ -754,6 +754,7 @@ class module_elf : public module_impl
       auto end = begin + sec->get_size() / sizeof(const ELFIO::Elf32_Rela);
       for (auto rela = begin; rela != end; ++rela) {
         auto symidx = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_sym(rela->r_info);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
         if (dynsym_offset >= dynsym->get_size())
@@ -786,16 +787,25 @@ class module_elf : public module_impl
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
-        uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
+
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-
-        auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
-
         patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
                                  // st_size is is encoded using register value mask for scaler_32
                                  // for other pacthing scheme it is encoded using size of dma
-                                 patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
-                                 patcher::patch_info{ offset, add_end_higher_28bit, 0 };
+                                 patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) } :
+                                 patcher::patch_info{ offset, add_end_addr, 0 };
 
         auto key_string = generate_key_string(argnm, buf_type);
 
