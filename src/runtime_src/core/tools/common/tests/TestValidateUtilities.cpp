@@ -16,6 +16,10 @@
 #include "TestValidateUtilities.h"
 namespace xq = xrt_core::query;
 
+static constexpr size_t param_size = 0x100;
+static constexpr size_t inter_size = 0x100;
+static constexpr size_t mc_size = 0x100;
+
 // Constructor for BO_set
 // BO_set is a collection of all the buffer objects so that the operations on all buffers can be done from a single object
 // Parameters:
@@ -24,17 +28,18 @@ namespace xq = xrt_core::query;
 BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::string& dpu_instr, size_t buffer_size) 
   : buffer_size(buffer_size), 
     bo_ifm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
-    bo_param (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
+    bo_param (device, param_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
     bo_ofm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
-    bo_inter (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
-    bo_mc    (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
+    bo_inter (device, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
+    bo_mc    (device, mc_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
 {
   if (dpu_instr.empty()) {
     // Create a no-op instruction if no instruction file is provided
     std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
   } else {
     size_t instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
-    bo_instr = xrt::bo(device, instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+    bo_instr = xrt::bo(device, instr_size * sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   }
 }
 
@@ -57,7 +62,7 @@ void BO_set::set_kernel_args(xrt::run& run) const {
   run.set_arg(3, bo_ofm);
   run.set_arg(4, bo_inter);
   run.set_arg(5, bo_instr);
-  run.set_arg(6, buffer_size/sizeof(int));
+  run.set_arg(6, bo_instr.size()/sizeof(int));
   run.set_arg(7, bo_mc);
 }
 
@@ -68,11 +73,7 @@ TestCase::initialize()
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
-    try {
-      kernel = xrt::kernel(hw_ctx, params.kernel_name);
-    } catch (const std::exception& ) {
-      throw std::runtime_error("Not enough columns available. Please make sure no other workload is running on the device."); //rethrow
-    }
+    kernel = xrt::kernel(hw_ctx, params.kernel_name);
     auto bos = BO_set(params.device, kernel, params.dpu_file, params.buffer_size);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);
@@ -369,5 +370,83 @@ searchSSV2Xclbin(const std::string& logic_uuid,
   XBValidateUtils::logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
   _ptTest.put("status", test_token_skipped);
   return "";
+}
+
+void
+program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin)
+{
+  auto bdf = xq::pcie_bdf::to_string(xrt_core::device_query<xq::pcie_bdf>(device));
+  auto xclbin_obj = xrt::xclbin{xclbin};
+  try {
+    device->load_xclbin(xclbin_obj);
+  }
+  catch (const std::exception& e) {
+    XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
+  }
+}
+bool
+search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest)
+{
+  xuid_t uuid;
+  uuid_parse(xrt_core::device_query<xq::xclbin_uuid>(dev).c_str(), uuid);
+
+  const std::string xclbin_path = XBValidateUtils::findXclbinPath(dev, ptTest);
+
+  try {
+    program_xclbin(dev, xclbin_path);
+  }
+  catch (const std::exception& e) {
+    XBValidateUtils::logger(ptTest, "Error", e.what());
+    ptTest.put("status", XBValidateUtils::test_token_failed);
+    return false;
+  }
+
+  return true;
+}
+
+int
+validate_binary_file(const std::string& binaryfile)
+{
+  std::ifstream infile(binaryfile);
+  if (!infile.good()) 
+    return EOPNOTSUPP;
+  else
+    return EXIT_SUCCESS;
+}
+
+/*
+ * Runs dpu sequence or elf flow for xrt_smi tests
+*/
+std::string
+dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
+              boost::property_tree::ptree& ptTest)
+{
+  if (xrt_core::device_query<xrt_core::query::pcie_id>(dev).device_id != 5696) { // device ID for npu3 in decimal
+  // Determine The DPU Kernel Name
+    auto xkernels = xclbin.get_kernels();
+
+    auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+      auto name = k.get_name();
+      return name.rfind("DPU",0) == 0; // Starts with "DPU"
+    });
+
+    xrt::xclbin::kernel xkernel;
+    if (itr!=xkernels.end())
+      xkernel = *itr;
+    else {
+      XBValidateUtils::logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
+      ptTest.put("status", XBValidateUtils::test_token_failed);
+    }
+    auto kernelName = xkernel.get_name();
+
+    return kernelName;
+  }
+  else {
+  // Elf flow
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
+    auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptTest);
+
+    return elf_path;
+  }
 }
 }// end of namespace XBValidateUtils

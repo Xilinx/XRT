@@ -85,5 +85,10 @@ std::string searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
                                boost::property_tree::ptree& _ptTest);
 std::string searchSSV2Xclbin(const std::string& logic_uuid,
                              boost::property_tree::ptree& _ptTest);
+void program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin);
+bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
+int validate_binary_file(const std::string& binaryfile);
+std::string dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
+              boost::property_tree::ptree& ptTest);
 } //End of namespace XBValidateUtils
 #endif

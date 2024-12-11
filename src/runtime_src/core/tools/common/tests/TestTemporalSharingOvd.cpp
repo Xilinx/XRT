@@ -17,7 +17,7 @@
 
 
 namespace XBU = XBUtilities;
-static constexpr size_t buffer_size = 1024; //1 KB
+static constexpr size_t buffer_size = 1024*1024*1024; //1 GB
 
 boost::property_tree::ptree 
 TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
@@ -67,7 +67,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 8, buffer_size, 10000);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 1, buffer_size, 10);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
