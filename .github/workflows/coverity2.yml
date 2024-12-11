@@ -47,6 +47,9 @@ jobs:
     - name: Submut the results to Coverity Scan
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
+        # compress cov-int
+        tar czvf xrt.tgz cov-int
+        
         # Fetch cloud upload URL
         curl -X POST \
         -d version=trunk \
