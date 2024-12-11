@@ -96,17 +96,12 @@ configure_file(
 # xrt component install
 install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
-  COMPONENT ${XRT_DEV_COMPONENT})
-
-# xrt component install
-install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   install(FILES ${PROJECT_BINARY_DIR}/gen/version.json
     DESTINATION ${XRT_INSTALL_DIR}
-    COMPONENT ${XRT_COMPONENT})
+    COMPONENT ${XRT_BASE_DEV_COMPONENT})
 endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall

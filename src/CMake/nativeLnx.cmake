@@ -85,8 +85,7 @@ if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
   set(XRT_STATIC_BUILD ON)
 endif()
 
-# XRT install components
-include (CMake/components.cmake)
+include(CMake/components.cmake)
 
 # Boost Libraries
 include (CMake/boostUtil.cmake)

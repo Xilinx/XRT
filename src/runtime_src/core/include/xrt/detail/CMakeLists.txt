@@ -8,11 +8,6 @@ set(XRT_XRT_DETAIL_HEADER_SRC
   param_traits.h
   pimpl.h)
 
-# xrt component install
-install (FILES ${XRT_XRT_DETAIL_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
-  COMPONENT ${XRT_DEV_COMPONENT})
-
 # base component install
 install (FILES ${XRT_XRT_DETAIL_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
@@ -24,11 +19,6 @@ set(XRT_XRT_DETAIL_LEGACY_SRC
   xrt_error_code.h
   xrt_mem.h)
   
-# xrt component install
-install (FILES ${XRT_XRT_DETAIL_LEGACY_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
-  COMPONENT ${XRT_DEV_COMPONENT})
-
 # base component install
 install (FILES ${XRT_XRT_DETAIL_LEGACY_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
