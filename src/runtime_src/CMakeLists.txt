@@ -79,7 +79,7 @@ else()
   if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt)
     set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory(aie-rt/driver/src aie-rt)
+    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src aie-rt)
     # This enables aiebu submodule use aie-rt from higher level
     set(AIEBU_AIE_RT_BIN_DIR ${AIERT_DIR})
     set(AIEBU_AIE_RT_HEADER_DIR ${AIERT_DIR}/include)
