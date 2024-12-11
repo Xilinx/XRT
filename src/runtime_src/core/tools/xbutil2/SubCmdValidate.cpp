@@ -440,7 +440,7 @@ static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> json
 static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
 static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
 
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations, const boost::property_tree::ptree& configTree)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
     , m_device("")
@@ -451,6 +451,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     , m_xclbin_location("")
     , m_pmode("")
     , m_help(false)
+    , m_jsonConfig (JsonConfig(configTree.get_child("subcommands"), "validate"))
 {
   const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
   setLongDescription(longDescription);
@@ -471,6 +472,16 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   common_tests.emplace_back(quick_test);
   static const auto formatRunValues = XBU::create_suboption_list_map("", jsonOptions, common_tests);
 
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", "validate");
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", "validate");
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
+
+
+  /*
   common_options.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format)->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
@@ -488,6 +499,14 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   m_commonOptions.add_options()
     ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken()->zero_tokens(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
   ;
+  */
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", "validate");
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", "validate");
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
 }
 
 void

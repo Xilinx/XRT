@@ -8,6 +8,7 @@
 #include <regex>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "tools/common/XBUtilities.h"
@@ -447,6 +448,34 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
     auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptTest);
 
     return elf_path;
+  }
+}
+void loadConfigFile(const std::string &configPath, boost::property_tree::ptree &configTree)
+{
+  try
+  {
+    // Open the JSON file
+    std::ifstream jsonFile(configPath);
+    if (!jsonFile.is_open())
+    {
+      throw std::runtime_error("Failed to open " + configPath);
+    }
+
+    // Read the JSON file into the property tree
+    boost::property_tree::read_json(jsonFile, configTree);
+
+    // Close the JSON file
+    jsonFile.close();
+  }
+  catch (const boost::property_tree::json_parser_error &e)
+  {
+    std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+    throw;
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << std::endl;
+    throw;
   }
 }
 }// end of namespace XBValidateUtils

@@ -9,6 +9,7 @@
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdValidate.h"
+#include "tools/common/tests/TestValidateUtilities.h"
 
 // Supporting tools
 #include "common/error.h"
@@ -83,6 +84,8 @@ int main( int argc, char** argv )
   std::istringstream command_config_stream(command_config);
   boost::property_tree::read_json(command_config_stream, configTree);
 
+  boost::property_tree::ptree configTreeMain;
+  XBValidateUtils::loadConfigFile("config.h", configTreeMain);
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false, configTree));
@@ -94,7 +97,7 @@ int main( int argc, char** argv )
     populateSubCommandsFromJSON(subCommands, executable);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
-    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false, configTree));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false, configTree, configTreeMain));
 #endif
 
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true, false, true, configTree));

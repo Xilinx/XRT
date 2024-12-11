@@ -3,6 +3,7 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Collect files outside of this directory
+
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
@@ -40,6 +41,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "SubCmdConfigure.cpp"
+  "SubCmdJsonObjects.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"

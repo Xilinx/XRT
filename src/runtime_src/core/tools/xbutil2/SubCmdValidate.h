@@ -8,13 +8,14 @@
 #include <boost/program_options.hpp>
 #include "tools/common/SubCmd.h"
 #include "tools/common/XBHelpMenus.h"
+#include "SubCmdJsonObjects.h"
 
 class SubCmdValidate : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations);
+  SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations, const boost::property_tree::ptree& config_tree);
 
  private:
   std::string               m_device;
@@ -25,6 +26,7 @@ class SubCmdValidate : public SubCmd {
   std::string               m_xclbin_location;
   std::string               m_pmode;
   bool                      m_help;
+  JsonConfig                m_jsonConfig;
 
   void print_help_internal() const;
   void handle_errors_and_validate_tests(boost::program_options::variables_map&, 
