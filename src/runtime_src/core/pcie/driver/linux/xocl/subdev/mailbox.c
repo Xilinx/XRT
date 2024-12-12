@@ -627,7 +627,7 @@ static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type)
 	rec->mir_rx_poll_cnt = mbx->mbx_rx.polling_count;
 }
 
-irqreturn_t mailbox_isr(int irq, void *arg)
+static irqreturn_t mailbox_isr(int irq, void *arg)
 {
 	struct mailbox *mbx = (struct mailbox *)arg;
 	u32 is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
@@ -768,7 +768,7 @@ static void cleanup_sw_ch(struct mailbox_channel *ch)
 }
 
 
-void timeout_msg(struct mailbox_channel *ch)
+static void timeout_msg(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_msg *msg = NULL;
@@ -2439,7 +2439,7 @@ int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 /*
  * Response will be always posted, no waiting.
  */
-int mailbox_post_response(struct platform_device *pdev,
+static int mailbox_post_response(struct platform_device *pdev,
 	enum xcl_mailbox_request req, u64 reqid, void *buf, size_t len)
 {
 	int rv = 0;
@@ -2558,7 +2558,7 @@ static void mailbox_recv_request(struct work_struct *work)
 	mutex_unlock(&mbx->mbx_lock);
 }
 
-int mailbox_listen(struct platform_device *pdev,
+static int mailbox_listen(struct platform_device *pdev,
 	mailbox_msg_cb_t cb, void *cbarg)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
@@ -2702,7 +2702,7 @@ int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data)
 }
 
 
-int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
+static int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	int ret = 0;

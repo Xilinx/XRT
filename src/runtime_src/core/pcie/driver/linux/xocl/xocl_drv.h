@@ -2823,6 +2823,9 @@ void xocl_fini_config_gpio(void);
 int __init xocl_init_xgq(void);
 void xocl_fini_xgq(void);
 
+int __init xocl_init_nifd(void);
+void xocl_fini_nifd(void);
+
 int __init xocl_init_hwmon_sdm(void);
 void xocl_fini_hwmon_sdm(void);
 

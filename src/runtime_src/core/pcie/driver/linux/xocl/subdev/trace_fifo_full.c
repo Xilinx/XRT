@@ -77,7 +77,7 @@ static int trace_fifo_full_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long trace_fifo_full_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long trace_fifo_full_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct trace_fifo_full *trace_fifo_full;
 	long result = 0;

@@ -267,7 +267,7 @@ static int asm_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long asm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long asm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_asm *xocl_asm;
 	void __user *data;

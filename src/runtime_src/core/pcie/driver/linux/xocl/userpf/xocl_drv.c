@@ -274,7 +274,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xdev->reset_ert_cus = true;
 }
 
-int xocl_program_shell(struct xocl_dev *xdev, bool force)
+static int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
 	struct xcl_mailbox_req mbreq = { 0 };
@@ -761,7 +761,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
-void store_pcie_link_info(struct xocl_dev *xdev)
+static void store_pcie_link_info(struct xocl_dev *xdev)
 {
 	u16 stat = 0;
 	long result;
@@ -1195,7 +1195,7 @@ static void xocl_cleanup_axlf_obj(struct xocl_dev *xdev)
 	mutex_unlock(&xdev->dev_lock);
 }
 
-void xocl_userpf_remove(struct pci_dev *pdev)
+static void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
 	void *hdl;
@@ -1691,7 +1691,7 @@ unlock:
 	return err;
 }
 
-int xocl_userpf_probe(struct pci_dev *pdev,
+static int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
 	struct xocl_dev			*xdev;

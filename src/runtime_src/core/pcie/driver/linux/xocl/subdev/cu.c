@@ -295,7 +295,7 @@ static const struct attribute_group cu_attrgroup = {
 	.bin_attrs = cu_bin_attrs,
 };
 
-irqreturn_t cu_isr(int irq, void *arg)
+static irqreturn_t cu_isr(int irq, void *arg)
 {
 	struct xocl_cu *xcu = arg;
 
@@ -307,7 +307,7 @@ irqreturn_t cu_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-irqreturn_t ucu_isr(int irq, void *arg)
+static irqreturn_t ucu_isr(int irq, void *arg)
 {
 	struct xocl_cu *xcu = arg;
 	xdev_handle_t xdev = xocl_get_xdev(xcu->pdev);
