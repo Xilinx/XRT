@@ -84,8 +84,11 @@ int main( int argc, char** argv )
   std::istringstream command_config_stream(command_config);
   boost::property_tree::read_json(command_config_stream, configTree);
 
+  /*TODO: xrt-smi rearchitecture
+  * This should be a device query to get the path of the xrt_smi_config.json file
+  */
   boost::property_tree::ptree configTreeMain;
-  XBValidateUtils::loadConfigFile("config.h", configTreeMain);
+  XBValidateUtils::loadConfigFile("xrt_smi_config.json", configTreeMain);
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false, configTree));
