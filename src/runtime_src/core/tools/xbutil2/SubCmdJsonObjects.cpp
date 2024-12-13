@@ -1,5 +1,12 @@
-#include <iostream>
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
+#include <iostream>
+#include <string>
+#include <unordered_map>
+
+#include "boost/property_tree/ptree.hpp"
+#include "boost/program_options.hpp"
 #include "SubCmdJsonObjects.h"
 
 void
@@ -27,7 +34,7 @@ SubCommandOption::addProgramOption(po::options_description& options, const std::
     throw std::runtime_error("Invalid value type for option " + m_name);
   }
   switch (valueType->second){
-    case ValueType::BOOL:
+    case ValueType::boolean:
     {
       auto defaultVal = m_defaultValue == "true" ? true : false;
       options.add_options()((m_name + "," + m_alias).c_str()
@@ -35,21 +42,21 @@ SubCommandOption::addProgramOption(po::options_description& options, const std::
                             , m_description.c_str());
       break;
     }
-    case ValueType::STRING:
+    case ValueType::string:
     {
       options.add_options()((m_name + "," + m_alias).c_str()
                             , po::value<std::string>()->implicit_value(m_defaultValue)
                             , m_description.c_str());
       break;
     }
-    case ValueType::ARRAY:
+    case ValueType::array:
     {
       options.add_options()((m_name + "," + m_alias).c_str()
                             , po::value<std::vector<std::string>>()->multitoken()->zero_tokens()
                             , m_description.c_str());
       break;
     }
-    case ValueType::NONE:
+    case ValueType::none:
     {
       options.add_options()((m_name + "," + m_alias).c_str()
                             , po::bool_switch()

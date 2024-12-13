@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 
 #include <string>
-#include <variant>
 #include <unordered_map>
 
 #include "boost/property_tree/ptree.hpp"
@@ -22,13 +21,11 @@ static constexpr std::string_view const_options_literal = "options";
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 
-using variantType = std::variant<bool, std::string, std::vector<std::string>>;
-
 enum class ValueType {
-  BOOL,
-  STRING,
-  ARRAY,
-  NONE
+  boolean,
+  string,
+  array,
+  none
 };
 
 class OptionBasic {
@@ -71,10 +68,10 @@ class SubCommandOption : public OptionBasic {
 
 protected:
   const std::unordered_map<std::string, ValueType> m_valueTypeMap = {
-    {"bool", ValueType::BOOL},
-    {"string", ValueType::STRING},
-    {"array", ValueType::ARRAY},
-    {"none", ValueType::NONE}
+    {"bool", ValueType::boolean},
+    {"string", ValueType::string},
+    {"array", ValueType::array},
+    {"none", ValueType::none}
   };
 
 public:
@@ -139,7 +136,6 @@ class JsonConfig {
   std::unordered_map<std::string, SubCommand> m_subCommandMap;
   std::unordered_map<std::string, SubCommand>
   createSubCommands(const pt::ptree& pt, const std::string& subCommand);
-  std::string JsonConfig::handleOptionValue(const variantType& value) const;
 public:
   JsonConfig(const pt::ptree& configurations, const std::string& subCommand)
     : m_subCommandMap(createSubCommands(configurations, subCommand))
