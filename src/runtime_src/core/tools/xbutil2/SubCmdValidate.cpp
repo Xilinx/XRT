@@ -375,34 +375,6 @@ static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
   {"dma", "block-size", "Memory transfer size (bytes)"}
 };
 
-std::string
-extendedKeysOptions()
-{
-  static unsigned int m_maxColumnWidth = 100;
-  std::stringstream fmt_output;
-  // Formatting color parameters
-  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
-  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
-  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
-
-  // Report option group name (if defined)
-  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
-  fmt_output << fmtHeader % "EXTENDED KEYS";
-
-  // Report the options
-  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  unsigned int optionDescTab = 23;
-
-  for (auto& param : extendedKeysCollection) {
-    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
-    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
-    fmt_output << fmtOption % param.test_name % formattedString;
-  }
-
-  return fmt_output.str();
-}
-
 }
 //end anonymous namespace
 
