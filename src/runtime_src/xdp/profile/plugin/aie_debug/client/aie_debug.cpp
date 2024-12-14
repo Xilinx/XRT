@@ -50,7 +50,7 @@ namespace xdp {
     xrt::bo resultBO;
     uint32_t* output = nullptr;
     try {
-      resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x20000);
+      resultBO = xrt_core::bo_int::create_debug_bo(hwContext, 0x20000);
       output = resultBO.map<uint32_t*>();
       memset(output, 0, 0x20000);
     } catch (std::exception& e) {
@@ -105,7 +105,7 @@ namespace xdp {
       return;
 
     auto regValues = metadata->getRegisterValues();
-    std::vector<register_data_t> op_profile_data;
+    std::vector<register_data_t> op_debug_data;
 
     // Traverse all module types
     int counterId = 0;
@@ -114,11 +114,12 @@ namespace xdp {
       if (configMetrics.empty())
         continue;
 
-      XAie_ModuleType mod = getFalModuleType(module);
-      auto name = moduleTypes[mod];
+      //XAie_ModuleType mod = getFalModuleType(module);
+      auto type = metadata->getModuleType(module);
+      auto name = moduleTypes.at(type);
 
       // List of registers to read for current module
-      auto& Regs = regValues[type];
+      auto Regs = regValues[type];
       if (Regs.empty())
         continue;
 
@@ -143,6 +144,22 @@ namespace xdp {
         }
       }
     }
+
+    auto meta_config = metadata->getAIEConfigMetadata();
+    XAie_Config cfg {
+      meta_config.hw_gen,
+      meta_config.base_address,
+      meta_config.column_shift,
+      meta_config.row_shift,
+      meta_config.num_rows,
+      meta_config.num_columns,
+      meta_config.shim_row,
+      meta_config.mem_row_start,
+      meta_config.mem_num_rows,
+      meta_config.aie_tile_row_start,
+      meta_config.aie_tile_num_rows,
+      {0} // PartProp
+    };
 
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK) {

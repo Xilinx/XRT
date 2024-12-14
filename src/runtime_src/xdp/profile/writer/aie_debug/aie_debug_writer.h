@@ -25,7 +25,7 @@ class AIEDebugWriter : public VPWriter
   {
 public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
-                    uint64_t deviceIndex,AieDebugPlugin* AieDebugPluginPtr);
+                   uint64_t deviceIndex, AieDebugPlugin* AieDebugPluginPtr);
     ~AIEDebugWriter()=default;
 
     void writeHeader();

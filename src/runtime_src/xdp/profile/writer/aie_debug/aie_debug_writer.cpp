@@ -20,6 +20,7 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+
 namespace xdp {
     AIEDebugWriter::AIEDebugWriter(const char* fileName,
                                    const char* deviceName,
@@ -71,7 +72,7 @@ namespace xdp {
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      std::string registerName= ptrtoAieDebugPlugin->lookupRegistername(sample.rel_offset);
+      std::string registerName= ptrtoAieDebugPlugin->lookupRegisterName(sample.rel_offset);
       fout << sample.tile_col << ",";
       fout << sample.tile_row << ", 0x";
       fout << std::hex<< sample.rel_offset << ", 0x";

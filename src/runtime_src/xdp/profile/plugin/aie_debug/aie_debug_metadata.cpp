@@ -159,9 +159,9 @@ namespace xdp {
       listofRegisters.insert(listofRegisters.end(), memoryTileAddressList.begin(),
                              memoryTileAddressList.end() );
     }
-    else if (mod == module_type::uc) {
-      xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
-    }
+    //else if (mod == module_type::uc) {
+    //  xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
+    //}
 
     return listofRegisters;
   }
@@ -188,8 +188,7 @@ namespace xdp {
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
 
     // Parse metric settings from xrt.ini file
-    for (auto const& kv : moduleTypes) {
-      auto type = kv.first;
+    for (auto const type : moduleTypes) {
       std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module++]);
 
       for (auto& setting : metricsSettings) {

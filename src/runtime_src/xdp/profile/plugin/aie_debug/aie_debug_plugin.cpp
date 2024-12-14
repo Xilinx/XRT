@@ -216,5 +216,17 @@ namespace xdp {
     handleToAIEData.erase(handle);
   }
 
+  /****************************************************************************
+   * Lookup register name
+   ***************************************************************************/
+  std::string AieDebugPlugin::lookupRegisterName(uint64_t deviceIndex, uint64_t regVal)
+  {
+    for (const auto& kv : handleToAIEData) {
+      if (kv.deviceID == deviceIndex)
+        return kv.metadata->lookupRegisterName(regVal);
+    }
+    return "Not Found";
+  }
+
 }  // end namespace xdp
 
