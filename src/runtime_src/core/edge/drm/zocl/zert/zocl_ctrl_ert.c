@@ -710,8 +710,11 @@ static int zert_probe(struct platform_device *pdev)
 
 	return ret;
 }
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zert_remove(struct platform_device *pdev)
+#else
 static int zert_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_ctrl_ert *zert = platform_get_drvdata(pdev);
 
@@ -728,8 +731,9 @@ static int zert_remove(struct platform_device *pdev)
 	zert->zce_num_cu_xgqs = 0;
 	zocl_ert_destroy_intc(zert->zce_xgq_intc);
 	zocl_ert_destroy_intc(zert->zce_cu_intc);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 struct platform_driver zocl_ctrl_ert_driver = {

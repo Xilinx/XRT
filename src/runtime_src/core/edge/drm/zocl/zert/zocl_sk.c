@@ -73,10 +73,10 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		}
 
 		if (slot_id == MAX_PR_SLOT_NUM) {
-			DRM_ERROR("PS Kernel UUID %lx not found!",cmd->sk_uuid);
+			DRM_ERROR("PS Kernel UUID %s not found!",cmd->sk_uuid);
 			return -EINVAL;
 		} else {
-			DRM_INFO("PS Kernel UUID %lx found at slot %d\n",cmd->sk_uuid, slot_id);
+			DRM_INFO("PS Kernel UUID %s found at slot %d\n",cmd->sk_uuid, slot_id);
 		}
 
 		if (sk->sk_meta_bohdl[slot_id] >= 0) {
