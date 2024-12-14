@@ -31,9 +31,6 @@ namespace xdp {
     void poll(const uint32_t index, void* handle);
 
   private:
-    std::vector<std::string> getSettingsVector(std::string settingsString);
-    std::map<module_type, std::vector<uint64_t>> parseMetrics();
-
     xrt::hw_context hwContext;
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
     uint8_t* txn_ptr;
@@ -42,16 +39,16 @@ namespace xdp {
     std::size_t op_size;
   };
 
-class ClientReadableTile : public BaseReadableTile {
-  public:
-    ClientReadableTile(int r, int c) {
-      row=r;
-      col=c;
-    }
-  void readValues(XAie_DevInst* aieDevInst){
-    //Different Implementation. everything else same
-     }
-};
+  class ClientReadableTile : public BaseReadableTile {
+    public:
+      ClientReadableTile(int r, int c) {
+        row = r;
+        col = c;
+      }
+      void readValues(XAie_DevInst* aieDevInst) {
+        // Different Implementation. everything else same
+      }
+  };
 
 } // end namespace xdp
 

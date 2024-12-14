@@ -43,6 +43,66 @@ extern "C" {
 namespace xdp {
 
 class AieDebugMetadata {
+  public:
+    AieDebugMetadata(uint64_t deviceID, void* handle);
+
+    void parseMetrics();
+
+    module_type getModuleType(int mod) {return moduleTypes[mod];}
+    uint64_t getDeviceID() {return deviceID;}
+    void* getHandle() {return handle;}
+
+    std::map<tile_type, std::string> getConfigMetrics(const int module) {
+      return configMetrics[module];
+    }
+    std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module) {
+      return {configMetrics[module].begin(), configMetrics[module].end()};
+    }
+
+    std::map<module_type, std::vector<uint64_t>>& getRegisterValues() {
+      return parsedRegValues;
+    }
+    
+    xdp::aie::driver_config getAIEConfigMetadata() {return metadataReader->getDriverConfig();}
+
+    bool aieMetadataEmpty() const {return (metadataReader == nullptr);}
+    uint8_t getAIETileRowOffset() const {
+      return (metadataReader == nullptr) ? 0 : metadataReader->getAIETileRowOffset();
+    }
+    int getHardwareGen() const {
+      return (metadataReader == nullptr) ? 0 : metadataReader->getHardwareGeneration();
+    }
+
+    int getNumModules() {return NUM_MODULES;}
+    xrt::hw_context getHwContext() {return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = std::move(c);
+    }
+
+    const AIEProfileFinalConfig& getAIEProfileConfig() const;
+
+  private:
+    std::vector<uint64_t> stringToRegList(std::string stringEntry, module_type t);
+    std::vector<std::string> getSettingsVector(std::string settingsString);
+
+    //The following two functions, lookupRegistername and lookupRegisterAddr returns
+    //the name of the register for every register address. They takes into account
+    //the fact that register names can have different addresses for different
+    //AIE generations.
+    std::string lookupRegisterName(uint64_t regVal) {
+      if (usedRegisters->regValueToName.find(regVal) !=
+          usedRegisters->regValueToName.end())
+        return usedRegisters->regValueToName[regVal];
+      return "";
+    }
+
+    uint64_t lookupRegisterAddr(std::string regName) {
+      if (usedRegisters->regNametovalues.find(regName) !=
+          usedRegisters->regNametovalues.end())
+        return usedRegisters->regNametovalues[regName];
+      return -1;
+    }
+
   private:
     // Currently supporting Core, Memory, Interface Tiles, and Memory Tiles
     static constexpr int NUM_MODULES = 4;
@@ -50,6 +110,12 @@ class AieDebugMetadata {
       {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
+    const std::map<module_type, const char*> moduleNames = {
+      {module_type::core, "AIE"},
+      {module_type::dma, "DMA"},
+      {module_type::shim, "Interface"},
+      {module_type::mem_tile, "Memory Tile"}
+    };
 
     void* handle;
     uint64_t deviceID;
@@ -58,43 +124,8 @@ class AieDebugMetadata {
     std::map<module_type, std::vector<uint64_t>> parsedRegValues;
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
-
-  public:
-    AieDebugMetadata(uint64_t deviceID, void* handle);
-
-    module_type getModuleType(int mod) {return moduleTypes[mod];}
-    uint64_t getDeviceID() {return deviceID;}
-    void* getHandle() {return handle;}
-    const module_type* getmoduleTypes() {
-        return moduleTypes;
-    }
-
-    std::map<tile_type, std::string> getConfigMetrics(const int module) {
-      return configMetrics[module];
-    }
-    std::map<module_type, std::vector<uint64_t>>& getParsedRegValues(){
-      return parsedRegValues;
-    }
-    void setParsedRegValues(std::map<module_type, std::vector<uint64_t>>& m) {
-      parsedRegValues = m;
-    }
-    std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module) {
-      return {configMetrics[module].begin(), configMetrics[module].end()};
-    }
-    xdp::aie::driver_config getAIEConfigMetadata();
-
-    bool aieMetadataEmpty() const {return (metadataReader == nullptr);}
-    uint8_t getAIETileRowOffset() const {return (metadataReader == nullptr) ? 0 : metadataReader->getAIETileRowOffset();}
-    int getHardwareGen() const {return (metadataReader == nullptr) ? 0 : metadataReader->getHardwareGeneration();}
-
-    int getNumModules() {return NUM_MODULES;}
-    xrt::hw_context getHwContext() {return hwContext;}
-    void setHwContext(xrt::hw_context c) {
-      hwContext = std::move(c);
-    }
-
-    const AIEProfileFinalConfig& getAIEProfileConfig() const ;
-    //std::map<module_type, std::vector<uint64_t>> parsedRegValues;
+    // List of AIE HW generation-specific registers
+    std::unique_ptr<UsedRegisters> usedRegisters;
 };
 
 /*****************************************************************
@@ -104,24 +135,16 @@ to read) pertaining to a particuar tile, for easy extraction of tile by tile dat
 ****************************************************************** */
 class BaseReadableTile {
   public:
-    std::vector <uint32_t> values;
-    int col;
-    int row;
-    std::vector<uint64_t> relativeOffsets;
-    std::vector<uint64_t> absoluteOffsets;
-
     virtual void readValues(XAie_DevInst* aieDevInst)=0;
-    //virtual void readValues(){}
 
     void insertOffsets(uint64_t rel, uint64_t ab) {
       relativeOffsets.push_back(rel);
       absoluteOffsets.push_back(ab);
     }
 
-
-    void printValues( uint32_t deviceID,VPDatabase* db){
+    void printValues(uint32_t deviceID, VPDatabase* db){
       int i=0;
-      for (auto& absoluteOffset : absoluteOffsets){
+      for (auto& absoluteOffset : absoluteOffsets) {
         std::stringstream msg;
         msg << "!!! Debug tile (" << col << ", " << row << ") "
             << "hex address/values: 0x" << std::hex << absoluteOffset << " : "
@@ -132,7 +155,14 @@ class BaseReadableTile {
         i++;
       }
     }
-  };
+
+  public:
+    std::vector <uint32_t> values;
+    int col;
+    int row;
+    std::vector<uint64_t> relativeOffsets;
+    std::vector<uint64_t> absoluteOffsets;
+};
 
 /*************************************************************************************
 The class UsedRegisters is what gives us AIE hw generation specific data. The base class
@@ -140,142 +170,381 @@ has virtual functions which populate the correct registers and their addresses a
 to the AIE hw generation in the derived classes. Thus we can dynamically populate the
 correct registers and their addresses at runtime.
 **************************************************************************************/
-  class UsedRegisters {
-
-
-  protected:
-  //TODO make the vectors into sets
-  std::vector<uint64_t> core_addresses;
-  std::vector<uint64_t> interface_addresses ;
-  std::vector<uint64_t> memory_addresses;
-  std::vector<uint64_t> memory_tile_addresses;
+class UsedRegisters {
   public:
-  std::map<std::string, uint64_t> regNametovalues;
-  std::map<uint64_t, std::string> regValueToName;
-  std::vector<uint64_t> getCoreAddresses() {
-    return core_addresses;
-  }
-  std::vector<uint64_t> getInterfaceAddresses() {
-    return interface_addresses;
-  }
-  std::vector<uint64_t> getMemoryAddresses() {
-    return memory_addresses;
-  }
-  std::vector<uint64_t> getMemoryTileAddresses() {
-    return memory_tile_addresses;
-  }
+    UsedRegisters() {
+      populateRegNameToValueMap();
+      populateRegValueToNameMap();
+    }
+
+    std::map<std::string, uint64_t> regNametoValues;
+    std::map<uint64_t, std::string> regValueToName;
+
+    std::vector<uint64_t> getCoreAddresses() {
+      return core_addresses;
+    }
+    std::vector<uint64_t> getMemoryAddresses() {
+      return memory_addresses;
+    }
+    std::vector<uint64_t> getInterfaceAddresses() {
+      return interface_addresses;
+    }
+    std::vector<uint64_t> getMemoryTileAddresses() {
+      return memory_tile_addresses;
+    }
+
     virtual void populateProfileRegisters()=0;
     virtual void populateTraceRegisters()=0;
     virtual void populateRegNameToValueMap()=0;
     virtual void populateRegValueToNameMap()=0;
+    
     void populateAllRegisters() {
       populateProfileRegisters();
       populateTraceRegisters();
     }
+
+  protected:
+    std::set<uint64_t> core_addresses;
+    std::set<uint64_t> memory_addresses;
+    std::set<uint64_t> interface_addresses;
+    std::set<uint64_t> memory_tile_addresses;
 };
 
 class AIE1UsedRegisters : public UsedRegisters {
- public:
-  void populateProfileRegisters(){
- //populate the correct usedregisters
- //TODO add to the set directly
-    std::vector<uint64_t> profile_core_addresses={0x00031020,0x00031024,0x00031028,0x0003102c};
-    std::vector<uint64_t> profile_interface_addresses={0x0003ff00,0x0003ff04};
-    std::vector<uint64_t> profile_memory_addresses={0x00011000,0x00011008};
-    std::vector<uint64_t> profile_memory_tile_addresses={0x0};
-    core_addresses.insert(std::end(core_addresses), std::begin(profile_core_addresses), std::end(profile_core_addresses));
-    interface_addresses.insert(std::end(interface_addresses), std::begin(profile_interface_addresses), std::end(profile_interface_addresses));
-    memory_addresses.insert(std::end(memory_addresses), std::begin(profile_memory_addresses), std::end(profile_memory_addresses));
-    memory_tile_addresses.insert(std::end(memory_tile_addresses), std::begin(profile_memory_tile_addresses), std::end(profile_memory_tile_addresses));
+public:
+  void populateProfileRegisters() {
+    // Core modules
+    core_addresses.emplace(aie1::cm_performance_control0);
+    core_addresses.emplace(aie1::cm_performance_control1);
+    core_addresses.emplace(aie1::cm_performance_control2);
+    core_addresses.emplace(aie1::cm_performance_counter0);
+    core_addresses.emplace(aie1::cm_performance_counter1);
+    core_addresses.emplace(aie1::cm_performance_counter2);
+    core_addresses.emplace(aie1::cm_performance_counter3);
+    core_addresses.emplace(aie1::cm_performance_counter0_event_value);
+    core_addresses.emplace(aie1::cm_performance_counter1_event_value);
+    core_addresses.emplace(aie1::cm_performance_counter2_event_value);
+    core_addresses.emplace(aie1::cm_performance_counter3_event_value);
+
+    // Memory modules
+    memory_addresses.emplace(aie1::mm_performance_control0);
+    memory_addresses.emplace(aie1::mm_performance_control1);
+    memory_addresses.emplace(aie1::mm_performance_counter0);
+    memory_addresses.emplace(aie1::mm_performance_counter1);
+    memory_addresses.emplace(aie1::mm_performance_counter0_event_value);
+    memory_addresses.emplace(aie1::mm_performance_counter1_event_value);
+
+    // Interface tiles
+    interface_addresses.emplace(aie1::shim_performance_control0);
+    interface_addresses.emplace(aie1::shim_performance_control1);
+    interface_addresses.emplace(aie1::shim_performance_counter0);
+    interface_addresses.emplace(aie1::shim_performance_counter1);
+    interface_addresses.emplace(aie1::shim_performance_counter0_event_value);
+    interface_addresses.emplace(aie1::shim_performance_counter1_event_value);
+
+    // Memory tiles
+    // NOTE: not available on AIE1
   }
-  void populateTraceRegisters(){
- //populate the correct usedregisters
-    std::vector<uint64_t> trace_core_addresses={0x00034500,0x00034504};
-    std::vector<uint64_t> trace_interface_addresses={0x0003ff00,0x0003ff04};
-    std::vector<uint64_t> trace_memory_addresses={0x00014050,0x00014060,0x00014070,0x00014080};
-    std::vector<uint64_t> trace_memory_tile_addresses={0x00011000};
-    core_addresses.insert(std::end(core_addresses), std::begin(trace_core_addresses), std::end(trace_core_addresses));
-    interface_addresses.insert(std::end(interface_addresses), std::begin(trace_interface_addresses), std::end(trace_interface_addresses));
-    memory_addresses.insert(std::end(memory_addresses), std::begin(trace_memory_addresses), std::end(trace_memory_addresses));
-    memory_tile_addresses.insert(std::end(memory_tile_addresses), std::begin(trace_memory_tile_addresses), std::end(trace_memory_tile_addresses));
+  
+  void populateTraceRegisters() {
+    // Core modules
+    core_addresses.emplace(aie1::cm_performance_control0);
+    core_addresses.emplace(aie1::cm_core_status);
+    core_addresses.emplace(aie1::cm_trace_control0);
+    core_addresses.emplace(aie1::cm_trace_control1);
+    core_addresses.emplace(aie1::cm_trace_status);
+    core_addresses.emplace(aie1::cm_trace_event0);
+    core_addresses.emplace(aie1::cm_event_status0);
+    core_addresses.emplace(aie1::cm_event_broadcast0);
+    core_addresses.emplace(aie1::cm_timer_trig_event_low_value);
+    core_addresses.emplace(aie1::cm_timer_trig_event_high_value);
+    core_addresses.emplace(aie1::cm_timer_low);
+    core_addresses.emplace(aie1::cm_timer_high);
+    core_addresses.emplace(aie1::cm_edge_detection_event_control);
+    core_addresses.emplace(aie1::cm_num_ss_event_ports);
+    core_addresses.emplace(aie1::cm_stream_switch_event_port_selection_0);
+    core_addresses.emplace(aie1::cm_num_event_status_regs);
+    
+    // Memory modules
+    memory_addresses.emplace(aie1::mm_trace_control0);
+    memory_addresses.emplace(aie1::mm_trace_control1);
+    memory_addresses.emplace(aie1::mm_trace_status);
+    memory_addresses.emplace(aie1::mm_event_status0);
+    memory_addresses.emplace(aie1::mm_trace_event0);
+    memory_addresses.emplace(aie1::mm_event_broadcast0);
+    memory_addresses.emplace(aie1::mm_num_event_status_regs);
+
+    // Interface tiles
+    interface_addresses.emplace(aie1::shim_trace_control0);
+    interface_addresses.emplace(aie1::shim_trace_control1);
+    interface_addresses.emplace(aie1::shim_trace_status);
+    interface_addresses.emplace(aie1::shim_trace_event0);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie1::shim_event_status0);
+    interface_addresses.emplace(aie1::shim_num_ss_event_ports);
+    interface_addresses.emplace(aie1::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie1::shim_num_event_status_regs);
+
+    // Memory tiles
+    // NOTE: not available on AIE1
   }
-  void populateRegNameToValueMap(){
+
+  void populateRegNameToValueMap() {
     //some implementation
-    regNametovalues=  {
+    regNametoValues=  {
 #include "xdp/profile/plugin/aie_debug/generations/pythonlogfile1.txt"
                       };
   }
 
-  void populateRegValueToNameMap(){
+  void populateRegValueToNameMap() {
     //some implementation
     regValueToName=  {
 #include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen1.txt"
                       };
   }
-
 };
 
 class AIE2UsedRegisters : public UsedRegisters {
- public:
-  void populateProfileRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00032500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+public:
+  void populateProfileRegisters() {
+    // Core modules
+    core_addresses.emplace(aie2::cm_performance_control0);
+    core_addresses.emplace(aie2::cm_performance_control1);
+    core_addresses.emplace(aie2::cm_performance_control2);
+    core_addresses.emplace(aie2::cm_performance_counter0);
+    core_addresses.emplace(aie2::cm_performance_counter1);
+    core_addresses.emplace(aie2::cm_performance_counter2);
+    core_addresses.emplace(aie2::cm_performance_counter3);
+    core_addresses.emplace(aie2::cm_performance_counter0_event_value);
+    core_addresses.emplace(aie2::cm_performance_counter1_event_value);
+    core_addresses.emplace(aie2::cm_performance_counter2_event_value);
+    core_addresses.emplace(aie2::cm_performance_counter3_event_value);
+
+    // Memory modules
+    memory_addresses.emplace(aie2::mm_performance_control0);
+    memory_addresses.emplace(aie2::mm_performance_control1);
+    memory_addresses.emplace(aie2::mm_performance_counter0);
+    memory_addresses.emplace(aie2::mm_performance_counter1);
+    memory_addresses.emplace(aie2::mm_performance_counter0_event_value);
+    memory_addresses.emplace(aie2::mm_performance_counter1_event_value);
+
+    // Interface tiles
+    interface_addresses.emplace(aie2::shim_performance_control0);
+    interface_addresses.emplace(aie2::shim_performance_control1);
+    interface_addresses.emplace(aie2::shim_performance_counter0);
+    interface_addresses.emplace(aie2::shim_performance_counter1);
+    interface_addresses.emplace(aie2::shim_performance_counter0_event_value);
+    interface_addresses.emplace(aie2::shim_performance_counter1_event_value);
+
+    // Memory tiles
+    memory_tile_addresses.emplace(aie2::mem_performance_control0);
+    memory_tile_addresses.emplace(aie2::mem_performance_control1);
+    memory_tile_addresses.emplace(aie2::mem_performance_control2);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter0);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter1);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter2);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter3);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter0_event_value);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter1_event_value);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter2_event_value);
+    memory_tile_addresses.emplace(aie2::mem_performance_counter3_event_value);
   }
-  void populateTraceRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+
+  void populateTraceRegisters() {
+    // Core modules
+    core_addresses.emplace(aie2::cm_performance_control0);
+    core_addresses.emplace(aie2::cm_core_status);
+    core_addresses.emplace(aie2::cm_trace_control0);
+    core_addresses.emplace(aie2::cm_trace_control1);
+    core_addresses.emplace(aie2::cm_trace_status);
+    core_addresses.emplace(aie2::cm_trace_event0);
+    core_addresses.emplace(aie2::cm_event_status0);
+    core_addresses.emplace(aie2::cm_event_broadcast0);
+    core_addresses.emplace(aie2::cm_timer_trig_event_low_value);
+    core_addresses.emplace(aie2::cm_timer_trig_event_high_value);
+    core_addresses.emplace(aie2::cm_timer_low);
+    core_addresses.emplace(aie2::cm_timer_high);
+    core_addresses.emplace(aie2::cm_edge_detection_event_control);
+    core_addresses.emplace(aie2::cm_num_ss_event_ports);
+    core_addresses.emplace(aie2::cm_stream_switch_event_port_selection_0);
+    core_addresses.emplace(aie2::cm_num_event_status_regs);
+    
+    // Memory modules
+    memory_addresses.emplace(aie2::mm_trace_control0);
+    memory_addresses.emplace(aie2::mm_trace_control1);
+    memory_addresses.emplace(aie2::mm_trace_status);
+    memory_addresses.emplace(aie2::mm_event_status0);
+    memory_addresses.emplace(aie2::mm_trace_event0);
+    memory_addresses.emplace(aie2::mm_event_broadcast0);
+    memory_addresses.emplace(aie2::mm_num_event_status_regs);
+
+    // Interface tiles
+    interface_addresses.emplace(aie2::shim_trace_control0);
+    interface_addresses.emplace(aie2::shim_trace_control1);
+    interface_addresses.emplace(aie2::shim_trace_status);
+    interface_addresses.emplace(aie2::shim_trace_event0);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie2::shim_event_status0);
+    interface_addresses.emplace(aie2::shim_num_ss_event_ports);
+    interface_addresses.emplace(aie2::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie2::shim_num_event_status_regs);
+
+    // Memory tiles
+    memory_tile_addresses.emplace(aie2::mem_trace_control0);
+    memory_tile_addresses.emplace(aie2::mem_trace_control1);
+    memory_tile_addresses.emplace(aie2::mem_trace_status);
+    memory_tile_addresses.emplace(aie2::mem_dma_event_channel_selection);
+    memory_tile_addresses.emplace(aie2::mem_edge_detection_event_control);
+    memory_tile_addresses.emplace(aie2::mem_stream_switch_event_port_selection_0);
+    memory_tile_addresses.emplace(aie2::mem_stream_switch_event_port_selection_1);
+    memory_tile_addresses.emplace(aie2::mem_trace_event0);
+    memory_tile_addresses.emplace(aie2::mem_event_broadcast0);
+    memory_tile_addresses.emplace(aie2::mem_event_status0);
+    memory_tile_addresses.emplace(aie2::mem_num_event_status_regs);
   }
-  void populateRegNameToValueMap(){
+
+  void populateRegNameToValueMap() {
     regNametovalues=  {
 #include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2.txt"
                       };
   }
 
-  void populateRegValueToNameMap(){
+  void populateRegValueToNameMap() {
     //some implementation
     regValueToName=  {
 #include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2.txt"
                       };
   }
-
 };
 
 
 class AIE2psUsedRegisters : public UsedRegisters {
- public:
-  void populateProfileRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+public:
+  void populateProfileRegisters() {
+    // Core modules
+    core_addresses.emplace(aie2ps::cm_performance_control0);
+    core_addresses.emplace(aie2ps::cm_performance_control1);
+    core_addresses.emplace(aie2ps::cm_performance_control2);
+    core_addresses.emplace(aie2ps::cm_performance_counter0);
+    core_addresses.emplace(aie2ps::cm_performance_counter1);
+    core_addresses.emplace(aie2ps::cm_performance_counter2);
+    core_addresses.emplace(aie2ps::cm_performance_counter3);
+    core_addresses.emplace(aie2ps::cm_performance_counter0_event_value);
+    core_addresses.emplace(aie2ps::cm_performance_counter1_event_value);
+    core_addresses.emplace(aie2ps::cm_performance_counter2_event_value);
+    core_addresses.emplace(aie2ps::cm_performance_counter3_event_value);
+
+    // Memory modules
+    memory_addresses.emplace(aie2ps::mm_performance_control0);
+    memory_addresses.emplace(aie2ps::mm_performance_control1);
+    memory_addresses.emplace(aie2ps::mm_performance_control2);
+    memory_addresses.emplace(aie2ps::mm_performance_control3);
+    memory_addresses.emplace(aie2ps::mm_performance_counter0);
+    memory_addresses.emplace(aie2ps::mm_performance_counter1);
+    memory_addresses.emplace(aie2ps::mm_performance_counter2);
+    memory_addresses.emplace(aie2ps::mm_performance_counter3);
+    memory_addresses.emplace(aie2ps::mm_performance_counter0_event_value);
+    memory_addresses.emplace(aie2ps::mm_performance_counter1_event_value);
+
+    // Interface tiles
+    interface_addresses.emplace(aie2ps::shim_performance_control0);
+    interface_addresses.emplace(aie2ps::shim_performance_control1);
+    interface_addresses.emplace(aie2ps::shim_performance_control2);
+    interface_addresses.emplace(aie2ps::shim_performance_control3);
+    interface_addresses.emplace(aie2ps::shim_performance_control4);
+    interface_addresses.emplace(aie2ps::shim_performance_control5);
+    interface_addresses.emplace(aie2ps::shim_performance_counter0);
+    interface_addresses.emplace(aie2ps::shim_performance_counter1);
+    interface_addresses.emplace(aie2ps::shim_performance_counter2);
+    interface_addresses.emplace(aie2ps::shim_performance_counter3);
+    interface_addresses.emplace(aie2ps::shim_performance_counter4);
+    interface_addresses.emplace(aie2ps::shim_performance_counter5);
+    interface_addresses.emplace(aie2ps::shim_performance_counter0_event_value);
+    interface_addresses.emplace(aie2ps::shim_performance_counter1_event_value);
+
+    // Memory tiles
+    memory_tile_addresses.emplace(aie2ps::mem_performance_control0);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_control1);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_control2);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_control3);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_control4);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter0);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter1);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter2);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter3);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter4);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter5);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter0_event_value);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter1_event_value);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter2_event_value);
+    memory_tile_addresses.emplace(aie2ps::mem_performance_counter3_event_value);
   }
-  void populateTraceRegisters(){
- //populate the correct usedregisters
-    core_addresses={0x00031500};
-    interface_addresses={0x0003FF00};
-    memory_addresses={0x00011000};
-    memory_tile_addresses={0x00011000};
+
+  void populateTraceRegisters() {
+    // Core modules
+    core_addresses.emplace(aie2ps::cm_performance_control0);
+    core_addresses.emplace(aie2ps::cm_core_status);
+    core_addresses.emplace(aie2ps::cm_trace_control0);
+    core_addresses.emplace(aie2ps::cm_trace_control1);
+    core_addresses.emplace(aie2ps::cm_trace_status);
+    core_addresses.emplace(aie2ps::cm_trace_event0);
+    core_addresses.emplace(aie2ps::cm_event_status0);
+    core_addresses.emplace(aie2ps::cm_event_broadcast0);
+    core_addresses.emplace(aie2ps::cm_timer_trig_event_low_value);
+    core_addresses.emplace(aie2ps::cm_timer_trig_event_high_value);
+    core_addresses.emplace(aie2ps::cm_timer_low);
+    core_addresses.emplace(aie2ps::cm_timer_high);
+    core_addresses.emplace(aie2ps::cm_edge_detection_event_control);
+    core_addresses.emplace(aie2ps::cm_num_ss_event_ports);
+    core_addresses.emplace(aie2ps::cm_stream_switch_event_port_selection_0);
+    core_addresses.emplace(aie2ps::cm_num_event_status_regs);
+    
+    // Memory modules
+    memory_addresses.emplace(aie2ps::mm_trace_control0);
+    memory_addresses.emplace(aie2ps::mm_trace_control1);
+    memory_addresses.emplace(aie2ps::mm_trace_status);
+    memory_addresses.emplace(aie2ps::mm_event_status0);
+    memory_addresses.emplace(aie2ps::mm_trace_event0);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast0);
+    memory_addresses.emplace(aie2ps::mm_num_event_status_regs);
+
+    // Interface tiles
+    interface_addresses.emplace(aie2ps::shim_trace_control0);
+    interface_addresses.emplace(aie2ps::shim_trace_control1);
+    interface_addresses.emplace(aie2ps::shim_trace_status);
+    interface_addresses.emplace(aie2ps::shim_trace_event0);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie2ps::shim_event_status0);
+    interface_addresses.emplace(aie2ps::shim_num_ss_event_ports);
+    interface_addresses.emplace(aie2ps::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie2ps::shim_num_event_status_regs);
+
+    // Memory tiles
+    memory_tile_addresses.emplace(aie2ps::mem_trace_control0);
+    memory_tile_addresses.emplace(aie2ps::mem_trace_control1);
+    memory_tile_addresses.emplace(aie2ps::mem_trace_status);
+    memory_tile_addresses.emplace(aie2ps::mem_dma_event_channel_selection);
+    memory_tile_addresses.emplace(aie2ps::mem_edge_detection_event_control);
+    memory_tile_addresses.emplace(aie2ps::mem_stream_switch_event_port_selection_0);
+    memory_tile_addresses.emplace(aie2ps::mem_stream_switch_event_port_selection_1);
+    memory_tile_addresses.emplace(aie2ps::mem_trace_event0);
+    memory_tile_addresses.emplace(aie2ps::mem_event_broadcast0);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status0);
+    memory_tile_addresses.emplace(aie2ps::mem_num_event_status_regs);
   }
-  void populateRegNameToValueMap(){
+
+  void populateRegNameToValueMap() {
     regNametovalues=  {
 #include "xdp/profile/plugin/aie_debug/generations/pythonlogfile2ps.txt"
                       };
   }
 
-  void populateRegValueToNameMap(){
+  void populateRegValueToNameMap() {
     //some implementation
     regValueToName=  {
 #include "xdp/profile/plugin/aie_debug/generations/py_rev_map_gen2ps.txt"
                       };
   }
-
 };
 
 } // end XDP namespace

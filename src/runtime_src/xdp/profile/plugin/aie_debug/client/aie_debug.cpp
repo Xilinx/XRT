@@ -89,60 +89,6 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Convert xrt.ini setting to vector
-   ***************************************************************************/
-  std::vector<std::string>
-  AieDebug_WinImpl::getSettingsVector(std::string settingsString)
-  {
-    if (settingsString.empty())
-      return {};
-
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::string> settingsVector;
-    boost::replace_all(settingsString, " ", "");
-    boost::split(settingsVector, settingsString, boost::is_any_of(","));
-    return settingsVector;
-  }
-
-  /****************************************************************************
-   * Parse AIE metrics
-   ***************************************************************************/
-  std::map<module_type, std::vector<uint64_t>>
-  AieDebug_WinImpl::parseMetrics()
-  {
-    std::map<module_type, std::vector<uint64_t>> regValues {
-      {module_type::core, {}},
-      {module_type::dma, {}},
-      {module_type::shim, {}},
-      {module_type::mem_tile, {}}
-    };
-    std::vector<std::string> metricsConfig;
-
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
-    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
-    //{"",""...}
-
-    unsigned int module = 0;
-    for (auto const& kv : moduleTypes) {
-      auto type = kv.first;
-      std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module++]);
-
-      for (auto& s : metricsSettings) {
-        try {
-          uint64_t val = stoul(s,nullptr,16);
-          regValues[type].push_back(val);
-        } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT", "Error Parsing Metric String.");
-        }
-      }
-    }
-
-    return regValues;
-  }
-
-  /****************************************************************************
    * Update device
    ***************************************************************************/
   void AieDebug_WinImpl::updateDevice()
@@ -158,7 +104,7 @@ namespace xdp {
     if (!xrt_core::config::get_aie_debug())
       return;
 
-    auto regValues = parseMetrics();
+    auto regValues = metadata->getRegisterValues();
     std::vector<register_data_t> op_profile_data;
 
     // Traverse all module types

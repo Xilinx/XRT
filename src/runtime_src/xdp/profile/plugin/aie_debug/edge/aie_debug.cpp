@@ -153,7 +153,7 @@ namespace xdp {
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
     std::unique_ptr<AieDebugPlugin> debugPlugin;
-    auto regValues = metadata->getParsedRegValues();
+    auto regValues = metadata->getRegisterValues();
 
     // Traverse all module types
     int counterId = 0;
