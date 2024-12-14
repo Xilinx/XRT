@@ -37,7 +37,7 @@
 #include "sw_msg.h"
 #include "common.h"
 #include "msd_plugin.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 static bool quit = false;

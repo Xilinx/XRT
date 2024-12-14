@@ -7,8 +7,8 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_ip.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
-#include "core/include/experimental/xrt_ip.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_ip.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/api/hw_context_int.h"
 #include "core/common/api/ip_int.h"
@@ -116,10 +116,13 @@ public:
   }
 
   [[nodiscard]] std::cv_status
-  wait(const std::chrono::milliseconds& timeout) const
+  wait(const std::chrono::milliseconds& timeout)
   {
     // Waits for interrupt, or return on timeout
-    return device->wait_ip_interrupt(handle, static_cast<int32_t>(timeout.count()));
+    auto status = device->wait_ip_interrupt(handle, static_cast<int32_t>(timeout.count()));
+    if (status == std::cv_status::no_timeout)
+      enable(); //re-enable interrupts
+    return status;
   }
 };
 

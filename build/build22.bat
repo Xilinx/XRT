@@ -7,7 +7,7 @@ set BUILDDIR=%SCRIPTDIR%
 
 set DEBUG=1
 set RELEASE=1
-set EXT_DIR=C:/Xilinx/XRT/ext
+set EXT_DIR=C:/Xilinx/XRT/ext.new
 set CREATE_PACKAGE=0
 set CMAKEFLAGS=
 set NOCMAKE=0
@@ -34,7 +34,7 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   ) else (
   if [%1] == [-ext] (
     shift
-    set EXT_DIR=%1
+    set EXT_DIR=%2
   ) else (
   if [%1] == [-opt] (
     set DEBUG=0

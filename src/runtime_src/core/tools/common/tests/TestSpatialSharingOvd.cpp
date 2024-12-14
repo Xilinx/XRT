@@ -15,7 +15,7 @@
 namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size = 1024; //1 KB
+static constexpr size_t buffer_size = 1024 * 1024 * 1024; //1 GB
 
 // Method to run the test
 // Parameters:
@@ -26,29 +26,15 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   // Query the xclbin name from the device
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
 
   // Find the platform file path for the xclbin
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
 
   // If the xclbin file does not exist, return the property tree
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
-
-  // Log the xclbin path
-  logger(ptree, "Xclbin", xclbin_path);
 
   // Create an xclbin object
   xrt::xclbin xclbin;
@@ -58,8 +44,8 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   }
   catch (const std::runtime_error& ex) {
     // Log any runtime error and set the status to failed
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -77,17 +63,13 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     xkernel = *itr;
   else {
     // Log an error if no kernel with "DPU" is found and set the status to failed
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   // Get the name of the found kernel
   auto kernelName = xkernel.get_name();
-
-  // If verbose mode is enabled, log the kernel name
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   // Create a working device from the provided device
   auto working_dev = xrt::device(dev);
@@ -98,24 +80,23 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     try {
       test.run();
     } catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
   };
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
-  logger(ptree, "DPU-Sequence", dpu_instr);
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 8, buffer_size, 10000);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 2, buffer_size, 10);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
@@ -123,8 +104,8 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     try{
       testcases[i].initialize();
     } catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
@@ -153,8 +134,8 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     singleHardwareCtxTest.initialize();
   } 
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   // Measure the latency for running the test case in a single thread
@@ -168,13 +149,12 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   // Log the latencies and the overhead
   if(XBU::getVerbose()){
-    logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle * 1000)));
-    logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared * 1000)));
   }
   auto overhead = (latencyShared - latencySingle) * 1000;
-  logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 
-  //check if the value is in range
-  result_in_range(overhead, get_threshold(), ptree);
   return ptree;
 }

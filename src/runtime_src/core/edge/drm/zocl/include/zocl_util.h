@@ -147,6 +147,7 @@ struct drm_zocl_slot {
 	struct mutex		 aie_lock;
 	struct aie_info		*aie_information;
 	struct zocl_aie		*aie;
+	u32			hwctx_ref_cnt;
 };
 
 struct zocl_cu_subdev {

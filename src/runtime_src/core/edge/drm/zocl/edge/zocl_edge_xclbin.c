@@ -163,7 +163,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			// We come here if user sets force_xclbin_program
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
-		} else {
+		} else if (!is_aie_only(axlf)) {
 			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
 			vfree(axlf);
 			mutex_unlock(&slot->slot_xclbin_lock);
@@ -193,8 +193,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	/* Free sections before load the new xclbin */
 	zocl_free_sections(zdev, slot);
 	
-	/* Destroy the aie information from slot and create new */
-	zocl_destroy_aie(slot);
+	/* Cleanup the aie information from slot and create new */
+	zocl_cleanup_aie(slot);
 
 
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
@@ -214,7 +214,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	} else
 #endif
 	if (is_aie_only(axlf)) {
-		zocl_cleanup_aie(slot);
 
 		ret = zocl_load_aie_only_pdi(zdev, slot, axlf, xclbin, client);
 		if (ret)

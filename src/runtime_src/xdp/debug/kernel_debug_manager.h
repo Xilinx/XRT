@@ -18,7 +18,7 @@
 #define KERNEL_DEBUG_MANAGER_DOT_H
 
 #include <string>
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 namespace xdp {
 

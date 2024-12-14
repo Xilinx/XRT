@@ -182,6 +182,7 @@ static struct drm_zocl_slot*
 get_slot(struct drm_zocl_dev * zdev, struct kds_client* client, int hw_ctx_id)
 {
 	int slot_idx = 0;
+	int i = 0;
 	struct drm_zocl_slot* slot = NULL;
 	struct kds_client_hw_ctx *kds_hw_ctx = NULL;
 	mutex_lock(&client->lock);
@@ -192,13 +193,24 @@ get_slot(struct drm_zocl_dev * zdev, struct kds_client* client, int hw_ctx_id)
 
 	if (slot_idx >= MAX_PR_SLOT_NUM) {
 		DRM_ERROR("%s: Invalid client", __func__);
+		mutex_unlock(&client->lock);
 		return NULL;
 	}
 
 	slot = zdev->pr_slot[slot_idx];
+	// WorkAround for older flows where there is single slot for AIE
+	if (!slot || !slot->aie) {
+		for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+			slot = zdev->pr_slot[i];
+			if (slot && slot->aie)
+				break;
+		}
+	}
+
 	mutex_unlock(&client->lock);
 	return slot;
 }
+
 int
 zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data,  struct drm_file *filp)
 {
@@ -290,7 +302,7 @@ zocl_aie_reset_work(struct work_struct *aie_work)
 	slot->aie->fd_cnt = 0;
 }
 
-int
+static int
 zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 {
 	if (!slot) {
@@ -362,6 +374,33 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 	DRM_INFO("AIE Reset successfully finished.");
 	return 0;
 
+}
+
+static void
+zocl_destroy_aie(struct drm_zocl_slot* slot)
+{
+	if (!slot->aie_information)
+		return;
+
+	mutex_lock(&slot->aie_lock);
+	vfree(slot->aie_information);
+	slot->aie_information = NULL;
+
+	if (!slot->aie) {
+		mutex_unlock(&slot->aie_lock);
+		return;
+	}
+
+	if (slot->aie->aie_dev)
+		aie_partition_release(slot->aie->aie_dev);
+
+	if (slot->aie->wq)
+		destroy_workqueue(slot->aie->wq);
+
+	vfree(slot->aie->err.errors);
+	vfree(slot->aie);
+	slot->aie = NULL;
+	mutex_unlock(&slot->aie_lock);
 }
 
 int
@@ -537,32 +576,6 @@ done:
 	return rval;
 }
 
-void
-zocl_destroy_aie(struct drm_zocl_slot* slot)
-{
-	if (!slot->aie_information)
-		return;
-
-	mutex_lock(&slot->aie_lock);
-	vfree(slot->aie_information);
-	slot->aie_information = NULL;
-
-	if (!slot->aie) {
-		mutex_unlock(&slot->aie_lock);
-		return;
-	}
-
-	if (slot->aie->aie_dev)
-		aie_partition_release(slot->aie->aie_dev);
-
-	if (slot->aie->wq)
-		destroy_workqueue(slot->aie->wq);
-
-	vfree(slot->aie->err.errors);
-	vfree(slot->aie);
-	slot->aie = NULL;
-	mutex_unlock(&slot->aie_lock);
-}
 
 
 

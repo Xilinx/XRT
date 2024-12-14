@@ -17,11 +17,11 @@
 #include "execution_context.h"
 #include "device.h"
 #include "event.h"
-#include "ert.h"
+#include "xrt/detail/ert.h"
 
 #include "core/common/xclbin_parser.h"
 #include "core/common/api/kernel_int.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include <iostream>
 #include <fstream>

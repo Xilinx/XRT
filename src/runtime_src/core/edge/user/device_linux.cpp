@@ -17,6 +17,7 @@
 #include "core/edge/user/aie/profile_object.h"
 #include <map>
 #include <memory>
+#include <poll.h>
 #include <string>
 
 #include <fcntl.h>
@@ -1235,7 +1236,7 @@ reset_aie()
   if (!aie_array->is_context_set())
     aie_array->open_context(this, xrt::aie::access_mode::primary);
 
-  aie_array->reset(this);
+  aie_array->reset(this, 0 /*hw_context_id*/, xrt_core::edge::aie::full_array_id);
 }
 
 void
@@ -1291,6 +1292,28 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
+std::cv_status
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
+{
+  struct pollfd pfd = {.fd=handle, .events=POLLIN};
+  int32_t ret = 0;
+
+  //Checking for only one fd; Only of one CU
+  //Timeout value in milli seconds
+  ret = ::poll(&pfd, 1, timeout);
+  if (ret < 0)
+    throw error(errno, "wait_timeout: failed POSIX poll");
+
+  if (ret == 0) //Timeout occured
+    return std::cv_status::timeout;
+
+  if (pfd.revents & POLLIN) //Interrupt received
+    return std::cv_status::no_timeout;
+
+  throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
 } // xrt_core

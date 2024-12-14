@@ -26,19 +26,12 @@ xclbin::xclbin(const std::string& fnm)
     XRT_TOOLS_XBT_CALL_CTOR(dtbl.xclbin.ctor_fnm, this, fnm);
     /* As pimpl will be updated only after ctor call*/
     XRT_TOOLS_XBT_FUNC_ENTRY(func, fnm);
-    std::size_t file_size = fs::file_size(fnm);
 
-    std::ifstream file(fnm, std::ios::binary);
-    if (!file)
-    {
-      throw std::runtime_error("Failed to open " + fnm + "\n");
-    }
+    // Usage in xclbin constructor
+    std::vector<unsigned char> buffer;
+    xtx::read_file(fnm, buffer);
 
-    std::vector<unsigned char> buffer(file_size);
-    // NOLINTNEXTLINE (cppcoreguidelines-pro-type-reinterpret-cast)
-    if (!file.read(reinterpret_cast<char*>(buffer.data()), file_size))
-      throw std::runtime_error("Failed to read " + fnm + "\n");
-    xtx::membuf xclbin(buffer.data(), file_size);
+    xtx::membuf xclbin(buffer.data(), buffer.size());
     XRT_TOOLS_XBT_FUNC_EXIT(func, "xclbin", xclbin);
   }
   catch (const std::exception& ex)

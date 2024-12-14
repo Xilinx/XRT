@@ -17,6 +17,7 @@ class OO_Reports : public OptionOptions {
   std::string m_device;
   std::string m_action;
   bool m_help;
+  bool m_json;
 };
 
 #endif

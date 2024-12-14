@@ -65,6 +65,8 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::bo::bo(xrt::device const&, void*, unsigned long, unsigned int)",  (void **) &dtbl.bo.ctor_dev_up_s_g},
   {"xrt::bo::bo(xrt::device const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_f_g},
   {"xrt::bo::bo(xrt::device const&, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_g},
+  {"xrt::bo::bo(xrt::device const&, export_handle)", (void **) &dtbl.bo.ctor_dev_ehdl},
+  {"xrt::bo::bo(xrt::device const&, xrt::pid_type, export_handle)", (void **) &dtbl.bo.ctor_dev_pid_ehdl},
   {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_f_g},
   {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_g},
   {"xrt::bo::bo(xrt::hw_context const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_s_f_g},
@@ -85,7 +87,13 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::bo::read(void*, unsigned long, unsigned long)", (void **) &dtbl.bo.read},
   {"xrt::bo::copy(xrt::bo const&, unsigned long, unsigned long, unsigned long)", (void **) &dtbl.bo.copy},
   {"xrt::bo::bo(void*)", (void **) &dtbl.bo.ctor_xcl_bh},
+  {"xrt::ext::bo::bo(xrt::device const&,void*, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_dev_up_s_a},
+  {"xrt::ext::bo::bo(xrt::device const&,void*, unsigned long)", (void **) &dtbl.ext.bo_ctor_dev_up_s},
+  {"xrt::ext::bo::bo(xrt::device const&, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_dev_s_a},
+  {"xrt::ext::bo::bo(xrt::device const&, unsigned long)", (void **) &dtbl.ext.bo_ctor_dev_s},
+  {"xrt::ext::bo(xrt::device const&, xrt::pid_type, xrt::bo::export_handle)", (void **) &dtbl.ext.bo_ctor_dev_pid_ehdl},
   {"xrt::ext::bo::bo(xrt::hw_context const&, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_cxt_s_a},
+  {"xrt::ext::bo::bo(xrt::hw_context const&, unsigned long)", (void **) &dtbl.ext.bo_ctor_cxt_s},
 
   /* run class maps */
   {"xrt::run::run(xrt::kernel const&)", (void **)  &dtbl.run.ctor},
@@ -115,6 +123,7 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::kernel::read_register(unsigned int) const",  (void **) &dtbl.kernel.read_register},
   {"xrt::kernel::get_name() const",  (void **) &dtbl.kernel.get_name},
   {"xrt::kernel::get_xclbin() const",  (void **) &dtbl.kernel.get_xclbin},
+  {"xrt::ext::kernel::kernel(xrt::hw_context const&, xrt::module const&, std::string const&)", (void **) &dtbl.ext.kernel_ctor_ctx_m_s},
 
   /* xclbin class maps */
   {"xrt::xclbin::xclbin(std::string const&)", (void **) &dtbl.xclbin.ctor_fnm },
@@ -126,6 +135,18 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   {"xrt::hw_context::hw_context(xrt::device const&, xrt::uuid const&, xrt::hw_context::access_mode)", (void **) &dtbl.hw_context.ctor_frm_mode},
   {"xrt::hw_context::update_qos(xrt::hw_context::cfg_param_type const&)", (void **) &dtbl.hw_context.update_qos},
   // NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
+
+  /*module class maps*/
+  {"xrt::module::module(xrt::elf const&)", (void **) &dtbl.module.ctor_elf},
+  {"xrt::module::module(void*, size_t, xrt::uuid const&)", (void **) &dtbl.module.ctor_usr_sz_uuid},
+  {"xrt::module::module(xrt::module const&, xrt::hw_context const&);", (void **) &dtbl.module.ctor_mod_ctx},
+  {"xrt::module::get_cfg_uuid();", (void **) &dtbl.module.get_cfg_uuid},
+  {"xrt::module::get_module();", (void **) &dtbl.module.get_hw_context},
+
+    /*elf class maps*/
+  {"xrt::elf::elf(std::string const&)", (void **) &dtbl.elf.ctor_str},
+  {"xrt::elf::elf(std::istream& stream)", (void **) &dtbl.elf.ctor_ist},
+  {"xrt::elf::get_cfg_uuid();", (void **) &dtbl.elf.get_cfg_uuid},
 };
 
 } //namespace xrt::tools::xbtracer
@@ -436,6 +457,7 @@ namespace xrt::tools::xbtracer {
 
       std::string demangled_and_conditioned_str =
           find_and_replace_all(demangled_str, replacements);
+
       return demangled_and_conditioned_str;
     }
     else

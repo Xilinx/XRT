@@ -6,7 +6,7 @@
 #include "query_requests.h"
 #include "sensor.h"
 #include "utils.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -157,13 +157,6 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
   } 
   catch (xrt_core::query::no_such_key&) {
     pt.add("power_mode", "not supported");
-  }
-    try {
-    const auto mode = (xrt_core::device_query<xq::preemption>(device) == 0) ? "disabled" : "enabled";
-      pt.add("force_preemption", mode);
-  } 
-  catch (xrt_core::query::no_such_key&) {
-    pt.add("force_preemption", "not supported");
   }
 }
 
@@ -334,35 +327,6 @@ enum_to_str(CLOCK_TYPE type)
 }
 
 void
-add_tops_info(const xrt_core::device* device, ptree_type& pt)
-{
-  ptree_type pt_tops_array;
-
-  try
-  {
-    auto res_info = xrt_core::device_query<xq::xrt_resource_raw>(device);
-    if (res_info.empty())
-      return;
-
-    for (auto &res : res_info)
-    {
-      if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_tops_max)
-        continue;
-
-      ptree_type pt_tops;
-      pt_tops.add("id", xq::xrt_resource_raw::get_name(res.type));
-      pt_tops.add("value", res.data_double);
-      pt_tops_array.push_back(std::make_pair("", pt_tops));
-    }
-    pt.put_child("tops", pt_tops_array);
-  }
-  catch (const xq::no_such_key &)
-  {
-    // ignoring if not available: Edge Case
-  }
-}
-
-void
 add_electrical_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
@@ -388,7 +352,7 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     auto mac_addr_first = xrt_core::device_query<xq::mac_addr_first>(device);
 
     // new flow
-    if (mac_contiguous_num!=0 && !mac_addr_first.empty()) {
+    if (mac_contiguous_num != 0 && !mac_addr_first.empty()) {
       // Convert the mac address into a number
       uint64_t mac_addr_first_value = xrt_core::utils::mac_addr_to_value(mac_addr_first);
 
@@ -424,7 +388,6 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
-  add_tops_info(device, pt_platform);
   add_status_info(device, pt_platform);
 
   const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);

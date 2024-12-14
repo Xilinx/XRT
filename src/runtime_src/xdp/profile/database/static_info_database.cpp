@@ -38,7 +38,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/api/xclbin_int.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #define XDP_CORE_SOURCE
 
@@ -1470,19 +1470,28 @@ namespace xdp {
     if (nullptr == device)
       return;
 
-    std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
-    try {
-      xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
-    }
-    catch (const std::exception& e) {
-      std::stringstream msg;
-      msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-    }
+    xrt::uuid new_xclbin_uuid;
 
-    if (xclbin_slot_info.empty())
-      return;
-    xrt::uuid new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
+    if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
+      // This has to be Alveo hardware emulation, which doesn't support
+      // the xclbin_slots query.
+      new_xclbin_uuid = device->get_xclbin_uuid();
+    }
+    else {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+
+      if (xclbin_slot_info.empty())
+        return;
+      new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
+    }
 
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
@@ -2358,7 +2367,7 @@ namespace xdp {
     // Following functions require configInfo to be created first.
     if (readAIEdata)
       setAIEClockRateMHz(deviceId, xrtXclbin);
-    initializeProfileMonitors(devInfo, xrtXclbin);
+    initializeProfileMonitors(devInfo, std::move(xrtXclbin));
 
     devInfo->isReady = true;
 

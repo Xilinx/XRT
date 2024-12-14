@@ -3,7 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_elf.h
 #define XRT_API_SOURCE         // exporting xrt_elf.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_elf.h"
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"

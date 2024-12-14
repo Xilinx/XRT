@@ -24,10 +24,10 @@ ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
 
-# --- Boost ---
-#set(Boost_DEBUG 1)
+# XRT install components
+include(CMake/components.cmake)
 
-INCLUDE (FindBoost)
+include(FindBoost)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost
@@ -51,26 +51,32 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
 if (MSVC)
-    add_compile_options(
-        /Zc:__cplusplus
-        /Zi           # generate pdb files even in release mode
-	/sdl          # enable security checks
-        /Qspectre     # compile with the Spectre mitigations switch
-        /ZH:SHA_256   # enable secure source code hashing
-        /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+  # Static linking with the CRT
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+  add_compile_options(
+    /MT$<$<CONFIG:Debug>:d>  # static linking with the CRT
+    /Zc:__cplusplus
+    /Zi           # generate pdb files even in release mode
+    /sdl          # enable security checks
+    /Qspectre     # compile with the Spectre mitigations switch
+    /ZH:SHA_256   # enable secure source code hashing
+    /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
     )
-    add_link_options(
-        /DEBUG      # instruct linker to create debugging info
-        /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
-        /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
+  add_link_options(
+    /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
+    /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
+    /DEBUG      # instruct linker to create debugging info
+    /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
     )
 endif()
 
 
-INCLUDE (FindGTest)
+include(FindGTest)
 
 # --- XRT Variables ---
-include (CMake/xrtVariables.cmake)
+include(CMake/xrtVariables.cmake)
 
 # --- Release: eula ---
 file(GLOB XRT_EULA
@@ -80,16 +86,16 @@ install (FILES ${XRT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/licen
 message("-- XRT EA eula files  ${XRT_SOURCE_DIR}/../LICENSE")
 
 # -- CPack
-include (CMake/cpackWin.cmake)
+include(CMake/cpackWin.cmake)
 
 # --- Create Version header and JSON file ---
-include (CMake/version.cmake)
+include(CMake/version.cmake)
 
-message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
+message("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)
 
 # --- Find Package Support ---
-include (CMake/findpackage.cmake)
+include(CMake/findpackage.cmake)
 
 # --- Python bindings ---
 xrt_add_subdirectory(python)

@@ -6,17 +6,17 @@
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
 
-#include "ert.h"
-#include "xrt.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+#include "xrt/detail/ert.h"
+#include "xrt/deprecated/xrt.h"
 
 #ifdef __cplusplus
-# include "experimental/xrt_exception.h"
-# include "experimental/xrt_fence.h"
-# include "experimental/xrt_hw_context.h"
+# include "xrt/experimental/xrt_exception.h"
+# include "xrt/experimental/xrt_fence.h"
+# include "xrt/experimental/xrt_hw_context.h"
 # include <chrono>
 # include <condition_variable>
 # include <cstdint>
@@ -127,6 +127,9 @@ public:
    * run() - Construct empty run object
    *
    * Can be used as lvalue in assignment.
+   *
+   * It is undefined behavior to use a default constructed run object
+   * for anything but assignment.
    */
   run() = default;
 
@@ -141,6 +144,8 @@ public:
 
   /**
    * run() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   run(const run&) = default;
 
@@ -157,6 +162,8 @@ public:
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy assignment, sharing data with the source
    */
   run&
   operator=(const run&) = default;
@@ -388,12 +395,18 @@ public:
    * ``ERT_CMD_STATE_COMPLETED`` is supported currently.
    *
    * The function object's first parameter is a unique 'key'
-   * for this xrt::run object implmentation on which the callback
+   * for this xrt::run object implementation on which the callback
    * was added. This 'key' can be used to identify an actual run
    * object that refers to the implementaion that is maybe shared
    * by multiple xrt::run objects.
    *
    * Any number of callbacks are supported.
+   *
+   * Execution of a run object with callback functions is referred to
+   * as managed execution.  Managed execution is supported on Alveo
+   * style platforms only. If targeted platform does not support
+   * managed execution, then an exception is thrown when the run
+   * object is submitted for execution.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -695,6 +708,9 @@ public:
 
   /**
    * kernel() - Construct for empty kernel
+   *
+   * It is undefined behavior to use a default constructed kernel object
+   * for anything but assignment.
    */
   kernel() = default;
 
@@ -745,6 +761,8 @@ public:
 
   /**
    * kernel() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   kernel(const kernel&) = default;
 
@@ -761,6 +779,8 @@ public:
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy assignment, sharing data with the source
    */
   kernel&
   operator=(const kernel&) = default;

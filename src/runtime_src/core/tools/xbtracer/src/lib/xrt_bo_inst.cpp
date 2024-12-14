@@ -62,6 +62,24 @@ bo::bo(const xrt::device& device, size_t sz, xrt::memory_group grp)
   XRT_TOOLS_XBT_FUNC_EXIT(func);
 }
 
+bo::bo(const xrt::device& device, export_handle ehdl)
+{
+  auto func = "xrt::bo::bo(const xrt::device&, export_handle)";
+  XRT_TOOLS_XBT_CALL_CTOR(dtbl.bo.ctor_dev_ehdl, this, device, ehdl);
+  /* As pimpl will be updated only after ctor call */
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, device.get_handle().get(), ehdl);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::bo(const xrt::device& device, pid_type pid, export_handle ehdl)
+{
+  auto func = "xrt::bo::bo(const xrt::device&, pid_type, export_handle)";
+  XRT_TOOLS_XBT_CALL_CTOR(dtbl.bo.ctor_dev_pid_ehdl, this, device, pid, ehdl);
+  /* As pimpl will be updated only after ctor call */
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, device.get_handle().get(), pid.pid, ehdl);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
 bo::bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, bo::flags flags,
        memory_group grp)
 {
@@ -285,13 +303,78 @@ bo::bo(xrtBufferHandle hbuf)
 ////////////////////////////////////////////////////////////////
 namespace xrt::ext {
 bo::
+bo(const xrt::device& device, void* userptr, size_t sz, access_mode access)
+{
+  auto func = "ext::bo::bo(const xrt::device&, void*, size_t, xrt::ext::bo::access_mode)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_dev_up_s_a, this, device, userptr, sz, access);
+  /* As pimpl will be updated only after ctor call*/
+  XRT_TOOLS_XBT_FUNC_ENTRY(func,
+    device.get_handle().get(), userptr, sz, (int)access);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::
+bo(const xrt::device& device, void* userptr, size_t sz)
+{
+  auto func = "ext::bo::bo(const xrt::device&, void*, size_t)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_dev_up_s, this, device, userptr, sz);
+  /* As pimpl will be updated only after ctor call*/
+  XRT_TOOLS_XBT_FUNC_ENTRY(func,
+    device.get_handle().get(), userptr, sz);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::
+bo(const xrt::device& device, size_t sz, access_mode access)
+{
+  auto func = "ext::bo::bo(const xrt::device&, size_t, xrt::ext::bo::access_mode)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_dev_s_a, this, device, sz, access);
+  /* As pimpl will be updated only after ctor call*/
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, device.get_handle().get(),
+    sz, (int)access);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::
+bo(const xrt::device& device, size_t sz)
+{
+  auto func = "ext::bo::bo(const xrt::device&, size_t)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_dev_s, this, device, sz);
+  /* As pimpl will be updated only after ctor call*/
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, device.get_handle().get(),
+    sz);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::
+bo(const xrt::device& device, pid_type pid, xrt::bo::export_handle ehdl)
+{
+  auto func = "ext::bo::bo(const xrt::device&, pid_type, xrt::bo::export_handle)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_dev_pid_ehdl, this, device, pid, ehdl);
+  /* As pimpl will be updated only after ctor call */
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, device.get_handle().get(), pid.pid, ehdl);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+bo::
 bo(const xrt::hw_context& hwctx, size_t sz, access_mode access)
 {
-  auto func = "ext::bo::bo(constxrt::hw_context&, size_t, xrt::ext::bo::access_mode)";
+  auto func = "ext::bo::bo(const xrt::hw_context&, size_t, xrt::ext::bo::access_mode)";
   XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_cxt_s_a, this, hwctx, sz, access);
-  /* As pimpl will be updated only after ctor call*/
+  /* As pimpl will be updated only after ctor call */
   XRT_TOOLS_XBT_FUNC_ENTRY(func, hwctx.get_handle().get(),
     sz, (int)access);
   XRT_TOOLS_XBT_FUNC_EXIT(func);
 }
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz)
+{
+  auto func = "ext::bo::bo(const xrt::hw_context&, size_t)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.bo_ctor_cxt_s, this, hwctx, sz);
+  /* As pimpl will be updated only after ctor call */
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, hwctx.get_handle().get(), sz);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
 } // namespace xrt::ext

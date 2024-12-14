@@ -429,12 +429,6 @@ namespace xdp {
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
-      {
-        std::string deviceName = util::getDeviceName(handle);
-        if(deviceName != "") {
-          (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
-        }
-      }
     }
 
     // Grab AIE metadata

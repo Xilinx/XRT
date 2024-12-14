@@ -12,6 +12,7 @@
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 #include "core/edge/common/aie_parser.h"
 
@@ -738,7 +739,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
       .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
-      .partition_id = partition_id,
+      .partition_id = static_cast<unsigned int>(partition_id),
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
@@ -1181,7 +1182,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR || buffer->m_header.m_actionMask & AM_LOAD_PDI);
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
-  auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+  auto force_program = xrt_core::config::get_force_program_xclbin() || buffer->m_header.m_actionMask & AM_LOAD_PDI;
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
 
   if (is_pr_platform)
@@ -1283,8 +1284,6 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
     }
     off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
   }
-  
-  
   return 0;
 }
 

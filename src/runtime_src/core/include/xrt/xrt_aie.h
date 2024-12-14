@@ -91,6 +91,8 @@ public:
   /**
    * read_aie_mem() - Read AIE tile's memory
    *
+   * @param pid
+   *   process id of process that opened hw_context
    * @param context_id
    *  context id corresponding to AIE tile
    * @param col
@@ -109,11 +111,13 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   std::vector<char>
-  read_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const;
+  read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const;
 
   /**
    * write_aie_mem() - Write data to AIE tile's memory
    *
+   * @param pid
+   *   process id of process that opened hw_context
    * @param context_id
    *  context id corresponding to AIE tile
    * @param col
@@ -132,11 +136,13 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   size_t
-  write_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data);
+  write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data);
 
   /**
    * read_aie_reg() - Read AIE Tile's register
    *
+   * @param pid
+   *   process id of process that opened hw_context
    * @param context_id
    *  context id corresponding to AIE tile
    * @param col
@@ -153,11 +159,13 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   uint32_t
-  read_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const;
+  read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const;
 
   /**
    * write_aie_reg() - Write AIE Tile's register
    *
+   * @param pid
+   *   process id of process that opened hw_context
    * @param context_id
    *  context id corresponding to AIE tile
    * @param col
@@ -176,7 +184,7 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   bool
-  write_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val);
+  write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val);
 
 private:
   XCL_DRIVER_DLLESPEC
@@ -253,6 +261,29 @@ public:
   {
     sync(port, dir, size(), 0);
   }
+};
+
+class hw_context : public xrt::hw_context
+{
+public:
+
+  /**
+   * hw_context() - Constructor that is used for AIE hw_context.
+   *
+   * @param arg
+   *  Arguments to construct hw_context (xrt_hw_context.h).
+   */
+  template <typename ...Args>
+  hw_context(Args&&... args)
+    : xrt::hw_context(std::forward<Args>(args)...)
+  {}
+
+  /**
+   * reset_array() - reset the AIE Array used for this hw_context
+   *
+   */
+  void
+  reset_array();
 };
 
 class profiling_impl;

@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestBandwidthKernel.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -33,8 +34,8 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
   try {
     name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
   } catch (const std::exception&) {
-    logger(ptree, "Error", "Unable to find device VBNV");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Unable to find device VBNV");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   runTest(dev, ptree);
@@ -262,10 +263,10 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
 {
   xrt::device device(dev);
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
   if (test_path.empty()) {
-    logger(ptree, "Error", "Platform test path was not found.");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Platform test path was not found.");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return;
   }
   auto json_exists = [test_path]() {
@@ -286,15 +287,15 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
   try {
     marshal_build_metadata(test_path, &num_kernel, &num_kernel_ddr, &chk_hbm_mem, bank_names);
   } catch (const std::exception&) {
-    logger(ptree, "Error", "Bad JSON format detected while marshaling build metadata");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Error", "Bad JSON format detected while marshaling build metadata");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
-  const std::string b_file = findXclbinPath(dev, ptree);
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
   std::ifstream infile(b_file);
   if (!infile.good()) {
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
   auto xclbin_uuid = device.load_xclbin(b_file);
@@ -306,20 +307,20 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       auto  throughputs = test_bandwidth_ddr(device, krnls, num_kernel_ddr);
       double max_throughput = throughputs.first;
       std::vector <double> throughput_per_kernel = throughputs.second;
-      logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
       if (bank_names.size() == num_kernel_ddr && throughput_per_kernel.size() == num_kernel_ddr) {
         for (unsigned int i = 0; i < num_kernel_ddr; i++)
-          logger(ptree, "Details", boost::str(boost::format("Throughput of Memory Tag: %s : %.1f MB/s") % bank_names[i] % throughput_per_kernel[i]));
+          XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput of Memory Tag: %s : %.1f MB/s") % bank_names[i] % throughput_per_kernel[i]));
       }
     }
     if (chk_hbm_mem) {
       double max_throughput = test_bandwidth_hbm(device, krnls, num_kernel);
-      logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %.1f MB/s") % max_throughput));
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %.1f MB/s") % max_throughput));
     }
   } catch (const std::runtime_error& e) {
-    logger(ptree, "Error", e.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", e.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return;
   }
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }

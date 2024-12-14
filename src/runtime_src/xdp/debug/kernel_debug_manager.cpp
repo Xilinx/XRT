@@ -25,7 +25,7 @@
 
 #include "kernel_debug_manager.h"
 #include "xrt/util/message.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "core/common/xclbin_parser.h"
 
 // For PID and UID on different operating systems

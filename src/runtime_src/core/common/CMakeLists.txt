@@ -3,11 +3,12 @@
 # Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(api)
 add_subdirectory(xdp)
+add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_subdirectory(aiebu)
+  xrt_add_subdirectory(aiebu)
 else()
   message(WARNING "Edge device, build of submodule aiebu disabled")
 endif()
@@ -62,12 +63,14 @@ target_include_directories(core_common_objects
 
 add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   )
 
 add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
   )
@@ -76,6 +79,38 @@ set_target_properties(xrt_coreutil PROPERTIES
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION}
   )
+
+################################################################
+# Define include directories and definitions needed by any target that
+# links with xrt_coreutil
+# BUILD_INTERFACE is for targets within XRT that link with xrt_coreutil
+# INSTALL_INTERFACE is for external targets that link XRT::xrt_coreutil
+target_include_directories(xrt_coreutil
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
+  )
+  
+target_include_directories(xrt_coreutil_static
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
+  )
+
+target_compile_definitions(xrt_coreutil_static
+  PUBLIC
+  $<BUILD_INTERFACE:XRT_STATIC_BUILD>
+  $<INSTALL_INTERFACE:XRT_STATIC_BUILD>
+  )
+
+# Linking with xrt_coreutil_static requires that applications link
+# with the same runtime library as xrt_coreutil_static
+if (WIN32)
+  target_compile_options(xrt_coreutil_static
+    PUBLIC
+    $<INSTALL_INTERFACE:/MT$<$<CONFIG:Debug>:d>>
+    )
+endif()
 
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
@@ -86,6 +121,7 @@ if (NOT WIN32)
   # system libraries
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
 endif()
+################################################################
 
 install(TARGETS xrt_coreutil
   EXPORT xrt-targets

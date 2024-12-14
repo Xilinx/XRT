@@ -21,12 +21,14 @@ load()
 }
 
 // Callbacks for generic start/stop function tracking
-std::function<void (const char*, uint64_t)> function_start_cb ;
-std::function<void (const char*, uint64_t, uint64_t)> function_end_cb ;
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+static std::function<void (const char*, uint64_t)> function_start_cb ;
+static std::function<void (const char*, uint64_t, uint64_t)> function_end_cb ;
 
 // Callbacks for individual functions to track start/stop and statistics
-std::function<void (const char*, uint64_t, bool)> sync_start_cb ;
-std::function<void (const char*, uint64_t, uint64_t, bool, uint64_t)> sync_end_cb ;
+static std::function<void (const char*, uint64_t, bool)> sync_start_cb ;
+static std::function<void (const char*, uint64_t, uint64_t, bool, uint64_t)> sync_end_cb ;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
   
 void
 register_functions(void* handle)

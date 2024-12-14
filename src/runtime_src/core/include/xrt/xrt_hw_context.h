@@ -73,6 +73,9 @@ public:
 public:
   /**
    * hw_context() - Constructor for empty context
+   *
+   * It is undefined behavior to use a default constructed hw_context
+   * for anything but assignment.
    */
   hw_context() = default;
 
@@ -114,7 +117,7 @@ public:
   /// @endcond
 
   ///@cond
-  // Undocumented construction using impl only
+  // Undocumented converting constructor using impl only
   hw_context(std::shared_ptr<hw_context_impl> impl)
     : detail::pimpl<hw_context_impl>(std::move(impl))
   {}
@@ -122,6 +125,8 @@ public:
 
   /**
    * hw_context() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   hw_context(const hw_context&) = default;
 
@@ -138,6 +143,8 @@ public:
 
   /**
    * operator= () - Copy assignment
+   *
+   * Performs shallow copy, sharing data with the source
    */
   hw_context&
   operator=(const hw_context&) = default;

@@ -18,7 +18,7 @@
 #define DEBUG_PLUGIN_DOT_H
 
 #include "xdp/config.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 extern "C" {
   XDP_PLUGIN_EXPORT void cb_debug_reset(const axlf* xclbin) ;

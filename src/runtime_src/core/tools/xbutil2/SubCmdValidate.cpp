@@ -21,13 +21,10 @@
 #include "tools/common/tests/TestSCVersion.h"
 #include "tools/common/tests/TestVerify.h"
 #include "tools/common/tests/TestDMA.h"
-#include "tools/common/tests/TestIOPS.h"
 #include "tools/common/tests/TestBandwidthKernel.h"
 #include "tools/common/tests/Testp2p.h"
 #include "tools/common/tests/Testm2m.h"
 #include "tools/common/tests/TestHostMemBandwidthKernel.h"
-#include "tools/common/tests/TestBist.h"
-#include "tools/common/tests/TestVcuKernel.h"
 #include "tools/common/tests/TestAiePl.h"
 #include "tools/common/tests/TestAiePs.h"
 #include "tools/common/tests/TestPsPlVerify.h"
@@ -96,13 +93,10 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestSCVersion>(),
   std::make_shared<TestVerify>(),
   std::make_shared<TestDMA>(),
-  std::make_shared<TestIOPS>(),
   std::make_shared<TestBandwidthKernel>(),
   std::make_shared<Testp2p>(),
   std::make_shared<Testm2m>(),
   std::make_shared<TestHostMemBandwidthKernel>(),
-  std::make_shared<TestBist>(),
-  std::make_shared<TestVcuKernel>(),
   std::make_shared<TestAiePl>(),
   std::make_shared<TestAiePs>(),
   std::make_shared<TestPsPlVerify>(),
@@ -315,9 +309,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   int test_idx = 0;
 
-  if (testObjectsToRun.size() == 1)
-    XBU::setVerbose(true);// setting verbose true for single_case.
-
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
@@ -447,11 +438,11 @@ SubCmdValidate::getTestNameDescriptions(const bool addAdditionOptions) const
 static boost::program_options::options_description common_options;
 static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
 static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
-static const std::pair<std::string, std::string> quick_test = {"quick", "Only the first 4 tests will be executed"};
+static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
-             "Validates the basic shell acceleration functionality")
+             "Validates the basic device acceleration functionality")
     , m_device("")
     , m_tests_to_run({"all"})
     , m_format("JSON")

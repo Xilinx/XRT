@@ -31,7 +31,7 @@
 #include <vector>
 
 // For DEBUG_IP_TYPE
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include "xdp/config.h"
 #include "xdp/profile/device/utility.h"

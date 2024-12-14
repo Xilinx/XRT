@@ -4,6 +4,7 @@
 #include <iostream>
 
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_API_SOURCE
 #include "capture.h"
 #include "logger.h"
 
@@ -253,5 +254,20 @@ xrt::xclbin kernel::get_xclbin() const
   XRT_TOOLS_XBT_FUNC_EXIT_RET(func, &xclbin);
   return xclbin;
 }
-
 }  // namespace xrt
+
+////////////////////////////////////////////////////////////////
+// xrt_ext::kernel C++ API implmentations (xrt_ext.h)
+////////////////////////////////////////////////////////////////
+namespace xrt::ext
+{
+
+kernel::kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name)
+{
+  auto func = "ext::kernel::kernel(const xrt::hw_context&, const xrt::module&, const std::string&)";
+  XRT_TOOLS_XBT_CALL_EXT_CTOR(dtbl.ext.kernel_ctor_ctx_m_s, this, ctx, mod, name);
+  XRT_TOOLS_XBT_FUNC_ENTRY(func, ctx.get_handle().get(), mod.get_handle().get(), name);
+  XRT_TOOLS_XBT_FUNC_EXIT(func);
+}
+
+}

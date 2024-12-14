@@ -58,7 +58,7 @@ set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 set(XBUTIL2_NAME "xrt-smi") 
 # Determine any helper scripts
 if(WIN32)
-  set(XRT_HELPER_SCRIPTS "xbutil" "xbutil.bat" "xrt-smi" "xrt-smi.bat")
+  set(XRT_HELPER_SCRIPTS "xrt-smi" "xrt-smi.bat")
 else()
   set(XRT_HELPER_SCRIPTS "xbutil" "xrt-smi")
 endif()

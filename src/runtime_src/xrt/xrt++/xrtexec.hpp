@@ -21,8 +21,8 @@
 #ifndef _XRT_XRTEXEC_H_
 #define _XRT_XRTEXEC_H_
 #include <memory>
-#include "ert.h"
-#include "xrt.h"
+#include "xrt/detail/ert.h"
+#include "xrt/deprecated/xrt.h"
 
 struct xrt_device;
 

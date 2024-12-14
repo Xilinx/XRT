@@ -113,6 +113,12 @@ public:
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
+
+  virtual void
+  reset_array() const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 };
 
 } // xrt_core

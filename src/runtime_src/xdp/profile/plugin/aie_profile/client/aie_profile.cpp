@@ -42,7 +42,10 @@
 // XRT headers
 #include "xrt/xrt_bo.h"
 #include "core/common/shim/hwctx_handle.h"
+
+#ifdef _WIN32
 #include <windows.h> 
+#endif
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -191,8 +194,8 @@ namespace xdp {
             configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0, startEvent);
 
           // Convert enums to physical event IDs for reporting purposes
-          uint8_t tmpStart;
-          uint8_t tmpEnd;
+          uint16_t tmpStart;
+          uint16_t tmpEnd;
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, startEvent, &tmpStart);
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(type);
@@ -234,7 +237,7 @@ namespace xdp {
     op_size = sizeof(read_register_op_t) + sizeof(register_data_t) * (counterId - 1);
     op = (read_register_op_t*)malloc(op_size);
     op->count = counterId;
-    for (int i = 0; i < op_profile_data.size(); i++) {
+    for (size_t i = 0; i < op_profile_data.size(); i++) {
       op->data[i] = op_profile_data[i];
     }
     
@@ -276,11 +279,13 @@ namespace xdp {
 
     // Interface tiles (e.g., PLIO, GMIO)
     if (type == module_type::shim) {
+      // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
+      if (portnum >= tile.stream_ids.size())
+        return;
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
-      auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
-                             0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
+      auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
       
       // auto streamPortId  = tile.stream_id;
       // Define stream switch port to monitor interface 

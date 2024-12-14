@@ -220,7 +220,7 @@ namespace xdp {
 
     auto threadId = std::this_thread::get_id();
     auto key      = std::make_pair(name, threadId);
-    auto value    = std::make_pair(timestamp, (double)0.0);
+    std::pair<double, double>value {timestamp, 0.0};
 
     // Since a single thread can call a function multiple times, we store
     // the starts in a vector.  If the thread makes a recursive call, we'll

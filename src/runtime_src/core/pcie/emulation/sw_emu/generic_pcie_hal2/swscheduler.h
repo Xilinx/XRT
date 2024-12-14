@@ -13,7 +13,7 @@
 #include <queue>
 #include <thread>
 #include <condition_variable>
-#include "ert.h"
+#include "xrt/detail/ert.h"
 
 #define XOCL_U32_MASK 0xFFFFFFFF
 

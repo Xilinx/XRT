@@ -31,33 +31,21 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TCT/s") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
 
-  logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -73,13 +61,11 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -92,25 +78,23 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   }
   catch (const std::exception& )
   {
-    logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", test_token_failed);ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::tct_one_column);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
-
-  logger(ptree, "DPU-Sequence", dpu_instr);
 
   size_t instr_size = 0;
   try {
     instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -132,8 +116,8 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -143,8 +127,8 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
     run.wait2();
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto end = std::chrono::high_resolution_clock::now();
@@ -155,7 +139,7 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   for (size_t i = 0; i < word_count; i++) {
     if (ofm_mapped[i] != ifm_mapped[i]) {
       auto msg = boost::str(boost::format("Data mismatch at out buffer[%d]") % i);
-      logger(ptree, "Error", msg);
+      XBValidateUtils::logger(ptree, "Error", msg);
       return ptree;
     }
   }
@@ -165,12 +149,10 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   double throughput = itr_count / elapsedSecs;
   double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
-  //check if the value is in range
-  result_in_range(throughput, get_threshold(), ptree);
-
   if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));
-  logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
 }

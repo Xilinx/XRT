@@ -98,16 +98,16 @@ SET (XRT_DKMS_DRIVER_SRCS
 
 # includes relative to core
 SET (XRT_DKMS_CORE_INCLUDES
-  include/ert.h
+  include/xrt/detail/ert.h
+  include/xrt/detail/xclbin.h
+  include/xrt/detail/xrt_error_code.h
+  include/xrt/detail/xrt_mem.h
+  include/xrt/deprecated/xclerr.h
   include/ps_kernel.h
   include/types.h
   include/xclfeatures.h
-  include/xclbin.h
-  include/xclerr.h
   include/xclerr_int.h
   include/xclhal2_mem.h
-  include/xrt_error_code.h
-  include/xrt_mem.h
   include/xgq_cmd_common.h
   include/xgq_cmd_ert.h
   include/xgq_cmd_vmr.h
@@ -151,20 +151,19 @@ foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
 endforeach()
 
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
-  get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/${DKMS_DIR})
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
 endforeach()
 
 foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/common/)
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/common)
 endforeach()
 
 foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV_INCLUDES})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include/)
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
 endforeach()
 
 foreach (DKMS_FILE ${XRT_DKMS_CORE_EDGE_INCLUDES})
-  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include/)
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/include)
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})

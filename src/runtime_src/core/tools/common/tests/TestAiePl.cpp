@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestAiePl.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
@@ -12,7 +13,7 @@ namespace XBU = XBUtilities;
 #include "aie_pl_util/pl_controller_aie2.hpp"
 
 // XRT includes
-#include "experimental/xrt_system.h"
+#include "xrt/experimental/xrt_system.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -232,7 +233,7 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 {
   xrt::device device(dev);
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
 
   // pl_controller_aie.xclbin is the default xclbin filename
   std::string b_file = "pl_controller_aie.xclbin";
@@ -242,8 +243,8 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
     b_file = "vck5000_pcie_pl_controller.xclbin.xclbin";
     binaryFile = std::filesystem::path(test_path) / b_file;
     if (!std::filesystem::exists(binaryFile)){
-      logger(ptree, "Details", boost::str(boost::format("The xclbin could not be found")));
-      ptree.put("status", test_token_skipped);
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("The xclbin could not be found")));
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
   }
@@ -254,7 +255,7 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   boost::property_tree::ptree aie_meta;
   auto metadata_pair = dev->get_axlf_section(AIE_METADATA);
   if (!metadata_pair.first || metadata_pair.second == 0){
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
   std::string aie_metadata(metadata_pair.first, metadata_pair.second);
@@ -284,12 +285,12 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
       match = run_pl_controller_aie2(device, uuid, aie_meta);
       break;
     default:
-      logger(ptree, "Error", "Unsupported AIE Hardware");
+      XBValidateUtils::logger(ptree, "Error", "Unsupported AIE Hardware");
   }
 
   // report and return PASS / FAIL status
   if (match) 
-    ptree.put("status", test_token_failed);
+    ptree.put("status", XBValidateUtils::test_token_failed);
   else
-    ptree.put("status", test_token_passed);
+    ptree.put("status", XBValidateUtils::test_token_passed);
 }

@@ -43,6 +43,8 @@ int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx 
         goto error_out;
     }
     drm_hw_ctx->hw_context = kds_hw_ctx->hw_ctx_idx;
+    //increase the count for this slot. decrease the count for destroy hw ctx
+    slot->hwctx_ref_cnt++;
 
 error_out:
     mutex_unlock(&client->lock);
@@ -55,6 +57,7 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
     struct drm_zocl_slot *slot = NULL;
     struct kds_client *client = filp->driver_priv;
     int ret = 0;
+    u32 s_id = -1;
 
     if (!client) {
         DRM_ERROR("%s: Invalid client", __func__);
@@ -76,7 +79,14 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
         mutex_unlock(&client->lock);
         return -EINVAL;
     }
+
+    s_id = kds_hw_ctx->slot_idx;
     ret = kds_free_hw_ctx(client, kds_hw_ctx);
+    if (--slot->hwctx_ref_cnt == 0) {
+        zdev->slot_mask &= ~(1 << s_id);
+        DRM_DEBUG("Released the slot %d", s_id);
+    }
+
     mutex_unlock(&client->lock);
     return ret;
 }

@@ -35,7 +35,8 @@ namespace po = boost::program_options;
 
 SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("advanced", 
-             "Low level command operations")
+             "Low level command operations"),
+      m_device("")
 {
   const std::string longDescription = "Low level command operations.";
   setLongDescription(longDescription);
@@ -45,6 +46,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -77,17 +79,13 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   auto optionOption = checkForSubOption(vm);
 
   // No suboption print help
-  if (!optionOption) {
-    printHelp();
+  if (!optionOption || m_help) {
+    printHelp(false, "", XBU::get_device_class(m_device, true));
     return;
   }
-
-  // 2) Process the top level options
-  if (m_help)
-    topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());
   
   // Execute the option
-  optionOption->execute(topOptions);
+  optionOption->execute(_options);
 }

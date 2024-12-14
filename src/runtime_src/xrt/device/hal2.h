@@ -6,14 +6,13 @@
 
 #include "xrt/device/hal.h"
 
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/detail/ert.h"
 
 #include "core/common/device.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/query_requests.h"
-
-#include "ert.h"
 
 #include <cassert>
 

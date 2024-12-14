@@ -26,7 +26,7 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/md5.h>
 #undef OPENSSL_SUPPRESS_DEPRECATED
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "container.h"
 
 /*

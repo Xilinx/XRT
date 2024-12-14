@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestPsIops.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -156,47 +157,47 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   for (int i = 0; i < threadNumber; i++) {
     if (verbose) {
       duration = static_cast<double>((std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count());
-      logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id),
+      XBValidateUtils::logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id),
                     boost::str(boost::format("Commands: %d IOPS: %f") % total % boost::io::group(std::setprecision(0), std::fixed, (total * 1000000.0 / duration))));
     }
     overallCommands += total;
   }
 
   duration = static_cast<double>((std::chrono::duration_cast<ms_t>(end - start)).count());
-  logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
                 % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }
 
 void
 TestPsIops::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  logger(ptree, "Details", "Test not supported.");
-  ptree.put("status", test_token_skipped);
+  XBValidateUtils::logger(ptree, "Details", "Test not supported.");
+  ptree.put("status", XBValidateUtils::test_token_skipped);
   return;
 
   xrt::device device(dev);
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Validate dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-    auto retVal = validate_binary_file(path);
+    auto retVal = XBValidateUtils::validate_binary_file(path);
     if (retVal == EOPNOTSUPP) {
-      ptree.put("status", test_token_skipped);
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     } else if (retVal != EXIT_SUCCESS) {
-      logger(ptree, "Error", "Unknown error validating depedencies");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "Unknown error validating depedencies");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
     // device.load_xclbin(path);
   }
 
-  const std::string b_file = findXclbinPath(dev, ptree); // "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin"
-  auto retVal = validate_binary_file(b_file);
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree); // "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin"
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   if (retVal == EOPNOTSUPP) {
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
@@ -212,9 +213,9 @@ TestPsIops::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree:
     testMultiThreads(bdf, b_file, threadNumber, queueLength, total, ptree);
     return;
   } catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
+    XBValidateUtils::logger(ptree, "Error", ex.what());
   } catch (...) {
     // Test failed.
   }
-  ptree.put("status", test_token_failed);
+  ptree.put("status", XBValidateUtils::test_token_failed);
 }

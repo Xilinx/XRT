@@ -286,6 +286,13 @@ enum {
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
+/* AWS SHELL NAME Defines */
+#define AWS_F1_XDMA_SHELL_NAME "xilinx_aws-vu9p-f1_shell-v04261818_201920_3"
+#define AWS_F1_NODMA_SHELL_NAME "xilinx_aws-vu9p-f1_nodma-shell-v09142114_202120_1"
+#define AWS_F1_DYNAMIC_SHELL_NAME "xilinx_aws-vu9p-f1_dynamic-shell"
+
+#define AWS_F2_XDMA_SHELL_NAME "xilinx_aws-vu47p-f2_xdma-shell-v04052421_202410_1"
+
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_VERSION_CTRL,
@@ -1933,6 +1940,14 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
+#define USER_RES_AWS_F2_XDMA						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_XDMA,				\
+			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
+			XOCL_DEVINFO_ICAP_USER,				\
+		})
+
 #define USER_RES_AWS_XDMA						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -2018,6 +2033,13 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= USER_RES_AWS_XDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_AWS_XDMA),		\
+	}
+
+#define XOCL_BOARD_USER_AWS_F2_XDMA					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_AWS_F2_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_AWS_F2_XDMA),		\
 	}
 
 #define XOCL_BOARD_USER_AWS_NODMA					\
@@ -3485,6 +3507,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF011, PCI_ANY_ID, USER_AWS_NODMA) },	\
+	{ XOCL_PCI_DEVID(0x1D0F, 0x9048, PCI_ANY_ID, USER_AWS_F2_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x1D0F, 0x9248, PCI_ANY_ID, USER_AWS_F2_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5086, PCI_ANY_ID, X3522PV_USER_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) },\

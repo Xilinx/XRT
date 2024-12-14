@@ -39,6 +39,32 @@ add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
   pt.add_child("rtos_tasks", pt_rtos_array);
 }
 
+static boost::property_tree::ptree
+aie2_preemption_info(const xrt_core::device* device)
+{
+  const auto data = xrt_core::device_query<xrt_core::query::rtos_telemetry>(device);
+  boost::property_tree::ptree pt_rtos_array;
+  int user_task = 0;
+
+  for (const auto& kp : data) {
+  boost::property_tree::ptree pt_preempt;
+
+  auto populate_value = [](uint64_t value) {
+    return (value == static_cast<uint64_t>(-1) || value == UINT64_MAX) ? "N/A" : std::to_string(value);
+  };
+
+  pt_preempt.put("user_task", user_task++);
+  pt_preempt.put("slot_index", populate_value(kp.preemption_data.slot_index));
+  pt_preempt.put("preemption_flag_set", populate_value(kp.preemption_data.preemption_flag_set));
+  pt_preempt.put("preemption_flag_unset", populate_value(kp.preemption_data.preemption_flag_unset));
+  pt_preempt.put("preemption_checkpoint_event", populate_value(kp.preemption_data.preemption_checkpoint_event));
+  pt_preempt.put("preemption_frame_boundary_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
+
+  pt_rtos_array.push_back({"", pt_preempt});
+  }
+  return pt_rtos_array;
+}
+
 static void
 add_opcode_info(const xrt_core::device* device, boost::property_tree::ptree& pt)
 {
@@ -128,6 +154,23 @@ telemetry_info(const xrt_core::device* device)
   case xrt_core::query::device_class::type::ryzen:
   {
     telemetry_pt.add_child("telemetry", aie2_telemetry_info(device));
+    return telemetry_pt;
+  }
+  }
+  return telemetry_pt;
+}
+
+boost::property_tree::ptree
+preemption_telemetry_info(const xrt_core::device* device)
+{
+  boost::property_tree::ptree telemetry_pt;
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  switch (device_class) {
+  case xrt_core::query::device_class::type::alveo: // No telemetry for alveo devices
+    return telemetry_pt;
+  case xrt_core::query::device_class::type::ryzen:
+  {
+    telemetry_pt.add_child("telemetry", aie2_preemption_info(device));
     return telemetry_pt;
   }
   }

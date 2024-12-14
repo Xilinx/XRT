@@ -87,7 +87,7 @@ dlpath(const char* dllname)
 {
   char dll_path[MAX_PATH];
   if (!::GetModuleFileName(::GetModuleHandle(dllname), dll_path, MAX_PATH))
-    throw std::runtime_error("Get handle of " + std::string(dllname) + " failed");
+    throw std::runtime_error("Get handle of " + std::string(dllname ? dllname : "") + " failed");
 
   return dll_path;
 }
