@@ -852,7 +852,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
         return ret;
 }
 
-int xocl_check_slot_topology(struct xocl_drm *drm_p, uint32_t slot_id)
+static int xocl_check_slot_topology(struct xocl_drm *drm_p, uint32_t slot_id)
 {
 	struct xocl_mem_stat *curr_mem = NULL;
 	int err = 0;
@@ -920,7 +920,7 @@ done:
 	return 0;
 }
 
-int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
+static int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
 {
 	int ret = 0;
 	uint64_t *phys_addrs = 0;

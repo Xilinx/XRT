@@ -327,7 +327,7 @@ static int am_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long am_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long am_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_am *am;
 	void __user *data;

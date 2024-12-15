@@ -341,7 +341,7 @@ static int aim_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long aim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long aim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_aim *aim;
 	void __user *data;

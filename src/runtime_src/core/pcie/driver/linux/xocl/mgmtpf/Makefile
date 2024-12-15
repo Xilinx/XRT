@@ -54,7 +54,6 @@ xclmgmt-y := \
 	../subdev/ps.o \
 	../subdev/firewall.o \
 	../subdev/xvc.o \
-	../subdev/nifd.o \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
@@ -81,6 +80,7 @@ xclmgmt-y := \
 	../subdev/version_ctrl.o \
 	../subdev/pcie_firewall.o \
 	../subdev/hwmon_sdm.o \
+	../subdev/nifd.o \
 	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \
