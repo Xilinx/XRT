@@ -594,7 +594,6 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 	u32 nread = 0;
 	u32 f_nread = 0;
-	int i = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)

@@ -197,5 +197,5 @@ struct zocl_ert_info {
 	int			model;
 	struct zocl_ert_ops    *ops;
 };
-
+struct ert_packet *get_packet(struct ert_packet *packet, u32 idx, u32 size);
 #endif

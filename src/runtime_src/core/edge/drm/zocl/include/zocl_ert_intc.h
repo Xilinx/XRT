@@ -17,6 +17,7 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/io.h>
+#include <linux/version.h>
 #include "zocl_lib.h"
 
 #define ERT_CSR_INTC_DEV_NAME		"ZOCL_CSR_INTC"

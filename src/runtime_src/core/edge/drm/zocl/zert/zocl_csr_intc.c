@@ -131,12 +131,18 @@ static int zintc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int zintc_remove(struct platform_device *pdev)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zintc_remove(struct platform_device *pdev) 
+#else
+static int zintc_remove(struct platform_device *pdev) 
+#endif
 {
 	struct zocl_csr_intc *zintc = platform_get_drvdata(pdev);
 
 	zintc_info(zintc, "Removing %s", ZINTC_NAME);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 /*

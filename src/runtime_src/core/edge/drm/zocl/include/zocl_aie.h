@@ -148,7 +148,7 @@ aie_free_errors(struct aie_errors *aie_errs)
 {
 }
 #endif
-
+int zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *xclbin);
 struct aie_info {
 	struct list_head	aie_cmd_list;
 	struct mutex		aie_lock;
