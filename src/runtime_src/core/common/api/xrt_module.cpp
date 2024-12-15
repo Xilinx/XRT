@@ -137,10 +137,13 @@ struct patcher
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
+  static constexpr size_t num_bd_data_ptrs = 8; // max number of bd ptrs accessed while patching
   struct patch_info {
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
     uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
+    bool dirty = false; // Tells whether this entry is already patched or not
+    uint32_t bd_data_ptrs[num_bd_data_ptrs]; // array to store bd ptrs original values
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -166,9 +169,10 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
-// Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
-// For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
-// To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+  // Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
+  // For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
+  // To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+
   void
   patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
   {
@@ -253,8 +257,18 @@ struct patcher
   void
   patch_it(uint8_t* base, uint64_t new_value)
   {
-    for (auto item : m_ctrlcode_patchinfo) {
+    for (auto& item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
+      if (!item.dirty) {
+        // first time patching store origin bd ptr values in patch info bd ptrs array
+        std::copy(bd_data_ptr, bd_data_ptr + num_bd_data_ptrs, item.bd_data_ptrs);
+        item.dirty = true;
+      }
+      else {
+        // not the first time patching, restore bd ptr values from patch info bd ptrs array
+        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + num_bd_data_ptrs, bd_data_ptr);
+      }
+
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
