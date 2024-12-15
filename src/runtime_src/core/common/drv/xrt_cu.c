@@ -555,7 +555,7 @@ int xrt_cu_process_queues(struct xrt_cu *xcu)
 	return XCU_IDLE;
 }
 
-static int xrt_cu_intr_thread(void *data)
+int xrt_cu_intr_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	int ret = 0;
