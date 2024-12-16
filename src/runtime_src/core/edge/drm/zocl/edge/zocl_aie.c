@@ -324,11 +324,8 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	zdev->aie->uid = req.uid;
 
 	/* Register AIE error call back function. */
-	/* only aie-1 supports error management*/
-	if (hw_gen == 1) {
-		rval = aie_register_error_notification(zdev->aie->aie_dev,
-		zocl_aie_error_cb, zdev);
-	}
+	rval = aie_register_error_notification(zdev->aie->aie_dev,
+					       zocl_aie_error_cb, zdev);
 	mutex_unlock(&zdev->aie_lock);
 
 	zocl_init_aie(zdev);
