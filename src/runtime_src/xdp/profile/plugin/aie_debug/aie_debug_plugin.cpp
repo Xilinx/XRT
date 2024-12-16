@@ -81,7 +81,7 @@ namespace xdp {
    ***************************************************************************/
   uint64_t AieDebugPlugin::getDeviceIDFromHandle(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling AIE DEBUG AieDebugPlugin::getDeviceIDFromHandle.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG AieDebugPlugin::getDeviceIDFromHandle.");
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
@@ -190,9 +190,8 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endAIEDebugRead");
     auto deviceID = getDeviceIDFromHandle(handle);
-    std::stringstream msg;
-    msg << "!!!! AieDebugPlugin::endAIEDebugRead deviceID is= "<<deviceID;
-    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    xrt_core::message::send(severity_level::debug, "XRT", 
+      "AieDebugPlugin::endAIEDebugRead deviceID is " + std::to_string(deviceID));
     handleToAIEData[handle].implementation->poll(deviceID, handle);
   }
 
@@ -222,8 +221,8 @@ namespace xdp {
   std::string AieDebugPlugin::lookupRegisterName(uint64_t deviceIndex, uint64_t regVal)
   {
     for (const auto& kv : handleToAIEData) {
-      if (kv.deviceID == deviceIndex)
-        return kv.metadata->lookupRegisterName(regVal);
+      if (kv.second.deviceID == deviceIndex)
+        return kv.second.metadata->lookupRegisterName(regVal);
     }
     return "Not Found";
   }

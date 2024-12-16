@@ -42,6 +42,7 @@ extern "C" {
 
 namespace xdp {
 
+// Forward declarations
 class BaseReadableTile;
 class UsedRegisters;
 
@@ -66,7 +67,6 @@ class AieDebugMetadata {
       return parsedRegValues;
     }
     
-    //const AIEProfileFinalConfig& getAIEProfileConfig() const;
     bool aieMetadataEmpty() const {return (metadataReader == nullptr);}
     xdp::aie::driver_config getAIEConfigMetadata() {return metadataReader->getDriverConfig();}
 
@@ -82,24 +82,9 @@ class AieDebugMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
-
-    //The following two functions, lookupRegistername and lookupRegisterAddr returns
-    //the name of the register for every register address. They takes into account
-    //the fact that register names can have different addresses for different
-    //AIE generations.
-    std::string lookupRegisterName(uint64_t regVal) {
-      if (usedRegisters->regValueToName.find(regVal) !=
-          usedRegisters->regValueToName.end())
-        return usedRegisters->regValueToName[regVal];
-      return "";
-    }
-
-    uint64_t lookupRegisterAddr(std::string regName) {
-      if (usedRegisters->regNameToValues.find(regName) !=
-          usedRegisters->regNameToValues.end())
-        return usedRegisters->regNameToValues[regName];
-      return 0;
-    }
+ 
+    std::string lookupRegisterName(uint64_t regVal);
+    uint64_t lookupRegisterAddr(std::string regName);
 
   private:
     std::vector<uint64_t> stringToRegList(std::string stringEntry, module_type t);
@@ -112,12 +97,6 @@ class AieDebugMetadata {
       {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
-    //const std::map<module_type, const char*> moduleNames = {
-    //  {module_type::core, "AIE"},
-    //  {module_type::dma, "DMA"},
-    //  {module_type::shim, "Interface"},
-    //  {module_type::mem_tile, "Memory Tile"}
-    //};
 
     void* handle;
     uint64_t deviceID;
@@ -178,6 +157,14 @@ class UsedRegisters {
       populateRegNameToValueMap();
       populateRegValueToNameMap();
     }
+    virtual ~UsedRegisters() {
+      core_addresses.clear();
+      memory_addresses.clear();
+      interface_addresses.clear();
+      memory_tile_addresses.clear();
+      regNameToValues.clear();
+      regValueToName.clear();
+    }
 
     std::set<uint64_t> getCoreAddresses() {
       return core_addresses;
@@ -192,10 +179,19 @@ class UsedRegisters {
       return memory_tile_addresses;
     }
 
-    virtual void populateProfileRegisters()=0;
-    virtual void populateTraceRegisters()=0;
-    virtual void populateRegNameToValueMap()=0;
-    virtual void populateRegValueToNameMap()=0;
+    std::string getRegisterName(uint64_t regVal) {
+      auto itr = regValueToName.find(regVal);
+      return (itr != regValueToName.end()) ? itr->second : "";
+    }
+    uint64_t getRegisterAddr(std::string regName) {
+      auto itr = regNameToValues.find(regName);
+      return (itr != regNameToValues.end()) ? itr->second : 0;
+    }
+
+    virtual void populateProfileRegisters() {};
+    virtual void populateTraceRegisters() {};
+    virtual void populateRegNameToValueMap() {};
+    virtual void populateRegValueToNameMap() {};
     
     void populateAllRegisters() {
       populateProfileRegisters();
@@ -216,6 +212,8 @@ class UsedRegisters {
  *************************************************************************************/
 class AIE1UsedRegisters : public UsedRegisters {
 public:
+  ~AIE1UsedRegisters() = default;
+
   void populateProfileRegisters() {
     // Core modules
     core_addresses.emplace(aie1::cm_performance_control0);
@@ -1514,6 +1512,8 @@ public:
  *************************************************************************************/
 class AIE2UsedRegisters : public UsedRegisters {
 public:
+  ~AIE2UsedRegisters() = default;
+
   void populateProfileRegisters() {
     // Core modules
     core_addresses.emplace(aie2::cm_performance_control0);
@@ -4403,6 +4403,8 @@ public:
  *************************************************************************************/
 class AIE2psUsedRegisters : public UsedRegisters {
 public:
+  ~AIE2psUsedRegisters() = default;
+
   void populateProfileRegisters() {
     // Core modules
     core_addresses.emplace(aie2ps::cm_performance_control0);

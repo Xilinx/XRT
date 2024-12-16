@@ -30,7 +30,7 @@ namespace xdp {
     ~AieDebug_EdgeImpl();
     void updateDevice();
     void updateAIEDevice(void* handle);
-    void poll(const uint32_t index, void* handle);
+    void poll(const uint64_t index, void* handle);
 
   private:
 

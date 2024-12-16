@@ -29,7 +29,7 @@ namespace xdp {
     ~AieDebug_WinImpl() = default;
     void updateDevice();
     void updateAIEDevice(void* handle);
-    void poll(const uint32_t index, void* handle);
+    void poll(const uint64_t index, void* handle);
 
   private:
     xrt::hw_context hwContext;
@@ -40,17 +40,18 @@ namespace xdp {
     std::size_t op_size;
   };
 
+#if 0
   class ClientReadableTile : public BaseReadableTile {
     public:
       ClientReadableTile(int r, int c) {
         row = r;
         col = c;
       }
-      void readValues(XAie_DevInst* aieDevInst) {
+      void readValues(XAie_DevInst* /*aieDevInst*/) {
         // Different Implementation. everything else same
       }
   };
-
+#endif
 } // end namespace xdp
 
 #endif

@@ -75,6 +75,19 @@ namespace xdp {
   }
 
   /****************************************************************************
+   * Lookup register names and values given current AIE HW generation
+   ***************************************************************************/
+  std::string AieDebugMetadata::lookupRegisterName(uint64_t regVal) 
+  {
+    return usedRegisters->getRegisterName(regVal);
+  }
+
+  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName) 
+  {
+    return usedRegisters->getRegisterAddr(regName);
+  }
+
+  /****************************************************************************
    * Convert xrt.ini setting to vector
    ***************************************************************************/
   std::vector<std::string>
@@ -173,7 +186,7 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::debug, "XRT", "AIE Debug parseMetrics");
 
-    parsedRegValues {
+    parsedRegValues = {
       {module_type::core,     {}},
       {module_type::dma,      {}},
       {module_type::shim,     {}},

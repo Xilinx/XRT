@@ -38,7 +38,7 @@ namespace xdp {
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_WinImpl::poll(const uint32_t /*index*/, void* /*handle*/)
+  void AieDebug_WinImpl::poll(const uint64_t /*index*/, void* /*handle*/)
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
@@ -99,7 +99,7 @@ namespace xdp {
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AieDebug_WinImpl::updateAIEDevice(void* handle)
+  void AieDebug_WinImpl::updateAIEDevice(void* /*handle*/)
   {
     if (!xrt_core::config::get_aie_debug())
       return;
@@ -131,15 +131,15 @@ namespace xdp {
 
       // Traverse all active tiles for this module type
       for (auto& tileMetric : configMetrics) {
-        auto& metricSet  = tileMetric.second;
+        //auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
-        auto subtype     = tile.subtype;
-        auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
+        //auto subtype     = tile.subtype;
+        //auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
 
         for (int i = 0; i < Regs.size(); i++) {
-          op_debug_data.emplace_back(register_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20)});
+          op_debug_data.emplace_back(register_data_t{Regs[i] + (col << 25) + (row << 20)});
           counterId++;
         }
       }
