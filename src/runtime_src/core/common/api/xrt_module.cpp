@@ -48,6 +48,10 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
+// In aie2p max bd data words is 8 and in aie4/aie2ps its 9
+// using max bd words as 9 to cover all cases
+static constexpr size_t max_bd_words = 9;
+
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
 static const char* Control_Code_Symbol = "control-code";
@@ -137,13 +141,12 @@ struct patcher
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
-  static constexpr size_t num_bd_data_ptrs = 8; // max number of bd ptrs accessed while patching
   struct patch_info {
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
     uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
     bool dirty = false; // Tells whether this entry is already patched or not
-    uint32_t bd_data_ptrs[num_bd_data_ptrs]; // array to store bd ptrs original values
+    uint32_t bd_data_ptrs[max_bd_words]; // array to store bd ptrs original values
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -260,13 +263,13 @@ struct patcher
     for (auto& item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
       if (!item.dirty) {
-        // first time patching store origin bd ptr values in patch info bd ptrs array
-        std::copy(bd_data_ptr, bd_data_ptr + num_bd_data_ptrs, item.bd_data_ptrs);
+        // first time patching cache bd ptr values using bd ptrs array in patch info
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
         item.dirty = true;
       }
       else {
         // not the first time patching, restore bd ptr values from patch info bd ptrs array
-        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + num_bd_data_ptrs, bd_data_ptr);
+        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
       }
 
       switch (m_symbol_type) {
