@@ -18,6 +18,7 @@
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/JSONConfigurable.h"
+#include "core/common/module_loader.h"
 
 // System include files
 #include <exception>
@@ -88,7 +89,8 @@ int main( int argc, char** argv )
   * This should be a device query to get the path of the xrt_smi_config.json file
   */
   boost::property_tree::ptree configTreeMain;
-  XBValidateUtils::loadConfigFile("./xrt_smi_config.json", configTreeMain);
+  std::filesystem::path configPath = xrt_core::environment::xilinx_xrt()/"bin/xrt_smi_config.json"; 
+  XBValidateUtils::loadConfigFile(configPath.string(), configTreeMain);
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false, configTree));
