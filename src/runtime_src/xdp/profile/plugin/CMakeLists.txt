@@ -2,7 +2,11 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+if(XDP_TELLURIDE_BUILD_CMAKE STREQUAL "yes")
+  message("**************************Inside Telluride build CMake**************************")
+  add_subdirectory(aie_trace)
+
+elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
   add_subdirectory(native)
   add_subdirectory(user)
