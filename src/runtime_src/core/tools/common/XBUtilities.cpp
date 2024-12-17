@@ -752,9 +752,6 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     const boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
     std::string drv_hash = driver.get<std::string>("hash", "N/A");
-    if ((boost::iequals(drv_name, "xclmgmt") || boost::iequals(drv_name, "xocl")) && (boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))) {
-      continue; // Do not display unknown Alveo driver info.
-    }
     if (!boost::iequals(drv_hash, "N/A")) {
       output << boost::format("  %-20s : %s, %s\n") % drv_name
           % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
