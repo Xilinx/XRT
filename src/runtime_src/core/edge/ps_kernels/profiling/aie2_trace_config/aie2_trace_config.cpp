@@ -257,7 +257,7 @@ namespace {
                           xdp::built_in::TraceOutputConfiguration* tilecfg, xdp::built_in::MessageConfiguration* msgcfg,
                           std::vector<XAie_LocType>& traceFlushLocs, std::vector<XAie_LocType>& memTileTraceFlushLocs)
   {
-    xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+    xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::FAL_DEBUG);
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS + 1] = {0};
