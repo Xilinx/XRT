@@ -558,11 +558,8 @@ zocl_create_aie(struct drm_zocl_slot *slot, struct axlf *axlf, char __user *xclb
 	}
 
 	/* Register AIE error call back function. */
-	/* only aie-1 supports error management*/
-	if (hw_gen == 1) {
-		rval = aie_register_error_notification(slot->aie->aie_dev,
-		zocl_aie_error_cb, slot);
-	}
+	rval = aie_register_error_notification(slot->aie->aie_dev,
+					       zocl_aie_error_cb, slot);
 	mutex_unlock(&slot->aie_lock);
 
 	zocl_init_aie(slot);
