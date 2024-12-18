@@ -303,7 +303,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 ({ \
 	size_t ret; \
 	size_t data_size; \
-	data_size = (sect) ? sect->m_count * sizeof(typeof(sect->data)) : 0; \
+	data_size = (sect) ? (sect->m_count * sizeof(*(sect->data))) : 0; \
 	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
 	(ret); \
 })
