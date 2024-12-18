@@ -3,6 +3,7 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Collect files outside of this directory
+
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
@@ -40,6 +41,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "SubCmdConfigure.cpp"
+  "SubCmdJsonObjects.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"
@@ -51,6 +53,8 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_Preemption.cpp"
   "OO_Reports.cpp"
 )
+
+file(GLOB XRT_SMI_CONFIG_FILE "xrt_smi_config.json")
 
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
@@ -118,4 +122,9 @@ endif()
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
+
+# TODO: xrt-smi rearchitecture. This is temporary and will be removed once
+# driver stores have this config file and shim layer has device query implemented.
+install (FILES ${XRT_SMI_CONFIG_FILE} DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+install (FILES ${XRT_SMI_CONFIG_FILE} DESTINATION ${XRT_INSTALL_BIN_DIR})
 # -----------------------------------------------------------------------------
