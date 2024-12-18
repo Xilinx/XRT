@@ -82,7 +82,7 @@ namespace xdp {
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_EdgeImpl::poll(const uint32_t deviceID, void* handle)
+  void AieDebug_EdgeImpl::poll(const uint64_t deviceID, void* handle)
   {
     xrt_core::message::send(severity_level::debug, "XRT", "!! Inside AIE Debug AieDebug_EdgeImpl::poll");
     std::stringstream msg;
