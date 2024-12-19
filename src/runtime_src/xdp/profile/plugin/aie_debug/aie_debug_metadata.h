@@ -123,16 +123,11 @@ class BaseReadableTile {
       absoluteOffsets.push_back(ab);
     }
 
-    void printValues(uint32_t deviceID, VPDatabase* db){
+    void printValues(uint32_t deviceID, VPDatabase* db) {
       int i=0;
       for (auto& absoluteOffset : absoluteOffsets) {
-        std::stringstream msg;
-        msg << "!!! Debug tile (" << col << ", " << row << ") "
-            << "hex address/values, 0x" << std::hex << absoluteOffset << " : "
-            << values[i] << std::dec;
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-
-        db->getDynamicInfo().addAIEDebugSample(deviceID, col,row,relativeOffsets[i],absoluteOffset,values[i]);
+        db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, relativeOffsets[i],
+                                               absoluteOffset, values[i]);
         i++;
       }
     }

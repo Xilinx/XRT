@@ -40,20 +40,19 @@ namespace xdp {
       XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
   };
 
-  class EdgeReadableTile: public  BaseReadableTile{
+  class EdgeReadableTile: public  BaseReadableTile {
   public:
     EdgeReadableTile(int r, int c) {
-      row=r;
-      col=c;
+      row = r;
+      col = c;
     }
 
-    void readValues(XAie_DevInst* aieDevInst){
-      int i=0;
-      for(auto& absoluteOffset : absoluteOffsets) {
-        //XAie_Read32(aieDevInst, absoluteOffset, &values[i++]);
+    void readValues(XAie_DevInst* aieDevInst) {
+      for (auto& offset : absoluteOffsets) {
         uint32_t val = 0;
         XAie_Read32(aieDevInst, absoluteOffset, &val);
-        values.push_back(val); }
+        values.push_back(val); 
+      }
     }
 };
 

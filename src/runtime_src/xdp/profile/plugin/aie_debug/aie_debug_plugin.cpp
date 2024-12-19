@@ -188,11 +188,13 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
+    /*
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endAIEDebugRead");
     auto deviceID = getDeviceIDFromHandle(handle);
     xrt_core::message::send(severity_level::debug, "XRT", 
       "AieDebugPlugin::endAIEDebugRead deviceID is " + std::to_string(deviceID));
     handleToAIEData[handle].implementation->poll(deviceID, handle);
+    */
   }
 
   /****************************************************************************
@@ -201,16 +203,16 @@ namespace xdp {
   void AieDebugPlugin::endPollforDevice(void* handle)
   {
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endPollforDevice");
-    if (handleToAIEData.empty())
+    if (handleToAIEData.empty()) {
+      std::cout << "!!!!!!!!!! handleToAIEData is empty!" << std::endl;
       return;
+    }
 
     auto& AIEData = handleToAIEData[handle];
-    if(!AIEData.valid)
+    if (!AIEData.valid)
       return;
 
-#ifdef XDP_CLIENT_BUILD
     AIEData.implementation->poll(0, handle);
-#endif
 
     handleToAIEData.erase(handle);
   }
@@ -220,6 +222,9 @@ namespace xdp {
    ***************************************************************************/
   std::string AieDebugPlugin::lookupRegisterName(uint64_t deviceIndex, uint64_t regVal)
   {
+    if (handleToAIEData.empty())
+      std::cout << "!!!!!!!!!! handleToAIEData is empty!" << std::endl;
+
     for (const auto& kv : handleToAIEData) {
 std::cout << "!!!!!!!!!! lookupRegisterName - kv.second.deviceID: " << kv.second.deviceID 
           << ", deviceIndex: " << deviceIndex << std::endl;
