@@ -221,8 +221,12 @@ namespace xdp {
   std::string AieDebugPlugin::lookupRegisterName(uint64_t deviceIndex, uint64_t regVal)
   {
     for (const auto& kv : handleToAIEData) {
-      if (kv.second.deviceID == deviceIndex)
+std::cout << "!!!!!!!!!! lookupRegisterName - kv.second.deviceID: " << kv.second.deviceID 
+          << ", deviceIndex: " << deviceIndex << std::endl;
+      if (kv.second.deviceID == deviceIndex) {
+std::cout << "!!!!!!!!!! Looking up regVal: " << regVal << std::endl;
         return kv.second.metadata->lookupRegisterName(regVal);
+      }
     }
     return "Not Found";
   }
