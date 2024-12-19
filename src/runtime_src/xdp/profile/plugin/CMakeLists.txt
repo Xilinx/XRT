@@ -2,7 +2,8 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-if(XDP_TELLURIDE_BUILD_CMAKE STREQUAL "yes")
+if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  add_subdirectory(aie_profile)  
   add_subdirectory(aie_trace)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")

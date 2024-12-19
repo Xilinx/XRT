@@ -8,7 +8,6 @@
 # on the hardware shim
 # ====================================================================
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  message("**************************Inside Telluride build CMake aie_trace**************************")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/ve2")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/ve2")
   set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
