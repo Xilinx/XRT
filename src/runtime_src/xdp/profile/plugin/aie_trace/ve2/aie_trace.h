@@ -25,10 +25,10 @@
 
 namespace xdp {
 
-  class AieTrace_EdgeImpl : public AieTraceImpl {
+  class AieTrace_VE2Impl : public AieTraceImpl {
   public:
-    AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
-    ~AieTrace_EdgeImpl() = default;
+    AieTrace_VE2Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
+    ~AieTrace_VE2Impl() = default;
 
     virtual void updateDevice();
     virtual void flushTraceModules();

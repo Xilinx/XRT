@@ -30,7 +30,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-// #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -40,7 +39,7 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "../../../../../../../../src/shim/shim.h"
+#include "shim/shim.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -76,7 +75,7 @@ namespace xdp {
   /****************************************************************************
    * Constructor: AIE trace implementation for edge devices
    ***************************************************************************/
-  AieTrace_EdgeImpl::AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+  AieTrace_VE2Impl::AieTrace_VE2Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       : AieTraceImpl(database, metadata)
   {
     auto hwGen = metadata->getHardwareGen();
@@ -110,7 +109,7 @@ namespace xdp {
   /****************************************************************************
    * Verify correctness of trace buffer size
    ***************************************************************************/
-  uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize)
+  uint64_t AieTrace_VE2Impl::checkTraceBufSize(uint64_t aieTraceBufSize)
   {
     uint64_t deviceMemorySize = getPSMemorySize();
     if (deviceMemorySize == 0)
@@ -144,7 +143,7 @@ namespace xdp {
   /****************************************************************************
    * Check if given tile has free resources
    ***************************************************************************/
-  bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
+  bool AieTrace_VE2Impl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                                          const module_type type, const std::string& metricSet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
@@ -232,7 +231,7 @@ namespace xdp {
   /****************************************************************************
    * Stop and release resources (e.g., counters, ports)
    ***************************************************************************/
-  void AieTrace_EdgeImpl::freeResources()
+  void AieTrace_VE2Impl::freeResources()
   {
     for (auto& c : perfCounters) {
       c->stop();
@@ -247,7 +246,7 @@ namespace xdp {
   /****************************************************************************
    * Validitate AIE device and runtime metrics
    ***************************************************************************/
-  bool AieTrace_EdgeImpl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
+  bool AieTrace_VE2Impl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
     aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
@@ -268,7 +267,7 @@ namespace xdp {
   /****************************************************************************
    * Update device (e.g., after loading xclbin)
    ***************************************************************************/
-  void AieTrace_EdgeImpl::updateDevice()
+  void AieTrace_VE2Impl::updateDevice()
   {
     if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
       return;
@@ -284,7 +283,7 @@ namespace xdp {
   /****************************************************************************
    * Configure requested tiles with trace metrics and settings
    ***************************************************************************/
-  bool AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
+  bool AieTrace_VE2Impl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     if (!metadata->getIsValidMetrics()) {
       std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
@@ -944,7 +943,7 @@ namespace xdp {
    * passive tiles like memory and interface.
    *
    ***************************************************************************/
-  void AieTrace_EdgeImpl::flushTraceModules()
+  void AieTrace_VE2Impl::flushTraceModules()
   {
     if (traceFlushLocs.empty() && memoryTileTraceFlushLocs.empty()
         && interfaceTileTraceFlushLocs.empty())
@@ -978,7 +977,7 @@ namespace xdp {
   /****************************************************************************
    * Poll AIE timers (for system timeline only)
    ***************************************************************************/
-  void AieTrace_EdgeImpl::pollTimers(uint64_t index, void* handle)
+  void AieTrace_VE2Impl::pollTimers(uint64_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))

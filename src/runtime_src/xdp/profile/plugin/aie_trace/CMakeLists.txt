@@ -7,10 +7,10 @@
 # Edge-Versal systems, but not Edge-aarch64.  It also has a dependency
 # on the hardware shim
 # ====================================================================
-if(XDP_TELLURIDE_BUILD_CMAKE STREQUAL "yes")
+if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   message("**************************Inside Telluride build CMake aie_trace**************************")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/telluride")
-  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/telluride")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/ve2")
+  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/ve2")
   set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/client")
@@ -48,14 +48,14 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
   "${PROFILE_DIR}/device/common/*.cpp"
 )
 
-if(XDP_TELLURIDE_BUILD_CMAKE STREQUAL "yes")
+if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   message("**************************Inside Telluride build CMake aie_trace**************************")
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES})
 
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
-  target_compile_definitions(xdp_aie_trace_plugin PRIVATE FAL_LINUX="on")
-
+  target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_VE2_BUILD=1 FAL_LINUX="on")
+  target_include_directories(xdp_aie_trace_plugin PRIVATE ${CMAKE_SOURCE_DIR}/src)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
