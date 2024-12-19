@@ -184,7 +184,7 @@ class UsedRegisters {
       return (itr != regValueToName.end()) ? itr->second : "";
     }
     uint64_t getRegisterAddr(std::string regName) {
-std::cout << "!!!!!!!!!! getRegisterAddr - regNameToValues.size: " regNameToValues.size() << std::endl;
+std::cout << "!!!!!!!!!! getRegisterAddr - regNameToValues.size: " << regNameToValues.size() << std::endl;
       auto itr = regNameToValues.find(regName);
       return (itr != regNameToValues.end()) ? itr->second : 0;
     }
