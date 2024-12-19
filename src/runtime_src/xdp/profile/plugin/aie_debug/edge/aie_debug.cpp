@@ -69,14 +69,14 @@ namespace xdp {
   AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
   {
-
+    // Nothing to do
   }
 
   /****************************************************************************
    * Edge destructor
    ***************************************************************************/
-  AieDebug_EdgeImpl::~AieDebug_EdgeImpl(){
-    xrt_core::message::send(severity_level::info, "XRT", "!! Calling AIE DebugAieDebug_EdgeImpl Destructor");
+  AieDebug_EdgeImpl::~AieDebug_EdgeImpl() {
+    // Nothing to do
   }
 
   /****************************************************************************
@@ -84,51 +84,26 @@ namespace xdp {
    ***************************************************************************/
   void AieDebug_EdgeImpl::poll(const uint64_t deviceID, void* handle)
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Inside AIE Debug AieDebug_EdgeImpl::poll");
-    std::stringstream msg;
-    msg << "!!!! AieDebug_EdgeImpl::poll deviceID is= "<<deviceID;
-    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-    // Wait until xclbin has been loaded and device has been updated in database
+    xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
-    if (!(db->getStaticInfo().isDeviceReady(deviceID))){
-      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!!  xclbin, device isn't ready and loaded");
+    if (!(db->getStaticInfo().isDeviceReady(deviceID))) {
+      xrt_core::message::send(severity_level::debug, "XRT", 
+        "Device is not ready, so no debug polling will occur.");
       return;
     }
+
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
     if (!aieDevInst) {
-      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!!  aieDevInst isn't correctly populated");
+      xrt_core::message::send(severity_level::debug, "XRT", 
+        "AIE device instance is not available, so no debug polling will occur.");
       return;
     }
 
-    xrt_core::message::send(severity_level::debug, "XRT", "!!!! Calling AIE Poll.");
-
-    /* Old code
-    for (auto& tileAddr : debugAddresses) {
-      auto tile    = tileAddr.first;
-      auto addrVec = tileAddr.second;
-
-      for (auto& addr : addrVec) {
-        uint32_t value = 0;
-        XAie_Read32(aieDevInst, addr, &value);
-
-        std::stringstream msg;
-        msg << "Debug tile (" << tile.col << ", " << tile.row << ") "
-            << "hex address/values: 0x" << std::hex << addr << " : 0x"
-            << value << std::dec;
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-      }
-    } */
-
-   for (auto& tileAddr : debugTileMap){
-      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! Reading values for all tiles ");
+    for (auto& tileAddr : debugTileMap) {
       tileAddr.second->readValues(aieDevInst);
-      xrt_core::message::send(severity_level::debug, "XRT", "!!!!!! PRINTING values for all tiles in the writer");
-      tileAddr.second->printValues(deviceID,db);
-
-   }
-
-
+      tileAddr.second->printValues(deviceID, db);
+    }
   }
 
   /****************************************************************************
@@ -139,14 +114,11 @@ namespace xdp {
     // Do nothing for now
   }
 
-
-
   /****************************************************************************
    * Compile list of registers to read
    ***************************************************************************/
   void AieDebug_EdgeImpl::updateAIEDevice(void* handle)
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::updateAIEDevice");
     if (!xrt_core::config::get_aie_debug())
       return;
     XAie_DevInst* aieDevInst =
@@ -163,7 +135,6 @@ namespace xdp {
         continue;
 
       module_type mod = metadata->getModuleType(module);
-      //XAie_ModuleType mod = falModuleTypes[module];
       auto name = moduleTypes.at(mod);
 
       // List of registers to read for current module
@@ -177,23 +148,21 @@ namespace xdp {
         msg << tileMetric.first.col << "," << tileMetric.first.row << " ";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-
-     //populate a map debugTileMap <xdp::tile_type,EdgeReadableTile>
-     for (auto& tileMetric : configMetrics) {
+      // Traverse all active and/or requested tiles
+      for (auto& tileMetric : configMetrics) {
         auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
         auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-        //uint32_t offset = 0;
-        for (auto& regAddr:Regs) {
-        if(debugTileMap.find(tile) == debugTileMap.end()){
-          debugTileMap[tile]=std::make_unique<EdgeReadableTile>(tile.row,tile.col);
+        
+        // Traverse all registers within tile
+        for (auto& regAddr : Regs) {
+          if (debugTileMap.find(tile) == debugTileMap.end())
+            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.row, tile.col);
+        
+          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr);
         }
-        //debugTileMap[tile]->insertOffsets(offset,tileOffset + offset)
-        debugTileMap[tile]->insertOffsets(regAddr,tileOffset + regAddr);
-        }
-     }
+      }
     }
   }
-
 
 }  // end namespace xdp

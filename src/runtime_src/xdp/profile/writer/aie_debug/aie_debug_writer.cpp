@@ -50,12 +50,13 @@ namespace xdp {
   void AIEDebugWriter::writerDataColumnHeader()
   {
     // Write data columns header
-    fout << "Value at Respective Registers" << "\n";
-    fout << "Tile column"       << ","
-         << "Tile row"          << ", "
-         << "Relative Offset"<< ", "
-         << "Absolute Offset"<< ","
-         << "value"        << ",\n";
+    fout << "Register Values" << "\n";
+    fout << "Column"          << ","
+         << "Row"             << ","
+         << "Relative Offset" << ","
+         << "Absolute Offset" << ","
+         << "Name"            << ","
+         << "Value"           << ",\n";
   }
 
   bool AIEDebugWriter::write(bool /*openNewFile*/)
@@ -72,15 +73,16 @@ namespace xdp {
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      std::string registerName= ptrtoAieDebugPlugin->lookupRegisterName(mDeviceIndex, sample.rel_offset);
-      fout << sample.tile_col << ",";
-      fout << sample.tile_row << ", 0x";
-      fout << std::hex<< sample.rel_offset << ", 0x";
-      fout << std::hex<< sample.abs_offset << ",";
-      fout << registerName << ",";
-      fout  << sample.value << std::dec;
-      fout << "\n";
+      auto regName = ptrtoAieDebugPlugin->lookupRegisterName(mDeviceIndex, sample.rel_offset);
+      
+      fout << sample.tile_col << ","
+           << sample.tile_row << ","
+           << "0x" << std::hex << sample.rel_offset << ","
+           << "0x" << std::hex << sample.abs_offset << ","
+           << regName << ","
+           << sample.value << std::dec << "\n";
     }
+    
     fout.flush();
     return true;
   }
