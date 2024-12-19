@@ -38,7 +38,6 @@ namespace xdp {
   AieDebugMetadata::AieDebugMetadata(uint64_t deviceID, void* handle) :
       deviceID(deviceID), handle(handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Start AIE Debug metadata constructor");
     VPDatabase* db = VPDatabase::Instance();
 
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
@@ -70,8 +69,6 @@ namespace xdp {
     else if ((hwGen > 1) && (hwGen < 10)) {
       usedRegisters = std::make_unique<AIE2UsedRegisters>();
     }
-
-    xrt_core::message::send(severity_level::info, "XRT", "End AIE Debug metadata constructor");
   }
 
   /****************************************************************************
@@ -93,7 +90,6 @@ namespace xdp {
   std::vector<std::string>
   AieDebugMetadata::getSettingsVector(std::string settingsString)
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "!! Calling AIE Debug AieDebug_EdgeImpl::getSettingsVector");
     if (settingsString.empty())
       return {};
 
@@ -110,7 +106,6 @@ namespace xdp {
   std::vector<uint64_t>
   AieDebugMetadata::stringToRegList(std::string stringEntry, module_type mod)
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "AIE Debug stringToRegList");
     std::vector<uint64_t> listofRegisters;
 
     /****************************************************************************
@@ -184,8 +179,6 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugMetadata::parseMetrics()
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "AIE Debug parseMetrics");
-
     parsedRegValues = {
       {module_type::core,     {}},
       {module_type::dma,      {}},
