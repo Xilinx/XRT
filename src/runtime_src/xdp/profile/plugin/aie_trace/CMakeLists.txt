@@ -49,7 +49,6 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
 )
 
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  message("**************************Inside Telluride build CMake aie_trace**************************")
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES})
 
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)

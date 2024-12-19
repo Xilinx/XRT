@@ -3,7 +3,6 @@
 #
 
 if(XDP_TELLURIDE_BUILD_CMAKE STREQUAL "yes")
-  message("**************************Inside Telluride build CMake**************************")
   add_subdirectory(aie_trace)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")

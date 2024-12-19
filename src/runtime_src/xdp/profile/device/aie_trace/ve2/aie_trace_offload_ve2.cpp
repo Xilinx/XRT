@@ -174,8 +174,7 @@ bool AIETraceOffload::initReadTrace()
 
     // Data Mover will write input stream to this address
     uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
-    std::cout<<"*******************************Inside telluride XDP***************************"<<std::endl;
-    std::cout<<"********************************************Buf addr: "<<bufAddr<<std::endl;
+    
     std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
 
