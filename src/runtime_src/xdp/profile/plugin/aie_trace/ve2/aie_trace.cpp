@@ -16,7 +16,7 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "xdp/profile/plugin/aie_trace/telluride/aie_trace_telluride.h"
+#include "xdp/profile/plugin/aie_trace/ve2/aie_trace_ve2.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
