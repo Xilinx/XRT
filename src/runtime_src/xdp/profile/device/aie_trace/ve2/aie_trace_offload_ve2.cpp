@@ -23,8 +23,8 @@
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/device/aie_trace/telluride/aie_trace_logger_telluride.h"
-#include "xdp/profile/device/aie_trace/telluride/aie_trace_offload_telluride.h"
+#include "xdp/profile/device/aie_trace/ve2/aie_trace_logger_ve2.h"
+#include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
 #include <unistd.h>
@@ -33,12 +33,12 @@
  * XRT_X86_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-// #if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
-// #include "core/edge/user/shim.h"
-// #endif
-#include "../../../../../../../../src/shim/shim.h"
+#include "shim/shim.h"
+#endif
+
  
 namespace xdp {
 

@@ -20,22 +20,8 @@
 
 #include "xdp/profile/device/tracedefs.h"
 
-/*
- * XRT_NATIVE_BUILD is set only for x86 builds
- * We can only include/compile aie specific headers, when compiling for edge+versal.
- *
- * AIE specific edge code that needs to be protected includes:
- * 1. Header file inclusions
- * 2. GMIO driver specific definitions
- * 3. GMIO driver calls to configure shim DMA
- *
- * When XRT_NATIVE_BUILD is defined, the offloading structure is:
- * 1. For PL offload, same as edge
- * 2. For GMIO offload, ps kernel needs to be used to initialize and read data
- */
-
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
-#include "../../../../../../../../src/shim/aie/aie.h"
+#include "shim/aie/aie.h"
 #endif
 
 namespace xdp {
