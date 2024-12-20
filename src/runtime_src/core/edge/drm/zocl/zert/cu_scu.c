@@ -87,7 +87,7 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 	u32 *cu_regfile = scu->vaddr;
 
 	scu->num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
-				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+				     - sizeof(cmd->hdr)))/sizeof(u32);
 	for (i = 0; i < scu->num_reg; ++i) {
 		cu_regfile[i+1] = cmd->data[i];
 	}
