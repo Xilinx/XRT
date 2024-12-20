@@ -35,6 +35,9 @@
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#elif XDP_VE2_BUILD
+#include "ve2/aie_trace.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #else
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
@@ -157,6 +160,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
   AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
+#elif XDP_VE2_BUILD
+  AIEData.implementation = std::make_unique<AieTrace_VE2Impl>(db, AIEData.metadata);
 #else
   AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
 #endif
