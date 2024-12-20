@@ -55,6 +55,7 @@ enum class key_type
   instance,
   edge_vendor,
   device_class,
+  xrt_smi_config,
   xclbin_name,
   sequence_name,
   elf_name,
@@ -523,6 +524,37 @@ struct edge_vendor : request
   {
     return boost::str(boost::format("0x%x") % val);
   }
+};
+
+/**
+ * Used to retieve the path to a configuration file required for the 
+ * current device assuming a valid instance "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ * This structure can be extended to provide other configurations supporting xrt-smi
+ */
+
+struct xrt_smi_config : request 
+{
+  enum class type {
+    options_config
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::options_config:
+        return "options_config";
+    }
+    return "unknown";
+  }
+  using result_type = std::string;
+  static const key_type key = key_type::xrt_smi_config;
+  static const char* name() { return "xrt_smi_config"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
 };
 
 /**
