@@ -50,7 +50,6 @@ namespace xdp {
     fout << "Column"          << ","
          << "Row"             << ","
          << "Relative Offset" << ","
-         << "Absolute Offset" << ","
          << "Name"            << ","
          << "Value"           << ",\n";
   }
@@ -68,10 +67,9 @@ namespace xdp {
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      fout << +sample.tile_col << ","
-           << +sample.tile_row << ","
-           << "0x" << std::hex << sample.rel_offset << ","
-           << "0x" << std::hex << sample.abs_offset << ","
+      fout << +sample.col << ","
+           << +sample.row << ","
+           << "0x" << std::hex << sample.offset << ","
            << sample.name << ","
            << "0x" << std::hex << sample.value 
            << std::dec << "\n";

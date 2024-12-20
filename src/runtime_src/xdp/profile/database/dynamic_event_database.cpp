@@ -292,10 +292,10 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIEDebugSample(uint64_t deviceId, uint8_t col,
-          uint8_t row, uint64_t rel, uint64_t abs, uint32_t val, const char* name) 
+          uint8_t row, uint32_t value, uint64_t offset, std::string name) 
   {
     auto device_db = getDeviceDB(deviceId);
-    device_db->addAIEDebugSample(col, row, rel, abs, val, name);
+    device_db->addAIEDebugSample(col, row, value, offset, name);
   }
 
   std::vector<xdp::aie::AIEDebugDataType>

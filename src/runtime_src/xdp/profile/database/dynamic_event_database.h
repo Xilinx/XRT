@@ -175,7 +175,7 @@ namespace xdp {
     XDP_CORE_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
 				   const std::vector<uint64_t>& values);
     XDP_CORE_EXPORT void addAIEDebugSample(uint64_t deviceId, uint8_t col,
-           uint8_t row, uint64_t rel, uint64_t abs, uint32_t val, const char* name);
+           uint8_t row,  uint32_t value, uint64_t offset, std::string name);
     XDP_CORE_EXPORT std::vector<xdp::aie::AIEDebugDataType> moveAIEDebugSamples(uint64_t deviceId);
     XDP_CORE_EXPORT std::vector<xdp::aie::AIEDebugDataType> getAIEDebugSamples(uint64_t deviceId);
     XDP_CORE_EXPORT std::vector<counters::Sample> getAIESamples(uint64_t deviceId) ;
