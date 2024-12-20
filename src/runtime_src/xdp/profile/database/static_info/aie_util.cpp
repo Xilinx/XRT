@@ -407,9 +407,12 @@ namespace xdp::aie {
   {
     boost::property_tree::ptree infoPt;
     try {
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-      auto device = xrt_core::hw_context_int::get_core_device(context);
-
+      #ifdef XDP_CLIENT_BUILD
+        xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+        auto device = xrt_core::hw_context_int::get_core_device(context);
+      #else
+        auto device = xrt_core::get_userpf_device(hwCtxImpl);
+      #endif
       auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
       for(const auto& e : info) {
         boost::property_tree::ptree pt;
