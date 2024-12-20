@@ -505,11 +505,6 @@ void AIETraceOffload::continuousOffload()
     mReadTrace(false);
     std::this_thread::sleep_for(std::chrono::microseconds(offloadIntervalUs));
   }
-
-  uint64_t simTraceTimeS = xrt_core::config::get_aie_trace_settings_sim_trace_time_s();
-  std::cout<<"******************************************** sleep provided in xrt.ini : "<<simTraceTimeS<<std::endl;
-  if(simTraceTimeS)
-    sleep(simTraceTimeS);
   
   // Note: This will call flush and reset on datamover
   mReadTrace(true);

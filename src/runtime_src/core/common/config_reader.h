@@ -1025,15 +1025,6 @@ get_aie_trace_settings_enable_system_timeline()
   return value;
 }
 
-inline bool
-get_aie_trace_settings_sim_trace_time_s()
-{
-  static unsigned int value = detail::get_uint_value("AIE_trace_settings.sim_trace_time_s", 0);
-  return value;
-}
-
-
-
 }} // config,xrt_core
 
 #endif
