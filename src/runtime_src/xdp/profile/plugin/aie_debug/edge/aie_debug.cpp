@@ -162,7 +162,7 @@ namespace xdp {
             debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row);
         
           auto regName = metadata->lookupRegisterName(regAddr);
-          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr, regName);
+          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr, regName.c_str());
         }
       }
     }
