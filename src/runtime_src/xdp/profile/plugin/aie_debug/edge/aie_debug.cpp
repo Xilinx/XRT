@@ -100,13 +100,8 @@ namespace xdp {
       return;
     }
 
-std::cout << "!!!!!!!!!! Polling registers! Size of map = " << debugTileMap.size() << std::endl;
     for (auto& tileAddr : debugTileMap) {
-std::cout << "!!!!!!!!!! Reading values for tile " << +tileAddr.first.col << "," 
-          << +tileAddr.first.row << std::endl;
       tileAddr.second->readValues(aieDevInst);
-std::cout << "!!!!!!!!!! Printing values for tile " << +tileAddr.first.col << "," 
-          << +tileAddr.first.row << std::endl;
       tileAddr.second->printValues(deviceID, db);
     }
   }
@@ -166,7 +161,8 @@ std::cout << "!!!!!!!!!! Printing values for tile " << +tileAddr.first.col << ",
           if (debugTileMap.find(tile) == debugTileMap.end())
             debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row);
         
-          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr);
+          auto regName = metadata->lookupRegisterName(regAddr);
+          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr, regName);
         }
       }
     }

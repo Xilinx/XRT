@@ -23,10 +23,11 @@
 
 namespace xdp {
     AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName,
-                                   uint64_t deviceIndex, void* handle,
-                                   AieDebugPlugin* AieDebugPluginPtr):
-      VPWriter(fileName), mDeviceName(deviceName), mDeviceIndex(deviceIndex), 
-      mHandle(handle), mHeaderWritten(false), mAieDebugPlugin(AieDebugPluginPtr) {
+                                   uint64_t deviceIndex):
+      VPWriter(fileName), mDeviceName(deviceName), 
+      mDeviceIndex(deviceIndex), mHeaderWritten(false) 
+  {
+    // Nothing to do
   }
 
   void AIEDebugWriter::writeHeader()
@@ -68,13 +69,11 @@ namespace xdp {
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      auto regName = mAieDebugPlugin->lookupRegisterName(mHandle, sample.rel_offset);
-      
       fout << sample.tile_col << ","
            << sample.tile_row << ","
            << "0x" << std::hex << sample.rel_offset << ","
            << "0x" << std::hex << sample.abs_offset << ","
-           << regName << ","
+           << sample.name << ","
            << "0x" << std::hex << sample.value << std::dec << "\n";
     }
     

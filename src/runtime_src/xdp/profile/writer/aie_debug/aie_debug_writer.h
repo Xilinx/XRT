@@ -25,8 +25,7 @@ class AIEDebugWriter : public VPWriter
   {
 public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
-                   uint64_t deviceIndex, void* handle, 
-                   AieDebugPlugin* AieDebugPluginPtr);
+                   uint64_t deviceIndex);
     ~AIEDebugWriter()=default;
 
     void writeHeader();
@@ -38,7 +37,6 @@ public:
     uint64_t mDeviceIndex;
     bool mHeaderWritten;
     void* mHandle;
-    AieDebugPlugin* mAieDebugPlugin;
   };
 } // end namespace xdp
 

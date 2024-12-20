@@ -176,7 +176,7 @@ namespace xdp {
     std::string timestamp = timeOss.str();
 
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex, handle, this);
+    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
 
@@ -211,22 +211,6 @@ namespace xdp {
     //AIEData.implementation->poll(0, handle);
 
     handleToAIEData.erase(handle);
-  }
-
-  /****************************************************************************
-   * Lookup register name
-   ***************************************************************************/
-  std::string AieDebugPlugin::lookupRegisterName(void* handle, uint64_t regVal)
-  {
-    xrt_core::message::send(severity_level::info, "XRT", "AIE Debug lookupRegisterName");
-    if (handleToAIEData.empty())
-      return "No Data";
-
-    auto& AIEData = handleToAIEData[handle];
-    if (!AIEData.valid)
-      return "Not Valid";
-
-    return AIEData.metadata->lookupRegisterName(regVal);
   }
 
 }  // end namespace xdp

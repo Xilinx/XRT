@@ -84,11 +84,12 @@ namespace xdp::aie {
 
   struct AIEDebugDataType
   {
-    uint64_t tile_col;
-    uint64_t tile_row;
+    uint8_t tile_col;
+    uint8_t tile_row;
+    uint32_t value;
     uint64_t rel_offset;
     uint64_t abs_offset;
-    uint32_t value;
+    const char* name;
   };
 
 } // end namespace xdp::aie

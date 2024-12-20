@@ -23,8 +23,6 @@ namespace xdp {
     void updateAIEDevice(void* handle);
     void endAIEDebugRead(void* handle);
     void endPollforDevice(void* handle);
- 
-    std::string lookupRegisterName(void* handle, uint64_t regVal);
     
   private:
     uint64_t getDeviceIDFromHandle(void* handle);

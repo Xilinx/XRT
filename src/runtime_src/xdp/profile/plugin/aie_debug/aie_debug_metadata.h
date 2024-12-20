@@ -118,16 +118,17 @@ class BaseReadableTile {
   public:
     virtual void readValues(XAie_DevInst* aieDevInst)=0;
 
-    void insertOffsets(uint64_t rel, uint64_t abs) {
+    void insertOffsets(uint64_t rel, uint64_t abs, const char* name) {
       relativeOffsets.push_back(rel);
       absoluteOffsets.push_back(abs);
+      registerNames.push_back(name);
     }
 
     void printValues(uint32_t deviceID, VPDatabase* db) {
       int i = 0;
       for (auto& offset : absoluteOffsets) {
         db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, relativeOffsets[i],
-                                               offset, values[i]);
+                                               offset, values[i], registerNames[i]);
         i++;
       }
     }
@@ -138,6 +139,7 @@ class BaseReadableTile {
     std::vector <uint32_t> values;
     std::vector<uint64_t> relativeOffsets;
     std::vector<uint64_t> absoluteOffsets;
+    std::vector<const char*> registerNames;
 };
 
 /*************************************************************************************
@@ -179,7 +181,6 @@ class UsedRegisters {
       return (itr != regValueToName.end()) ? itr->second : "";
     }
     uint64_t getRegisterAddr(std::string regName) {
-std::cout << "!!!!!!!!!! getRegisterAddr - regNameToValues.size: " << regNameToValues.size() << std::endl;
       auto itr = regNameToValues.find(regName);
       return (itr != regNameToValues.end()) ? itr->second : 0;
     }

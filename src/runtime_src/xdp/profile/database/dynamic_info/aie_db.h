@@ -60,8 +60,8 @@ namespace xdp {
     { timerSamples.addSample({timestamp1, timestamp2, values}); }
 
     inline
-    void addAIEDebugSample(uint64_t col, uint64_t row, uint64_t rel, uint64_t abslt, uint32_t val)
-    { aieDebugSamples.addAIEDebugData({col, row, rel, abslt, val}); }
+    void addAIEDebugSample(uint8_t col, uint8_t row, uint64_t rel, uint64_t abs, uint32_t val, const char* name)
+    { aieDebugSamples.addAIEDebugData({col, row, val, rel, abs, name}); }
 
     inline
     std::vector<counters::Sample> getAIESamples()

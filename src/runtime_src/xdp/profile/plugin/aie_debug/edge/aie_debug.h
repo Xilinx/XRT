@@ -40,7 +40,7 @@ namespace xdp {
       XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
   };
 
-  class EdgeReadableTile: public  BaseReadableTile {
+  class EdgeReadableTile: public BaseReadableTile {
   public:
     EdgeReadableTile(uint8_t c, uint8_t r) {
       col = c;
@@ -49,8 +49,6 @@ namespace xdp {
 
     void readValues(XAie_DevInst* aieDevInst) {
       for (auto& offset : absoluteOffsets) {
-std::cout << "!!!!!!!!!! Reading from offset: 0x" << std::hex << offset 
-          << std::dec << " in tile " << +col << "," << +row << std::endl;
         uint32_t val = 0;
         XAie_Read32(aieDevInst, offset, &val);
         values.push_back(val); 
