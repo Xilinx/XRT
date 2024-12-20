@@ -696,7 +696,7 @@ namespace xdp {
           traceEndEvent = comboEvents.at(1);
         }
 
-        if(type == module_type::core && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        if(compilerOptions.enable_multi_layer && type == module_type::core && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
         {
           traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastCh1->getBc());
         }
