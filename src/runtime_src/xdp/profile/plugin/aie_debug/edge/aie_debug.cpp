@@ -100,8 +100,13 @@ namespace xdp {
       return;
     }
 
+std::cout << "!!!!!!!!!! Polling registers! Size of map = " << debugTileMap.size() << std::endl;
     for (auto& tileAddr : debugTileMap) {
+std::cout << "!!!!!!!!!! Reading values for tile " << +tileAddr.first.col << "," 
+          << +tileAddr.first.row << std::endl;
       tileAddr.second->readValues(aieDevInst);
+std::cout << "!!!!!!!!!! Printing values for tile " << +tileAddr.first.col << "," 
+          << +tileAddr.first.row << std::endl;
       tileAddr.second->printValues(deviceID, db);
     }
   }
@@ -142,22 +147,24 @@ namespace xdp {
       if (Regs.empty())
         continue;
 
-      std::stringstream msg;
-      msg << "AIE Debug monitoring tiles of type " << name << ":\n";
-      for (auto& tileMetric : configMetrics)
-        msg << tileMetric.first.col << "," << tileMetric.first.row << " ";
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "AIE Debug monitoring tiles of type " << name << ":\n";
+        for (auto& tileMetric : configMetrics)
+          msg << +tileMetric.first.col << "," << +tileMetric.first.row << " ";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
 
       // Traverse all active and/or requested tiles
       for (auto& tileMetric : configMetrics) {
-        auto& metricSet  = tileMetric.second;
+        //auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
         auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
         
         // Traverse all registers within tile
         for (auto& regAddr : Regs) {
           if (debugTileMap.find(tile) == debugTileMap.end())
-            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.row, tile.col);
+            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row);
         
           debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr);
         }

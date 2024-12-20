@@ -118,24 +118,24 @@ class BaseReadableTile {
   public:
     virtual void readValues(XAie_DevInst* aieDevInst)=0;
 
-    void insertOffsets(uint64_t rel, uint64_t ab) {
+    void insertOffsets(uint64_t rel, uint64_t abs) {
       relativeOffsets.push_back(rel);
-      absoluteOffsets.push_back(ab);
+      absoluteOffsets.push_back(abs);
     }
 
     void printValues(uint32_t deviceID, VPDatabase* db) {
-      int i=0;
-      for (auto& absoluteOffset : absoluteOffsets) {
+      int i = 0;
+      for (auto& offset : absoluteOffsets) {
         db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, relativeOffsets[i],
-                                               absoluteOffset, values[i]);
+                                               offset, values[i]);
         i++;
       }
     }
 
   public:
+    uint8_t col;
+    uint8_t row;
     std::vector <uint32_t> values;
-    int col;
-    int row;
     std::vector<uint64_t> relativeOffsets;
     std::vector<uint64_t> absoluteOffsets;
 };

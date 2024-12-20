@@ -34,7 +34,7 @@ namespace xdp {
 
   private:
 
-    std::map<xdp::tile_type, std::vector<uint64_t>> debugAddresses; //TODO delete this
+    std::map<xdp::tile_type, std::vector<uint64_t>> debugAddresses;
     std::map<xdp::tile_type, std::unique_ptr<EdgeReadableTile>> debugTileMap;
     const std::vector<XAie_ModuleType> falModuleTypes = {
       XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
@@ -42,13 +42,15 @@ namespace xdp {
 
   class EdgeReadableTile: public  BaseReadableTile {
   public:
-    EdgeReadableTile(int r, int c) {
-      row = r;
+    EdgeReadableTile(uint8_t c, uint8_t r) {
       col = c;
+      row = r;
     }
 
     void readValues(XAie_DevInst* aieDevInst) {
       for (auto& offset : absoluteOffsets) {
+std::cout << "!!!!!!!!!! Reading from offset: 0x" << std::hex << offset 
+          << std::dec << " in tile " << +col << "," << +row << std::endl;
         uint32_t val = 0;
         XAie_Read32(aieDevInst, offset, &val);
         values.push_back(val); 

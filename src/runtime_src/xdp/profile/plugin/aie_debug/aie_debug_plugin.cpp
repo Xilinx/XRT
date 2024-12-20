@@ -176,7 +176,7 @@ namespace xdp {
     std::string timestamp = timeOss.str();
 
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex,this);
+    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex, handle, this);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
 
@@ -188,13 +188,11 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
-    /*
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endAIEDebugRead");
     auto deviceID = getDeviceIDFromHandle(handle);
     xrt_core::message::send(severity_level::debug, "XRT", 
       "AieDebugPlugin::endAIEDebugRead deviceID is " + std::to_string(deviceID));
     handleToAIEData[handle].implementation->poll(deviceID, handle);
-    */
   }
 
   /****************************************************************************
@@ -203,16 +201,14 @@ namespace xdp {
   void AieDebugPlugin::endPollforDevice(void* handle)
   {
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endPollforDevice");
-    if (handleToAIEData.empty()) {
-      std::cout << "!!!!!!!!!! handleToAIEData is empty!" << std::endl;
+    if (handleToAIEData.empty())
       return;
-    }
 
     auto& AIEData = handleToAIEData[handle];
     if (!AIEData.valid)
       return;
 
-    AIEData.implementation->poll(0, handle);
+    //AIEData.implementation->poll(0, handle);
 
     handleToAIEData.erase(handle);
   }
@@ -220,20 +216,17 @@ namespace xdp {
   /****************************************************************************
    * Lookup register name
    ***************************************************************************/
-  std::string AieDebugPlugin::lookupRegisterName(uint64_t deviceIndex, uint64_t regVal)
+  std::string AieDebugPlugin::lookupRegisterName(void* handle, uint64_t regVal)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "AIE Debug lookupRegisterName");
     if (handleToAIEData.empty())
-      std::cout << "!!!!!!!!!! handleToAIEData is empty!" << std::endl;
+      return "No Data";
 
-    for (const auto& kv : handleToAIEData) {
-std::cout << "!!!!!!!!!! lookupRegisterName - kv.second.deviceID: " << kv.second.deviceID 
-          << ", deviceIndex: " << deviceIndex << std::endl;
-      if (kv.second.deviceID == deviceIndex) {
-std::cout << "!!!!!!!!!! Looking up regVal: " << regVal << std::endl;
-        return kv.second.metadata->lookupRegisterName(regVal);
-      }
-    }
-    return "Not Found";
+    auto& AIEData = handleToAIEData[handle];
+    if (!AIEData.valid)
+      return "Not Valid";
+
+    return AIEData.metadata->lookupRegisterName(regVal);
   }
 
 }  // end namespace xdp

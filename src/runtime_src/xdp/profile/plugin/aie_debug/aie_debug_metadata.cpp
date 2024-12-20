@@ -119,7 +119,7 @@ namespace xdp {
      core_registers = cm_core_status, mm_trace_status
     /************************************************************************* */
     if (stringEntry.rfind("0x", 0) == 0) {
-      // if it starts with "0x" that means a particular register address is specified
+      // Specific register addresses start with "0x"
       uint64_t val = stoul(stringEntry, nullptr, 16);
       listofRegisters.push_back(val);
       return listofRegisters;
@@ -140,9 +140,8 @@ namespace xdp {
         listofRegisters.push_back(tmpRedAddr);
       }
       else {
-        std::stringstream msg;
-        msg << "Error Parsing Debug plugin Metric String. Please enter exact register address, register name, or either of trace_config/profile_config/all. ";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse AIE debug metric settings. " 
+          "Please enter register addresses, names, or trace_config|profile_config|all.");
       }
       return listofRegisters;
     }

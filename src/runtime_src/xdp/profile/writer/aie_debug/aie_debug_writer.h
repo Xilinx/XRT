@@ -25,7 +25,8 @@ class AIEDebugWriter : public VPWriter
   {
 public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
-                   uint64_t deviceIndex, AieDebugPlugin* AieDebugPluginPtr);
+                   uint64_t deviceIndex, void* handle, 
+                   AieDebugPlugin* AieDebugPluginPtr);
     ~AIEDebugWriter()=default;
 
     void writeHeader();
@@ -35,10 +36,9 @@ public:
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;
-    //int mHardwareGen;
     bool mHeaderWritten;
-    //bool mWroteValidData;
-    AieDebugPlugin* ptrtoAieDebugPlugin;
+    void* mHandle;
+    AieDebugPlugin* mAieDebugPlugin;
   };
 } // end namespace xdp
 
