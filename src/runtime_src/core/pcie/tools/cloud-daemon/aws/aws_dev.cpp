@@ -595,12 +595,12 @@ int AwsDev::awsGetIcap(xcl_pr_region *data)
 #else
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    FIELD(data, freq, 0) = imageInfo.metrics.clocks[0].frequency[0] / 1000000;
-    FIELD(data, freq, 1) = imageInfo.metrics.clocks[1].frequency[0] / 1000000;
-    FIELD(data, freq, 2) = imageInfo.metrics.clocks[2].frequency[0] / 1000000;
-    FIELD(data, freq_cntr, 0) = imageInfo.metrics.clocks[0].frequency[0] / 1000;
-    FIELD(data, freq_cntr, 1) = imageInfo.metrics.clocks[1].frequency[0] / 1000;
-    FIELD(data, freq_cntr, 2) = imageInfo.metrics.clocks[2].frequency[0] / 1000;
+    FIELD(data, freq, 0) = imageInfo.metrics.f2_metrics.clocks[0].frequency[0] / 1000000;
+    FIELD(data, freq, 1) = imageInfo.metrics.f2_metrics.clocks[1].frequency[0] / 1000000;
+    FIELD(data, freq, 2) = imageInfo.metrics.f2_metrics.clocks[2].frequency[0] / 1000000;
+    FIELD(data, freq_cntr, 0) = imageInfo.metrics.f2_metrics.clocks[0].frequency[0] / 1000;
+    FIELD(data, freq_cntr, 1) = imageInfo.metrics.f2_metrics.clocks[1].frequency[0] / 1000;
+    FIELD(data, freq_cntr, 2) = imageInfo.metrics.f2_metrics.clocks[2].frequency[0] / 1000;
     data->data_retention = 1;
 #endif
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
