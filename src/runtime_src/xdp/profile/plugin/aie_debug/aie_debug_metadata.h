@@ -118,17 +118,17 @@ class BaseReadableTile {
   public:
     virtual void readValues(XAie_DevInst* aieDevInst)=0;
 
-    void insertOffsets(uint64_t rel, uint64_t abs, const char* name) {
+    void setTileOffset(uint64_t offset) {tileOffset = offset;}
+    void addOffsetName(uint64_t rel, std::string name) {
       relativeOffsets.push_back(rel);
-      absoluteOffsets.push_back(abs);
       registerNames.push_back(name);
     }
 
     void printValues(uint32_t deviceID, VPDatabase* db) {
       int i = 0;
-      for (auto& offset : absoluteOffsets) {
-        db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, relativeOffsets[i],
-                                               offset, values[i], registerNames[i]);
+      for (auto& offset : relativeOffsets) {
+        db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, offset,
+                                               values[i], registerNames[i]);
         i++;
       }
     }
@@ -136,10 +136,10 @@ class BaseReadableTile {
   public:
     uint8_t col;
     uint8_t row;
-    std::vector <uint32_t> values;
+    uint64_t tileOffset;
+    std::vector<uint32_t> values;
     std::vector<uint64_t> relativeOffsets;
-    std::vector<uint64_t> absoluteOffsets;
-    std::vector<const char*> registerNames;
+    std::vector<std::string> registerNames;
 };
 
 /*************************************************************************************
@@ -209,6 +209,10 @@ class UsedRegisters {
  *************************************************************************************/
 class AIE1UsedRegisters : public UsedRegisters {
 public:
+  AIE1UsedRegisters() {
+    populateRegNameToValueMap();
+    populateRegValueToNameMap();
+  }
   ~AIE1UsedRegisters() = default;
 
   void populateProfileRegisters() {
@@ -893,7 +897,6 @@ public:
   }
 
   void populateRegValueToNameMap() {
-    //some implementation
     regValueToName=  {
       {0x0003f054, "cm_stream_switch_master_config_east0"},
       {0x0003f058, "cm_stream_switch_master_config_east1"},
@@ -1509,6 +1512,10 @@ public:
  *************************************************************************************/
 class AIE2UsedRegisters : public UsedRegisters {
 public:
+  AIE2UsedRegisters() {
+    populateRegNameToValueMap();
+    populateRegValueToNameMap();
+  }
   ~AIE2UsedRegisters() = default;
 
   void populateProfileRegisters() {
@@ -4400,6 +4407,10 @@ public:
  *************************************************************************************/
 class AIE2psUsedRegisters : public UsedRegisters {
 public:
+  AIE2psUsedRegisters() {
+    populateRegNameToValueMap();
+    populateRegValueToNameMap();
+  }
   ~AIE2psUsedRegisters() = default;
 
   void populateProfileRegisters() {

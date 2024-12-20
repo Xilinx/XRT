@@ -32,7 +32,7 @@ namespace xdp {
     uint32_t mIndex = 0;
 
     // This struct and handleToAIEData map is created to provision multiple AIEs
-    // one the same machine, each denoted by its own handle
+    // on the same machine, each denoted by its own handle
     struct AIEData {
       uint64_t deviceID;
       bool valid;

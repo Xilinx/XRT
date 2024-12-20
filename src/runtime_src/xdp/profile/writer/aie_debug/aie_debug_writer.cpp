@@ -57,8 +57,7 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool /*openNewFile*/)
   {
-    //TODO write implementation. Writing from DynamicInfoDatabase into a txt file
-    if(!mHeaderWritten) {
+    if (!mHeaderWritten) {
       this->writeHeader();
       this->writerDataColumnHeader();
       this->mHeaderWritten = true;
@@ -69,12 +68,13 @@ namespace xdp {
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      fout << sample.tile_col << ","
-           << sample.tile_row << ","
+      fout << +sample.tile_col << ","
+           << +sample.tile_row << ","
            << "0x" << std::hex << sample.rel_offset << ","
            << "0x" << std::hex << sample.abs_offset << ","
            << sample.name << ","
-           << "0x" << std::hex << sample.value << std::dec << "\n";
+           << "0x" << std::hex << sample.value 
+           << std::dec << "\n";
     }
     
     fout.flush();

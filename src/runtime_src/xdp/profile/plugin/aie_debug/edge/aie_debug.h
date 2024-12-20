@@ -42,15 +42,16 @@ namespace xdp {
 
   class EdgeReadableTile: public BaseReadableTile {
   public:
-    EdgeReadableTile(uint8_t c, uint8_t r) {
+    EdgeReadableTile(uint8_t c, uint8_t r, uint64_t to) {
       col = c;
       row = r;
+      tileOffset = to;
     }
 
     void readValues(XAie_DevInst* aieDevInst) {
-      for (auto& offset : absoluteOffsets) {
+      for (auto& offset : relativeOffsets) {
         uint32_t val = 0;
-        XAie_Read32(aieDevInst, offset, &val);
+        XAie_Read32(aieDevInst, offset + tileOffset, &val);
         values.push_back(val); 
       }
     }

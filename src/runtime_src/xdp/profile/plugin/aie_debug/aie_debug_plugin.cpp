@@ -51,7 +51,7 @@ namespace xdp {
    ***************************************************************************/
   AieDebugPlugin::~AieDebugPlugin()
   {
-    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling ~AieDebugPlugin destructor.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling ~AieDebugPlugin destructor.");
 
     for (const auto& kv : handleToAIEData)
       endPollforDevice(kv.first);
@@ -101,7 +101,7 @@ namespace xdp {
   {
     if (!xrt_core::config::get_aie_debug() || !handle)
       return;
-    xrt_core::message::send(severity_level::info, "XRT", "!!!! Calling AIE DEBUG update AIE device.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG update AIE device.");
 
     // Handle relates to HW context in case of Client XRT
 #ifdef XDP_CLIENT_BUILD

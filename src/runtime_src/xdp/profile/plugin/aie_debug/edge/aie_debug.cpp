@@ -159,10 +159,10 @@ namespace xdp {
         // Traverse all registers within tile
         for (auto& regAddr : Regs) {
           if (debugTileMap.find(tile) == debugTileMap.end())
-            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row);
+            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row, tileOffset);
         
           auto regName = metadata->lookupRegisterName(regAddr);
-          debugTileMap[tile]->insertOffsets(regAddr, tileOffset + regAddr, regName.c_str());
+          debugTileMap[tile]->addOffsetName(regAddr, regName);
         }
       }
     }
