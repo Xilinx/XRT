@@ -127,8 +127,8 @@ class BaseReadableTile {
     void printValues(uint32_t deviceID, VPDatabase* db) {
       int i = 0;
       for (auto& offset : relativeOffsets) {
-        db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, offset,
-                                               values[i], registerNames[i]);
+        db->getDynamicInfo().addAIEDebugSample(deviceID, col, row, values[i],
+                                               offset, registerNames[i]);
         i++;
       }
     }
