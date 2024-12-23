@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,14 +15,12 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
-#define XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
+#ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_VE2_H_
+#define XDP_PROFILE_AIE_TRACE_OFFLOAD_VE2_H_
 
 #include "xdp/profile/device/tracedefs.h"
-
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 #include "shim/aie/aie.h"
-#endif
+
 
 namespace xdp {
 
@@ -52,18 +50,12 @@ struct AIETraceBufferInfo
   {}
 };
 
-/*
- * XRT_NATIVE_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 struct AIETraceGmioDMAInst
 {
   // C_RTS Shim DMA to where this GMIO object is mapped
   XAie_DmaDesc shimDmaInst;
   XAie_LocType gmioTileLoc;
 };
-#endif
 
 enum class AIEOffloadThreadStatus {
   IDLE,
@@ -119,14 +111,8 @@ private:
     //Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
-
-/*
- * XRT_NATIVE_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
-#endif
+
 
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_AIE_TRACE_LOGGER_H
-#define XDP_PROFILE_AIE_TRACE_LOGGER_H
+#ifndef XDP_PROFILE_AIE_TRACE_VE2_LOGGER_H
+#define XDP_PROFILE_AIE_TRACE_VE2_LOGGER_H
 
 #include <cstdint>
 #include<iostream>

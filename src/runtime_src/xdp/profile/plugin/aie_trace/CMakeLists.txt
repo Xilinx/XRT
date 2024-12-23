@@ -3,8 +3,8 @@
 #
 
 # ====================================================================
-# This builds the AIE Trace plugin.  It is currently built on x86 and
-# Edge-Versal systems, but not Edge-aarch64.  It also has a dependency
+# This builds the AIE Trace plugin.  It is currently built on x86,
+# Edge-Versal systems, client and ve2 but not Edge-aarch64.  It also has a dependency
 # on the hardware shim
 # ====================================================================
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")

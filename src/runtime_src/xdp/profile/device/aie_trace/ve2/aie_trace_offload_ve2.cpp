@@ -19,6 +19,7 @@
 
 #include <iostream>
 
+#include "core/include/xrt.h"
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -27,17 +28,12 @@
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
-#include <unistd.h>
-
-/*
- * XRT_X86_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
-#include <sys/mman.h>
-#include "core/include/xrt.h"
 #include "shim/shim.h"
-#endif
+
+#include <unistd.h>
+#include <sys/mman.h>
+
+
 
  
 namespace xdp {
@@ -153,14 +149,8 @@ bool AIETraceOffload::initReadTrace()
   return success;
 #endif
 
-/*
- * XRT_X86_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
-  gmioDMAInsts.clear();
-  gmioDMAInsts.resize(numStream);
-#endif
+    gmioDMAInsts.clear();
+    gmioDMAInsts.resize(numStream);
   }
 
   checkCircularBufferSupport();
@@ -181,11 +171,6 @@ bool AIETraceOffload::initReadTrace()
     if (isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
-  /*
-   * XRT_X86_BUILD is set only for x86 builds
-   * Only compile this on edge+versal build
-   */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -236,8 +221,6 @@ bool AIETraceOffload::initReadTrace()
 
       // Enqueue BD
       XAie_DmaChannelPushBdToQueue(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
-
-#endif
     }
   }
   bufferInitialized = true;
@@ -255,11 +238,6 @@ void AIETraceOffload::endReadTrace()
     deviceIntf->resetAIETs2mm(i);
 //    deviceIntf->freeTraceBuf(b.bufId);
   } else {
-/*
- * XRT_NATIVE_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -275,8 +253,6 @@ void AIETraceOffload::endReadTrace()
     XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
 
     XAie_DmaChannelDisable(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir);
-#endif
-    
   }
   deviceIntf->freeTraceBuf(buffers[i].bufId);
   buffers[i].bufId = 0;
