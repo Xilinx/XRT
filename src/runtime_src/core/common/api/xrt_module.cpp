@@ -861,6 +861,7 @@ class module_elf : public module_impl
         if (dynsym_offset >= dynsym->get_size())
           throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
         auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynstr_offset = sym->st_name;
         if (dynstr_offset >= dynstr->get_size())
@@ -908,7 +909,20 @@ class module_elf : public module_impl
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+	//TODO consolidate all of this logic in baseclass which can be used for
+	//aie2p and other aie class devices
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
 
         auto key_string = generate_key_string(argnm, buf_type);
 
@@ -921,9 +935,9 @@ class module_elf : public module_impl
 	// On all further occurences of arg, add patch_info structure to existing vector
 
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
-          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, 0, 0});
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
         else
-          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{abs_offset, 0}}, buf_type});
+          arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
     }
 
