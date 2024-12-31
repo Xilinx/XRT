@@ -124,6 +124,16 @@ void  main_(int argc, char** argv,
       sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
 
   }
+  std::shared_ptr<xrt_core::device> device;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+  }
+  boost::property_tree::ptree configTreeMain;
+  const auto config_file_name = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+  XBU::loadConfigFile(config_file_name, configTreeMain);
 
   // If there is a device value, parse for valid subcommands for this device.
   SubCmdsCollection devSubCmds;
@@ -172,6 +182,7 @@ void  main_(int argc, char** argv,
   }
 
   subCommand->setGlobalOptions(globalSubCmdOptions);
+  subCommand->setOptionConfig(configTreeMain);
 
   // -- Execute the sub-command
   subCommand->execute(subcmd_options);

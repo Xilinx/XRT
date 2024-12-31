@@ -10,6 +10,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdJsonObjects.cpp"
   "../common/SubCmdConfigureInternal.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/XBHelpMenusCore.cpp"

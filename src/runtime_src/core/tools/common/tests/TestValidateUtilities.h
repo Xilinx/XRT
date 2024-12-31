@@ -90,6 +90,5 @@ bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boo
 int validate_binary_file(const std::string& binaryfile);
 std::string dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
               boost::property_tree::ptree& ptTest);
-void loadConfigFile(const std::string& configFile, boost::property_tree::ptree& pt);
 } //End of namespace XBValidateUtils
 #endif

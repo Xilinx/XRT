@@ -140,6 +140,7 @@ public:
   JsonConfig(const pt::ptree& configurations, const std::string& subCommand)
     : m_subCommandMap(createSubCommands(configurations, subCommand))
     {}
+  JsonConfig() = default;
 
   void addProgramOptions(po::options_description& options, const std::string& optionsType, const std::string& subCommand);
   void printConfigurations() const;
