@@ -1336,26 +1336,16 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(slot, &axlf_head.m_header.uuid)) {
-		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
-			if (is_aie_only(axlf)) {
-				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
-							     client);
-				if (ret)
-					DRM_WARN("read xclbin: fail to load AIE");
-				else {
-					zocl_create_aie(zdev, axlf, aie_res, hw_gen);
-					zocl_cache_xclbin(zdev, slot, axlf, xclbin);
-				}
-			} else {
-				DRM_INFO("%s The XCLBIN already loaded", __func__);
-			}
+		if (axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM) {
+                        // We come here if user sets force_xclbin_program
+                        // option "true" in xrt.ini under [Runtime] section
+                        DRM_WARN("%s The XCLBIN already loaded. Force xclbin download", __func__);
+
+                } else if (!is_aie_only(axlf)) {
+                        DRM_INFO("%s The XCLBIN already loaded", __func__);
 			goto out0;
-		} else {
-			// We come here if user sets force_xclbin_program
-			// option "true" in xrt.ini under [Runtime] section
-			DRM_WARN("%s The XCLBIN already loaded. Force xclbin download", __func__);
 		}
-	}
+        }
 
 	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
