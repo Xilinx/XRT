@@ -16,7 +16,7 @@
 #include "ert.h"
 #include "kds_command.h"
 
-const static enum ert_cmd_state kds_ert_table[] = {
+static const enum ert_cmd_state kds_ert_table[] = {
   [KDS_NEW] = ERT_CMD_STATE_NEW,
   [KDS_QUEUED] = ERT_CMD_STATE_QUEUED,
   [KDS_RUNNING] = ERT_CMD_STATE_RUNNING,
@@ -28,7 +28,7 @@ const static enum ert_cmd_state kds_ert_table[] = {
   [KDS_STAT_MAX] = ERT_CMD_STATE_MAX,
 };
 
-const static enum kds_status ert_kds_table[] = {
+static const enum kds_status ert_kds_table[] = {
   [ERT_CMD_STATE_NEW] = KDS_NEW,
   [ERT_CMD_STATE_QUEUED] = KDS_QUEUED,
   [ERT_CMD_STATE_RUNNING] = KDS_RUNNING,

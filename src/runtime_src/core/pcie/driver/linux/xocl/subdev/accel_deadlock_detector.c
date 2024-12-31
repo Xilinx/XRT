@@ -165,7 +165,7 @@ static int accel_deadlock_detector_close(struct inode *inode, struct file *file)
     return 0;
 }
 
-long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
     void __user *data = NULL;

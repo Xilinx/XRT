@@ -171,7 +171,7 @@ static int spc_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long spc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long spc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_spc *spc;
 	long result = 0;

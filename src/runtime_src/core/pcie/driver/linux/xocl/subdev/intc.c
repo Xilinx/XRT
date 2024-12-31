@@ -250,7 +250,7 @@ static void intc_polling(struct intr_metadata *data, int max_try)
 /**
  * intc_isr()
  */
-irqreturn_t intc_isr(int irq, void *arg)
+static irqreturn_t intc_isr(int irq, void *arg)
 {
 	struct intr_metadata *data = arg;
 	u32 pending;

@@ -23,6 +23,7 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include <linux/version.h>
+#include <linux/vmalloc.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 #include <drm/drm_gem_dma_helper.h>
 #else
@@ -257,6 +258,7 @@ void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *dev, struct drm_zocl_slot *slot);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_drm_free_bo(struct drm_zocl_bo *bo);
+struct drm_gem_object *zocl_gem_create_object(struct drm_device *dev, size_t size);
 struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
 		uint64_t unaligned_size, unsigned user_flags);
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
@@ -288,7 +290,6 @@ int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 int zocl_init_error(struct drm_zocl_dev *zdev);
 void zocl_fini_error(struct drm_zocl_dev *zdev);
 int zocl_insert_error_record(struct drm_zocl_dev *zdev, xrtErrorCode err_code);
-
 /* zocl_kds.c */
 int zocl_init_sched(struct drm_zocl_dev *zdev);
 void zocl_fini_sched(struct drm_zocl_dev *zdev);
@@ -319,6 +320,9 @@ int subdev_create_cu(struct device *dev, struct xrt_cu_info *info, struct platfo
 void subdev_destroy_cu(struct drm_zocl_dev *zdev);
 int subdev_create_scu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp);
 void subdev_destroy_scu(struct drm_zocl_dev *zdev);
+
+irqreturn_t cu_isr(int irq, void *arg);
+irqreturn_t ucu_isr(int irq, void *arg);
 /* Sub device driver */
 extern struct platform_driver zocl_cu_xgq_driver;
 extern struct platform_driver zocl_csr_intc_driver;

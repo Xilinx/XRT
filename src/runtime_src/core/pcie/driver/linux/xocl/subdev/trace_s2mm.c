@@ -208,7 +208,7 @@ static int trace_s2mm_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long trace_s2mm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long trace_s2mm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_trace_s2mm *trace_s2mm;
 	void __user *data;

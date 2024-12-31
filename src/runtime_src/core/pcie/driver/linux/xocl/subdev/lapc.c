@@ -190,7 +190,7 @@ static int lapc_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long lapc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long lapc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_lapc *lapc;
 	long result = 0;

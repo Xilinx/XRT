@@ -497,8 +497,11 @@ static int zocl_ov_probe(struct platform_device  *pdev)
 
 	return 0;
 }
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zocl_ov_remove(struct platform_device *pdev)
+#else
 static int zocl_ov_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_ov_dev *ov = platform_get_drvdata(pdev);
 
@@ -506,8 +509,9 @@ static int zocl_ov_remove(struct platform_device *pdev)
 
 	if (ov && ov->timer_task)
 		kthread_stop(ov->timer_task);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 struct platform_driver zocl_ospi_versal_driver = {

@@ -208,7 +208,7 @@ int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	return ret;
 }
 
-char *kind_to_string(enum axlf_section_kind kind)
+static char *kind_to_string(enum axlf_section_kind kind)
 {
 	switch (kind) {
 	case 0:  return "BITSTREAM";
@@ -533,7 +533,7 @@ done:
  * This function also incurs a delay of 10seconds to work around AWS ocl timeout issue.
  * These changes will be removed once the issue is addressed in AWS F2 instance.
  */
-void aws_reset_clock_registers(xdev_handle_t xdev)
+static void aws_reset_clock_registers(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = XDEV(xdev);
 	resource_size_t bar0_clk1, bar0_clk2;

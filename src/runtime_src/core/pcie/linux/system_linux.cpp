@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include files
 #include "device_linux.h"
@@ -12,6 +12,7 @@
 #include "core/common/query_requests.h"
 
 // 3rd Party Library - Include files
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <gnu/libc-version.h>
@@ -82,9 +83,11 @@ driver_version(const std::string& driver)
     getline(ss, hash, ',');
   }
 
-  _pt.put("name", driver);
-  _pt.put("version", ver);
-  _pt.put("hash", hash);
+  if (!((boost::iequals(driver, "xclmgmt") || boost::iequals(driver, "xocl")) && (boost::iequals(ver, "unknown")))) {
+    _pt.put("name", driver);
+    _pt.put("version", ver);
+    _pt.put("hash", hash);
+  }
   return _pt;
 }
 
@@ -165,8 +168,11 @@ get_driver_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
 
-  for (const auto& drv : driver_list::get())
-    _ptDriverInfo.push_back( {"", driver_version(drv->name())} );
+  for (const auto& drv : driver_list::get()) {
+    boost::property_tree::ptree _drv = driver_version(drv->name());
+    if (!_drv.empty())
+      _ptDriverInfo.push_back( {"", _drv} );
+  }
   pt.put_child("drivers", _ptDriverInfo);
 }
 

@@ -141,7 +141,7 @@ static void mailbox_versal_handle_pending(struct mailbox_versal *mbv)
 		mbv->mbv_irq_handler(mbv->mbv_irq_arg);
 }
 
-irqreturn_t mailbox_versal_isr(int irq, void *arg)
+static irqreturn_t mailbox_versal_isr(int irq, void *arg)
 {
 	struct mailbox_versal *mbv = (struct mailbox_versal *)arg;
 

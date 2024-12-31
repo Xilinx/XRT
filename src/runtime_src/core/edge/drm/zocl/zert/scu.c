@@ -263,8 +263,11 @@ err:
 	kfree(zcu);
 	return err;
 }
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void scu_remove(struct platform_device *pdev)
+#else
 static int scu_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
@@ -285,8 +288,9 @@ static int scu_remove(struct platform_device *pdev)
 
 	zocl_info(&pdev->dev, "SCU[%d] removed", info->cu_idx);
 	kfree(zcu);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 static struct platform_device_id scu_id_table[] = {

@@ -228,7 +228,7 @@ static void cmd_complete(struct xocl_xgq_vmr *xgq, struct xgq_com_queue_entry *c
 /*
  * Read completed cmd based on XGQ protocol.
  */
-void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
+static void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
 {
 	u32 i = 0;
 	u32 *buffer = (u32 *)ccmd;
@@ -467,7 +467,7 @@ static struct opcode_name {
 	{"PROGRAM VMR", XGQ_CMD_OP_PROGRAM_VMR},
 };
 
-const char *get_opcode_name(int opcode)
+static const char *get_opcode_name(int opcode)
 {
 	int i = 0;
 	const char *unknown = "UNKNOWN";
@@ -709,7 +709,7 @@ static enum xgq_cmd_opcode opcode[] = {
 	XGQ_CMD_OP_IDENTIFY,
 };
 
-bool vmr_xgq_basic_op(struct xocl_xgq_vmr_cmd *cmd)
+static bool vmr_xgq_basic_op(struct xocl_xgq_vmr_cmd *cmd)
 {
 	int i = 0;
 

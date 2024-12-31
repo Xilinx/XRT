@@ -149,7 +149,7 @@ static int trace_funnel_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long trace_funnel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long trace_funnel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct trace_funnel *trace_funnel;
 	void __user *data;
