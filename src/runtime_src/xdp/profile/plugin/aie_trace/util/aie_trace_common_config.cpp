@@ -5,22 +5,8 @@
 
 namespace xdp::aie::trace {
 
-  module_type getTileType(std::shared_ptr<AieTraceMetadata> metadata, uint8_t absRow)
+  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols) 
   {
-    if (absRow == 0)
-      return module_type::shim;
-    if (absRow < metadata->getRowOffset())
-      return module_type::mem_tile;
-    return module_type::core;
-  }
-
-  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols) {
-    // void *hwCtxImpl = metadata->getHandle();
-    // boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
-    // Currently, assuming only one Hw Context is alive at a time
-    // uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
-    // uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
-
     std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto tile       = tileMetric.first;
@@ -34,7 +20,7 @@ namespace xdp::aie::trace {
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
-        module_type tileType = getTileType(metadata, row);
+        module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
         auto loc = XAie_TileLoc(col, row);
 
         if(tileType == module_type::shim) {
@@ -96,7 +82,7 @@ namespace xdp::aie::trace {
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
-        module_type tileType = getTileType(metadata, row);
+        module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
         auto loc = XAie_TileLoc(col, row);
 
         if(tileType == module_type::shim) {
@@ -129,7 +115,7 @@ namespace xdp::aie::trace {
     uint8_t broadcastId2 = traceStartBroadcastCh2->getBc();
 
     //build broadcast network
-    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, traceStartBroadcastCh2->getBc(), XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, broadcastId2, XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
 
     //set timer control register
     for (auto& tileMetric : metadata->getConfigMetrics()) {
