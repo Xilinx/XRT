@@ -132,7 +132,7 @@ void  main_(int argc, char** argv,
     std::cerr << boost::format("ERROR: %s\n") % e.what();
   }
   boost::property_tree::ptree configTreeMain;
-  const auto config_file_name = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+  const std::string config_file_name = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
   XBU::loadConfigFile(config_file_name, configTreeMain);
 
   // If there is a device value, parse for valid subcommands for this device.
