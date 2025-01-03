@@ -345,7 +345,7 @@ static int ps_sysfs_create(struct xocl_ps *ps)
 	return 0;
 }
 
-static int ps_remove(struct platform_device *pdev)
+static int __ps_remove(struct platform_device *pdev)
 {
 	struct xocl_ps *ps;
 
@@ -363,7 +363,16 @@ static int ps_remove(struct platform_device *pdev)
 	mutex_destroy(&ps->ps_lock);
 
 	return 0;
-};
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ps_remove(struct platform_device *pdev)
+{
+	__ps_remove(pdev);
+}
+#else
+#define ps_remove __ps_remove
+#endif
 
 struct xocl_drv_private ps_priv = {
 	.ops = &ps_ops,
