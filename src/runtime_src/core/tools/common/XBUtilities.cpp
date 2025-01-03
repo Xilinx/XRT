@@ -774,3 +774,33 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     //no device available
   }
 }
+
+void 
+XBUtilities::loadConfigFile(const std::string &configPath, boost::property_tree::ptree &configTree)
+{
+  try
+  {
+    // Open the JSON file
+    std::ifstream jsonFile(configPath);
+    if (!jsonFile.is_open())
+    {
+      throw std::runtime_error("Failed to open " + configPath);
+    }
+
+    // Read the JSON file into the property tree
+    boost::property_tree::read_json(jsonFile, configTree);
+
+    // Close the JSON file
+    jsonFile.close();
+  }
+  catch (const boost::property_tree::json_parser_error &e)
+  {
+    std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+    throw;
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << std::endl;
+    throw;
+  }
+}// end of namespace XBValidateUtils

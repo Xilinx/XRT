@@ -18,6 +18,7 @@ file(GLOB XBFLASH_BASE_FILES
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/JSONConfigurable.cpp"
+  "../common/SubCmdJsonObjects.cpp"
   "../../pcie/tools/xbflash.qspi/firmware_image.cpp"
   "../../pcie/tools/xbflash.qspi/pcidev.cpp"
   "../../pcie/tools/xbflash.qspi/xqspips.cpp"
