@@ -132,6 +132,25 @@ namespace xdp::aie::profile {
       eventSets["output_stalls"]  = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
                                      XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
+
+    // Microcontroller sets
+    if (hwGen >= 5) {
+      eventSets["uc_dma_activity"] = {
+          XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
+          XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
+        eventSets["uc_axis_throughputs"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_MASTER_TLAST_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_SLAVE_TLAST_UC};
+        eventSets["uc_core"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
+          XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
+          XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
+    }
+
     eventSets["mm2s_throughputs"] = eventSets["input_throughputs"];
     eventSets["s2mm_throughputs"] = eventSets["output_throughputs"];
     eventSets["mm2s_stalls"]      = eventSets["input_stalls"];
@@ -142,7 +161,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for memory tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets()
+  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -177,30 +196,76 @@ namespace xdp::aie::profile {
       {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
                                    XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
-      {"conflict_stats1",         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE}},
-      {"conflict_stats2",         {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
-      {"conflict_stats3",         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}}, 
-      {"conflict_stats4",         {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
     };
+
+    if (hwGen < 40) {
+      eventSets["conflict_stats1"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
+      eventSets["conflict_stats2"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
+      eventSets["conflict_stats3"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
+      eventSets["conflict_stats4"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+    } else {
+      eventSets["conflict_stats1"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
+#if 0
+      // Banks 16-23 are only defined for AIE4
+      eventSets["conflict_stats2"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+#else
+      eventSets["conflict_stats2"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+#endif
+      eventSets["conflict_stats3"] = {};
+      eventSets["conflict_stats4"] = {};
+    }
+
     eventSets["s2mm_channels"]         = eventSets["input_channels"];
     eventSets["s2mm_channels_details"] = eventSets["input_channels_details"];
     eventSets["s2mm_throughputs"]      = eventSets["input_throughputs"];
     eventSets["mm2s_channels"]         = eventSets["output_channels"];
     eventSets["mm2s_channels_details"] = eventSets["output_channels_details"];
     eventSets["mm2s_throughputs"]      = eventSets["output_throughputs"];
+    return eventSets;
+  }
+
+  /****************************************************************************
+   * Get metric sets for microcontrollers
+   * TODO: convert to XAie_Events once support is available from driver
+   ***************************************************************************/
+  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen)
+  std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen)
+  {
+    //std::map<std::string, std::vector<XAie_Events>> eventSets;
+    std::map<std::string, std::vector<uint32_t>> eventSets;
+    if (hwGen < 5)
+      return eventSets;
+
+    // TODO: replace with enums once driver supports the MDM
+    eventSets = {
+      {"execution",               {16, 17, 18, 19, 20, 62}},
+      {"interrupt_stalls",        {23, 24, 25, 26, 27, 57}},
+      {"mmu_activity",            {43, 48, 49, 50, 53, 61}}
+    };
+
     return eventSets;
   }
 
@@ -513,12 +578,12 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Convert user specified bytes to beats for provided metric set
    ***************************************************************************/
-  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen)
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hwGen)
   {
     if (metricSet != METRIC_BYTE_COUNT)
       return bytes;
 
-    uint32_t streamWidth = aie::getStreamWidth(hw_gen);
+    uint32_t streamWidth = aie::getStreamWidth(hwGen);
     uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
 
     return total_beats;

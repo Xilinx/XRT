@@ -66,6 +66,8 @@ AIEControlConfigFiletype::getAIECompilerOptions() const
         aie_meta.get("aie_metadata.aiecompiler_options.graph_iterator_event", false);
     aiecompiler_options.event_trace = 
         aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+    aiecompiler_options.enable_multi_layer =
+        aie_meta.get("aie_metadata.aiecompiler_options.enable_multi_layer", false);
     return aiecompiler_options;
 }
 
@@ -243,6 +245,33 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
 }
 
 std::vector<tile_type>
+AIEControlConfigFiletype::getMicrocontrollers(bool useColumn,
+                                              uint8_t minCol,
+                                              uint8_t maxCol) const
+{
+    if (getHardwareGeneration() < 5)
+        return {};
+
+    // Use specified range or tile 0,0
+    // TODO: parse from metadata once available
+    uint8_t firstCol = useColumn ? minCol : 0;
+    //uint8_t lastCol  = useColumn ? maxCol 
+    //                 : aie_meta.get("aie_metadata.driver_config.num_columns", 0);
+    uint8_t lastCol  = useColumn ? maxCol : 0;
+
+    std::vector<tile_type> tiles;
+
+    for (uint8_t col = firstCol; col < lastCol; ++col) {
+        tile_type tile;
+        tile.col = col;
+        tile.row = 0;
+        tiles.emplace_back(std::move(tile));
+    }
+
+    return tiles;
+}
+
+std::vector<tile_type>
 AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             const std::string& portName,
                                             const std::string& metricStr,
@@ -252,6 +281,11 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             uint8_t maxCol) const
 {
     std::vector<tile_type> tiles;
+
+    // Catch microcontroller sets
+    if (metricStr.find("uc_") != std::string::npos) {
+        return getMicrocontrollers();
+    }
 
     auto ios = getAllIOs();
 

@@ -103,6 +103,10 @@ namespace xdp {
     for (const auto &setting : filteredConfig.at(module_type::shim))
       fout << setting << "\n";
 
+    fout << "# Microcontroller metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::uc))
+      fout << setting << "\n";
+
     fout << "\n";
   }
 

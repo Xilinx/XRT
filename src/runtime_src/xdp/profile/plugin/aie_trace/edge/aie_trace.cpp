@@ -107,6 +107,52 @@ namespace xdp {
   }
 
   /****************************************************************************
+   * Print out resource usage statistics for a given tile
+   ***************************************************************************/
+  void AieTrace_EdgeImpl::printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
+  {
+    if (xrt_core::config::get_verbosity() < static_cast<uint32_t>(severity_level::info))
+      return;
+
+    auto col = tile.col;
+    auto row = tile.row;
+    auto loc = XAie_TileLoc(col, row);
+    std::stringstream msg;
+
+    const std::string groups[3] = {
+      XAIEDEV_DEFAULT_GROUP_GENERIC,
+      XAIEDEV_DEFAULT_GROUP_STATIC, 
+      XAIEDEV_DEFAULT_GROUP_AVAIL
+    };
+
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
+  }
+
+  /****************************************************************************
    * Verify correctness of trace buffer size
    ***************************************************************************/
   uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize)
@@ -298,6 +344,7 @@ namespace xdp {
     // Get the column shift for partition
     // NOTE: If partition is not used, this value is zero.
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    uint8_t numCols = 38;
     aie::displayColShiftInfo(startColShift);
 
     // Zero trace event tile counts
@@ -310,6 +357,35 @@ namespace xdp {
     // NOTE: Flush trace module always at the end because for some applications
     //       core might be running infinitely.
     
+    auto metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "AIE metadata reader is null";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
+    }
+    
+    auto compilerOptions = metadataReader->getAIECompilerOptions();
+    std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
+    if(compilerOptions.enable_multi_layer) {
+
+      aie::trace::timerSyncronization(aieDevInst,aieDevice, metadata, startColShift, numCols);
+      if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) 
+      {
+        std::vector<XAie_LocType> vL;
+        traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh1->reserve();
+        traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh2->reserve();
+        aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastCh1->getBc(), traceStartBroadcastCh2->getBc(), XAIE_EVENT_USER_EVENT_0_PL, startColShift, numCols);
+        
+        coreTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastCh1->getBc());
+        memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastCh1->getBc());
+        interfaceTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastCh2->getBc());
+      }
+    }
+
     if (metadata->getUseUserControl())
       coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
     coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
@@ -424,7 +500,7 @@ namespace xdp {
       if (!tileHasFreeRsc(aieDevice, loc, type, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT",
             "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
-        aie::trace::printTileStats(aieDevice, tile);
+        printTileStats(aieDevice, tile);
         return false;
       }
 
@@ -547,7 +623,7 @@ namespace xdp {
 
           freeResources();
           // Print resources availability for this tile
-          aie::trace::printTileStats(aieDevice, tile);
+          printTileStats(aieDevice, tile);
           return false;
         }
       }
@@ -594,7 +670,7 @@ namespace xdp {
 
           freeResources();
           // Print resources availability for this tile
-          aie::trace::printTileStats(aieDevice, tile);
+          printTileStats(aieDevice, tile);
           return false;
         }
 
@@ -660,6 +736,8 @@ namespace xdp {
           traceStartEvent = comboEvents.at(0);
           traceEndEvent = comboEvents.at(1);
         }
+        if ((type == module_type::core) && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+          traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastCh1->getBc());
 
         // Configure event ports on stream switch
         // NOTE: These are events from the core module stream switch
@@ -679,7 +757,7 @@ namespace xdp {
 
           freeResources();
           // Print resources availability for this tile
-          aie::trace::printTileStats(aieDevice, tile);
+          printTileStats(aieDevice, tile);
           return false;
         }
 
@@ -833,7 +911,7 @@ namespace xdp {
 
           freeResources();
           // Print resources availability for this tile
-          aie::trace::printTileStats(aieDevice, tile);
+          printTileStats(aieDevice, tile);
           return false;
         }
 
@@ -932,6 +1010,10 @@ namespace xdp {
       for (int n = 0; n <= NUM_TRACE_EVENTS; ++n)
         (db->getStaticInfo()).addAIECoreEventResources(deviceId, n, mNumTileTraceEvents[m][n]);
     }
+
+    // Generate user event
+    XAie_EventGenerate(aieDevInst, XAie_TileLoc(startColShift, 0), XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_0_PL);
+
     return true;
   }  // end setMetricsSettings
 

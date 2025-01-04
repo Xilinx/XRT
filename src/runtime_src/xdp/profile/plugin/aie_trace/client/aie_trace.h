@@ -23,7 +23,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/device/common/client_transaction.h"
-
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_common_config.h"
 
 extern "C" {
   #include <xaiengine.h>
@@ -46,8 +46,6 @@ namespace xdp {
                         std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       bool configureWindowedEventTrace(void* handle);
-      void build2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event);
-      void reset2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2);
       module_type getTileType(uint8_t row);
       uint16_t getRelativeRow(uint16_t absRow);
       uint32_t bcIdToEvent(int bcId);
