@@ -88,8 +88,10 @@ namespace xdp {
     shimEndEvents = shimStartEvents;
     shimEndEvents[METRIC_BYTE_COUNT] = {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PERF_CNT_0_PL};
 
-    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileStartEvents = aie::profile::getMemoryTileEventSets(hwGen);
     memTileEndEvents = memTileStartEvents;
+
+    microcontrollerEvents = aie::profile::getMicrocontrollerEventSets(hwGen);
   }
 
   bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, void* handle)
@@ -193,135 +195,6 @@ namespace xdp {
     default:
       return 0;
     }
-  }
-
-
-  // Configure stream switch ports for monitoring purposes
-  // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
-  void
-  AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
-                                               xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
-                                               const module_type type, const uint32_t numCounters,
-                                               const std::string metricSet, const uint8_t channel0, 
-                                               const uint8_t channel1, std::vector<XAie_Events>& startEvents, 
-                                               std::vector<XAie_Events>& endEvents)
-  {
-    std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
-
-    // Traverse all counters and request monitor ports as needed
-    for (uint32_t i=0; i < numCounters; ++i) {
-      // Ensure applicable event
-      auto startEvent = startEvents.at(i);
-      auto endEvent = endEvents.at(i);
-      if (!aie::profile::isStreamSwitchPortEvent(startEvent))
-        continue;
-
-      bool newPort = false;
-      auto portnum = getPortNumberFromEvent(startEvent);
-      uint8_t channel = (portnum == 0) ? channel0 : channel1;
-
-      // New port needed: reserver, configure, and store
-      if (switchPortMap.find(portnum) == switchPortMap.end()) {
-        auto switchPortRsc = xaieTile.sswitchPort();
-        if (switchPortRsc->reserve() != AieRC::XAIE_OK)
-          continue;
-        newPort = true;
-        switchPortMap[portnum] = switchPortRsc;
-
-        if (type == module_type::core) {
-          int channelNum = 0;
-          std::string portName;
-
-          // AIE Tiles
-          if (metricSet.find("trace") != std::string::npos) {
-            // Monitor memory or core trace (memory:1, core:0)
-            uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 1 : 0;
-            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-            
-            channelNum = traceSelect;
-            portName = (traceSelect == 0) ? "core trace" : "memory trace";
-          }
-          else {
-            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
-
-            channelNum = channel;
-            portName = aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
-          }
-
-          if (aie::isDebugVerbosity()) {
-              std::stringstream msg;
-              msg << "Configured core module stream switch to monitor " << portName 
-                  << " for metric set " << metricSet << " and channel " << channelNum;
-              xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-          }
-        }
-        // Interface tiles (e.g., PLIO, GMIO)
-        else if (type == module_type::shim) {
-          // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
-          if (portnum >= tile.stream_ids.size())
-            continue;
-          // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.is_master_vec.at(portnum) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
-          switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-
-          if (aie::isDebugVerbosity()) {
-            std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master";
-            std::string msg = "Configuring interface tile stream switch to monitor " 
-                            + typeName + " stream port " + std::to_string(streamPortId);
-            xrt_core::message::send(severity_level::debug, "XRT", msg);
-          }
-        }
-        else {
-          // Memory tiles
-          std::string typeName;
-          uint32_t channelNum = 0;
-
-          if (metricSet.find("trace") != std::string::npos) {
-            typeName = "trace";
-            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
-          }
-          else {
-            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
-            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
-
-            typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
-            channelNum = channel;
-          }
-
-          if (aie::isDebugVerbosity()) {
-            std::string msg = "Configuring memory tile stream switch to monitor " 
-                            + typeName + " stream port " + std::to_string(channelNum);
-            xrt_core::message::send(severity_level::debug, "XRT", msg);
-          }
-        }
-      }
-
-      auto switchPortRsc = switchPortMap[portnum];
-
-      // Event options:
-      //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
-      XAie_Events ssEvent;
-      if (aie::profile::isPortRunningEvent(startEvent))
-        switchPortRsc->getSSRunningEvent(ssEvent);
-      else if (aie::profile::isPortTlastEvent(startEvent))
-        switchPortRsc->getSSTlastEvent(ssEvent);
-      else if (aie::profile::isPortStalledEvent(startEvent))
-        switchPortRsc->getSSStalledEvent(ssEvent);
-      else
-        switchPortRsc->getSSIdleEvent(ssEvent);
-
-      startEvents.at(i) = ssEvent;
-      endEvents.at(i) = ssEvent;
-
-      if (newPort) {
-        switchPortRsc->start();
-        streamPorts.push_back(switchPortRsc);
-      }
-    }
-
-    switchPortMap.clear();
   }
 
   // Get reportable payload specific for this tile and/or counter
@@ -488,6 +361,19 @@ namespace xdp {
         if ((mod == XAIE_MEM_MOD) && (type == module_type::core))
           type = module_type::dma;
         
+        // Catch microcontroller event sets for MDM
+        if (module == static_cast<int>(module_type::uc)) {
+          // Configure
+          auto events = microcontrollerEvents[metricSet];
+          aie::profile::configMDMCounters(aieDevInst, col, row, events);
+          // Record
+          tile_type recordTile;
+          recordTile.col = col;
+          recordTile.row = row;
+          microcontrollerTileEvents[recordTile] = events;
+          continue;
+        }
+
         // Ignore invalid types and inactive modules
         // NOTE: Inactive core modules are configured when utilizing
         //       stream switch monitor ports to profile DMA channels
@@ -543,14 +429,14 @@ namespace xdp {
         aie::profile::configEventSelections(aieDevInst, loc, type, metricSet, channel0);
         // TBD : Placeholder to configure shim tile with required profile counters.
 
-        configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtrSS, 
-                                metricSet, channel0, channel1, startEvents, endEvents);
+        aie::profile::configStreamSwitchPorts(tileMetric.first, xaieTile, loc, type, 
+            numFreeCtrSS, metricSet, channel0, channel1, startEvents, endEvents, streamPorts);
        
         // Identify the profiling API metric sets and configure graph events
         if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
           XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
-          bool status = configGraphIteratorAndBroadcast(xaieModule,
-              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent);
+          bool status = aie::profile::configGraphIteratorAndBroadcast(aieDevInst, aieDevice,
+              metadata, xaieModule, loc, mod, type, metricSet, bcEvent, bcResourcesBytesTx);
           if (status) {
             graphIteratorBrodcastChannelEvent = bcEvent;
             graphItrBroadcastConfigDone = true;
@@ -600,9 +486,9 @@ namespace xdp {
               continue;
             
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
-            perfCounter = configProfileAPICounters(xaieModule, mod, type,
-                            metricSet, startEvent, endEvent, resetEvent, i, 
-                            threshold, retCounterEvent, tile);
+            perfCounter = aie::profile::configProfileAPICounters(aieDevInst, aieDevice, metadata, xaieModule, 
+                            mod, type, metricSet, startEvent, endEvent, resetEvent, i, perfCounters.size(),
+                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap);
           }
           else {
             // Request counter from resource manager
@@ -621,11 +507,15 @@ namespace xdp {
           perfCounters.push_back(perfCounter);
 
           // Generate user_event_1 for byte count metric set after configuration
+          // NOTE: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB 
+          //       to transition the FSM from Idle->State0->State1.
+          //       eventC = Port Running and eventD = stop event (counter event).
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
             //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
             //      to transition the FSM from Idle->State0->State1.
             //      eventC = Port Running and eventD = stop event (counter event).
+            XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
             XAie_EventGenerate(aieDevInst, tileloc, mod, XAIE_EVENT_USER_EVENT_1_PL);
           }
@@ -768,6 +658,30 @@ namespace xdp {
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6;
       db->getDynamicInfo().addAIESample(index, timestamp, values);
+    }
+
+    // Read and record MDM counters (if available)
+    // NOTE: all MDM counters in a given tile are sampled in same read sequence
+    for (auto& ucTile : microcontrollerTileEvents) {
+      auto tile = ucTile.first;
+      auto events = ucTile.second;
+
+      std::vector<uint64_t> counterValues;
+      aie::profile::readMDMCounters(aieDevInst, tile.col, tile.row, counterValues);
+
+      double timestamp = xrt_core::time_ns() / 1.0e6;
+
+      for (uint64_t c=0; c < counterValues.size(); c++) {
+        std::vector<uint64_t> values;
+        values.push_back(tile.col);
+        values.push_back(0);
+        values.push_back(events.at(c));
+        values.push_back(events.at(c));
+        values.push_back(0);
+        values.push_back(counterValues.at(c));
+      
+        db->getDynamicInfo().addAIESample(index, timestamp, values);
+      }
     }
   }
 
@@ -1157,75 +1071,6 @@ namespace xdp {
     uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
     uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
     return std::make_pair(phyStartEvent, phyEndEvent);
-  }
-
-  /****************************************************************************
-   * Initialize broadcast channels
-   ***************************************************************************/
-  std::pair<int, XAie_Events>
-  AieProfile_EdgeImpl::setupBroadcastChannel(const tile_type& currTileLoc)
-  {
-    tile_type srcTile = currTileLoc;
-    if (!metadata->isSourceTile(currTileLoc))
-      if (!metadata->getSourceTile(currTileLoc, srcTile))
-        return {-1, XAIE_EVENT_NONE_CORE};
-    
-    if (adfAPIBroadcastEventsMap.find(srcTile) == adfAPIBroadcastEventsMap.end()) {
-      // auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
-      auto bcPair = getPLBroadcastChannel(srcTile);
-      if (bcPair.first == -1 || bcPair.second == XAIE_EVENT_NONE_CORE) {
-        return {-1, XAIE_EVENT_NONE_CORE};
-      }
-      adfAPIBroadcastEventsMap[srcTile] = bcPair;
-    }
-    return adfAPIBroadcastEventsMap.at(srcTile);
-  }
-
-  /****************************************************************************
-   * Get and configure broadcast channels from source to destination tiles
-   * NOTE: This function applies to interface tiles only
-   ***************************************************************************/
-  std::pair<int, XAie_Events>
-  AieProfile_EdgeImpl::getPLBroadcastChannel(const tile_type& srcTile)
-  {
-    std::pair<int, XAie_Events> rc(-1, XAIE_EVENT_NONE_PL);
-    AieRC RC = AieRC::XAIE_OK;
-    tile_type destTile;
-    
-    metadata->getDestTile(srcTile, destTile);
-    XAie_LocType destTileLocation = XAie_TileLoc(destTile.col, destTile.row);
-
-    // Include all tiles between source and destination
-    std::vector<XAie_LocType> bcTileVec;
-    for (uint8_t c = std::min(srcTile.col, destTile.col); c <= std::max(srcTile.col, destTile.col); ++c) {
-      auto tileLocation = XAie_TileLoc(c, srcTile.row);
-      bcTileVec.push_back(tileLocation);
-    }
-    
-    auto BC = aieDevice->broadcast(bcTileVec, XAIE_PL_MOD, XAIE_PL_MOD);
-    if (!BC)
-      return rc;
-    bcResourcesLatency.push_back(BC);
-
-    auto bcPair = aie::profile::getPreferredPLBroadcastChannel();
-    BC->setPreferredId(bcPair.first);
-
-    RC = BC->reserve();
-    if (RC != XAIE_OK)
-      return rc;
-
-    RC = BC->start();
-    if (RC != XAIE_OK)
-      return rc;
-
-    uint8_t bcId = BC->getBc();
-    XAie_Events bcEvent;
-    RC = BC->getEvent(destTileLocation, XAIE_PL_MOD, bcEvent);
-    if (RC != XAIE_OK)
-      return rc;
-
-    std::pair<int, XAie_Events> bcPairSelected = std::make_pair(bcId, bcEvent);
-    return bcPairSelected;
   }
 
   /****************************************************************************

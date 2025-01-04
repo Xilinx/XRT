@@ -79,15 +79,25 @@ namespace xdp::aie::profile {
  
   /**
    * @brief   Get metric sets for interface modules
+   * @param   hwGen integer representing the hardware generation
    * @return  Map of interface metric set names with vectors of event IDs
    */
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen);
 
   /**
    * @brief   Get metric sets for memory tile modules
+   * @param   hwGen integer representing the hardware generation
    * @return  Map of memory tile metric set names with vectors of event IDs
    */
-  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets(const int hwGen);
+
+  /**
+   * @brief   Get metric sets for debug modules in microcontrollers
+   * @param   hwGen integer representing the hardware generation
+   * @return  Map of microcontroller metric set names with vectors of event IDs
+   */
+  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets();
+  std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen);
 
   /**
    * @brief  Modify configured events
@@ -160,11 +170,15 @@ namespace xdp::aie::profile {
   bool metricSupportsGraphIterator(std::string metricSet);
   bool profileAPIMetricSet(const std::string metricSet);
   uint16_t getAdfApiReservedEventId(const std::string metricSet);
-  inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
-  inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
+  inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { 
+    return (eventID == START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID); 
+  }
+  inline bool adfAPILatencyConfigEvent(uint32_t eventID) { 
+    return (eventID == INTF_TILE_LATENCY_REPORT_EVENT_ID);
+  }
   std::pair<int, XAie_Events> getPreferredPLBroadcastChannel();
 
-  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen);
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hwGen);
 
 }  // namespace xdp::aie::profile
 

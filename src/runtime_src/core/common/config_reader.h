@@ -870,6 +870,13 @@ get_aie_profile_settings_interface_tile_latency_metrics()
 }
 
 inline std::string
+get_aie_profile_settings_tile_based_microcontroller_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_microcontroller_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_profile_settings_start_type()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.start_type", "time");
@@ -1024,6 +1031,15 @@ get_aie_trace_settings_enable_system_timeline()
   static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", false);
   return value;
 }
+
+inline bool
+get_aie_trace_settings_sim_trace_time_s()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.sim_trace_time_s", 0);
+  return value;
+}
+
+
 
 }} // config,xrt_core
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,6 +41,24 @@ constexpr uint32_t GROUP_SHIM_S2MM0_STALL_MASK      = 0x00041000;
 constexpr uint32_t GROUP_SHIM_S2MM1_STALL_MASK      = 0x00082000;
 constexpr uint32_t GROUP_SHIM_MM2S0_STALL_MASK      = 0x00500000;
 constexpr uint32_t GROUP_SHIM_MM2S1_STALL_MASK      = 0x00A00000;
+
+// Microblaze debug module (MDM) register offsets and definitions
+constexpr uint64_t OVERFLOW_32BIT                   = 1ULL << 32;
+constexpr uint32_t UC_MDM_PCCTRLR                   = 0x000b5440;
+constexpr uint32_t UC_MDM_PCCMDR                    = 0x000b5480;
+constexpr uint32_t UC_MDM_PCSR                      = 0x000b54c0;
+constexpr uint32_t UC_MDM_PCDRR                     = 0x000b5580;
+constexpr uint32_t UC_MDM_PCWR                      = 0x000b55c0;
+constexpr uint32_t UC_NUM_EVENT_COUNTERS            = 5;
+constexpr uint32_t UC_NUM_LATENCY_COUNTERS          = 1;
+constexpr uint32_t UC_MDM_PCCMDR_CLEAR_BIT          = 4;
+constexpr uint32_t UC_MDM_PCCMDR_START_BIT          = 3;
+constexpr uint32_t UC_MDM_PCCMDR_STOP_BIT           = 2;
+constexpr uint32_t UC_MDM_PCCMDR_SAMPLE_BIT         = 1;
+constexpr uint32_t UC_MDM_PCCMDR_RESET_BIT          = 0;
+constexpr uint32_t UC_MDM_PCSR_OVERFLOW_BIT         = 1;
+constexpr uint32_t UC_MDM_PCSR_FULL_BIT             = 0;
+constexpr uint32_t UC_MDM_PCDRR_LATENCY_READS       = 4;
 
 // ADF API related constants
 inline const std::string METRIC_BYTE_COUNT = "start_to_bytes_transferred";

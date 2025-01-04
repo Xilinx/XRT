@@ -22,6 +22,7 @@
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_common_config.h"
 
 namespace xdp {
 
@@ -36,6 +37,7 @@ namespace xdp {
     void freeResources();
     
   private:
+    void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
     uint64_t checkTraceBufSize(uint64_t size);
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                         const module_type type, const std::string& metricSet);
