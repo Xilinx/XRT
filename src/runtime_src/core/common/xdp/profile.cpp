@@ -145,6 +145,14 @@ register_callbacks(void* handle)
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+
+  #elif defined(XDP_VE2_BUILD)
+  
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+
   #else
     (void)handle;
   #endif
@@ -461,6 +469,32 @@ update_device(void* handle)
     xrt_core::xdp::aie_pc::update_device(handle);
   }
 
+#elif defined(XDP_VE2_BUILD)
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "In updateDevice 2 : ml timeline ");
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "In updateDevice TRY : ml timeline ");
+
+
+      xrt_core::xdp::ml_timeline::load();
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "In updateDevice AFTER LOAD : ml timeline ");
+    }
+    catch (...) {
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "In CATCH : ml timeline ");
+
+      return;
+    }
+    xrt_core::xdp::ml_timeline::update_device(handle);
+  }
+
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
@@ -494,6 +528,14 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_pc())
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
+
+#elif defined(XDP_VE2_BUILD)
+
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+      "In finish flush : ml timeline ");
+
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
 
 #else
 

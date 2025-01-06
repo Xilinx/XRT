@@ -14,4 +14,10 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     PRIVATE 
     XDP_CLIENT_BUILD=1
     )
+
+elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+    target_compile_definitions(core_common_xdp_profile_objects
+      PRIVATE
+      XDP_VE2_BUILD=1
+      )
 endif()
