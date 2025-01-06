@@ -518,8 +518,11 @@ err_intc:
 	sysfs_remove_group(&pdev->dev.kobj, &zrpu_channel_attrgroup);
 	return -EINVAL;
 };
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zrpu_channel_remove(struct platform_device *pdev)
+#else
 static int zrpu_channel_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_rpu_channel *chan = platform_get_drvdata(pdev);
 
@@ -527,7 +530,9 @@ static int zrpu_channel_remove(struct platform_device *pdev)
 		zxgq_fini(chan->xgq_hdl);
 	zocl_ert_destroy_intc(chan->intc_pdev);
 	sysfs_remove_group(&pdev->dev.kobj, &zrpu_channel_attrgroup);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 };
 
 struct platform_driver zocl_rpu_channel_driver = {

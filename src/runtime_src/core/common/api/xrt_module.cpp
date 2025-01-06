@@ -48,6 +48,10 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
+// In aie2p max bd data words is 8 and in aie4/aie2ps its 9
+// using max bd words as 9 to cover all cases
+static constexpr size_t max_bd_words = 9;
+
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
 static const char* Control_Code_Symbol = "control-code";
@@ -141,6 +145,8 @@ struct patcher
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
     uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
+    bool dirty = false; // Tells whether this entry is already patched or not
+    uint32_t bd_data_ptrs[max_bd_words]; // array to store bd ptrs original values
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -166,9 +172,10 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
-// Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
-// For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
-// To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+  // Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
+  // For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
+  // To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+
   void
   patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
   {
@@ -253,8 +260,18 @@ struct patcher
   void
   patch_it(uint8_t* base, uint64_t new_value)
   {
-    for (auto item : m_ctrlcode_patchinfo) {
+    for (auto& item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
+      if (!item.dirty) {
+        // first time patching cache bd ptr values using bd ptrs array in patch info
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
+        item.dirty = true;
+      }
+      else {
+        // not the first time patching, restore bd ptr values from patch info bd ptrs array
+        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
+      }
+
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
@@ -844,6 +861,7 @@ class module_elf : public module_impl
         if (dynsym_offset >= dynsym->get_size())
           throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
         auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynstr_offset = sym->st_name;
         if (dynstr_offset >= dynstr->get_size())
@@ -891,7 +909,20 @@ class module_elf : public module_impl
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+	//TODO consolidate all of this logic in baseclass which can be used for
+	//aie2p and other aie class devices
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
 
         auto key_string = generate_key_string(argnm, buf_type);
 
@@ -904,9 +935,9 @@ class module_elf : public module_impl
 	// On all further occurences of arg, add patch_info structure to existing vector
 
         if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
-          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, 0, 0});
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
         else
-          arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{abs_offset, 0}}, buf_type});
+          arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
     }
 

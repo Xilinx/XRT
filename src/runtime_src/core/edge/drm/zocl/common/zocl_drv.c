@@ -1315,7 +1315,11 @@ err_apt:
  * @return       0 on success, Error code on failure.
  *
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zocl_drm_platform_remove(struct platform_device *pdev)
+#else
 static int zocl_drm_platform_remove(struct platform_device *pdev)
+#endif
 {
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
@@ -1350,7 +1354,9 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	drm_dev_unregister(drm);
 	ZOCL_DRM_DEV_PUT(drm);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 static struct platform_driver zocl_drm_private_driver = {

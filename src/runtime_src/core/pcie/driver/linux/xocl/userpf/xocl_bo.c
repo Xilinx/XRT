@@ -73,7 +73,7 @@ static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 	return paddr;
 }
 
-void xocl_describe(const struct drm_xocl_bo *xobj)
+static void xocl_describe(const struct drm_xocl_bo *xobj)
 {
 	size_t size_kb = xobj->base.size / 1024;
 	size_t physical_addr = xocl_bo_physical_addr(xobj);

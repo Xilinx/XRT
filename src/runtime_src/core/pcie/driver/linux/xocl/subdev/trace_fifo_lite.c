@@ -146,7 +146,7 @@ static int trace_fifo_lite_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-long trace_fifo_lite_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long trace_fifo_lite_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct trace_fifo_lite *trace_fifo_lite;
 	void __user *data;

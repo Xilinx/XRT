@@ -1263,7 +1263,7 @@ done:
 	mutex_unlock(&ert_user->ev_lock);
 }
 
-int ert_user_thread(void *data)
+static int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
 	int ret = 0;

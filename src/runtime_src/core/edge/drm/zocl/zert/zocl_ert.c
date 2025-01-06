@@ -297,13 +297,16 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ert);
 	return 0;
 }
-
-static int zocl_ert_remove(struct platform_device *pdev)
-{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zocl_ert_remove(struct platform_device *pdev) {
+	ert_dbg(pdev, "Release resource");
+}
+#else
+static int zocl_ert_remove(struct platform_device *pdev) {
 	ert_dbg(pdev, "Release resource");
 	return 0;
 }
-
+#endif
 struct platform_driver zocl_ert_driver = {
 	.driver = {
 		.name = ZOCL_ERT_NAME,

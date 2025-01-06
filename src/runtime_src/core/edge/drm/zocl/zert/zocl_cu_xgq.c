@@ -341,8 +341,11 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 
 	return 0;
 }
-
+#if  LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zcu_xgq_remove(struct platform_device *pdev)
+#else
 static int zcu_xgq_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
@@ -358,7 +361,9 @@ static int zcu_xgq_remove(struct platform_device *pdev)
 	if (zcu_xgq->zxc_client_hdl)
 		zocl_destroy_client(zcu_xgq->zxc_client_hdl);
 	zcu_xgq_fini_xgq(zcu_xgq);
+#if  LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 static const struct platform_device_id zocl_cu_xgq_id_match[] = {

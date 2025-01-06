@@ -413,19 +413,19 @@ static inline char *prot2str(enum CU_PROTOCOL prot)
 	}
 }
 
-static void inline xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
+static inline void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
 {
 	if (xcu->funcs)
 		xcu->funcs->enable_intr(xcu->core, intr_type);
 }
 
-static void inline xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
+static inline void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
 {
 	if (xcu->funcs)
 		xcu->funcs->disable_intr(xcu->core, intr_type);
 }
 
-static u32 inline xrt_cu_clear_intr(struct xrt_cu *xcu)
+static inline u32 xrt_cu_clear_intr(struct xrt_cu *xcu)
 {
 	return xcu->funcs ? xcu->funcs->clear_intr(xcu->core) : 0;
 }
@@ -548,6 +548,7 @@ void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
 bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 bool xrt_cu_intr_supported(struct xrt_cu *xcu);
+int xrt_cu_intr_thread(void *data);
 int xrt_cu_start_thread(struct xrt_cu *xcu);
 void xrt_cu_stop_thread(struct xrt_cu *xcu);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);

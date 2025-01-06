@@ -9,7 +9,6 @@
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
  */
-
 #include "zocl_drv.h"
 #include "xrt_cu.h"
 #include "zocl_ert_intc.h"
@@ -445,8 +444,11 @@ err:
 	kfree(zcu);
 	return err;
 }
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void cu_remove(struct platform_device *pdev)
+#else
 static int cu_remove(struct platform_device *pdev)
+#endif
 {
 	struct zocl_cu *zcu;
 	struct drm_zocl_dev *zdev;
@@ -454,9 +456,10 @@ static int cu_remove(struct platform_device *pdev)
 	struct platform_device *intc;
 
 	zcu = platform_get_drvdata(pdev);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	if (!zcu)
 		return -EINVAL;
-
+#endif
 	info = &zcu->base.info;
 	switch (info->model) {
 	case XCU_HLS:
@@ -487,8 +490,9 @@ static int cu_remove(struct platform_device *pdev)
 	zocl_info(&pdev->dev, "CU[%d] removed", info->inst_idx);
 	kfree(zcu->irq_name);
 	kfree(zcu);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 static struct platform_device_id cu_id_table[] = {

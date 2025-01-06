@@ -261,9 +261,12 @@ extern "C" {
         unsigned char m_keyBlock[256];              /* Signature for validation of binary */
         uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
         struct axlf_header m_header;                /* Inline header */
-        struct axlf_section_header m_sections[1];   /* One or more section headers follow */
+#if defined(__linux__) && defined(__KERNEL__)
+	struct axlf_section_header m_sections[];   // One or more section headers follow. Flexible array size suitable for kernel space.
+#else
+	struct axlf_section_header m_sections[1];   /* One or more section headers follow */
+#endif
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct axlf) == 496, "axlf structure no longer is 496 bytes in size");
 
     typedef struct axlf xclBin;
 
@@ -296,10 +299,12 @@ extern "C" {
 
     struct mem_topology {
         int32_t m_count; //Number of mem_data
+#if defined(__linux__) && defined(__KERNEL__)
+        struct mem_data m_mem_data[]; //Should be sorted on mem_type. Flexible array size suitable for kernel space. Flexible array size suitable for kernel space.
+#else
         struct mem_data m_mem_data[1]; //Should be sorted on mem_type
+#endif
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct mem_topology) == 48, "mem_topology structure no longer is 48 bytes in size");
-
 
     /****   CONNECTIVITY SECTION ****/
     /* Connectivity of each argument of Kernel. It will be in terms of argument
@@ -389,9 +394,12 @@ extern "C" {
 
     struct ip_layout {
         int32_t m_count;
+#if defined(__linux__) && defined(__KERNEL__)
+        struct ip_data m_ip_data[]; //All the ip_data needs to be sorted by m_base_address. Flexible array size suitable for kernel space.
+#else
         struct ip_data m_ip_data[1]; //All the ip_data needs to be sorted by m_base_address.
+#endif
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct ip_layout) == 88, "ip_layout structure no longer is 88 bytes in size");
 
     /*** Debug IP section layout ****/
     enum DEBUG_IP_TYPE {
@@ -450,9 +458,12 @@ extern "C" {
 
     struct clock_freq_topology {           /* Clock frequency section */
         int16_t m_count;                   /* Number of entries */
-        struct clock_freq m_clock_freq[1]; /* Clock array */
+#if defined(__linux__) && defined(__KERNEL__)
+        struct clock_freq m_clock_freq[]; // Clock array. Flexible array size suitable for kernel space.
+#else
+	struct clock_freq m_clock_freq[1]; /* Clock array */
+#endif
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct clock_freq_topology) == 138, "clock_freq_topology structure no longer is 138 bytes in size");
 
     enum MCS_TYPE {                        /* Supported MCS file types */
         MCS_UNKNOWN = 0,                   /* Initialized value */
