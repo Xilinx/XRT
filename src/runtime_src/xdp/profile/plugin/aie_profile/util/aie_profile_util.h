@@ -41,7 +41,8 @@ namespace xdp::aie::profile {
     XAIE_CORE_MOD,
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
-    XAIE_MEM_MOD
+    XAIE_MEM_MOD,
+    XAIE_MEM_MOD   // TODO: replace with correct module type for uCs
   };
 
   #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
@@ -96,7 +97,7 @@ namespace xdp::aie::profile {
    * @param   hwGen integer representing the hardware generation
    * @return  Map of microcontroller metric set names with vectors of event IDs
    */
-  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets();
+  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen);
   std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen);
 
   /**

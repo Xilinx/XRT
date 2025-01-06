@@ -23,7 +23,6 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/device/common/client_transaction.h"
-#include "xdp/profile/plugin/aie_trace/util/aie_trace_common_config.h"
 
 extern "C" {
   #include <xaiengine.h>
