@@ -193,8 +193,8 @@ namespace xdp::aie::profile {
 
     if ((metricSet == METRIC_BYTE_COUNT) && (pcIndex == 0)) {
       auto pc = configPCUsingComboEvents(xaieModule, xaieModType, xdpModType,
-                               metricSet, startEvent, endEvent, resetEvent,
-                               pcIndex, threshold, retCounterEvent);
+                                         metricSet, startEvent, endEvent, resetEvent,
+                                         pcIndex, threshold, retCounterEvent);
       std::string srcKey = "(" + aie::uint8ToStr(tile.col) + "," + aie::uint8ToStr(tile.row) + ")";
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].srcPcIdx = counterIndex;
       adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].isSourceTile = true;

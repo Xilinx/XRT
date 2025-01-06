@@ -22,7 +22,14 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
-namespace xdp::aie::trace {  
+namespace xdp::aie::trace {
+  /**
+   * @brief Print out resource usage statistics for a given tile
+   * @param aieDevice  AIE device
+   * @param tile       Tile metadata
+   */
+  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+
   /**
    * @brief Configure stream switch monitor ports
    * @param aieDevInst AIE device instance
