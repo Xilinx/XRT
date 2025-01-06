@@ -77,10 +77,10 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> shimStartEvents;
       std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
       std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents; 
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
       std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
-      
+
       bool graphItrBroadcastConfigDone = false;
       // Graph Iterator broadcast channel event
       // This event is used to reset/configure the counters in interface tiles

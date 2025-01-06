@@ -226,7 +226,7 @@ namespace xdp::aie::profile {
    /**
    * @brief Configure the individual AIE events for metric sets that use group events
    * @param aieDevInst AIE device instance
-   * @param loc tile location
+   * @param loc Tile location
    * @param mod AIE driver module type
    * @param type xdp module type
    * @param metricSet metric set to be configured
@@ -241,7 +241,7 @@ namespace xdp::aie::profile {
   /**
    * @brief Configure the selection index to monitor channel number in memory tiles
    * @param aieDevInst AIE device instance
-   * @param loc tile location
+   * @param loc Tile location
    * @param type xdp module type
    * @param metricSet metric set to be configured
    * @param channel channel to be configured
