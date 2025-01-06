@@ -66,8 +66,6 @@ AIEControlConfigFiletype::getAIECompilerOptions() const
         aie_meta.get("aie_metadata.aiecompiler_options.graph_iterator_event", false);
     aiecompiler_options.event_trace = 
         aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
-    aiecompiler_options.enable_multi_layer =
-        aie_meta.get("aie_metadata.aiecompiler_options.enable_multi_layer", false);
     return aiecompiler_options;
 }
 

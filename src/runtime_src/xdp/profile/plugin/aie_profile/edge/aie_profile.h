@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,7 +43,6 @@ namespace xdp {
       bool checkAieDevice(const uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(const uint64_t deviceId, void* handle);
-      uint8_t getPortNumberFromEvent(const XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
@@ -79,8 +78,6 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
       std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
-      std::map<std::string, std::vector<uint32_t>> microcontrollerEvents;
-      std::map<tile_type, std::vector<uint32_t>> microcontrollerTileEvents;
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
       std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
       
