@@ -292,11 +292,11 @@ namespace xdp {
     }
 
      // Get partition columns
-    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(handle);
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
     // Currently, assuming only one Hw Context is alive at a time
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
     uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
-    numCols = 36;
+
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
@@ -862,8 +862,17 @@ namespace xdp {
         }
 
         auto shimTrace = shim.traceControl();
-        if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
-          break;
+
+        if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        {
+          if (shimTrace->setCntrEvent(XAIE_EVENT_USER_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
+        else
+        {
+          if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
 
         auto ret = shimTrace->reserve();
         if (ret != XAIE_OK) {
