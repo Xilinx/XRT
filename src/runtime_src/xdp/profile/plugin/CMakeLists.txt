@@ -5,6 +5,7 @@
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_profile)  
   add_subdirectory(aie_trace)
+  add_subdirectory(ml_timeline)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 

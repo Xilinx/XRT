@@ -114,6 +114,9 @@ namespace xdp {
 
   void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+          "In ML Timeline Plugin : updateDevice.");
+
 #ifdef XDP_CLIENT_BUILD
 
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
@@ -143,6 +146,8 @@ namespace xdp {
 
   void MLTimelinePlugin::finishflushDevice(void* hwCtxImpl)
   {
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+          "In ML Timeline Plugin : finish flush Device.");
 #ifdef XDP_CLIENT_BUILD
     if (mMultiImpl.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
