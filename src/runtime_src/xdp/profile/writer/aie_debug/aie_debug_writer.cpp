@@ -23,9 +23,9 @@
 
 namespace xdp {
     AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName,
-                                   uint64_t deviceIndex):
-      VPWriter(fileName), mDeviceName(deviceName), 
-      mDeviceIndex(deviceIndex), mHeaderWritten(false) 
+                                   uint64_t deviceIndex,bool detailedInterpretation):
+      VPWriter(fileName), mDeviceName(deviceName),
+      mDeviceIndex(deviceIndex), mHeaderWritten(false), mDetailedInterpretation(detailedInterpretation)
   {
     // Nothing to do
   }
@@ -65,16 +65,17 @@ namespace xdp {
     // Write all data elements
     std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
-
+    if (mDetailedInterpretation)
+      std::cout<<"!!!!!!! Writing detailed interpretation of AIE debug data"<<std::endl;
     for (auto& sample : samples) {
       fout << +sample.col << ","
            << +sample.row << ","
            << "0x" << std::hex << sample.offset << ","
            << sample.name << ","
-           << "0x" << std::hex << sample.value 
+           << "0x" << std::hex << sample.value
            << std::dec << "\n";
     }
-    
+
     fout.flush();
     return true;
   }
