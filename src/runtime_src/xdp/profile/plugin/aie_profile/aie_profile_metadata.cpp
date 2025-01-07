@@ -970,8 +970,7 @@ namespace xdp {
     // <singleColumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Skip range specification, invalid format, or already processed
-      if ((metrics[i].size() == 4) || (metrics[i].size() < 2)
-          || (metrics[i][0].compare("all") == 0))
+      if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
         continue;
       if (!isSupported(metrics[i][1], true))
         continue;
@@ -993,41 +992,41 @@ namespace xdp {
                                   "is not an integer and hence skipped.");
           continue;
         }
-      }
 
-      // By-default select both the channels
-      bool foundChannels = false;
-      uint8_t channelId0 = 0;
-      uint8_t channelId1 = 1;
-      uint32_t bytes = defaultTransferBytes;
-      if (metrics[i].size() > 2) {
-        if (profileAPIMetricSet(metrics[i][1])) {
-          bytes = processUserSpecifiedBytes(metrics[i][2]);
-        }
-        else {
-          try {
-            foundChannels = true;
-            channelId0 = aie::convertStringToUint8(metrics[i][2]);
-            channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+        // By-default select both the channels
+        bool foundChannels = false;
+        uint8_t channelId0 = 0;
+        uint8_t channelId1 = 1;
+        uint32_t bytes = defaultTransferBytes;
+        if (metrics[i].size() > 2) {
+          if (profileAPIMetricSet(metrics[i][1])) {
+            bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
-          catch (std::invalid_argument const&) {
-            // Expected channel Id is not an integer, give warning and ignore
-            foundChannels = false;
-            xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
-              "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          else {
+            try {
+              foundChannels = true;
+              channelId0 = aie::convertStringToUint8(metrics[i][2]);
+              channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+            }
+            catch (std::invalid_argument const&) {
+              // Expected channel Id is not an integer, give warning and ignore
+              foundChannels = false;
+              xrt_core::message::send(severity_level::warning, "XRT", "Channel ID specification "
+                "in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+            }
           }
         }
-      }
 
-      int16_t channelNum = (foundChannels) ? channelId0 : -1;
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelNum, true, col, col);
-      
-      for (auto& t : tiles) {
-        configMetrics[moduleIdx][t] = metrics[i][1];
-        configChannel0[t] = channelId0;
-        configChannel1[t] = channelId1;
-        if (metrics[i][1] == METRIC_BYTE_COUNT)
-          setUserSpecifiedBytes(t, bytes);
+        int16_t channelNum = (foundChannels) ? channelId0 : -1;
+        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelNum, true, col, col);
+        
+        for (auto& t : tiles) {
+          configMetrics[moduleIdx][t] = metrics[i][1];
+          configChannel0[t] = channelId0;
+          configChannel1[t] = channelId1;
+          if (metrics[i][1] == METRIC_BYTE_COUNT)
+            setUserSpecifiedBytes(t, bytes);
+        }
       }
     } // Pass 3
 
