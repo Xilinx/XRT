@@ -168,7 +168,7 @@ namespace xdp {
     std::string deviceName = "ve2_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(deviceName);
     (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
-    (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
+    (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
