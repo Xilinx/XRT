@@ -6,7 +6,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
-#include "core/common/message.h"
 #include <functional>
 
 #ifdef _WIN32
@@ -465,25 +464,11 @@ update_device(void* handle)
 
 #elif defined(XDP_VE2_BUILD)
 
-  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-      "In updateDevice 2 : ml timeline ");
-
   if (xrt_core::config::get_ml_timeline()) {
     try {
-
-  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-      "In updateDevice TRY : ml timeline ");
-
-
       xrt_core::xdp::ml_timeline::load();
-  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-      "In updateDevice AFTER LOAD : ml timeline ");
     }
     catch (...) {
-
-  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-      "In CATCH : ml timeline ");
-
       return;
     }
     xrt_core::xdp::ml_timeline::update_device(handle);
@@ -524,9 +509,6 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
 
 #elif defined(XDP_VE2_BUILD)
-
-  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-      "In finish flush : ml timeline ");
 
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
