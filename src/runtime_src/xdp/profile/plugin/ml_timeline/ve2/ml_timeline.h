@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. - All rights reserved
+ *        
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -12,26 +12,26 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations
  * under the License.
- */
+ */ 
 
-#ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
-#define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
+#ifndef XDP_PLUGIN_ML_TIMELINE_VE2_IMPL_H
+#define XDP_PLUGIN_ML_TIMELINE_VE2_IMPL_H
 
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 
 namespace xdp {
 
-  class ResultBOContainer;
-  class MLTimelineClientDevImpl : public MLTimelineImpl
+  class VE2ResultBO;
+  class MLTimelineVE2Impl : public MLTimelineImpl
   {
-    std::unique_ptr<ResultBOContainer> mResultBOHolder;
+    std::unique_ptr<VE2ResultBO> mResultBOHolder;
     public :
-      MLTimelineClientDevImpl(VPDatabase* dB, uint32_t sz);
+      MLTimelineVE2Impl(VPDatabase* dB, uint32_t sz);
 
-      ~MLTimelineClientDevImpl();
+      ~MLTimelineVE2Impl();
 
-      virtual void updateDevice(void* hwCtxImpl);
+      virtual void updateDevice(void* devH);
       virtual void finishflushDevice(void* hwCtxImpl, uint64_t implId = 0);
   };
 

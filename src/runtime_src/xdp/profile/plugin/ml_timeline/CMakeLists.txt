@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2023 Advanced Micro Devices, Inc.  All rights reserved.
+# Copyright (C) 2023-2025 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-# ===========================================================================
-# This builds the ML Timeline plugin.  It is currently built on Windows Only.
-# ===========================================================================
+# ========================================================================================
+# This builds the ML Timeline plugin. 
+# It is currently built for Client on Windows and Linux, and also for VE2 Device on Linux.
+# ========================================================================================
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/ml_timeline/clientDev")

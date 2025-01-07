@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,68 +23,82 @@
 #include <fstream>
 #include <regex>
 
-#include "core/common/api/bo_int.h"
-#include "core/common/api/hw_context_int.h"
+#include "shim/shim.h"
+
 #include "core/common/device.h"
 #include "core/common/message.h"
 
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
-#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
+#include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
-  class ResultBOContainer
+  class VE2ResultBO
   {
-    public:
-      xrt::bo  mBO;
-      ResultBOContainer(void* hwCtxImpl, uint32_t sz)
-      {
-        mBO = xrt_core::bo_int::create_debug_bo(
-                xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl),
-                sz);
-      }
-      ~ResultBOContainer() {}
+    private:
+      aiarm::shim* mDev;
+      std::unique_ptr<xrt_core::buffer_handle> mBufHandle;
+      uint32_t *mBOptr = nullptr;
+      bool mNoUnmap = false;
 
-      void 
-      syncFromDevice()
+      uint32_t* mapAndChk()
       {
-        mBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        mBOptr = reinterpret_cast<uint32_t *>(mBufHandle->map(xrt_core::buffer_handle::map_type::write));
+        if (!mBOptr)
+          throw std::runtime_error("Failed mapping bo of " + std::to_string(size()) + "bytes.");
+        return mBOptr;
       }
-      uint32_t*
-      map()
+
+    public:
+      VE2ResultBO(aiarm::shim* devHandle, size_t size)
+        : mDev(devHandle)
       {
-        return mBO.map<uint32_t*>();
+        xcl_bo_flags flags {0};
+        flags.flags = XRT_BO_FLAGS_CACHEABLE;
+        flags.access = XRT_BO_ACCESS_LOCAL;
+        flags.dir = XRT_BO_ACCESS_READ_WRITE;
+        flags.use = XRT_BO_USE_DEBUG;
+        mBufHandle  = mDev->xclAllocBO(size, flags.all);
+        mapAndChk();
       }
+
+      ~VE2ResultBO()
+      {
+        if (!mNoUnmap)
+          mBufHandle->unmap(mBOptr);
+      }
+
+      xrt_core::buffer_handle* get() { return mBufHandle.get(); }
+
+      uint32_t *map() { return mBOptr; }
+
+      void set_no_unmap() { mNoUnmap = true; }
+
+      size_t size() { return mBufHandle->get_properties().size; }
   };
 
-  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, uint32_t sz)
+  MLTimelineVE2Impl::MLTimelineVE2Impl(VPDatabase*dB, uint32_t sz)
     : MLTimelineImpl(dB, sz)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Created ML Timeline Plugin for Client Device.");
+              "Created ML Timeline Plugin for VE2 Device.");
   }
 
-  MLTimelineClientDevImpl::~MLTimelineClientDevImpl()
+  MLTimelineVE2Impl::~MLTimelineVE2Impl()
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "In destructor for ML Timeline Plugin for Client Device.");
+              "In destructor for ML Timeline Plugin for VE2 Device.");
   }
 
-  void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl)
+  void MLTimelineVE2Impl::updateDevice(void* devH)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "In MLTimelineClientDevImpl::updateDevice");
+              "In MLTimelineVE2Impl::updateDevice");
     try {
-
-      /* Use a container for Debug BO for results to control its lifetime.
-       * The result BO should be deleted after reading out recorded data in
-       * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
-       * can use their own Debug BO to capture their data.
-       */
-      mResultBOHolder = std::make_unique<ResultBOContainer>(hwCtxImpl, mBufSz);
+      mResultBOHolder = std::make_unique<xdp::VE2ResultBO>(reinterpret_cast<aiarm::shim*>(devH), mBufSz);
       memset(mResultBOHolder->map(), 0, mBufSz);
 
     } catch (std::exception& e) {
@@ -97,18 +111,21 @@ namespace xdp {
       return;
     }
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Allocated buffer In MLTimelineClientDevImpl::updateDevice");
+              "Allocated buffer In MLTimelineVE2Impl::updateDevice");
   }
 
-  void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
+  void MLTimelineVE2Impl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
   {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "In MLTimelineVE2Impl::finishflushDevice");
+    
     if (!mResultBOHolder)
       return;
   
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
+              "Using Allocated buffer In MLTimelineVE2Impl::finishflushDevice");
               
-    mResultBOHolder->syncFromDevice();    
+//    mResultBOHolder->syncFromDevice();    
     uint32_t* ptr = mResultBOHolder->map();
       
     boost::property_tree::ptree ptTop;
@@ -193,7 +210,7 @@ namespace xdp {
     fOut.close();
 
     std::stringstream msg1;
-    msg1 << "Finished writing " << outFName << " in MLTimelineClientDevImpl::finishflushDevice." << std::endl;
+    msg1 << "Finished writing " << outFName << " in MLTimelineVE2Impl::finishflushDevice." << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg1.str());
   
     /* Delete the result BO so that AIE Profile/Debug Plugins, if enabled,
