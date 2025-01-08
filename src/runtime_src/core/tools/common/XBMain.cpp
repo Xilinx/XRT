@@ -180,11 +180,13 @@ void  main_(int argc, char** argv,
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
   }
-  boost::property_tree::ptree configTreeMain;
-  const std::string config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
-  std::istringstream command_config_stream(config);
-  boost::property_tree::read_json(command_config_stream, configTreeMain);
-  subCommand->setOptionConfig(configTreeMain);
+  if (device){
+    boost::property_tree::ptree configTreeMain;
+    const std::string config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+    std::istringstream command_config_stream(config);
+    boost::property_tree::read_json(command_config_stream, configTreeMain);
+    subCommand->setOptionConfig(configTreeMain);
+  }
 
   // -- Execute the sub-command
   subCommand->execute(subcmd_options);
