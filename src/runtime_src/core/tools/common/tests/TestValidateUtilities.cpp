@@ -8,7 +8,6 @@
 #include <regex>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "tools/common/XBUtilities.h"
@@ -450,4 +449,4 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
     return elf_path;
   }
 }
-} //end of namespace XBValidateUtils
+}//end of namespace XBValidateUtils
