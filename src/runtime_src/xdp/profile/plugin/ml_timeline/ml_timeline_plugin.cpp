@@ -156,13 +156,6 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    xclDeviceHandle h = coreDevice->get_device_handle();
-    if (nullptr == h) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-          "In ML Timeline Plugin for VE2 Device : Devicehandle is NULL");
-      return;
-    } 
-
     uint64_t implId = mMultiImpl.size();
 
     std::string deviceName = "ve2_device" + std::to_string(implId);
@@ -172,7 +165,7 @@ namespace xdp {
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
-    mlImpl->updateDevice(h);
+    mlImpl->updateDevice(hwCtxImpl);
     
   #endif
 
