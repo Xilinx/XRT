@@ -36,7 +36,7 @@ jobs:
     strategy:      
       matrix:      
         include:      
-          - os: centos78      
+          - os: centos79      
             packageType: rpm      
           - os: centos8      
             packageType: rpm      
@@ -50,7 +50,7 @@ jobs:
             packageType: deb  
           - os: npu      
             packageType: deb
-          - os: ubuntu2404      
+          - os: npu2404      
             packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]
