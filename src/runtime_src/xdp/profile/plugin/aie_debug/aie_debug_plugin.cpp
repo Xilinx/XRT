@@ -1,5 +1,18 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+/**
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 
 #define XDP_PLUGIN_SOURCE
 
@@ -24,6 +37,8 @@
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_debug.h"
+#elif XDP_VE2_BUILD
+#include "ve2/aie_debug.h"
 #else
 #include "core/edge/user/shim.h"
 #include "edge/aie_debug.h"
@@ -153,6 +168,8 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);
+#elif XDP_VE2_BUILD
+    AIEData.implementation = std::make_unique<AieDebug_VE2Impl>(db, AIEData.metadata);
 #else
     AIEData.implementation = std::make_unique<AieDebug_EdgeImpl>(db, AIEData.metadata);
 #endif

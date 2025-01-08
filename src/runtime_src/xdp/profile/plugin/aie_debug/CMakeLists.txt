@@ -7,7 +7,9 @@
 # on both Edge and x86 platforms that support AIE.
 # ====================================================================
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_debug/ve2")
+elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_debug/client")
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_debug/edge")
@@ -28,7 +30,17 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
   "${PROFILE_DIR}/device/common/*.cpp"
 )
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES}
+  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
+  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
+  target_compile_definitions(xdp_aie_debug_plugin PRIVATE FAL_LINUX="on" XDP_VE2_BUILD=1)
+
+  install (TARGETS xdp_aie_debug_plugin
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  )
+
+elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
@@ -40,13 +52,11 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
   )
 
-
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil)
   target_compile_definitions(xdp_aie_debug_plugin PRIVATE XRT_X86_BUILD=1)
-
   set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_debug_plugin
@@ -54,7 +64,6 @@ elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   )
 
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
-
   add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)

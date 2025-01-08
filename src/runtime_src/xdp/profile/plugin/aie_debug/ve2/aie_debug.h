@@ -35,12 +35,12 @@ extern "C" {
 }
 
 namespace xdp {
-  class EdgeReadableTile;
+  class VE2ReadableTile;
 
-  class AieDebug_EdgeImpl : public AieDebugImpl {
+  class AieDebug_VE2Impl : public AieDebugImpl {
   public:
-    AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
-    ~AieDebug_EdgeImpl();
+    AieDebug_VE2Impl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata);
+    ~AieDebug_VE2Impl();
     void updateDevice();
     void updateAIEDevice(void* handle);
     void poll(const uint64_t index, void* handle);
@@ -48,14 +48,14 @@ namespace xdp {
   private:
 
     std::map<xdp::tile_type, std::vector<uint64_t>> debugAddresses;
-    std::map<xdp::tile_type, std::unique_ptr<EdgeReadableTile>> debugTileMap;
+    std::map<xdp::tile_type, std::unique_ptr<VE2ReadableTile>> debugTileMap;
     const std::vector<XAie_ModuleType> falModuleTypes = {
       XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
   };
 
-  class EdgeReadableTile: public BaseReadableTile {
+  class VE2ReadableTile: public BaseReadableTile {
   public:
-    EdgeReadableTile(uint8_t c, uint8_t r, uint64_t to) {
+    VE2ReadableTile(uint8_t c, uint8_t r, uint64_t to) {
       col = c;
       row = r;
       tileOffset = to;

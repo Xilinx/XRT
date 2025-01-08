@@ -16,7 +16,7 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "xdp/profile/plugin/aie_debug/edge/aie_debug.h"
+#include "xdp/profile/plugin/aie_debug/ve2/aie_debug.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
@@ -29,12 +29,12 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <string>
 
+#include "shim/shim.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/common/api/bo_int.h"
-#include "core/common/api/hw_context_int.h"
+//#include "core/common/api/bo_int.h"
+//#include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -46,7 +46,7 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    auto drv = aiarm::shim::handleCheck(devHandle);
     if (!drv)
       return nullptr ;
     auto aieArray = drv->getAieArray();
@@ -79,7 +79,7 @@ namespace xdp {
   /****************************************************************************
    * Edge constructor
    ***************************************************************************/
-  AieDebug_EdgeImpl::AieDebug_EdgeImpl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
+  AieDebug_VE2Impl::AieDebug_VE2Impl(VPDatabase* database, std::shared_ptr<AieDebugMetadata> metadata)
     : AieDebugImpl(database, metadata)
   {
     // Nothing to do
@@ -88,14 +88,14 @@ namespace xdp {
   /****************************************************************************
    * Edge destructor
    ***************************************************************************/
-  AieDebug_EdgeImpl::~AieDebug_EdgeImpl() {
+  AieDebug_VE2Impl::~AieDebug_VE2Impl() {
     // Nothing to do
   }
 
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_EdgeImpl::poll(const uint64_t deviceID, void* handle)
+  void AieDebug_VE2Impl::poll(const uint64_t deviceID, void* handle)
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
@@ -122,7 +122,7 @@ namespace xdp {
   /****************************************************************************
    * Update device
    ***************************************************************************/
-  void AieDebug_EdgeImpl::updateDevice()
+  void AieDebug_VE2Impl::updateDevice()
   {
     // Do nothing for now
   }
@@ -130,7 +130,7 @@ namespace xdp {
   /****************************************************************************
    * Compile list of registers to read
    ***************************************************************************/
-  void AieDebug_EdgeImpl::updateAIEDevice(void* handle)
+  void AieDebug_VE2Impl::updateAIEDevice(void* handle)
   {
     if (!xrt_core::config::get_aie_debug())
       return;
@@ -172,7 +172,7 @@ namespace xdp {
         // Traverse all registers within tile
         for (auto& regAddr : Regs) {
           if (debugTileMap.find(tile) == debugTileMap.end())
-            debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row, tileOffset);
+            debugTileMap[tile] = std::make_unique<VE2ReadableTile>(tile.col, tile.row, tileOffset);
         
           auto regName = metadata->lookupRegisterName(regAddr);
           debugTileMap[tile]->addOffsetName(regAddr, regName);
