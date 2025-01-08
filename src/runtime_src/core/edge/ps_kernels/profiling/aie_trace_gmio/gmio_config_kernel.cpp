@@ -92,12 +92,12 @@ namespace {
       XAie_DmaEnableBd(&(gmioDMAInsts[i].shimDmaInst));
 
       // For trace, use bd# 0 for S2MM0, use bd# 4 for S2MM1
-      int bdNum = channelNumber * 4;
+      uint16_t bdNum = channelNumber * 4;
 
       // Write to shim DMA BD AxiMM registers
-      XAie_DmaWriteBd(aieDevInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
+      XAie_DmaWriteBd_16(aieDevInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
       // Enqueue BD
-      XAie_DmaChannelPushBdToQueue(aieDevInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
+      XAie_DmaChannelPushBdToQueue_16(aieDevInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
     }
     
     return 0;
