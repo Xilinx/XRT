@@ -60,9 +60,10 @@ class UsedRegisters {
     }
 
     virtual ~UsedRegisters() {
-      fieldMap.clear();
-      shiftMap.clear();
-      maskMap.clear();
+      coreModuleMap.clear();
+      memoryModuleMap.clear();
+      memoryTileMap.clear();
+      shimTileMap.clear()
     }
 
     virtual void populateCoreModuleMap() {};
@@ -71,15 +72,19 @@ class UsedRegisters {
     virtual void populateShimTileMap() {};
 
   protected:
-    std::map<std::pair<std::string, std::string>, std::vector<RegData>> fieldMap;
-    std::map<std::string, int> shiftMap;
-    std::map<std::string, uint64_t> maskMap;
+    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> coreModuleMap;
+    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> memoryModuleMap;
+    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> memoryTileMap;
+    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> shimTileMap;
 
   private:
     struct RegData {
-    std::string fieldName;
-    int shift;
-    uint64_t mask;
+      std::string fieldName;
+      int shift;
+      uint64_t mask;
+
+      RegData(const std::string& n, int s, uint64_t m)
+        : fieldName(n), shfit(s), mask(m) {}
     };
 
 };
