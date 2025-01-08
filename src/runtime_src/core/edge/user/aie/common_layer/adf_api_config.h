@@ -78,15 +78,15 @@ struct rtp_config
     short selectorColumn;
     short selectorRow;
     size_t selectorAddr;
-    unsigned short selectorLockId;
+    uint16_t selectorLockId;
     short pingColumn;
     short pingRow;
     size_t pingAddr;
-    unsigned short pingLockId;
+    uint16_t pingLockId;
     short pongColumn;
     short pongRow;
     size_t pongAddr;
-    unsigned short pongLockId;
+    uint16_t pongLockId;
     bool blocking;
 };
 

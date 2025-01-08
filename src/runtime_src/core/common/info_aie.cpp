@@ -707,7 +707,7 @@ is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property
 void
 populate_buffer_only_cores(const boost::property_tree::ptree& pt,
 			   const boost::property_tree::ptree& core_info, int gr_id,
-			   boost::property_tree::ptree& tile_array)
+			   boost::property_tree::ptree& tile_array, int start_col)
 {
   const boost::property_tree::ptree empty_pt;
 
@@ -719,7 +719,7 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
     auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
     for (const auto& node : g_node.second.get_child("dma_columns", empty_pt)) {
       boost::property_tree::ptree tile;
-      tile.put("column", node.second.data());
+      tile.put("column", (std::stoul(node.second.data()) +  start_col));
       tile.put("row", dma_row_it->second.data());
       if (dma_row_it != g_node.second.end())
         dma_row_it++;
@@ -872,7 +872,7 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
       tile_array.push_back({"", tile});
     }
 
-    populate_buffer_only_cores(pt_aie, core_info, gr_id, tile_array);
+    populate_buffer_only_cores(pt_aie, core_info, gr_id, tile_array, start_col);
 
     boost::property_tree::ptree plkernel_array;
     // Get the name of the kernls available for this graph

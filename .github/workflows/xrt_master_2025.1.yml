@@ -15,9 +15,9 @@ jobs:
     strategy:      
       matrix:      
         include:      
-          - os: centos78      
+          - os: centos79      
             packageType: rpm
-            os_ver: centos_7.8      
+            os_ver: centos_7.9      
           - os: centos8      
             packageType: rpm
             os_ver: centos_8.1      
@@ -36,7 +36,7 @@ jobs:
           - os: npu      
             packageType: deb
             os_ver: ubuntu_22.04    
-          - os: ubuntu2404      
+          - os: npu2404      
             packageType: deb
             os_ver: ubuntu_24.04   
         

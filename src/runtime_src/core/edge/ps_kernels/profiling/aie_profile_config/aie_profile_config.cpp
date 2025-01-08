@@ -315,10 +315,10 @@ namespace {
           mPerfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          uint8_t tmpStart;
-          uint8_t tmpEnd;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+          uint16_t tmpStart;
+          uint16_t tmpEnd;
+          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, startEvent, &tmpStart);
+          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + config.mCounterBases[type];
           uint16_t phyEndEvent   = tmpEnd + config.mCounterBases[type];
 
