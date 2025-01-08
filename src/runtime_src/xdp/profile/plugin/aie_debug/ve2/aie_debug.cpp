@@ -49,7 +49,7 @@ namespace {
     auto drv = aiarm::shim::handleCheck(devHandle);
     if (!drv)
       return nullptr ;
-    auto aieArray = drv->getAieArray();
+    auto aieArray = drv->get_aie_array();
     if (!aieArray)
       return nullptr;
     return aieArray->get_dev();

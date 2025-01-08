@@ -31,7 +31,7 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
 )
 
 if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES}
+  add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_debug_plugin PRIVATE FAL_LINUX="on" XDP_VE2_BUILD=1)
