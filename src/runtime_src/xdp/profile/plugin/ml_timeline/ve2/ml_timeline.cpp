@@ -75,7 +75,7 @@ namespace xdp {
               "In destructor for ML Timeline Plugin for VE2 Device.");
   }
 
-  void MLTimelineVE2Impl::updateDevice(void* devH)
+  void MLTimelineVE2Impl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::updateDevice");
