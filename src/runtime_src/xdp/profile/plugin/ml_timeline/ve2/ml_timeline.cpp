@@ -25,6 +25,8 @@
 
 #include "shim/shim.h"
 
+#include "core/common/api/bo_int.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 
@@ -36,48 +38,28 @@
 
 namespace xdp {
 
-  class VE2ResultBO
+  class ResultBOContainer
   {
-    private:
-      aiarm::shim* mDev;
-      std::unique_ptr<xrt_core::buffer_handle> mBufHandle;
-      uint32_t *mBOptr = nullptr;
-      bool mNoUnmap = false;
-
-      uint32_t* mapAndChk()
-      {
-        mBOptr = reinterpret_cast<uint32_t *>(mBufHandle->map(xrt_core::buffer_handle::map_type::write));
-        if (!mBOptr)
-          throw std::runtime_error("Failed mapping bo of " + std::to_string(size()) + "bytes.");
-        return mBOptr;
-      }
-
     public:
-      VE2ResultBO(aiarm::shim* devHandle, size_t size)
-        : mDev(devHandle)
+      xrt::bo  mBO;
+      ResultBOContainer(void* hwCtxImpl, uint32_t sz)
       {
-        xcl_bo_flags flags {0};
-        flags.flags = XRT_BO_FLAGS_CACHEABLE;
-        flags.access = XRT_BO_ACCESS_LOCAL;
-        flags.dir = XRT_BO_ACCESS_READ_WRITE;
-        flags.use = XRT_BO_USE_DEBUG;
-        mBufHandle  = mDev->xclAllocBO(size, flags.all);
-        mapAndChk();
+        mBO = xrt_core::bo_int::create_debug_bo(
+                xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl),
+                sz);
       }
+      ~ResultBOContainer() {}
 
-      ~VE2ResultBO()
+      void 
+      syncFromDevice()
       {
-        if (!mNoUnmap)
-          mBufHandle->unmap(mBOptr);
+        mBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       }
-
-      xrt_core::buffer_handle* get() { return mBufHandle.get(); }
-
-      uint32_t *map() { return mBOptr; }
-
-      void set_no_unmap() { mNoUnmap = true; }
-
-      size_t size() { return mBufHandle->get_properties().size; }
+      uint32_t*
+      map()
+      {
+        return mBO.map<uint32_t*>();
+      }
   };
 
   MLTimelineVE2Impl::MLTimelineVE2Impl(VPDatabase*dB, uint32_t sz)
@@ -93,12 +75,12 @@ namespace xdp {
               "In destructor for ML Timeline Plugin for VE2 Device.");
   }
 
-  void MLTimelineVE2Impl::updateDevice(void* devH)
+  void MLTimelineVE2Impl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::updateDevice");
     try {
-      mResultBOHolder = std::make_unique<xdp::VE2ResultBO>(reinterpret_cast<aiarm::shim*>(devH), mBufSz);
+      mResultBOHolder = std::make_unique<xdp::ResultBOContainer>(hwCtxImpl, mBufSz);
       memset(mResultBOHolder->map(), 0, mBufSz);
 
     } catch (std::exception& e) {
@@ -123,9 +105,9 @@ namespace xdp {
       return;
   
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Using Allocated buffer In MLTimelineVE2Impl::finishflushDevice");
+              "Syncing Allocated buffer In MLTimelineVE2Impl::finishflushDevice");
               
-//    mResultBOHolder->syncFromDevice();    
+    mResultBOHolder->syncFromDevice();    
     uint32_t* ptr = mResultBOHolder->map();
       
     boost::property_tree::ptree ptTop;
