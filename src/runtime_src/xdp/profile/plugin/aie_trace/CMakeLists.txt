@@ -42,6 +42,7 @@ file(GLOB AIE_TRACE_UTIL_FILES
   "${PROFILE_DIR}/plugin/aie_trace/util/*.cpp"
 )
 
+
 file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
   "${PROFILE_DIR}/device/common/*.h"
   "${PROFILE_DIR}/device/common/*.cpp"

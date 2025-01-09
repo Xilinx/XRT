@@ -291,6 +291,16 @@ namespace xdp {
       return false;
     }
 
+     // Get partition columns
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
+    // Currently, assuming only one Hw Context is alive at a time
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
+    uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+    
+    //TODO: Remove below 2 lines once aie_partition_info from XRT returns correct values
+    const char* envNumCols = std::getenv("NUM_COLS");
+    numCols = envNumCols ? static_cast<uint8_t>(std::stoi(envNumCols)) : 4 ;
+    
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
@@ -304,6 +314,35 @@ namespace xdp {
     for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
       for (int n = 0; n <= NUM_TRACE_EVENTS; ++n)
         mNumTileTraceEvents[m][n] = 0;
+    }
+
+    auto metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "AIE metadata reader is null";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
+    }
+
+    auto compilerOptions = metadataReader->getAIECompilerOptions();
+    std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
+    if(compilerOptions.enable_multi_layer) {
+
+      aie::trace::timerSyncronization(aieDevInst,aieDevice, metadata, startCol, numCols);
+      if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) 
+      {
+        std::vector<XAie_LocType> vL;
+        traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh1->reserve();
+        traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh2->reserve();
+        aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastCh1->getBc(), traceStartBroadcastCh2->getBc(), XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+
+        coreTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastCh1->getBc());
+        memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastCh1->getBc());
+        interfaceTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastCh2->getBc());
+      }
     }
 
     // Using user event for trace end to enable flushing
@@ -661,6 +700,11 @@ namespace xdp {
           traceEndEvent = comboEvents.at(1);
         }
 
+        if(compilerOptions.enable_multi_layer && type == module_type::core && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        {
+          traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastCh1->getBc());
+        }
+        
         // Configure event ports on stream switch
         // NOTE: These are events from the core module stream switch
         //       outputted on the memory module trace stream. 
@@ -822,8 +866,17 @@ namespace xdp {
         }
 
         auto shimTrace = shim.traceControl();
-        if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
-          break;
+
+        if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        {
+          if (shimTrace->setCntrEvent(XAIE_EVENT_USER_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
+        else
+        {
+          if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
 
         auto ret = shimTrace->reserve();
         if (ret != XAIE_OK) {
