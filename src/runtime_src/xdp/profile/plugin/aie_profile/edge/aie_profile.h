@@ -59,11 +59,6 @@ namespace xdp {
       uint64_t getAdfProfileAPIPayload(const tile_type& tile, const std::string metricSet);
 
     private:
-      std::pair<uint16_t, uint16_t>
-      getEventPhysicalId(XAie_LocType& tileLoc,
-                         XAie_ModuleType& xaieModType, module_type xdpModType, 
-                         const std::string& metricSet,
-                         XAie_Events startEvent, XAie_Events endEvent);
       void displayAdfAPIResults();
 
     private:

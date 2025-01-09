@@ -273,7 +273,7 @@ namespace xdp::aie::profile {
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
   void modifyEvents(const module_type type, const io_type subtype, const uint8_t channel,
-                                        std::vector<XAie_Events>& events, const int hwGen)
+                    std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
       return;
@@ -485,7 +485,6 @@ namespace xdp::aie::profile {
     }
   }
 
-
   /****************************************************************************
    * Get XAie module enum at the module index 
    ***************************************************************************/
@@ -533,15 +532,44 @@ namespace xdp::aie::profile {
     return graphIterMetricSets.find(metricSet) != graphIterMetricSets.end();
   }
 
+  /****************************************************************************
+   * Check if profile API metric set
+   ***************************************************************************/
   bool profileAPIMetricSet(const std::string metricSet)
   {
     // input_throughputs/output_throughputs is already supported, hence excluded here
     return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
   }
 
+  /****************************************************************************
+   * Get event ID associated with metric set
+   ***************************************************************************/
   uint16_t getAdfApiReservedEventId(const std::string metricSet)
   {
     return adfApiMetricSetMap.at(metricSet);
+  }
+
+  /****************************************************************************
+   * Get physical event IDs for metric set
+   ***************************************************************************/
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet, XAie_Events startEvent, 
+                     XAie_Events endEvent)
+  {
+    if (profileAPIMetricSet(metricSet)) {
+      uint16_t eventId = getAdfApiReservedEventId(metricSet);
+      return std::make_pair(eventId, eventId);
+    }
+
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint16_t phyStartEvent = tmpStart + getCounterBase(xdpModType);
+    uint16_t phyEndEvent   = tmpEnd   + getCounterBase(xdpModType);
+    return std::make_pair(phyStartEvent, phyEndEvent);
   }
 
    /****************************************************************************
