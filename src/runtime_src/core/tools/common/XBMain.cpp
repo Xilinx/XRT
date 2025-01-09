@@ -178,18 +178,20 @@ void  main_(int argc, char** argv,
    * from shim. This moves the resposibility for option setting to each shim
    * instead of xrt-smi. 
   */
-  std::shared_ptr<xrt_core::device> device;
-  try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
-  } catch (const std::runtime_error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-  }
-  if (device){
-    boost::property_tree::ptree configTreeMain;
-    const std::string config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
-    std::istringstream command_config_stream(config);
-    boost::property_tree::read_json(command_config_stream, configTreeMain);
-    subCommand->setOptionConfig(configTreeMain);
+  if (isUserDomain) {
+    std::shared_ptr<xrt_core::device> device;
+    try {
+      device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
+    } catch (const std::runtime_error& e) {
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+    }
+    if (device){
+      boost::property_tree::ptree configTreeMain;
+      const std::string config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+      std::istringstream command_config_stream(config);
+      boost::property_tree::read_json(command_config_stream, configTreeMain);
+      subCommand->setOptionConfig(configTreeMain);
+    }
   }
 
   // -- Execute the sub-command
