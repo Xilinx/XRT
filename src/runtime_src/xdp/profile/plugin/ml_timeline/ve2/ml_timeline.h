@@ -22,10 +22,10 @@
 
 namespace xdp {
 
-  class VE2ResultBO;
+  class ResultBOContainer;
   class MLTimelineVE2Impl : public MLTimelineImpl
   {
-    std::unique_ptr<VE2ResultBO> mResultBOHolder;
+    std::unique_ptr<ResultBOContainer> mResultBOHolder;
     public :
       MLTimelineVE2Impl(VPDatabase* dB, uint32_t sz);
 
