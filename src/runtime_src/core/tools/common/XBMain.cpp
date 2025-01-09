@@ -173,11 +173,15 @@ void  main_(int argc, char** argv,
   }
 
   subCommand->setGlobalOptions(globalSubCmdOptions);
+
+  /* xrt-smi. Tool should query device upfront and get the configurations
+   * from shim. This moves the resposibility for option setting to each shim
+   * instead of xrt-smi. 
+  */
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
   } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
   }
   if (device){
