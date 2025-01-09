@@ -54,8 +54,6 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_Reports.cpp"
 )
 
-file(GLOB XRT_SMI_CONFIG_FILE "xrt_smi_config.json")
-
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
@@ -123,8 +121,4 @@ endif()
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 
-# TODO: xrt-smi rearchitecture. This is temporary and will be removed once
-# driver stores have this config file and shim layer has device query implemented.
-install (FILES ${XRT_SMI_CONFIG_FILE} DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-install (FILES ${XRT_SMI_CONFIG_FILE} DESTINATION ${XRT_INSTALL_BIN_DIR})
 # -----------------------------------------------------------------------------

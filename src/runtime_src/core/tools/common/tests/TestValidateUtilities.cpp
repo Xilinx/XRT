@@ -449,4 +449,4 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
     return elf_path;
   }
 }
-}//end of namespace XBValidateUtils
+}// end of namespace XBValidateUtils
