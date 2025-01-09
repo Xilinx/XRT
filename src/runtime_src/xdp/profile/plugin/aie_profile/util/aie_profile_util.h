@@ -30,6 +30,9 @@ extern "C" {
 
 namespace xdp::aie::profile {
 
+  #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
+  #define INTF_TILE_LATENCY_REPORT_EVENT_ID          3601
+
   const std::map<xdp::module_type, uint16_t> counterBases = {
     {module_type::core,     static_cast<uint16_t>(0)},
     {module_type::dma,      BASE_MEMORY_COUNTER},
@@ -45,8 +48,6 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD   // TODO: replace with correct module type for uCs
   };
 
-  #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
-  #define INTF_TILE_LATENCY_REPORT_EVENT_ID          3601
   enum adfAPI {
     START_TO_BYTES_TRANSFERRED,
     INTF_TILE_LATENCY
@@ -60,8 +61,8 @@ namespace xdp::aie::profile {
   };
 
   const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-    {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
-    {METRIC_LATENCY,    static_cast<uint16_t>(3601)}
+    {METRIC_BYTE_COUNT, static_cast<uint16_t>(START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID)},
+    {METRIC_LATENCY,    static_cast<uint16_t>(INTF_TILE_LATENCY_REPORT_EVENT_ID)}
   };
 
   /**
@@ -167,6 +168,22 @@ namespace xdp::aie::profile {
    * @param mod AIE driver enum type
    */
   bool isValidType(const module_type type, const XAie_ModuleType mod);
+
+  /**
+   * @brief Get physical event IDs for metric set
+   * @param aieDevInst AIE device instance
+   * @param tileLoc tile location
+   * @param xaieModType AIE driver enum type
+   * @param xdpModType xdp module type
+   * @param metricSet metric set to be configured
+   * @param startEvent start event ID
+   * @param endEvent end event ID
+   */
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet, XAie_Events startEvent, 
+                     XAie_Events endEvent);
 
   bool metricSupportsGraphIterator(std::string metricSet);
   bool profileAPIMetricSet(const std::string metricSet);

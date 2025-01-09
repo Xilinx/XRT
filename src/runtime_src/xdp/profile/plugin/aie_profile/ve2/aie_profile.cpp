@@ -372,15 +372,14 @@ namespace xdp {
         aie::profile::configEventSelections(aieDevInst, loc, type, metricSet, channel0);
         // TBD : Placeholder to configure shim tile with required profile counters.
 
-        aie::profile::configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, 
-                                              numFreeCtrSS, metricSet, channel0, channel1, 
-                                              startEvents, endEvents);
+        aie::profile::configStreamSwitchPorts(tileMetric.first, xaieTile, loc, type, 
+            numFreeCtrSS, metricSet, channel0, channel1, startEvents, endEvents, streamPorts);
        
         // Identify the profiling API metric sets and configure graph events
         if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
           XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
-          bool status = aie::profile::configGraphIteratorAndBroadcast(xaieModule,
-              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent);
+          bool status = aie::profile::configGraphIteratorAndBroadcast(aieDevInst, aieDevice,
+              metadata, xaieModule, loc, mod, type, metricSet, bcEvent, bcResourcesBytesTx);
           if (status) {
             graphIteratorBrodcastChannelEvent = bcEvent;
             graphItrBroadcastConfigDone = true;
@@ -430,9 +429,9 @@ namespace xdp {
               continue;
             
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
-            perfCounter = aie::profile::configProfileAPICounters(xaieModule, mod, type,
-                            metricSet, startEvent, endEvent, resetEvent, i, 
-                            threshold, retCounterEvent, tile);
+            perfCounter = aie::profile::configProfileAPICounters(aieDevInst, aieDevice, metadata, xaieModule, 
+                            mod, type, metricSet, startEvent, endEvent, resetEvent, i, perfCounters.size(),
+                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap);
           }
           else {
             // Request counter from resource manager
@@ -461,7 +460,8 @@ namespace xdp {
           }
 
           // Convert enums to physical event IDs for reporting purposes
-          auto physicalEventIds = getEventPhysicalId(loc, mod, type, metricSet, startEvent, endEvent);
+          auto physicalEventIds  = aie::profile::getEventPhysicalId(aieDevInst, loc, mod, type, metricSet, 
+                                                                    startEvent, endEvent);
           uint16_t phyStartEvent = physicalEventIds.first;
           uint16_t phyEndEvent   = physicalEventIds.second;
 

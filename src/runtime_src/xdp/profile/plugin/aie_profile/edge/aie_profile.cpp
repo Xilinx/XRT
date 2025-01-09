@@ -444,7 +444,8 @@ namespace xdp {
           }
 
           // Convert enums to physical event IDs for reporting purposes
-          auto physicalEventIds = getEventPhysicalId(loc, mod, type, metricSet, startEvent, endEvent);
+          auto physicalEventIds  = aie::profile::getEventPhysicalId(aieDevInst, loc, mod, type, metricSet, 
+                                                                    startEvent, endEvent);
           uint16_t phyStartEvent = physicalEventIds.first;
           uint16_t phyEndEvent   = physicalEventIds.second;
 
@@ -606,29 +607,6 @@ namespace xdp {
       bc->stop();
       bc->release();
     }
-  }
-
-  /****************************************************************************
-   * Get physical event IDs for metric set
-   ***************************************************************************/
-  std::pair<uint16_t, uint16_t>
-  AieProfile_EdgeImpl::getEventPhysicalId(XAie_LocType& tileLoc,
-                     XAie_ModuleType& xaieModType, module_type xdpModType,
-                     const std::string& metricSet,
-                     XAie_Events startEvent, XAie_Events endEvent)
-  {
-    if (aie::profile::profileAPIMetricSet(metricSet)) {
-      uint16_t eventId = aie::profile::getAdfApiReservedEventId(metricSet);
-      return std::make_pair(eventId, eventId);
-    }
-
-    uint8_t tmpStart;
-    uint8_t tmpEnd;
-    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
-    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
-    uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
-    uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
-    return std::make_pair(phyStartEvent, phyEndEvent);
   }
 
   /****************************************************************************
