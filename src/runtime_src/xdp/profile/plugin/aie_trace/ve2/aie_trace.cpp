@@ -296,7 +296,11 @@ namespace xdp {
     // Currently, assuming only one Hw Context is alive at a time
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
     uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
-
+    
+    //TODO: Remove below 2 lines once aie_partition_info from XRT returns correct values
+    const char* envNumCols = std::getenv("NUM_COLS");
+    numCols = envNumCols ? static_cast<uint8_t>(std::stoi(envNumCols)) : 4 ;
+    
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
