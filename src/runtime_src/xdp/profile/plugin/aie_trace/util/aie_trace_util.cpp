@@ -186,7 +186,7 @@ namespace xdp::aie::trace {
     };
 
 #ifdef XDP_CLIENT_BUILD
-    // Banks 16-23 are only defined for AIE4
+    // Banks 16-23 are not defined for all generations
     if (hwGen >= 40) {
       eventSets["memory_conflicts3"] = {
           XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
