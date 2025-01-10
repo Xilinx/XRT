@@ -20,6 +20,7 @@
 #include "resources_def.h"
 
 #include <boost/algorithm/string.hpp>
+#include <memory>
 
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -40,6 +41,7 @@ namespace xdp {
       : AieTraceImpl(database, metadata)
   {
     // Pre-defined metric sets
+    auto hwGen = metadata->getHardwareGen();
     coreEventSets = aie::trace::getCoreEventSets(hwGen);
     memoryEventSets = aie::trace::getMemoryEventSets(hwGen);
     memoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
@@ -114,7 +116,7 @@ namespace xdp {
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
-        module_type tileType = aie::trace::getTileType(metadata, row);
+        module_type tileType = getTileType(row);
         auto loc = XAie_TileLoc(col, row);
 
         if(tileType == module_type::shim) {
@@ -182,7 +184,7 @@ namespace xdp {
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
       for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
-        module_type tileType = aie::trace::getTileType(metadata, row);
+        module_type tileType = getTileType(row);
         auto loc = XAie_TileLoc(col, row);
 
         if(tileType == module_type::shim) {
@@ -223,7 +225,7 @@ namespace xdp {
       auto tile       = tileMetric.first;
       auto col        = tile.col;
       auto row        = tile.row;
-      auto tileType   = aie::trace::getTileType(metadata, row);
+      auto tileType   = getTileType(row);
       auto loc        = XAie_TileLoc(col, row);
       if(tileType == module_type::shim) {
         if(startLayer != UINT_MAX) {
@@ -395,6 +397,15 @@ namespace xdp {
     if (absRow < rowOffset)
       return (absRow - 1);
     return (absRow - rowOffset);
+  }
+
+  module_type AieTrace_WinImpl::getTileType(uint8_t absRow)
+  {
+    if (absRow == 0)
+      return module_type::shim;
+    if (absRow < metadata->getRowOffset())
+      return module_type::mem_tile;
+    return module_type::core;
   }
 
   void AieTrace_WinImpl::freeResources() 
@@ -947,7 +958,6 @@ namespace xdp {
       coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
     coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
 
-    
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
     //std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
@@ -957,7 +967,7 @@ namespace xdp {
       auto col        = tile.col;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
-      auto type       = aie::trace::getTileType(metadata, row);
+      auto type       = getTileType(row);
       auto typeInt    = static_cast<int>(type);
       //auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
