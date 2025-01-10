@@ -314,6 +314,7 @@ namespace xdp {
           recordTile.col = col;
           recordTile.row = row;
           microcontrollerTileEvents[recordTile] = events;
+          runtimeCounters = true;
           continue;
         }
 
