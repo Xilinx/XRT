@@ -33,7 +33,7 @@ using cl_icd_dispatch = KHRicdVendorDispatchRec;
 #else
 // All x86 linux distros doesn't have opencl icd dispatcher
 // support so using ocl icd dispatcher for x86 flows.
-# include "ocl_icd.h"
+# include <ocl_icd.h>
 using cl_icd_dispatch = _cl_icd_dispatch;
 #endif
 #endif
