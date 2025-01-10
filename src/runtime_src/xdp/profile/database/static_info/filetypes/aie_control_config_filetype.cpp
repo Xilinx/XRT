@@ -261,7 +261,7 @@ AIEControlConfigFiletype::getMicrocontrollers(bool useColumn,
 
     std::vector<tile_type> tiles;
 
-    for (uint8_t col = firstCol; col < lastCol; ++col) {
+    for (uint8_t col = firstCol; col <= lastCol; ++col) {
         tile_type tile;
         tile.col = col;
         tile.row = 0;
