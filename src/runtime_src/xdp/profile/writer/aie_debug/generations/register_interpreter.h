@@ -17,30 +17,35 @@
 #define REGISTER_INTERPRETER_DOT_H
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/writer/aie_debug/aie_debug_writer_metadata.h"
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/dynamic_event_database.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include <string>
 
 namespace xdp {
-class RegisterInterpreter 
-  {
-public:
+class RegisterInterpreter {
+  public:
     RegisterInterpreter();
+    RegisterInterpreter(uint64_t deviceIndex);
+    
     ~RegisterInterpreter()=default;
 
-    void readFromGenCSV(const std::string &filename, const std::string &regName);
-    void registerInfo(const std::string &regName, const uint64_t &regVal);
+    std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal);
 
   private:
-    struct RegData {
-        std::string register_name;
-        uint64_t address;
+    std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
+    int aieGeneration;
+    uint64_t mDeviceIndex;
+
+    struct RegInfo {
         std::string field_name;
-        std::string bits;
-        std::string type;
-        std::string reset_value;
-        std::string description;
+        std::string bit_range;
+        uint64_t subval;
     };
 
-    std::vector<RegData> aie_gen_data;
   };
 } // end namespace xdp
 

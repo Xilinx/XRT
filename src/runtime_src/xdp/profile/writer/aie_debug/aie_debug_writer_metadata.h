@@ -32,105 +32,81 @@ extern "C" {
 
 namespace xdp {
 
-class UsedRegisters;
-
-class AieDebugMetadata {
-  public:
-    AieDebugMetadata();
-
-  private:
-    // List of AIE HW generation-specific registers
-    std::unique_ptr<UsedRegisters> usedRegisters;
-};
-
-
 /*************************************************************************************
-The class UsedRegisters is what gives us AIE hw generation specific data. The base class
+The class WriterUsedRegisters is what gives us AIE hw generation specific data. The base class
 has virtual functions which populate the correct registers and their addresses according
 to the AIE hw generation in the derived classes. Thus we can dynamically populate the
 correct registers and their addresses at runtime.
 **************************************************************************************/
-class UsedRegisters {
+class WriterUsedRegisters {
   public:
-    UsedRegisters() {
-      populateCoreModuleMap();
-      populateMemoryModuleMap();
-      populateMemoryTileMap();
-      populateShimTileMap();
-    }
-
-    virtual ~UsedRegisters() {
-      coreModuleMap.clear();
-      memoryModuleMap.clear();
-      memoryTileMap.clear();
-      shimTileMap.clear()
-    }
-
-    virtual void populateCoreModuleMap() {};
-    virtual void populateMemoryModuleMap() {};
-    virtual void populateMemoryTileMap() {};
-    virtual void populateShimTileMap() {};
-
-  protected:
-    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> coreModuleMap;
-    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> memoryModuleMap;
-    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> memoryTileMap;
-    std::map<std::pair<std::string, uint32_t>, std::vector<RegData>> shimTileMap;
-
-  private:
     struct RegData {
       std::string fieldName;
+      std::string bits;
       int shift;
       uint64_t mask;
 
-      RegData(const std::string& n, int s, uint64_t m)
-        : fieldName(n), shfit(s), mask(m) {}
+      RegData(std::string n, std::string b, int s, uint64_t m)
+        : fieldName(n), bits(b), shift(s), mask(m) {}
     };
+
+  protected:
+    std::map<std::string, std::vector<RegData>> regDataMap;
+
+  public:
+    WriterUsedRegisters() { }
+
+    virtual ~WriterUsedRegisters() {
+      regDataMap.clear();
+    }
+
+    std::map<std::string, std::vector<RegData>>& getRegDataMap() {
+      return regDataMap;
+    }    
+
+    virtual void populateRegDataMap() {};
 
 };
 
 /*************************************************************************************
  AIE1 Registers
  *************************************************************************************/
-class AIE1UsedRegisters : public UsedRegisters {
+class AIE1WriterUsedRegisters : public WriterUsedRegisters {
 public:
-  AIE1UsedRegisters() {
-    populateCoreModuleMap();
-    populateMemoryModuleMap();
-    populateMemoryTileMap();
-    populateShimTileMap();
+  AIE1WriterUsedRegisters() {
+    populateRegDataMap();
   }
-  ~AIE1UsedRegisters() = default;
+  ~AIE1WriterUsedRegisters() = default;
+
+  void populateRegDataMap();
 
 };
 
 /*************************************************************************************
  AIE2 Registers
  *************************************************************************************/
-class AIE2UsedRegisters : public UsedRegisters {
+class AIE2WriterUsedRegisters : public WriterUsedRegisters {
 public:
-  AIE2UsedRegisters() {
-    populateCoreModuleMap();
-    populateMemoryModuleMap();
-    populateMemoryTileMap();
-    populateShimTileMap();
+  AIE2WriterUsedRegisters() {
+    populateRegDataMap();
   }
-  ~AIE2UsedRegisters() = default;
+  ~AIE2WriterUsedRegisters() = default;
+
+  void populateRegDataMap();
 
 };
 
 /*************************************************************************************
  AIE2PS Registers
  *************************************************************************************/
-class AIE2PSUsedRegisters : public UsedRegisters {
+class AIE2PSWriterUsedRegisters : public WriterUsedRegisters {
 public:
-  AIE2PSUsedRegisters() {
-    populateCoreModuleMap();
-    populateMemoryModuleMap();
-    populateMemoryTileMap();
-    populateShimTileMap();
+  AIE2PSWriterUsedRegisters() {
+    populateRegDataMap();
   }
-  ~AIE2PSUsedRegisters() = default;
+  ~AIE2PSWriterUsedRegisters() = default;
+
+  void populateRegDataMap();
 
 };
 
