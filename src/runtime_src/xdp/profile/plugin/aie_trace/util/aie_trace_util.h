@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -175,6 +176,28 @@ namespace xdp::aie::trace {
   void modifyEvents(module_type type, io_type subtype, const std::string metricSet,
                     uint8_t channel, std::vector<XAie_Events>& events);
 
+  /**
+   * @brief Build 2-channel broadcast network for specified tile range
+   * @param aieDevInst     AIE device
+   * @param metadata       Trace Metadata
+   * @param broadcastId1   Broadcast channel 1
+   * @param broadcastId2   Broadcast channel 2
+   * @param event          Event to trigger broadcast network
+   * @param startCol       Start column of the partition
+   * @param numCols        Num of columns in the partition
+   */
+  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols);
+
+  /**
+   * @brief Reset 2-channel broadcast network for specified tile range
+   * @param aieDevInst     AIE device
+   * @param metadata       Trace Metadata
+   * @param broadcastId1   Broadcast channel 1
+   * @param broadcastId2   Broadcast channel 2
+   * @param startCol       Start column of the partition
+   * @param numCols        Num of columns in the partition
+   */
+  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol, uint8_t numCols);
 }  // namespace xdp::aie::trace
 
 #endif

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
@@ -140,11 +140,12 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 { 
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+
   #else
     (void)handle;
   #endif
@@ -461,6 +462,18 @@ update_device(void* handle)
     xrt_core::xdp::aie_pc::update_device(handle);
   }
 
+#elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::ml_timeline::update_device(handle);
+  }
+
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
@@ -494,6 +507,11 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_pc())
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
+
+#elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
 
 #else
 

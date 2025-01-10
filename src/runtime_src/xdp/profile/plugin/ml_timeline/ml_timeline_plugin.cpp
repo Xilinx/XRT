@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,8 @@
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
+#elif defined (XDP_VE2_BUILD)
+#include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #endif
 
 namespace xdp {
@@ -114,6 +116,9 @@ namespace xdp {
 
   void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+          "In ML Timeline Plugin : updateDevice.");
+
 #ifdef XDP_CLIENT_BUILD
 
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
@@ -138,12 +143,40 @@ namespace xdp {
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl);
 
-#endif
+#elif defined (XDP_VE2_BUILD)
+
+    if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
+      // Same Hardware Context Implementation uses the same impl and buffer
+      return;
+    }
+
+    if (0 == mBufSz)
+      mBufSz = ParseMLTimelineBufferSizeConfig();
+
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+
+    uint64_t implId = mMultiImpl.size();
+
+    std::string deviceName = "ve2_device" + std::to_string(implId);
+    uint64_t deviceId = db->addDevice(deviceName);
+    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
+    auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
+    mlImpl->updateDevice(hwCtxImpl);
+    
+  #endif
+
   }
 
   void MLTimelinePlugin::finishflushDevice(void* hwCtxImpl)
   {
-#ifdef XDP_CLIENT_BUILD
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+          "In ML Timeline Plugin : finish flush Device.");
+
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     if (mMultiImpl.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
           "In ML Timeline Plugin : No active HW Context found. So no data flush done.");
@@ -167,7 +200,7 @@ namespace xdp {
 
   void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     for (auto &e : mMultiImpl) {
       if (nullptr == e.second.second)
         continue;
