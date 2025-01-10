@@ -135,20 +135,42 @@ namespace xdp::aie::profile {
 
     // Microcontroller sets
     if (hwGen >= 5) {
+#ifdef XDP_CLIENT_BUILD
+      eventSets["uc_dma_activity"] = {
+          XAIE_EVENT_UC_DMA_DM2MM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_DM2MM_A_LOCAL_MEMORY_STARVATION,
+	        XAIE_EVENT_UC_DMA_DM2MM_A_REMOTE_MEMORY_BACKPRESSURE,
+          XAIE_EVENT_UC_DMA_MM2DM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_MM2DM_A_LOCAL_MEMORY_STARVATION,
+	        XAIE_EVENT_UC_DMA_MM2DM_A_REMOTE_MEMORY_BACKPRESSURE};
+      eventSets["uc_axis_throughputs"] = {
+          XAIE_EVENT_UC_CORE_AXIS_MASTER_RUNNING,          XAIE_EVENT_UC_CORE_AXIS_MASTER_STALLED,
+          XAIE_EVENT_UC_CORE_AXIS_MASTER_TLAST,
+	        XAIE_EVENT_UC_CORE_AXIS_SLAVE_RUNNING,           XAIE_EVENT_UC_CORE_AXIS_SLAVE_STALLED,
+          XAIE_EVENT_UC_CORE_AXIS_SLAVE_TLAST};
+      eventSets["uc_core"] = {
+          XAIE_EVENT_UC_CORE_REG_WRITE,                    XAIE_EVENT_UC_CORE_JUMP_TAKEN,
+          XAIE_EVENT_UC_CORE_DATA_READ,                    XAIE_EVENT_UC_CORE_DATA_WRITE,
+          XAIE_EVENT_UC_CORE_STREAM_GET,                   XAIE_EVENT_UC_CORE_STREAM_PUT};
+#else
       eventSets["uc_dma_activity"] = {
           XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
           XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
-        eventSets["uc_axis_throughputs"] = {
+      eventSets["uc_axis_throughputs"] = {
           XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
           XAIE_EVENT_CORE_AXIS_MASTER_TLAST_UC,
 	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC,
           XAIE_EVENT_CORE_AXIS_SLAVE_TLAST_UC};
-        eventSets["uc_core"] = {
+      eventSets["uc_core"] = {
           XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
           XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
           XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
+#endif
+    }
+    else {
+      eventSets["uc_dma_activity"] = {};
+      eventSets["uc_axis_throughputs"] = {};
+      eventSets["uc_core"] = {};
     }
 
     eventSets["mm2s_throughputs"] = eventSets["input_throughputs"];
