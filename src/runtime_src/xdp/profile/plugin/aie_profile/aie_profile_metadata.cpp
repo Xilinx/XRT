@@ -17,6 +17,7 @@
 #define XDP_PLUGIN_SOURCE
 
 #include "aie_profile_metadata.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
