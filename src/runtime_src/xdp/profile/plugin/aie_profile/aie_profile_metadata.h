@@ -108,13 +108,6 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    
-    // Config data structures required for new profile API metrics
-    const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-      {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
-      {METRIC_LATENCY,    static_cast<uint16_t>(3601)}
-    };
-
     std::map<tile_type, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
@@ -188,7 +181,6 @@ class AieProfileMetadata {
     bool getUseGraphIterator(){return useGraphIterator;}
     uint32_t getIterationCount(){return iterationCount;}
 
-    bool profileAPIMetricSet(const std::string metricSet);
     bool isSourceTile(const tile_type& tile);
     bool isValidLatencyTile(const tile_type& tile) const;
     uint64_t getIntfLatencyPayload(const tile_type& tile);

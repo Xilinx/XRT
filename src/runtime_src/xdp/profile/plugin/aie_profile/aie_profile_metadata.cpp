@@ -999,7 +999,7 @@ namespace xdp {
         uint8_t channelId1 = 1;
         uint32_t bytes = defaultTransferBytes;
         if (metrics[i].size() > 2) {
-          if (profileAPIMetricSet(metrics[i][1])) {
+          if (aie::profile::profileAPIMetricSet(metrics[i][1])) {
             bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
           else {
@@ -1464,12 +1464,5 @@ namespace xdp {
                        (static_cast<uint64_t>(portID2) << 0);
     return payload;
   }
-
-  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
-  {
-    // input_throughputs/output_throughputs is already supported, hence excluded here
-    return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
-  }
-
 
 }  // namespace xdp
