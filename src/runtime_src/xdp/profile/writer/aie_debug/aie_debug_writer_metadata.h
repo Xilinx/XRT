@@ -41,13 +41,13 @@ correct registers and their addresses at runtime.
 class WriterUsedRegisters {
   public:
     struct RegData {
-      std::string fieldName;
-      std::string bits;
+      std::string field_name;
+      std::string bit_range;
       int shift;
       uint64_t mask;
 
       RegData(std::string n, std::string b, int s, uint64_t m)
-        : fieldName(n), bits(b), shift(s), mask(m) {}
+        : field_name(n), bit_range(b), shift(s), mask(m) {}
     };
 
   protected:
