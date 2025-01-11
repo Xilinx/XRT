@@ -45,7 +45,7 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
     XAIE_MEM_MOD,
-    XAIE_MEM_MOD   // TODO: replace with correct module type for uCs
+    XAIE_PL_MOD    // TODO: if needed, replace with module type for uCs
   };
 
   enum adfAPI {
