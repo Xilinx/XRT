@@ -257,6 +257,12 @@ namespace xdp::aie::trace {
 
     // Microcontroller sets
     if (hwGen >= 5) {
+#ifdef XDP_CLIENT_BUILD
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
+#else
       eventSets["uc_dma_dm2mm"] = {
           XAIE_EVENT_DMA_DM2MM_START_TASK_UC,              XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,
           XAIE_EVENT_DMA_DM2MM_FINISHED_TASK_UC,           XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
@@ -273,6 +279,13 @@ namespace xdp::aie::trace {
 	        XAIE_EVENT_CORE_JUMP_TAKEN_UC,                   XAIE_EVENT_CORE_DATA_READ_UC,
 	        XAIE_EVENT_CORE_DATA_WRITE_UC,                   XAIE_EVENT_CORE_STREAM_GET_UC,
 	        XAIE_EVENT_CORE_STREAM_PUT_UC};
+#endif
+    }
+    else {
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
     }
 
     eventSets["mm2s_ports"]             = eventSets["input_ports"];

@@ -150,6 +150,9 @@ namespace xdp::aie::profile {
       //     XAIE_EVENT_UC_CORE_REG_WRITE,                    XAIE_EVENT_UC_CORE_JUMP_TAKEN,
       //     XAIE_EVENT_UC_CORE_DATA_READ,                    XAIE_EVENT_UC_CORE_DATA_WRITE,
       //     XAIE_EVENT_UC_CORE_STREAM_GET,                   XAIE_EVENT_UC_CORE_STREAM_PUT};
+      eventSets["uc_dma_activity"] = {};
+      eventSets["uc_axis_throughputs"] = {};
+      eventSets["uc_core"] = {};
 #else
       eventSets["uc_dma_activity"] = {
           XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,

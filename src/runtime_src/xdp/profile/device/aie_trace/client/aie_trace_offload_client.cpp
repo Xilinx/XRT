@@ -132,10 +132,10 @@ namespace xdp {
                            static_cast<uint32_t>(bufAllocSz));
       RC = XAie_DmaEnableBd(&DmaDesc);
       RC = XAie_DmaSetAxi(&DmaDesc, 0U, 8U, 0U, 0U, 0U);
-      RC = XAie_DmaWriteBd_16(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
+      RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
 
       // printf("Enabling channels....\n");
-      RC = XAie_DmaChannelPushBdToQueue_16(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM,
+      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM,
                                         s2mm_bd_id);
       RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
 
