@@ -1150,10 +1150,10 @@ namespace xdp {
       return std::make_pair(eventId, eventId);
     }
 
-    uint16_t tmpStart;
-    uint16_t tmpEnd;
-    XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
-    XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
     uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
     uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
     return std::make_pair(phyStartEvent, phyEndEvent);

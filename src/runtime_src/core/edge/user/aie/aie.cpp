@@ -231,11 +231,11 @@ sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& con
     int start_bd = -1;
     for (const auto& shim_bd_info : port_config.shim_bd_infos) {
       auto buf_idx = shim_bd_info.buf_idx;
-      dma_api_obj.updateBDAddressLin(&bds[buf_idx].mem_inst, port_config.shim_column, 0, static_cast<uint16_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
+      dma_api_obj.updateBDAddressLin(&bds[buf_idx].mem_inst, port_config.shim_column, 0, static_cast<uint8_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
       if (start_bd < 0)
         start_bd = shim_bd_info.bd_id;
     }
-    dma_api_obj.enqueueTask(1, port_config.shim_column, 0, port_config.direction, port_config.channel_number, port_config.task_repetition, port_config.enable_task_complete_token, static_cast<uint16_t>(start_bd));
+    dma_api_obj.enqueueTask(1, port_config.shim_column, 0, port_config.direction, port_config.channel_number, port_config.task_repetition, port_config.enable_task_complete_token, static_cast<uint8_t>(start_bd));
   }
 
   for (auto& bd :bds) {
