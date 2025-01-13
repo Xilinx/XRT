@@ -635,14 +635,18 @@ namespace xdp::aie::profile {
       return std::make_pair(eventId, eventId);
     }
 
+#ifdef XDP_CLIENT_BUILD
     uint16_t tmpStart;
     uint16_t tmpEnd;
-#ifdef XDP_CLIENT_BUILD
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
 #else
-    XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
-    XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    //XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    //XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
 #endif
     uint16_t phyStartEvent = tmpStart + getCounterBase(xdpModType);
     uint16_t phyEndEvent   = tmpEnd   + getCounterBase(xdpModType);
@@ -677,8 +681,6 @@ namespace xdp::aie::profile {
     bcChannel--;
     return bcPair;
   }
-
-
 
   /****************************************************************************
    * Convert user specified bytes to beats for provided metric set
