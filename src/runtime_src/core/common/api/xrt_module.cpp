@@ -705,7 +705,7 @@ class module_elf : public module_impl
     // is asserted)
     std::vector<ctrlcode> ctrlcodes;  // indexed by uC index
     static_assert(std::is_same_v<decltype(uc_sections), std::map<uc_index, elf_sections>>, "fix std::map assumption");
-    ctrlcodes.resize(uc_sections.empty() ? 0 : uc_sections.rbegin()->first);
+    ctrlcodes.resize(uc_sections.empty() ? 0 : uc_sections.rbegin()->first + 1);
     pad_offsets.resize(ctrlcodes.size());
 
     for (auto& [ucidx, elf_sects] : uc_sections) {
