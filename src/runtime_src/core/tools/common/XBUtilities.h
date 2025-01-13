@@ -153,7 +153,7 @@ namespace XBUtilities {
       m_device->close_context(m_uuid, std::numeric_limits<unsigned int>::max());
     }
   };
-  void loadConfigFile(const std::string& configFile, boost::property_tree::ptree& pt);
+  std::string loadDefaultSmiConfig();
 
 };
 
