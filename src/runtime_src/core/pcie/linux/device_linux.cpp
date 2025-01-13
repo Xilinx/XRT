@@ -914,7 +914,7 @@ struct xrt_smi_config
   static result_type
   get(const xrt_core::device* device, key_type key, const std::any& reqType)
   {
-    if (key != xrt_key_type::xrt_smi_config)
+    if (key != key_type::xrt_smi_config)
       throw xrt_core::query::no_such_key(key, "Not implemented");
     std::string xrt_smi_config;
     const auto xrt_smi_config_type = std::any_cast<xrt_core::query::xrt_smi_config::type>(reqType);
