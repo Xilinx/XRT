@@ -2,7 +2,7 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "smi.h"
 
-namespace xrt_core::shim::smi {
+namespace xrt_core::smi {
 
 static constexpr std::string_view xrt_smi_config =
  R"(
@@ -208,4 +208,4 @@ get_smi_config()
 {
   return std::string(xrt_smi_config);
 }
-} // namespace xrt_core::shim::smi
+} // namespace xrt_core::smi

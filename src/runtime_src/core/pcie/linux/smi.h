@@ -3,9 +3,9 @@
 
 #include <string>
 
-namespace xrt_core::shim::smi {
+namespace xrt_core::smi {
 
 std::string 
 get_smi_config();
 
-} // namespace xrt_core::shim::smi
+} // namespace xrt_core::smi
