@@ -22,7 +22,7 @@
 // populated, trailing 0s don't matter.
 //static_assert(sizeof(_cl_icd_dispatch)==178*sizeof(void*),"Fix dispatch table");
 
-const _cl_icd_dispatch cl_icd_dispatch = {
+const cl_icd_dispatch cl_icd_dispatch_obj = {
   clGetPlatformIDs,
   clGetPlatformInfo,
   clGetDeviceIDs,
@@ -170,6 +170,11 @@ const _cl_icd_dispatch cl_icd_dispatch = {
   0, //clSetProgramReleaseCallback,
   0, //clSetProgramSpecializationConstant,
 #ifndef _WIN32
+#if (defined (__aarch64__) || defined (__arm__)) && defined (OPENCL_ICD_LOADER)
+  0, //clCreateBufferWithProperties
+  0, //clCreateImageWithProperties
+  0, //clSetContextDestructorCallback
+#else
   0,
   0,
   0,
@@ -202,5 +207,6 @@ const _cl_icd_dispatch cl_icd_dispatch = {
   0,
   0,
   0
+#endif
 #endif
 };

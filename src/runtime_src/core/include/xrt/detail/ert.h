@@ -162,6 +162,7 @@ struct ert_start_kernel_cmd {
  *
  * @instruction_buffer:       address of instruction buffer
  * @instruction_buffer_size:  size of instruction buffer in bytes
+ * @uc_index:                 microblaze controller index
  * @chained:                  number of following ert_dpu_data elements
  *
  * The ert_dpu_data is prepended to data payload of ert_start_kernel_cmd
@@ -176,7 +177,8 @@ struct ert_start_kernel_cmd {
 struct ert_dpu_data {
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint32_t instruction_buffer_size;  /* size of buffer in bytes */
-  uint32_t chained;                  /* number of following ert_dpu_data elements */
+  uint16_t uc_index;                 /* microblaze controller index */
+  uint16_t chained;                  /* number of following ert_dpu_data elements */
 };
 
 /**

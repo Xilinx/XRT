@@ -31,6 +31,7 @@ namespace xdp::aie {
     bool broadcast_enable_core;
     bool graph_iterator_event;
     std::string event_trace;
+    bool enable_multi_layer;
   };
 
   struct driver_config

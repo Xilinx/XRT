@@ -291,6 +291,16 @@ namespace xdp {
       return false;
     }
 
+     // Get partition columns
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
+    // Currently, assuming only one Hw Context is alive at a time
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
+    uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+    
+    //TODO: Remove below 2 lines once aie_partition_info from XRT returns correct values
+    const char* envNumCols = std::getenv("NUM_COLS");
+    numCols = envNumCols ? static_cast<uint8_t>(std::stoi(envNumCols)) : 4 ;
+    
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
@@ -304,6 +314,35 @@ namespace xdp {
     for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
       for (int n = 0; n <= NUM_TRACE_EVENTS; ++n)
         mNumTileTraceEvents[m][n] = 0;
+    }
+
+    auto metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "AIE metadata reader is null";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
+    }
+
+    auto compilerOptions = metadataReader->getAIECompilerOptions();
+    std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
+    if(compilerOptions.enable_multi_layer) {
+
+      aie::trace::timerSyncronization(aieDevInst,aieDevice, metadata, startCol, numCols);
+      if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) 
+      {
+        std::vector<XAie_LocType> vL;
+        traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh1->reserve();
+        traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+        traceStartBroadcastCh2->reserve();
+        aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastCh1->getBc(), traceStartBroadcastCh2->getBc(), XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+
+        coreTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastCh1->getBc());
+        memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastCh1->getBc());
+        interfaceTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastCh2->getBc());
+      }
     }
 
     // Using user event for trace end to enable flushing
@@ -476,13 +515,13 @@ namespace xdp {
           numCoreCounters++;
 
           // Update config file
-          uint16_t phyEvent = 0;
+          uint8_t phyEvent = 0;
           auto& cfg = cfgTile->core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
           cfg.event_value = coreCounterEventValues[i];
         }
@@ -525,13 +564,13 @@ namespace xdp {
           numMemoryCounters++;
 
           // Update config file
-          uint16_t phyEvent = 0;
+          uint8_t phyEvent = 0;
           auto& cfg = cfgTile->memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
           cfg.event_value = memoryCounterEventValues[i];
         }
@@ -563,7 +602,7 @@ namespace xdp {
         }
 
         XAie_ModuleType mod = XAIE_CORE_MOD;
-        uint16_t phyEvent = 0;
+        uint8_t phyEvent = 0;
         auto coreTrace = core.traceControl();
 
         // Delay cycles and user control are not compatible with each other
@@ -607,14 +646,14 @@ namespace xdp {
           numCoreTraceEvents++;
 
           // Update config file
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
           cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
 
         // Update config file
-        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
         cfgTile->core_trace_config.stop_event = phyEvent;
 
         // Record allocated trace events
@@ -661,6 +700,11 @@ namespace xdp {
           traceEndEvent = comboEvents.at(1);
         }
 
+        if(compilerOptions.enable_multi_layer && type == module_type::core && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        {
+          traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastCh1->getBc());
+        }
+        
         // Configure event ports on stream switch
         // NOTE: These are events from the core module stream switch
         //       outputted on the memory module trace stream. 
@@ -728,8 +772,8 @@ namespace xdp {
           TraceE->getRscId(L, M, S);
 
           // Get physical event
-          uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
 
           if (isCoreEvent) {
             auto bcId = TraceE->getBc();
@@ -746,19 +790,19 @@ namespace xdp {
 
         // Add trace control events to config file
         {
-          uint16_t phyEvent = 0;
+          uint8_t phyEvent = 0;
 
           // Start
           if (aie::trace::isCoreModuleEvent(traceStartEvent)) {
             auto bcId = memoryTrace->getStartBc();
             coreToMemBcMask |= (1 << bcId);
 
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
           }
           else {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
             if (type == module_type::mem_tile)
               cfgTile->memory_tile_trace_config.start_event = phyEvent;
             else
@@ -770,7 +814,7 @@ namespace xdp {
             auto bcId = memoryTrace->getStopBc();
             coreToMemBcMask |= (1 << bcId);
           
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
 
@@ -781,7 +825,7 @@ namespace xdp {
               cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
           }
           else {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
             if (type == module_type::mem_tile)
               cfgTile->memory_tile_trace_config.stop_event = phyEvent;
             else
@@ -822,8 +866,17 @@ namespace xdp {
         }
 
         auto shimTrace = shim.traceControl();
-        if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
-          break;
+
+        if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        {
+          if (shimTrace->setCntrEvent(XAIE_EVENT_USER_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
+        else
+        {
+          if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
+            break;
+        }
 
         auto ret = shimTrace->reserve();
         if (ret != XAIE_OK) {
@@ -868,8 +921,8 @@ namespace xdp {
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
           // Get Physical event
-          uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_PL_MOD, event, &phyEvent);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, event, &phyEvent);
           cfgTile->interface_tile_trace_config.traced_events[S] = phyEvent;
         }
 
@@ -877,11 +930,11 @@ namespace xdp {
         {
           // Add interface trace control events
           // Start
-          uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceStartEvent, &phyEvent);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceStartEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.start_event = phyEvent;
           // Stop
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.stop_event = phyEvent;
         }
 

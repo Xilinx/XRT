@@ -904,7 +904,7 @@ namespace xdp {
         config.combo_event_control[i] = 2;
       for (size_t i=0; i < events.size(); ++i) {
         uint16_t phyEvent = 0;
-        XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, events.at(i), &phyEvent);
+        XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, events.at(i), &phyEvent);
         config.combo_event_input[i] = phyEvent;
       }
 
@@ -1252,14 +1252,14 @@ namespace xdp {
           numCoreTraceEvents++;
 
           // Update config file
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, coreEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, coreEvents[i], &phyEvent);
           cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
 
         // Update config file
-        XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
         cfgTile->core_trace_config.stop_event = phyEvent;
 
         coreEvents.clear();
@@ -1319,10 +1319,10 @@ namespace xdp {
 
           uint16_t phyEvent = 0;
           if(!m_trace_start_broadcast) {
-            XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
             cfgTile->core_trace_config.internal_events_broadcast[8] = phyEvent;
           }
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
           cfgTile->core_trace_config.internal_events_broadcast[9] = phyEvent;
 
           // Only enable Core -> MEM. Block everything else in both modules
@@ -1355,8 +1355,8 @@ namespace xdp {
         {
           uint16_t phyEvent1 = 0;
           uint16_t phyEvent2 = 0;
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
           if (type == module_type::core) {
             cfgTile->memory_trace_config.start_event = phyEvent1;
             cfgTile->memory_trace_config.stop_event = phyEvent2;
@@ -1438,7 +1438,7 @@ namespace xdp {
           // Update config file
           uint16_t phyEvent = 0;
           auto phyMod = isCoreEvent ? XAIE_CORE_MOD : XAIE_MEM_MOD;
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, phyMod, memoryEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, memoryEvents[i], &phyEvent);
 
           if (isCoreEvent) {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
@@ -1536,7 +1536,7 @@ namespace xdp {
           // TraceE->getRscId(L, M, S);
           // Get Physical event
           uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, XAIE_PL_MOD, event, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_PL_MOD, event, &phyEvent);
           cfgTile->interface_tile_trace_config.traced_events[i] = phyEvent;
         }
 
@@ -1545,10 +1545,10 @@ namespace xdp {
           // Add interface trace control events
           // Start
           uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceStartEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceStartEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.start_event = phyEvent;
           // Stop
-          XAie_EventLogicalToPhysicalConv_16(&aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.stop_event = phyEvent;
         }
 
