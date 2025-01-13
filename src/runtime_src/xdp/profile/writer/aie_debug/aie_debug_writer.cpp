@@ -65,8 +65,6 @@ namespace xdp {
     // Write all data elements
     std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
-    if (mDetailedInterpretation)
-      std::cout<<"!!!!!!! Writing detailed interpretation of AIE debug data"<<std::endl;
     for (auto& sample : samples) {
       fout << +sample.col << ","
            << +sample.row << ","
@@ -74,6 +72,26 @@ namespace xdp {
            << sample.name << ","
            << "0x" << std::hex << sample.value
            << std::dec << "\n";
+    }
+    if (mDetailedInterpretation) {
+      fout<< "\n\n=================== Registers and their Detailed Interpretation ====================  \n";
+      fout<< "Register Name, Field Name, Bit-range, Sub-Value\n";
+      std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(mDeviceIndex);
+      for (auto& sample : samples) {
+        auto regInfoVec = regInterp.registerInfo(sample.name, sample.offset, sample.value);
+        for (auto& rInfo : regInfoVec) {
+          if(rInfo.field_name=="") {
+            continue;
+          }
+          else {
+          fout << sample.name << ","
+               << rInfo.field_name << ","
+               << rInfo.bit_range << ","
+               << "0x" << std::hex << rInfo.subval
+               << std::dec << "\n";
+          }
+        }
+      }
     }
 
     fout.flush();

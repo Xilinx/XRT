@@ -44,18 +44,19 @@ namespace xdp {
 
         std::map<std::string, std::vector<RegData>>& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
 
-        std::vector<RegInfo> regInfo;
+        std::vector<RegInfo> regInfoVec;
         auto it = writerUsedRegistersMap.find(regName);
         if (it != writerUsedRegistersMap.end()) {
             for (auto regSpecificDataMap : it->second) {
                 uint64_t subval = (regVal >> regSpecificDataMap.shift) & regSpecificDataMap.mask;
-                regInfo.push_back(RegInfo(regSpecificDataMap.field_name, regSpecificDataMap.bit_range, subval));
+                regInfoVec.push_back(RegInfo(regSpecificDataMap.field_name, regSpecificDataMap.bit_range, subval));
             }
         } else {
-            exit(1);
+            //exit(1);
+            return { RegInfo("", "",0) };
         }
 
-        return regInfo;
+        return regInfoVec;
 
         // fout << regName << ","
         //      << data.field_name << ","
