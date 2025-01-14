@@ -5,9 +5,33 @@
 #include <string>
 #include <unordered_map>
 
-#include "boost/property_tree/ptree.hpp"
-#include "boost/program_options.hpp"
+#include <boost/property_tree/ptree.hpp>
+#include <boost/program_options.hpp>
 #include "SubCmdJsonObjects.h"
+
+namespace SubCmdJsonObjects {
+
+static constexpr std::string_view const_name_literal = "name";
+static constexpr std::string_view const_description_literal = "description";
+static constexpr std::string_view const_tag_literal = "tag";
+static constexpr std::string_view const_alias_literal = "alias";
+static constexpr std::string_view const_default_value_literal = "default_value";
+static constexpr std::string_view const_option_type_literal = "option_type";
+static constexpr std::string_view const_value_type_literal = "value_type";
+static constexpr std::string_view const_options_literal = "options";
+
+static std::unordered_map<std::string, ValueType> valueTypeMap = {
+  {"bool", ValueType::boolean},
+  {"string", ValueType::string},
+  {"array", ValueType::array},
+  {"none", ValueType::none}
+};
+
+OptionBasic::OptionBasic(const pt::ptree& configurations)
+  : m_name(configurations.get<std::string>(std::string(const_name_literal))), 
+    m_description(configurations.get<std::string>(std::string(const_description_literal))), 
+    m_tag(configurations.get<std::string>(std::string(const_tag_literal)))
+    {}
 
 void
 OptionBasic::printOption() const
@@ -16,6 +40,15 @@ OptionBasic::printOption() const
   std::cout << "Description: " << m_description << std::endl;
   std::cout << "Tag: " << m_tag << std::endl;
 }
+
+SubCommandOption::SubCommandOption(const pt::ptree& configurations):
+    OptionBasic(configurations),
+    m_alias(configurations.get<std::string>(std::string(const_alias_literal), "")),
+    m_defaultValue(configurations.get<std::string>(std::string(const_default_value_literal), "")),
+    m_optionType(configurations.get<std::string>(std::string(const_option_type_literal), "")),
+    m_valueType(configurations.get<std::string>(std::string(const_value_type_literal), "")),
+    m_ptEmpty(pt::ptree()),
+    m_subOptionMap(createBasicOptions(configurations.get_child(std::string(const_options_literal), m_ptEmpty))){}
 
 /**
  * Adds the sub-command option to the options description.
@@ -29,8 +62,8 @@ SubCommandOption::addProgramOption(po::options_description& options, const std::
 {
   if (m_optionType != optionsType) return;
 
-  auto valueType = m_valueTypeMap.find(m_valueType);
-  if (valueType == m_valueTypeMap.end()) {
+  auto valueType = valueTypeMap.find(m_valueType);
+  if (valueType == valueTypeMap.end()) {
     throw std::runtime_error("Invalid value type for option " + m_name);
   }
   switch (valueType->second){
@@ -92,6 +125,11 @@ SubCommandOption::printOption() const
     value.printOption();
   }
 }
+
+SubCommand::SubCommand(const pt::ptree& configurations) :
+  OptionBasic(configurations),
+  m_optionMap(createSubCommandOptions(configurations.get_child(std::string(const_options_literal)))) 
+  {}
 
 std::unordered_map<std::string, SubCommandOption>
 SubCommand::createSubCommandOptions(const pt::ptree& pt)
@@ -158,3 +196,4 @@ JsonConfig::printConfigurations() const
     }
   }
 }
+} // namespace SubCmdJsonObjects

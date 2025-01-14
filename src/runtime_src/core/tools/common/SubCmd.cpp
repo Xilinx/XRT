@@ -170,7 +170,7 @@ SubCmd::checkForSubOption(const boost::program_options::variables_map& vm, const
 void
 SubCmd::setOptionConfig(const boost::property_tree::ptree &config)
 {
-  m_jsonConfig = JsonConfig(config.get_child("subcommands"), getName());
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());

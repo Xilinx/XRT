@@ -29,7 +29,7 @@ class SubCmdValidate : public SubCmd {
 
  private:
 
-  void fill_option_values(const po::variables_map& vm, SubCmdValidateOptions& options) const;
+  void fill_option_values(const boost::program_options::variables_map& vm, SubCmdValidateOptions& options) const;
   void print_help_internal(const SubCmdValidateOptions& ) const;
   void handle_errors_and_validate_tests(const boost::program_options::variables_map&, 
                                         const SubCmdValidateOptions&,

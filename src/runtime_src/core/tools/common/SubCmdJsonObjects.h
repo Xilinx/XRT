@@ -9,14 +9,7 @@
 #include "boost/property_tree/ptree.hpp"
 #include "boost/program_options.hpp"
 
-static constexpr std::string_view const_name_literal = "name";
-static constexpr std::string_view const_description_literal = "description";
-static constexpr std::string_view const_tag_literal = "tag";
-static constexpr std::string_view const_alias_literal = "alias";
-static constexpr std::string_view const_default_value_literal = "default_value";
-static constexpr std::string_view const_option_type_literal = "option_type";
-static constexpr std::string_view const_value_type_literal = "value_type";
-static constexpr std::string_view const_options_literal = "options";
+namespace SubCmdJsonObjects {
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
@@ -34,11 +27,10 @@ public:
   std::string m_name;
   std::string m_description;
   std::string m_tag;
-  OptionBasic(const pt::ptree& configurations)
-    : m_name(configurations.get<std::string>(std::string(const_name_literal))), 
-      m_description(configurations.get<std::string>(std::string(const_description_literal))), 
-      m_tag(configurations.get<std::string>(std::string(const_tag_literal)))
-    {}
+
+  public:
+
+  OptionBasic(const pt::ptree& configurations);
 
   std::string getName() const { return m_name; }
   std::string getDescription() const { return m_description; }
@@ -56,7 +48,7 @@ class SubCommandOption : public OptionBasic {
 
   /*
   * Map of option name vs SubCommandOption objects. Example:
-  * --run can have multiple option Values like latency, throughput etc.
+  * --run can have multiple option values like latency, throughput etc.
   * latency : OptionBasic object
   * throughput : OptionBasic object
   * .................
@@ -66,25 +58,8 @@ class SubCommandOption : public OptionBasic {
   std::unordered_map<std::string, OptionBasic>
   createBasicOptions(const pt::ptree& pt);
 
-protected:
-  const std::unordered_map<std::string, ValueType> m_valueTypeMap = {
-    {"bool", ValueType::boolean},
-    {"string", ValueType::string},
-    {"array", ValueType::array},
-    {"none", ValueType::none}
-  };
-
 public:
-
-  SubCommandOption(const pt::ptree& configurations):
-      OptionBasic(configurations),
-      m_alias(configurations.get<std::string>(std::string(const_alias_literal), "")),
-      m_defaultValue(configurations.get<std::string>(std::string(const_default_value_literal), "")),
-      m_optionType(configurations.get<std::string>(std::string(const_option_type_literal), "")),
-      m_valueType(configurations.get<std::string>(std::string(const_value_type_literal), "")),
-      m_ptEmpty(pt::ptree()),
-      m_subOptionMap(createBasicOptions(configurations.get_child(std::string(const_options_literal), m_ptEmpty)))
-    {}
+  SubCommandOption(const pt::ptree& configurations);
 
   std::string getValueType() const { return m_valueType; }
   std::string getAlias() const { return m_alias; }
@@ -110,10 +85,7 @@ class SubCommand : public OptionBasic {
   createSubCommandOptions(const pt::ptree& pt);
 
 public:
-  SubCommand(const pt::ptree& configurations) :
-      OptionBasic(configurations),
-      m_optionMap(createSubCommandOptions(configurations.get_child(std::string(const_options_literal)))) 
-    {}
+  SubCommand(const pt::ptree& configurations); 
   std::unordered_map<std::string,SubCommandOption> getOptionMap() const { return m_optionMap; }
 
   void addProgramOptions(po::options_description& options, const std::string& optionsType);
@@ -145,3 +117,4 @@ public:
   void addProgramOptions(po::options_description& options, const std::string& optionsType, const std::string& subCommand);
   void printConfigurations() const;
 };
+} // namespace SubCmdJsonObjects

@@ -87,7 +87,7 @@ public:
   boost::program_options::options_description m_hiddenOptions;
   boost::program_options::positional_options_description m_positionals;
   boost::property_tree::ptree m_commandConfig;
-  JsonConfig m_jsonConfig;
+  SubCmdJsonObjects::JsonConfig m_jsonConfig;
 
   template<class T>
   std::vector<std::shared_ptr<T>>
