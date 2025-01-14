@@ -33,19 +33,18 @@ class RegisterInterpreter {
     
     ~RegisterInterpreter()=default;
 
-    std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal);
-
-  private:
-    std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
-    int aieGeneration;
-    uint64_t mDeviceIndex;
-
     struct RegInfo {
         std::string field_name;
         std::string bit_range;
         uint64_t subval;
     };
 
+    std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal);
+
+  private:
+    std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
+    int aieGeneration;
+    uint64_t mDeviceIndex;
   };
 } // end namespace xdp
 

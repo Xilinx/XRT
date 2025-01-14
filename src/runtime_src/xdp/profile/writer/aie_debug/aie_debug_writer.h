@@ -18,6 +18,7 @@
 
 #include "xdp/profile/writer/vp_base/vp_writer.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/writer/aie_debug/generations/register_interpreter.h"
 #include <string>
 
 namespace xdp {
