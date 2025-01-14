@@ -309,7 +309,7 @@ namespace xdp {
     // Using user event for trace end to enable flushing
     // NOTE: Flush trace module always at the end because for some applications
     //       core might be running infinitely.
-
+    
     if (metadata->getUseUserControl())
       coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
     coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
