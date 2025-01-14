@@ -38,6 +38,9 @@ nocmake=0
 noabi=0
 dbg=0
 release=1
+alveo_build=0
+npu_build=0
+base_build=0
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -79,6 +82,22 @@ while [ $# -gt 0 ]; do
             cmake_flags+= " -DXRT_ENABLE_HIP=ON"
             shift
             ;;
+        -base)
+            shift
+            base_build=1
+            cmake_flags+= " -DXRT_BASE=1"
+            ;;
+        -alveo)
+            shift
+            alveo_build=1
+            cmake_flags+=" -DXRT_ALVEO=1"
+            ;;
+	-npu)
+            shift
+	    npu_build=1
+	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
+	    cmake_flags+=" -DXRT_NPU=1"
+            ;;
         -j)
             shift
             jcore=$1
@@ -115,6 +134,11 @@ fi
 cmake_flags+=" -DMSVC_PARALLEL_JOBS=$jcore"
 cmake_flags+=" -DKHRONOS=$KHRONOS"
 cmake_flags+=" -DBOOST_ROOT=$BOOST"
+
+# Default build is legacy xrt, cannot be built with base, npu
+if [[ $alveo_build == 0 && $npu_build == 0 && $base_build == 0 ]]; then
+    cmake_flags+=" -DXRT_XRT=1"
+fi
 
 echo "${cmake_flags[@]}"
 
