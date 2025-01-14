@@ -139,6 +139,7 @@ class AieProfileMetadata {
     int getPairModuleIndex(const std::string& metricSet, module_type mod);
     uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     bool isSupported(const std::string metricSet, bool isTileBased);
+    bool profileAPIMetricSet(const std::string metricSet);
 
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
      std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module);

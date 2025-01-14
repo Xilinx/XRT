@@ -17,7 +17,6 @@
 #define XDP_PLUGIN_SOURCE
 
 #include "aie_profile_metadata.h"
-#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -266,7 +265,17 @@ namespace xdp {
     }
     return true;
   }
-  
+
+  /****************************************************************************
+   * Check if profile API metric set
+   ***************************************************************************/
+  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
+  {
+    if ((metricSet == METRIC_BYTE_COUNT) || (metricSet == METRIC_LATENCY))
+      return true;
+    return false;
+  }
+
   /****************************************************************************
    * Resolve metrics for AIE or Memory tiles
    ***************************************************************************/
@@ -1000,7 +1009,7 @@ namespace xdp {
         uint8_t channelId1 = 1;
         uint32_t bytes = defaultTransferBytes;
         if (metrics[i].size() > 2) {
-          if (aie::profile::profileAPIMetricSet(metrics[i][1])) {
+          if (profileAPIMetricSet(metrics[i][1])) {
             bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
           else {
