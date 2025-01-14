@@ -24,7 +24,6 @@ ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
 
-# XRT install components
 include(CMake/components.cmake)
 
 include(FindBoost)
