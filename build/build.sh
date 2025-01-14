@@ -264,6 +264,11 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
+    echo "build.sh: -npu, -alveo, -base are mutually exclusive"
+    exit 1
+fi
+
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
 edge_dir=${EDGE_DIR:-Edge}
@@ -275,11 +280,6 @@ cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
-
-# Default build is legacy xrt, cannot be built with base, npu
-if [[ $alveo_build == 0 && $npu_build == 0 && $base_build == 0 ]]; then
-    cmake_flags+=" -DXRT_XRT=1"
-fi
 
 here=$PWD
 cd $BUILDDIR

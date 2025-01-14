@@ -118,6 +118,11 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
+    echo "build.sh: -npu, -alveo, -base are mutually exclusive"
+    exit 1
+fi
+
 BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
 KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
 
@@ -134,11 +139,6 @@ fi
 cmake_flags+=" -DMSVC_PARALLEL_JOBS=$jcore"
 cmake_flags+=" -DKHRONOS=$KHRONOS"
 cmake_flags+=" -DBOOST_ROOT=$BOOST"
-
-# Default build is legacy xrt, cannot be built with base, npu
-if [[ $alveo_build == 0 && $npu_build == 0 && $base_build == 0 ]]; then
-    cmake_flags+=" -DXRT_XRT=1"
-fi
 
 echo "${cmake_flags[@]}"
 

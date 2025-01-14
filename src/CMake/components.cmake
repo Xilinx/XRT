@@ -14,12 +14,12 @@ else()
   set(LINUX_FLAVOR "none")
 endif()
 
-# Default component name for any install() command without the COMPONENT argument
-# The default component is the xrt run-time component, if XRT_DEV_COMPONENT is
-# set to something different then a development component will be created with
-# link libraries and header which are then excluded from runtime component
-set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
-  
+# The default XRT build is legacy
+if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
+  message("-- Defaulting to legacy XRT build")
+  set(XRT_XRT 1)
+endif()
+
 # Enable development package by specifying development component name
 # If XRT_{PKG}_DEV_COMPONENT is same XRT_{PKG}_COMPONENT then only
 # that package is created with both development and run-time content.
