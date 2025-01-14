@@ -233,8 +233,8 @@ namespace xdp::aie::trace {
       for (int i=0; i < NUM_COMBO_EVENT_CONTROL; ++i)
         config.combo_event_control[i] = 2;
       for (int i=0; i < events.size(); ++i) {
-        uint8_t phyEvent = 0;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, events.at(i), &phyEvent);
+        uint16_t phyEvent = 0;
+        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, events.at(i), &phyEvent);
         config.combo_event_input[i] = phyEvent;
       }
 
