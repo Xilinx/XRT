@@ -185,6 +185,17 @@ namespace xdp::aie::trace {
           XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
     };
 
+//#ifdef XDP_CLIENT_BUILD
+    // Banks 16-23 are not defined for all generations
+//    if (hwGen >= 40) {
+//      eventSets["memory_conflicts3"] = {
+//          XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+//    }
+//#endif
+
     eventSets["s2mm_channels"]        = eventSets["input_channels"];
     eventSets["s2mm_channels_stalls"] = eventSets["input_channels_stalls"];
     eventSets["mm2s_channels"]        = eventSets["output_channels"];
@@ -242,6 +253,39 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,             XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
+    }
+
+    // Microcontroller sets
+    if (hwGen >= 5) {
+#ifdef XDP_CLIENT_BUILD
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
+#else
+      eventSets["uc_dma_dm2mm"] = {
+          XAIE_EVENT_DMA_DM2MM_START_TASK_UC,              XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,
+          XAIE_EVENT_DMA_DM2MM_FINISHED_TASK_UC,           XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC};
+      eventSets["uc_dma_mm2dm"] = {
+          XAIE_EVENT_DMA_MM2DM_START_TASK_UC,              XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,
+	        XAIE_EVENT_DMA_MM2DM_FINISHED_TASK_UC,           XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
+        eventSets["uc_axis"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC};
+        eventSets["uc_program_flow"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_EXCEPTION_TAKEN_UC,
+	        XAIE_EVENT_CORE_JUMP_TAKEN_UC,                   XAIE_EVENT_CORE_DATA_READ_UC,
+	        XAIE_EVENT_CORE_DATA_WRITE_UC,                   XAIE_EVENT_CORE_STREAM_GET_UC,
+	        XAIE_EVENT_CORE_STREAM_PUT_UC};
+#endif
+    }
+    else {
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
     }
 
     eventSets["mm2s_ports"]             = eventSets["input_ports"];
@@ -523,52 +567,6 @@ namespace xdp::aie::trace {
     }
   }
 
-  /****************************************************************************
-   * Print out resource usage statistics for a given tile
-   ***************************************************************************/
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
-  {
-    if (xrt_core::config::get_verbosity() < static_cast<uint32_t>(severity_level::info))
-      return;
-
-    auto col = tile.col;
-    auto row = tile.row;
-    auto loc = XAie_TileLoc(col, row);
-    std::stringstream msg;
-
-    const std::string groups[3] = {
-      XAIEDEV_DEFAULT_GROUP_GENERIC,
-      XAIEDEV_DEFAULT_GROUP_STATIC, 
-      XAIEDEV_DEFAULT_GROUP_AVAIL
-    };
-
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
-    for (auto& g : groups) {
-      auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
-      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
-      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
-      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
-          << "Performance Counters : " << pc << " "
-          << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " 
-          << std::endl;
-    }
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
-    for (auto& g : groups) {
-      auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
-      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
-      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
-      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
-          << "Performance Counters : " << pc << " "
-          << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " 
-          << std::endl;
-    }
-    xrt_core::message::send(severity_level::info, "XRT", msg.str());
-  }
-  
   /****************************************************************************
    * Print out reserved trace events
    ***************************************************************************/

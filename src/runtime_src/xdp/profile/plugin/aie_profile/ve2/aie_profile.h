@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,21 +46,9 @@ namespace xdp {
       bool checkAieDevice(const uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(const uint64_t deviceId, void* handle);
-      uint8_t getPortNumberFromEvent(const XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
-      void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                   const tile_type& tile,
-                                   xaiefal::XAieTile& xaieTile,
-                                   const XAie_LocType loc,
-                                   const module_type type,
-                                   const uint32_t numCounters,
-                                   const std::string metricSet,
-                                   const uint8_t channel0,
-                                   const uint8_t channel1,
-                                   std::vector<XAie_Events>& startEvents,
-                                   std::vector<XAie_Events>& endEvents);
 
       uint64_t getCounterPayload(XAie_DevInst* aieDevInst,
                                  const tile_type& tile,
@@ -70,49 +58,9 @@ namespace xdp {
                                  uint16_t startEvent,
                                  const std::string metricSet,
                                  const uint8_t channel);
-
       uint64_t getAdfProfileAPIPayload(const tile_type& tile, const std::string metricSet);
 
     private:
-      std::shared_ptr<xaiefal::XAiePerfCounter>
-      configProfileAPICounters(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType, const module_type xdpModType,
-                               const std::string& metricSet, XAie_Events startEvent,
-                               XAie_Events endEvent, XAie_Events resetEvent,
-                               int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
-                               const tile_type& tile);
-
-      std::shared_ptr<xaiefal::XAiePerfCounter>
-      configPCUsingComboEvents(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType, const module_type xdpModType,
-                               const std::string& metricSet, XAie_Events startEvent,
-                               XAie_Events endEvent, XAie_Events resetEvent,
-                               int pcIndex, size_t threshold, XAie_Events& retCounterEvent);
-
-      std::shared_ptr<xaiefal::XAiePerfCounter>
-      configIntfLatency(xaiefal::XAieMod& xaieModule, XAie_ModuleType& xaieModType,
-                        const module_type xdpModType, const std::string& metricSet,
-                        XAie_Events startEvent, XAie_Events endEvent,
-                        XAie_Events resetEvent, int pcIndex, size_t threshold,
-                        XAie_Events& retCounterEvent,
-                        const tile_type& tile, bool& isSource);
-
-      bool
-      configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
-                           XAie_Events& retCounterEvent);
-
-      void
-      configEventBroadcast(const XAie_LocType loc,
-                           const module_type xdpModType,
-                           const std::string metricSet,
-                           const XAie_ModuleType xaieModType,
-                           const XAie_Events bcEvent,
-                           XAie_Events& bcChannelEvent);
-
-      bool
-      configGraphIteratorAndBroadcast(xaiefal::XAieMod core,
-                                           XAie_LocType loc, const XAie_ModuleType xaieModType,
-                                           const module_type xdpModType, const std::string metricSet,
-                                           uint32_t iterCount, XAie_Events& bcEvent);
-
       std::pair<uint16_t, uint16_t>
       getEventPhysicalId(XAie_LocType& tileLoc,
                          XAie_ModuleType& xaieModType, module_type xdpModType, 
@@ -156,6 +104,8 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
       std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> memTileEndEvents; 
+      std::map<std::string, std::vector<uint32_t>> microcontrollerEvents;
+      std::map<tile_type, std::vector<uint32_t>> microcontrollerTileEvents;
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
       std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
 

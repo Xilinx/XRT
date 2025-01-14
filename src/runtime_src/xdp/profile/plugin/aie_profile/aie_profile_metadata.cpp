@@ -64,6 +64,7 @@ namespace xdp {
     tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
     tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
     tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics());
+    tileMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_microcontroller_metrics());
 
     // Graph-based metrics settings
     std::vector<std::string> graphMetricsConfig;
@@ -71,6 +72,8 @@ namespace xdp {
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_memory_tile_metrics());
+    //graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_microcontroller_metrics());
+    graphMetricsConfig.push_back("");
 
     setProfileStartControl(compilerOptions.graph_iterator_event);
     
@@ -82,6 +85,8 @@ namespace xdp {
 
       if (type == module_type::shim)
         getConfigMetricsForInterfaceTiles(module, metricsSettings, graphMetricsSettings);
+      else if (type == module_type::uc)
+        getConfigMetricsForMicrocontrollers(module, metricsSettings, graphMetricsSettings);
       else
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
@@ -260,7 +265,17 @@ namespace xdp {
     }
     return true;
   }
-  
+
+  /****************************************************************************
+   * Check if profile API metric set
+   ***************************************************************************/
+  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
+  {
+    if ((metricSet == METRIC_BYTE_COUNT) || (metricSet == METRIC_LATENCY))
+      return true;
+    return false;
+  }
+
   /****************************************************************************
    * Resolve metrics for AIE or Memory tiles
    ***************************************************************************/
@@ -1059,6 +1074,147 @@ namespace xdp {
   }
 
   /****************************************************************************
+   * Resolve metrics for micrcontrollers
+   ***************************************************************************/
+  void AieProfileMetadata::getConfigMetricsForMicrocontrollers(const int moduleIdx,
+      const std::vector<std::string>& metricsSettings,
+      const std::vector<std::string> graphMetricsSettings)
+  {
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
+      return;
+
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidPorts = metadataReader->getValidPorts();
+
+    // STEP 1 : Parse per-graph or per-kernel settings
+    // NOTE: graph settings not yet
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for
+     * a metric separated with ';' Single or all tiles
+     * tile_based_microcontroller_metrics = 
+     * [<column|all>:<off|execution|interrupt_stalls|mmu_activity>]
+     * Range of tiles
+     * tile_based_microcontroller_metrics =
+     * [<mincolumn>:<maxcolumn>:<off|execution|interrupt_stalls|mmu_activity>]
+     */
+
+    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+
+    // Pass 1 : process only "all" metric setting
+    // all:<metric>[:<channel0>[:<channel1>]]
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // Split done only in Pass 1
+      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
+
+      if (metrics[i][0].compare("all") != 0)
+        continue;
+
+      auto tiles = metadataReader->getMicrocontrollers(false);
+
+      for (auto& t : tiles)
+        configMetrics[moduleIdx][t] = metrics[i][1];
+    } // Pass 1
+
+    // Pass 2 : process only range of tiles metric setting
+    // <mincolumn>:<maxcolumn>:<metric>
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
+        continue;
+      
+      uint8_t minCol = 0;
+      try {
+        minCol = aie::convertStringToUint8(metrics[i][0]);
+      }
+      catch (std::invalid_argument const&) {
+        // 2nd style but expected min column is not an integer, give warning and skip
+        xrt_core::message::send(severity_level::warning, "XRT",
+                                "Minimum column specification in tile_based_microcontroller_metrics"
+                                 "is not an integer and hence skipped.");
+        continue;
+      }
+
+      uint8_t maxCol = 0;
+      try {
+        maxCol = aie::convertStringToUint8(metrics[i][1]);
+      }
+      catch (std::invalid_argument const&) {
+        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
+        continue;
+      }
+
+      auto tiles = metadataReader->getMicrocontrollers(true, minCol, maxCol);
+      
+      for (auto& t : tiles)
+        configMetrics[moduleIdx][t] = metrics[i][2];
+    } // Pass 2
+
+    // Pass 3 : process only single tile metric setting
+    // <singleColumn>:<metric>[:<channel0>[:<channel1>]]
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // Skip range specification, invalid format, or already processed
+      if ((metrics[i].size() == 4) || (metrics[i].size() < 2)
+          || (metrics[i][0].compare("all") == 0))
+        continue;
+
+      uint8_t col = 0;
+      try {
+        col = aie::convertStringToUint8(metrics[i][1]);
+      }
+      catch (std::invalid_argument const&) {
+        // max column is not a number, so the expected single column specification. Handle this here
+        try {
+          col = aie::convertStringToUint8(metrics[i][0]);
+        }
+        catch (std::invalid_argument const&) {
+          // Expected column specification is not a number. Give warning and skip
+          xrt_core::message::send(severity_level::warning, "XRT",
+                                  "Column specification in tile_based_microcontroller_metrics "
+                                  "is not an integer and hence skipped.");
+          continue;
+        }
+      }
+
+      auto tiles = metadataReader->getMicrocontrollers(true, col, col);
+        
+      for (auto& t : tiles)
+        configMetrics[moduleIdx][t] = metrics[i][1];
+    } // Pass 3
+
+    // Set default, check validity, and remove "off" tiles
+    auto defaultSet = defaultSets[moduleIdx];
+    bool showWarning = true;
+    std::vector<tile_type> offTiles;
+
+    for (auto& tileMetric : configMetrics[moduleIdx]) {
+      // Save list of "off" tiles
+      if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Ensure requested metric set is supported (if not, use default)
+      auto metricVec = metricStrings.at(module_type::shim);
+
+      if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
+        if (showWarning) {
+          std::string msg = "Unable to find microcontroller metric set " + tileMetric.second
+                            + ". Using default of " + defaultSet + ". ";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarning = false;
+        }
+
+        tileMetric.second = defaultSet;
+      }
+    }
+
+    // Remove all the "off" tiles
+    for (auto& t : offTiles)
+      configMetrics[moduleIdx].erase(t);
+  }
+
+  /****************************************************************************
    * Get profile configuration
    ***************************************************************************/
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
@@ -1318,12 +1474,5 @@ namespace xdp {
                        (static_cast<uint64_t>(portID2) << 0);
     return payload;
   }
-
-  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
-  {
-    // input_throughputs/output_throughputs is already supported, hence excluded here
-    return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
-  }
-
 
 }  // namespace xdp

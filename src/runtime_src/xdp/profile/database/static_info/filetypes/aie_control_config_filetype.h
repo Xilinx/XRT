@@ -73,6 +73,11 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         getGMIOs() const override;
 
         std::vector<tile_type>
+        getMicrocontrollers(bool useColumn = false, 
+                            uint8_t minCol = 0, 
+                            uint8_t maxCol = 0) const override;
+
+        std::vector<tile_type>
         getInterfaceTiles(const std::string& graphName,
                           const std::string& portName = "all",
                           const std::string& metricStr = "channels",

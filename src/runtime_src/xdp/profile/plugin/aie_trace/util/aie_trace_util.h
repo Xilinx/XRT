@@ -18,9 +18,13 @@
 #define AIE_TRACE_UTIL_DOT_H
 
 #include <cstdint>
-#include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp::aie::trace {
   /**
@@ -153,13 +157,6 @@ namespace xdp::aie::trace {
    * @return Channel number associated with given event (default: -1)
    */
   int8_t getChannelNumberFromEvent(XAie_Events event);
-
-  /**  
-   * @brief Print out usage statistics for specified tile
-   * @param aieDevice AIE device
-   * @param tile      Tile to analyze
-   */
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
   /**
    * @brief Print out trace event statistics across multiple tiles

@@ -38,6 +38,52 @@ namespace xdp::aie::trace {
   using severity_level = xrt_core::message::severity_level;
 
   /****************************************************************************
+   * Print out resource usage statistics for a given tile
+   ***************************************************************************/
+  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
+  {
+    if (xrt_core::config::get_verbosity() < static_cast<uint32_t>(severity_level::info))
+      return;
+
+    auto col = tile.col;
+    auto row = tile.row;
+    auto loc = XAie_TileLoc(col, row);
+    std::stringstream msg;
+
+    const std::string groups[3] = {
+      XAIEDEV_DEFAULT_GROUP_GENERIC,
+      XAIEDEV_DEFAULT_GROUP_STATIC, 
+      XAIEDEV_DEFAULT_GROUP_AVAIL
+    };
+
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
+  }
+
+  /****************************************************************************
    * Configure stream switch event ports for monitoring purposes
    ***************************************************************************/
   std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>
@@ -187,8 +233,8 @@ namespace xdp::aie::trace {
       for (int i=0; i < NUM_COMBO_EVENT_CONTROL; ++i)
         config.combo_event_control[i] = 2;
       for (int i=0; i < events.size(); ++i) {
-        uint8_t phyEvent = 0;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, events.at(i), &phyEvent);
+        uint16_t phyEvent = 0;
+        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, events.at(i), &phyEvent);
         config.combo_event_input[i] = phyEvent;
       }
 

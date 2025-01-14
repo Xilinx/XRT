@@ -870,6 +870,13 @@ get_aie_profile_settings_interface_tile_latency_metrics()
 }
 
 inline std::string
+get_aie_profile_settings_tile_based_microcontroller_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_microcontroller_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_profile_settings_start_type()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.start_type", "time");
