@@ -34,25 +34,24 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/aie_trace/*.cpp"
   "${PROFILE_DIR}/writer/aie_trace/*.h"
   "${PROFILE_DIR}/writer/aie_trace/*.cpp"
-  "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.h"
-  "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.cpp"
   "${IMPL_DIR}/*.h"
   "${IMPL_DIR}/*.cpp"
+)
+file(GLOB AIE_TRACE_UTIL_FILES
+  "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.h"
+  "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.cpp"
 )
 file(GLOB AIE_TRACE_CONFIG_FILES
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_config.h"
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_config.cpp"
 )
-
-
 file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
   "${PROFILE_DIR}/device/common/*.h"
   "${PROFILE_DIR}/device/common/*.cpp"
 )
 
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_CONFIG_FILES})
-
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_TRACE_CONFIG_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_VE2_BUILD=1 FAL_LINUX="on")
@@ -63,9 +62,8 @@ if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
   )
 
-
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
@@ -77,13 +75,10 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   )
 
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
-
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
-
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_X86_BUILD=1)
-
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
@@ -91,13 +86,10 @@ elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   )
 
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
-
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_CONFIG_FILES})
-
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_TRACE_CONFIG_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE FAL_LINUX="on")
-
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
