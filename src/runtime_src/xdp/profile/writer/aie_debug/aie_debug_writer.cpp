@@ -78,7 +78,7 @@ namespace xdp {
       fout<< "Register Name, Field Name, Bit-range, Sub-Value\n";
       std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(mDeviceIndex);
       for (auto& sample : samples) {
-        auto regInfoVec = regInterp.registerInfo(sample.name, sample.offset, sample.value);
+        auto regInfoVec = regInterp->registerInfo(sample.name, sample.offset, sample.value);
         for (auto& rInfo : regInfoVec) {
           if(rInfo.field_name=="") {
             continue;
