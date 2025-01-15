@@ -9,6 +9,7 @@
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdValidate.h"
+#include "tools/common/tests/TestValidateUtilities.h"
 
 // Supporting tools
 #include "common/error.h"
@@ -17,6 +18,7 @@
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/JSONConfigurable.h"
+#include "core/common/module_loader.h"
 
 // System include files
 #include <exception>
