@@ -26,7 +26,8 @@
 #ifndef AIE2_REGISTERS_H_
 #define AIE2_REGISTERS_H_
 
-namespace aie2 {
+namespace aie2
+{
 
 // Register definitions for AIE2
 // ###################################
@@ -35,11 +36,11 @@ namespace aie2 {
 // ###################################
 // Program Counter
 const unsigned int cm_program_counter = 0x00031100;
-// Performance Counters 1-0 Start and Stop Event
+// Performance Counters 1-0 Start and Stop Events
 const unsigned int cm_performance_control0 = 0x00031500;
-// Performance Counters 3-2 Start and Stop Event
+// Performance Counters 3-2 Start and Stop Events
 const unsigned int cm_performance_control1 = 0x00031504;
-// Performance Counters Reconst unsigned int Events
+// Performance Counters Reset Events
 const unsigned int cm_performance_control2 = 0x00031508;
 // Performance Counter0
 const unsigned int cm_performance_counter0 = 0x00031520;
@@ -61,9 +62,9 @@ const unsigned int cm_performance_counter3_event_value = 0x0003158c;
 const unsigned int cm_core_control = 0x00032000;
 // The status of the AI Engine
 const unsigned int cm_core_status = 0x00032004;
-// Set reconst unsigned int event trigger
+// Set enable events
 const unsigned int cm_enable_events = 0x00032008;
-// Set reconst unsigned int event trigger
+// Set reset event trigger
 const unsigned int cm_reset_event = 0x0003200c;
 // Debug control of manual debug stall and single step count
 const unsigned int cm_debug_control0 = 0x00032010;
@@ -529,15 +530,15 @@ const unsigned int cm_stream_switch_adaptive_clock_gate_status = 0x0003ff34;
 const unsigned int cm_stream_switch_adaptive_clock_gate_abort_period = 0x0003ff38;
 // Control clock gating of modules (privileged)
 const unsigned int cm_module_clock_control = 0x00060000;
-// Reconst unsigned int of modules (privileged)
+// Reset of modules (privileged)
 const unsigned int cm_module_reset_control = 0x00060010;
 
 
 // Register definitions for MM
 // ###################################
-// Performance Counters Start and Stop Event
+// Performance Counters Start and Stop Events
 const unsigned int mm_performance_control0 = 0x00011000;
-// Performance Counters Reconst unsigned int Event
+// Performance Counters Reset Events
 const unsigned int mm_performance_control1 = 0x00011008;
 // Performance Counter0
 const unsigned int mm_performance_counter0 = 0x00011020;
@@ -960,11 +961,11 @@ const unsigned int mm_lock_request = 0x00040000;
 
 // Register definitions for MEM
 // ###################################
-// Performance Counters 1-0 Start and Stop Event
+// Performance Counters 1-0 Start and Stop Events
 const unsigned int mem_performance_control0 = 0x00091000;
-// Performance Counters 3-2 Start and Stop Event
+// Performance Counters 3-2 Start and Stop Events
 const unsigned int mem_performance_control1 = 0x00091004;
-// Performance Counters Reconst unsigned int Event
+// Performance Counters Reset Events
 const unsigned int mem_performance_control2 = 0x00091008;
 // Performance Counter0
 const unsigned int mem_performance_counter0 = 0x00091020;
@@ -2412,7 +2413,7 @@ const unsigned int mem_locks_underflow_1 = 0x000c042c;
 const unsigned int mem_lock_request = 0x000d0000;
 // Control clock gating of modules (privileged)
 const unsigned int mem_module_clock_control = 0x000fff00;
-// Reconst unsigned int of modules (privileged)
+// Reset of modules (privileged)
 const unsigned int mem_module_reset_control = 0x000fff10;
 
 // Register definitions for SHIM
@@ -2725,8 +2726,10 @@ const unsigned int shim_dma_mm2s_status_0 = 0x0001d228;
 const unsigned int shim_dma_mm2s_status_1 = 0x0001d22c;
 // Performance Counters 1-0 Start and Stop Event
 const unsigned int shim_performance_control0 = 0x00031000;
-// Performance Counters Reconst unsigned int Events
+const unsigned int shim_performance_start_stop_0_1 = 0x00031000;
+// Performance Counters Reset Events
 const unsigned int shim_performance_control1 = 0x00031008;
+const unsigned int shim_performance_reset_0_1 = 0x00031008;
 // Performance Counter0
 const unsigned int shim_performance_counter0 = 0x00031020;
 // Performance Counter1
@@ -2819,11 +2822,15 @@ const unsigned int shim_event_status1 = 0x00034204;
 const unsigned int shim_event_status2 = 0x00034208;
 // Internal event status register3
 const unsigned int shim_event_status3 = 0x0003420c;
+// Combo events input events
+const unsigned int shim_combo_event_inputs = 0x00034400;
+// Combo events input events
+const unsigned int shim_combo_event_control = 0x00034404;
 // Event enable for DMA Group
 const unsigned int shim_event_group_dma_enable = 0x00034504;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 0-3 for event generation
 const unsigned int shim_stream_switch_event_port_selection_0 = 0x0003ff00;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 4-7 for event generation
 const unsigned int shim_stream_switch_event_port_selection_1 = 0x0003ff04;
 
 } // namespace aie2

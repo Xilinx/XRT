@@ -251,36 +251,94 @@ public:
   
   void populateTraceRegisters() {
     // Core modules
-    core_addresses.emplace(aie1::cm_performance_control0);
     core_addresses.emplace(aie1::cm_core_status);
     core_addresses.emplace(aie1::cm_trace_control0);
     core_addresses.emplace(aie1::cm_trace_control1);
     core_addresses.emplace(aie1::cm_trace_status);
     core_addresses.emplace(aie1::cm_trace_event0);
+    core_addresses.emplace(aie1::cm_trace_event1);
     core_addresses.emplace(aie1::cm_event_status0);
+    core_addresses.emplace(aie1::cm_event_status1);
+    core_addresses.emplace(aie1::cm_event_status2);
+    core_addresses.emplace(aie1::cm_event_status3);
     core_addresses.emplace(aie1::cm_event_broadcast0);
+    core_addresses.emplace(aie1::cm_event_broadcast1);
+    core_addresses.emplace(aie1::cm_event_broadcast2);
+    core_addresses.emplace(aie1::cm_event_broadcast3);
+    core_addresses.emplace(aie1::cm_event_broadcast4);
+    core_addresses.emplace(aie1::cm_event_broadcast5);
+    core_addresses.emplace(aie1::cm_event_broadcast6);
+    core_addresses.emplace(aie1::cm_event_broadcast7);
+    core_addresses.emplace(aie1::cm_event_broadcast8);
+    core_addresses.emplace(aie1::cm_event_broadcast9);
+    core_addresses.emplace(aie1::cm_event_broadcast10);
+    core_addresses.emplace(aie1::cm_event_broadcast11);
+    core_addresses.emplace(aie1::cm_event_broadcast12);
+    core_addresses.emplace(aie1::cm_event_broadcast13);
+    core_addresses.emplace(aie1::cm_event_broadcast14);
+    core_addresses.emplace(aie1::cm_event_broadcast15);
     core_addresses.emplace(aie1::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie1::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie1::cm_timer_low);
     core_addresses.emplace(aie1::cm_timer_high);
     core_addresses.emplace(aie1::cm_stream_switch_event_port_selection_0);
-    
+    core_addresses.emplace(aie1::cm_stream_switch_event_port_selection_1);
+
     // Memory modules
     memory_addresses.emplace(aie1::mm_trace_control0);
     memory_addresses.emplace(aie1::mm_trace_control1);
     memory_addresses.emplace(aie1::mm_trace_status);
-    memory_addresses.emplace(aie1::mm_event_status0);
     memory_addresses.emplace(aie1::mm_trace_event0);
+    memory_addresses.emplace(aie1::mm_trace_event1);
+    memory_addresses.emplace(aie1::mm_event_status0);
+    memory_addresses.emplace(aie1::mm_event_status1);
+    memory_addresses.emplace(aie1::mm_event_status2);
+    memory_addresses.emplace(aie1::mm_event_status3);
     memory_addresses.emplace(aie1::mm_event_broadcast0);
+    memory_addresses.emplace(aie1::mm_event_broadcast1);
+    memory_addresses.emplace(aie1::mm_event_broadcast2);
+    memory_addresses.emplace(aie1::mm_event_broadcast3);
+    memory_addresses.emplace(aie1::mm_event_broadcast4);
+    memory_addresses.emplace(aie1::mm_event_broadcast5);
+    memory_addresses.emplace(aie1::mm_event_broadcast6);
+    memory_addresses.emplace(aie1::mm_event_broadcast7);
+    memory_addresses.emplace(aie1::mm_event_broadcast8);
+    memory_addresses.emplace(aie1::mm_event_broadcast9);
+    memory_addresses.emplace(aie1::mm_event_broadcast10);
+    memory_addresses.emplace(aie1::mm_event_broadcast11);
+    memory_addresses.emplace(aie1::mm_event_broadcast12);
+    memory_addresses.emplace(aie1::mm_event_broadcast13);
+    memory_addresses.emplace(aie1::mm_event_broadcast14);
+    memory_addresses.emplace(aie1::mm_event_broadcast15);
 
     // Interface tiles
     interface_addresses.emplace(aie1::shim_trace_control0);
     interface_addresses.emplace(aie1::shim_trace_control1);
     interface_addresses.emplace(aie1::shim_trace_status);
     interface_addresses.emplace(aie1::shim_trace_event0);
+    interface_addresses.emplace(aie1::shim_trace_event1);
     interface_addresses.emplace(aie1::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_1);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_2);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_3);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_4);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_5);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_6);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_7);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_8);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_9);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_10);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_11);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_12);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_13);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_14);
+    interface_addresses.emplace(aie1::shim_event_broadcast_a_15);
     interface_addresses.emplace(aie1::shim_event_status0);
+    interface_addresses.emplace(aie1::shim_event_status1);
+    interface_addresses.emplace(aie1::shim_event_status2);
+    interface_addresses.emplace(aie1::shim_event_status3);
     interface_addresses.emplace(aie1::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie1::shim_stream_switch_event_port_selection_1);
 
     // Memory tiles
     // NOTE, not available on AIE1
@@ -1564,49 +1622,113 @@ public:
 
   void populateTraceRegisters() {
     // Core modules
-    core_addresses.emplace(aie2::cm_performance_control0);
     core_addresses.emplace(aie2::cm_core_status);
     core_addresses.emplace(aie2::cm_trace_control0);
     core_addresses.emplace(aie2::cm_trace_control1);
     core_addresses.emplace(aie2::cm_trace_status);
     core_addresses.emplace(aie2::cm_trace_event0);
+    core_addresses.emplace(aie2::cm_trace_event1);
     core_addresses.emplace(aie2::cm_event_status0);
+    core_addresses.emplace(aie2::cm_event_status1);
+    core_addresses.emplace(aie2::cm_event_status2);
+    core_addresses.emplace(aie2::cm_event_status3);
     core_addresses.emplace(aie2::cm_event_broadcast0);
+    core_addresses.emplace(aie2::cm_event_broadcast1);
+    core_addresses.emplace(aie2::cm_event_broadcast2);
+    core_addresses.emplace(aie2::cm_event_broadcast3);
+    core_addresses.emplace(aie2::cm_event_broadcast4);
+    core_addresses.emplace(aie2::cm_event_broadcast5);
+    core_addresses.emplace(aie2::cm_event_broadcast6);
+    core_addresses.emplace(aie2::cm_event_broadcast7);
+    core_addresses.emplace(aie2::cm_event_broadcast8);
+    core_addresses.emplace(aie2::cm_event_broadcast9);
+    core_addresses.emplace(aie2::cm_event_broadcast10);
+    core_addresses.emplace(aie2::cm_event_broadcast11);
+    core_addresses.emplace(aie2::cm_event_broadcast12);
+    core_addresses.emplace(aie2::cm_event_broadcast13);
+    core_addresses.emplace(aie2::cm_event_broadcast14);
+    core_addresses.emplace(aie2::cm_event_broadcast15);
     core_addresses.emplace(aie2::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie2::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie2::cm_timer_low);
     core_addresses.emplace(aie2::cm_timer_high);
     core_addresses.emplace(aie2::cm_edge_detection_event_control);
     core_addresses.emplace(aie2::cm_stream_switch_event_port_selection_0);
+    core_addresses.emplace(aie2::cm_stream_switch_event_port_selection_1);
     
     // Memory modules
     memory_addresses.emplace(aie2::mm_trace_control0);
     memory_addresses.emplace(aie2::mm_trace_control1);
     memory_addresses.emplace(aie2::mm_trace_status);
-    memory_addresses.emplace(aie2::mm_event_status0);
     memory_addresses.emplace(aie2::mm_trace_event0);
+    memory_addresses.emplace(aie2::mm_trace_event1);
+    memory_addresses.emplace(aie2::mm_event_status0);
+    memory_addresses.emplace(aie2::mm_event_status1);
+    memory_addresses.emplace(aie2::mm_event_status2);
+    memory_addresses.emplace(aie2::mm_event_status3);
     memory_addresses.emplace(aie2::mm_event_broadcast0);
+    memory_addresses.emplace(aie2::mm_event_broadcast1);
+    memory_addresses.emplace(aie2::mm_event_broadcast2);
+    memory_addresses.emplace(aie2::mm_event_broadcast3);
+    memory_addresses.emplace(aie2::mm_event_broadcast4);
+    memory_addresses.emplace(aie2::mm_event_broadcast5);
+    memory_addresses.emplace(aie2::mm_event_broadcast6);
+    memory_addresses.emplace(aie2::mm_event_broadcast7);
+    memory_addresses.emplace(aie2::mm_event_broadcast8);
+    memory_addresses.emplace(aie2::mm_event_broadcast9);
+    memory_addresses.emplace(aie2::mm_event_broadcast10);
+    memory_addresses.emplace(aie2::mm_event_broadcast11);
+    memory_addresses.emplace(aie2::mm_event_broadcast12);
+    memory_addresses.emplace(aie2::mm_event_broadcast13);
+    memory_addresses.emplace(aie2::mm_event_broadcast14);
+    memory_addresses.emplace(aie2::mm_event_broadcast15);
 
     // Interface tiles
     interface_addresses.emplace(aie2::shim_trace_control0);
     interface_addresses.emplace(aie2::shim_trace_control1);
     interface_addresses.emplace(aie2::shim_trace_status);
     interface_addresses.emplace(aie2::shim_trace_event0);
+    interface_addresses.emplace(aie2::shim_trace_event1);
     interface_addresses.emplace(aie2::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_1);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_2);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_3);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_4);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_5);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_6);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_7);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_8);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_9);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_10);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_11);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_12);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_13);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_14);
+    interface_addresses.emplace(aie2::shim_event_broadcast_a_15);
     interface_addresses.emplace(aie2::shim_event_status0);
+    interface_addresses.emplace(aie2::shim_event_status1);
+    interface_addresses.emplace(aie2::shim_event_status2);
+    interface_addresses.emplace(aie2::shim_event_status3);
     interface_addresses.emplace(aie2::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie2::shim_stream_switch_event_port_selection_1);
 
     // Memory tiles
     memory_tile_addresses.emplace(aie2::mem_trace_control0);
     memory_tile_addresses.emplace(aie2::mem_trace_control1);
     memory_tile_addresses.emplace(aie2::mem_trace_status);
+    memory_tile_addresses.emplace(aie2::mem_trace_event0);
+    memory_tile_addresses.emplace(aie2::mem_trace_event1);
     memory_tile_addresses.emplace(aie2::mem_dma_event_channel_selection);
     memory_tile_addresses.emplace(aie2::mem_edge_detection_event_control);
     memory_tile_addresses.emplace(aie2::mem_stream_switch_event_port_selection_0);
     memory_tile_addresses.emplace(aie2::mem_stream_switch_event_port_selection_1);
-    memory_tile_addresses.emplace(aie2::mem_trace_event0);
     memory_tile_addresses.emplace(aie2::mem_event_broadcast0);
     memory_tile_addresses.emplace(aie2::mem_event_status0);
+    memory_tile_addresses.emplace(aie2::mem_event_status1);
+    memory_tile_addresses.emplace(aie2::mem_event_status2);
+    memory_tile_addresses.emplace(aie2::mem_event_status3);
+    memory_tile_addresses.emplace(aie2::mem_event_status4);
+    memory_tile_addresses.emplace(aie2::mem_event_status5);
   }
 
   void populateRegNameToValueMap() {
@@ -4475,49 +4597,113 @@ public:
 
   void populateTraceRegisters() {
     // Core modules
-    core_addresses.emplace(aie2ps::cm_performance_control0);
     core_addresses.emplace(aie2ps::cm_core_status);
     core_addresses.emplace(aie2ps::cm_trace_control0);
     core_addresses.emplace(aie2ps::cm_trace_control1);
     core_addresses.emplace(aie2ps::cm_trace_status);
     core_addresses.emplace(aie2ps::cm_trace_event0);
+    core_addresses.emplace(aie2ps::cm_trace_event1);
     core_addresses.emplace(aie2ps::cm_event_status0);
+    core_addresses.emplace(aie2ps::cm_event_status1);
+    core_addresses.emplace(aie2ps::cm_event_status2);
+    core_addresses.emplace(aie2ps::cm_event_status3);
     core_addresses.emplace(aie2ps::cm_event_broadcast0);
+    core_addresses.emplace(aie2ps::cm_event_broadcast1);
+    core_addresses.emplace(aie2ps::cm_event_broadcast2);
+    core_addresses.emplace(aie2ps::cm_event_broadcast3);
+    core_addresses.emplace(aie2ps::cm_event_broadcast4);
+    core_addresses.emplace(aie2ps::cm_event_broadcast5);
+    core_addresses.emplace(aie2ps::cm_event_broadcast6);
+    core_addresses.emplace(aie2ps::cm_event_broadcast7);
+    core_addresses.emplace(aie2ps::cm_event_broadcast8);
+    core_addresses.emplace(aie2ps::cm_event_broadcast9);
+    core_addresses.emplace(aie2ps::cm_event_broadcast10);
+    core_addresses.emplace(aie2ps::cm_event_broadcast11);
+    core_addresses.emplace(aie2ps::cm_event_broadcast12);
+    core_addresses.emplace(aie2ps::cm_event_broadcast13);
+    core_addresses.emplace(aie2ps::cm_event_broadcast14);
+    core_addresses.emplace(aie2ps::cm_event_broadcast15);
     core_addresses.emplace(aie2ps::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie2ps::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie2ps::cm_timer_low);
     core_addresses.emplace(aie2ps::cm_timer_high);
     core_addresses.emplace(aie2ps::cm_edge_detection_event_control);
     core_addresses.emplace(aie2ps::cm_stream_switch_event_port_selection_0);
-    
+    core_addresses.emplace(aie2ps::cm_stream_switch_event_port_selection_1);
+
     // Memory modules
     memory_addresses.emplace(aie2ps::mm_trace_control0);
     memory_addresses.emplace(aie2ps::mm_trace_control1);
     memory_addresses.emplace(aie2ps::mm_trace_status);
-    memory_addresses.emplace(aie2ps::mm_event_status0);
     memory_addresses.emplace(aie2ps::mm_trace_event0);
+    memory_addresses.emplace(aie2ps::mm_trace_event1);
+    memory_addresses.emplace(aie2ps::mm_event_status0);
+    memory_addresses.emplace(aie2ps::mm_event_status1);
+    memory_addresses.emplace(aie2ps::mm_event_status2);
+    memory_addresses.emplace(aie2ps::mm_event_status3);
     memory_addresses.emplace(aie2ps::mm_event_broadcast0);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast1);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast2);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast3);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast4);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast5);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast6);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast7);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast8);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast9);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast10);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast11);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast12);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast13);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast14);
+    memory_addresses.emplace(aie2ps::mm_event_broadcast15);
 
     // Interface tiles
     interface_addresses.emplace(aie2ps::shim_trace_control0);
     interface_addresses.emplace(aie2ps::shim_trace_control1);
     interface_addresses.emplace(aie2ps::shim_trace_status);
     interface_addresses.emplace(aie2ps::shim_trace_event0);
+    interface_addresses.emplace(aie2ps::shim_trace_event1);
     interface_addresses.emplace(aie2ps::shim_event_broadcast_a_0);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_1);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_2);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_3);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_4);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_5);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_6);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_7);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_8);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_9);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_10);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_11);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_12);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_13);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_14);
+    interface_addresses.emplace(aie2ps::shim_event_broadcast_a_15);
     interface_addresses.emplace(aie2ps::shim_event_status0);
+    interface_addresses.emplace(aie2ps::shim_event_status1);
+    interface_addresses.emplace(aie2ps::shim_event_status2);
+    interface_addresses.emplace(aie2ps::shim_event_status3);
     interface_addresses.emplace(aie2ps::shim_stream_switch_event_port_selection_0);
+    interface_addresses.emplace(aie2ps::shim_stream_switch_event_port_selection_1);
 
     // Memory tiles
     memory_tile_addresses.emplace(aie2ps::mem_trace_control0);
     memory_tile_addresses.emplace(aie2ps::mem_trace_control1);
     memory_tile_addresses.emplace(aie2ps::mem_trace_status);
+    memory_tile_addresses.emplace(aie2ps::mem_trace_event0);
+    memory_tile_addresses.emplace(aie2ps::mem_trace_event1);
     memory_tile_addresses.emplace(aie2ps::mem_dma_event_channel_selection);
     memory_tile_addresses.emplace(aie2ps::mem_edge_detection_event_control);
     memory_tile_addresses.emplace(aie2ps::mem_stream_switch_event_port_selection_0);
     memory_tile_addresses.emplace(aie2ps::mem_stream_switch_event_port_selection_1);
-    memory_tile_addresses.emplace(aie2ps::mem_trace_event0);
     memory_tile_addresses.emplace(aie2ps::mem_event_broadcast0);
     memory_tile_addresses.emplace(aie2ps::mem_event_status0);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status1);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status2);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status3);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status4);
+    memory_tile_addresses.emplace(aie2ps::mem_event_status5);
   }
 
   void populateRegNameToValueMap() {

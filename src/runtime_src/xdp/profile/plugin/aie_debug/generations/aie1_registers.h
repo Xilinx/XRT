@@ -26,7 +26,8 @@
 #ifndef AIE1_REGISTERS_H_
 #define AIE1_REGISTERS_H_
 
-namespace aie1 {
+namespace aie1 
+{
 
 // Register definitions for AIE1
 // ###################################
@@ -47,7 +48,7 @@ const unsigned int cm_mc1 = 0x00030470;
 const unsigned int cm_performance_control0 = 0x00031000;
 // Performance Counters 3-2 Start and Stop Event
 const unsigned int cm_performance_control1 = 0x00031004;
-// Performance Counters Reconst unsigned int Events
+// Performance Counters Reset Events
 const unsigned int cm_performance_control2 = 0x00031008;
 // Performance Counter0
 const unsigned int cm_performance_counter0 = 0x00031020;
@@ -536,9 +537,9 @@ const unsigned int cm_stream_switch_event_port_selection_1 = 0x0003ff04;
 
 // Register definitions for MM
 // ###################################
-// Performance Counters Start and Stop Event
+// Performance Counters Start and Stop Events
 const unsigned int mm_performance_control0 = 0x00011000;
-// Performance Counters Reconst unsigned int Event
+// Performance Counters Reset Events
 const unsigned int mm_performance_control1 = 0x00011008;
 // Performance Counter0
 const unsigned int mm_performance_counter0 = 0x00011020;
@@ -556,7 +557,7 @@ const unsigned int mm_ecc_scrubbing_event = 0x00012110;
 const unsigned int mm_ecc_failing_address = 0x00012120;
 // Parity Failing Address
 const unsigned int mm_parity_failing_address = 0x00012124;
-// Reconst unsigned int Control
+// Reset Control
 const unsigned int mm_reset_control = 0x00013000;
 // Control of Internal Timer
 const unsigned int mm_timer_control = 0x00014000;
@@ -1145,10 +1146,12 @@ const unsigned int shim_dma_bd0_packet = 0x0001d010;
 const unsigned int shim_dma_s2mm_0_ctrl = 0x0001d140;
 // DMA S2MM Channel 0 Start Queue
 const unsigned int shim_dma_s2mm_0_start_queue = 0x0001d144;
-// Performance Counters 1-0 Start and Stop Event
+// Performance Counters 1-0 Start and Stop Events
 const unsigned int shim_performance_control0 = 0x00031000;
-// Performance Counters Reconst unsigned int Events
+const unsigned int shim_performance_start_stop_0_1 = 0x00031000;
+// Performance Counters 1-0 Reset Events
 const unsigned int shim_performance_control1 = 0x00031008;
+const unsigned int shim_performance_reset_0_1 = 0x00031008;
 // Performance Counter0
 const unsigned int shim_performance_counter0 = 0x00031020;
 // Performance Counter1
@@ -1241,11 +1244,15 @@ const unsigned int shim_event_status1 = 0x00034204;
 const unsigned int shim_event_status2 = 0x00034208;
 // Internal event status register3
 const unsigned int shim_event_status3 = 0x0003420c;
+// Combo events input events
+const unsigned int shim_combo_event_inputs = 0x00034400;
+// Combo events input events
+const unsigned int shim_combo_event_control = 0x00034404;
 // Event enable for DMA Group
 const unsigned int shim_event_group_dma_enable = 0x00034504;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 0-3 for event generation
 const unsigned int shim_stream_switch_event_port_selection_0 = 0x0003ff00;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 4-7 for event generation
 const unsigned int shim_stream_switch_event_port_selection_1 = 0x0003ff04;
 
 // Register definitions for MEM

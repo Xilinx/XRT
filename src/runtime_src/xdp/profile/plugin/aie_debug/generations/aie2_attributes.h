@@ -69,6 +69,11 @@ const unsigned int mem_num_broadcasts = 16;
 const unsigned int cm_num_ss_event_ports = 8;
 const unsigned int shim_num_ss_event_ports = 8;
 const unsigned int mem_num_ss_event_ports = 8;
+// Event status registers (i.e., sticky bits)
+const unsigned int cm_num_event_status_regs = 4;
+const unsigned int mm_num_event_status_regs = 4;
+const unsigned int shim_num_event_status_regs = 4;
+const unsigned int mem_num_event_status_regs = 6;
 // Microcontrollers (uC) per interface tile
 const unsigned int shim_num_uc = 0;
 // BD metadata per tile
@@ -89,6 +94,8 @@ const unsigned int cm_num_group_events = 9;
 const unsigned int cm_group_core_stall_index = 3;
 const unsigned int cm_group_program_flow_index = 4;
 const unsigned int cm_group_stream_switch_index = 7;
+// Event masks
+const unsigned int shim_event_mask = 0x7f;
 
 // Version-Specific Event IDs
 // ###################################
@@ -130,17 +137,35 @@ const unsigned int cm_event_group_stream_switch = 73;
 const unsigned int cm_event_port_idle_0 = 74;
 const unsigned int cm_event_port_running_0 = 75;
 const unsigned int cm_event_port_stalled_0 = 76;
+const unsigned int cm_event_port_tlast_0 = 77;
 const unsigned int cm_event_port_idle_1 = 78;
 const unsigned int cm_event_port_running_1 = 79;
 const unsigned int cm_event_port_stalled_1 = 80;
+const unsigned int cm_event_port_tlast_1 = 81;
 const unsigned int cm_event_port_idle_2 = 82;
 const unsigned int cm_event_port_running_2 = 83;
+const unsigned int cm_event_port_stalled_2 = 84;
+const unsigned int cm_event_port_tlast_2 = 85;
 const unsigned int cm_event_port_idle_3 = 86;
 const unsigned int cm_event_port_running_3 = 87;
+const unsigned int cm_event_port_stalled_3 = 88;
+const unsigned int cm_event_port_tlast_3 = 89;
+const unsigned int cm_event_port_idle_4 = 90;
 const unsigned int cm_event_port_running_4 = 91;
+const unsigned int cm_event_port_stalled_4 = 92;
+const unsigned int cm_event_port_tlast_4 = 93;
+const unsigned int cm_event_port_idle_5 = 94;
 const unsigned int cm_event_port_running_5 = 95;
+const unsigned int cm_event_port_stalled_5 = 96;
+const unsigned int cm_event_port_tlast_5 = 97;
+const unsigned int cm_event_port_idle_6 = 98;
 const unsigned int cm_event_port_running_6 = 99;
+const unsigned int cm_event_port_stalled_6 = 100;
+const unsigned int cm_event_port_tlast_6 = 101;
+const unsigned int cm_event_port_idle_7 = 102;
 const unsigned int cm_event_port_running_7 = 103;
+const unsigned int cm_event_port_stalled_7 = 104;
+const unsigned int cm_event_port_tlast_7 = 105;
 const unsigned int cm_event_broadcast_0 = 107;
 const unsigned int cm_event_broadcast_1 = 108;
 const unsigned int cm_event_broadcast_2 = 109;
@@ -189,6 +214,7 @@ const unsigned int mm_event_broadcast_15 = 122;
 
 const unsigned int shim_event_perf_count_0 = 5;
 const unsigned int shim_event_perf_count_1 = 6;
+const unsigned int shim_event_combo_event_3 = 10;
 const unsigned int shim_event_group_dma_activity = 13;
 const unsigned int shim_event_dma_s2mm_0_start_task = 14;
 const unsigned int shim_event_dma_s2mm_1_start_task = 15;

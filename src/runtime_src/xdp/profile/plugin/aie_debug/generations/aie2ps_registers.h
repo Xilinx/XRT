@@ -25,8 +25,9 @@
 #ifndef AIE2PS_REGISTERS_H_
 #define AIE2PS_REGISTERS_H_
 
-namespace aie2ps {
-
+namespace aie2ps
+{
+	
 // Register definitions for AIE2PS
 // ###################################
 
@@ -3438,18 +3439,24 @@ const unsigned int shim_dma_mm2s_1_response_fifo_parity_error_injection = 0x0000
 const unsigned int shim_dma_pause = 0x00009348;
 // Lock Request. 16kB address space: 0xC000 - 0xFFFC, Lock_Id [13:10], Acq_Rel (9), Change_Value [8:2]
 const unsigned int shim_lock_request = 0x0000c000;
-// Performance Counters 1-0 Start and Stop Event
+// Performance Counters 1-0 Start and Stop Events
 const unsigned int shim_performance_control0 = 0x00031000;
-// Performance Counters 1-0 Reset Eventss
+const unsigned int shim_performance_start_stop_0_1 = 0x00031000;
+// Performance Counters 1-0 Reset Events
 const unsigned int shim_performance_control1 = 0x00031008;
-// Performance Counters 3-2 Start and Stop Event
+const unsigned int shim_performance_reset_0_1 = 0x00031008;
+// Performance Counters 3-2 Start and Stop Events
 const unsigned int shim_performance_control2 = 0x0003100C;
-// Performance Counters 3-2 Reset Eventss
+const unsigned int shim_performance_start_stop_2_3 = 0x0003100C;
+// Performance Counters 3-2 Reset Events
 const unsigned int shim_performance_control3 = 0x00031010;
-// Performance Counters 5-4 Start and Stop Event
+const unsigned int shim_performance_reset_2_3 = 0x00031010;
+// Performance Counters 5-4 Start and Stop Events
 const unsigned int shim_performance_control4 = 0x00031014;
-// Performance Counters 5-4 Reset Eventss
+const unsigned int shim_performance_start_stop_4_5 = 0x00031014;
+// Performance Counters 5-4 Reset Events
 const unsigned int shim_performance_control5 = 0x00031018;
+const unsigned int shim_performance_reset_4_5 = 0x00031018;
 // Performance Counter0
 const unsigned int shim_performance_counter0 = 0x00031020;
 // Performance Counter1
@@ -3550,11 +3557,15 @@ const unsigned int shim_event_status1 = 0x00034204;
 const unsigned int shim_event_status2 = 0x00034208;
 // Internal event status register3
 const unsigned int shim_event_status3 = 0x0003420c;
+// Combo events input events
+const unsigned int shim_combo_event_inputs = 0x00034400;
+// Combo events input events
+const unsigned int shim_combo_event_control = 0x00034404;
 // Event enable for DMA Group
 const unsigned int shim_event_group_dma_enable = 0x00034504;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 0-3 for event generation
 const unsigned int shim_stream_switch_event_port_selection_0 = 0x0003ff00;
-// Select Stream Switch Ports for event generation
+// Stream Switch Ports 4-7 for event generation
 const unsigned int shim_stream_switch_event_port_selection_1 = 0x0003ff04;
 
 // Register definitions for NPI
