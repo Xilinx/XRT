@@ -54,11 +54,10 @@ if (XRT_BASE)
   set (XRT_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
 endif(XRT_BASE)  
 
-# NPU builds the one NPU package for both deployment and development
-# for everything enabled by XRT_NPU. This will change into base and
-# npu separated packages along with packages for development and
-# deployment
+# NPU builds one NPU package for both deployment and development
+# for everything enabled by XRT_NPU and XRT_BASE
 if (XRT_NPU)
+  set (XRT_BASE 1)
   set (XRT_BASE_COMPONENT "npu")
   set (XRT_BASE_DEV_COMPONENT "npu")
   set (XRT_NPU_COMPONENT "npu")
@@ -71,15 +70,34 @@ if (XRT_NPU)
   set (XRT_DEV_COMPONENT ${XRT_NPU_DEV_COMPONENT})
 endif(XRT_NPU)
 
+# Alveo builds one Alveo package for both deployment and development
+# for everything enabled by XRT_ALVEO and XRT_BASE
+if (XRT_ALVEO)
+  set (XRT_BASE 1)
+
+  set (XRT_BASE_COMPONENT "alveo")
+  set (XRT_BASE_DEV_COMPONENT "alveo")
+  set (XRT_ALVEO_COMPONENT "alveo")
+  set (XRT_ALVEO_DEV_COMPONENT "alveo")
+
+  # For the time being, dump everything into alveo that has not
+  # been explicitly marked alveo or npu
+  set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "alveo")
+  set (XRT_COMPONENT ${XRT_ALVEO_COMPONENT})
+  set (XRT_DEV_COMPONENT ${XRT_ALVEO_DEV_COMPONENT})
+endif(XRT_ALVEO)
+
 # Legacy, build one XRT package for both deployment and development
-# This build is for alveo
+# Include everything enabled by XRT_BASE and XRT_ALVEO
 if (XRT_XRT)
-  set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
+  set (XRT_BASE 1)
+  set (XRT_ALVEO 1)
+  set (XRT_NPU 0)
+  
   set (XRT_BASE_COMPONENT "xrt")
   set (XRT_BASE_DEV_COMPONENT "xrt")
   set (XRT_ALVEO_COMPONENT "xrt")
   set (XRT_ALVEO_DEV_COMPONENT "xrt")
-  set (XRT_ALVEO 1)
-  set (XRT_NPU 0)
+  set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 endif(XRT_XRT)
 
