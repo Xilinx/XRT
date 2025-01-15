@@ -330,13 +330,13 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
 	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
 #endif
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
 #else
 	vm_flags_set(vma, VM_IO | VM_RESERVED);
@@ -422,7 +422,8 @@ static int destroy_sg_char(struct xclmgmt_char *lro_char)
 	return 0;
 }
 
-struct pci_dev *find_user_node(const struct pci_dev *pdev)
+#if 0
+static struct pci_dev *find_user_node(const struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
 	unsigned int slot = PCI_SLOT(pdev->devfn);
@@ -448,6 +449,7 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 	return user_dev;
 }
+#endif
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {

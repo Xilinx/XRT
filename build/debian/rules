@@ -6,9 +6,9 @@
 override_dh_auto_configure:
 	set -ex; \
 	if [ "$$(dpkg-architecture -q DEB_TARGET_ARCH)" = arm64 ]; then \
-		XRT_NATIVE_BUILD=no DKMS_FLOW=yes dh_auto_configure; \
+	    XRT_NATIVE_BUILD=no DKMS_FLOW=yes CXXFLAGS="-DXRT_ENABLE_AIE -DFAL_LINUX=on" dh_auto_configure  -- -DXRT_AIE_BUILD=ON; \
 	else \
-		dh_auto_configure; \
+	    dh_auto_configure; \
 	fi
 
 override_dh_auto_test:

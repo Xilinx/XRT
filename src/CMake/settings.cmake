@@ -9,6 +9,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 
+# Indicate that we are building XRT
+add_compile_definitions("XRT_BUILD")
+
 set(XRT_NATIVE_BUILD "yes")
 if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
   set(XRT_NATIVE_BUILD "no")
@@ -50,10 +53,10 @@ if (NOT CMAKE_BUILD_TYPE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 # --- version settings ---
-# Version adjusted to 2.18 for 2024.2
-set(XRT_VERSION_RELEASE 202420)
+# Version adjusted to 2.19 for 2025.1
+set(XRT_VERSION_RELEASE 202510)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 18)
+SET(XRT_VERSION_MINOR 19)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})

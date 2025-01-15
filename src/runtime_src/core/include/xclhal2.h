@@ -24,6 +24,6 @@
  */
 
 #include "xrt.h"
-#include "experimental/xrt-next.h"
+#include "xrt/experimental/xrt-next.h"
 
 #endif

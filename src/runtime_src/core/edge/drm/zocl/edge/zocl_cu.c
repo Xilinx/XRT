@@ -15,7 +15,7 @@
 #include <drm/drm.h>
 #include <drm/drm_print.h>
 #include <linux/io.h>
-
+#include <linux/vmalloc.h>
 #include "zocl_cu.h"
 
 void

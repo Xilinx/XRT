@@ -15,8 +15,11 @@
 #include "core/edge/user/aie/aie_buffer_object.h"
 #endif
 #include "core/edge/user/aie/profile_object.h"
+#include <filesystem>
 #include <map>
 #include <memory>
+#include <poll.h>
+#include <regex>
 #include <string>
 
 #include <fcntl.h>
@@ -215,14 +218,30 @@ struct aie_core_info_sysfs
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
-    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
-    const aie_sys_parser asp(aiepart);
+    auto base_path = "/sys/class/aie/";
+    std::regex pattern(R"(aiepart_(\d+)_(\d+))");
 
-    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
-    for (int i = 0; i < aie_meta.num_cols; ++i)
-      for (int j = 0; j < (aie_meta.num_rows-1); ++j)
-        ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
-                          asp.aie_sys_read(i,(j + aie_meta.core_row))));
+    for (const auto& entry : std::filesystem::directory_iterator(base_path)) {
+        if (!entry.is_directory())
+            continue;
+
+        std::string dir_name = entry.path().filename().string();
+        std::smatch matches;
+
+        if (!std::regex_match(dir_name, matches, pattern))
+            continue;
+
+        auto start_col = std::stoi(matches[1].str());
+        auto num_col = std::stoi(matches[2].str());
+        auto aiepart = std::to_string(start_col) + "_" + std::to_string(num_col);
+        const aie_sys_parser asp(aiepart);
+
+        /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
+        for (int i = start_col; i < (start_col + num_col); ++i)
+          for (int j = 0; j < (aie_meta.num_rows - 1); ++j)
+            ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+                              asp.aie_sys_read(i,(j + aie_meta.core_row))));
+    }
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -518,7 +537,7 @@ struct aie_reg_read
   /* TODO get aie partition id and uid from XCLBIN or PDI, currently not supported*/
   uint32_t partition_id = 1;
   uint32_t uid = 0;
-  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+  drm_zocl_aie_fd aiefd = {0, partition_id, uid, 0 };
   if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd))
     throw xrt_core::error(-errno, "Create AIE failed. Can not get AIE fd");
 
@@ -589,6 +608,7 @@ struct aie_get_freq
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.hw_ctx_id = 0;
     aie_arg.partition_id = std::any_cast<uint32_t>(partition_id);
     aie_arg.freq = 0;
     aie_arg.dir = 0;
@@ -1212,24 +1232,46 @@ void
 device_linux::
 open_aie_context(xrt::aie::access_mode am)
 {
- if (auto ret = xclAIEOpenContext(get_device_handle(), am))
-   throw error(ret, "fail to open aie context");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (int ret = drv->openAIEContext(am))
+    throw xrt_core::error(ret, "Fail to open AIE context");
+
+  drv->setAIEAccessMode(am);
 }
 
 void
 device_linux::
 reset_aie()
 {
-  if (auto ret = xclResetAIEArray(get_device_handle()))
-    throw system_error(ret, "fail to reset aie");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aie_array = drv->get_aie_array_shared();
+
+  if (!aie_array->is_context_set())
+    aie_array->open_context(this, xrt::aie::access_mode::primary);
+
+  aie_array->reset(this, 0 /*hw_context_id*/, xrt_core::edge::aie::full_array_id);
 }
 
 void
 device_linux::
 wait_gmio(const char *gmioName)
 {
-  if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
-    throw system_error(ret, "fail to wait gmio");
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aie_array = drv->get_aie_array_shared();
+
+  if (!aie_array->is_context_set())
+    aie_array->open_context(this, xrt::aie::access_mode::primary);
+
+  aie_array->wait_gmio(gmioName);
 }
 
 void
@@ -1268,6 +1310,28 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
+std::cv_status
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
+{
+  struct pollfd pfd = {.fd=handle, .events=POLLIN};
+  int32_t ret = 0;
+
+  //Checking for only one fd; Only of one CU
+  //Timeout value in milli seconds
+  ret = ::poll(&pfd, 1, timeout);
+  if (ret < 0)
+    throw error(errno, "wait_timeout: failed POSIX poll");
+
+  if (ret == 0) //Timeout occured
+    return std::cv_status::timeout;
+
+  if (pfd.revents & POLLIN) //Interrupt received
+    return std::cv_status::no_timeout;
+
+  throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
 } // xrt_core

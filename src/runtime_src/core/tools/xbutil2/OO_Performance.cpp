@@ -27,7 +27,7 @@ OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
   ;
 
   m_optionsHidden.add_options()
-    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: default, powersaver, balanced, performance, turbo")
+    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: default, powersaver, balanced, performance, turbo") 
   ;
 
   m_positionalOptions.
@@ -38,12 +38,6 @@ OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
 void
 OO_Performance::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::verbose("SubCommand option: Power Mode");
-
-  XBUtilities::verbose("Option(s):");
-  for (auto & aString : _options)
-    XBUtilities::verbose(std::string(" ") + aString);
-
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
     printHelp();

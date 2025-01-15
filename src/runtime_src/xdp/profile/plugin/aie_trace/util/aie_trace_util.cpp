@@ -185,6 +185,17 @@ namespace xdp::aie::trace {
           XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
     };
 
+//#ifdef XDP_CLIENT_BUILD
+    // Banks 16-23 are not defined for all generations
+//    if (hwGen >= 40) {
+//      eventSets["memory_conflicts3"] = {
+//          XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+//          XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+//    }
+//#endif
+
     eventSets["s2mm_channels"]        = eventSets["input_channels"];
     eventSets["s2mm_channels_stalls"] = eventSets["input_channels_stalls"];
     eventSets["mm2s_channels"]        = eventSets["output_channels"];
@@ -242,6 +253,39 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,             XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
+    }
+
+    // Microcontroller sets
+    if (hwGen >= 5) {
+#ifdef XDP_CLIENT_BUILD
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
+#else
+      eventSets["uc_dma_dm2mm"] = {
+          XAIE_EVENT_DMA_DM2MM_START_TASK_UC,              XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,
+          XAIE_EVENT_DMA_DM2MM_FINISHED_TASK_UC,           XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC};
+      eventSets["uc_dma_mm2dm"] = {
+          XAIE_EVENT_DMA_MM2DM_START_TASK_UC,              XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,
+	        XAIE_EVENT_DMA_MM2DM_FINISHED_TASK_UC,           XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
+        eventSets["uc_axis"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC};
+        eventSets["uc_program_flow"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_EXCEPTION_TAKEN_UC,
+	        XAIE_EVENT_CORE_JUMP_TAKEN_UC,                   XAIE_EVENT_CORE_DATA_READ_UC,
+	        XAIE_EVENT_CORE_DATA_WRITE_UC,                   XAIE_EVENT_CORE_STREAM_GET_UC,
+	        XAIE_EVENT_CORE_STREAM_PUT_UC};
+#endif
+    }
+    else {
+      eventSets["uc_dma_dm2mm"] = {};
+      eventSets["uc_dma_mm2dm"] = {};
+      eventSets["uc_axis"] = {};
+      eventSets["uc_program_flow"] = {};
     }
 
     eventSets["mm2s_ports"]             = eventSets["input_ports"];
@@ -524,52 +568,6 @@ namespace xdp::aie::trace {
   }
 
   /****************************************************************************
-   * Print out resource usage statistics for a given tile
-   ***************************************************************************/
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
-  {
-    if (xrt_core::config::get_verbosity() < static_cast<uint32_t>(severity_level::info))
-      return;
-
-    auto col = tile.col;
-    auto row = tile.row;
-    auto loc = XAie_TileLoc(col, row);
-    std::stringstream msg;
-
-    const std::string groups[3] = {
-      XAIEDEV_DEFAULT_GROUP_GENERIC,
-      XAIEDEV_DEFAULT_GROUP_STATIC, 
-      XAIEDEV_DEFAULT_GROUP_AVAIL
-    };
-
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
-    for (auto& g : groups) {
-      auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
-      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
-      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
-      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
-          << "Performance Counters : " << pc << " "
-          << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " 
-          << std::endl;
-    }
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
-    for (auto& g : groups) {
-      auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
-      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
-      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
-      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
-          << "Performance Counters : " << pc << " "
-          << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " 
-          << std::endl;
-    }
-    xrt_core::message::send(severity_level::info, "XRT", msg.str());
-  }
-  
-  /****************************************************************************
    * Print out reserved trace events
    ***************************************************************************/
   void printTraceEventStats(int m, int numTiles[])
@@ -630,6 +628,109 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL);
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+    }
+  }
+
+  /****************************************************************************
+   * Set up broadcast network 
+   ***************************************************************************/
+  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols) 
+  {
+    std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto tile       = tileMetric.first;
+      auto col        = tile.col;
+      auto row        = tile.row;
+      maxRowAtCol[startCol + col] = std::max(maxRowAtCol[col], (uint8_t)row);
+    }
+
+    XAie_Events bcastEvent2_PL =  (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + broadcastId2);
+    XAie_EventBroadcast(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2, event);
+
+    for(uint8_t col = startCol; col < startCol + numCols; col++) {
+      for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
+        module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
+        auto loc = XAie_TileLoc(col, row);
+
+        if(tileType == module_type::shim) {
+          // first channel is only used to send north
+          if(col == startCol) {
+            XAie_EventBroadcast(aieDevInst, loc, XAIE_PL_MOD, broadcastId1, event);
+          }
+          else {
+            XAie_EventBroadcast(aieDevInst, loc, XAIE_PL_MOD, broadcastId1, bcastEvent2_PL);
+          }
+          if(maxRowAtCol[col] != row) {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST);
+          }
+          else {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST | XAIE_EVENT_BROADCAST_NORTH);
+          }
+
+          // second channel is only used to send east
+          XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId2, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH);
+
+          if(col != startCol + numCols - 1) {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_B, broadcastId2, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH);
+          }
+          else {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_B, broadcastId2, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_EAST);
+          }
+        }
+        else if(tileType == module_type::mem_tile) {
+          if(maxRowAtCol[col] != row) {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_MEM_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST);
+          }
+          else {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_MEM_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST | XAIE_EVENT_BROADCAST_NORTH);
+          }
+        }
+        else { //core tile
+          if(maxRowAtCol[col] != row) {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST);
+          }
+          else {
+            XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH);
+          }
+          XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_MEM_MOD,  XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST | XAIE_EVENT_BROADCAST_NORTH);
+        }
+      }
+    }
+  }
+
+  /****************************************************************************
+   * Reset broadcast network
+   ***************************************************************************/
+  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol, uint8_t numCols) {
+    std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto tile       = tileMetric.first;
+      auto col        = tile.col;
+      auto row        = tile.row;
+      maxRowAtCol[startCol + col] = std::max(maxRowAtCol[col], (uint8_t)row);
+    }
+
+    XAie_EventBroadcastReset(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2);
+
+    for(uint8_t col = startCol; col < startCol + numCols; col++) {
+      for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
+        module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
+        auto loc = XAie_TileLoc(col, row);
+
+        if(tileType == module_type::shim) {
+          XAie_EventBroadcastReset(aieDevInst, loc, XAIE_PL_MOD, broadcastId1);
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId2, XAIE_EVENT_BROADCAST_ALL);
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_B, broadcastId2, XAIE_EVENT_BROADCAST_ALL);
+        }
+        else if(tileType == module_type::mem_tile) {
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_MEM_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
+        }
+        else { //core tile
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
+          XAie_EventBroadcastUnblockDir(aieDevInst, loc, XAIE_MEM_MOD,  XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
+        }
+      }
     }
   }
 } // namespace xdp::aie

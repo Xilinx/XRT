@@ -12,6 +12,7 @@
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/deprecated/xcl_app_debug.h"
 
 #include "core/edge/common/aie_parser.h"
 
@@ -130,6 +131,7 @@ shim(unsigned index)
 shim::
 ~shim()
 {
+
   xclLog(XRT_INFO, "%s", __func__);
 
   // Flush all of the profiling information from the device to the profiling
@@ -500,7 +502,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret && !xrt_core::xclbin::is_pdi_only(top))
+  if (!ret && !xrt_core::xclbin::is_aie_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
@@ -726,7 +728,7 @@ xclLoadAxlf(const axlf *buffer)
 
     /* Get the AIE_METADATA and get the hw_gen information */
     uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+    auto partition_id = xrt_core::edge::aie::full_array_id;
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -737,12 +739,13 @@ xclLoadAxlf(const axlf *buffer)
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
       .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
-      .partition_id = partition_id,
+      .partition_id = static_cast<unsigned int>(partition_id),
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+  auto xml_header = xclbin::get_axlf_section(buffer, axlf_section_kind::EMBEDDED_METADATA);
+  if (xml_header) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
@@ -1045,6 +1048,7 @@ xclAIEPutCmd(xclAIECmd *cmd)
   int ret;
   drm_zocl_aie_cmd scmd;
 
+  scmd.hw_ctx_id = 0;
   scmd.opcode = cmd->opcode;
   scmd.size = cmd->size;
   snprintf(scmd.info, cmd->size, "%s",cmd->info);
@@ -1178,7 +1182,7 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR || buffer->m_header.m_actionMask & AM_LOAD_PDI);
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
-  auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+  auto force_program = xrt_core::config::get_force_program_xclbin() || buffer->m_header.m_actionMask & AM_LOAD_PDI;
   auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
 
   if (is_pr_platform)
@@ -1219,7 +1223,8 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 
 /* Get the AIE_METADATA and get the hw_gen information */
   uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-  uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+  auto part_info = xrt_core::edge::aie::get_partition_info(mCoreDevice.get(), buffer->m_header.uuid);
+  auto partition_id = part_info.partition_id;
 
   axlf_obj->za_xclbin_ptr = const_cast<axlf *>(buffer),
   axlf_obj->za_flags = flags,
@@ -1233,56 +1238,52 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
 
   std::vector<char> krnl_binary;
-  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
-    auto kernels = xrt_core::xclbin::get_kernels(buffer);
-    /* Calculate size of kernels */
-    for (auto& kernel : kernels) {
-      axlf_obj->za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-    }
+  auto xml_header = xclbin::get_axlf_section(buffer, axlf_section_kind::EMBEDDED_METADATA);
+  //return success even if there is no embedded metadata.AIE overlay xclbins
+  //wont have embedded metadata
+  if (!xml_header)
+    return 0;
+  auto kernels = xrt_core::xclbin::get_kernels(buffer);
+  /* Calculate size of kernels */
+  for (auto& kernel : kernels) {
+    axlf_obj->za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
 
-    /* Check PCIe's shim.cpp for details of kernels binary */
-    krnl_binary.resize(axlf_obj->za_ksize);
-    axlf_obj->za_kernels = krnl_binary.data();
-    for (auto& kernel : kernels) {
-      auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->za_kernels + off);
-      if (kernel.name.size() > sizeof(krnl->name))
-          return -EINVAL;
-      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-      krnl->name[sizeof(krnl->name)-1] = '\0';
-      krnl->range = kernel.range;
-      krnl->anums = kernel.args.size();
+  /* Check PCIe's shim.cpp for details of kernels binary */
+  krnl_binary.resize(axlf_obj->za_ksize);
+  axlf_obj->za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
+    auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->za_kernels + off);
+    if (kernel.name.size() > sizeof(krnl->name))
+        return -EINVAL;
+    std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+    krnl->name[sizeof(krnl->name)-1] = '\0';
+    krnl->range = kernel.range;
+    krnl->anums = kernel.args.size();
 
-      krnl->features = 0;
-      if (kernel.sw_reset)
-        krnl->features |= KRNL_SW_RESET;
+    krnl->features = 0;
+    if (kernel.sw_reset)
+      krnl->features |= KRNL_SW_RESET;
 
-      int ai = 0;
-      for (auto& arg : kernel.args) {
-        if (arg.name.size() > sizeof(krnl->args[ai].name)) {
-          xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
-          return -EINVAL;
-        }
-        std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-        krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
-        krnl->args[ai].offset = arg.offset;
-        krnl->args[ai].size   = arg.size;
-        // XCLBIN doesn't define argument direction yet and it only support
-        // input arguments.
-        // Driver use 1 for input argument and 2 for output.
-        // Let's refine this line later.
-        krnl->args[ai].dir    = 1;
-        ai++;
+    int ai = 0;
+    for (auto& arg : kernel.args) {
+      if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+        xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
+        return -EINVAL;
       }
-      off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+      std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+      krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+      krnl->args[ai].offset = arg.offset;
+      krnl->args[ai].size   = arg.size;
+      // XCLBIN doesn't define argument direction yet and it only support
+      // input arguments.
+      // Driver use 1 for input argument and 2 for output.
+      // Let's refine this line later.
+      krnl->args[ai].dir    = 1;
+      ai++;
     }
+    off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
   }
-
-#ifdef __HWEM__
-  if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
-    return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
-  }
-#endif //__HWEM__
-
   return 0;
 }
 
@@ -1304,22 +1305,9 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
-  #ifdef XRT_ENABLE_AIE
-  auto data = core_device->get_axlf_section(AIE_METADATA);
-  if(data.first && data.second)
-    drv->registerAieArray();
-  #endif
-
-  #ifndef __HWEM__
-    xdp::hal::update_device(handle);
-    xdp::aie::update_device(handle);
-  #endif
-    xdp::aie::ctr::update_device(handle);
-    xdp::aie::sts::update_device(handle);
+  xdp::update_device(handle);
   #ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
-  #else
-    xdp::hal::hw_emu::update_device(handle);
   #endif
 
   return 0;
@@ -1357,7 +1345,11 @@ create_hw_context(xclDeviceHandle handle,
     }
     //success
     mCoreDevice->register_axlf(buffer);
-    return std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode);
+
+    auto hwctx_obj_ptr{std::make_unique<zynqaie::hwctx_object>(this, hw_ctx.hw_context, xclbin_uuid, mode)};
+    hwctx_obj_ptr->init_aie(); // just to make sure Aie instance created only once
+
+    return hwctx_obj_ptr;
   }
 }
 
@@ -1972,14 +1964,14 @@ std::shared_ptr<zynqaie::aie_array>
 shim::
 get_aie_array_shared()
 {
-  return aieArray;
+  return m_aie_array;
 }
 
 zynqaie::aie_array*
 shim::
 getAieArray()
 {
-  return aieArray.get();
+  return m_aie_array.get();
 }
 
 zynqaie::aied*
@@ -1993,8 +1985,8 @@ void
 shim::
 registerAieArray()
 {
-  if(aieArray == nullptr)
-      aieArray = std::make_shared<zynqaie::aie_array>(mCoreDevice);
+  if(!m_aie_array)
+      m_aie_array = std::make_shared<zynqaie::aie_array>(mCoreDevice);
 
   aied = std::make_unique<zynqaie::aied>(mCoreDevice.get());
 }
@@ -2003,7 +1995,7 @@ bool
 shim::
 isAieRegistered()
 {
-  return (aieArray != nullptr);
+  return (m_aie_array != nullptr);
 }
 
 int
@@ -2524,7 +2516,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #endif
 
     /* If PDI is the only section, return here */
-    if (xrt_core::xclbin::is_pdi_only(buffer)) {
+    if (xrt_core::xclbin::is_aie_only(buffer)) {
         // Update the profiling library with the information on this new AIE xclbin
         // configuration on this device as appropriate (when profiling is enabled).
         xdp::update_device(handle);

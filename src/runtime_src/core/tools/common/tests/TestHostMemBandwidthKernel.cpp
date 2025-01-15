@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestHostMemBandwidthKernel.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -32,21 +33,21 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
 
   // TODO: Fix hostmem-bw test. Test will always be skipped for now.
-  ptree.put("status", test_token_skipped);
+  ptree.put("status", XBValidateUtils::test_token_skipped);
   return ptree;
 
   uint64_t shared_host_mem = 0;
   try {
     shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(dev);
   } catch (const std::exception& ) {
-    logger(ptree, "Details", "Address translator IP is not available");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "Address translator IP is not available");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
 
   if (!shared_host_mem) {
-    logger(ptree, "Details", "Host memory is not enabled");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "Host memory is not enabled");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
   runTest(dev, ptree);
@@ -58,23 +59,23 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
 {
   xrt::device device(dev);
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
   if (test_path.empty()) {
-    logger(ptree, "Error", "Platform test path was not found.");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Platform test path was not found.");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return;
   }
 
-  const std::string b_file = findXclbinPath(dev, ptree); // bandwidth.xclbin
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree); // bandwidth.xclbin
   std::string old_b_file = "/slavebridge.xclbin";
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
   auto old_binary_file = std::filesystem::path(test_path) / old_b_file;
-  auto check_old_b_file = validate_binary_file(old_binary_file.string());
+  auto check_old_b_file = XBValidateUtils::validate_binary_file(old_binary_file.string());
   if (retVal == EOPNOTSUPP) {
     if (check_old_b_file == EOPNOTSUPP) {
-      logger(ptree, "Details", "Test is not supported on this device.");
-      ptree.put("status", test_token_skipped);
+      XBValidateUtils::logger(ptree, "Details", "Test is not supported on this device.");
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
   }
@@ -89,8 +90,8 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
     auto temp = load_ptree_root.get_child("total_host_banks");
     num_kernel = temp.get_value<int>();
   } catch (const std::exception&) {
-    logger(ptree, "Details", "Bad JSON format detected while marshaling build metadata");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "Bad JSON format detected while marshaling build metadata");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
@@ -175,8 +176,8 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
     for (int i = 0; i < num_kernel; i++) {
       for (uint32_t j = 0; j < data_size; j++) {
         if (map_output_buffer[i][j] != map_input_buffer[i][j]) {
-          logger(ptree, "Error", boost::str(boost::format("Kernel failed to copy entry %d input %d output %d") % j % map_input_buffer[i][j] % map_output_buffer[i][j]));
-          ptree.put("status", test_token_failed);
+          XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("Kernel failed to copy entry %d input %d output %d") % j % map_input_buffer[i][j] % map_output_buffer[i][j]));
+          ptree.put("status", XBValidateUtils::test_token_failed);
           return;
         }
       }
@@ -192,6 +193,6 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
     if (mbpersec > max_throughput)
       max_throughput = mbpersec;
   }
-  logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HOST) (Bank count: %d) : %f MB/s") % num_kernel % max_throughput));
-  ptree.put("status", test_token_passed);
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HOST) (Bank count: %d) : %f MB/s") % num_kernel % max_throughput));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }

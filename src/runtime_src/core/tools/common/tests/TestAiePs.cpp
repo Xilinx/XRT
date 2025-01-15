@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestAiePs.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "xrt/xrt_bo.h"
@@ -39,27 +40,27 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 {
   xrt::device device(dev);
 
-  logger(ptree, "Details", "Test not supported.");
-  ptree.put("status", test_token_skipped);
+  XBValidateUtils::logger(ptree, "Details", "Test not supported.");
+  ptree.put("status", XBValidateUtils::test_token_skipped);
   return;
 
-  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-    auto retVal = validate_binary_file(path);
+    auto retVal = XBValidateUtils::validate_binary_file(path);
     if (retVal == EOPNOTSUPP) {
-      ptree.put("status", test_token_skipped);
+      ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
     device.load_xclbin(path);
   }
 
-  const std::string b_file = findXclbinPath(dev, ptree);
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
   // Load ps kernel onto device
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   if (retVal == EOPNOTSUPP) {
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
@@ -103,11 +104,11 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   
   for (int i = 0; i < SIZE; i++) {
     if (out_bomapped[i] != golden[i]) {
-      logger(ptree, "Error", boost::str(boost::format("Error found in sample %d: golden: %f, hardware: %f") % i % golden[i] % out_bomapped[i]));
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("Error found in sample %d: golden: %f, hardware: %f") % i % golden[i] % out_bomapped[i]));
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return;
     }
   }
 
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }

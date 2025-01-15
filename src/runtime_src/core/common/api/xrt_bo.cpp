@@ -10,7 +10,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/experimental/xrt_ext.h"
+#include "core/include/xrt/detail/xrt_mem.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 
 #include "native_profile.h"
 #include "bo.h"
@@ -19,7 +20,6 @@
 #include "handle.h"
 #include "hw_context_int.h"
 #include "kernel_int.h"
-#include "xrt_mem.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -40,25 +40,27 @@
 #include <vector>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 4505 )
+# pragma warning( disable : 4244 4100 4996 4505 26813)
 #endif
 
+// This file uses static globals, which clang-tidy warns about.  We
+// disable the warning for this file.
 namespace {
 
-XRT_CORE_UNUSED
+[[maybe_unused]]
 static bool
 is_noop_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
   static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
   return noop;
 }
 
-XRT_CORE_UNUSED
+[[maybe_unused]]
 static bool
 is_sw_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static auto xem = std::getenv("XCL_EMULATION_MODE"); // NOLINT(concurrency-mt-unsafe)
   static bool swemu = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
   return swemu;
 }
@@ -261,7 +263,7 @@ public:
   }
 
   // Managed imported handle
-  bo_impl(device_type dev, xrt_core::shared_handle::export_handle ehdl)
+  bo_impl(const device_type& dev, xrt_core::shared_handle::export_handle ehdl)
     : bo_impl(dev, pid_type{0}, ehdl)
   {}
 
@@ -322,6 +324,15 @@ public:
     return device.get_hwctx_handle();
   }
 
+  void*
+  get_hbuf_or_error() const
+  {
+    if (auto hbuf = get_hbuf())
+      return hbuf;
+
+    throw xrt_core::error("buffer is not mapped");
+  }
+
   export_handle
   export_buffer() const
   {
@@ -336,7 +347,7 @@ public:
   {
     if (sz + seek > size)
       throw xrt_core::error(-EINVAL,"attempting to write past buffer size");
-    auto hbuf = static_cast<char*>(get_hbuf()) + seek;
+    auto hbuf = static_cast<char*>(get_hbuf_or_error()) + seek;
     std::memcpy(hbuf, src, sz);
   }
 
@@ -345,7 +356,7 @@ public:
   {
     if (sz + skip > size)
       throw xrt_core::error(-EINVAL,"attempting to read past buffer size");
-    auto hbuf = static_cast<char*>(get_hbuf()) + skip;
+    auto hbuf = static_cast<char*>(get_hbuf_or_error()) + skip;
     std::memcpy(dst, hbuf, sz);
   }
 
@@ -374,6 +385,7 @@ public:
       }
     }
     catch (const std::exception&) {
+      // try next option
     }
 
     // try copying with kdma
@@ -1451,7 +1463,7 @@ bo::
 size() const
 {
   return xdp::native::profiling_wrapper("xrt::bo::size", [this]{
-    return handle->get_size();
+    return handle ? handle->get_size() : 0;
   }) ;
 }
 
@@ -1547,8 +1559,7 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 }
 
 bo::
-~bo()
-{}
+~bo() = default;
 
 } // xrt
 
@@ -2003,4 +2014,3 @@ xrtBOAddress(xrtBufferHandle bhdl)
   }
   return std::numeric_limits<uint64_t>::max();
 }
-

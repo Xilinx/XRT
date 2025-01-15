@@ -23,7 +23,7 @@
 
 struct aie_work_data {
 	struct work_struct work;
-	struct drm_zocl_dev *zdev;
+	struct drm_zocl_slot *slot;
 };
 
 struct aie_error_cache {
@@ -148,7 +148,7 @@ aie_free_errors(struct aie_errors *aie_errs)
 {
 }
 #endif
-
+int zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *xclbin);
 struct aie_info {
 	struct list_head	aie_cmd_list;
 	struct mutex		aie_lock;
@@ -167,7 +167,5 @@ struct aie_info_cmd {
 	struct semaphore	aiec_sem;
 	struct aie_info_packet	*aiec_packet;
 };
-
-int zocl_init_aie(struct drm_zocl_dev *zdev);
 
 #endif /* _ZOCL_AIE_H_ */

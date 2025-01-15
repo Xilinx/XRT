@@ -3,7 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestPsPlVerify.h"
-
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "xrt/xrt_bo.h"
@@ -36,8 +36,8 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
 {
   const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree);
+  const std::string test_path = XBValidateUtils::findPlatformPath(dev, ptree);
+  const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   bool flag_s = false;
 
@@ -45,13 +45,13 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
 
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-      auto retVal = validate_binary_file(path);
+      auto retVal = XBValidateUtils::validate_binary_file(path);
       if (retVal == EOPNOTSUPP) {
-        ptree.put("status", test_token_skipped);
+        ptree.put("status", XBValidateUtils::test_token_skipped);
         return;
       } else if (retVal != EXIT_SUCCESS) {
-        logger(ptree, "Error", "Unknown error validating depedencies");
-        ptree.put("status", test_token_failed);
+        XBValidateUtils::logger(ptree, "Error", "Unknown error validating depedencies");
+        ptree.put("status", XBValidateUtils::test_token_failed);
         return;
       }
 
@@ -59,13 +59,13 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
   }
 
   // Load ps kernel onto device
-  auto retVal = validate_binary_file(b_file);
+  auto retVal = XBValidateUtils::validate_binary_file(b_file);
   if (flag_s || retVal == EOPNOTSUPP) {
-    ptree.put("status", test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   } else if (retVal != EXIT_SUCCESS) {
-    logger(ptree, "Error", "Unknown error validating ps kernel xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "Unknown error validating ps kernel xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return;
   }
 
@@ -86,5 +86,5 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
 
   max_throughput_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, 4096, 0);
 
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
 }

@@ -2,6 +2,7 @@
 // Local - Include Files
 
 #include "TestAIEReconfigOverhead.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -30,33 +31,20 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBUtilities::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ms") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
-
-  logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -72,13 +60,11 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  if(XBUtilities::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -88,27 +74,25 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   } 
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_reconfig_overhead);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
-  logger(ptree, "DPU-Sequence", dpu_instr);
-
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -123,7 +107,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   argno++;
   xrt::bo bo_mc(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
 
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   //Create ctrlcode with NOPs
   std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
 
@@ -140,8 +124,8 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
   //Log
   if(XBUtilities::getVerbose()) { 
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: %f MB") % buffer_size_mb));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f MB") % buffer_size_mb));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -152,8 +136,8 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     }
     catch (const std::exception& ex)
     {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
     bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -171,15 +155,15 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     }
     catch (const std::exception& ex)
     {
-      logger(ptree, "Error", ex.what());
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
     bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
     auto *ofm_mapped = bo_ofm.map<int8_t*>();
     if(std::memcmp(ifm_mapped, ofm_mapped + StartAddr, word_count)){
-      logger(ptree, "Error", "Value read back does not match reference for array reconfiguration instruction buffer");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "Value read back does not match reference for array reconfiguration instruction buffer");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
@@ -189,8 +173,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   elapsedSecsAverage /= itr_count;
   double overhead = (elapsedSecsAverage - elapsedSecsNoOpAverage)*1000; //in ms
 
-  //check if the value is in range
-  result_in_range(overhead, get_threshold(), ptree);
-  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

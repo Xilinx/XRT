@@ -20,8 +20,8 @@
 #include "xrt/xrt_graph.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
-#include "experimental/xrt_fence.h"
-#include "experimental/xrt-next.h"
+#include "xrt/experimental/xrt_fence.h"
+#include "xrt/experimental/xrt-next.h"
 
 #include <stdexcept>
 #include <condition_variable>
@@ -44,6 +44,7 @@ struct ishim
   class not_supported_error : public xrt_core::error
   {
   public:
+    explicit
     not_supported_error(const std::string& msg)
       : xrt_core::error{std::errc::not_supported, msg}
     {}
@@ -253,6 +254,7 @@ template <typename DeviceType>
 struct shim : public DeviceType
 {
   template <typename ...Args>
+  explicit
   shim(Args&&... args)
     : DeviceType(std::forward<Args>(args)...)
   {}
@@ -410,6 +412,7 @@ template <typename DeviceType>
 struct noshim : public DeviceType
 {
   template <typename ...Args>
+  explicit
   noshim(Args&&... args)
     : DeviceType(std::forward<Args>(args)...)
   {}

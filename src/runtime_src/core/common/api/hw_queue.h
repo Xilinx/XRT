@@ -6,12 +6,6 @@
 #include "core/common/config.h"
 #include "xrt/detail/pimpl.h"
 
-#include "experimental/xrt_fence.h"
-#include "experimental/xrt_kernel.h"
-
-#include "core/common/shim/buffer_handle.h"
-
-#include <chrono>
 #include <condition_variable>
 #include <vector>
 
@@ -22,6 +16,7 @@ class hw_context;
 
 namespace xrt_core {
 
+class buffer_handle;
 class command;
 class device;
 class fence;
@@ -38,11 +33,13 @@ public:
   hw_queue() = default;
 
   // Construct from hwctx
+  explicit
   hw_queue(const xrt::hw_context& hwctx);
 
   // Legacy construction for internal support of command execution
   // that is not tied to kernel execution, .e.g for copy_bo_with_kdma
   XRT_CORE_COMMON_EXPORT
+  explicit
   hw_queue(const xrt_core::device* device);
 
   // Start a command and manage its execution by monitoring

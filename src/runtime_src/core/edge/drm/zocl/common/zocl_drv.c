@@ -106,16 +106,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		if (!of_property_read_u64(pdev->dev.of_node,
 					  "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
-	} else {
-		/* Work around for CR-1119382 issue.
-		 * ZOCL driver is crashing if it accessing the device tree node */
-		if (false) {
-			u32 pr_num;
-			if (!of_property_read_u32(pdev->dev.of_node,
-					  "xlnx,pr-num-support", &pr_num))
-				zdev->num_pr_slot = (int)pr_num;
-		}
-	}
+	} 
 
 	/* If there is no information available for number of slot available
 	 * for this device then consider it for a single slot device for
@@ -136,6 +127,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 			return ret;
 
 		mutex_init(&zocl_slot->slot_xclbin_lock);
+		mutex_init(&zocl_slot->aie_lock);
 
 		if (ZOCL_PLATFORM_ARM64) {
 			zocl_slot->pr_isolation_freeze = 0x0;
@@ -149,20 +141,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 				zocl_slot->pr_isolation_freeze = 0x1;
 				zocl_slot->pr_isolation_unfreeze = 0x0;
 			}
-		} else {
-			/* Work around for CR-1119382 issue.
-			 * ZOCL driver is crashing if it accessing the device tree node */
-			if (false) {
-				u32 prop_addr = 0;
-
-				if (of_property_read_u32(pdev->dev.of_node,
-							 "xlnx,pr-isolation-addr",
-							 &prop_addr))
-					zocl_slot->pr_isolation_addr = 0;
-				else
-					zocl_slot->pr_isolation_addr = prop_addr;
-			}
-		}
+		} 
 
 		DRM_INFO("PR[%d] Isolation addr 0x%llx", i,
 			 zocl_slot->pr_isolation_addr);
@@ -170,6 +149,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
 		zocl_slot->slot_type = ZOCL_SLOT_TYPE_PHY;
+		zocl_slot->hwctx_ref_cnt = 0;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -186,6 +166,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 			return ret;
 
 		mutex_init(&zocl_slot->slot_xclbin_lock);
+		mutex_init(&zocl_slot->aie_lock);
 
 		zocl_slot->slot_idx = i;
 		zocl_slot->slot_type = ZOCL_SLOT_TYPE_VIRT;
@@ -213,7 +194,9 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
 		zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
 			zocl_free_sections(zdev, zocl_slot);
+			zocl_cleanup_aie(zocl_slot);
 			mutex_destroy(&zocl_slot->slot_xclbin_lock);
+			mutex_destroy(&zocl_slot->aie_lock);
 			zocl_xclbin_fini(zdev, zocl_slot);
 			kfree(zocl_slot);
 			zdev->pr_slot[i] = NULL;
@@ -586,7 +569,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_free_userptr_bo(obj);
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
-		else if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA) {
+		else if (!zocl_obj->mm_node) {
 			/* Update memory usage statistics */
 			zocl_update_mem_stat(zdev, obj->size, -1,
 			    zocl_obj->mem_index);
@@ -1148,6 +1131,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	zdev->zdev_data_info = id->data;
 	INIT_LIST_HEAD(&zdev->ctx_list);
+	zdev->slot_mask = 0;
 
 	/* Record and get IRQ number */
 	for (index = 0; index < MAX_CU_NUM; index++) {
@@ -1295,8 +1279,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_sysfs;
 
-	mutex_init(&zdev->aie_lock);
-
 	/* Initial sysfs */
 	rwlock_init(&zdev->attr_rwlock);
 	ret = zocl_init_sysfs(drm->dev);
@@ -1314,7 +1296,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 err_sched:
 	zocl_fini_sysfs(drm->dev);
 err_err:
-	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_error(zdev);
 err_sysfs:
 	ZOCL_DRM_DEV_PUT(drm);
@@ -1334,7 +1315,11 @@ err_apt:
  * @return       0 on success, Error code on failure.
  *
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+static void zocl_drm_platform_remove(struct platform_device *pdev)
+#else
 static int zocl_drm_platform_remove(struct platform_device *pdev)
+#endif
 {
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
@@ -1357,9 +1342,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
+	zdev->slot_mask = 0;
 	zocl_ert_destroy_intc(zdev->cu_intc);
-	zocl_destroy_aie(zdev);
-	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);
 	zocl_fini_error(zdev);
 
@@ -1370,7 +1354,9 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	drm_dev_unregister(drm);
 	ZOCL_DRM_DEV_PUT(drm);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 	return 0;
+#endif
 }
 
 static struct platform_driver zocl_drm_private_driver = {

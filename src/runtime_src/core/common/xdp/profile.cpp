@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
@@ -140,11 +140,12 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 { 
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+
   #else
     (void)handle;
   #endif
@@ -180,6 +181,55 @@ finish_flush_device(void* handle)
 }
 
 } // end namespace xrt_core::xdp::ml_timeline
+
+namespace xrt_core::xdp::aie_pc {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+
+void
+register_callbacks(void* handle)
+{ 
+  #ifdef XDP_CLIENT_BUILD
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEPC"));
+  #else
+    (void)handle;
+  #endif
+
+}
+
+void
+warning_callbacks()
+{
+}
+
+void
+load()
+{
+  static xrt_core::module_loader xdp_loader("xdp_aie_pc_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::aie_pc
 
 namespace xrt_core::xdp::pl_deadlock {
 
@@ -333,12 +383,13 @@ update_device(void* handle)
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
    */
-
+  #ifdef _WIN32
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
       || xrt_core::config::get_aie_trace()
       || xrt_core::config::get_aie_debug()
-      || xrt_core::config::get_aie_halt()) {
+      || xrt_core::config::get_aie_halt()
+      || xrt_core::config::get_aie_pc()) {
     /* All the above plugins are dependent on xdp_core library. So,
      * explicitly load it to avoid library search issue in implicit loading.
      */
@@ -348,6 +399,7 @@ update_device(void* handle)
       return;
     }
   }
+  #endif
 
   if (xrt_core::config::get_aie_halt()) {
     try {
@@ -400,6 +452,28 @@ update_device(void* handle)
     xrt_core::xdp::ml_timeline::update_device(handle);
   }
 
+  if (xrt_core::config::get_aie_pc()) {
+    try {
+      xrt_core::xdp::aie_pc::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::aie_pc::update_device(handle);
+  }
+
+#elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::ml_timeline::update_device(handle);
+  }
+
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
@@ -429,6 +503,13 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
+  if (xrt_core::config::get_aie_pc())
+    xrt_core::xdp::aie_pc::finish_flush_device(handle);
+
+#elif defined(XDP_VE2_BUILD)
+
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
 

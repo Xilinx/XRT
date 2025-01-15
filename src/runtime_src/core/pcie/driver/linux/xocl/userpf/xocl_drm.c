@@ -84,7 +84,7 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EINVAL;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 	 * we have "struct page" for all backing pages for bo
 	 */
@@ -157,7 +157,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
 #else
@@ -407,7 +407,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	return xocl_poll_client(filp, wait, priv->driver_priv);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0) || defined(RHEL_9_5_GE)
 /* This was removed in 6.8 */
 #define DRM_UNLOCKED 0
 #endif
@@ -852,7 +852,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
         return ret;
 }
 
-int xocl_check_slot_topology(struct xocl_drm *drm_p, uint32_t slot_id)
+static int xocl_check_slot_topology(struct xocl_drm *drm_p, uint32_t slot_id)
 {
 	struct xocl_mem_stat *curr_mem = NULL;
 	int err = 0;
@@ -920,7 +920,7 @@ done:
 	return 0;
 }
 
-int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
+static int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
 {
 	int ret = 0;
 	uint64_t *phys_addrs = 0;

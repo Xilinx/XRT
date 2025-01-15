@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "Testm2m.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -19,12 +20,12 @@ Testm2m::run(std::shared_ptr<xrt_core::device> dev)
   auto no_dma = xrt_core::device_query_default<xrt_core::query::nodma>(dev, 0);
 
   if (no_dma != 0) {
-    logger(ptree, "Details", "Not supported on NoDMA platform");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "Not supported on NoDMA platform");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
 
-  if (!search_and_program_xclbin(dev, ptree)) {
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree)) {
     return ptree;
   }
 
@@ -37,8 +38,8 @@ Testm2m::run(std::shared_ptr<xrt_core::device> dev)
   // u250_xdma_201830_1 falsely shows that m2m is available
   // which causes a hang. Skip m2mtest if this platform is installed
   if (m2m_enabled == 0 || name.find("_u250_xdma_201830_1") != std::string::npos) {
-    logger(ptree, "Details", "M2M is not available");
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", "M2M is not available");
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
 
@@ -61,14 +62,14 @@ Testm2m::run(std::shared_ptr<xrt_core::device> dev)
         continue;
 
       auto m2m_bandwidth = m2mtest_bank(dev, ptree, i, j, bo_size);
-      logger(ptree, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
 
       if (m2m_bandwidth == 0) //test failed, exit
         return ptree;
     }
   }
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }
 
@@ -105,16 +106,16 @@ Testm2m::m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle,
     bo_tgt.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   }
   catch (const std::exception&) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Unable to sync target BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Unable to sync target BO");
     return bandwidth;
   }
 
   bool match = (memcmp(bo_src_ptr, bo_tgt_ptr, bo_size) == 0);
 
   if (!match) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Memory comparison failed");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Memory comparison failed");
     return bandwidth;
   }
 
@@ -135,8 +136,8 @@ Testm2m::m2m_alloc_init_bo(const xrt::device& device, boost::property_tree::ptre
   }
 
   if (!bo) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Couldn't allocate BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't allocate BO");
     return {};
   }
 
@@ -147,8 +148,8 @@ Testm2m::m2m_alloc_init_bo(const xrt::device& device, boost::property_tree::ptre
   {}
 
   if (!boptr) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Couldn't map BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't map BO");
     return {};
   }
   memset(boptr, pattern, bo_size);
@@ -158,8 +159,8 @@ Testm2m::m2m_alloc_init_bo(const xrt::device& device, boost::property_tree::ptre
     return bo;
   }
   catch (const std::exception&) {
-    _ptTest.put("status", test_token_failed);
-    logger(_ptTest, "Error", "Couldn't sync BO");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", "Couldn't sync BO");
     return {};
   }
 }

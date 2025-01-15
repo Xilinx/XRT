@@ -143,6 +143,9 @@ class device
 public:
   /**
    * device() - Constructor for empty device
+   *
+   * It is undefined behavior to use a default constructed device
+   * for anything but assignment, unless otherwise noted.
    */
   device() = default;
 
@@ -223,11 +226,15 @@ public:
 
   /**
    * device() - Copy ctor
+   *
+   * Performs shallow copy, sharing data with the source
    */
   device(const device& rhs) = default;
 
   /**
-   * operator= () - Move assignment
+   * operator= () - Copy assignment
+   *
+   * Performs shallow copy, sharing data with the source
    */
   device&
   operator=(const device& rhs) = default;

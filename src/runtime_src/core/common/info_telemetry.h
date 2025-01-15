@@ -16,6 +16,10 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 telemetry_info(const xrt_core::device* device);
 
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+preemption_telemetry_info(const xrt_core::device* device);
+
 }} // telemetry, xrt_core
 
 #endif

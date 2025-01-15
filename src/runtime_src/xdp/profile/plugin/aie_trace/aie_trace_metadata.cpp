@@ -805,15 +805,19 @@ namespace xdp {
 
       processed.insert(i);
       
-      // By-default select both the channels (all:output_ports selects both channels)
+      // By default, select all channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
-      if (metrics[i].size()>2) {
+      if (metrics[i].size() > 2) {
+        foundChannels = true;
         channelId0 = aie::convertStringToUint8(metrics[i][2]);
         channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
       }
 
-      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
+      int16_t channelNum = (foundChannels) ? channelId0 : -1;
+      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelNum);
+      
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
         configChannel0[t] = channelId0;
@@ -850,15 +854,18 @@ namespace xdp {
       }
 
       // By-default select both the channels
+      bool foundChannels = false;
       uint8_t channelId0 = 0;
       uint8_t channelId1 = 1;
       if (metrics[i].size() >= 4) {
         try {
+          foundChannels = true;
           channelId0 = aie::convertStringToUint8(metrics[i][3]);
           channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
         }
         catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer. Give warning and ignore.
+          // Expected channel ID is not an integer. Give warning and ignore.
+          foundChannels = false;
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Channel ID specification in "
                                   "tile_based_interface_tile_metrics is "
@@ -867,8 +874,9 @@ namespace xdp {
       }
 
       processed.insert(i);
+      int16_t channelNum = (foundChannels) ? channelId0 : -1;
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
-                                          channelId0, true, minCol, maxCol);
+                                                     channelNum, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][2];
@@ -902,15 +910,18 @@ namespace xdp {
         }
  
         // By-default select both the channels
+        bool foundChannels = false;
         uint8_t channelId0 = 0;
         uint8_t channelId1 = 1;
         if (metrics[i].size() >= 3) {
           try {
+            foundChannels = true;
             channelId0 = aie::convertStringToUint8(metrics[i][2]);
             channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
           }
           catch (std::invalid_argument const&) {
-            // Expected channel Id is not an integer, give warning and ignore
+            // Expected channel ID is not an integer. Give warning and ignore.
+            foundChannels = false;
             xrt_core::message::send(severity_level::warning, "XRT",
                                     "Channel ID specification in "
                                     "tile_based_interface_tile_metrics is not an integer "
@@ -918,8 +929,9 @@ namespace xdp {
           }
         }
 
+        int16_t channelNum = (foundChannels) ? channelId0 : -1;
         auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
-                                            channelId0, true, col, col);
+                                                       channelNum, true, col, col);
 
         for (auto& t : tiles) {
           configMetrics[t] = metrics[i][1];

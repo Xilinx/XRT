@@ -1,0 +1,86 @@
+on:
+  # scheduled workflows run on the latest commit on the default or base branch
+  #schedule:
+  #  - cron: '0 0/12 * * *'
+
+  workflow_dispatch:  
+    
+jobs:
+  xrt_coverity_scan:
+    runs-on: ubuntu-latest
+    # Only run in main repository as Coverity scans are limitted              
+    if: github.repository == 'Xilinx/XRT'
+    steps:
+    - name: Checkout XRT
+      uses: actions/checkout@v2
+    - name: Store sha
+      run: echo ${{ github.sha }} > sha
+    - name: Compare sha
+      uses: actions/cache@v4
+      id: cache-sha
+      with:
+        path: sha
+        key: commit-${{ github.sha }}
+
+    - name: Download and extract Coverity Build Tool
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        wget -q https://scan.coverity.com/download/cxx/linux64 --post-data "token=$TOKEN&project=Xilinx/XRT" -O cov-analysis-linux64.tar.gz
+        mkdir cov-analysis-linux64
+        tar xzf cov-analysis-linux64.tar.gz --strip 1 -C cov-analysis-linux64
+      env:
+        TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+
+    - name: Install dependencies
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+        sudo apt install jq
+
+    - name: Build with cov-build
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        export PATH=`pwd`/cov-analysis-linux64/bin:$PATH
+        cov-build --dir cov-int build/build.sh -noert -opt -verbose -driver
+
+    - name: Submut the results to Coverity Scan
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        # compress cov-int
+        tar czvf xrt.tgz cov-int
+        
+        # Fetch cloud upload URL
+        curl -X POST \
+        -d version=trunk \
+        -d description=$SHA \
+        -d email=runtime@xilinx.com \
+        -d token=$TOKEN \
+        -d file_name=xrt.tgz \
+        https://scan.coverity.com/projects/17781/builds/init \
+        | tee response
+
+        # Store response data
+        upload_url=$(jq -r '.url' response)
+        build_id=$(jq -r '.build_id' response)
+
+        # Upload the tarball to the Cloud
+        curl -X PUT \
+        --header 'Content-Type: application/json' \
+        --upload-file xrt.tgz \
+        $upload_url
+
+        # Trigger the build on Scan
+        curl -X PUT \
+        -d token=$TOKEN \
+        https://scan.coverity.com/projects/17781/builds/$build_id/enqueue
+      env:
+        TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        SHA: ${{ github.sha }}
+    
+    - name: Upload Coverity imed to artifactory
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: cov-int-file
+        path: xrt.tgz

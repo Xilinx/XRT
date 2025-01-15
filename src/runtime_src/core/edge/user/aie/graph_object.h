@@ -50,7 +50,7 @@ namespace zynqaie {
      * It represents the tile position in the AIE array.
      */
     adf::graph_config graph_config;
-    std::shared_ptr<adf::graph_api> aie_config_api;
+    std::shared_ptr<adf::graph_api> graph_api_obj;
     /* This is the collections of rtps that are used. */
     std::unordered_map<std::string, adf::rtp_config> rtps;
 

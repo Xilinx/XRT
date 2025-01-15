@@ -85,20 +85,19 @@ if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
   set(XRT_STATIC_BUILD ON)
 endif()
 
-# --- Boost ---
-#set(Boost_DEBUG 1)
+include(CMake/components.cmake)
 
-# --- Boost Libraries ---
+# Boost Libraries
 include (CMake/boostUtil.cmake)
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
-# --- Curses ---
+# Curses
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-# --- XRT Variables ---
+# XRT Variables
 include (CMake/xrtVariables.cmake)
 
 # Define RPATH for embedding in libraries and executables.  This allows
@@ -152,7 +151,7 @@ message("-- XRT version: ${XRT_VERSION_STRING}")
 # -- CPack
 include (CMake/cpackLin.cmake)
 
-if (XRT_DKMS_ALVEO STREQUAL "ON")
+if (XRT_ALVEO)
   message("-- XRT Alveo drivers will be bundled with the XRT package")
   set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
   include (CMake/dkms.cmake)

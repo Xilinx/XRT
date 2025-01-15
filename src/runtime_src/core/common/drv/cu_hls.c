@@ -110,7 +110,7 @@ static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
 	u32 i = 0;
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
-				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+				     - sizeof(cmd->hdr)))/sizeof(u32);
 	for (i = 0; i < num_reg; ++i) {
 		cu_write32(cu_hls, ARGS + i * 4, cmd->data[i]);
 	}
@@ -123,7 +123,7 @@ static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
 	u32 i = 0;
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx_kv)
-				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+				     - sizeof(cmd->hdr)))/sizeof(u32);
 	/* data is a {offset : value} pairs list
 	 * cmd->data[i] -> offset
 	 * cmd->data[i+1] -> value

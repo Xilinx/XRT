@@ -16,7 +16,7 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
 
@@ -26,7 +26,7 @@
 #include "mem_model.h"
 #include "rpc_messages.pb.h"
 #include "xgq_hwemu.h"
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "unix_socket.h"

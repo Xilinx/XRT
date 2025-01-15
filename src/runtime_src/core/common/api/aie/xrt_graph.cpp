@@ -12,9 +12,9 @@
 #include "core/include/xrt/xrt_graph.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_device.h"
 #include "core/include/xcl_graph.h"
 
-#include "core/include/experimental/xrt_device.h"
 #include "core/common/api/device_int.h"
 #include "core/common/api/native_profile.h"
 #include "core/common/device.h"
@@ -131,11 +131,11 @@ private:
 public:
   static constexpr int invalid_handle = -1;
 
-  profiling_impl(std::shared_ptr<xrt_core::device> device)
+  explicit profiling_impl(std::shared_ptr<xrt_core::device> device)
     : m_profile_handle{device->open_profile_handle()}
   {}
 
-  profiling_impl(const xrt::hw_context& hwctx)
+  explicit profiling_impl(const xrt::hw_context& hwctx)
   {
     auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hwctx);
     m_profile_handle = hwctx_handle->open_profile_handle();
@@ -143,8 +143,13 @@ public:
 
   ~profiling_impl()
   {
-    stop();
+    try {
+      stop();
+    }
+    catch (...) {
+    }
   }
+
   profiling_impl() = delete;
   profiling_impl(const profiling_impl&) = delete;
   profiling_impl(profiling_impl&&) = delete;
@@ -203,6 +208,18 @@ public:
   sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const
   {
     m_buffer_handle->sync(bos, dir, size, offset);
+  }
+
+  void
+  async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const
+  {
+    m_buffer_handle->async(bos, dir, size, offset);
+  }
+
+  void
+  wait() const
+  {
+    m_buffer_handle->wait();
   }
 };
 
@@ -323,7 +340,7 @@ void
 graph::
 reset() const
 {
-  xdp::native::profiling_wrapper("xrt::graph::reset", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::reset", [this]{
     handle->reset();
   });
 }
@@ -332,14 +349,14 @@ uint64_t
 graph::
 get_timestamp() const
 {
-  return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [=]{return (handle->get_timestamp());});
+  return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [this]{return (handle->get_timestamp());});
 }
 
 void
 graph::
 run(uint32_t iterations)
 {
-  xdp::native::profiling_wrapper("xrt::graph::run", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::run", [this, iterations]{
     handle->run(iterations);
   });
 }
@@ -348,7 +365,7 @@ void
 graph::
 wait(std::chrono::milliseconds timeout_ms)
 {
-  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::wait", [this, timeout_ms]{
     if (timeout_ms.count() == 0)
       handle->wait(static_cast<uint64_t>(0));
     else
@@ -360,7 +377,7 @@ void
 graph::
 wait(uint64_t cycles)
 {
-  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::wait", [this, cycles]{
     handle->wait(cycles);
   });
 }
@@ -369,7 +386,7 @@ void
 graph::
 suspend()
 {
-  xdp::native::profiling_wrapper("xrt::graph::suspend", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::suspend", [this]{
     handle->suspend();
   });
 }
@@ -378,7 +395,7 @@ void
 graph::
 resume()
 {
-  xdp::native::profiling_wrapper("xrt::graph::resume", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::resume", [this]{
     handle->resume();
   });
 }
@@ -387,7 +404,7 @@ void
 graph::
 end(uint64_t cycles)
 {
-  xdp::native::profiling_wrapper("xrt::graph::end", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::end", [this, cycles]{
     handle->end(cycles);
   });
 }
@@ -396,7 +413,7 @@ void
 graph::
 update_port(const std::string& port_name, const void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper("xrt::graph::update_port", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::update_port", [this, port_name, value, bytes]{
     handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
   });
 }
@@ -405,7 +422,7 @@ void
 graph::
 read_port(const std::string& port_name, void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper("xrt::graph::read_port", [=]{
+  xdp::native::profiling_wrapper("xrt::graph::read_port", [this, port_name, value, bytes]{
     handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
   });
 }
@@ -467,18 +484,41 @@ buffer(const xrt::hw_context& hwctx, const std::string& name)
 
 void
 buffer::
-sync(const xrt::bo& bo, xclBOSyncDirection dir, size_t size, size_t offset) const
+sync(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const
 {
-  std::vector<xrt::bo> bos {bo};
+  std::vector<xrt::bo> bos {std::move(bo)};
   return get_handle()->sync(bos, dir, size, offset);
 }
 
 void
 buffer::
-sync(const xrt::bo& ping, const xrt::bo& pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+async(xrt::bo bo, xclBOSyncDirection dir, size_t size, size_t offset) const
 {
-  std::vector<xrt::bo> bos {ping,pong};
+  std::vector<xrt::bo> bos {std::move(bo)};
+  return get_handle()->async(bos, dir, size, offset);
+}
+
+void
+buffer::
+sync(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {std::move(ping),std::move(pong)};
   return get_handle()->sync(bos, dir, size, offset);
+}
+
+void
+buffer::
+async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const
+{
+  std::vector<xrt::bo> bos {std::move(ping),std::move(pong)};
+  return get_handle()->async(bos, dir, size, offset);
+}
+
+void
+buffer::
+wait() const
+{
+  return get_handle()->wait();
 }
 
 } // xrt:aie
@@ -924,7 +964,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
     const std::string port2 = port2Name ? port2Name : "";
     auto hdl = event->start(option, port1, port2, value);
     if (hdl != xrt::aie::profiling_impl::invalid_handle) {
-      profiling_cache[hdl] = event;
+      profiling_cache[hdl] = std::move(event);
       return hdl;
     }
     else

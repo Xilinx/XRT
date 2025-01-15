@@ -25,14 +25,14 @@ namespace xdp {
   class ResultBOContainer;
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
-    ResultBOContainer* mResultBOHolder;
+    std::unique_ptr<ResultBOContainer> mResultBOHolder;
     public :
-      MLTimelineClientDevImpl(VPDatabase* dB);
+      MLTimelineClientDevImpl(VPDatabase* dB, uint32_t sz);
 
-      ~MLTimelineClientDevImpl() = default;
+      ~MLTimelineClientDevImpl();
 
       virtual void updateDevice(void* hwCtxImpl);
-      virtual void finishflushDevice(void* hwCtxImpl);
+      virtual void finishflushDevice(void* hwCtxImpl, uint64_t implId = 0);
   };
 
 }

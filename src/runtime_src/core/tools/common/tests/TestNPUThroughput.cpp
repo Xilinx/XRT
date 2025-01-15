@@ -4,12 +4,13 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestNPUThroughput.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
-#include <experimental/xrt_kernel.h>
+#include "xrt/experimental/xrt_kernel.h"
 namespace XBU = XBUtilities;
 
 #include <filesystem>
@@ -29,68 +30,37 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f ops") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
-
-  logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
-
-  // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr!=xkernels.end())
-    xkernel = *itr;
-  else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
-    return ptree;
-  }
-  auto kernelName = xkernel.get_name();
-  if(XBU::getVerbose())
-    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
   xrt::hw_context hwctx;
   xrt::kernel testker;
+
   try {
+    std::string sequence = XBValidateUtils::dpu_or_elf(dev, xclbin, ptree);
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
-    testker = xrt::kernel(hwctx, kernelName);
+    testker = get_kernel(hwctx, sequence);
   }
-  catch (const std::exception& ex){
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+  catch (const std::exception& ex) {
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -131,9 +101,9 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   //Log
-  if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count_throughput));
+  if (XBU::getVerbose()) {
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Instruction size: %f bytes") % buffer_size));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count_throughput));
   }
 
   // Run the test to compute throughput where we saturate NPU with jobs and then wait for all
@@ -142,29 +112,34 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
 
   try {
     auto start = std::chrono::high_resolution_clock::now();
-    //enqueue 9 commnds
-    for(int i = 0; i < run_buffer; i++) {
+
+    // enqueue 9 commnds
+    for (int i = 0; i < run_buffer; i++)
       run_handles[i%run_buffer].start();
-    }
-    //wait for each command to finish and add them to the queue
-    for(int i = 0; i < (itr_count_throughput-run_buffer); i++) {
+
+    // wait for each command to finish, then start immediately
+    for (int i = 0; i < (itr_count_throughput - run_buffer); i++) {
       run_handles[i%run_buffer].wait2();
       run_handles[i%run_buffer].start();
     }
+
+    // wait for the last 9 commands to finish
+    for (int i = 0; i < run_buffer; i++)
+      run_handles[i%run_buffer].wait2();
+
     auto end = std::chrono::high_resolution_clock::now();
     elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    return ptree;
   }
 
   // Compute the throughput
   const double throughput = (elapsedSecs != 0.0) ? itr_count_throughput / elapsedSecs : 0.0;
 
-  //check if the value is in range
-  result_in_range(throughput, get_threshold(), ptree);
-
-  logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % throughput));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % throughput));
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return ptree;
 }

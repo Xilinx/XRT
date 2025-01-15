@@ -27,7 +27,7 @@
 #include "filetypes/aie_trace_config_filetype.h"
 
 #include "core/common/api/xclbin_int.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include <algorithm>
 #include <boost/property_tree/json_parser.hpp>
@@ -409,6 +409,28 @@ namespace xdp::aie {
     try {
       xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
       auto device = xrt_core::hw_context_int::get_core_device(context);
+  
+      auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
+      for(const auto& e : info) {
+        boost::property_tree::ptree pt;
+        pt.put("start_col", e.start_col);
+        pt.put("num_cols", e.num_cols);
+        infoPt.push_back(std::make_pair("", pt));
+      }
+    }
+    catch(...) {
+      xrt_core::message::send(severity_level::info, "XRT", "Could not retrieve AIE Partition Info.");
+      return infoPt;
+    }
+    return infoPt;
+  }
+
+  boost::property_tree::ptree
+  getAIEPartitionInfo(void* handle)
+  {
+    boost::property_tree::ptree infoPt;
+    try {
+      auto device = xrt_core::get_userpf_device(handle);
 
       auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
       for(const auto& e : info) {
@@ -442,10 +464,10 @@ namespace xdp::aie {
    ***************************************************************************/
   uint32_t getStreamWidth(uint8_t hw_gen)
   {
-    // Stream width in bits
+    // Stream width in bytes
     static const std::unordered_map<uint8_t, uint8_t> streamWidthMap = {
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(32)},
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(32)}
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(4)},
+      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(4)}
     };
     uint32_t default_width = 32;
     

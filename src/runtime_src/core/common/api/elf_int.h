@@ -4,7 +4,7 @@
 #define _XRT_COMMON_ELF_INT_H_
 
 // This file defines implementation extensions to the XRT ELF APIs.
-#include "core/include/experimental/xrt_elf.h"
+#include "core/include/xrt/experimental/xrt_elf.h"
 #include <cstdint>
 #include <string>
 #include <vector>

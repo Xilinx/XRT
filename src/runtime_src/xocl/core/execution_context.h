@@ -21,8 +21,8 @@
 #include "xocl/core/kernel.h"
 #include "xocl/core/compute_unit.h"
 
-#include "core/include/xclbin.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include <mutex>
 #include <array>

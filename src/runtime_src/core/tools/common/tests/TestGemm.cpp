@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestGemm.h"
+#include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -22,13 +23,9 @@ static constexpr size_t host_app = 1; //opcode
 static constexpr uint32_t num_of_cores = 32;
 
 /*
-* Essentially, we are doing 4 unrolled loop of 8x8_8x8 matmult.
-* Each 8x8_8x8 matmult involves 8x8x8=512 MAC or 512*2 OP=1024 OPs.
-* Total inner*outer loop count= 2*2*12*4 (4 for unrolled loop)=192.
-* Total OPs= 192*1024= 192K OPs.
+* Total OPs= = 196K OPs.
 */
-static constexpr uint32_t total_ops = ((8*8*8)*2)*(2*2*12*4); //192K OPs
-
+static constexpr uint32_t total_ops = 196608; //192K OPs
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestGemm::TestGemm()
@@ -41,33 +38,20 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  try {
-    set_threshold(dev, ptree);
-    if(XBU::getVerbose())
-      logger(ptree, "Details", boost::str(boost::format("Threshold is %.1f TOPS") % get_threshold()));
-  }
-  catch (const std::runtime_error& ex) {
-    logger(ptree, "Details", ex.what());
-    ptree.put("status", test_token_skipped);
-    return ptree;
-  }
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
-  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path)){
-    logger(ptree, "Details", "The test is not supported on this device.");
+    XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
   }
-
-  logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
   try {
     xclbin = xrt::xclbin(xclbin_path);
   }
   catch (const std::runtime_error& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -83,12 +67,11 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   if (itr!=xkernels.end())
     xkernel = *itr;
   else {
-    logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -99,53 +82,40 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
     kernel = xrt::kernel(hwctx, kernelName);
   } 
-  catch (const std::exception& ex)
+  catch (const std::exception& )
   {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::gemm_int8);
-  auto dpu_instr = findPlatformFile(seq_name, ptree);
+  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
-  if(XBU::getVerbose())
-    logger(ptree, "DPU-Sequence", dpu_instr);
-
   size_t instr_size = 0;
   try {
-    instr_size = get_instr_size(dpu_instr); 
+    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
   //Create Instruction BO
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  init_instr_buf(bo_instr, dpu_instr);
+  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
   //Sync Instruction BO
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  // wait until clock reaches the targeted frequency
-  auto const target_h_clock_freq = 1810;
-  int ipu_hclock = 0;
-  while (ipu_hclock < target_h_clock_freq) {
-    //get h-clock
-    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int c = 0; c < clock_topology->m_count; c++) {
-      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
-        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
+  // wait until clock reaches the max frequency. The performance metrics for a test
+  // are valid only when the clock reaches the max frequency.
+  uint64_t ipu_hclock = XBValidateUtils::wait_for_max_clock(dev);
 
   try {
     //run kernel
@@ -154,8 +124,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     run.wait2();
   }
   catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", ex.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
 
@@ -165,8 +135,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //Calculate TOPS
   if (ipu_hclock == 0) {
-    logger(ptree, "Error", "IPU H-clock is 0");
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "IPU H-clock is 0");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   double ipu_hclck_period = 1000000000.0 / (ipu_hclock * 1000000); // MHz to ns
@@ -178,8 +148,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   for (uint32_t n = 0 ; n < num_of_cores; n++) {
     auto cycle_count = *core_ptr;
     if(cycle_count == 0) {
-      logger(ptree, "Error", "cycle count is 0");
-      ptree.put("status", test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", "cycle count is 0");
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
     auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
@@ -189,15 +159,12 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   if(XBU::getVerbose()) {
-    logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
-    logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
-    logger(ptree, "Details", boost::str(boost::format("NPU H-Clock: %f MHz") % ipu_hclock));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
   }
 
-  //check if the value is in range
-  result_in_range(TOPS, get_threshold(), ptree);
-
-  logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+  ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
 }

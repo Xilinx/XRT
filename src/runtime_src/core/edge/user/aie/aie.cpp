@@ -53,9 +53,8 @@ aie_array(const std::shared_ptr<xrt_core::device>& device)
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
   /* TODO get partition id and uid from XCLBIN or PDI */
-  uint32_t partition_id = 1;
-  uint32_t uid = 0;
-  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+  auto partition_id = xrt_core::edge::aie::full_array_id;
+  drm_zocl_aie_fd aiefd = { 0 , partition_id, 0 , 0 };
   int ret = drv->getPartitionFd(aiefd);
   if (ret)
     throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
@@ -71,7 +70,7 @@ aie_array(const std::shared_ptr<xrt_core::device>& device)
   dev_inst = &dev_inst_obj;
 
   adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-  adf::config_manager::initialize(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
   fal_util::initialize(dev_inst); //resource manager initialization
 
@@ -82,7 +81,7 @@ aie_array(const std::shared_ptr<xrt_core::device>& device)
   gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
   for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
   {
-    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second, m_config);
     p_gmio_api->configure();
     gmio_apis[config_itr->first] = p_gmio_api;
   }
@@ -94,7 +93,7 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
 {
   dev_inst_obj = {0};
   dev_inst = nullptr;
-  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+  adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get(), hwctx_obj);
 
   XAie_SetupConfig(ConfigPtr,
       driver_config.hw_gen,
@@ -109,12 +108,18 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
       driver_config.aie_tile_row_start,
       driver_config.aie_tile_num_rows);
 
+  auto part_info = hwctx_obj->get_partition_info();
+  if (part_info.partition_id != xrt_core::edge::aie::full_array_id) {
+    AieRC rc1;
+    if ((rc1 = XAie_SetupPartitionConfig(&dev_inst_obj, part_info.base_address, part_info.start_column, part_info.num_columns)) != XAIE_OK)
+      throw xrt_core::error(-EINVAL, "Failed to setup AIE Partition: " + std::to_string(rc1));
+  }
+
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  /* TODO get partition id and uid from XCLBIN or PDI */
-  uint32_t partition_id = 1;
-  uint32_t uid = 0;
-  drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+  auto partition_id = part_info.partition_id;
+  auto hw_context_id = hwctx_obj->get_slotidx();
+  drm_zocl_aie_fd aiefd = { hw_context_id , partition_id, 0 , 0 };
 
   //TODO: getparitionFd from driver instead of from shim
   if (auto ret = drv->getPartitionFd(aiefd))
@@ -130,23 +135,23 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
 
   dev_inst = &dev_inst_obj;
 
-  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-  adf::config_manager::initialize(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get(), hwctx_obj);
+  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
   fal_util::initialize(dev_inst); //resource manager initialization
   
   /* Initialize PLIO metadata */
-  plio_configs = xrt_core::edge::aie::get_plios(device.get());
+  plio_configs = xrt_core::edge::aie::get_plios(device.get(), hwctx_obj);
 
   /* Initialize gmio api instances */
-  gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+  gmio_configs = xrt_core::edge::aie::get_gmios(device.get(), hwctx_obj);
   for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
   {
-    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+    auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second, m_config);
     p_gmio_api->configure();
     gmio_apis[config_itr->first] = p_gmio_api;
   }
-  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
+  external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get(), hwctx_obj);
 }
 
 aie_array::
@@ -221,15 +226,16 @@ sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& con
     prepare_bd(bd, bos[counter++]);
   }
 
+  adf::dma_api dma_api_obj(m_config);
   for (const auto& port_config : config.shim_port_configs) {
     int start_bd = -1;
     for (const auto& shim_bd_info : port_config.shim_bd_infos) {
       auto buf_idx = shim_bd_info.buf_idx;
-      adf::dma_api::updateBDAddressLin(&bds[buf_idx].mem_inst, port_config.shim_column, 0, static_cast<uint8_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
+      dma_api_obj.updateBDAddressLin(&bds[buf_idx].mem_inst, port_config.shim_column, 0, static_cast<uint16_t>(shim_bd_info.bd_id), shim_bd_info.offset * 4);
       if (start_bd < 0)
         start_bd = shim_bd_info.bd_id;
     }
-    adf::dma_api::enqueueTask(1, port_config.shim_column, 0, port_config.direction, port_config.channel_number, port_config.task_repetition, port_config.enable_task_complete_token, static_cast<uint8_t>(start_bd));
+    dma_api_obj.enqueueTask(1, port_config.shim_column, 0, port_config.direction, port_config.channel_number, port_config.task_repetition, port_config.enable_task_complete_token, static_cast<uint16_t>(start_bd));
   }
 
   for (auto& bd :bds) {
@@ -245,8 +251,9 @@ wait_external_buffer(adf::external_buffer_config& config)
   if (config.shim_port_configs.empty() || config.num_bufs == 2)
     return;
 
+  adf::dma_api dma_api_obj(m_config);
   for (auto& port_config : config.shim_port_configs) {
-    adf::dma_api::waitDMAChannelDone(1 /*adf::tile_type::shim_tile*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number);
+    dma_api_obj.waitDMAChannelDone(1 /*adf::tile_type::shim_tile*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number);
   }
 }
 
@@ -394,7 +401,7 @@ clear_bd(aie_bd& bd)
 
 void
 aie_array::
-reset(const xrt_core::device* device)
+reset(const xrt_core::device* device, uint32_t hw_context_id, uint32_t partition_id)
 {
   if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
@@ -407,10 +414,7 @@ reset(const xrt_core::device* device)
 
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  /* TODO get partition id and uid from XCLBIN or PDI */
-  uint32_t partition_id = 1;
-
-  drm_zocl_aie_reset reset = { partition_id };
+  drm_zocl_aie_reset reset = { hw_context_id , partition_id };
   int ret = drv->resetAIEArray(reset);
   if (ret)
     throw xrt_core::error(ret, "Fail to reset AIE Array");
@@ -454,7 +458,7 @@ read_profiling(int phdl)
 
   uint64_t value = 0;
   if (event_records.size() > phdl)
-    value = adf::profiling::read(event_records[phdl].acquired_resources, event_records[phdl].option == IO_STREAM_START_DIFFERENCE_CYCLES);
+    value = adf::profiling::read(get_dev(), event_records[phdl].acquired_resources, event_records[phdl].option == IO_STREAM_START_DIFFERENCE_CYCLES);
   else
     throw xrt_core::error(-EAGAIN, "Read profiling failed: invalid handle.");
   return value;
@@ -467,7 +471,7 @@ stop_profiling(int phdl)
   if (access_mode == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
   if (event_records.size() > phdl)
-    adf::profiling::stop(event_records[phdl].acquired_resources);
+    adf::profiling::stop(get_dev(), event_records[phdl].acquired_resources);
   else
     throw xrt_core::error(-EINVAL, "Stop profiling failed: invalid handle.");
 }
@@ -505,7 +509,7 @@ start_profiling_run_idle(const std::string& port_name)
 {
   int handle = -1;
   std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
-  if (adf::profiling::profile_stream_running_to_idle_cycles(get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
+  if (adf::profiling::profile_stream_running_to_idle_cycles(get_dev(), get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
   {
     handle = event_records.size();
     event_records.push_back({ IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE, acquired_resources });
@@ -519,7 +523,7 @@ start_profiling_start_bytes(const std::string& port_name, uint32_t value)
 {
   int handle = -1;
   std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
-  if (adf::profiling::profile_stream_start_to_transfer_complete_cycles(get_shim_config(port_name), value, acquired_resources) == adf::err_code::ok)
+  if (adf::profiling::profile_stream_start_to_transfer_complete_cycles(get_dev(), get_shim_config(port_name), value, acquired_resources) == adf::err_code::ok)
   {
     handle = event_records.size();
     event_records.push_back({ IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES, acquired_resources });
@@ -533,7 +537,7 @@ start_profiling_diff_cycles(const std::string& port1_name, const std::string& po
 {
   int handle = -1;
   std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
-  if (adf::profiling::profile_start_time_difference_btw_two_streams(get_shim_config(port1_name), get_shim_config(port2_name), acquired_resources) == adf::err_code::ok)
+  if (adf::profiling::profile_start_time_difference_btw_two_streams(get_dev(), get_shim_config(port1_name), get_shim_config(port2_name), acquired_resources) == adf::err_code::ok)
   {
     handle = event_records.size();
     event_records.push_back({ IO_STREAM_START_DIFFERENCE_CYCLES, acquired_resources });
@@ -547,7 +551,7 @@ start_profiling_event_count(const std::string& port_name)
 {
   int handle = -1;
   std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquired_resources;
-  if (adf::profiling::profile_stream_running_event_count(get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
+  if (adf::profiling::profile_stream_running_event_count(get_dev(), get_shim_config(port_name), acquired_resources) == adf::err_code::ok)
   {
     handle = event_records.size();
     event_records.push_back({ IO_STREAM_RUNNING_EVENT_COUNT, acquired_resources });

@@ -154,7 +154,8 @@ AIETraceConfigFiletype::getMemoryTiles(const std::string& graph_name,
             // Verify this entry has desired graph/buffer combo
             for (uint32_t i=0; i < std::min(graphs.size(), buffers.size()); ++i) {
                 foundGraph  |= (graphs.at(i).find(graph_name) != std::string::npos);
-                foundBuffer |= (buffers.at(i).find(buffer_name) != std::string::npos);
+                auto currBuf = buffers.at(i).substr(buffers.at(i).find_last_of(".") + 1);
+                foundBuffer |= (currBuf == buffer_name);
                 if (foundGraph && foundBuffer)
                     break;
             }
@@ -186,7 +187,7 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
 
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && isAllKernel)
+    if (isAllKernel)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs

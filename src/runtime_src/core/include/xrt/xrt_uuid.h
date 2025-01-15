@@ -18,7 +18,7 @@
 #define xrt_uuid_h_
 
 #ifdef _WIN32
-# include "windows/uuid.h"
+# include "xrt/detail/windows/uuid.h"
 #else
 # include <uuid/uuid.h>
 typedef uuid_t xuid_t;
@@ -54,7 +54,7 @@ public:
   }
 
   /**
-   * uuid() - Construct uuid from a basic bare uuid
+   * uuid() - Converting construct uuid from a basic bare uuid
    *
    * @param val
    *  The basic uuid to construct this object from
@@ -75,7 +75,8 @@ public:
    *
    * A uuid string is 36 bytes with '-' at 8, 13, 18, and 23
    */
-  explicit uuid(const std::string& uuid_str)
+  explicit
+  uuid(const std::string& uuid_str)
   {
     if (uuid_str.empty()) {
       uuid_clear(m_uuid);
@@ -112,6 +113,21 @@ public:
   {
     uuid source(rhs);
     std::swap(*this,source);
+    return *this;
+  }
+
+  /**
+   * operator=() - assignment
+   *
+   * @param val
+   *   Value to be assigned from
+   * @return 
+   *   Reference to this
+   */
+  uuid&
+  operator=(const xuid_t val)
+  {
+    uuid_copy(m_uuid,val);
     return *this;
   }
 

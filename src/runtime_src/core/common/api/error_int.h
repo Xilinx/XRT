@@ -19,7 +19,7 @@
 #define _XRT_COMMON_ERROR_INT_H_
 
 // This file defines implementation extensions to the XRT Error APIs.
-#include "core/include/experimental/xrt_error.h"
+#include "core/include/xrt/experimental/xrt_error.h"
 #include "core/common/config.h"
 #include <boost/property_tree/ptree.hpp>
 

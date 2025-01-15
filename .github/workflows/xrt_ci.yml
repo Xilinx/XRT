@@ -1,7 +1,7 @@
 name: XRT CI
 
 env:  
-  RELEASE: '2024.2'  
+  RELEASE: '2025.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod' 
 
@@ -15,7 +15,7 @@ concurrency:
   
 jobs:
   authorize:
-    runs-on: Ubuntu-22.04
+    runs-on: [self-hosted, Ubuntu-22.04]
     steps:
       - name: Checkout private repository      
         uses: actions/checkout@v4   
@@ -36,17 +36,21 @@ jobs:
     strategy:      
       matrix:      
         include:      
-          - os: centos78      
+          - os: centos79      
             packageType: rpm      
           - os: centos8      
             packageType: rpm      
           - os: rhel9      
-            packageType: rpm      
+            packageType: rpm  
+          - os: rhel8.10      
+            packageType: rpm
           - os: ubuntu2004      
             packageType: deb      
           - os: hip      
             packageType: deb  
-          - os: ubuntu2404      
+          - os: npu      
+            packageType: deb
+          - os: npu2404      
             packageType: deb     
         
     runs-on: [self-hosted, Ubuntu-22.04]

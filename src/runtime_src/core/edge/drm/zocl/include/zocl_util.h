@@ -37,7 +37,7 @@
 ({ \
 	size_t ret; \
 	size_t data_size; \
-	data_size = sect->m_count * sizeof(typeof(sect->data)); \
+	data_size = sect->m_count * sizeof(*(sect->data)); \
 	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
 	(ret); \
 })
@@ -144,6 +144,10 @@ struct drm_zocl_slot {
 
 	struct zocl_xclbin	*slot_xclbin;
 	struct mutex		 slot_xclbin_lock;
+	struct mutex		 aie_lock;
+	struct aie_info		*aie_information;
+	struct zocl_aie		*aie;
+	u32			hwctx_ref_cnt;
 };
 
 struct zocl_cu_subdev {
@@ -169,7 +173,6 @@ struct drm_zocl_dev {
 	struct list_head	 zm_list_head;
 	struct drm_mm           *zm_drm_mm;    /* DRM MM node for PL-DDR */
 	struct mutex		 mm_lock;
-	struct mutex		 aie_lock;
 
 	struct list_head	 ctx_list;
 
@@ -188,16 +191,15 @@ struct drm_zocl_dev {
 	rwlock_t		attr_rwlock;
 
 	struct soft_krnl	*soft_kernel;
-	struct aie_info		*aie_information;
 	struct dma_chan		*zdev_dma_chan;
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;
 	struct zocl_error	 zdev_error;
-	struct zocl_aie		*aie;
 
 	int			 num_pr_slot;
 	int			 full_overlay_id;
 	struct drm_zocl_slot	*pr_slot[MAX_PR_SLOT_NUM];
+	u32                     slot_mask;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,

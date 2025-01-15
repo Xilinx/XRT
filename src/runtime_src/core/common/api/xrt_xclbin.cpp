@@ -6,7 +6,7 @@
 // core/include/experimental/xrt_xclbin.h
 #define XRT_API_SOURCE         // exporting xrt_version.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -16,7 +16,7 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
 
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 #include "handle.h"
 #include "native_profile.h"
@@ -34,7 +34,7 @@
 #include <mutex>
 
 #ifdef _WIN32
-# include "windows/uuid.h"
+# include "xrt/detail/windows/uuid.h"
 # pragma warning( disable : 4244 4267 4996)
 #else
 # include <linux/uuid.h>

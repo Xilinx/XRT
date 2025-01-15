@@ -8,17 +8,17 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_kernel.h"
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/experimental/xrt_ext.h"
-#include "core/include/experimental/xrt_mailbox.h"
-#include "core/include/experimental/xrt_module.h"
-#include "core/include/experimental/xrt_xclbin.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/include/xrt/experimental/xrt_mailbox.h"
+#include "core/include/xrt/experimental/xrt_module.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
+#include "core/include/xrt/detail/ert.h"
 #include "core/include/ert_fa.h"
 
 #include "bo.h"
@@ -502,6 +502,8 @@ class ip_context
       // collect the memory connections for each IP argument
       for (const auto& arg : ip.get_args()) {
         auto argidx = arg.get_index();
+        if (argidx == xrt_core::xclbin::kernel_argument::no_index)
+          throw xrt_core::error("Invalid kernel argument index in xclbin");
 
         for (const auto& mem : arg.get_mems()) {
           auto memidx = mem.get_index();
@@ -587,7 +589,7 @@ public:
     return ipctx;
   }
 
-  [[nodiscard]] access_mode
+  access_mode
   get_access_mode() const
   {
     return cu_access_mode(m_hwctx.get_mode());
@@ -598,31 +600,31 @@ public:
   close()
   {}
 
-  [[nodiscard]] size_t
+  size_t
   get_size() const
   {
     return m_size;
   }
 
-  [[nodiscard]] uint64_t
+  uint64_t
   get_address() const
   {
     return m_address;
   }
 
-  [[nodiscard]] xrt_core::cuidx_type
+  xrt_core::cuidx_type
   get_index() const
   {
     return m_idx;
   }
 
-  [[nodiscard]] unsigned int
+  unsigned int
   get_cuidx() const
   {
     return m_idx.domain_index; // index used for execution cumask
   }
 
-  [[nodiscard]] slot_id
+  slot_id
   get_slot() const
   {
     auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
@@ -639,7 +641,7 @@ public:
   // Get default memory bank for argument at specified index The
   // default memory bank is the connection with the highest group
   // connectivity index
-  [[nodiscard]] int32_t
+  int32_t
   arg_memidx(size_t argidx) const
   {
     return m_args.get_arg_memidx(argidx);
@@ -2478,6 +2480,9 @@ public:
     }
 
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
+      xrt_core::module_int::dump_scratchpad_mem(m_module);
 
     return state;
   }
@@ -2504,6 +2509,10 @@ public:
 
     if (state == ERT_CMD_STATE_COMPLETED) {
       m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+      static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+      if (dump)
+        xrt_core::module_int::dump_scratchpad_mem(m_module);
+
       return std::cv_status::no_timeout;
     }
 
@@ -3800,14 +3809,14 @@ add_callback(ert_cmd_state state,
 {
   XRT_DEBUGF("run::add_callback run(%d)\n", handle->get_uid());
   if (state != ERT_CMD_STATE_COMPLETED)
-    throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
+    throw xrt_core::error(-EINVAL, "Cannot add callback, run state may only be ERT_CMD_STATE_COMPLETED");
   // The function callback is passed a key that uniquely identifies
   // run objects referring to the same implmentation.  This allows
   // upstream to associate key with some run object that represents
   // the key. Note that the callback cannot pass *this (xrt::run) as
   // these objects are transient.
   auto key = handle.get();
-  handle->add_callback([=](ert_cmd_state state) { fcn(key, state, data); });
+  handle->add_callback([fn = std::move(fcn), key, data](ert_cmd_state state) { fn(key, state, data); });
 }
 
 ert_packet*
@@ -3960,6 +3969,9 @@ void
 runlist::
 add(const xrt::run& run)
 {
+  if (!handle)
+    throw xrt_core::error("cannot add run object to uninitialized runlist");
+
   handle->add(run);
 }
 

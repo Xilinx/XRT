@@ -35,8 +35,10 @@
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#elif XDP_VE2_BUILD
+#include "ve2/aie_trace.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #else
-#include "core/edge/user/shim.h"
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #endif
@@ -127,10 +129,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #else
   // Update the static database with information from xclbin
   (db->getStaticInfo()).updateDevice(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
-  std::string deviceName = util::getDeviceName(handle);
-  if (deviceName != "")
-    (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
-
 #endif
 
   // Metadata depends on static information from the database
@@ -162,6 +160,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
   AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
+#elif XDP_VE2_BUILD
+  AIEData.implementation = std::make_unique<AieTrace_VE2Impl>(db, AIEData.metadata);
 #else
   AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
 #endif
@@ -177,9 +177,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     if (device != nullptr) {
       for (auto &gmioEntry : AIEData.metadata->get_trace_gmios()) {
         auto gmio = gmioEntry.second;
-        (db->getStaticInfo())
-            .addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum,
-                          gmio.streamId, gmio.burstLength);
+        // Get the column shift for partition
+        // NOTE: If partition is not used, this value is zero.
+        // This is later required for GMIO trace offload.
+        uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
+        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
+                                           gmio.channelNum, gmio.streamId, gmio.burstLength);
       }
     }
 

@@ -49,9 +49,13 @@ class reset_type {
 
 public:
   reset_type(reset_key key, std::string name, std::string subdev, std::string entry, std::string warning, std::string value)
-    : mKey(key), mName(name), mSubdev(subdev), mEntry(entry), mWarning(warning), mValue(value)
-  {
-  }
+    : mKey(std::move(key))
+    , mName(std::move(name))
+    , mSubdev(std::move(subdev))
+    , mEntry(std::move(entry))
+    , mWarning(std::move(warning))
+    , mValue(std::move(value))
+  {}
 
   reset_key get_key() const {
     return mKey;
@@ -70,11 +74,11 @@ public:
   }
 
   void set_subdev(std::string str) {
-    mSubdev = str;
+    mSubdev = std::move(str);
   }
 
   void set_entry(std::string str) {
-    mEntry = str;
+    mEntry = std::move(str);
   }
 
   std::string get_warning() const {

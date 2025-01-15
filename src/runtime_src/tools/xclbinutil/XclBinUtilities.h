@@ -19,7 +19,7 @@
 #define __XclBinUtilities_h_
 
 // Include files
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 #include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -166,6 +166,7 @@ std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
 int exec(const std::filesystem::path &cmd, const std::vector<std::string> &args, bool bThrow, std::ostringstream & os_stdout, std::ostringstream & os_stderr);
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
+bool checkAIEPartitionIPLayoutCompliance(XclBin & xclbin);
 void createMemoryBankGrouping(XclBin & xclbin);
 
 // temporary for 2024.1, https://jira.xilinx.com/browse/SDXFLO-6890

@@ -5,19 +5,19 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "experimental/xrt_module.h"
-#include "experimental/xrt_elf.h"
-#include "experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_module.h"
+#include "xrt/experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_ext.h"
 
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
 
+#include "xrt/detail/ert.h"
+
 #include "elf_int.h"
-#include "ert.h"
 #include "module_int.h"
 #include "core/common/debug.h"
-#include "core/common/error.h"
 
 #include <boost/format.hpp>
 #include <elfio/elfio.hpp>
@@ -28,9 +28,13 @@
 #include <cstring>
 #include <numeric>
 #include <map>
+#include <regex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <sstream>
+#include <tuple>
+#include <type_traits>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
@@ -42,32 +46,37 @@ namespace
 // Control code is padded to page size, where page size is
 // 0 if no padding is required.   The page size should be
 // embedded as ELF metadata in the future.
-static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
+static constexpr size_t elf_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
+// In aie2p max bd data words is 8 and in aie4/aie2ps its 9
+// using max bd words as 9 to cover all cases
+static constexpr size_t max_bd_words = 9;
+
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
+static const char* Control_Code_Symbol = "control-code";
 
 struct buf
 {
   std::vector<uint8_t> m_data;
 
   void
-  append_section_data(ELFIO::section* sec)
+  append_section_data(const ELFIO::section* sec)
   {
     auto sz = sec->get_size();
     auto sdata = sec->get_data();
     m_data.insert(m_data.end(), sdata, sdata + sz);
   }
 
-  [[nodiscard]] size_t
+  size_t
   size() const
   {
     return m_data.size();
   }
 
-  [[nodiscard]] const uint8_t*
+  const uint8_t*
   data() const
   {
     return m_data.data();
@@ -82,10 +91,10 @@ struct buf
   void
   pad_to_page(uint32_t page)
   {
-    if (!column_page_size)
+    if (!elf_page_size)
       return;
 
-    auto pad = (page + 1) * column_page_size;
+    auto pad = (page + 1) * elf_page_size;
 
     if (m_data.size() > pad)
       throw std::runtime_error("Invalid ELF section size");
@@ -116,27 +125,20 @@ struct patcher
     control_packet_48 = 4,              // patching scheme needed by firmware to patch control packet
     shim_dma_48 = 5,                    // patching scheme needed by firmware to patch instruction buffer
     shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
+    control_packet_57 = 7,              // patching scheme needed by firmware to patch control packet for aie2ps
     unknown_symbol_kind = 8
   };
 
   enum class buf_type {
-    ctrltext = 0,   // control code
-    ctrldata = 1,       // control packet
-    preempt_save = 2,   // preempt_save
+    ctrltext = 0,        // control code
+    ctrldata = 1,        // control packet
+    preempt_save = 2,    // preempt_save
     preempt_restore = 3, // preempt_restore
-    buf_type_count = 4   // total number of buf types
+    pdi = 4,             // pdi
+    ctrlpkt_pm = 5,      // preemption ctrl pkt
+    pad = 6,             // scratchpad/control packet section name for next gen aie devices
+    buf_type_count = 7   // total number of buf types
   };
-
-  inline static const char*
-  section_name_to_string(buf_type bt)
-  {
-    static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
-                                                                                          ".ctrldata",
-                                                                                          ".preempt_save",
-                                                                                          ".preempt_restore" };
-
-    return Section_Name_Array[static_cast<int>(bt)];
-  }
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
@@ -145,9 +147,27 @@ struct patcher
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
     uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
+    bool dirty = false; // Tells whether this entry is already patched or not
+    uint32_t bd_data_ptrs[max_bd_words]; // array to store bd ptrs original values
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
+
+  inline static const std::string_view
+  to_string(buf_type bt)
+  {
+    static constexpr std::array<std::string_view, static_cast<int>(buf_type::buf_type_count)> section_name_array = {
+      ".ctrltext",
+      ".ctrldata",
+      ".preempt_save",
+      ".preempt_restore",
+      ".pdi",
+      ".ctrlpkt.pm",
+      ".pad"
+    };
+
+    return section_name_array[static_cast<int>(bt)];
+  }
 
   patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
     : m_buf_type(t)
@@ -155,11 +175,12 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
-// Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
-// For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
-// To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+  // Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
+  // For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
+  // To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
+
   void
-  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
+  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
   {
     if ((reinterpret_cast<uintptr_t>(data_to_patch) & 0x3) != 0)
       throw std::runtime_error("address is not 4 byte aligned for patch32");
@@ -170,7 +191,7 @@ struct patcher
   }
 
   void
-  patch57(uint32_t* bd_data_ptr, uint64_t patch)
+  patch57(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |                       // NOLINT
@@ -184,19 +205,34 @@ struct patcher
   }
 
   void
-  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
+  patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
   {
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
       bd_data_ptr[1];
 
-    base_address += patch;
+    base_address += patch + ddr_aie_addr_offset;  //2G offset
     bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
     bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
   }
 
   void
-  patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
+  patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch) const
+  {
+    //TODO need to change below logic to patch 57 bits
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2])));
+
+    base_address = base_address + patch;
+    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
+    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
+  }
+
+  void
+  patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
@@ -210,13 +246,13 @@ struct patcher
     bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
-  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
+  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const
   {
     // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |                      // NOLINT
       ((static_cast<uint64_t>(bd_data_ptr[1])));
 
     base_address = base_address + patch + ddr_aie_addr_offset;
@@ -225,10 +261,20 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t new_value)
+  patch_it(uint8_t* base, uint64_t new_value)
   {
-    for (auto item : m_ctrlcode_patchinfo) {
+    for (auto& item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
+      if (!item.dirty) {
+        // first time patching cache bd ptr values using bd ptrs array in patch info
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
+        item.dirty = true;
+      }
+      else {
+        // not the first time patching, restore bd ptr values from patch info bd ptrs array
+        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
+      }
+
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
@@ -242,6 +288,10 @@ struct patcher
       case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
         // new_value is a bo address
         patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        break;
+      case symbol_type::control_packet_57:
+        // new_value is a bo address
+        patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
@@ -266,7 +316,7 @@ struct patcher
       throw std::runtime_error("Failure opening file " + filename + " for writing!");
 
     auto buf = bo.map<char*>();
-    ofs.write(buf, bo.size());
+    ofs.write(buf, static_cast<std::streamsize>(bo.size()));
   }
 
   XRT_CORE_UNUSED std::string
@@ -302,7 +352,7 @@ public:
   module_impl& operator=(const module_impl&) = delete;
   module_impl& operator=(module_impl&&) = delete;
 
-  [[nodiscard]] xrt::uuid
+  xrt::uuid
   get_cfg_uuid() const
   {
     return m_cfg_uuid;
@@ -311,49 +361,61 @@ public:
   // Get raw instruction buffer data for all columns or for
   // single partition.  The returned vector has the control
   // code as extracted from ELF or userptr.
-  [[nodiscard]] virtual const std::vector<ctrlcode>&
+  virtual const std::vector<ctrlcode>&
   get_data() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const instr_buf&
+  virtual const instr_buf&
   get_instr() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const buf&
-      get_preempt_save() const
+  virtual const buf&
+  get_preempt_save() const
   {
       throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const buf&
-      get_preempt_restore() const
+  virtual const buf&
+  get_preempt_restore() const
   {
       throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual size_t
-      get_scratch_pad_mem_size() const
+  virtual size_t
+  get_scratch_pad_mem_size() const
   {
       throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const control_packet&
+  virtual const control_packet&
   get_ctrlpkt() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual xrt::bo&
+  virtual const std::set<std::string>&
+  get_ctrlpkt_pm_dynsyms() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  virtual const std::map<std::string, buf>&
+  get_ctrlpkt_pm_bufs() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  virtual xrt::bo&
   get_scratch_pad_mem()
   {
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual xrt::hw_context
+  virtual xrt::hw_context
   get_hw_context() const
   {
     return {};
@@ -368,7 +430,7 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual uint8_t
+  virtual uint8_t
   get_os_abi() const
   {
     throw std::runtime_error("Not supported");
@@ -418,7 +480,7 @@ public:
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
+  patch_it(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -426,7 +488,7 @@ public:
   // Get the number of patchers for arguments.  The returned
   // value is the number of arguments that must be patched before
   // the control code can be executed.
-  [[nodiscard]] virtual size_t
+  virtual size_t
   number_of_arg_patchers() const
   {
     return 0;
@@ -481,10 +543,15 @@ class module_elf : public module_impl
   bool m_restore_buf_exist = false;
   size_t m_scratch_pad_mem_size = 0;
 
+  std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
+  std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
+
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
   // section name, default to single column and page when nothing
-  // is specified.
+  // is specified.  Note that in some usecases the extracted column
+  // is actually the index of column microblase controller; the term
+  // column and uC index is used interchangably in such cases.
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name)
   {
@@ -509,9 +576,10 @@ class module_elf : public module_impl
 
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      // Instruction buffer is in .ctrltext section.
-      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) == std::string::npos)
+      // intr buffer is in the .ctrltext section.
+      if (name.find(patcher::to_string(patcher::buf_type::ctrltext)) == std::string::npos)
         continue;
+      
       instrbuf.append_section_data(sec.get());
       break;
     }
@@ -521,11 +589,13 @@ class module_elf : public module_impl
 
   // Extract control-packet buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
-  bool initialize_ctrl_packet(const ELFIO::elfio& elf, control_packet& ctrlpacket)
+  bool
+  initialize_ctrl_packet(const ELFIO::elfio& elf, control_packet& ctrlpacket)
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) == std::string::npos)
+      // ctrl packet is in the .ctrldata section.
+      if (name.find(patcher::to_string(patcher::buf_type::ctrldata)) == std::string::npos)
         continue;
 
       ctrlpacket.append_section_data(sec.get());
@@ -536,11 +606,12 @@ class module_elf : public module_impl
 
   // Extract preempt_save buffer from ELF sections
   // return true if section exist
-  bool initialize_save_buf(const ELFIO::elfio& elf, buf& save_buf)
+  bool
+  initialize_save_buf(const ELFIO::elfio& elf, buf& save_buf)
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_save)) == std::string::npos)
+      if (name.find(patcher::to_string(patcher::buf_type::preempt_save)) == std::string::npos)
         continue;
 
       save_buf.append_section_data(sec.get());
@@ -551,11 +622,12 @@ class module_elf : public module_impl
 
   // Extract preempt_restore buffer from ELF sections
   // return true if section exist
-  bool initialize_restore_buf(const ELFIO::elfio& elf, buf& restore_buf)
+  bool
+  initialize_restore_buf(const ELFIO::elfio& elf, buf& restore_buf)
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_restore)) == std::string::npos)
+      if (name.find(patcher::to_string(patcher::buf_type::preempt_restore)) == std::string::npos)
         continue;
 
       restore_buf.append_section_data(sec.get());
@@ -565,15 +637,30 @@ class module_elf : public module_impl
     return false;
   }
 
+  // Extract ctrlpkt preemption buffers from ELF sections
+  // and store it in map with section name as key
+  void
+  initialize_ctrlpkt_pm_bufs(const ELFIO::elfio& elf)
+  {
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::to_string(patcher::buf_type::ctrlpkt_pm)) == std::string::npos)
+        continue;
+
+      m_ctrlpkt_pm_bufs[name].append_section_data(sec.get());
+    }
+  }
+
   // Extract control code from ELF sections without assuming anything
   // about order of sections in the ELF file.  Build helper data
-  // structures that manages the control code data for each column and
-  // page, then create ctrlcode objects from the data.
+  // structures that manages the control code data per page for each
+  // microblaze controller (uC), then create ctrlcode objects from the
+  // data.
   std::vector<ctrlcode>
-  initialize_column_ctrlcode(const ELFIO::elfio& elf)
+  initialize_column_ctrlcode(const ELFIO::elfio& elf, std::vector<size_t>& pad_offsets)
   {
     // Elf sections for a single page
-    struct column_page
+    struct elf_page
     {
       ELFIO::section* ctrltext = nullptr;
       ELFIO::section* ctrldata = nullptr;
@@ -581,69 +668,99 @@ class module_elf : public module_impl
 
     // Elf sections for a single column, the column control code is
     // divided into pages of some architecture defined size.
-    struct column_sections
+    struct elf_sections
     {
       using page_index = uint32_t;
-      std::map<page_index, column_page> pages;
+      std::map<page_index, elf_page> pages;
     };
 
-    // Elf ctrl code for a partition spanning multiple columns, where
-    // each column has its own control code.  For architectures where
-    // a partition is not divided into columns, there will be just one
-    // entry in the associative map.
-    // col -> [page -> [ctrltext, ctrldata]]
-    using column_index = uint32_t;
-    std::map<column_index, column_sections> col_secs;
+    // Elf ctrl code for a partition spanning multiple uC, where each
+    // uC has its own control code.  For architectures where a
+    // partition is not divided into multiple controllers, there will
+    // be just one entry in the associative map.
+    // ucidx -> [page -> [ctrltext, ctrldata]]
+    using uc_index = uint32_t;
+    std::map<uc_index, elf_sections> uc_sections;
 
     // Iterate sections in elf, collect ctrltext and ctrldata
     // per column and page
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) != std::string::npos) {
-        auto [col, page] = get_column_and_page(sec->get_name());
-        col_secs[col].pages[page].ctrltext = sec.get();
+      if (name.find(patcher::to_string(patcher::buf_type::ctrltext)) != std::string::npos) {
+        auto [ucidx, page] = get_column_and_page(sec->get_name());
+        uc_sections[ucidx].pages[page].ctrltext = sec.get();
       }
-      else if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) != std::string::npos) {
-        auto [col, page] = get_column_and_page(sec->get_name());
-        col_secs[col].pages[page].ctrldata = sec.get();
+      else if (name.find(patcher::to_string(patcher::buf_type::ctrldata)) != std::string::npos) {
+        auto [ucidx, page] = get_column_and_page(sec->get_name());
+        uc_sections[ucidx].pages[page].ctrldata = sec.get();
       }
     }
 
-    // Create column control code from the collected data
-    // If page requirement, then pad to page size for page
-    // of a column so that embedded processor can load a page
-    // at a time.
-    std::vector<ctrlcode> ctrlcodes;
-    ctrlcodes.resize(col_secs.size());
+    // Create uC control code from the collected data.  If page
+    // requirement, then pad to page size for page of a column so that
+    // embedded processor can load a page at a time.  Note, that not
+    // all column uC need be used, so account for holes in
+    // uc_sections.  Leverage that uc_sections is a std::map and that
+    // std::map stores its elements in ascending order of keys (this
+    // is asserted)
+    std::vector<ctrlcode> ctrlcodes;  // indexed by uC index
+    static_assert(std::is_same_v<decltype(uc_sections), std::map<uc_index, elf_sections>>, "fix std::map assumption");
+    ctrlcodes.resize(uc_sections.empty() ? 0 : uc_sections.rbegin()->first + 1);
+    pad_offsets.resize(ctrlcodes.size());
 
-    for (auto& [col, col_sec] : col_secs) {
-      for (auto& [page, page_sec] : col_sec.pages) {
+    for (auto& [ucidx, elf_sects] : uc_sections) {
+      for (auto& [page, page_sec] : elf_sects.pages) {
         if (page_sec.ctrltext)
-          ctrlcodes[col].append_section_data(page_sec.ctrltext);
+          ctrlcodes[ucidx].append_section_data(page_sec.ctrltext);
 
         if (page_sec.ctrldata)
-          ctrlcodes[col].append_section_data(page_sec.ctrldata);
+          ctrlcodes[ucidx].append_section_data(page_sec.ctrldata);
 
-        ctrlcodes[col].pad_to_page(page);
+        ctrlcodes[ucidx].pad_to_page(page);
       }
+      pad_offsets[ucidx] = ctrlcodes[ucidx].size();
+    }
+
+    // Append pad section to the control code.
+    // This section may contain scratchpad/control-packet etc
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::to_string(patcher::buf_type::pad)) == std::string::npos)
+        continue;
+
+      auto ucidx = get_col_idx(name);
+      ctrlcodes[ucidx].append_section_data(sec.get());
     }
 
     return ctrlcodes;
   }
 
+  // This function returns the column number for which this arg belongs to
+  static int
+  get_col_idx(const std::string& name)
+  {
+    // arg name will be of format - .control_code-.*
+    std::regex expr("\\d+"); // Regular expression to match one or more digits
+    std::smatch match;
+    if (!(std::regex_search(name, match, expr)))
+      throw std::runtime_error("incorrect section name found when parsing ctrlpkt");
+
+    return std::stoi(match.str());
+  }
+
   std::pair<size_t, patcher::buf_type>
   determine_section_type(const std::string& section_name)
   {
-   if (section_name == patcher::section_name_to_string(patcher::buf_type::ctrltext))
+   if (section_name == patcher::to_string(patcher::buf_type::ctrltext))
      return { m_instr_buf.size(), patcher::buf_type::ctrltext};
 
-   else if (m_ctrl_packet_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::ctrldata)))
+   else if (m_ctrl_packet_exist && (section_name == patcher::to_string(patcher::buf_type::ctrldata)))
      return { m_ctrl_packet.size(), patcher::buf_type::ctrldata};
 
-   else if (m_save_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_save)))
+   else if (m_save_buf_exist && (section_name == patcher::to_string(patcher::buf_type::preempt_save)))
      return { m_save_buf.size(), patcher::buf_type::preempt_save };
 
-   else if (m_restore_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_restore)))
+   else if (m_restore_buf_exist && (section_name == patcher::to_string(patcher::buf_type::preempt_restore)))
      return { m_restore_buf.size(), patcher::buf_type::preempt_restore };
 
    else
@@ -669,6 +786,7 @@ class module_elf : public module_impl
       auto end = begin + sec->get_size() / sizeof(const ELFIO::Elf32_Rela);
       for (auto rela = begin; rela != end; ++rela) {
         auto symidx = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_sym(rela->r_info);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
         if (dynsym_offset >= dynsym->get_size())
@@ -684,6 +802,12 @@ class module_elf : public module_impl
             m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
         }
 
+        static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
+        if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
+          // store ctrlpkt preemption symbols which is later used for patching instr buf
+          m_ctrlpkt_pm_dynsyms.emplace(symname);
+        }
+
         // Get control code section referenced by the symbol, col, and page
         auto section = elf.sections[sym->st_shndx];
         if (!section)
@@ -695,18 +819,27 @@ class module_elf : public module_impl
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
-        uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
+
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-
-        auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
-
         patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
                                  // st_size is is encoded using register value mask for scaler_32
                                  // for other pacthing scheme it is encoded using size of dma
-                                 patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
-                                 patcher::patch_info{ offset, add_end_higher_28bit, 0 };
+                                 patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) } :
+                                 patcher::patch_info{ offset, add_end_addr, 0 };
 
-        std::string key_string = generate_key_string(argnm, buf_type);
+        auto key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
@@ -720,7 +853,7 @@ class module_elf : public module_impl
   }
 
   std::map<std::string, patcher>
-  initialize_arg_patchers(const ELFIO::elfio& elf, const std::vector<ctrlcode>& ctrlcodes)
+  initialize_arg_patchers(const ELFIO::elfio& elf, const std::vector<ctrlcode>& ctrlcodes, const std::vector<size_t>& pad_offsets)
   {
     auto dynsym = elf.sections[".dynsym"];
     auto dynstr = elf.sections[".dynstr"];
@@ -743,40 +876,83 @@ class module_elf : public module_impl
         if (dynsym_offset >= dynsym->get_size())
           throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
         auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynstr_offset = sym->st_name;
         if (dynstr_offset >= dynstr->get_size())
           throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
         auto symname = dynstr->get_data() + dynstr_offset;
 
-        // Get control code section referenced by the symbol, col, and page
-        auto ctrl_sec = elf.sections[sym->st_shndx];
-        if (!ctrl_sec)
+        // patching can be done to ctrlcode or ctrlpkt section
+        auto patch_sec = elf.sections[sym->st_shndx];
+        if (!patch_sec)
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
-        auto [col, page] = get_column_and_page(ctrl_sec->get_name());
 
-        auto column_ctrlcode_size = ctrlcodes.at(col).size();
-        auto column_ctrlcode_offset = page * column_page_size + rela->r_offset + 16; // NOLINT magic number 16??
-        if (column_ctrlcode_offset >= column_ctrlcode_size)
-          throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(column_ctrlcode_offset));
+        auto patch_sec_name = patch_sec->get_name();
+        size_t abs_offset = 0;
+        patcher::buf_type buf_type;
 
-        // The control code for all columns will be represented as one
-        // contiguous buffer object.  The patcher will need to know
-        // the offset into the buffer object for the particular column
-        // and page being patched.  Past first [0, col) columns plus
-        // page offset within column and the relocation offset within
-        // the page.
-        uint64_t ctrlcode_offset = 0;
-        for (uint32_t i = 0; i < col; ++i)
-          ctrlcode_offset += ctrlcodes.at(i).size();
-        ctrlcode_offset += column_ctrlcode_offset;
+        if (patch_sec_name.find(patcher::to_string(patcher::buf_type::pad)) != std::string::npos) {
+          auto col = get_col_idx(patch_sec_name);
+          for (int i = 0; i < col; ++i)
+            abs_offset += ctrlcodes.at(i).size();
+          abs_offset += pad_offsets.at(col);
+          abs_offset += rela->r_offset;
+          buf_type = patcher::buf_type::pad;
+        }
+        else {
+          // section to patch is ctrlcode
+          // Get control code section referenced by the symbol, col, and page
+          auto [col, page] = get_column_and_page(patch_sec_name);
+          auto column_ctrlcode_size = ctrlcodes.at(col).size();
+          auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16??
+          if (sec_offset >= column_ctrlcode_size)
+            throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
+
+          // The control code for all columns will be represented as one
+          // contiguous buffer object.  The patcher will need to know
+          // the offset into the buffer object for the particular column
+          // and page being patched.  Past first [0, col) columns plus
+          // page offset within column and the relocation offset within
+          // the page.
+          for (uint32_t i = 0; i < col; ++i)
+            abs_offset += ctrlcodes.at(i).size();
+          abs_offset += sec_offset;
+          buf_type = patcher::buf_type::ctrltext;
+        }
 
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
+	//TODO consolidate all of this logic in baseclass which can be used for
+	//aie2p and other aie class devices
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(elf.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
+
+        auto key_string = generate_key_string(argnm, buf_type);
+
+	// One arg may need to be patched at multiple offsets of control code
+	// arg2patcher map contains a key & value pair of arg & patcher object
+	// patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
+	// this vector size would be equal to number of places which needs patching
+	// On first occurrence of arg, Create a new patcher object and
+	// Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
+	// On all further occurences of arg, add patch_info structure to existing vector
+
+        if (auto search = arg2patcher.find(key_string); search != arg2patcher.end())
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
+        else
+          arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
     }
 
@@ -784,9 +960,9 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
+  patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
   {
-    const std::string key_string = generate_key_string(argnm, type);
+    auto key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
     auto not_found_use_argument_name = (it == m_arg2patcher.end());
     if (not_found_use_argument_name) {// Search using index
@@ -797,23 +973,23 @@ class module_elf : public module_impl
         return false;
     }
 
-    it->second.patch(base, patch);
+    it->second.patch_it(base, patch);
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
-        ss << "Patched " << patcher::section_name_to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
-        ss << "Patched " << patcher::section_name_to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
     return true;
   }
 
-  [[nodiscard]] uint8_t
+  uint8_t
   get_os_abi() const override
   {
     return m_os_abi;
@@ -841,8 +1017,9 @@ public:
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
   {
     if (m_os_abi == Elf_Amd_Aie2ps) {
-      m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf));
-      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes);
+      std::vector<size_t> pad_offsets;
+      m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf), pad_offsets);
+      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes, pad_offsets);
     }
     else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
@@ -853,47 +1030,60 @@ public:
       if (m_save_buf_exist != m_restore_buf_exist)
         throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
+      initialize_ctrlpkt_pm_bufs(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
 
-  [[nodiscard]] const std::vector<ctrlcode>&
+  const std::vector<ctrlcode>&
   get_data() const override
   {
     return m_ctrlcodes;
   }
 
-  [[nodiscard]] const instr_buf&
+  const instr_buf&
   get_instr() const override
   {
     return m_instr_buf;
   }
 
-  [[nodiscard]] const buf&
-      get_preempt_save() const override
+  const buf&
+  get_preempt_save() const override
   {
-      return m_save_buf;
+    return m_save_buf;
   }
 
-  [[nodiscard]] const buf&
-      get_preempt_restore() const override
+  const buf&
+  get_preempt_restore() const override
   {
-      return m_restore_buf;
+    return m_restore_buf;
   }
 
-  [[nodiscard]] virtual size_t
-      get_scratch_pad_mem_size() const override
+  size_t
+  get_scratch_pad_mem_size() const override
   {
-      return m_scratch_pad_mem_size;
+    return m_scratch_pad_mem_size;
   }
 
-  [[nodiscard]] const control_packet&
+  const control_packet&
   get_ctrlpkt() const override
   {
     return m_ctrl_packet;
   }
 
-  [[nodiscard]] size_t
+  const std::set<std::string>&
+  get_ctrlpkt_pm_dynsyms() const override
+  {
+    return m_ctrlpkt_pm_dynsyms;
+  }
+
+  const std::map<std::string, buf>&
+  get_ctrlpkt_pm_bufs() const override
+  {
+    return m_ctrlpkt_pm_bufs;
+  }
+
+  size_t
   number_of_arg_patchers() const override
   {
     return m_arg2patcher.size();
@@ -927,19 +1117,19 @@ public:
     : module_userptr(static_cast<const char*>(userptr), sz, uuid)
   {}
 
-  [[nodiscard]] const std::vector<ctrlcode>&
+  const std::vector<ctrlcode>&
   get_data() const override
   {
     return m_ctrlcode;
   }
 
-  [[nodiscard]] const instr_buf&
+  const instr_buf&
   get_instr() const override
   {
     return m_instr_buf;
   }
 
-  [[nodiscard]] const control_packet&
+  const control_packet&
   get_ctrlpkt() const override
   {
     return m_ctrl_pkt;
@@ -966,12 +1156,17 @@ class module_sram : public module_impl
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
-  // Column bo address is the address of the ctrlcode for each column
-  // in the (sram) buffer object.  The first ctrlcode is at the base
-  // address (m_buffer.address()) of the buffer object.  The addresses
-  // are used in ert_dpu_data payload to identify the ctrlcode for
-  // each column.
-  std::vector<std::pair<uint64_t, uint64_t>> m_column_bo_address;
+  // map of ctrlpkt preemption buffers
+  // key : dynamic symbol patch name of ctrlpkt-pm
+  // value : xrt::bo filled with corresponding section data
+  std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
+
+  // Tuple of uC index, address, size, where address is the address of
+  // the ctrlcode for indexed uC and size is the size of the ctrlcode.
+  // The first ctrlcode is at the base address (m_buffer.address()) of
+  // the buffer object.  The addresses are used in ert_dpu_data
+  // payload to identify the ctrlcode for each column processor.
+  std::vector<std::tuple<uint16_t, uint64_t, uint64_t>> m_column_bo_address;
 
   // Arguments patched in the ctrlcode buffer object
   // Must match number of argument patchers in parent module
@@ -989,7 +1184,7 @@ class module_sram : public module_impl
       uint32_t reserved : 29;
     } debug_flags;
     uint32_t all;
-  }m_debug_mode = {};
+  } m_debug_mode = {};
   uint32_t m_id {0}; //TODO: it needs come from the elf file
 
   bool
@@ -1013,13 +1208,20 @@ class module_sram : public module_impl
 
   // For separated multi-column control code, compute the ctrlcode
   // buffer object address of each column (used in ert_dpu_data).
+  // Note, that ctrlcodes is indexed by microblaze controller index
+  // and may have holes. A hole is skipped prior to populating
+  // m_column_bo_address.
   void
   fill_column_bo_address(const std::vector<ctrlcode>& ctrlcodes)
   {
     m_column_bo_address.clear();
+    uint16_t ucidx = 0;
     auto base_addr = m_buffer.address();
     for (const auto& ctrlcode : ctrlcodes) {
-      m_column_bo_address.push_back({ base_addr, ctrlcode.size() }); // NOLINT
+      if (auto size = ctrlcode.size())
+        m_column_bo_address.push_back({ ucidx, base_addr, size }); // NOLINT
+
+      ++ucidx;
       base_addr += ctrlcode.size();
     }
   }
@@ -1028,20 +1230,33 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
+    m_column_bo_address.push_back({ static_cast<uint16_t>(0), m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
   }
 
-  // Fill the instruction buffer object with the ctrlcodes for each
+  // Fill the instruction buffer object with the data for each
   // column and sync the buffer to device.
   void
-  fill_instruction_buffer(xrt::bo& bo, const std::vector<ctrlcode>& ctrlcodes)
+  fill_instruction_buffer(const std::vector<ctrlcode>& ctrlcodes)
   {
-    auto ptr = bo.map<char*>();
+    auto ptr = m_buffer.map<char*>();
     for (const auto& ctrlcode : ctrlcodes) {
       std::memcpy(ptr, ctrlcode.data(), ctrlcode.size());
       ptr += ctrlcode.size();
     }
-    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+    // Iterate over control packets of all columns & patch it in instruction
+    // buffer
+    auto col_data = m_parent->get_data();
+    size_t offset = 0;
+    for (size_t i = 0; i < col_data.size(); ++i) {
+      // find the control-code-* sym-name and patch it in instruction buffer
+      // This name is an agreement between aiebu and XRT
+      auto sym_name = std::string(Control_Code_Symbol) + "-" + std::to_string(i);
+      if (patch_instr_value(m_buffer, sym_name, std::numeric_limits<size_t>::max() , m_buffer.address() + offset, patcher::buf_type::ctrltext))
+        m_patched_args.insert(sym_name);
+      offset += col_data[i].size();
+    }
+    m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
   void
@@ -1129,6 +1344,19 @@ class module_sram : public module_impl
     if (m_ctrlpkt_bo) {
       patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
+
+    // patch ctrlpkt pm buffers
+    for (const auto& dynsym : parent->get_ctrlpkt_pm_dynsyms()) {
+      // get xrt::bo corresponding to this dynsym to patch its address in instr bo
+      // convert sym name to sec name eg: ctrlpkt-pm-0 to .ctrlpkt.pm.0
+      std::string sec_name = "." + dynsym;
+      std::replace(sec_name.begin(), sec_name.end(), '-', '.');
+      auto bo_itr = m_ctrlpkt_pm_bos.find(sec_name);
+      if (bo_itr == m_ctrlpkt_pm_bos.end())
+        throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
+      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, patcher::buf_type::ctrltext);
+    }
+
     XRT_DEBUGF("<- module_sram::create_instr_buf()\n");
   }
 
@@ -1157,8 +1385,18 @@ class module_sram : public module_impl
     }
   }
 
-  // Create the instruction buffer object and fill it with column
-  // ctrlcodes.
+  void
+  create_ctrlpkt_pm_bufs(const module_impl* parent)
+  {
+    const auto& ctrlpkt_pm_info = parent->get_ctrlpkt_pm_bufs();
+
+    for (const auto& [key, buf] : ctrlpkt_pm_info) {
+      m_ctrlpkt_pm_bos[key] = xrt::ext::bo{ m_hwctx, buf.size() };
+      fill_bo_with_data(m_ctrlpkt_pm_bos[key], buf);
+    }
+  }
+
+  // Create the instruction buffer with all columns data along with pad section
   void
   create_instruction_buffer(const module_impl* parent)
   {
@@ -1175,10 +1413,10 @@ class module_sram : public module_impl
 
     m_buffer = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
-    fill_instruction_buffer(m_buffer, data);
+    fill_instruction_buffer(data);
   }
 
-  virtual void
+  void
   patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
   {
     patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type);
@@ -1191,16 +1429,20 @@ class module_sram : public module_impl
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
-        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
+        if (m_parent->patch_it(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
           patched = true;
       }
-
       // patch instruction buffer
-      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch_it(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
-      patched = true;
+    else {
+      if (m_parent->patch_it(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
+        patched = true;
+
+      if (m_parent->patch_it(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::pad))
+        patched = true;
+    }
 
     if (patched) {
       m_patched_args.insert(argnm);
@@ -1208,13 +1450,14 @@ class module_sram : public module_impl
     }
   }
 
-  void
+  bool  
   patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(bo.map<uint8_t*>(), argnm, index, value, type))
-      return;
+    if (!m_parent->patch_it(bo.map<uint8_t*>(), argnm, index, value, type))
+      return false;
 
     m_dirty = true;
+    return true;
   }
 
   void
@@ -1228,7 +1471,7 @@ class module_sram : public module_impl
   {
     if (size > 8) // NOLINT
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
-    
+
     auto arg_value = *static_cast<const uint64_t*>(value);
     patch_value(argnm, index, arg_value);
   }
@@ -1331,15 +1574,16 @@ class module_sram : public module_impl
   uint32_t*
   fill_ert_aie2ps(uint32_t *payload) const
   {
-    auto ert_dpu_data_count = static_cast<uint32_t>(m_column_bo_address.size());
+    auto ert_dpu_data_count = static_cast<uint16_t>(m_column_bo_address.size());
     // For multiple instruction buffers, the ert_dpu_data::chained has
     // the number of words remaining in the payload after the current
     // instruction buffer. The ert_dpu_data::chained of the last buffer
     // is zero.
-    for (auto [addr, size] : m_column_bo_address) {
+    for (auto [ucidx, addr, size] : m_column_bo_address) {
       auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
       dpu->instruction_buffer = addr;
       dpu->instruction_buffer_size = static_cast<uint32_t>(size);
+      dpu->uc_index = ucidx;
       dpu->chained = --ert_dpu_data_count;
       payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
     }
@@ -1364,9 +1608,10 @@ public:
     auto os_abi = m_parent.get()->get_os_abi();
 
     if (os_abi == Elf_Amd_Aie2p) {
-      // make sure to create control-packet buffer frist because we may
+      // make sure to create control-packet buffers first because we may
       // need to patch control-packet address to instruction buffer
       create_ctrlpkt_buf(m_parent.get());
+      create_ctrlpkt_pm_bufs(m_parent.get());
       create_instr_buf(m_parent.get());
       fill_bo_addresses();
     }
@@ -1387,10 +1632,30 @@ public:
     return fill_ert_aie2ps(payload);
   }
 
-  [[nodiscard]] virtual xrt::bo&
-      get_scratch_pad_mem() override
+  xrt::bo&
+  get_scratch_pad_mem() override
   {
-      return m_scratch_pad_mem;
+    return m_scratch_pad_mem;
+  }
+
+  void
+  dump_scratchpad_mem()
+  {
+    if (m_scratch_pad_mem.size() == 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "preemption scratchpad memory is not available");
+      return;
+    }
+
+    // sync data from device before dumping into file
+    m_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    std::string dump_file_name = "preemption_scratchpad_mem" + std::to_string(get_id()) + ".bin";
+    dump_bo(m_scratch_pad_mem, dump_file_name);
+
+    std::string msg {"dumped file "};
+    msg.append(dump_file_name);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
   }
 };
 
@@ -1444,7 +1709,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<st
 
   size_t index = 0;
   for (auto& [arg_name, arg_addr] : *args) {
-    if (!hdl->patch(ibuf, arg_name, index, arg_addr, patcher::buf_type::ctrltext))
+    if (!hdl->patch_it(ibuf, arg_name, index, arg_addr, patcher::buf_type::ctrltext))
       throw std::runtime_error{"Failed to patch " + arg_name};
     index++;
   }
@@ -1466,6 +1731,16 @@ enum ert_cmd_opcode
 get_ert_opcode(const xrt::module& module)
 {
   return module.get_handle()->get_ert_opcode();
+}
+
+void
+dump_scratchpad_mem(const xrt::module& module)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  module_sram->dump_scratchpad_mem();
 }
 
 } // xrt_core::module_int

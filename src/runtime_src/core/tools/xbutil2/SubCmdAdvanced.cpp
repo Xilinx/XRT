@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -8,6 +8,7 @@
 #include "OO_AieRegRead.h"
 #include "OO_MemRead.h"
 #include "OO_MemWrite.h"
+#include "OO_Reports.h"
 #include "SubCmdAdvanced.h"
 
 #include "common/device.h"
@@ -34,7 +35,8 @@ namespace po = boost::program_options;
 
 SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("advanced", 
-             "Low level command operations")
+             "Low level command operations"),
+      m_device("")
 {
   const std::string longDescription = "Low level command operations.";
   setLongDescription(longDescription);
@@ -44,6 +46,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -51,6 +54,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
 
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));
+  addSubOption(std::make_shared<OO_Reports>("report"));
 // Only defined for embedded platform
 #ifndef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
   addSubOption(std::make_shared<OO_AieRegRead>("read-aie-reg"));
@@ -75,17 +79,13 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   auto optionOption = checkForSubOption(vm);
 
   // No suboption print help
-  if (!optionOption) {
-    printHelp();
+  if (!optionOption || m_help) {
+    printHelp(false, "", XBU::get_device_class(m_device, true));
     return;
   }
-
-  // 2) Process the top level options
-  if (m_help)
-    topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());
   
   // Execute the option
-  optionOption->execute(topOptions);
+  optionOption->execute(_options);
 }

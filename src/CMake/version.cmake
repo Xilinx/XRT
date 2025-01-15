@@ -93,14 +93,21 @@ configure_file(
   ${PROJECT_BINARY_DIR}/gen/version.json
 )
 
-install(FILES ${PROJECT_BINARY_DIR}/gen/version.h DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
+# xrt component install
+install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
+  COMPONENT ${XRT_BASE_DEV_COMPONENT})
+
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-install(FILES ${PROJECT_BINARY_DIR}/gen/version.json DESTINATION ${XRT_INSTALL_DIR})
+  install(FILES ${PROJECT_BINARY_DIR}/gen/version.json
+    DESTINATION ${XRT_INSTALL_DIR}
+    COMPONENT ${XRT_BASE_DEV_COMPONENT})
 endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall
 if ((${XRT_NATIVE_BUILD} STREQUAL "yes") AND (NOT WIN32))
   # Copied over from dkms.cmake. TODO: cleanup
   set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
-  install(FILES ${PROJECT_BINARY_DIR}/gen/version.h DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include)
+  install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
+    DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include)
 endif()

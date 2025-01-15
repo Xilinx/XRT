@@ -16,7 +16,7 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/usage_metrics.h"
 #include "core/include/xrt.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 
 #include <any>
 #include <cstdint>

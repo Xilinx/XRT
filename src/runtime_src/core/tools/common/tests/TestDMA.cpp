@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestDMA.h"
+#include "TestValidateUtilities.h"
 #include "core/common/utils.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
@@ -24,8 +25,8 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  ptree.put("status", test_token_skipped);
-  if (!search_and_program_xclbin(dev, ptree))
+  ptree.put("status", XBValidateUtils::test_token_skipped);
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree))
     return ptree;
 
   // get DDR bank count from mem_topology if possible
@@ -53,12 +54,12 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
       continue;
 
     std::stringstream run_details;
-    logger(ptree, "Details", (boost::format("Buffer size - '%s' Memory Tag - '%s'") % xrt_core::utils::unit_convert(m_block_size) %  mem.m_tag).str());
+    XBValidateUtils::logger(ptree, "Details", (boost::format("Buffer size - '%s' Memory Tag - '%s'") % xrt_core::utils::unit_convert(m_block_size) %  mem.m_tag).str());
 
     // check if the bank has enough memory to allocate
     // m_size is in KB so convert block_size (bytes) to KB for comparison
     if (mem.m_size < (m_block_size/1024)) {
-      logger(ptree, "Details", boost::str(boost::format(
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format(
 	      "The bank does not have enough memory to allocate. Use lower '%s' value. \n") % "block-size"));
       continue;
     }
@@ -72,14 +73,14 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
     xcldev::DMARunner runner(dev, m_block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
-      ptree.put("status", test_token_passed);
+      ptree.put("status", XBValidateUtils::test_token_passed);
       std::string line;
       while(std::getline(run_details, line))
-        logger(ptree, "Details", line);
+        XBValidateUtils::logger(ptree, "Details", line);
     }
     catch (xrt_core::error& ex) {
-      ptree.put("status", test_token_failed);
-      logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", ex.what());
     }
   }
   return ptree;

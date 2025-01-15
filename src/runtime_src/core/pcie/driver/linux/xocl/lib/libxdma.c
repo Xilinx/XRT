@@ -2265,7 +2265,7 @@ fail:
  */
 
 #ifndef arch_msi_check_device
-int arch_msi_check_device(struct pci_dev *dev, int nvec, int type)
+static int arch_msi_check_device(struct pci_dev *dev, int nvec, int type)
 {
 	return 0;
 }
@@ -4311,7 +4311,8 @@ int xdma_get_bypassio(void *dev_hndl, u64 *len, u32 *bar_idx)
 	return (0);
 }
 
-struct scatterlist *sglist_index(struct sg_table *sgt, unsigned int idx)
+/*
+static struct scatterlist *sglist_index(struct sg_table *sgt, unsigned int idx)
 {
 	struct scatterlist *sg = sgt->sgl;
 	int i;
@@ -4327,6 +4328,7 @@ struct scatterlist *sglist_index(struct sg_table *sgt, unsigned int idx)
 
 	return sg;
 }
+*/
 
 /* ********************* static function definitions ************************ */
 

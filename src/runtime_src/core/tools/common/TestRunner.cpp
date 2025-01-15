@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "TestRunner.h"
+#include "tests/TestValidateUtilities.h"
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/tools/common/Process.h"
@@ -20,7 +21,6 @@ namespace xq = xrt_core::query;
 // System - Include Files
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <thread>
 
 static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
@@ -39,37 +39,6 @@ runTestInternal(std::shared_ptr<xrt_core::device> dev,
   is_thread_running = false;
 }
 
-static const std::string
-getXsaPath(const uint16_t vendor)
-{
-  if (vendor == 0 || (vendor == INVALID_ID))
-    return std::string();
-
-  std::string vendorName;
-  switch (vendor) {
-    case ARISTA_ID:
-      vendorName = "arista";
-      break;
-    default:
-    case XILINX_ID:
-      vendorName = "xilinx";
-      break;
-  }
-  return "/opt/" + vendorName + "/xsa/";
-}
-
-static void
-program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin)
-{
-  auto bdf = xq::pcie_bdf::to_string(xrt_core::device_query<xq::pcie_bdf>(device));
-  auto xclbin_obj = xrt::xclbin{xclbin};
-  try {
-    device->load_xclbin(xclbin_obj);
-  }
-  catch (const std::exception& e) {
-    XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
-  }
-}
 } //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -113,145 +82,7 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
   return result;
 }
 
-/*
- * mini logger to log errors, warnings and details produced by the test cases
- */
-void 
-TestRunner::logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const std::string& msg)
-{
-  boost::property_tree::ptree _ptLog;
-  boost::property_tree::ptree _ptExistingLog;
-  boost::optional<boost::property_tree::ptree&> _ptChild = _ptTest.get_child_optional("log");
-  if (_ptChild)
-    _ptExistingLog = _ptChild.get();
 
-  _ptLog.put(tag, msg);
-  _ptExistingLog.push_back(std::make_pair("", _ptLog));
-  _ptTest.put_child("log", _ptExistingLog);
-}
-
-/*
- * search for xclbin for an SSV2 platform
- */
-std::string
-TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
-                             boost::property_tree::ptree& _ptTest)
-{
-#ifdef XRT_INSTALL_PREFIX
-  #define FW_DIR XRT_INSTALL_PREFIX "/firmware/"
-#else
-  #define FW_DIR "/opt/xilinx/firmware/"
-#endif
-  std::string formatted_fw_path(FW_DIR);
-  std::filesystem::path fw_dir(formatted_fw_path);
-  if (!std::filesystem::is_directory(fw_dir)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", test_token_failed);
-    return "";
-  }
-
-  std::vector<std::string> suffix = { "dsabin", "xsabin" };
-
-  for (const std::string& t : suffix) {
-    std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for (std::filesystem::recursive_directory_iterator iter(fw_dir), end; iter != end;) {
-      std::string name = iter->path().string();
-      std::smatch cm;
-      if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {
-        iter.disable_recursion_pending();
-      }
-
-      std::regex_match(name, cm, e);
-      if (cm.size() > 0) {
-        auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
-        if (dtbbuf.empty()) {
-          ++iter;
-          continue;
-        }
-        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.data());
-        if (!uuids.size()) {
-          ++iter;
-		    }
-        else if (uuids[0].compare(logic_uuid) == 0) {
-          return cm.str(1) + "test/";
-        }
-      }
-      else if (iter.depth() > 4) {
-        iter.pop();
-        continue;
-      }
-		  ++iter;
-    }
-  }
-  logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
-  _ptTest.put("status", test_token_skipped);
-  return "";
-}
-
-/*
- * search for xclbin for a legacy platform
- */
-std::string
-TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name,
-                    boost::property_tree::ptree& _ptTest)
-{
-#ifdef XRT_INSTALL_PREFIX
-  #define DSA_DIR XRT_INSTALL_PREFIX "/dsa/"
-#else
-  #define DSA_DIR "/opt/xilinx/dsa/"
-#endif
-  const std::string dsapath(DSA_DIR);
-  const std::string xsapath(getXsaPath(vendor));
-
-  if (!std::filesystem::is_directory(dsapath) && !std::filesystem::is_directory(xsapath)) {
-    const auto fmt = boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath;
-    logger(_ptTest, "Error", boost::str(fmt));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", test_token_failed);
-    XBUtilities::throw_cancel(fmt);
-  }
-
-  //create possible xclbin paths
-  std::string xsaXclbinPath = xsapath + dev_name + "/test/";
-  std::string dsaXclbinPath = dsapath + dev_name + "/test/";
-  std::filesystem::path xsa_xclbin(xsaXclbinPath);
-  std::filesystem::path dsa_xclbin(dsaXclbinPath);
-  if (std::filesystem::exists(xsa_xclbin))
-    return xsaXclbinPath;
-  else if (std::filesystem::exists(dsa_xclbin))
-    return dsaXclbinPath;
-
-  const std::string fmt = "Platform path not available. Skipping validation";
-  logger(_ptTest, "Details", fmt);
-  _ptTest.put("status", test_token_skipped);
-  XBUtilities::throw_cancel(fmt);
-  return "";
-}
-
-/**
- * @deprecated
- * This function should be used ONLY for any legacy devices. IE versal/alveo only.
- * Ideally this will be removed soon.
- * 
- * Children of TestRunner should call into findPlatformFile
- */
-std::string
-TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
-                           boost::property_tree::ptree& ptTest)
-{
-  const std::string xclbin_name = ptTest.get<std::string>("xclbin", "");
-  const auto config_dir = ptTest.get<std::string>("xclbin_directory", "");
-  const std::filesystem::path platform_path = !config_dir.empty() ? config_dir : findPlatformPath(dev, ptTest);
-
-  const auto xclbin_path = platform_path / xclbin_name;
-  if (std::filesystem::exists(xclbin_path))
-    return xclbin_path.string();
-
-  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
-  ptTest.put("status", test_token_skipped);
-  return "";
-}
 
 /*
  * helper funtion for kernel and bandwidth python test cases when there is no platform.json
@@ -266,21 +97,21 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
              boost::property_tree::ptree& _ptTest)
 {
   const auto xclbin = _ptTest.get<std::string>("xclbin", "");
-  const auto xclbin_path = std::filesystem::path(findXclbinPath(_dev, _ptTest));
+  const auto xclbin_path = std::filesystem::path(XBValidateUtils::findXclbinPath(_dev, _ptTest));
 
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   const auto logic_uuid = xrt_core::device_query_default<xq::logic_uuids>(_dev, {});
   if (!logic_uuid.empty() && !std::filesystem::exists(xclbin_path)) {
-    logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
-    _ptTest.put("status", test_token_skipped);
+    XBValidateUtils::logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
+    _ptTest.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
 
-  logger(_ptTest, "Xclbin", xclbin_path.parent_path().string());
+  XBValidateUtils::logger(_ptTest, "Xclbin", xclbin_path.parent_path().string());
 
-  std::string platform_path = findPlatformPath(_dev, _ptTest);
+  std::string platform_path = XBValidateUtils::findPlatformPath(_dev, _ptTest);
 
   // Some testcases require additional binaries to be present on the device
   std::string dependency_args;
@@ -301,13 +132,13 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
   std::string xrtTestCasePath = XRT_TEST_CASE_DIR + py;
   std::filesystem::path xrt_path(xrtTestCasePath);
   if (!std::filesystem::exists(xrt_path)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+    XBValidateUtils::logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
     return;
   }
   // log testcase path for debugging purposes
-  logger(_ptTest, "Testcase", xrtTestCasePath);
+  XBValidateUtils::logger(_ptTest, "Testcase", xrtTestCasePath);
 
   std::vector<std::string> args = { "-k", xclbin_path.string(),
                                     "-d", xq::pcie_bdf::to_string(xrt_core::device_query<xq::pcie_bdf>(_dev)) };
@@ -316,19 +147,19 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
     exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
 
     if (exit_code == EOPNOTSUPP) {
-      _ptTest.put("status", test_token_skipped);
+      _ptTest.put("status", XBValidateUtils::test_token_skipped);
     }
     else if (exit_code == EXIT_SUCCESS) {
-      _ptTest.put("status", test_token_passed);
+      _ptTest.put("status", XBValidateUtils::test_token_passed);
     }
     else {
-      logger(_ptTest, "Error", os_stdout.str());
-      logger(_ptTest, "Error", os_stderr.str());
-      _ptTest.put("status", test_token_failed);
+      XBValidateUtils::logger(_ptTest, "Error", os_stdout.str());
+      XBValidateUtils::logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", XBValidateUtils::test_token_failed);
     }
   } catch (const std::exception& e) {
-    logger(_ptTest, "Error", e.what());
-    _ptTest.put("status", test_token_failed);
+    XBValidateUtils::logger(_ptTest, "Error", e.what());
+    _ptTest.put("status", XBValidateUtils::test_token_failed);
   }
 
   // Get out max thruput for bandwidth testcase
@@ -337,121 +168,36 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
     size_t st = os_stdout.str().find("Maximum");
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
-      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+      XBValidateUtils::logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
     else {
       // new test cases to find "Throughput (Type: {...}) (Bank count: {...}):"
       auto str = os_stdout.str().find("Throughput", 0);
       while(str != std::string::npos) {
         auto end = os_stdout.str().find("\n", str);
-        logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
+        XBValidateUtils::logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
         str = os_stdout.str().find("Throughput" , end);
       }
     }
   }
 }
 
-int
-TestRunner::validate_binary_file(const std::string& binaryfile)
-{
-  std::ifstream infile(binaryfile);
-  if (!infile.good()) 
-    return EOPNOTSUPP;
-  else
-    return EXIT_SUCCESS;
-}
 
-// Copy values from text files into buff, expecting values are ascii encoded hex
-void 
-TestRunner::init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
-  std::ifstream dpu_stream(dpu_file);
-  if (!dpu_stream.is_open()) {
-    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
-  }
-
-  auto instr = bo_instr.map<int*>();
-  std::string line;
-  while (std::getline(dpu_stream, line)) {
-    if (line.at(0) == '#') {
-      continue;
-    }
-    std::stringstream ss(line);
-    unsigned int word = 0;
-    ss >> std::hex >> word;
-    *(instr++) = word;
-  }
-}
-
-size_t 
-TestRunner::get_instr_size(const std::string& dpu_file) {
-  std::ifstream file(dpu_file);
-  if (!file.is_open()) {
-    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
-  }
-  size_t size = 0;
-  std::string line;
-  while (std::getline(file, line)) {
-    if (line.at(0) != '#') {
-      size++;
-    }
-  }
-  if (size == 0) {
-    throw std::runtime_error("Invalid DPU instruction length");
-  }
-  return size;
-}
-bool
-TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest)
-{
-  xuid_t uuid;
-  uuid_parse(xrt_core::device_query<xq::xclbin_uuid>(dev).c_str(), uuid);
-
-  const std::string xclbin_path = findXclbinPath(dev, ptTest);
-
-  try {
-    program_xclbin(dev, xclbin_path);
-  }
-  catch (const std::exception& e) {
-    logger(ptTest, "Error", e.what());
-    ptTest.put("status", test_token_failed);
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * @deprecated
- * This function should be used ONLY for any legacy devices. IE versal/alveo only.
- * Ideally this will be removed soon.
- * 
- * Children of TestRunner should call into findPlatformFile
+/*
+ * Gets kernel depending on if 2nd param is dpu sequence or elf file
  */
-std::string
-TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
-                             boost::property_tree::ptree& ptTest)
+xrt::kernel
+TestRunner::get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf)
 {
-  const auto logic_uuid = xrt_core::device_query_default<xq::logic_uuids>(dev, {});
-  if (!logic_uuid.empty())
-    return searchSSV2Xclbin(logic_uuid.front(), ptTest);
+  if (kernel_or_elf.find(".elf") == std::string::npos) {
+    return xrt::kernel(hwctx, kernel_or_elf);
+  }
   else {
-    auto vendor = xrt_core::device_query<xq::pcie_vendor>(dev);
-    auto name = xrt_core::device_query<xq::rom_vbnv>(dev);
-    return searchLegacyXclbin(vendor, name, ptTest);
-  }
-}
+    xrt::elf elf;
+    elf = xrt::elf(kernel_or_elf);
+    xrt::module mod{elf};
 
-std::string
-TestRunner::findPlatformFile(const std::string& file_path,
-                             boost::property_tree::ptree& ptTest)
-{
-  try {
-    return xrt_core::environment::platform_path(file_path).string();
-  }
-  catch (const std::exception&) {
-    logger(ptTest, "Details", boost::str(boost::format("%s not available") % file_path));
-    ptTest.put("status", test_token_skipped);
-    return "";
+    return xrt::ext::kernel{hwctx, mod, "dpu:{nop}"};
   }
 }
 
@@ -498,68 +244,4 @@ TestRunner::get_test_header()
     ptree.put("xclbin", m_xclbin);
     ptree.put("explicit", m_explicit);
     return ptree;
-}
-
-void 
-TestRunner::result_in_range(double value, double threshold, boost::property_tree::ptree& ptTest)
-{
-  //have a 40% tolerance until we can nail down consistent numbers
-  if (((((0.60*threshold) <= value) && (value <=(1.40*threshold))) || threshold == 0.0)) {
-    ptTest.put("status", test_token_passed);
-  }
-  else {
-    logger(ptTest, "Warning", boost::str(boost::format("Benchmark value is not ~%.1f which is the expected value") % threshold));
-    ptTest.put("status", test_token_passed);
-  }
-}
-
-/*
- * This function finds the benchmark_devid_revid.json file in the driverstore and 
- * iterates through it to find the golden threshold value for a given test.
- * Case 1: json is not found - the testcase will show a warning and pass the test
- * Case 2: json is found, but the corresponding pmode is not - testcase will throw
- *         an exception
- * Case 3: json and the corresponding pmode is found - testcase will compare the
- *         result against the json value
- */
-void 
-TestRunner::set_threshold(const std::shared_ptr<xrt_core::device>& dev, 
-                           boost::property_tree::ptree& ptTest)
-{
-  //find the benchmark.json
-  const auto pcie_id = xrt_core::device_query<xq::pcie_id>(dev);
-  auto benchmark_fname = boost::str(boost::format("benchmark_%s_%s.json") 
-                            % xq::pcie_id::device_to_string(pcie_id) % xq::pcie_id::revision_to_string(pcie_id));
-  auto json_config = findPlatformFile(benchmark_fname, ptTest);
-  if (!std::filesystem::exists(json_config)) {
-    logger(ptTest, "Warning", "The results are not compared to expected numbers.");
-    m_threshold = 0.0;
-    return;
-  }
-
-  logger(ptTest, "Benchmarks", json_config);
-
-  //open file
-  boost::property_tree::ptree validate_json;
-  boost::property_tree::read_json(json_config, validate_json);
-
-  //find curr pmode
-  const auto curr_pmode = xq::performance_mode::parse_status(xrt_core::device_query<xq::performance_mode>(dev));
-
-  //iterate tests array to find test_name
-  const boost::property_tree::ptree& tests = validate_json.get_child("tests");
-  for (const auto& kt : tests) {
-    const boost::property_tree::ptree& pt_test = kt.second;
-    if(!boost::iequals(pt_test.get<std::string>("test_name"), ptTest.get<std::string>("name")))
-      continue;
-    const boost::property_tree::ptree& benchmarks = pt_test.get_child("benchmarks");
-    for (const auto& kb : benchmarks) {
-      const boost::property_tree::ptree& pt_benchmark = kb.second;
-      if(boost::iequals(curr_pmode, pt_benchmark.get<std::string>("pmode"))) {
-        m_threshold = pt_benchmark.get<double>("threshold");
-        return;
-      }
-    }
-  }
-  throw std::runtime_error(boost::str(boost::format("Test is not supported for %s mode") % curr_pmode));
 }

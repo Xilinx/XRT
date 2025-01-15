@@ -7,8 +7,8 @@
 #define _XRT_COMMON_MODULE_INT_H_
 
 // This file defines implementation extensions to the XRT Kernel APIs.
-#include "core/include/experimental/xrt_bo.h"
-#include "core/include/experimental/xrt_module.h"
+#include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/experimental/xrt_module.h"
 
 #include <string>
 
@@ -49,6 +49,10 @@ sync(const xrt::module&);
 // Get the ERT command opcode in ELF flow
 ert_cmd_opcode
 get_ert_opcode(const xrt::module& module);
+
+// Dump scratch pad mem buffer
+void
+dump_scratchpad_mem(const xrt::module& module);
 
 } // xrt_core::module_int
 

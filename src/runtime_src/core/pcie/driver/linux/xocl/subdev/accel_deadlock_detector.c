@@ -165,7 +165,7 @@ static int accel_deadlock_detector_close(struct inode *inode, struct file *file)
     return 0;
 }
 
-long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
     void __user *data = NULL;
@@ -226,13 +226,13 @@ static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct
 
     // prevent touching the pages (byte access) for swap-in, and prevent the pages from being swapped out
 #ifndef VM_RESERVED
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
     vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
     vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
 #endif
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
     vma->vm_flags |= VM_IO | VM_RESERVED;
 #else
     vm_flags_set(vma, VM_IO | VM_RESERVED);

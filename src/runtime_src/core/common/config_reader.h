@@ -250,7 +250,21 @@ get_ml_timeline()
 inline std::string
 get_ml_timeline_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "128K");
+  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "192K");
+  return value;
+}
+
+inline bool
+get_aie_pc()
+{
+  static bool value = detail::get_bool_value("Debug.aie_pc",false);
+  return value;
+}
+
+inline std::string
+get_aie_pc_settings()
+{
+  static std::string value = detail::get_string_value("AIE_pc_settings.addresses", "");
   return value;
 }
 
@@ -852,6 +866,13 @@ inline std::string
 get_aie_profile_settings_interface_tile_latency_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.interface_tile_latency", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_microcontroller_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_microcontroller_metrics", "");
   return value;
 }
 

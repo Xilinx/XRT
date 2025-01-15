@@ -10,6 +10,7 @@ add_library(core_pcielinux_objects OBJECT
   pcidrv.cpp
   shim.cpp
   system_linux.cpp
+  smi.cpp
   )
 
 target_compile_definitions(core_pcielinux_objects
@@ -67,14 +68,9 @@ target_link_libraries(xrt_core_static
   pthread
   )
 
-install(TARGETS xrt_core
-  EXPORT xrt-targets
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
-  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
-)
-
 install(TARGETS xrt_core xrt_core_static
-  EXPORT xrt-dev-targets
+  EXPORT xrt-targets
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_COMPONENT} NAMELINK_COMPONENT ${XRT_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

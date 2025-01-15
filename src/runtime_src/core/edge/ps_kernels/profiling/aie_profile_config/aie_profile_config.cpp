@@ -68,8 +68,8 @@ namespace {
         auto tile = tile_type();
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
-        tile.stream_id = params->tiles[i].stream_id;
-        tile.is_master = params->tiles[i].is_master;
+        tile.stream_ids = params->tiles[i].stream_ids;
+        tile.is_master_vec = params->tiles[i].is_master_vec;
         tile.itr_mem_addr = params->tiles[i].itr_mem_addr;
         tile.is_trigger = params->tiles[i].is_trigger;
         tiles.insert({tile, params->tiles[i].metricSet});
@@ -152,8 +152,8 @@ namespace {
 
     // Grab slave/master and stream ID
     // NOTE: stored in getTilesForProfiling() above
-    auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-    auto streamPortId  = static_cast<uint8_t>(tile.stream_id);
+    auto slaveOrMaster = (tile.is_master_vec.at(0) == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+    auto streamPortId  = static_cast<uint8_t>(tile.stream_ids.at(0));
 
     // Define stream switch port to monitor PLIO 
     XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
@@ -169,7 +169,7 @@ namespace {
         || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
         || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
         || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
-      return ((tile.is_master << 8) | tile.stream_id);
+      return ((tile.is_master_vec.at(0) << 8) | tile.stream_ids.at(0));
 
     // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
@@ -315,10 +315,10 @@ namespace {
           mPerfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          uint8_t tmpStart;
-          uint8_t tmpEnd;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+          uint16_t tmpStart;
+          uint16_t tmpEnd;
+          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, startEvent, &tmpStart);
+          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + config.mCounterBases[type];
           uint16_t phyEndEvent   = tmpEnd + config.mCounterBases[type];
 

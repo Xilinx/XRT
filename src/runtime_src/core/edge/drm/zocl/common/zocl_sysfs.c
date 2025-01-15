@@ -217,11 +217,14 @@ static ssize_t graph_status_show(struct device *dev,
 	struct aie_info_cmd *acmd;
 	struct aie_info_packet *aiec_packet;
 	ssize_t nread = 0;
+	struct drm_zocl_slot* slot = NULL;
 	zdev = dev_get_drvdata(dev);
 	if (!zdev)
 		return 0;
 
-	aie = zdev->aie_information;
+	// TODO hardcoding slot to 0
+	slot = zdev->pr_slot[0];
+	aie = slot->aie_information;
 	if (!aie)
 		return 0;
 
@@ -591,7 +594,6 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 	u32 nread = 0;
 	u32 f_nread = 0;
-	int i = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)

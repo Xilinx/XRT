@@ -27,7 +27,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -40,6 +40,8 @@
 #include "client/aie_profile.h"
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
+#elif XDP_VE2_BUILD
+#include "ve2/aie_profile.h"
 #else
 #include "core/edge/user/shim.h"
 #include "edge/aie_profile.h"
@@ -124,10 +126,6 @@ namespace xdp {
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
-      std::string deviceName = util::getDeviceName(handle);
-      if (deviceName != "") {
-        (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
-      }
 #endif
     }
 
@@ -155,6 +153,8 @@ namespace xdp {
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
+#elif XDP_VE2_BUILD
+    AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata);
 #else
     AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
 #endif

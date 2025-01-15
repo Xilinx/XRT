@@ -388,70 +388,70 @@ PrintfArg::PrintfArg(double val)
 {
 }
 
-PrintfArg::PrintfArg(std::vector<int8_t> vec)
+PrintfArg::PrintfArg(const std::vector<int8_t>& vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint8_t> vec)
+PrintfArg::PrintfArg(const std::vector<uint8_t>& vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int16_t> vec)
+PrintfArg::PrintfArg(const std::vector<int16_t>& vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint16_t> vec)
+PrintfArg::PrintfArg(const std::vector<uint16_t>& vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int32_t> vec)
+PrintfArg::PrintfArg(const std::vector<int32_t>& vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint32_t> vec)
+PrintfArg::PrintfArg(const std::vector<uint32_t>& vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int64_t> vec)
+PrintfArg::PrintfArg(const std::vector<int64_t>& vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint64_t> vec)
+PrintfArg::PrintfArg(const std::vector<uint64_t>& vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<float> vec)
+PrintfArg::PrintfArg(const std::vector<float>& vec)
     : m_typeInfo(AT_FLOATVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(floatVec));
 }
 
-PrintfArg::PrintfArg(std::vector<double> vec)
+PrintfArg::PrintfArg(const std::vector<double>& vec)
     : m_typeInfo(AT_FLOATVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
@@ -1005,7 +1005,7 @@ PrintfArg BufferPrintf::buildArg(int bufIdx, ConversionSpec& conversion) const
 
 /////////////////////////////////////////////////////////////////////////
 
-std::string convertArg(PrintfArg& arg, ConversionSpec& conversion)
+std::string convertArg(const PrintfArg& arg, const ConversionSpec& conversion)
 {
   std::string retval = "";
   char formatStr[32];
@@ -1116,7 +1116,7 @@ std::string convertArg(PrintfArg& arg, ConversionSpec& conversion)
   return retval;
 }
 
-std::string string_printf(const std::string& formatStr, std::vector<PrintfArg> args)
+std::string string_printf(const std::string& formatStr, const std::vector<PrintfArg>& args)
 {
   std::vector<ConversionSpec> specVec;
   std::vector<std::string> splitVec;
@@ -1142,7 +1142,7 @@ std::string string_printf(const std::string& formatStr, std::vector<PrintfArg> a
     oss << splitVec[0];
   }
   for ( size_t idx = 1; idx < splitVec.size(); ++idx ) {
-    PrintfArg& arg = args[idx-1];
+    auto& arg = args[idx-1];
     ConversionSpec& conversion = specVec[idx-1];
     oss << convertArg(arg, conversion);
     oss << splitVec[idx];

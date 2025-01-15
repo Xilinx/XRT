@@ -18,7 +18,7 @@
 /**
  * Embedded runtime scheduler
  */
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include <stdint.h>
 // includes from bsp

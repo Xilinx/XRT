@@ -88,7 +88,7 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 	void __iomem *map = NULL;
 
 	if (!slot->pr_isolation_addr) {
-		DRM_ERROR("PR isolation address is not set");
+		DRM_INFO("PR isolation address is not set");
 	} else {
 		map = ioremap(slot->pr_isolation_addr, PR_ISO_SIZE);
 		if (IS_ERR_OR_NULL(map)) {
@@ -156,7 +156,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 }
 
 int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct drm_zocl_slot* slot, struct axlf *axlf,
 			char __user *xclbin, struct kds_client *client)
 {
 	uint64_t size = 0;
@@ -176,10 +176,10 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	vfree(pdi_buf);
 
 	/* Mark AIE out of reset state after load PDI */
-	if (zdev->aie) {
-		mutex_lock(&zdev->aie_lock);
-		zdev->aie->aie_reset = false;
-		mutex_unlock(&zdev->aie_lock);
+	if (slot->aie) {
+		mutex_lock(&slot->aie_lock);
+		slot->aie->aie_reset = false;
+		mutex_unlock(&slot->aie_lock);
 	}
 
 	return ret;

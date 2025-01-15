@@ -53,12 +53,12 @@ usage()
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-hip]                      Enable hip bindings"
-    echo "[-noalveo]                  Disable bundling of Alveo Linux drivers"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
+    echo "[-npu]                      Build for NPU only, implies -noert and disables bundling of Alveo Linux drivers"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
     echo "[-pskernel]                 Enable building of POC ps kernel"
@@ -90,7 +90,6 @@ usage()
 }
 
 clean=0
-ccache=0
 ci=0
 docs=0
 verbose=""
@@ -109,7 +108,9 @@ static_boost=""
 ertbsp=""
 ertfw=""
 werror=1
-alveo=1
+alveo_build=0
+npu_build=0
+base_build=0
 xclbinutil=0
 xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -156,9 +157,23 @@ while [ $# -gt 0 ]; do
             shift
             cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
-	-noalveo)
+        -base)
             shift
-	    alveo=0
+            base_build=1
+            noert=1
+            cmake_flags+=" -DXRT_BASE=1"
+            ;;
+        -alveo)
+            shift
+            alveo_build=1
+            cmake_flags+=" -DXRT_ALVEO=1"
+            ;;
+	-npu)
+            shift
+	    npu_build=1
+	    noert=1
+	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
+	    cmake_flags+=" -DXRT_NPU=1"
             ;;
         -opt)
             dbg=0
@@ -187,8 +202,9 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -ccache)
-            cmake_flags+=" -DRDI_CCACHE=1"
-            ccache=1
+            export CCACHE_DIR=${CCACHE_DIR:-/scratch/ccache/$USER}
+            mkdir -p $CCACHE_DIR
+            cmake_flags+=" -DXRT_CCACHE=1"
             shift
             ;;
         -cppstd)
@@ -248,6 +264,11 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
+    echo "build.sh: -npu, -alveo, -base are mutually exclusive"
+    exit 1
+fi
+
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
 edge_dir=${EDGE_DIR:-Edge}
@@ -260,10 +281,6 @@ cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 # set CMAKE_INSTALL_PREFIX
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
-if [[ $alveo == 1 ]]; then
-    cmake_flags+=" -DXRT_DKMS_ALVEO=ON"
-fi
-
 here=$PWD
 cd $BUILDDIR
 
@@ -272,19 +289,6 @@ if [[ $clean == 1 ]]; then
     echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
     /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
-fi
-
-if [[ $ccache == 1 ]]; then
-    SRCROOT=`readlink -f $BUILDDIR/../src`
-    export RDI_ROOT=$SRCROOT
-    export RDI_BUILDROOT=$SRCROOT
-    export RDI_CCACHEROOT=/scratch/ccache/$USER
-    mkdir -p $RDI_CCACHEROOT
-    # Run cleanup script once a day
-    # Clean cache dir for stale files older than 30 days
-    if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
-        /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
-    fi
 fi
 
 if [[ ! -z $ertbsp ]]; then
@@ -403,8 +407,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.18.0/driver/xocl"
-    make -C usr/src/xrt-2.18.0/driver/xocl
+    echo "make -C usr/src/xrt-2.19.0/driver/xocl"
+    make -C usr/src/xrt-2.19.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -434,7 +438,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.18.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.19.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

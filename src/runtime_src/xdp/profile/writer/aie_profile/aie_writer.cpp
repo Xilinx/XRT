@@ -56,6 +56,8 @@ namespace xdp {
 
   void AIEProfilingWriter::writeMetricSettings()
   {
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    uint8_t col_shift = metadataReader->getPartitionOverlayStartCols().front();
     auto validConfig = (db->getStaticInfo()).getProfileConfig();
 
     std::map<module_type, std::vector<std::string>> filteredConfig;
@@ -69,7 +71,7 @@ namespace xdp {
 
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
-        metrics.push_back(std::to_string(+elm.first.col) + "," + \
+        metrics.push_back(std::to_string(+(elm.first.col+col_shift)) + "," + \
                           aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) \
                           + "," + elm.second);
         if (i == module_type::shim && elm.second == METRIC_BYTE_COUNT) {
@@ -99,6 +101,10 @@ namespace xdp {
 
     fout << "# Interface tile metric sets:" << "\n";
     for (const auto &setting : filteredConfig.at(module_type::shim))
+      fout << setting << "\n";
+
+    fout << "# Microcontroller metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::uc))
       fout << setting << "\n";
 
     fout << "\n";

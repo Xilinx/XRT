@@ -3,7 +3,7 @@
 #define XRT_API_SOURCE         // exporting xrt_hwcontext.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
-#include "core/include/experimental/xrt_fence.h"
+#include "core/include/xrt/experimental/xrt_fence.h"
 #include "core/common/api/fence_int.h"
 #include "core/common/shim/fence_handle.h"
 #include "core/common/shim/shared_handle.h"

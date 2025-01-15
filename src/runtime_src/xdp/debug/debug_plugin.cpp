@@ -17,7 +17,7 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 #include "xdp/debug/debug_plugin.h"
 #include "xdp/debug/kernel_debug_manager.h"
 #include "xocl/api/plugin/xdp/debug.h"

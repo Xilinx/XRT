@@ -3,6 +3,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "Testp2p.h"
+#include "TestValidateUtilities.h"
 #include "core/common/unistd.h"
 #include "core/common/memalign.h"
 #include "tools/common/XBUtilities.h"
@@ -143,7 +144,7 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   auto no_dma = xrt_core::device_query_default<xrt_core::query::nodma>(dev, 0);
 
-  if (!search_and_program_xclbin(dev, ptree)) {
+  if (!XBValidateUtils::search_and_program_xclbin(dev, ptree)) {
     return ptree;
   }
 
@@ -154,18 +155,18 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
   std::tie(std::ignore, msg) = xrt_core::query::p2p_config::parse(config);
 
   if (msg.find("Error") == 0) {
-    logger(ptree, "Error", msg.substr(msg.find(':')+1));
-    ptree.put("status", test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", msg.substr(msg.find(':')+1));
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
   else if (msg.find("Warning") == 0) {
-    logger(ptree, "Warning", msg.substr(msg.find(':')+1));
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Warning", msg.substr(msg.find(':')+1));
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
   else if (!msg.empty()) {
-    logger(ptree, "Details", msg);
-    ptree.put("status", test_token_skipped);
+    XBValidateUtils::logger(ptree, "Details", msg);
+    ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
 
@@ -187,7 +188,7 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
                           mem.m_base_address, mem.m_size << 10, no_dma))
            break;
         else
-          logger(ptree, "Details", mem_tag +  " validated");
+          XBValidateUtils::logger(ptree, "Details", mem_tag +  " validated");
       }
     }
   }
@@ -209,19 +210,19 @@ Testp2p::p2ptest_bank(xrt_core::device* device, boost::property_tree::ptree& ptr
 
   if (no_dma != 0) {
      if (!p2ptest_chunk_no_dma(xrt_device, boh, mem_size, mem_idx)) {
-       ptree.put("status", test_token_failed);
-      logger(ptree, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
+       ptree.put("status", XBValidateUtils::test_token_failed);
+      XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
       return false;
      }
   } else {
     for (uint64_t c = 0; c < bo_size; c += chunk_size) {
       if (!p2ptest_chunk(device, boptr + c, addr + c, chunk_size)) {
-        ptree.put("status", test_token_failed);
-        logger(ptree, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
+        ptree.put("status", XBValidateUtils::test_token_failed);
+        XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
         return false;
       }
     }
   }
-  ptree.put("status", test_token_passed);
+  ptree.put("status", XBValidateUtils::test_token_passed);
   return true;
 }

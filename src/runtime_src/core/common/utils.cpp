@@ -225,18 +225,23 @@ parse_dna_status(unsigned int val)
 std::string
 unit_convert(size_t size)
 {
-  int i = 0, bit_shift=6;
-  std::string ret, unit[8]={"Byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
-  if(size < 64)
-    return std::to_string(size)+" "+unit[i];
-  if(!(size & (size-1)))
+  int i = 0, bit_shift = 6;
+  std::string unit[8] = {"Byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
+
+  if (size < 64)
+    return std::to_string(size) + " " + unit[i];
+
+  if (!(size & (size - 1)))
     bit_shift = 0;
-  while( (size>>bit_shift) !=0 && i<8){
+
+  std::string ret;
+  while ((size >> bit_shift) != 0 && i < 8) {
     ret = std::to_string(size);
     size >>= 10;
     i++;
   }
-  return ret+" "+unit[i-1];
+
+  return ret + " " + unit[i-1];
 }
 
 std::string
@@ -312,7 +317,7 @@ mac_addr_to_value(std::string mac_addr)
 }
 
 std::string
-value_to_mac_addr(const uint64_t mac_addr_value)
+value_to_mac_addr(uint64_t mac_addr_value)
 {
   // Any bits higher than position 48 will be ignored
   // If any are set throw an error as they cannot be placed into the mac address

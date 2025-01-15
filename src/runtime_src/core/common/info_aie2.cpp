@@ -50,10 +50,10 @@ struct aie_core_tile_status
   std::vector<aie_dma_status> dma;
   std::vector<uint32_t> core_mode_events;
   std::vector<uint32_t> mem_mode_events;
-  uint32_t core_status;
-  uint32_t program_counter;
-  uint32_t stack_ptr;
-  uint32_t link_reg;
+  uint32_t core_status = 0;
+  uint32_t program_counter = 0;
+  uint32_t stack_ptr = 0;
+  uint32_t link_reg = 0;
   std::vector<uint8_t> lock_value;
 
   // Get the size of this structure using aie tiles metadata
@@ -730,7 +730,7 @@ aie_info_sanity_check(const aie_tiles_info& info)
 
 struct aie_status {
   std::vector<aie_tiles_status> status;
-  uint32_t columns_filled;
+  uint32_t columns_filled = 0;
 };
 
 static aie_status
@@ -744,34 +744,34 @@ get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_til
   if (tiles_status.cols_filled == 0)
     throw std::runtime_error("No open HW-Context\n");
 
-  std::vector<aie2::aie_tiles_status> aie_status;
+  std::vector<aie2::aie_tiles_status> aie_status_vec;
 
   // Allocate an entry for each active column
   // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
   uint32_t cols_filled = tiles_status.cols_filled;
   while (cols_filled) {
     if (cols_filled & 0x1)
-      aie_status.emplace_back(info);
+      aie_status_vec.emplace_back(info);
 
     cols_filled >>= 1;
   }
 
   switch (tile_type) {
     case aie_tile_type::core:
-      parse_core_tile_buf(tiles_status.buf, info, aie_status);
+      parse_core_tile_buf(tiles_status.buf, info, aie_status_vec);
       break;
     case aie_tile_type::shim:
-      parse_shim_tile_buf(tiles_status.buf, info, aie_status);
+      parse_shim_tile_buf(tiles_status.buf, info, aie_status_vec);
       break;
     case aie_tile_type::mem:
-      parse_mem_tile_buf(tiles_status.buf, info, aie_status);
+      parse_mem_tile_buf(tiles_status.buf, info, aie_status_vec);
       break;
     default :
       throw std::runtime_error("Unknown tile type in formatting AIE tiles status info");
   }
 
-  struct aie_status result;
-  result.status = aie_status;
+  aie_status result;
+  result.status = std::move(aie_status_vec);
   result.columns_filled = tiles_status.cols_filled;
   return result;
 }

@@ -731,19 +731,249 @@ get_xrt_pretty_version()
   std::stringstream ss;
   boost::property_tree::ptree pt_xrt;
   xrt_core::sysinfo::get_xrt_info(pt_xrt);
-  boost::property_tree::ptree empty_ptree;
+  const boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
+  XBUtilities::fill_xrt_versions(pt_xrt, ss, available_devices);
+  return ss.str();
+}
 
-  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+void 
+XBUtilities::
+fill_xrt_versions(const boost::property_tree::ptree& pt_xrt, 
+                 std::stringstream& output, 
+                 const boost::property_tree::ptree& available_devices)
+{
+  boost::property_tree::ptree empty_ptree;
+  output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
+  output << boost::format("  %-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
-    boost::algorithm::to_upper(drv_name);
-    ss << boost::format("%-20s : %s, %s\n") % drv_name
-        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    std::string drv_hash = driver.get<std::string>("hash", "N/A");
+    if (!boost::iequals(drv_hash, "N/A")) {
+      output << boost::format("  %-20s : %s, %s\n") % drv_name
+          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    } else {
+      std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
+      output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
+    }
   }
-  return ss.str();
+
+  try {
+    if (!available_devices.empty()) {
+       const boost::property_tree::ptree& dev = available_devices.begin()->second;
+       if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+       else
+         output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    }
+  }
+  catch (...) {
+    //no device available
+  }
 }
+
+std::string 
+XBUtilities::loadDefaultSmiConfig()
+{
+  return std::string(
+    R"(
+ {
+  "subcommands":
+  [{
+    "name" : "validate",
+    "description" : "Validates the given device by executing the platform's validate executable.",
+    "tag" : "basic",
+    "options" :
+    [
+      {
+        "name": "device",
+        "alias": "d",
+        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "string"
+      },
+      {
+        "name": "format",
+        "alias": "f",
+        "description": "Report output format",
+        "tag": "basic",
+        "default_value": "JSON",
+        "option_type": "common", 
+        "value_type" : "string"
+      },
+      {
+        "name": "output",
+        "alias": "o",
+        "description" : "Direct the output to the given file",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "string"
+      },
+      {
+        "name": "help",
+        "alias": "h",
+        "description" : "Help to use this sub-command",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "none"
+      },
+      {
+        "name" : "run",
+        "alias" : "r",
+        "description" : "Run a subset of the test suite",
+        "tag" : "basic",
+        "option_type": "common",
+        "value_type" : "array",
+        "options" : [
+          {
+            "name" : "latency",
+            "tag" : "basic",
+            "description" : "Run end-to-end latency test"
+          },
+          {
+            "name" : "throughput",
+            "tag" : "basic",
+            "description" : "Run end-to-end throughput test"
+          },
+          {
+            "name" : "cmd-chain-latency",
+            "tag" : "basic",
+            "description" : "Run command chain latency test"
+          },
+          {
+            "name" : "cmd-chain-throughput",
+            "tag" : "basic",
+            "description" : "Run end-to-end throughput test using command chaining"
+          },
+          {
+            "name" : "df-bw",
+            "tag" : "basic",
+            "description" : "Run dataflow bandwidth test"
+          },
+          {
+            "name" : "tct-one-col",
+            "tag" : "basic",
+            "description" : "Run TCT test with one column"
+          },
+          {
+            "name" : "tct-all-col",
+            "tag" : "basic",
+            "description" : "Run TCT test with all columns"
+          },
+          {
+            "name" : "gemm",
+            "tag" : "basic",
+            "description" : "Run GEMM test"
+          },
+          {
+            "name" : "aie-reconfig-overhead",
+            "tag" : "advanced",
+            "description" : "Run AIE reconfiguration overhead test"
+          },
+          {
+            "name" : "spatial-sharing-overhead",
+            "tag" : "advanced",
+            "description" : "Run spatial sharing overhead test"
+          },
+          {
+            "name" : "temporal-sharing-overhead",
+            "tag" : "advanced",
+            "description" : "Run temporal sharing overhead test"
+          }
+        ]
+      },
+      {
+        "name" : "path",
+        "alias" : "p",
+        "description" : "Path to the directory containing validate xclbins",
+        "tag" : "basic",
+        "default_value": "",
+        "option_type": "hidden",
+        "value_type" : "string"
+      },
+      {
+        "name" : "param",
+        "description" : "Extended parameter for a given test. Format: <test-name>:<key>:<value>",
+        "tag" : "basic",
+        "option_type": "hidden",
+        "default_value": "",
+        "value_type" : "string"
+      },
+      {
+        "name" : "pmode",
+        "description" : "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes",
+        "tag" : "basic",
+        "option_type": "hidden",
+        "default_value": "",
+        "value_type" : "string"
+      }
+    ]
+  },
+  {
+    "name" : "examine",
+    "tag" : "basic",
+    "description": "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.",
+    "options":
+    [
+      {
+        "name": "device",
+        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
+        "tag": "devl",
+        "value_type": "string"
+      },
+      {
+        "name": "format",
+        "description": "Report output format",
+        "tag": "devl",
+        "value_type": "string"
+      },
+      {
+        "name": "report",
+        "description": "The type of report to be produced. Reports currently available are:",
+        "tag": "basic",
+        "options": [
+          {
+            "name": "aie-partitions",
+            "tag": "basic",
+            "description": "AIE partition information"
+          },
+          {
+            "name": "telemetry",
+            "tag": "devl",
+            "description": "Telemetry data for the device"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name" : "configure",
+    "tag" : "devl",
+    "description" : "Device and host configuration.",
+    "options" :
+    [
+      {
+        "name": "device",
+        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
+        "tag": "devl",
+        "value_type" : "string"
+      },
+      {
+        "name": "pmode",
+        "description": "Modes: default, powersaver, balanced, performance, turbo",
+        "tag": "basic",
+        "value_type": "string"
+      }
+    ]
+  }]
+}
+)"
+  );
+}// end of namespace XBValidateUtils

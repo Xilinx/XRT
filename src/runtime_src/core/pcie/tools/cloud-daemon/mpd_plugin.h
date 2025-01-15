@@ -20,7 +20,7 @@
 #ifndef MPD_PLUGIN_H
 #define MPD_PLUGIN_H
 
-#include "xclbin.h"
+#include "xrt/detail/xclbin.h"
 
 typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
 typedef int (*mb_notify_fn)(size_t index, int fd, bool online);

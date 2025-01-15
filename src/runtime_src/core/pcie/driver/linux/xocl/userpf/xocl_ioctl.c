@@ -19,6 +19,7 @@
 #include <linux/version.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
+#include <linux/delay.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
@@ -207,7 +208,7 @@ int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	return ret;
 }
 
-char *kind_to_string(enum axlf_section_kind kind)
+static char *kind_to_string(enum axlf_section_kind kind)
 {
 	switch (kind) {
 	case 0:  return "BITSTREAM";
@@ -528,6 +529,32 @@ done:
 	return ret;
 }
 
+/* This is a Workaround function for AWS F2 to reset the clock registers.
+ * This function also incurs a delay of 10seconds to work around AWS ocl timeout issue.
+ * These changes will be removed once the issue is addressed in AWS F2 instance.
+ */
+static void aws_reset_clock_registers(xdev_handle_t xdev)
+{
+	struct xocl_dev_core *core = XDEV(xdev);
+	resource_size_t bar0_clk1, bar0_clk2;
+	void __iomem *vbar0_clk1, *vbar0_clk2;
+
+	userpf_info(xdev, "AWS F2 WA, waiting to reset clock registers after Load ");
+	msleep(10000);
+
+	bar0_clk1 = pci_resource_start(core->pdev, 0) + 0x4058014;
+	bar0_clk2 = pci_resource_start(core->pdev, 0) + 0x4058010;
+	vbar0_clk1 = ioremap_nocache(bar0_clk1, 32);
+	vbar0_clk2 = ioremap_nocache(bar0_clk2, 32);
+
+	iowrite32(0, vbar0_clk1);
+	iowrite32(0, vbar0_clk2);
+
+	iounmap(vbar0_clk1);
+	iounmap(vbar0_clk2);
+	return;
+}
+
 int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	       uint32_t qos, uint32_t *slot)
@@ -545,6 +572,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	void *ulp_blob;
 	void *kernels;
 	int rc = 0;
+	struct xocl_dev_core *core = XDEV(drm_p->xdev);
 
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
@@ -756,8 +784,14 @@ done:
 
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
-	else
+	else {
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
+		/* Work around added for AWS F2 Instance to perform delay and reset clock registers */
+		if(core->pdev->device == 0xf010)
+		{
+			aws_reset_clock_registers(xdev);
+		}
+	}
 
 out_done:
 	/* Update the slot */

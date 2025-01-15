@@ -66,6 +66,8 @@ AIEControlConfigFiletype::getAIECompilerOptions() const
         aie_meta.get("aie_metadata.aiecompiler_options.graph_iterator_event", false);
     aiecompiler_options.event_trace = 
         aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+    aiecompiler_options.enable_multi_layer =
+        aie_meta.get("aie_metadata.aiecompiler_options.enable_multi_layer", false);
     return aiecompiler_options;
 }
 
@@ -125,6 +127,32 @@ AIEControlConfigFiletype::getValidKernels() const
         std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
     }
     return kernels;
+}
+
+std::vector<std::string>
+AIEControlConfigFiletype::getValidBuffers() const
+{
+    if (getHardwareGeneration() == 1) 
+        return {};
+        
+    std::vector<std::string> buffers;
+
+    // Grab all shared buffers
+    auto sharedBufferTree =
+        aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
+    if (!sharedBufferTree) {
+        xrt_core::message::send(severity_level::info, "XRT", 
+            getMessage("TileMapping.SharedBufferToTileMapping"));
+        return {};
+    }
+
+    // Now parse all shared buffers
+    for (auto const &shared_buffer : sharedBufferTree.get()) {
+        std::string bufferStr = shared_buffer.second.get<std::string>("bufferName");
+        auto nameStr = bufferStr.substr(bufferStr.find_last_of(".") + 1);
+        buffers.push_back(nameStr);
+    }
+    return buffers;
 }
 
 std::unordered_map<std::string, io_config>
@@ -217,6 +245,33 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
 }
 
 std::vector<tile_type>
+AIEControlConfigFiletype::getMicrocontrollers(bool useColumn,
+                                              uint8_t minCol,
+                                              uint8_t maxCol) const
+{
+    if (getHardwareGeneration() < 5)
+        return {};
+
+    // Use specified range or tile 0,0
+    // TODO: parse from metadata once available
+    uint8_t firstCol = useColumn ? minCol : 0;
+    //uint8_t lastCol  = useColumn ? maxCol 
+    //                 : aie_meta.get("aie_metadata.driver_config.num_columns", 0);
+    uint8_t lastCol  = useColumn ? maxCol : 0;
+
+    std::vector<tile_type> tiles;
+
+    for (uint8_t col = firstCol; col <= lastCol; ++col) {
+        tile_type tile;
+        tile.col = col;
+        tile.row = 0;
+        tiles.emplace_back(std::move(tile));
+    }
+
+    return tiles;
+}
+
+std::vector<tile_type>
 AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             const std::string& portName,
                                             const std::string& metricStr,
@@ -226,6 +281,11 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             uint8_t maxCol) const
 {
     std::vector<tile_type> tiles;
+
+    // Catch microcontroller sets
+    if (metricStr.find("uc_") != std::string::npos) {
+        return getMicrocontrollers();
+    }
 
     auto ios = getAllIOs();
 
@@ -279,19 +339,22 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         tile_type tile;
         tile.col = shimCol;
         tile.row = 0;
-        tile.subtype = type;
-
+        
+        // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
-        if ((type == io_type::PLIO) && (it != tiles.end())) {
-            std::string msg = "Interface tile " + std::to_string(shimCol)
-                            + " supports more than one PLIO, but only one can be monitored.";
-            xrt_core::message::send(severity_level::warning, "XRT", msg);
+        if (it != tiles.end()) {
+            // Add to existing list of stream IDs
+            it->stream_ids.push_back(streamId);
+            // Add to existing list of master/slave
+            it->is_master_vec.push_back(isMaster);
         }
-
-        // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-        tile.is_master = isMaster;
-        tile.stream_id = streamId;
-        tiles.emplace_back(std::move(tile));
+        else {
+            // Grab first stream ID and add to list of tiles
+            tile.stream_ids.push_back(streamId);
+            tile.is_master_vec.push_back(isMaster);
+            tile.subtype = type;
+            tiles.emplace_back(std::move(tile));
+        }
     }
 
     if (tiles.empty() && (specifiedId >= 0)) {
@@ -380,12 +443,12 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).is_master = xdp::aie::convertStringToUint8(node.second.data());
+            tiles.at(count++).is_master_vec.push_back(xdp::aie::convertStringToUint8(node.second.data()));
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).stream_id = xdp::aie::convertStringToUint8(node.second.data());
+            tiles.at(count++).stream_ids.push_back(xdp::aie::convertStringToUint8(node.second.data()));
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;

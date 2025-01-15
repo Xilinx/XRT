@@ -8,7 +8,7 @@
 #include "core/edge/user/shim.h"
 
 namespace zynqaie {
-  aie_buffer_object::aie_buffer_object(xrt_core::device* device ,const xrt::uuid uuid, const char* buffer_name, const zynqaie::hwctx_object* hwctx)
+  aie_buffer_object::aie_buffer_object(xrt_core::device* device, const xrt::uuid uuid, const char* buffer_name, zynqaie::hwctx_object* hwctx)
     : name{buffer_name}
   {
     if (hwctx) {
@@ -43,5 +43,27 @@ namespace zynqaie {
   aie_buffer_object::sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const
   {
     return m_aie_array->sync_bo(bos, name.c_str(), dir, size, offset);
+  }
+
+  void
+  aie_buffer_object::async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    if (async_started)
+      throw xrt_core::error(-EINVAL, "Asynchronous operation is already initiated. Multiple 'async' calls are not supported");
+
+    m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
+    async_started = true;
+  }
+
+  void
+  aie_buffer_object::wait()
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    if (!async_started)
+      throw xrt_core::error(-EINVAL, "Asynchronous operation is not initiated. Please call 'wait' after 'async' call");
+
+    m_aie_array->wait_gmio(name);
+    async_started = false;
   }
 }

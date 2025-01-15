@@ -8,7 +8,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/shim/buffer_handle.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 
 #include <vector>
 #include <utility>
@@ -54,9 +54,13 @@ public:
 
   ~bo_cache_t()
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    for (auto& bo : m_cmd_bo_cache)
-      destroy(bo);
+    try {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      for (auto& bo : m_cmd_bo_cache)
+        destroy(bo);
+    }
+    catch (...) {
+    }
   }
 
   template<typename T>

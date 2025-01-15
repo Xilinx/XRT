@@ -5,7 +5,7 @@
 // core/include/experimental/xrt_message.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_ini.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_message.h"
+#include "core/include/xrt/experimental/xrt_message.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"

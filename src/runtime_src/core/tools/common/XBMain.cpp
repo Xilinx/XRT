@@ -16,6 +16,7 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace po = boost::program_options;
 
@@ -59,7 +60,7 @@ void  main_(int argc, char** argv,
   globalOptions.add(globalSubCmdOptions);
 
   // Hidden Options
-  const std::string device_default = xrt_core::get_total_devices(false).first == 1 ? "default" : "";
+  const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
@@ -79,7 +80,12 @@ void  main_(int argc, char** argv,
   // Parse the command line arguments
   po::variables_map vm;
   po::command_line_parser parser(argc, argv);
-  auto subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+  SubCmd::SubCmdOptions subcmd_options;
+  try {
+    subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+  } catch (po::error& ex) {
+    std::cerr << ex.what() << std::endl;
+  }
 
   if(bVersion) {
     std::cout << XBU::get_xrt_pretty_version();
@@ -168,9 +174,29 @@ void  main_(int argc, char** argv,
 
   subCommand->setGlobalOptions(globalSubCmdOptions);
 
+  /* xrt-smi. Tool should query device upfront and get the configurations
+   * from shim. This moves the resposibility for option setting to each shim
+   * instead of xrt-smi. 
+   * If the device is not found, then load the default xrt-smi config.
+  */
+  if (isUserDomain) {
+    std::shared_ptr<xrt_core::device> device;
+    boost::property_tree::ptree configTreeMain;
+    std::string config;
+    try {
+      device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
+    } catch (...) {
+      device = nullptr;
+    }
+    if (device) 
+      config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+    else 
+      config = XBU::loadDefaultSmiConfig(); 
+    std::istringstream command_config_stream(config);
+    boost::property_tree::read_json(command_config_stream, configTreeMain);
+    subCommand->setOptionConfig(configTreeMain);
+  }
+
   // -- Execute the sub-command
   subCommand->execute(subcmd_options);
 }
-
-
-

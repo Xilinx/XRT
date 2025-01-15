@@ -58,7 +58,7 @@ struct xocl_sysmon {
  * Also, sysmon register will have all F's once mgmtpf bar goes offline
  * during card shutdown sequence, so ignoring all F's.
  */
-int32_t SYSMON_TO_MILLDEGREE(u32 val)
+static int32_t SYSMON_TO_MILLDEGREE(u32 val)
 {
 	if (val == 0xFFFFFFFF)
 		return 0;

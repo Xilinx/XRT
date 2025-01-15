@@ -93,7 +93,7 @@ public:
     auto hwctx_hdl = static_cast<hwctx_handle*>(hwctx);
     auto& ctx = m_ctx[hwctx_hdl];
     while (ctx.get(ipname)) {
-      if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
+      if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout) // NOLINT
         throw std::runtime_error("aquiring cu context timed out");
     }
 

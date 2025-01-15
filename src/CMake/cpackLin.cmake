@@ -19,6 +19,13 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
+# For some reason CMake doesn't populate CPACK_COMPONENTS_ALL when the
+# project has only one component, this leads to cpack generating
+# pacage without component name appended.  To work-around this,
+# populate the variable explictly.
+get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
+message("Install components in the project: ${CPACK_COMPONENTS_ALL}")
+
 # When the rpmbuild occurs for packaging, it uses a default version of
 # python to perform a python byte compilation.  For the CentOS 7.x OS, this
 # is python2.  Being that the XRT python code is for python3, this results in
@@ -204,14 +211,5 @@ SET(CPACK_PACKAGE_VENDOR "Advanced Micro Devices Inc.")
 SET(CPACK_PACKAGE_CONTACT "sonal.santan@amd.com")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Runtime stack for use with AMD platforms")
 SET(CPACK_RESOURCE_FILE_LICENSE "${XRT_SOURCE_DIR}/../LICENSE")
-
-add_custom_target(xrtpkg
-  echo "COMMAND ${CMAKE_CPACK_COMMAND}"
-  COMMAND ${CMAKE_CPACK_COMMAND}
-  COMMAND -mv -f ${CPACK_PACKAGE_FILE_NAME}-xrt.deb ${CPACK_PACKAGE_FILE_NAME}.deb 2> /dev/null
-  COMMAND -mv -f ${CPACK_PACKAGE_FILE_NAME}-xrt.rpm ${CPACK_PACKAGE_FILE_NAME}.rpm 2> /dev/null
-  COMMAND -mv -f ${CPACK_PACKAGE_FILE_NAME}-xrt.tar.gz ${CPACK_PACKAGE_FILE_NAME}.tar.gz 2> /dev/null
-
-)
 
 INCLUDE(CPack)

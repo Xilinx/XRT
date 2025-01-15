@@ -9,6 +9,7 @@
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdValidate.h"
+#include "tools/common/tests/TestValidateUtilities.h"
 
 // Supporting tools
 #include "common/error.h"
@@ -17,6 +18,7 @@
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/JSONConfigurable.h"
+#include "core/common/module_loader.h"
 
 // System include files
 #include <exception>
@@ -44,7 +46,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "iops", "mem-bw", "p2p", "m2m", "hostmem-bw", "bist", "vcu", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
+      "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "mem-bw", "p2p", "m2m", "hostmem-bw", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
     }]
   },{
     "reset": [{}]
@@ -62,11 +64,11 @@ R"(
     }]
   },{
     "advanced":[{
-      "suboption": ["read-aie-reg", "aie-clock"]
+      "suboption": ["read-aie-reg", "aie-clock", "report"]
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead", "temporal-sharing-overhead"]
     }]
   }]
 }]
@@ -106,11 +108,11 @@ int main( int argc, char** argv )
 
   // -- Program Description
   const std::string description = 
-  "The Xilinx (R) Run Time - System Management Interface (xrt-smi) is a standalone"
-  " command line utility that is included with the Xilinx Run Time (XRT) installation"
-  " package. It includes multiple commands to identify and validate the installed"
-  " card(s).\n\nThis information can be used for both card administration and"
-  " application debugging.";
+  "The XRT - System Management Interface (xrt-smi) is a standalone"
+  " command-line utility that is included with the XRT runtime"
+  " package. It includes multiple commands to configure, examine, and validate"
+  " supported device(s).\n\nThe reports produced by xrt-smi may be used for device" 
+  " administration, monitoring, and troubleshooting application behavior.";
 
   // -- Ready to execute the code
   try {

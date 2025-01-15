@@ -29,6 +29,8 @@ class device;
 
 namespace edge { namespace aie {
 
+constexpr uint32_t full_array_id = 1;
+
 enum class module_type {
   core = 0,
   dma,
@@ -203,12 +205,12 @@ uint8_t
 get_hw_gen(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
- * get_partition_id - calculate aie_partition_id from xclbin AIE metadata
+ * get_partition_info - Get partition info like start_column, num_columns , partition_id, base_address etc
  *
  * @device: device with loaded meta data
  */
-uint32_t
-get_partition_id(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
+zynqaie::partition_info
+get_partition_info(const xrt_core::device* device, const xrt::uuid xclbin_uuid);
 
 /**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata

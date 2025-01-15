@@ -13,11 +13,11 @@
 #include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/detail/ert.h"
 #include "core/include/xrt_hwqueue.h"
 
 #include "xrt/xrt_hw_context.h"
-#include "experimental/xrt_fence.h"
+#include "xrt/experimental/xrt_fence.h"
 
 #include <algorithm>
 #include <atomic>
@@ -29,6 +29,10 @@
 #include <thread>
 
 using namespace std::chrono_literals;
+
+// This file uses static globals, which clang-tidy warns about.  We
+// disable the warning for this file.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
@@ -96,6 +100,13 @@ class command_manager
 public:
   struct executor
   {
+    virtual ~executor() = default;
+    executor() = default;
+    executor(const executor&) = delete;
+    executor(executor&&) = delete;
+    executor& operator=(const executor&) = delete;
+    executor& operator=(executor&&) = delete;
+    
     virtual std::cv_status
     wait(size_t timeout_ms) = 0;
 
@@ -344,14 +355,17 @@ public:
     XRT_DEBUGF("hw_queue_impl::hw_queue_impl(%d) this(0x%x)\n", m_uid, this);
   }
 
-  virtual
-  ~hw_queue_impl()
+  ~hw_queue_impl() override
   {
-    XRT_DEBUGF("hw_queue_impl::~hw_queue_impl(%d)\n", m_uid);
-    if (m_cmd_manager) {
-      m_cmd_manager->clear_executor();
-      std::lock_guard lk(s_pool_mutex);
-      s_command_manager_pool.push_back(std::move(m_cmd_manager));
+    try {
+      XRT_DEBUGF("hw_queue_impl::~hw_queue_impl(%d)\n", m_uid);
+      if (m_cmd_manager) {
+        m_cmd_manager->clear_executor();
+        std::lock_guard lk(s_pool_mutex);
+        s_command_manager_pool.push_back(std::move(m_cmd_manager));
+      }
+    }
+    catch (...) {
     }
   }
 
@@ -398,7 +412,7 @@ public:
 
   // Managed start uses command manager for monitoring command
   // completion
-  void
+  virtual void
   managed_start(xrt_core::command* cmd)
   {
     get_cmd_manager()->launch(cmd);
@@ -425,6 +439,16 @@ public:
     : m_hwctx(std::move(hwctx))
     , m_qhdl(qhdl)
   {}
+
+  // Managed start is invoked when application has added a callback
+  // function for notification of command completion. This is not
+  // supported for platforms that implement hwqueue_handle (see
+  // details in wait(size_t) comments.
+  void
+  managed_start(xrt_core::command*) override
+  {
+    throw std::runtime_error("Managed execution is not supported for this device");
+  }
 
   std::cv_status
   wait(size_t /*timeout_ms*/) override
@@ -687,7 +711,7 @@ public:
   {
     auto prop = cmd->get_properties();
     if (prop.flags & XCL_BO_FLAGS_EXECBUF) {
-      if (const_cast<kds_device *>(this)->exec_wait(timeout_ms) != std::cv_status::timeout)
+      if (const_cast<kds_device *>(this)->exec_wait(timeout_ms) != std::cv_status::timeout) // NOLINT
         return std::cv_status::no_timeout;
     }
 
@@ -738,7 +762,7 @@ namespace {
 // Use static map with weak pointers to implementation.
 using hwc2hwq_type = std::map<const xrt_core::hwctx_handle*, std::weak_ptr<xrt_core::hw_queue_impl>>;
 using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
-static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
+static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device // NOLINT
 static std::mutex mutex;
 static std::condition_variable device_erased;
 
@@ -841,7 +865,7 @@ wait_while_devices()
 {
   std::unique_lock lk(mutex);
   XRT_DEBUGF("wait_while_devices() wait for %d devices to clear\n", dev2hwc.size());
-  if (!device_erased.wait_for(lk, 200ms, [] { return dev2hwc.empty(); }))
+  if (!device_erased.wait_for(lk, 200ms, [] { return dev2hwc.empty(); })) // NOLINT
     // timeout, force stop the devices if application didn't free all
     // resources and relies on static destr where order is undefined.
     dev2hwc.clear();
@@ -975,3 +999,5 @@ stop()
 }
 
 } // namespace xrt_core
+
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)

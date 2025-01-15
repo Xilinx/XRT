@@ -21,18 +21,21 @@
 
 namespace xdp {
 
+  // Each record timer entry has 32bit ID and 32bit AIE High Timer + 32bit AIE Low Timer value.
+  constexpr uint32_t RECORD_TIMER_ENTRY_SZ_IN_BYTES = 3*sizeof(uint32_t);
+
   class VPDatabase;
 
   class MLTimelineImpl
   {
     protected :
       VPDatabase* db = nullptr;
-      xrt::hw_context mHwContext;
       uint32_t mBufSz;
 
     public:
-      MLTimelineImpl(VPDatabase* dB)
-        : db(dB)
+      MLTimelineImpl(VPDatabase* dB, uint32_t sz)
+        : db(dB),
+          mBufSz(sz)
       {}
 
       MLTimelineImpl() = delete;
@@ -40,17 +43,7 @@ namespace xdp {
       virtual ~MLTimelineImpl() {}
 
       virtual void updateDevice(void*) = 0;
-      virtual void finishflushDevice(void*) = 0;
-
-      void setHwContext(xrt::hw_context ctx)
-      {
-        mHwContext = std::move(ctx);
-      }
-      
-      void setBufSize(uint32_t sz)
-      {
-        mBufSz = sz;
-      }
+      virtual void finishflushDevice(void*, uint64_t) = 0;
   };
 
 }

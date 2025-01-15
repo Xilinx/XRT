@@ -294,7 +294,7 @@ static irqreturn_t xdma_isr(int irq, void *arg)
 		ret = irq_entry->handler(irq, irq_entry->arg);
 
 	if (!IS_ERR_OR_NULL(irq_entry->event_ctx)) {
-#if KERNEL_VERSION(6, 8, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(6, 8, 0) <= LINUX_VERSION_CODE || defined(RHEL_9_5_GE)
 		eventfd_signal(irq_entry->event_ctx);
 #else
 		eventfd_signal(irq_entry->event_ctx, 1);

@@ -73,7 +73,7 @@ static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 	return paddr;
 }
 
-void xocl_describe(const struct drm_xocl_bo *xobj)
+static void xocl_describe(const struct drm_xocl_bo *xobj)
 {
 	size_t size_kb = xobj->base.size / 1024;
 	size_t physical_addr = xocl_bo_physical_addr(xobj);
@@ -1388,7 +1388,7 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 
 	vma->vm_private_data = obj;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
 	vma->vm_flags |= VM_MIXEDMAP;
 #else
 	vm_flags_set(vma, VM_MIXEDMAP);

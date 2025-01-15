@@ -31,6 +31,7 @@ namespace xdp::aie {
     bool broadcast_enable_core;
     bool graph_iterator_event;
     std::string event_trace;
+    bool enable_multi_layer;
   };
 
   struct driver_config
@@ -56,6 +57,7 @@ namespace xdp {
     dma,
     shim,
     mem_tile,
+    uc,
     num_types
   };
 
@@ -68,8 +70,8 @@ namespace xdp {
   {
     uint8_t  row = 0;
     uint8_t  col = 0;
-    uint8_t  stream_id = 0;
-    uint8_t  is_master = 0;
+    std::vector<uint8_t> stream_ids;
+    std::vector<uint8_t> is_master_vec;
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;
     bool     active_memory = false;
@@ -348,7 +350,10 @@ namespace xdp {
     std::string destGraphPort;
 
     GraphPortPair() = default;
-    GraphPortPair(std::string g1, std::string p1, std::string g2, std::string p2):
+    GraphPortPair(const std::string& g1,
+                  const std::string& p1,
+                  const std::string& g2,
+                  const std::string& p2) :
                   srcGraphName(g1), srcGraphPort(p1), destGraphName(g2), destGraphPort(p2) {}
   };
 

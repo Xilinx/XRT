@@ -10,12 +10,9 @@ BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
-XRT=/mnt/c/Xilinx/xrt
-BOOST=$XRT/ext
-KHRONOS=$XRT/ext
-
-BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
-KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
+EXT_DIR=/mnt/c/Xilinx/xrt/ext.new
+BOOST=$EXT_DIR
+KHRONOS=$EXT_DIR
 
 usage()
 {
@@ -24,7 +21,7 @@ usage()
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
     echo "[-cmake]                   CMAKE executable (default: $CMAKE)"
-    echo "[-xrt]                     XRT root directory (default: $XRT)"
+    echo "[-ext]                     Location of link dependencies (default: $EXT_DIR)"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
     echo "[-noabi]                   Do compile with ABI version check"
@@ -41,6 +38,9 @@ nocmake=0
 noabi=0
 dbg=0
 release=1
+alveo_build=0
+npu_build=0
+base_build=0
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -56,9 +56,11 @@ while [ $# -gt 0 ]; do
 	    CMAKE="$1"
 	    shift
 	    ;;
-	-xrt)
+	-ext)
 	    shift
-	    XRT="$1"
+	    EXT_DIR="$1"
+            BOOST=$EXT_DIR
+            KHRONOS=$EXT_DIR
 	    shift
 	    ;;
         -dbg)
@@ -80,6 +82,22 @@ while [ $# -gt 0 ]; do
             cmake_flags+= " -DXRT_ENABLE_HIP=ON"
             shift
             ;;
+        -base)
+            shift
+            base_build=1
+            cmake_flags+= " -DXRT_BASE=1"
+            ;;
+        -alveo)
+            shift
+            alveo_build=1
+            cmake_flags+=" -DXRT_ALVEO=1"
+            ;;
+	-npu)
+            shift
+	    npu_build=1
+	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
+	    cmake_flags+=" -DXRT_NPU=1"
+            ;;
         -j)
             shift
             jcore=$1
@@ -99,6 +117,14 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
+    echo "build.sh: -npu, -alveo, -base are mutually exclusive"
+    exit 1
+fi
+
+BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
+KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
 
 here=$PWD
 cd $BUILDDIR

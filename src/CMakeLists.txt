@@ -22,18 +22,6 @@ include_directories(
 
 include(CMake/settings.cmake)
 
-# Default component name for any install() command without the COMPONENT argument
-# The default component is the xrt run-time component, if XRT_DEV_COMPONENT is
-# set to something different then a development component will be created with
-# link libraries and header which are then excluded from runtime component
-set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
-
-# Enable development package by specifying development component name
-# If XRT_DEV_COMPONENT is same DEFAULT_COMPONENT then only that package
-# is created with both development and run-time content.
-#set (XRT_DEV_COMPONENT "xrt-dev")
-set (XRT_DEV_COMPONENT "xrt")
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${XRT_SOURCE_DIR}/CMake/")
 
 # This makes aiebu submodule use ELFIO from XRT

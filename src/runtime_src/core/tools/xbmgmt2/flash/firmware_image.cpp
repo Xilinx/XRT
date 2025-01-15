@@ -17,7 +17,7 @@
 
 #include "firmware_image.h"
 #include "core/common/utils.h"
-#include "core/include/xclbin.h"
+#include "core/include/xrt/detail/xclbin.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>

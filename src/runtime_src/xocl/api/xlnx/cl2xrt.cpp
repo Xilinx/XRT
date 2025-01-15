@@ -19,9 +19,9 @@
 #include "xocl/core/kernel.h"
 #include "xocl/core/memory.h"
 
-#include "core/include/experimental/xrt_bo.h"
-#include "core/include/experimental/xrt_device.h"
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_device.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include <CL/cl2xrt.hpp>
 
