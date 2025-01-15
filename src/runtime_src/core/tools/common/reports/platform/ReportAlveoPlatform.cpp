@@ -70,7 +70,7 @@ ReportAlveoPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     if (!pt_config.empty())
       _output << boost::format("  %-23s: %s\n") % "P2P IO space required" % pt_config.get<std::string>("exp_bar"); // Units appended when ptree is created
 
-    const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
+    const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks.clocks", empty_ptree);
     if (!clocks.empty()) {
       _output << std::endl << "Clocks" << std::endl;
       for (const auto& kc : clocks) {
