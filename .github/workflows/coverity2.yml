@@ -16,7 +16,7 @@ jobs:
     - name: Store sha
       run: echo ${{ github.sha }} > sha
     - name: Compare sha
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       id: cache-sha
       with:
         path: sha

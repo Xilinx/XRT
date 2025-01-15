@@ -23,10 +23,20 @@
 #ifdef _WIN32
 # define NOMINMAX
 # include "windows/icd_dispatch.h"
-using _cl_icd_dispatch = KHRicdVendorDispatchRec;
+using cl_icd_dispatch = KHRicdVendorDispatchRec;
 #else
+#if (defined (__aarch64__) || defined (__arm__)) && defined (OPENCL_ICD_LOADER)
+// In Yocto ocl icd dispatcher is deprecated and
+// opencl icd dispatcher is the recommended one.
+// Using opencl icd dispatcher for embedded flows.
+# include <CL/cl_icd.h>
+#else
+// All x86 linux distros doesn't have opencl icd dispatcher
+// support so using ocl icd dispatcher for x86 flows.
 # include <ocl_icd.h>
+using cl_icd_dispatch = _cl_icd_dispatch;
 #endif
-extern const _cl_icd_dispatch cl_icd_dispatch;
+#endif
+extern const cl_icd_dispatch cl_icd_dispatch_obj;
 
 #endif

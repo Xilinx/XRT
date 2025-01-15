@@ -678,13 +678,13 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
         //move completed BDs from enqueuedBDs to availableBDs
         for (int i = 0; i < numBDCompleted; i++)
         {
-            size_t bdNumber = frontAndPop(enqueuedBDs);
+            uint16_t bdNumber = frontAndPop(enqueuedBDs);
             availableBDs.push(bdNumber);
         }
     }
 
     //get an available BD
-    size_t bdNumber = frontAndPop(availableBDs);
+    uint16_t bdNumber = frontAndPop(availableBDs);
 
     //set up BD
     driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
@@ -697,10 +697,10 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
     //write BD
-    driverStatus |= XAie_DmaWriteBd(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
+    driverStatus |= XAie_DmaWriteBd_16(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
 
     //enqueue BD
-    driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+    driverStatus |= XAie_DmaChannelPushBdToQueue_16(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
     /* Commenting out as this is increasing overhead of the performance */
@@ -750,7 +750,7 @@ static uint8_t relativeToAbsoluteRow(const std::shared_ptr<config_manager> confi
     return absoluteRow;
 }
 
-err_code dma_api::configureBdWaitQueueEnqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, std::vector<uint8_t> bdIds, std::vector<dma_api::buffer_descriptor> bdParams)
+err_code dma_api::configureBdWaitQueueEnqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, std::vector<uint16_t> bdIds, std::vector<dma_api::buffer_descriptor> bdParams)
 {
     int status = (int)err_code::ok;
 
@@ -776,7 +776,7 @@ err_code dma_api::configureBdWaitQueueEnqueueTask(int tileType, uint8_t column, 
     return (err_code)status;
 }
 
-err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t bdId, const dma_api::buffer_descriptor& bdParam)
+err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint16_t bdId, const dma_api::buffer_descriptor& bdParam)
 {
     int driverStatus = XAIE_OK; //0
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "dma_api::configureBD" << std::endl).str());
@@ -820,7 +820,7 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
 
     //iteration
     if (bdParam.iteration_stepsize > 0 || bdParam.iteration_wrap > 0 || bdParam.iteration_current > 0)
-        driverStatus |= XAie_DmaSetBdIteration(&dmaInst, bdParam.iteration_stepsize, bdParam.iteration_wrap, bdParam.iteration_current);
+        driverStatus |= XAie_DmaSetBdIteration_16(&dmaInst, bdParam.iteration_stepsize, bdParam.iteration_wrap, bdParam.iteration_current);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "iteration stepsize " << bdParam.iteration_stepsize << ", iteration wrap " << bdParam.iteration_wrap << ", iteration current " << (uint16_t)bdParam.iteration_current).str());
 
     //enable compression
@@ -843,7 +843,7 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
     //next bd
     if (bdParam.use_next_bd)
     {
-        driverStatus |= XAie_DmaSetNextBd(&dmaInst, bdParam.next_bd, XAIE_ENABLE);
+        driverStatus |= XAie_DmaSetNextBd_16(&dmaInst, bdParam.next_bd, XAIE_ENABLE);
         debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "next bd " << (uint16_t)bdParam.next_bd).str());
     }
 
@@ -851,7 +851,7 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
     driverStatus |= XAie_DmaEnableBd(&dmaInst);
 
     //write bd
-    driverStatus |= XAie_DmaWriteBd(config->get_dev(), &dmaInst, tileLoc, bdId);
+    driverStatus |= XAie_DmaWriteBd_16(config->get_dev(), &dmaInst, tileLoc, bdId);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaWriteBd " << (uint16_t)bdId << std::endl).str());
 
     // Update status after using AIE driver
@@ -861,13 +861,13 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t
     return err_code::ok;
 }
 
-err_code dma_api::enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+err_code dma_api::enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint16_t startBdId)
 {
     int driverStatus = XAIE_OK; //0
     XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
     //start queue
-    driverStatus |= XAie_DmaChannelSetStartQueue(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, startBdId, repeatCount, enableTaskCompleteToken);
+    driverStatus |= XAie_DmaChannelSetStartQueue_16(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, startBdId, repeatCount, enableTaskCompleteToken);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaChannelSetStartQueue " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir
         << ", startBD " << (uint16_t)startBdId << ", repeat count " << repeatCount << ", enable task complete token " << enableTaskCompleteToken << std::endl).str());
 
@@ -915,12 +915,12 @@ err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, 
     return err_code::ok;
 }
 
-err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint8_t bdId, uint64_t offset)
+err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint16_t bdId, uint64_t offset)
 {
   int driverStatus = XAIE_OK;
   XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, 1, row));
 
-  driverStatus |= XAie_DmaUpdateBdAddrOff(memInst, tileLoc ,offset, bdId);
+  driverStatus |= XAie_DmaUpdateBdAddrOff_16(memInst, tileLoc ,offset, bdId);
 
   if (driverStatus != AieRC::XAIE_OK)
     return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::updateBDAddressLin: AIE driver error.");
@@ -928,12 +928,12 @@ err_code dma_api::updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uin
   return err_code::ok;
 }
 
-err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uint8_t bdId, uint64_t address)
+err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uint16_t bdId, uint64_t address)
 {
   int driverStatus = XAIE_OK; //0
   XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
 
-  driverStatus |= XAie_DmaUpdateBdAddr(config->get_dev(), tileLoc, address, bdId);
+  driverStatus |= XAie_DmaUpdateBdAddr_16(config->get_dev(), tileLoc, address, bdId);
   debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaUpdateBdAddr " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", address " << std::hex << address << std::dec << ", bdId " << bdId << std::endl).str());
 
   if (driverStatus != AieRC::XAIE_OK)
@@ -943,7 +943,7 @@ err_code dma_api::updateBDAddress(int tileType, uint8_t column, uint8_t row, uin
 }
 /************************************ lock_api ************************************/
 
-err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, uint16_t lockId, int8_t initVal)
 {
     XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
     int driverStatus = XAie_LockSetValue(config->get_dev(), tileLoc, XAie_LockInit(lockId, initVal));
@@ -956,7 +956,7 @@ err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, uns
         return err_code::ok;
 }
 
-err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, uint16_t lockId, int8_t acqVal)
 {
     XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_LockAcquire " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
@@ -971,7 +971,7 @@ err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, unsign
         return err_code::ok;
 }
 
-err_code lock_api::releaseLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+err_code lock_api::releaseLock(int tileType, uint8_t column, uint8_t row, uint16_t lockId, int8_t relVal)
 {
     XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
     int driverStatus = XAie_LockRelease(config->get_dev(), tileLoc, XAie_LockInit(lockId, relVal), LOCK_TIMEOUT);

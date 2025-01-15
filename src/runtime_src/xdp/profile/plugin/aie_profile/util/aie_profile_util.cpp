@@ -132,6 +132,50 @@ namespace xdp::aie::profile {
       eventSets["output_stalls"]  = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
                                      XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
+
+    // Microcontroller sets
+    if (hwGen >= 5) {
+#ifdef XDP_CLIENT_BUILD
+      // eventSets["uc_dma_activity"] = {
+      //     XAIE_EVENT_UC_DMA_DM2MM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_DM2MM_A_LOCAL_MEMORY_STARVATION,
+	    //     XAIE_EVENT_UC_DMA_DM2MM_A_REMOTE_MEMORY_BACKPRESSURE,
+      //     XAIE_EVENT_UC_DMA_MM2DM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_MM2DM_A_LOCAL_MEMORY_STARVATION,
+	    //     XAIE_EVENT_UC_DMA_MM2DM_A_REMOTE_MEMORY_BACKPRESSURE};
+      // eventSets["uc_axis_throughputs"] = {
+      //     XAIE_EVENT_UC_CORE_AXIS_MASTER_RUNNING,          XAIE_EVENT_UC_CORE_AXIS_MASTER_STALLED,
+      //     XAIE_EVENT_UC_CORE_AXIS_MASTER_TLAST,
+	    //     XAIE_EVENT_UC_CORE_AXIS_SLAVE_RUNNING,           XAIE_EVENT_UC_CORE_AXIS_SLAVE_STALLED,
+      //     XAIE_EVENT_UC_CORE_AXIS_SLAVE_TLAST};
+      // eventSets["uc_core"] = {
+      //     XAIE_EVENT_UC_CORE_REG_WRITE,                    XAIE_EVENT_UC_CORE_JUMP_TAKEN,
+      //     XAIE_EVENT_UC_CORE_DATA_READ,                    XAIE_EVENT_UC_CORE_DATA_WRITE,
+      //     XAIE_EVENT_UC_CORE_STREAM_GET,                   XAIE_EVENT_UC_CORE_STREAM_PUT};
+      eventSets["uc_dma_activity"] = {};
+      eventSets["uc_axis_throughputs"] = {};
+      eventSets["uc_core"] = {};
+#else
+      eventSets["uc_dma_activity"] = {
+          XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
+          XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
+	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
+      eventSets["uc_axis_throughputs"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_MASTER_TLAST_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_SLAVE_TLAST_UC};
+      eventSets["uc_core"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
+          XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
+          XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
+#endif
+    }
+    else {
+      eventSets["uc_dma_activity"] = {};
+      eventSets["uc_axis_throughputs"] = {};
+      eventSets["uc_core"] = {};
+    }
+
     eventSets["mm2s_throughputs"] = eventSets["input_throughputs"];
     eventSets["s2mm_throughputs"] = eventSets["output_throughputs"];
     eventSets["mm2s_stalls"]      = eventSets["input_stalls"];
@@ -142,7 +186,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for memory tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets()
+  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -177,24 +221,48 @@ namespace xdp::aie::profile {
       {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
                                    XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
-      {"conflict_stats1",         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE}},
-      {"conflict_stats2",         {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
-      {"conflict_stats3",         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}}, 
-      {"conflict_stats4",         {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
-                                   XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
     };
+
+    if (hwGen < 40) {
+      eventSets["conflict_stats1"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
+      eventSets["conflict_stats2"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
+      eventSets["conflict_stats3"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
+      eventSets["conflict_stats4"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+    } else {
+      eventSets["conflict_stats1"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
+#ifdef XDP_CLIENT_BUILD
+      // Banks 16-23 are not defined for all generations
+      // eventSets["conflict_stats2"] = {
+      //   XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+      //   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
+      //   XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+      //   XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+      //   XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+      //   XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+#else
+      eventSets["conflict_stats2"] = {
+        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+#endif
+      eventSets["conflict_stats3"] = {};
+      eventSets["conflict_stats4"] = {};
+    }
+
     eventSets["s2mm_channels"]         = eventSets["input_channels"];
     eventSets["s2mm_channels_details"] = eventSets["input_channels_details"];
     eventSets["s2mm_throughputs"]      = eventSets["input_throughputs"];
@@ -205,10 +273,79 @@ namespace xdp::aie::profile {
   }
 
   /****************************************************************************
+   * Get metric sets for microcontrollers
+   * TODO: convert to XAie_Events once support is available from driver
+   ***************************************************************************/
+  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen)
+  std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen)
+  {
+    //std::map<std::string, std::vector<XAie_Events>> eventSets;
+    std::map<std::string, std::vector<uint32_t>> eventSets;
+    if (hwGen < 5)
+      return eventSets;
+
+    // TODO: replace with enums once driver supports the MDM
+    eventSets = {
+      {"execution",               {16, 17, 18, 19, 20, 62}},
+      {"interrupt_stalls",        {23, 24, 25, 26, 27, 57}},
+      {"mmu_activity",            {43, 48, 49, 50, 53, 61}}
+    };
+
+    return eventSets;
+  }
+
+  /****************************************************************************
+   * Configure the individual AIE events for metric sets that use group events
+   ***************************************************************************/
+  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                        const XAie_ModuleType mod, const module_type type,
+                        const std::string metricSet, const XAie_Events event,
+                        const uint8_t channel) 
+  {
+    // Set masks for group events
+    // NOTE: Group error enable register is blocked, so ignoring
+    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
+    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
+    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+    else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
+    else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
+      uint32_t bitMask = aie::isInputSet(type, metricSet) 
+          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
+          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
+    }                                    
+  }
+
+  /****************************************************************************
+  * Configure the selection index to monitor channel number in memory tiles
+  ***************************************************************************/
+  void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                            const module_type type, const std::string metricSet,
+                            const uint8_t channel)
+  {
+    if (type != module_type::mem_tile)
+      return;
+
+    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
+    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel);
+
+    std::stringstream msg;
+    msg << "Configured mem tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") 
+    << "DMA  for metricset " << metricSet << ", channel " << (int)channel << ".";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+  } 
+
+  /****************************************************************************
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
   void modifyEvents(const module_type type, const io_type subtype, const uint8_t channel,
-                                        std::vector<XAie_Events>& events, const int hwGen)
+                    std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
       return;
@@ -420,7 +557,6 @@ namespace xdp::aie::profile {
     }
   }
 
-
   /****************************************************************************
    * Get XAie module enum at the module index 
    ***************************************************************************/
@@ -468,15 +604,53 @@ namespace xdp::aie::profile {
     return graphIterMetricSets.find(metricSet) != graphIterMetricSets.end();
   }
 
+  /****************************************************************************
+   * Check if profile API metric set
+   ***************************************************************************/
   bool profileAPIMetricSet(const std::string metricSet)
   {
     // input_throughputs/output_throughputs is already supported, hence excluded here
     return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
   }
 
+  /****************************************************************************
+   * Get event ID associated with metric set
+   ***************************************************************************/
   uint16_t getAdfApiReservedEventId(const std::string metricSet)
   {
     return adfApiMetricSetMap.at(metricSet);
+  }
+
+  /****************************************************************************
+   * Get physical event IDs for metric set
+   ***************************************************************************/
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet, XAie_Events startEvent, 
+                     XAie_Events endEvent)
+  {
+    if (profileAPIMetricSet(metricSet)) {
+      uint16_t eventId = getAdfApiReservedEventId(metricSet);
+      return std::make_pair(eventId, eventId);
+    }
+
+#ifdef XDP_CLIENT_BUILD
+    uint16_t tmpStart;
+    uint16_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+#else
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    //XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    //XAie_EventLogicalToPhysicalConv_16(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+#endif
+    uint16_t phyStartEvent = tmpStart + getCounterBase(xdpModType);
+    uint16_t phyEndEvent   = tmpEnd   + getCounterBase(xdpModType);
+    return std::make_pair(phyStartEvent, phyEndEvent);
   }
 
    /****************************************************************************
@@ -508,17 +682,15 @@ namespace xdp::aie::profile {
     return bcPair;
   }
 
-
-
   /****************************************************************************
    * Convert user specified bytes to beats for provided metric set
    ***************************************************************************/
-  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hw_gen)
+  uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hwGen)
   {
     if (metricSet != METRIC_BYTE_COUNT)
       return bytes;
 
-    uint32_t streamWidth = aie::getStreamWidth(hw_gen);
+    uint32_t streamWidth = aie::getStreamWidth(hwGen);
     uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
 
     return total_beats;

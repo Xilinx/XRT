@@ -20,8 +20,16 @@
 #include <cstdint>
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
-namespace xdp::aie::trace {  
+namespace xdp::aie::trace {
+  /**
+   * @brief Print out resource usage statistics for a given tile
+   * @param aieDevice  AIE device
+   * @param tile       Tile metadata
+   */
+  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+
   /**
    * @brief Configure stream switch monitor ports
    * @param aieDevInst AIE device instance
@@ -119,6 +127,18 @@ namespace xdp::aie::trace {
    */
   bool configStartIteration(xaiefal::XAieMod& core, uint32_t iteration,
                             XAie_Events& startEvent);
+  
+  /**
+   * @brief Reset timers for specified tile range
+   * @param aieDevInst     AIE device Instance
+   * @param aieDevice      AIE device
+   * @param metadata       Trace Metadata
+   * @param startCol       Start column of the partition
+   * @param numCols        Num of columns in the partition
+   */
+  void timerSyncronization(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
+                           std::shared_ptr<AieTraceMetadata> metadata, uint8_t startCol, 
+                           uint8_t numCols);
 }  // namespace xdp::aie::trace
 
 #endif

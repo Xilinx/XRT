@@ -112,6 +112,10 @@ namespace xdp::aie {
   getAIEPartitionInfoClient(void* hwCtxImpl);
 
   XDP_CORE_EXPORT
+  boost::property_tree::ptree
+  getAIEPartitionInfo(void* handle);
+
+  XDP_CORE_EXPORT
   void displayColShiftInfo(uint8_t colShift);
 
   XDP_CORE_EXPORT

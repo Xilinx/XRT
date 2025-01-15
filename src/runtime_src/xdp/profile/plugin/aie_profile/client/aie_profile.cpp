@@ -36,7 +36,6 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
-#include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
 // XRT headers
@@ -68,7 +67,7 @@ namespace xdp {
     shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
     shimEndEvents = shimStartEvents;
 
-    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileStartEvents = aie::profile::getMemoryTileEventSets(hwGen);
     memTileEndEvents = memTileStartEvents;
 
     auto context = metadata->getHwContext();

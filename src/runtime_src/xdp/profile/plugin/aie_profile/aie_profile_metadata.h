@@ -39,11 +39,14 @@ constexpr unsigned int NUM_CORE_COUNTERS = 4;
 constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
 constexpr unsigned int NUM_SHIM_COUNTERS = 2;
 constexpr unsigned int NUM_MEM_TILE_COUNTERS = 4;
+constexpr unsigned int NUM_UC_EVENT_COUNTERS = 5;
+constexpr unsigned int NUM_UC_LATENCY_COUNTERS = 1;
 
 class AieProfileMetadata {
   private:
-    // Currently supporting Core, Memory, Interface Tiles, and Memory Tiles
-    static constexpr int NUM_MODULES = 4;
+    // Currently supporting core modules, memory modules, interface tiles, 
+    // memory tiles, and microcontrollers
+    static constexpr int NUM_MODULES = static_cast<int>(module_type::num_types);
 
     const std::map <module_type, std::vector<std::string>> metricStrings {
       {
@@ -62,8 +65,9 @@ class AieProfileMetadata {
         module_type::shim, {
           "input_throughputs", "output_throughputs", 
           "s2mm_throughputs", "mm2s_throughputs",
-          "input_stalls", "output_stalls",
-          "s2mm_stalls", "mm2s_stalls", "packets", METRIC_BYTE_COUNT}
+          "input_stalls", "output_stalls", "s2mm_stalls", 
+          "mm2s_stalls", "packets", METRIC_BYTE_COUNT,
+          "uc_dma_activity", "uc_axis_throughputs", "uc_core"}
       },
       {
         module_type::mem_tile, {
@@ -73,17 +77,24 @@ class AieProfileMetadata {
           "mm2s_channels", "mm2s_channels_details", "mm2s_throughputs",
           "memory_stats", "mem_trace", "conflict_stats1", "conflict_stats2", 
           "conflict_stats3", "conflict_stats4"}
+      },
+      {
+        module_type::uc, {
+          "execution", "interrupt_stalls", "mmu_activity"}
       }
     };
 
     const std::vector<std::string> moduleNames =
-      {"aie", "aie_memory", "interface_tile", "memory_tile"};
+      {"aie", "aie_memory", "interface_tile", "memory_tile", "microcontroller"};
     const std::string defaultSets[NUM_MODULES] =
-      {"s2mm_throughputs", "s2mm_throughputs", "s2mm_throughputs", "s2mm_throughputs"};
+      {"s2mm_throughputs", "s2mm_throughputs", "s2mm_throughputs", 
+       "s2mm_throughputs", "execution"};
     const int numCountersMod[NUM_MODULES] =
-      {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, NUM_MEM_TILE_COUNTERS};
+      {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, 
+       NUM_MEM_TILE_COUNTERS, NUM_UC_EVENT_COUNTERS+NUM_UC_LATENCY_COUNTERS};
     const module_type moduleTypes[NUM_MODULES] =
-      {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
+      {module_type::core, module_type::dma, module_type::shim, 
+       module_type::mem_tile, module_type::uc};
 
     uint32_t pollingInterval;
     uint64_t deviceID;
@@ -97,13 +108,6 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    
-    // Config data structures required for new profile API metrics
-    const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-      {METRIC_BYTE_COUNT, static_cast<uint16_t>(3600)},
-      {METRIC_LATENCY,     static_cast<uint16_t>(3601)}
-    };
-
     std::map<tile_type, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
     std::map<tile_type, uint32_t> bytesTransferConfigMap;
@@ -129,9 +133,13 @@ class AieProfileMetadata {
     void getConfigMetricsForInterfaceTiles(const int moduleIdx,
                                            const std::vector<std::string>& metricsSettings,
                                            const std::vector<std::string> graphMetricsSettings);
+    void getConfigMetricsForMicrocontrollers(const int moduleIdx,
+                                             const std::vector<std::string>& metricsSettings,
+                                             const std::vector<std::string> graphMetricsSettings);
     int getPairModuleIndex(const std::string& metricSet, module_type mod);
     uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     bool isSupported(const std::string metricSet, bool isTileBased);
+    bool profileAPIMetricSet(const std::string metricSet);
 
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
      std::vector<std::pair<tile_type, std::string>> getConfigMetricsVec(const int module);
@@ -174,7 +182,6 @@ class AieProfileMetadata {
     bool getUseGraphIterator(){return useGraphIterator;}
     uint32_t getIterationCount(){return iterationCount;}
 
-    bool profileAPIMetricSet(const std::string metricSet);
     bool isSourceTile(const tile_type& tile);
     bool isValidLatencyTile(const tile_type& tile) const;
     uint64_t getIntfLatencyPayload(const tile_type& tile);

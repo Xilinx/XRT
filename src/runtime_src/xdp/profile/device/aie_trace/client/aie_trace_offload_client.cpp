@@ -123,7 +123,7 @@ namespace xdp {
       XAie_DmaDesc DmaDesc;
       loc = XAie_TileLoc(traceGMIO->shimColumn, 0);
       uint8_t s2mm_ch_id = traceGMIO->channelNumber;
-      uint8_t s2mm_bd_id = 15; /* for now use last bd */
+      uint16_t s2mm_bd_id = 15; /* for now use last bd */
 
       // S2MM BD
       RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc, loc);

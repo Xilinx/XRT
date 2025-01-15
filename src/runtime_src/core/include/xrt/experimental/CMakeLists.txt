@@ -30,11 +30,6 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_xclbin.h
   xclbin_util.h)
 
-# xrt component install
-install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/experimental
-  COMPONENT ${XRT_DEV_COMPONENT})
-
 # base component install
 install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/experimental

@@ -15,9 +15,11 @@
 #include "core/edge/user/aie/aie_buffer_object.h"
 #endif
 #include "core/edge/user/aie/profile_object.h"
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <poll.h>
+#include <regex>
 #include <string>
 
 #include <fcntl.h>
@@ -216,14 +218,30 @@ struct aie_core_info_sysfs
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
-    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
-    const aie_sys_parser asp(aiepart);
+    auto base_path = "/sys/class/aie/";
+    std::regex pattern(R"(aiepart_(\d+)_(\d+))");
 
-    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
-    for (int i = 0; i < aie_meta.num_cols; ++i)
-      for (int j = 0; j < (aie_meta.num_rows-1); ++j)
-        ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
-                          asp.aie_sys_read(i,(j + aie_meta.core_row))));
+    for (const auto& entry : std::filesystem::directory_iterator(base_path)) {
+        if (!entry.is_directory())
+            continue;
+
+        std::string dir_name = entry.path().filename().string();
+        std::smatch matches;
+
+        if (!std::regex_match(dir_name, matches, pattern))
+            continue;
+
+        auto start_col = std::stoi(matches[1].str());
+        auto num_col = std::stoi(matches[2].str());
+        auto aiepart = std::to_string(start_col) + "_" + std::to_string(num_col);
+        const aie_sys_parser asp(aiepart);
+
+        /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
+        for (int i = start_col; i < (start_col + num_col); ++i)
+          for (int j = 0; j < (aie_meta.num_rows - 1); ++j)
+            ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+                              asp.aie_sys_read(i,(j + aie_meta.core_row))));
+    }
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);

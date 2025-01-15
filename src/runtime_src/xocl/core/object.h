@@ -32,13 +32,14 @@ class stream_mem;
 template <typename XOCLTYPE, typename CLTYPE>
 class object
 {
-  const _cl_icd_dispatch* m_dispatch;
+  const cl_icd_dispatch* m_dispatch;
+
 
 public:
   typedef XOCLTYPE xocl_type;
   typedef CLTYPE   cl_type;
 
-  object() : m_dispatch(&cl_icd_dispatch) {}
+  object() : m_dispatch(&cl_icd_dispatch_obj) {}
 };
 
 namespace detail {

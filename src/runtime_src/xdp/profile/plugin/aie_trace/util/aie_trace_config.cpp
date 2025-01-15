@@ -38,6 +38,52 @@ namespace xdp::aie::trace {
   using severity_level = xrt_core::message::severity_level;
 
   /****************************************************************************
+   * Print out resource usage statistics for a given tile
+   ***************************************************************************/
+  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
+  {
+    if (xrt_core::config::get_verbosity() < static_cast<uint32_t>(severity_level::info))
+      return;
+
+    auto col = tile.col;
+    auto row = tile.row;
+    auto loc = XAie_TileLoc(col, row);
+    std::stringstream msg;
+
+    const std::string groups[3] = {
+      XAIEDEV_DEFAULT_GROUP_GENERIC,
+      XAIEDEV_DEFAULT_GROUP_STATIC, 
+      XAIEDEV_DEFAULT_GROUP_AVAIL
+    };
+
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    for (auto& g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
+      msg << "Resource Group : " << std::left << std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
+    }
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
+  }
+
+  /****************************************************************************
    * Configure stream switch event ports for monitoring purposes
    ***************************************************************************/
   std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>
@@ -187,8 +233,8 @@ namespace xdp::aie::trace {
       for (int i=0; i < NUM_COMBO_EVENT_CONTROL; ++i)
         config.combo_event_control[i] = 2;
       for (int i=0; i < events.size(); ++i) {
-        uint8_t phyEvent = 0;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, events.at(i), &phyEvent);
+        uint16_t phyEvent = 0;
+        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, events.at(i), &phyEvent);
         config.combo_event_input[i] = phyEvent;
       }
 
@@ -460,6 +506,88 @@ namespace xdp::aie::trace {
 
     startEvent = counterEvent;
     return true;
+  }
+
+  /****************************************************************************
+   * Reset timer for the specified tile range
+   ***************************************************************************/
+  void timerSyncronization(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice, std::shared_ptr<AieTraceMetadata> metadata, uint8_t startCol, uint8_t numCols)
+  {
+    std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
+    std::vector<XAie_LocType> vL;
+    traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+    traceStartBroadcastCh1->reserve();
+    traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+    traceStartBroadcastCh2->reserve();
+
+    uint8_t broadcastId1 = traceStartBroadcastCh1->getBc();
+    uint8_t broadcastId2 = traceStartBroadcastCh2->getBc();
+
+    //build broadcast network
+    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, broadcastId2, XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+
+    //set timer control register
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto tile       = tileMetric.first;
+      auto col        = tile.col + startCol; 
+      auto row        = tile.row;
+      auto type       = aie::getModuleType(row, metadata->getRowOffset());
+      auto loc        = XAie_TileLoc(col, row);
+
+      if(type == module_type::shim) {
+        XAie_Events resetEvent = (XAie_Events)(XAIE_EVENT_BROADCAST_A_0_PL + broadcastId2);
+        if(col == startCol)
+        {
+          resetEvent = XAIE_EVENT_USER_EVENT_0_PL;
+        }
+
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_PL_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+      else if(type == module_type::mem_tile) {
+        XAie_Events resetEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + broadcastId1);
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_MEM_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+      else {
+        XAie_Events resetEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + broadcastId1);
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_CORE_MOD, resetEvent, XAIE_RESETDISABLE);
+        resetEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + broadcastId1);
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_MEM_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+    }
+
+    //Generate the event to trigger broadcast network to reset timer
+    XAie_EventGenerate(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_0_PL);
+
+    //reset timer control register so that timer are not reset after this point
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto tile       = tileMetric.first;
+      auto col        = tile.col + startCol;
+      auto row        = tile.row;
+      auto type       = aie::getModuleType(row, metadata->getRowOffset());
+      auto loc        = XAie_TileLoc(col, row);
+
+      if(type == module_type::shim) {
+        XAie_Events resetEvent = XAIE_EVENT_NONE_PL ;
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_PL_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+      else if(type == module_type::mem_tile) {
+        XAie_Events resetEvent = XAIE_EVENT_NONE_MEM_TILE;
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_MEM_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+      else {
+        XAie_Events resetEvent = XAIE_EVENT_NONE_CORE;
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_CORE_MOD, resetEvent, XAIE_RESETDISABLE);
+        resetEvent = XAIE_EVENT_NONE_MEM;
+        XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_MEM_MOD, resetEvent, XAIE_RESETDISABLE);
+      }
+    }
+
+    //reset broadcast network
+    reset2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, broadcastId2, startCol, numCols);
+
+    //release the channels used for timer sync
+    traceStartBroadcastCh1->release();
+    traceStartBroadcastCh2->release();
   }
 
 }  // namespace xdp

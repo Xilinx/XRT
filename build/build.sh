@@ -108,7 +108,9 @@ static_boost=""
 ertbsp=""
 ertfw=""
 werror=1
-alveo=1
+alveo_build=0
+npu_build=0
+base_build=0
 xclbinutil=0
 xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -155,9 +157,20 @@ while [ $# -gt 0 ]; do
             shift
             cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
+        -base)
+            shift
+            base_build=1
+            noert=1
+            cmake_flags+=" -DXRT_BASE=1"
+            ;;
+        -alveo)
+            shift
+            alveo_build=1
+            cmake_flags+=" -DXRT_ALVEO=1"
+            ;;
 	-npu)
             shift
-	    alveo=0
+	    npu_build=1
 	    noert=1
 	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
 	    cmake_flags+=" -DXRT_NPU=1"
@@ -251,6 +264,11 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
+    echo "build.sh: -npu, -alveo, -base are mutually exclusive"
+    exit 1
+fi
+
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
 edge_dir=${EDGE_DIR:-Edge}
@@ -262,12 +280,6 @@ cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
-
-# Set CMake variable indicating build for Alveo
-# Specifying '-npu' disables Alveo
-if [[ $alveo == 1 ]]; then
-    cmake_flags+=" -DXRT_ALVEO=1"
-fi
 
 here=$PWD
 cd $BUILDDIR

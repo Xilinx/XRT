@@ -9,11 +9,6 @@ set(XRT_DEPRECATED_HEADER_SRC
   xclerr.h
   )
 
-# Legacy install
-install (FILES ${XRT_DEPRECATED_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/deprecated
-  COMPONENT ${XRT_DEV_COMPONENT})
-
 # Base component install
 install (FILES ${XRT_DEPRECATED_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/deprecated

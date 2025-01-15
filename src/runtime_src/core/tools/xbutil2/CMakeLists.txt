@@ -3,6 +3,7 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Collect files outside of this directory
+
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
@@ -10,6 +11,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdJsonObjects.cpp"
   "../common/SubCmdConfigureInternal.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/OptionOptions.cpp"
@@ -118,4 +120,5 @@ endif()
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
+
 # -----------------------------------------------------------------------------
