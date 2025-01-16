@@ -11,9 +11,6 @@
 #include "core/common/device.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_ext.h"
-#include "xrt/config.h"
-#include "xrt/device/hal.h"
-#include "xrt/util/range.h"
 
 #include "device.h"
 #include "memory.h"
