@@ -209,6 +209,8 @@ add_status_info(const xrt_core::device* device, ptree_type& pt)
   case xrt_core::query::device_class::type::ryzen:
   {
     add_performance_info(device, pt_status);
+    const auto total_cols = xrt_core::device_query_default<xq::total_cols>(device, 0);
+    pt.add("total_columns", total_cols);
     break;
   }
   }
