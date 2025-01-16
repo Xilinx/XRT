@@ -37,7 +37,7 @@ if (XRT_NPU)
   add_compile_options("-DSKIP_IOCTL")
   add_subdirectory(profile)
 
-elseif(XRT_XRT OR XRT_ALVEO)
+elseif(XRT_ALVEO)
 
   add_subdirectory(appdebug)
   add_subdirectory(debug)
