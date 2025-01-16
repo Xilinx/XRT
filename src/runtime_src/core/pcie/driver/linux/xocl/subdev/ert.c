@@ -361,7 +361,7 @@ static struct xocl_mb_funcs ert_ops = {
 	.stop			= stop_ert,
 };
 
-static int ert_remove(struct platform_device *pdev)
+static int __ert_remove(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
 	void *hdl;
@@ -395,6 +395,15 @@ static int ert_remove(struct platform_device *pdev)
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ert_remove(struct platform_device *pdev)
+{
+	__ert_remove(pdev);
+}
+#else
+#define ert_remove __ert_remove
+#endif
 
 static int ert_probe(struct platform_device *pdev)
 {
