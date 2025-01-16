@@ -41,6 +41,9 @@ endif(GIT_FOUND)
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
+# --- Set up what components of XRT to build ---
+include(CMake/components.cmake)
+
 # --- Boost Libraries ---
 include (CMake/boostUtil.cmake)
 

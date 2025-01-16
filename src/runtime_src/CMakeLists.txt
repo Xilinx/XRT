@@ -76,7 +76,7 @@ else()
     add_compile_options( ${XRT_WARN_OPTS} )
   endif()
 
-  if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+  if (XRT_NPU)
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
     set(XAIENGINE_BUILD_SHARED OFF)
     xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)

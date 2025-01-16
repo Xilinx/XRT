@@ -172,7 +172,6 @@ while [ $# -gt 0 ]; do
             shift
 	    npu_build=1
 	    noert=1
-	    cmake_flags+=" -DXDP_CLIENT_BUILD_CMAKE=yes"
 	    cmake_flags+=" -DXRT_NPU=1"
             ;;
         -opt)

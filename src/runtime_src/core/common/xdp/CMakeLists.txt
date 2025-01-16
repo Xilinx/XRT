@@ -9,15 +9,22 @@ target_include_directories(core_common_xdp_profile_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+# Compile defintions when building npu, alveo, or legacy xrt
+# components
+if (XRT_NPU)
+  
   target_compile_definitions(core_common_xdp_profile_objects
     PRIVATE 
     XDP_CLIENT_BUILD=1
     )
-
+  
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-    target_compile_definitions(core_common_xdp_profile_objects
-      PRIVATE
-      XDP_VE2_BUILD=1
-      )
+  
+  target_compile_definitions(core_common_xdp_profile_objects
+    PRIVATE
+    XDP_VE2_BUILD=1
+    )
+
 endif()
+  
+
