@@ -14,7 +14,7 @@
  * under the License.
  */
 #include <fstream>
-#include "xdp/profile/writer/aie_debug/generations/register_interpreter.h"
+#include "xdp/profile/writer/aie_debug/register_interpreter.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
