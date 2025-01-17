@@ -32,6 +32,7 @@ public:
 
   OptionBasic(const pt::ptree& configurations);
 
+  std::string concatenate(const pt::ptree& pt, const std::string& path) const;
   std::string getName() const { return m_name; }
   std::string getDescription() const { return m_description; }
   std::string getTag() const { return m_tag; }

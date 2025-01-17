@@ -780,7 +780,7 @@ XBUtilities::loadDefaultSmiConfig()
 {
   return std::string(
     R"(
- {
+{
   "subcommands":
   [{
     "name" : "validate",
@@ -924,33 +924,78 @@ XBUtilities::loadDefaultSmiConfig()
     [
       {
         "name": "device",
+        "alias": "d",
         "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "devl",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common",
         "value_type": "string"
       },
       {
         "name": "format",
+        "alias": "f",
         "description": "Report output format",
-        "tag": "devl",
+        "tag": "basic",
+        "default_value": "json",
+        "options_type": "common",
         "value_type": "string"
       },
       {
+        "name": "output",
+        "alias": "o",
+        "description" : "Direct the output to the given file",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "string"
+      },
+      {
+        "name": "help",
+        "alias": "h",
+        "description" : "Help to use this sub-command",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "none"
+      },
+      {
         "name": "report",
+        "alias": "r",
         "description": "The type of report to be produced. Reports currently available are:",
         "tag": "basic",
+        "option_type": "common",
+        "value_type": "array",
         "options": [
+          {
+            "name": "host",
+            "tag": "basic",
+            "description": "Host information"
+          },
+          {
+            "name": "platform",
+            "tag": "basic",
+            "description": "Platforms flashed on the device"
+          },
           {
             "name": "aie-partitions",
             "tag": "basic",
             "description": "AIE partition information"
           },
           {
-            "name": "telemetry",
-            "tag": "devl",
+            "name": "tememetry",
+            "tag": "basic",
             "description": "Telemetry data for the device"
           }
         ]
-      }
+      },
+      {
+        "name": "element",
+        "alias": "e",
+        "description" : "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'",
+        "tag": "basic",
+        "option_type": "hidden", 
+        "value_type" : "array"
+      } 
     ]
   },
   {
@@ -973,7 +1018,7 @@ XBUtilities::loadDefaultSmiConfig()
       }
     ]
   }]
-}
+} 
 )"
   );
 }// end of namespace XBValidateUtils
