@@ -27,7 +27,6 @@ namespace po = boost::program_options;
 #include <regex>
 
 static ReportCollection fullReportCollection = {};
-static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
@@ -48,37 +47,16 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
 
   for (const auto& option : uniqueReportCollection)
     fullReportCollection.push_back(option);
-
-  const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
-  jsonOptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, Report>(fullReportCollection, configs, getConfigName(), std::string("report"));
 }
 
 void
 SubCmdExamineInternal::print_help_internal(const SubCmdExamineOptions& options) const
 {
-  boost::program_options::options_description common_options;
-  static XBUtilities::VectorPairStrings common_reports;
-  common_reports.emplace_back("all", "All known reports are produced");
-  static const std::string reportOptionValues = XBU::create_suboption_list_map("", jsonOptions, common_reports);
-  static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-
-  common_options.add_options()
-    ("device,d", boost::program_options::value<decltype(options.m_device)>(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("format,f", boost::program_options::value<decltype(options.m_format)>()->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(options.m_output)>()->implicit_value(""), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(), "Help to use this sub-command")
-  ;
-
   if (options.m_device.empty())
     printHelp();
   else {
     const std::string deviceClass = XBU::get_device_class(options.m_device, m_isUserDomain);
-    static const std::string reportOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, common_reports);
-    std::vector<std::string> tempVec;
-    common_options.add_options()
-      ("report,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
-    ;
-    printHelp(common_options, m_hiddenOptions, deviceClass);
+    printHelp(m_commonOptions, m_hiddenOptions, deviceClass);
   }
 }
 
