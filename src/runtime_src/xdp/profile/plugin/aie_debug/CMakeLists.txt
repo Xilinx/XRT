@@ -52,17 +52,6 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
   )
 
-elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES})
-  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
-  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil)
-  target_compile_definitions(xdp_aie_debug_plugin PRIVATE XRT_X86_BUILD=1)
-  set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-
-  install (TARGETS xdp_aie_debug_plugin
-    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
-  )
-
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)

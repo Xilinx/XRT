@@ -166,9 +166,9 @@ namespace xdp {
       listofRegisters.insert(listofRegisters.end(), memoryTileAddressList.begin(),
                              memoryTileAddressList.end() );
     }
-    //else if (mod == module_type::uc) {
-    //  xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
-    //}
+    else if (mod == module_type::uc) {
+      xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
+    }
 
     return listofRegisters;
   }
