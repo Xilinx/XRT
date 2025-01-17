@@ -35,6 +35,11 @@
 #include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
+
 namespace xdp {
 
 // Forward declarations
