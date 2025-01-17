@@ -18,18 +18,14 @@
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer_metadata.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/database/dynamic_event_database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 #include <string>
+#include <cstdint>
 
 namespace xdp {
 class RegisterInterpreter {
   public:
     RegisterInterpreter();
-    RegisterInterpreter(uint64_t deviceIndex);
+    RegisterInterpreter(uint64_t deviceIndex, int aieGeneration);
     
     ~RegisterInterpreter()=default;
 
@@ -37,13 +33,16 @@ class RegisterInterpreter {
         std::string field_name;
         std::string bit_range;
         uint64_t subval;
+
+	RegInfo(std::string f, std::string b, uint64_t s)
+          : field_name(f), bit_range(b), subval(s) {}
     };
 
     std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal);
 
   private:
     std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
-    int aieGeneration;
+    int mAieGeneration;
     uint64_t mDeviceIndex;
   };
 } // end namespace xdp

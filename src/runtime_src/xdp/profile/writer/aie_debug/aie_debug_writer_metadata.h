@@ -17,18 +17,10 @@
 #ifndef AIE_DEBUG_WRITER_METADATA_H
 #define AIE_DEBUG_WRITER_METADATA_H
 
-#include "core/common/device.h"
-#include "core/common/message.h"
-#include "core/include/xrt/xrt_hw_context.h"
-#include "xdp/config.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
-
-extern "C" {
-#include <xaiengine.h>
-#include <xaiengine/xaiegbl_params.h>
-}
+#include <map>
+#include <vector>
+#include <string>
+#include <cstdint>
 
 namespace xdp {
 
@@ -110,6 +102,6 @@ public:
 
 };
 
-} // end XDP namespace
+} // end namesapce xdp
 
 #endif

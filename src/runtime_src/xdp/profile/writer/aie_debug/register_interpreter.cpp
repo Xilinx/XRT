@@ -13,14 +13,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <fstream>
 #include "xdp/profile/writer/aie_debug/register_interpreter.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/database/dynamic_event_database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-
+#include "xdp/profile/writer/aie_debug/aie_debug_writer_metadata.h"
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -28,23 +23,21 @@
 namespace xdp {
 
     RegisterInterpreter::RegisterInterpreter() { }
+    RegisterInterpreter::RegisterInterpreter(uint64_t deviceIndex, int aieGeneration): mDeviceIndex(deviceIndex), mAieGeneration(aieGeneration) { }
 
-    // need the deviceIndex to get aieGeneration
-    RegisterInterpreter::RegisterInterpreter(uint64_t deviceIndex): mDeviceIndex(deviceIndex) { }
-
-    std::vector<RegInfo> RegisterInterpreter::registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal) {
-        auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-        if (aieGeneration >= 2 && aieGeneration <= 4) {
+    std::vector<RegisterInterpreter::RegInfo> RegisterInterpreter::registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal) {
+        // auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+        if (mAieGeneration >= 2 && mAieGeneration <= 4) {
             writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
-        } else if (aieGeneration == 5) {
+        } else if (mAieGeneration == 5) {
             writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
         } else {
             writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
         }
 
-        std::map<std::string, std::vector<RegData>>& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
+        std::map<std::string, std::vector<WriterUsedRegisters::RegData>>& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
 
-        std::vector<RegInfo> regInfoVec;
+        std::vector<RegisterInterpreter::RegInfo> regInfoVec;
         auto it = writerUsedRegistersMap.find(regName);
         if (it != writerUsedRegistersMap.end()) {
             for (auto regSpecificDataMap : it->second) {
