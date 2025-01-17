@@ -89,13 +89,13 @@ namespace xdp {
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     for (uint32_t i = 0; i < op->count; i++) {
-      int col = (op->data[i].address >> 25) & 0x1F;
-      int row = (op->data[i].address >> 20) & 0x1F;
-      int reg = (op->data[i].address) & 0xFFFFF;
+      uint8_t col  = (op->data[i].address >> 25) & 0x1F;
+      uint8_t row  = (op->data[i].address >> 20) & 0x1F;
+      uint64_t reg = (op->data[i].address) & 0xFFFFF;
 
       if (aie::isDebugVerbosity()) {
         std::stringstream msg;
-        msg << "Debug tile (" << col << ", " << row << ") " << "hex address/values: " 
+        msg << "Debug tile (" << +col << ", " << +row << ") " << "hex address/values: " 
             << std::hex << reg << " : " << output[i] << std::dec;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       }
@@ -114,7 +114,7 @@ namespace xdp {
 
     // Add values to database
     for (auto& tileAddr : debugTileMap)
-      tileAddr.second->printValues(deviceID, db);
+      tileAddr.second->printValues(static_cast<uint32_t>(deviceID), db);
   }
 
   /****************************************************************************

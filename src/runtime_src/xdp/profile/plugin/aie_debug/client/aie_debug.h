@@ -35,6 +35,7 @@ extern "C" {
 }
 
 namespace xdp {
+  class ClientReadableTile;
 
   class AieDebug_WinImpl : public AieDebugImpl {
   public:
@@ -57,13 +58,15 @@ namespace xdp {
 
   class ClientReadableTile : public BaseReadableTile {
     public:
-      ClientReadableTile(int r, int c) {
-        row = r;
+      ClientReadableTile(uint8_t c, uint8_t r, uint64_t to) {
         col = c;
+        row = r;
+        tileOffset = to;
       }
       void addValue(uint32_t val) {
         values.push_back(val);
       }
+      void readValues(XAie_DevInst* /*aieDevInst*/) {}
   };
 } // end namespace xdp
 

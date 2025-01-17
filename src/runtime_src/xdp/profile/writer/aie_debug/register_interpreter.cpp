@@ -21,12 +21,11 @@
 #include <vector>
 
 namespace xdp {
-
     RegisterInterpreter::RegisterInterpreter() { }
     RegisterInterpreter::RegisterInterpreter(uint64_t deviceIndex, int aieGeneration)
       : mDeviceIndex(deviceIndex), mAieGeneration(aieGeneration) { }
 
-    std::vector<RegInfo>
+    std::vector<RegisterInterpreter::RegInfo>
     RegisterInterpreter::registerInfo(const std::string& regName, const uint64_t& /*regAddr*/, const uint64_t& regVal) 
     {
         if ((mAieGeneration >= 2) && (mAieGeneration <= 4))
