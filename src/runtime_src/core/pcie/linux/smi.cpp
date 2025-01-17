@@ -160,7 +160,7 @@ static constexpr std::string_view xrt_smi_config =
       {
         "name": "format",
         "alias": "f",
-        "description": ["Report output format". Valid values are:",
+        "description": ["Report output format. Valid values are:",
                         "\n\tJSON        - Latest JSON schema",
                         "\n\tJSON-2020.2 - JSON 2020.2 schema"
                         ],
