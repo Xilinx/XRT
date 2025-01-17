@@ -643,28 +643,29 @@ struct cu_cmd_state_timestamps {
  * @ERT_START_NPU_PREEMPT: instruction buffer command with preemption format on NPU
  */
 enum ert_cmd_opcode {
-  ERT_START_CU          = 0,
-  ERT_START_KERNEL      = 0,
-  ERT_CONFIGURE         = 2,
-  ERT_EXIT              = 3,
-  ERT_ABORT             = 4,
-  ERT_EXEC_WRITE        = 5,
-  ERT_CU_STAT           = 6,
-  ERT_START_COPYBO      = 7,
-  ERT_SK_CONFIG         = 8,
-  ERT_SK_START          = 9,
-  ERT_SK_UNCONFIG       = 10,
-  ERT_INIT_CU           = 11,
-  ERT_START_FA          = 12,
-  ERT_CLK_CALIB         = 13,
-  ERT_MB_VALIDATE       = 14,
-  ERT_START_KEY_VAL     = 15,
-  ERT_ACCESS_TEST_C     = 16,
-  ERT_ACCESS_TEST       = 17,
-  ERT_START_DPU         = 18,
-  ERT_CMD_CHAIN         = 19,
-  ERT_START_NPU         = 20,
-  ERT_START_NPU_PREEMPT = 21,
+  ERT_START_CU              = 0,
+  ERT_START_KERNEL          = 0,
+  ERT_CONFIGURE             = 2,
+  ERT_EXIT                  = 3,
+  ERT_ABORT                 = 4,
+  ERT_EXEC_WRITE            = 5,
+  ERT_CU_STAT               = 6,
+  ERT_START_COPYBO          = 7,
+  ERT_SK_CONFIG             = 8,
+  ERT_SK_START              = 9,
+  ERT_SK_UNCONFIG           = 10,
+  ERT_INIT_CU               = 11,
+  ERT_START_FA              = 12,
+  ERT_CLK_CALIB             = 13,
+  ERT_MB_VALIDATE           = 14,
+  ERT_START_KEY_VAL         = 15,
+  ERT_ACCESS_TEST_C         = 16,
+  ERT_ACCESS_TEST           = 17,
+  ERT_START_DPU             = 18,
+  ERT_CMD_CHAIN             = 19,
+  ERT_START_NPU             = 20,
+  ERT_START_NPU_PREEMPT     = 21,
+  ERT_START_NPU_PREEMPT_ELF = 22,
 };
 
 /**
@@ -997,7 +998,12 @@ ert_valid_opcode(struct ert_packet *pkt)
     /* 1 mandatory cumask + extra_cu_masks + ert_npu_data */
     valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_npu_data) / sizeof(uint32_t));
     break;
-   case ERT_START_NPU_PREEMPT:
+  case ERT_START_NPU_PREEMPT:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 mandatory cumask + extra_cu_masks + ert_npu_preempt_data */
+    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t));
+    break;
+  case ERT_START_NPU_PREEMPT_ELF:
     skcmd = to_start_krnl_pkg(pkt);
     /* 1 mandatory cumask + extra_cu_masks + ert_npu_preempt_data */
     valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t));
@@ -1111,6 +1117,15 @@ get_ert_npu_preempt_data(struct ert_start_kernel_cmd* pkt)
   return (struct ert_npu_preempt_data*) (pkt->data + pkt->extra_cu_masks);
 }
 
+static inline struct ert_npu_preempt_data*
+get_ert_npu_elf_data(struct ert_start_kernel_cmd* pkt)
+{
+  if (pkt->opcode != ERT_START_NPU_PREEMPT_ELF)
+    return NULL;
+  // past extra cu_masks embedded in the packet data
+  return (struct ert_npu_preempt_data*) (pkt->data + pkt->extra_cu_masks);
+}
+
 static inline uint32_t*
 get_ert_regmap_begin(struct ert_start_kernel_cmd* pkt)
 {
@@ -1128,6 +1143,11 @@ get_ert_regmap_begin(struct ert_start_kernel_cmd* pkt)
     return pkt->data + pkt->extra_cu_masks
       + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t)
       + get_ert_npu_preempt_data(pkt)->instruction_prop_count;
+
+  case ERT_START_NPU_PREEMPT_ELF:
+    return pkt->data + pkt->extra_cu_masks
+      + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t)
+      + get_ert_npu_elf_data(pkt)->instruction_prop_count;
 
   default:
     // skip past embedded extra cu_masks

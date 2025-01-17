@@ -7,6 +7,7 @@
 #define _XRT_COMMON_MODULE_INT_H_
 
 // This file defines implementation extensions to the XRT Kernel APIs.
+#include "core/common/xclbin_parser.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 
