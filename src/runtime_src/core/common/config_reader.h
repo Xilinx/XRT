@@ -769,14 +769,6 @@ get_device_offline_timer()
   return value;
 }
 
-// Configurations under AIE_debug_settings section
-inline bool
-get_aie_debug_settings_detailed_interpretation()
-{
-  static bool value = detail::get_bool_value("AIE_debug_settings.detailed_interpretation", false);
-  return value;
-}
-
 inline std::string
 get_aie_debug_settings_core_registers()
 {

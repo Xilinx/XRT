@@ -25,8 +25,7 @@ namespace xdp {
 class AIEDebugWriter : public VPWriter
   {
 public:
-    AIEDebugWriter(const char* fileName, const char* deviceName,
-                   uint64_t deviceIndex,bool detailedInterpretation);
+    AIEDebugWriter(const char* fileName, const char* deviceName, uint64_t deviceIndex);
     ~AIEDebugWriter()=default;
 
     void writeHeader();
@@ -35,7 +34,6 @@ public:
 
   private:
     bool mIsWritten;
-    bool mDetailedInterpretation;
     std::string mDeviceName;
     uint64_t mDeviceIndex;
     bool mHeaderWritten;

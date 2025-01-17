@@ -188,13 +188,12 @@ namespace xdp {
     std::string deviceName = util::getDeviceName(handle);
 #endif
 
-    auto isDetailedInterpretation = xrt_core::config::get_aie_debug_settings_detailed_interpretation();
     std::ostringstream timeOss;
     timeOss << std::put_time(&tm, "_%Y_%m_%d_%H%M%S");
     std::string timestamp = timeOss.str();
 
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex, isDetailedInterpretation);
+    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
 

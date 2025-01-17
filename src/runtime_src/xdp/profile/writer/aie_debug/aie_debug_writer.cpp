@@ -22,10 +22,8 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
-    AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName,
-                                   uint64_t deviceIndex,bool detailedInterpretation):
-      VPWriter(fileName), mDeviceName(deviceName),
-      mDeviceIndex(deviceIndex), mHeaderWritten(false), mDetailedInterpretation(detailedInterpretation)
+  AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName, uint64_t deviceIndex)
+    : VPWriter(fileName), mDeviceName(deviceName), mDeviceIndex(deviceIndex), mHeaderWritten(false)
   {
     mIsWritten = false;
   }
@@ -46,20 +44,12 @@ namespace xdp {
   void AIEDebugWriter::writerDataColumnHeader()
   {
     fout << "Register Values" << "\n";
-    if (mDetailedInterpretation) {
-      fout << "Column"          << ","
-           << "Row"             << ","
-           << "Register Name"   << ","
-           << "Bit Range"       << ","
-           << "Field Name"      << ","
-           << "Value"           << ",\n";
-    } else {
-      fout << "Column"          << ","
-           << "Row"             << ","
-           << "Relative Offset" << ","
-           << "Name"            << ","
-           << "Value"           << ",\n";
-    }
+    fout << "Column"          << ","
+         << "Row"             << ","
+         << "Register Name"   << ","
+         << "Bit Range"       << ","
+         << "Field Name"      << ","
+         << "Value"           << "\n";
   }
 
   bool AIEDebugWriter::write(bool /*openNewFile*/)
@@ -78,35 +68,34 @@ namespace xdp {
     std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
     
-    if (mDetailedInterpretation) {
-      auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-      std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
+    // Create register interpreter for current AIE generation
+    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+    std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
+    
+    for (auto& sample : samples) {
+      // Print out full 32-bit values (for debug purposes)
+      fout << +sample.col << ","
+           << +sample.row << ","
+           << sample.name << ","
+           << "31:0" << ","
+           << "full" << ","
+           << "0x" << std::hex << sample.value
+           << std::dec << "\n";
       
-      for (auto& sample : samples) {
-        auto regInfoVec = regInterp->registerInfo(sample.name, sample.offset, sample.value);
+      // Parse all fields from register value
+      auto regInfoVec = regInterp->registerInfo(sample.name, sample.offset, sample.value);
+      
+      // Report all fields
+      for (auto& rInfo : regInfoVec) {
+        if (rInfo.field_name == "")
+          continue;
         
-        for (auto& rInfo : regInfoVec) {
-          if (rInfo.field_name == "")
-            continue;
-          
-          fout << +sample.col << ","
-               << +sample.row << ","
-               << sample.name << ","
-               << rInfo.bit_range << ","
-               << rInfo.field_name << ","
-               << "0x" << std::hex << rInfo.subval
-               << std::dec << "\n";
-        }
-      }
-    }
-    else {
-      for (auto& sample : samples) {
         fout << +sample.col << ","
              << +sample.row << ","
-             << "0x" << std::hex << sample.offset << ","
              << sample.name << ","
-             << "0x" << std::hex << sample.value
-             << std::dec << "\n";
+             << rInfo.bit_range << ","
+             << rInfo.field_name << ","
+             << rInfo.subval << "\n";
       }
     }
 

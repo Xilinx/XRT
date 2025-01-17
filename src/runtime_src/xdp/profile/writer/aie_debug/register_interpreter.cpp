@@ -26,7 +26,7 @@ namespace xdp {
       : mDeviceIndex(deviceIndex), mAieGeneration(aieGeneration) { }
 
     std::vector<RegisterInterpreter::RegInfo>
-    RegisterInterpreter::registerInfo(const std::string& regName, const uint64_t& /*regAddr*/, const uint64_t& regVal) 
+    RegisterInterpreter::registerInfo(const std::string& regName, const uint64_t& /*regAddr*/, const uint32_t& regVal) 
     {
         if ((mAieGeneration >= 2) && (mAieGeneration <= 4))
             writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
