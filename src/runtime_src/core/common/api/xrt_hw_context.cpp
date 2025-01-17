@@ -8,7 +8,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/experimental/xrt_module.h"
+#include "core/include/xrt/experimental/xrt_module.h"
 #include "hw_context_int.h"
 #include "module_int.h"
 #include "xclbin_int.h"
