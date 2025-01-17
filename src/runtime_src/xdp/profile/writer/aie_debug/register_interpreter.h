@@ -30,12 +30,12 @@ class RegisterInterpreter {
     ~RegisterInterpreter()=default;
 
     struct RegInfo {
-        std::string field_name;
-        std::string bit_range;
-        uint64_t subval;
+      std::string field_name;
+      std::string bit_range;
+      uint64_t subval;
 
-	RegInfo(std::string f, std::string b, uint64_t s)
-          : field_name(f), bit_range(b), subval(s) {}
+      RegInfo(std::string f, std::string b, uint64_t s)
+        : field_name(f), bit_range(b), subval(s) {}
     };
 
     std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal);

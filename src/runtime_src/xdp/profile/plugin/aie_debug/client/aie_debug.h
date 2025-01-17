@@ -51,20 +51,20 @@ namespace xdp {
     XAie_DevInst aieDevInst = {0};
     read_register_op_t* op;
     std::size_t op_size;
+
+    std::map<xdp::tile_type, std::unique_ptr<ClientReadableTile>> debugTileMap;
   };
 
-#if 0
   class ClientReadableTile : public BaseReadableTile {
     public:
       ClientReadableTile(int r, int c) {
         row = r;
         col = c;
       }
-      void readValues(XAie_DevInst* /*aieDevInst*/) {
-        // Different Implementation. everything else same
+      void addValue(uint32_t val) {
+        values.push_back(val);
       }
   };
-#endif
 } // end namespace xdp
 
 #endif

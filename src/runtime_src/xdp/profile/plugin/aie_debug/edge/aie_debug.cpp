@@ -165,8 +165,7 @@ namespace xdp {
 
       // Traverse all active and/or requested tiles
       for (auto& tileMetric : configMetrics) {
-        //auto& metricSet  = tileMetric.second;
-        auto tile        = tileMetric.first;
+        auto tile       = tileMetric.first;
         auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
         
         // Traverse all registers within tile

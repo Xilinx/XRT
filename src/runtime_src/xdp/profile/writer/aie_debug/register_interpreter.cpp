@@ -23,21 +23,23 @@
 namespace xdp {
 
     RegisterInterpreter::RegisterInterpreter() { }
-    RegisterInterpreter::RegisterInterpreter(uint64_t deviceIndex, int aieGeneration): mDeviceIndex(deviceIndex), mAieGeneration(aieGeneration) { }
+    RegisterInterpreter::RegisterInterpreter(uint64_t deviceIndex, int aieGeneration)
+      : mDeviceIndex(deviceIndex), mAieGeneration(aieGeneration) { }
 
-    std::vector<RegisterInterpreter::RegInfo> RegisterInterpreter::registerInfo(const std::string &regName, const uint64_t &regAddr, const uint64_t &regVal) {
-        // auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-        if (mAieGeneration >= 2 && mAieGeneration <= 4) {
+    std::vector<RegInfo>
+    RegisterInterpreter::registerInfo(const std::string& regName, const uint64_t& /*regAddr*/, const uint64_t& regVal) 
+    {
+        if ((mAieGeneration >= 2) && (mAieGeneration <= 4))
             writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
-        } else if (mAieGeneration == 5) {
+        else if (mAieGeneration == 5)
             writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
-        } else {
+        else
             writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
-        }
 
-        std::map<std::string, std::vector<WriterUsedRegisters::RegData>>& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
+        std::map<std::string, std::vector<WriterUsedRegisters::RegData>>& writerUsedRegistersMap = 
+          writerUsedRegisters->getRegDataMap();
 
-        std::vector<RegisterInterpreter::RegInfo> regInfoVec;
+        std::vector<RegInfo> regInfoVec;
         auto it = writerUsedRegistersMap.find(regName);
         if (it != writerUsedRegistersMap.end()) {
             for (auto regSpecificDataMap : it->second) {
@@ -45,16 +47,10 @@ namespace xdp {
                 regInfoVec.push_back(RegInfo(regSpecificDataMap.field_name, regSpecificDataMap.bit_range, subval));
             }
         } else {
-            //exit(1);
-            return { RegInfo("", "",0) };
+            return { RegInfo("", "", 0) };
         }
 
         return regInfoVec;
-
-        // fout << regName << ","
-        //      << data.field_name << ","
-        //      << data.bit_range << ","
-        //      << "0x" << std::hex << subval << "\n";
     }
 
 } // end namespace xdp

@@ -51,7 +51,7 @@ namespace xdp {
   /****************************************************************************
    * Poll all registers
    ***************************************************************************/
-  void AieDebug_WinImpl::poll(const uint64_t /*index*/, void* /*handle*/)
+  void AieDebug_WinImpl::poll(const uint64_t deviceID, void* /*handle*/)
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
@@ -89,16 +89,32 @@ namespace xdp {
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     for (uint32_t i = 0; i < op->count; i++) {
-      std::stringstream msg;
       int col = (op->data[i].address >> 25) & 0x1F;
       int row = (op->data[i].address >> 20) & 0x1F;
       int reg = (op->data[i].address) & 0xFFFFF;
 
-      msg << "Debug tile (" << col << ", " << row << ") "
-          << "hex address/values: " << std::hex << reg << " : "
-          << output[i] << std::dec;
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "Debug tile (" << col << ", " << row << ") " << "hex address/values: " 
+            << std::hex << reg << " : " << output[i] << std::dec;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+
+      tile_type tile;
+      tile.col = col;
+      tile.row = row;
+      
+      if (debugTileMap.find(tile) == debugTileMap.end())
+        debugTileMap[tile] = std::make_unique<ClientReadableTile>(col, row, reg);
+        
+      auto regName = metadata->lookupRegisterName(reg);
+      debugTileMap[tile]->addOffsetName(reg, regName);
+      debugTileMap[tile]->addValue(output[i]);
     }
+
+    // Add values to database
+    for (auto& tileAddr : debugTileMap)
+      tileAddr.second->printValues(deviceID, db);
   }
 
   /****************************************************************************
@@ -127,7 +143,6 @@ namespace xdp {
       if (configMetrics.empty())
         continue;
 
-      //XAie_ModuleType mod = getFalModuleType(module);
       auto type = metadata->getModuleType(module);
       auto name = moduleTypes.at(type);
 
@@ -136,23 +151,21 @@ namespace xdp {
       if (Regs.empty())
         continue;
 
-      std::stringstream msg;
-      msg << "AIE Debug monitoring tiles of type " << name << ":\n";
-      for (auto& tileMetric : configMetrics)
-        msg << tileMetric.first.col << "," << tileMetric.first.row << " ";
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      if (aie::isDebugVerbosity()) {
+        std::stringstream msg;
+        msg << "AIE Debug monitoring tiles of type " << name << ":\n";
+        for (auto& tileMetric : configMetrics)
+          msg << tileMetric.first.col << "," << tileMetric.first.row << " ";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
 
       // Traverse all active tiles for this module type
       for (auto& tileMetric : configMetrics) {
-        //auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
-        auto col         = tile.col;
-        auto row         = tile.row;
-        //auto subtype     = tile.subtype;
-        //auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
+        auto tileOffset  = XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
 
         for (int i = 0; i < Regs.size(); i++) {
-          op_debug_data.emplace_back(register_data_t{Regs[i] + (col << 25) + (row << 20)});
+          op_debug_data.emplace_back(register_data_t{Regs[i] + tileOffset});
           counterId++;
         }
       }
