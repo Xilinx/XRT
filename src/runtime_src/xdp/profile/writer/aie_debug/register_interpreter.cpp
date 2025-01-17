@@ -43,7 +43,7 @@ namespace xdp {
         if (it != writerUsedRegistersMap.end()) {
             for (auto regSpecificDataMap : it->second) {
                 uint64_t subval = (regVal >> regSpecificDataMap.shift) & regSpecificDataMap.mask;
-                regInfoVec.push_back(RegInfo(regSpecificDataMap.field_name, regSpecificDataMap.bit_range, subval));
+                regInfoVec.push_back(RegInfo(regSpecificDataMap.field_name, regSpecificDataMap.bit_range, static_cast<uint32_t>(subval)));
             }
         } else {
             return { RegInfo("", "", 0) };
