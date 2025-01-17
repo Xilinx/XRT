@@ -34,11 +34,12 @@ public:
     virtual bool write(bool openNewFile = true);
 
   private:
+    bool mIsWritten;
+    bool mDetailedInterpretation;
     std::string mDeviceName;
     uint64_t mDeviceIndex;
     bool mHeaderWritten;
     void* mHandle;
-    bool mDetailedInterpretation;
   };
 } // end namespace xdp
 

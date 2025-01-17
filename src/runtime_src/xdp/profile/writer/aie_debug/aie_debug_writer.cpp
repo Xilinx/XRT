@@ -27,7 +27,7 @@ namespace xdp {
       VPWriter(fileName), mDeviceName(deviceName),
       mDeviceIndex(deviceIndex), mHeaderWritten(false), mDetailedInterpretation(detailedInterpretation)
   {
-    // Nothing to do
+    mIsWritten = false;
   }
 
   void AIEDebugWriter::writeHeader()
@@ -45,54 +45,68 @@ namespace xdp {
 
   void AIEDebugWriter::writerDataColumnHeader()
   {
-    // Write data columns header
     fout << "Register Values" << "\n";
-    fout << "Column"          << ","
-         << "Row"             << ","
-         << "Relative Offset" << ","
-         << "Name"            << ","
-         << "Value"           << ",\n";
+    if (mDetailedInterpretation) {
+      fout << "Column"          << ","
+           << "Row"             << ","
+           << "Register Name"   << ","
+           << "Bit Range"       << ","
+           << "Field Name"      << ","
+           << "Value"           << ",\n";
+    } else {
+      fout << "Column"          << ","
+           << "Row"             << ","
+           << "Relative Offset" << ","
+           << "Name"            << ","
+           << "Value"           << ",\n";
+    }
   }
 
   bool AIEDebugWriter::write(bool /*openNewFile*/)
   {
+    if (mIsWritten)
+      return true;
+    mIsWritten = true;
+
     if (!mHeaderWritten) {
       this->writeHeader();
       this->writerDataColumnHeader();
       this->mHeaderWritten = true;
     }
 
-    // Write all data elements
+    // Getting all samples from database
     std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
     
-    for (auto& sample : samples) {
-      fout << +sample.col << ","
-           << +sample.row << ","
-           << "0x" << std::hex << sample.offset << ","
-           << sample.name << ","
-           << "0x" << std::hex << sample.value
-           << std::dec << "\n";
-    }
-
     if (mDetailedInterpretation) {
-      fout<< "\n\n=================== Registers and their Detailed Interpretation ====================  \n";
-      fout<< "Register Name, Field Name, Bit-range, Sub-Value\n";
       auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
       std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
+      
       for (auto& sample : samples) {
         auto regInfoVec = regInterp->registerInfo(sample.name, sample.offset, sample.value);
+        
         for (auto& rInfo : regInfoVec) {
-          if(rInfo.field_name=="") {
+          if (rInfo.field_name == "")
             continue;
-          } else {
-            fout << sample.name << ","
-                 << rInfo.field_name << ","
-                 << rInfo.bit_range << ","
-                 << "0x" << std::hex << rInfo.subval
-                 << std::dec << "\n";
-          }
+          
+          fout << +sample.col << ","
+               << +sample.row << ","
+               << sample.name << ","
+               << rInfo.bit_range << ","
+               << rInfo.field_name << ","
+               << "0x" << std::hex << rInfo.subval
+               << std::dec << "\n";
         }
+      }
+    }
+    else {
+      for (auto& sample : samples) {
+        fout << +sample.col << ","
+             << +sample.row << ","
+             << "0x" << std::hex << sample.offset << ","
+             << sample.name << ","
+             << "0x" << std::hex << sample.value
+             << std::dec << "\n";
       }
     }
 
