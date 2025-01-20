@@ -443,31 +443,7 @@ SubCmdValidate::print_help_internal(const SubCmdValidateOptions& options) const
   }
 
   const std::string deviceClass = XBU::get_device_class(options.m_device, true);
-  auto it = jsonOptions.find(deviceClass);
-
-  XBUtilities::VectorPairStrings help_tests = { all_test };
-  if (it != jsonOptions.end() && it->second.size() > 3)
-    help_tests.emplace_back(quick_test);
-
-  const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-  static const std::string testOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, help_tests);
-  std::vector<std::string> tempVec;
-  boost::program_options::options_description common_options;
-
-  /* TODO: xrt-smi rearchitecture
-  * These add_options calls should be obsoleted and help printing should be done through m_jsonConfig.
-  * This is not done in patch since this help printing is tightly coupled with JSONConfigurable to get 
-  * the test names and report names. This should be refactored in a separate patch and JSONConfigurable
-  * should be obsoleted.
-  */
-  common_options.add_options()
-    ("device,d", boost::program_options::value<decltype(options.m_device)>(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("format,f", boost::program_options::value<decltype(options.m_format)>()->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(options.m_output)>()->implicit_value(""), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(), "Help to use this sub-command")
-    ("run,r", boost::program_options::value<decltype(tempVec)>()->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + testOptionValues).c_str() )
-    ;
-  printHelp(common_options, m_hiddenOptions, deviceClass, false);
+  printHelp(m_commonOptions, m_hiddenOptions, deviceClass, false);
 }
 
 void 
