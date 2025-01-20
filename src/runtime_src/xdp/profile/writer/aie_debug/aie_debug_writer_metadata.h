@@ -26,9 +26,8 @@ namespace xdp {
 
 /*************************************************************************************
 The class WriterUsedRegisters is what gives us AIE hw generation specific data. The base class
-has virtual functions which populate the correct registers and their addresses according
-to the AIE hw generation in the derived classes. Thus we can dynamically populate the
-correct registers and their addresses at runtime.
+has virtual functions which populate the correct registers according to the AIE hw generation 
+in the derived classes. Thus we can dynamically populate the correct registers at runtime.
 **************************************************************************************/
 class WriterUsedRegisters {
   public:
