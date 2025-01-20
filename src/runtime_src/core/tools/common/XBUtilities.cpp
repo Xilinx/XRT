@@ -861,7 +861,7 @@ XBUtilities::loadDefaultSmiConfig()
                          "\n\t\tp2p                       - Run P2P test",
                          "\n\t\tpcie-link                 - Check if PCIE link is active",
                          "\n\t\tsc-version                - Check if SC firmware is up-to-date",
-                         "\n\t\tverify                    - Run 'Hello World' kernel test",
+                         "\n\t\tverify                    - Run 'Hello World' kernel test"
                          ],
         "tag" : "basic",
         "option_type": "common",
