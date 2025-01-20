@@ -494,7 +494,7 @@ get_xgq_polling()
 }
 
 /**
- * Use new hw context for multi slot application
+ * Use new hw context for multi slot application 
  */
 inline bool
 get_hw_context_flag()

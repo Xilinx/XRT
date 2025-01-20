@@ -107,7 +107,7 @@ if (DEFINED XRT_LIBDFX)
   cmake_policy(POP)
 endif()
 
-install (TARGETS xrt_hwemu
+install (TARGETS xrt_hwemu 
   EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
 )

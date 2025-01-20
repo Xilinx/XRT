@@ -63,12 +63,12 @@ bool load()
   if (xrt_core::config::get_noc_profile())
     xdp::noc::profile::load();
 
-#if 0
+#if 0 
   // Not currently supported on edge
   if (xrt_core::config::get_power_profile()) {
     xdp::power::profile::load() ;
   }
-#endif
+#endif 
 
   if (xrt_core::config::get_sc_profile())
     xdp::sc::profile::load();
