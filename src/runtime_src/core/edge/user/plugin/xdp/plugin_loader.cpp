@@ -24,6 +24,7 @@
 
 #include "aie_status.h"
 #include "aie_profile.h"
+#include "aie_debug.h"
 
 #ifndef __HWEM__
 #include "aie_trace.h"
@@ -56,16 +57,18 @@ bool load()
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();
+  if (xrt_core::config::get_aie_debug())
+    xdp::aie::debug::load();
 
   if (xrt_core::config::get_noc_profile())
     xdp::noc::profile::load();
 
-#if 0 
+#if 0
   // Not currently supported on edge
   if (xrt_core::config::get_power_profile()) {
     xdp::power::profile::load() ;
   }
-#endif 
+#endif
 
   if (xrt_core::config::get_sc_profile())
     xdp::sc::profile::load();
@@ -103,6 +106,8 @@ bool load()
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();
+  if (xrt_core::config::get_aie_debug())
+    xdp::aie::debug::load();
 #endif
   return true ;
 }

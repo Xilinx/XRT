@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc.  All rights reserved.
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
 # ====================================================================
 # This builds the AIE Profile plugin.  It is currently built
-# on both Edge, x86, client and ve2 platforms that support AIE.
+# on Edge, x86, Client, and VE2 platforms that support AIE.
 # ====================================================================
 
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")

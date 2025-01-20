@@ -1,23 +1,29 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+/**
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
-#include <boost/property_tree/ptree.hpp>
 #include <memory>
 
-#include "xdp/profile/device/common/client_transaction.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
+#include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-
-#include "core/include/xrt/xrt_hw_context.h"
-
-extern "C" {
-  #include <xaiengine.h>
-  #include <xaiengine/xaiegbl_params.h>
-}
 
 namespace xdp {
 
@@ -26,41 +32,27 @@ namespace xdp {
   public:
     AieDebugPlugin();
     ~AieDebugPlugin();
+    static bool alive();
     void updateAIEDevice(void* handle);
     void endAIEDebugRead(void* handle);
-    static bool alive();
-
+    void endPollforDevice(void* handle);
+    
   private:
-    void endPoll();
-    void poll();
-    std::vector<std::string> getSettingsVector(std::string settingsString);
-    std::map<module_type, std::vector<uint64_t>> parseMetrics();
-    aie::driver_config getAIEConfigMetadata();
     uint64_t getDeviceIDFromHandle(void* handle);
 
-    const std::map<module_type, const char*> moduleTypes = {
-      {module_type::core, "AIE"},
-      {module_type::dma, "DMA"},
-      {module_type::shim, "Interface"},
-      {module_type::mem_tile, "Memory Tile"}
-    };
-    
-    xrt::hw_context mHwContext;
-    std::unique_ptr<aie::ClientTransaction> transactionHandler;
-    uint8_t* txn_ptr;
-    XAie_DevInst aieDevInst = {0};
-    const aie::BaseFiletypeImpl* metadataReader = nullptr;
-    read_register_op_t* op;
-    std::size_t op_size;
-
+  private:
     static bool live;
+    uint32_t mIndex = 0;
+
+    // This struct and handleToAIEData map is created to provision multiple AIEs
+    // on the same machine, each denoted by its own handle
     struct AIEData {
       uint64_t deviceID;
-      std::atomic<bool> threadCtrlBool;
-      std::thread thread;
+      bool valid;
+      std::unique_ptr<AieDebugImpl> implementation;
+      std::shared_ptr<AieDebugMetadata> metadata;
     };
-    std::map<void*, AIEData>  handleToAIEData;
-
+    std::map<void*, AIEData> handleToAIEData;
   };
 
 } // end namespace xdp

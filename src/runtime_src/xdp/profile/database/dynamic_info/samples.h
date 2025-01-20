@@ -87,6 +87,33 @@ namespace xdp {
     }
 
   };
+
+  class AIEDebugContainer
+  {
+    private:
+    std::vector<xdp::aie::AIEDebugDataType> samples;
+    std::mutex containerLock; // Protects the "samples" vector
+
+    public:
+    AIEDebugContainer() = default;
+    ~AIEDebugContainer() = default;
+
+    inline void addAIEDebugData(const xdp::aie::AIEDebugDataType& s)
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      samples.push_back(s);
+    }
+    inline std::vector<xdp::aie::AIEDebugDataType> getAIEDebugData()
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      return samples;
+    }
+    inline std::vector<xdp::aie::AIEDebugDataType> moveAIEDebugData()
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      return std::move(samples);
+    }
+  };
 } // end namespace xdp
 
 #endif

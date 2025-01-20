@@ -107,9 +107,13 @@ namespace xdp {
     void addAIESample(double timestamp, const std::vector<uint64_t>& values)
     { aie_db.addAIESample(timestamp, values);  }
 
-    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 
+    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2,
                            const std::vector<uint64_t>& values)
     { aie_db.addAIETimerSample(timestamp1, timestamp2, values);  }
+
+    inline
+    void addAIEDebugSample(uint8_t col, uint8_t row, uint32_t value, uint64_t offset, std::string name)
+    { aie_db.addAIEDebugSample(col, row, value, offset, name);  }
 
     inline std::vector<counters::Sample> getAIESamples()
     { return aie_db.getAIESamples();  }
@@ -125,6 +129,14 @@ namespace xdp {
 
     inline std::string& getPLDeadlockInfo()
     { return pl_db.getDeadlockInfo(); }
+
+    inline
+    std::vector<xdp::aie::AIEDebugDataType> getAIEDebugSamples()
+    { return aie_db.getAIEDebugSamples();  }
+
+    inline std::vector<xdp::aie::AIEDebugDataType> moveAIEDebugSamples()
+    { return aie_db.moveAIEDebugSamples(); }
+
 
   };
 
