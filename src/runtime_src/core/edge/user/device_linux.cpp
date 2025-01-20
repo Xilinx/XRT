@@ -2,6 +2,7 @@
 // Copyright (C) 2020-2022 Xilinx, Inc
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_linux.h"
+#include "smi.h"
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
@@ -678,6 +679,29 @@ struct am_counter
   }
 };
 
+struct xrt_smi_config
+{
+  using result_type = std::any;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& reqType)
+  {
+    if (key != key_type::xrt_smi_config)
+      throw xrt_core::query::no_such_key(key, "Not implemented");
+    std::string xrt_smi_config;
+    const auto xrt_smi_config_type = std::any_cast<xrt_core::query::xrt_smi_config::type>(reqType);
+    switch (xrt_smi_config_type) {
+    case xrt_core::query::xrt_smi_config::type::options_config:
+      xrt_smi_config = xrt_core::smi::get_smi_config();
+      break;
+    default:
+      throw xrt_core::query::no_such_key(key, "Not implemented");
+    }
+
+    return xrt_smi_config;
+  }
+};
+
 struct asm_counter
 {
   using result_type = query::asm_counter::result_type;
@@ -1057,6 +1081,7 @@ initialize_query_table()
 
   emplace_func4_request<query::aim_counter,             aim_counter>();
   emplace_func4_request<query::am_counter,              am_counter>();
+  emplace_func4_request<query::xrt_smi_config,          xrt_smi_config>();
   emplace_func4_request<query::asm_counter,             asm_counter>();
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
