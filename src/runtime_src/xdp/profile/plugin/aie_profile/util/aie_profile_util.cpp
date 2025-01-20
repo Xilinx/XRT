@@ -288,7 +288,8 @@ namespace xdp::aie::profile {
     eventSets = {
       {"execution",               {16, 17, 18, 19, 20, 62}},
       {"interrupt_stalls",        {23, 24, 25, 26, 27, 57}},
-      {"mmu_activity",            {43, 48, 49, 50, 53, 61}}
+      {"mmu_activity",            {43, 48, 49, 50, 53, 61}},
+      {"test",                    { 0,  0,  0,  0,  0,  0}}
     };
 
     return eventSets;
@@ -690,6 +691,90 @@ namespace xdp::aie::profile {
     uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
 
     return total_beats;
+  }
+
+  /****************************************************************************
+   * Configure counters in Microblaze Debug Module (MDM)
+   * TODO: convert to using XAie_Events once support is available from driver
+   ***************************************************************************/
+  void configMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                         const std::vector<uint32_t> events)
+  {
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
+    
+    // Use MDM protocol to configure counters
+    // 1. Reset to first counter
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_RESET_BIT);
+    
+    // 2. Write events for all counters
+    for (auto event : events)
+      XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCTRLR, event);
+
+    // 3. Clear and start counters
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_CLEAR_BIT);
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_START_BIT);
+  }
+
+  /****************************************************************************
+   * Read counters in Microblaze Debug Module (MDM)
+   ***************************************************************************/
+  void readMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                       std::vector<uint64_t>& values)
+  {
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
+
+    // Use MDM protocol to read counters
+    // 1. Sample and stop counters
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_SAMPLE_BIT);
+    // NOTE: Do counters need to be stopped before reading? If so, uncomment line below.
+    //XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_STOP_BIT);
+
+    // 2. Reset to first counter
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_RESET_BIT);
+
+    // 3. Read status of all counters
+    std::vector<bool> overflows;
+    uint32_t numCounters = UC_NUM_EVENT_COUNTERS + UC_NUM_LATENCY_COUNTERS;
+    for (uint32_t c=0; c < numCounters; ++c) {
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCSR, &val);
+      bool overflow = (((val >> UC_MDM_PCSR_OVERFLOW_BIT) & 0x1) == 1);
+      overflows.push_back(overflow);
+
+      if ((val >> UC_MDM_PCSR_FULL_BIT) & 0x1) {
+        std::cout << "Full bit of tile " << col << "," << row << " microcontroller counter " 
+                  << c << " is high" << std::endl;
+      }
+    }
+
+    // 4. Read values of event counters
+    for (uint32_t c=0; c < UC_NUM_EVENT_COUNTERS; ++c) {
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
+      uint64_t val2 = (overflows.at(c)) ? (val + OVERFLOW_32BIT) : val;
+      values.push_back(val2);
+    }
+
+    // 5. Read four values from latency counter
+    //    Read 1 - The number of times the event occurred
+    //    Read 2 - The sum of each event latency
+    //    Read 3 - The sum of each event latency squared
+    //    Read 4 - 31:16 Minimum measured latency, 16 bits
+    //             15:0  Maximum measured latency, 16 bits
+    std::vector<uint32_t> latencyValues;
+    for (uint32_t c=0; c < UC_MDM_PCDRR_LATENCY_READS; ++c) {
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
+      uint64_t val2 = (overflows.at(UC_NUM_EVENT_COUNTERS)) ? (val + OVERFLOW_32BIT) : val;
+      latencyValues.push_back(val2);
+    }
+
+    // 6. Calculate average latency
+    // NOTE: for now, only report average (we also have min and max; see above)
+    uint32_t numValues = latencyValues.at(0);
+    uint32_t totalLatency = latencyValues.at(1);
+    uint64_t avgLatency = (numValues == 0) ? 0 : (totalLatency / numValues);
+    values.push_back(avgLatency);
   }
 
 } // namespace xdp::aie

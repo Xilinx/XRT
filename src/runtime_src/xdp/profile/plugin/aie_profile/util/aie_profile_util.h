@@ -225,6 +225,26 @@ namespace xdp::aie::profile {
 
   uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hwGen);
 
+  /**
+   * @brief Configure counters in Microblaze Debug Module (MDM) 
+   * @param aieDevInst AIE device instance
+   * @param col tile column
+   * @param row tile row
+   * @param events vector of events to use in counters
+   */
+  void configMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                         const std::vector<uint32_t> events);
+
+  /**
+   * @brief Read counters in Microblaze Debug Module (MDM) 
+   * @param aieDevInst AIE device instance
+   * @param col tile column
+   * @param row tile row
+   * @param values vector of values from counters
+   */
+  void readMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                       std::vector<uint64_t>& values);
+  
 }  // namespace xdp::aie::profile
 
 #endif
