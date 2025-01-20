@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1045,6 +1045,7 @@ namespace xdp {
     auto defaultSet = defaultSets[moduleIdx];
     bool showWarning = true;
     std::vector<tile_type> offTiles;
+    auto metricVec = metricStrings.at(module_type::shim);
 
     for (auto& tileMetric : configMetrics[moduleIdx]) {
       // Save list of "off" tiles
@@ -1054,8 +1055,6 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      auto metricVec = metricStrings.at(module_type::shim);
-
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
         if (showWarning) {
           std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
@@ -1088,7 +1087,7 @@ namespace xdp {
     auto allValidPorts = metadataReader->getValidPorts();
 
     // STEP 1 : Parse per-graph or per-kernel settings
-    // NOTE: graph settings not yet
+    // NOTE: graph settings not supported yet
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
@@ -1187,6 +1186,7 @@ namespace xdp {
     auto defaultSet = defaultSets[moduleIdx];
     bool showWarning = true;
     std::vector<tile_type> offTiles;
+    auto metricVec = metricStrings.at(module_type::uc);
 
     for (auto& tileMetric : configMetrics[moduleIdx]) {
       // Save list of "off" tiles
@@ -1196,8 +1196,6 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      auto metricVec = metricStrings.at(module_type::shim);
-
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
         if (showWarning) {
           std::string msg = "Unable to find microcontroller metric set " + tileMetric.second
