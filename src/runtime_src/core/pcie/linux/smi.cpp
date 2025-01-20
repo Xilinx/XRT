@@ -404,7 +404,7 @@ static constexpr std::string_view xrt_smi_config =
         "default_value": "",
         "option_type": "hidden", 
         "value_type" : "string"
-      },
+      }
     ]
   }]
 }
