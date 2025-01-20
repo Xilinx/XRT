@@ -20,6 +20,7 @@
 constexpr uint16_t BASE_MEMORY_COUNTER    = 1000;
 constexpr uint16_t BASE_SHIM_COUNTER      = 2000;
 constexpr uint16_t BASE_MEM_TILE_COUNTER  = 3000;
+constexpr uint16_t BASE_UC_MDM_COUNTER    = 4000;
 
 constexpr uint32_t PAYLOAD_IS_CHANNEL_SHIFT =  7;
 constexpr uint32_t PAYLOAD_IS_MASTER_SHIFT  =  8;

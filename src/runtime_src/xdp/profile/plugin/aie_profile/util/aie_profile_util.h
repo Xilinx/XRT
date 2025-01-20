@@ -37,7 +37,8 @@ namespace xdp::aie::profile {
     {module_type::core,     static_cast<uint16_t>(0)},
     {module_type::dma,      BASE_MEMORY_COUNTER},
     {module_type::shim,     BASE_SHIM_COUNTER},
-    {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
+    {module_type::mem_tile, BASE_MEM_TILE_COUNTER},
+    {module_type::uc,       BASE_UC_MDM_COUNTER}
   };
 
   const std::vector<XAie_ModuleType> falModuleTypes = {
@@ -45,7 +46,7 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
     XAIE_MEM_MOD,
-    XAIE_PL_MOD    // TODO: if needed, replace with module type for uCs
+    XAIE_PL_MOD    // TODO: replace if/when there is an uC module type
   };
 
   enum adfAPI {
