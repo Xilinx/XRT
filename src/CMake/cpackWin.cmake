@@ -33,6 +33,9 @@ file(COPY "${XRT_SOURCE_DIR}/../LICENSE" DESTINATION "${PROJECT_BINARY_DIR}")
 file(RENAME "${PROJECT_BINARY_DIR}/LICENSE" "${PROJECT_BINARY_DIR}/license.txt")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_BINARY_DIR}/license.txt")
 
+# OpenCL is excluded from NPU builds
+if (NOT XRT_NPU)
+
 ################################################################
 # Khronos ICD loader
 ################################################################
@@ -58,7 +61,11 @@ cpack_add_component_group(THIRD_PARTY_LIBRARIES
   DESCRIPTION "Third party libraries used by the XRT applications."
 )
 
+endif (NOT XRT_NPU)
 
+# xocl/xclmgmt are for Alveo only
+if (XRT_ALVEO)
+  
 # -- XCL Managment Driver --
 if (DEFINED XCL_MGMT)
   if (NOT XCL_MGMT STREQUAL "")
@@ -147,6 +154,8 @@ cpack_add_component_group(DRIVERS
   DESCRIPTION "Drivers used by XRT."
 #  EXPANDED
 )
+
+endif (XRT_ALVEO)
 
 
 # -- Our application ---

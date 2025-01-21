@@ -21,5 +21,5 @@ target_link_libraries(xdp_opencl_trace_plugin PRIVATE xdp_core xrt_coreutil)
 set_target_properties(xdp_opencl_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_opencl_trace_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )

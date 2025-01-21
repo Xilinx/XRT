@@ -25,7 +25,7 @@ target_link_libraries(xdp_pl_deadlock_plugin PRIVATE xdp_core xrt_core xrt_coreu
 set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_pl_deadlock_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )
 
 if (NOT WIN32)
@@ -42,7 +42,7 @@ target_link_libraries(xdp_hw_emu_pl_deadlock_plugin PRIVATE xdp_core xrt_coreuti
 set_target_properties(xdp_hw_emu_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_hw_emu_pl_deadlock_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )
 
 endif()
