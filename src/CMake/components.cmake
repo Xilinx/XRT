@@ -72,6 +72,11 @@ if (XRT_BASE)
   set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "base")
   set (XRT_BASE_COMPONENT "base")
   set (XRT_BASE_DEV_COMPONENT "base-${XRT_DEV_COMPONENT_SUFFIX}")
+
+  # Tempoary fix for cpackLin conditionally adding dependencies for
+  # legacy XRT when XRT_DEV_COMPONENT equals "xrt".  We don't want the
+  # dependencies in case of base package.
+  set (XRT_DEV_COMPONENT "dummy")
 endif(XRT_BASE)  
 
 # NPU builds one NPU package for both deployment and development
