@@ -406,11 +406,6 @@ SubCmdValidate::getTestNameDescriptions(const SubCmdValidateOptions& options, co
   return reportDescriptionCollection;
 }
 
-  // -- Build up the format options
-static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
-static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
-static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
-
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
@@ -423,15 +418,6 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commandConfig = configurations;
-
-  const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
-  jsonOptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-
-  // -- Build up the format options
-  XBUtilities::VectorPairStrings common_tests;
-  common_tests.emplace_back(all_test);
-  common_tests.emplace_back(quick_test);
-  static const auto formatRunValues = XBU::create_suboption_list_map("", jsonOptions, common_tests);
 }
 
 void
