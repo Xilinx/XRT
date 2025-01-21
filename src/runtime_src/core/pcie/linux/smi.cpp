@@ -53,65 +53,73 @@ static constexpr std::string_view xrt_smi_config =
       {
         "name" : "run",
         "alias" : "r",
-        "description" : "Run a subset of the test suite",
+        "description" : ["Run a subset of the test suite. Valid options are:",
+                         "\n\taie                       - Run AIE PL test",
+                         "\n\taux-connection            - Check if auxiliary power is connected",
+                         "\n\tdma                       - Run dma test",
+                         "\n\thostmem-bw                - Run 'bandwidth kernel' when host memory is",
+                         "\n\t                            enabled",
+                         "\n\tm2m                       - Run M2M test",
+                         "\n\tmem-bw                    - Run 'bandwidth kernel' and check the",
+                         "\n\t                            throughput",
+                         "\n\tp2p                       - Run P2P test",
+                         "\n\tpcie-link                 - Check if PCIE link is active",
+                         "\n\tsc-version                - Check if SC firmware is up-to-date",
+                         "\n\tverify                    - Run 'Hello World' kernel test"
+                         ],
         "tag" : "basic",
         "option_type": "common",
         "value_type" : "array",
         "options" : [
           {
-            "name" : "latency",
+            "name" : "aie",
             "tag" : "basic",
-            "description" : "Run end-to-end latency test"
+            "description" : "Run AIE PL test"
           },
           {
-            "name" : "throughput",
+            "name" : "aux-connection",
             "tag" : "basic",
-            "description" : "Run end-to-end throughput test"
+            "description" : "Check if auxiliary power is connected"
           },
           {
-            "name" : "cmd-chain-latency",
+            "name" : "dma",
             "tag" : "basic",
-            "description" : "Run command chain latency test"
+            "description" : "Run dma test"
           },
           {
-            "name" : "cmd-chain-throughput",
+            "name" : "hostmem-bw",
             "tag" : "basic",
-            "description" : "Run end-to-end throughput test using command chaining"
+            "description" : "Run 'bandwidth kernel' when host memory is enabled"
           },
           {
-            "name" : "df-bw",
+            "name" : "m2m",
             "tag" : "basic",
-            "description" : "Run dataflow bandwidth test"
+            "description" : "Run M2M test"
           },
           {
-            "name" : "tct-one-col",
+            "name" : "mem-bw",
             "tag" : "basic",
-            "description" : "Run TCT test with one column"
+            "description" : "Run 'bandwidth kernel' and check the throughput"
           },
           {
-            "name" : "tct-all-col",
+            "name" : "p2p",
             "tag" : "basic",
-            "description" : "Run TCT test with all columns"
+            "description" : "Run P2P test"
           },
           {
-            "name" : "gemm",
+            "name" : "pcie-link",
             "tag" : "basic",
-            "description" : "Run GEMM test"
+            "description" : "Check if PCIE link is active"
           },
           {
-            "name" : "aie-reconfig-overhead",
+            "name" : "tsc-version",
             "tag" : "advanced",
-            "description" : "Run AIE reconfiguration overhead test"
+            "description" : "Check if SC firmware is up-to-date"
           },
           {
-            "name" : "spatial-sharing-overhead",
+            "name" : "verify",
             "tag" : "advanced",
-            "description" : "Run spatial sharing overhead test"
-          },
-          {
-            "name" : "temporal-sharing-overhead",
-            "tag" : "advanced",
-            "description" : "Run temporal sharing overhead test"
+            "description" : "Run 'Hello World' kernel test"
           }
         ]
       },
@@ -300,15 +308,102 @@ static constexpr std::string_view xrt_smi_config =
     [
       {
         "name": "device",
+        "alias": "d",
         "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "devl",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common",
+        "value_type": "string"
+      },
+      {
+        "name": "help",
+        "alias": "h",
+        "description" : "Help to use this sub-command",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "none"
+      },
+      {
+        "name": "daemon",
+        "alias": "",
+        "description" : "Update the device daemon configuration",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "none"
+      },
+      {
+        "name": "purge",
+        "alias": "",
+        "description": "Remove the daemon configuration file",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden",
+        "value_type": "string"
+      },
+      {
+        "name": "host",
+        "alias": "",
+        "description" : "IP or hostname for device peer",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
         "value_type" : "string"
       },
       {
-        "name": "pmode",
-        "description": "Modes: default, powersaver, balanced, performance, turbo",
+        "name": "security",
+        "alias": "",
+        "description" : "Update the security level for the device",
         "tag": "basic",
-        "value_type": "string"
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
+      },
+      {
+        "name": "clk_throttle",
+        "alias": "",
+        "description" : "Enable/disable the device clock throttling",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
+      },
+      {
+        "name": "ct_threshold_power_override",
+        "alias": "",
+        "description" : "Update the power threshold in watts",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
+      },
+      {
+        "name": "ct_threshold_temp_override",
+        "alias": "",
+        "description" : "Update the temperature threshold in celsius",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
+      },
+      {
+        "name": "ct_reset",
+        "alias": "",
+        "description" : "Reset all throttling options",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
+      },
+      {
+        "name": "showx",
+        "alias": "",
+        "description" : "Display the device configuration settings",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "hidden", 
+        "value_type" : "string"
       }
     ]
   }]
