@@ -17,7 +17,7 @@ usage()
 {
     std::cout << "usage: %s [options]\n\n";
     std::cout << "  -d <bdf | device_index>\n";
-    std::cout << "  [-j all] # dump all json queries\n";
+    std::cout << "  [-j] # dump all json queries\n";
     std::cout << "  -h\n\n";
     std::cout << "";
 }
@@ -25,7 +25,7 @@ usage()
 static int
 run(int argc, char** argv)
 {
-  if (argc < 3) {
+  if (argc < 2) {
     usage();
     return 1;
   }
@@ -52,7 +52,7 @@ run(int argc, char** argv)
     }
 
     // Switch arguments
-    else if (cur == "-d")
+    if (cur == "-d")
       device_index = arg;
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
