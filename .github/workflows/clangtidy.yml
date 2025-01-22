@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout XRT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Store sha
       run: echo ${{ github.sha }} > sha
     - name: Compare sha
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-sha
       with:
         path: sha
