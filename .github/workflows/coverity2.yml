@@ -12,7 +12,7 @@ jobs:
     if: github.repository == 'Xilinx/XRT'
     steps:
     - name: Checkout XRT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Store sha
       run: echo ${{ github.sha }} > sha
     - name: Compare sha
