@@ -28,13 +28,13 @@ jobs:
 
     - name: Checkout XRT on pull request
       if: github.event_name == 'pull_request'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         ref: ${{ github.event.pull_request.head.sha }}
 
     - name: Checkout XRT on dispatch
       if: github.event_name == 'workflow_dispatch'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.sha }}
 
