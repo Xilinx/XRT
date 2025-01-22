@@ -36,7 +36,7 @@ jobs:
 
     # This step checks out PR in the github workspace. Eventhough we are not building XRT on enclave host, this step is necessary to get create_vm.sh and attach_cards.sh scripts which are included in the XRT tree
     - name: Checkout PR
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Creating a VM from snapshot on enclave host
       run: |
         sudo .github/scripts/pipeline/create_vm.sh
@@ -78,7 +78,7 @@ jobs:
       run: sudo ~/pipeline/setup.sh
 
     - name: Checkout PR
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     # This step builds XRT rpm/deb packages. build.sh is run with -opt option
     - name: Build XRT
