@@ -57,13 +57,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
-set(XBUTIL2_NAME "xrt-smi") 
-# Determine any helper scripts
-if(WIN32)
-  set(XRT_HELPER_SCRIPTS "xrt-smi" "xrt-smi.bat")
-else()
-  set(XRT_HELPER_SCRIPTS "xbutil" "xrt-smi")
-endif()
+set(XBUTIL2_NAME "xrt-smi")
 
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
@@ -92,7 +86,7 @@ if (XRT_STATIC_BUILD)
     )
   set_target_properties(${XBUTIL2_NAME}_static PROPERTIES INSTALL_RPATH "")
   install(TARGETS ${XBUTIL2_NAME}_static
-    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+    RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 target_link_libraries(${XBUTIL2_NAME}
@@ -121,7 +115,7 @@ endif()
 
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME}
-  RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 install (PROGRAMS ${XRT_HELPER_SCRIPTS}
   DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
