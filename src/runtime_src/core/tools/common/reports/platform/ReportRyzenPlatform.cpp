@@ -51,7 +51,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
-    _output << boost::format("  %-23s: %s \n") % "Total Columns" % pt_status.get<std::string>("total_columns");
+    _output << boost::format("  %-23s: %s \n") % "Total Columns" % pt_static_region.get<std::string>("total_columns");
 
 
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
