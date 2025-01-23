@@ -780,7 +780,7 @@ XBUtilities::loadDefaultSmiConfig()
 {
   return std::string(
     R"(
- {
+{
   "subcommands":
   [{
     "name" : "validate",
@@ -827,7 +827,42 @@ XBUtilities::loadDefaultSmiConfig()
       {
         "name" : "run",
         "alias" : "r",
-        "description" : "Run a subset of the test suite",
+        "description" : ["Run a subset of the test suite. Valid options are:",
+                         "\n\tCommon:",
+                         "\n\t\tall                       - All applicable validate tests will be",
+                         "\n\t\t                            executed (default) ",
+                         "\n\t\tquick                     - Run a subset of top four tests",
+                         "\n\tAIE:",
+                         "\n\t\taie-reconfig-overhead     - Run end-to-end array reconfiguration overhead",
+                         "\n\t\t                            through shim DMA",
+                         "\n\t\tcmd-chain-latency         - Run end-to-end latency test using command",
+                         "\n\t\t                            chaining",
+                         "\n\t\tcmd-chain-throughput      - Run end-to-end throughput test using command",
+                         "\n\t\t                            chaining",
+                         "\n\t\tdf-bw                     - Run bandwidth test on data fabric",
+                         "\n\t\tgemm                      - Measure the TOPS value of GEMM operations",
+                         "\n\t\tlatency                   - Run end-to-end latency test",
+                         "\n\t\tspatial-sharing-overhead  - Run Spatial Sharing Overhead Test",
+                         "\n\t\ttct-all-col               - Measure average TCT processing time for all",
+                         "\n\t\t                            columns",
+                         "\n\t\ttct-one-col               - Measure average TCT processing time for one",
+                         "\n\t\t                            column",
+                         "\n\t\ttemporal-sharing-overhead - Run Temporal Sharing Overhead Test",
+                         "\n\t\tthroughput                - Run end-to-end throughput test",
+                         "\n\tAlveo:",
+                         "\n\t\taie                       - Run AIE PL test",
+                         "\n\t\taux-connection            - Check if auxiliary power is connected",
+                         "\n\t\tdma                       - Run dma test",
+                         "\n\t\thostmem-bw                - Run 'bandwidth kernel' when host memory is",
+                         "\n\t\t                            enabled",
+                         "\n\t\tm2m                       - Run M2M test",
+                         "\n\t\tmem-bw                    - Run 'bandwidth kernel' and check the",
+                         "\n\t\t                            throughput",
+                         "\n\t\tp2p                       - Run P2P test",
+                         "\n\t\tpcie-link                 - Check if PCIE link is active",
+                         "\n\t\tsc-version                - Check if SC firmware is up-to-date",
+                         "\n\t\tverify                    - Run 'Hello World' kernel test"
+                         ],
         "tag" : "basic",
         "option_type": "common",
         "value_type" : "array",
@@ -886,6 +921,56 @@ XBUtilities::loadDefaultSmiConfig()
             "name" : "temporal-sharing-overhead",
             "tag" : "advanced",
             "description" : "Run temporal sharing overhead test"
+          },
+          {
+            "name" : "aie",
+            "tag" : "basic",
+            "description" : "Run AIE PL test"
+          },
+          {
+            "name" : "aux-connection",
+            "tag" : "basic",
+            "description" : "Check if auxiliary power is connected"
+          },
+          {
+            "name" : "dma",
+            "tag" : "basic",
+            "description" : "Run dma test"
+          },
+          {
+            "name" : "hostmem-bw",
+            "tag" : "basic",
+            "description" : "Run 'bandwidth kernel' when host memory is enabled"
+          },
+          {
+            "name" : "m2m",
+            "tag" : "basic",
+            "description" : "Run M2M test"
+          },
+          {
+            "name" : "mem-bw",
+            "tag" : "basic",
+            "description" : "Run 'bandwidth kernel' and check the throughput"
+          },
+          {
+            "name" : "p2p",
+            "tag" : "basic",
+            "description" : "Run P2P test"
+          },
+          {
+            "name" : "pcie-link",
+            "tag" : "basic",
+            "description" : "Check if PCIE link is active"
+          },
+          {
+            "name" : "tsc-version",
+            "tag" : "advanced",
+            "description" : "Check if SC firmware is up-to-date"
+          },
+          {
+            "name" : "verify",
+            "tag" : "advanced",
+            "description" : "Run 'Hello World' kernel test"
           }
         ]
       },
@@ -924,33 +1009,78 @@ XBUtilities::loadDefaultSmiConfig()
     [
       {
         "name": "device",
+        "alias": "d",
         "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "devl",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common",
         "value_type": "string"
       },
       {
         "name": "format",
+        "alias": "f",
         "description": "Report output format",
-        "tag": "devl",
+        "tag": "basic",
+        "default_value": "json",
+        "options_type": "common",
         "value_type": "string"
       },
       {
+        "name": "output",
+        "alias": "o",
+        "description" : "Direct the output to the given file",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "string"
+      },
+      {
+        "name": "help",
+        "alias": "h",
+        "description" : "Help to use this sub-command",
+        "tag": "basic",
+        "default_value": "",
+        "option_type": "common", 
+        "value_type" : "none"
+      },
+      {
         "name": "report",
+        "alias": "r",
         "description": "The type of report to be produced. Reports currently available are:",
         "tag": "basic",
+        "option_type": "common",
+        "value_type": "array",
         "options": [
+          {
+            "name": "host",
+            "tag": "basic",
+            "description": "Host information"
+          },
+          {
+            "name": "platform",
+            "tag": "basic",
+            "description": "Platforms flashed on the device"
+          },
           {
             "name": "aie-partitions",
             "tag": "basic",
             "description": "AIE partition information"
           },
           {
-            "name": "telemetry",
-            "tag": "devl",
+            "name": "tememetry",
+            "tag": "basic",
             "description": "Telemetry data for the device"
           }
         ]
-      }
+      },
+      {
+        "name": "element",
+        "alias": "e",
+        "description" : "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'",
+        "tag": "basic",
+        "option_type": "hidden", 
+        "value_type" : "array"
+      } 
     ]
   },
   {
@@ -973,7 +1103,7 @@ XBUtilities::loadDefaultSmiConfig()
       }
     ]
   }]
-}
+} 
 )"
   );
 }// end of namespace XBValidateUtils

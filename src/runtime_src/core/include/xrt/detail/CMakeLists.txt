@@ -8,11 +8,6 @@ set(XRT_XRT_DETAIL_HEADER_SRC
   param_traits.h
   pimpl.h)
 
-# base component install
-install (FILES ${XRT_XRT_DETAIL_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
-  COMPONENT ${XRT_BASE_DEV_COMPONENT})
-
 set(XRT_XRT_DETAIL_LEGACY_SRC
   ert.h
   xclbin.h
@@ -20,7 +15,7 @@ set(XRT_XRT_DETAIL_LEGACY_SRC
   xrt_mem.h)
   
 # base component install
-install (FILES ${XRT_XRT_DETAIL_LEGACY_SRC}
+install (FILES ${XRT_XRT_DETAIL_HEADER_SRC} ${XRT_XRT_DETAIL_LEGACY_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
 

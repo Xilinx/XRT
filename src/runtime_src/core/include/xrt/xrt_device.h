@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _XRT_DEVICE_H_
 #define _XRT_DEVICE_H_
 
@@ -40,45 +40,45 @@ namespace info {
  * device.  The type of the device properties is compile time defined
  * with param traits.
  *
- * @var bdf
+ * @var bdf (deprecated)
  *  BDF for device (std::string)
- * @var interface_uuid
+ * @var interface_uuid (deprecated)
  *  Interface UUID when device is programmed with 2RP shell (`xrt::uuid`)
- * @var kdma
+ * @var kdma (deprecated)
  *  Number of KDMA engines (std::uint32_t)
- * @var max_clock_frequency_mhz
+ * @var max_clock_frequency_mhz (deprecated)
  *  Max clock frequency (unsigned long)
- * @var m2m
+ * @var m2m (deprecated)
  *  True if device contains m2m (bool)
- * @var name
+ * @var name (deprecated)
  *  Name (VBNV) of device (std::string)
- * @var nodma
+ * @var nodma (deprecated)
  *  True if device is a NoDMA device (bool)
- * @var offline
+ * @var offline (deprecated)
  *  True if device is offline and in process of being reset (bool)
- * @var electrical
+ * @var electrical (deprecated)
  *  Electrical and power sensors present on the device (std::string)
- * @var thermal
+ * @var thermal (deprecated)
  *  Thermal sensors present on the device (std::string)
- * @var mechanical
+ * @var mechanical (deprecated)
  *  Mechanical sensors on and surrounding the device (std::string)
- * @var memory
+ * @var memory (deprecated)
  *  Memory information present on the device (std::string)
  * @var platform
  *  Platforms flashed on the device (std::string)
- * @var pcie_info
+ * @var pcie_info (deprecated)
  *  Pcie information of the device (std::string)
  * @var host
  *  Host information (std::string)
- * @var aie
+ * @var aie (deprecated)
  *  AIE core information of the device (std::string)
- * @var aie_shim
+ * @var aie_shim (deprecated)
  *  AIE shim information of the device (std::string)
- * @var dynamic_regions
+ * @var dynamic_regions (deprecated)
  *  Information about xclbin on the device (std::string)
- * @var vmr
+ * @var vmr (deprecated)
  *  Information about vmr on the device (std::string)
- * @var aie_mem
+ * @var aie_mem (deprecated)
  *  AIE memory information of the device (std::string)
  */
 enum class device : unsigned int {
