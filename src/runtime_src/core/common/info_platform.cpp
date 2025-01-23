@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_platform.h"
 #include "query_requests.h"
@@ -61,6 +61,8 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
   case xrt_core::query::device_class::type::ryzen:
   {
     static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
+    const auto total_cols = xrt_core::device_query_default<xq::total_cols>(device, 0);
+    pt.add("total_columns", total_cols);
     break;
   }
   }
