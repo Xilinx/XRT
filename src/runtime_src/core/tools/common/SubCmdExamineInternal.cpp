@@ -221,3 +221,16 @@ void SubCmdExamineInternal::fill_option_values(const po::variables_map& vm, SubC
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
   options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>(); 
 }
+
+void
+SubCmdExamineInternal::setOptionConfig(const boost::property_tree::ptree &config)
+{
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
+}

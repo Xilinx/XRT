@@ -783,292 +783,60 @@ XBUtilities::loadDefaultSmiConfig()
 {
   "subcommands":
   [{
-    "name" : "validate",
-    "description" : "Validates the given device by executing the platform's validate executable.",
-    "tag" : "basic",
-    "options" :
-    [
-      {
-        "name": "device",
-        "alias": "d",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "format",
-        "alias": "f",
-        "description": "Report output format",
-        "tag": "basic",
-        "default_value": "JSON",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "output",
-        "alias": "o",
-        "description" : "Direct the output to the given file",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "help",
-        "alias": "h",
-        "description" : "Help to use this sub-command",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "none"
-      },
-      {
-        "name" : "run",
-        "alias" : "r",
-        "description" : ["Run a subset of the test suite. Valid options are:",
-                         "\n\tCommon:",
-                         "\n\t\tall                       - All applicable validate tests will be",
-                         "\n\t\t                            executed (default) ",
-                         "\n\t\tquick                     - Run a subset of top four tests",
-                         "\n\tAIE:",
-                         "\n\t\taie-reconfig-overhead     - Run end-to-end array reconfiguration overhead",
-                         "\n\t\t                            through shim DMA",
-                         "\n\t\tcmd-chain-latency         - Run end-to-end latency test using command",
-                         "\n\t\t                            chaining",
-                         "\n\t\tcmd-chain-throughput      - Run end-to-end throughput test using command",
-                         "\n\t\t                            chaining",
-                         "\n\t\tdf-bw                     - Run bandwidth test on data fabric",
-                         "\n\t\tgemm                      - Measure the TOPS value of GEMM operations",
-                         "\n\t\tlatency                   - Run end-to-end latency test",
-                         "\n\t\tspatial-sharing-overhead  - Run Spatial Sharing Overhead Test",
-                         "\n\t\ttct-all-col               - Measure average TCT processing time for all",
-                         "\n\t\t                            columns",
-                         "\n\t\ttct-one-col               - Measure average TCT processing time for one",
-                         "\n\t\t                            column",
-                         "\n\t\ttemporal-sharing-overhead - Run Temporal Sharing Overhead Test",
-                         "\n\t\tthroughput                - Run end-to-end throughput test",
-                         "\n\tAlveo:",
-                         "\n\t\taie                       - Run AIE PL test",
-                         "\n\t\taux-connection            - Check if auxiliary power is connected",
-                         "\n\t\tdma                       - Run dma test",
-                         "\n\t\thostmem-bw                - Run 'bandwidth kernel' when host memory is",
-                         "\n\t\t                            enabled",
-                         "\n\t\tm2m                       - Run M2M test",
-                         "\n\t\tmem-bw                    - Run 'bandwidth kernel' and check the",
-                         "\n\t\t                            throughput",
-                         "\n\t\tp2p                       - Run P2P test",
-                         "\n\t\tpcie-link                 - Check if PCIE link is active",
-                         "\n\t\tsc-version                - Check if SC firmware is up-to-date",
-                         "\n\t\tverify                    - Run 'Hello World' kernel test"
-                         ],
-        "tag" : "basic",
-        "option_type": "common",
-        "value_type" : "array",
-        "options" : [
-          {
-            "name" : "latency",
-            "tag" : "basic",
-            "description" : "Run end-to-end latency test"
-          },
-          {
-            "name" : "throughput",
-            "tag" : "basic",
-            "description" : "Run end-to-end throughput test"
-          },
-          {
-            "name" : "cmd-chain-latency",
-            "tag" : "basic",
-            "description" : "Run command chain latency test"
-          },
-          {
-            "name" : "cmd-chain-throughput",
-            "tag" : "basic",
-            "description" : "Run end-to-end throughput test using command chaining"
-          },
-          {
-            "name" : "df-bw",
-            "tag" : "basic",
-            "description" : "Run dataflow bandwidth test"
-          },
-          {
-            "name" : "tct-one-col",
-            "tag" : "basic",
-            "description" : "Run TCT test with one column"
-          },
-          {
-            "name" : "tct-all-col",
-            "tag" : "basic",
-            "description" : "Run TCT test with all columns"
-          },
-          {
-            "name" : "gemm",
-            "tag" : "basic",
-            "description" : "Run GEMM test"
-          },
-          {
-            "name" : "aie-reconfig-overhead",
-            "tag" : "advanced",
-            "description" : "Run AIE reconfiguration overhead test"
-          },
-          {
-            "name" : "spatial-sharing-overhead",
-            "tag" : "advanced",
-            "description" : "Run spatial sharing overhead test"
-          },
-          {
-            "name" : "temporal-sharing-overhead",
-            "tag" : "advanced",
-            "description" : "Run temporal sharing overhead test"
-          },
-          {
-            "name" : "aie",
-            "tag" : "basic",
-            "description" : "Run AIE PL test"
-          },
-          {
-            "name" : "aux-connection",
-            "tag" : "basic",
-            "description" : "Check if auxiliary power is connected"
-          },
-          {
-            "name" : "dma",
-            "tag" : "basic",
-            "description" : "Run dma test"
-          },
-          {
-            "name" : "hostmem-bw",
-            "tag" : "basic",
-            "description" : "Run 'bandwidth kernel' when host memory is enabled"
-          },
-          {
-            "name" : "m2m",
-            "tag" : "basic",
-            "description" : "Run M2M test"
-          },
-          {
-            "name" : "mem-bw",
-            "tag" : "basic",
-            "description" : "Run 'bandwidth kernel' and check the throughput"
-          },
-          {
-            "name" : "p2p",
-            "tag" : "basic",
-            "description" : "Run P2P test"
-          },
-          {
-            "name" : "pcie-link",
-            "tag" : "basic",
-            "description" : "Check if PCIE link is active"
-          },
-          {
-            "name" : "tsc-version",
-            "tag" : "advanced",
-            "description" : "Check if SC firmware is up-to-date"
-          },
-          {
-            "name" : "verify",
-            "tag" : "advanced",
-            "description" : "Run 'Hello World' kernel test"
-          }
-        ]
-      },
-      {
-        "name" : "path",
-        "alias" : "p",
-        "description" : "Path to the directory containing validate xclbins",
-        "tag" : "basic",
-        "default_value": "",
-        "option_type": "hidden",
-        "value_type" : "string"
-      },
-      {
-        "name" : "param",
-        "description" : "Extended parameter for a given test. Format: <test-name>:<key>:<value>",
-        "tag" : "basic",
-        "option_type": "hidden",
-        "default_value": "",
-        "value_type" : "string"
-      },
-      {
-        "name" : "pmode",
-        "description" : "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes",
-        "tag" : "basic",
-        "option_type": "hidden",
-        "default_value": "",
-        "value_type" : "string"
-      }
-    ]
-  },
-  {
     "name" : "examine",
-    "tag" : "basic",
+    "type" : "common",
     "description": "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.",
     "options":
     [
       {
-        "name": "device",
-        "alias": "d",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common",
-        "value_type": "string"
-      },
-      {
         "name": "format",
         "alias": "f",
         "description": "Report output format",
-        "tag": "basic",
+        "type": "common",
         "default_value": "json",
-        "options_type": "common",
         "value_type": "string"
       },
       {
         "name": "output",
         "alias": "o",
         "description" : "Direct the output to the given file",
-        "tag": "basic",
+        "type": "common",
         "default_value": "",
-        "option_type": "common", 
         "value_type" : "string"
       },
       {
         "name": "help",
         "alias": "h",
         "description" : "Help to use this sub-command",
-        "tag": "basic",
+        "type": "common",
         "default_value": "",
-        "option_type": "common", 
         "value_type" : "none"
       },
       {
         "name": "report",
         "alias": "r",
         "description": "The type of report to be produced. Reports currently available are:",
-        "tag": "basic",
-        "option_type": "common",
+        "type": "common",
         "value_type": "array",
         "options": [
           {
             "name": "host",
-            "tag": "basic",
+            "type": "common",
             "description": "Host information"
           },
           {
             "name": "platform",
-            "tag": "basic",
+            "type": "common",
             "description": "Platforms flashed on the device"
           },
           {
             "name": "aie-partitions",
-            "tag": "basic",
+            "type": "common",
             "description": "AIE partition information"
           },
           {
             "name": "tememetry",
-            "tag": "basic",
+            "type": "common",
             "description": "Telemetry data for the device"
           }
         ]
@@ -1077,32 +845,12 @@ XBUtilities::loadDefaultSmiConfig()
         "name": "element",
         "alias": "e",
         "description" : "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'",
-        "tag": "basic",
-        "option_type": "hidden", 
+        "type": "hidden",
         "value_type" : "array"
       } 
     ]
-  },
-  {
-    "name" : "configure",
-    "tag" : "devl",
-    "description" : "Device and host configuration.",
-    "options" :
-    [
-      {
-        "name": "device",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "devl",
-        "value_type" : "string"
-      },
-      {
-        "name": "pmode",
-        "description": "Modes: default, powersaver, balanced, performance, turbo",
-        "tag": "basic",
-        "value_type": "string"
-      }
-    ]
-  }]
+  }
+  ]
 } 
 )"
   );

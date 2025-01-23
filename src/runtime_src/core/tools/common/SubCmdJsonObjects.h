@@ -4,7 +4,7 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
+#include <map>
 
 #include "boost/property_tree/ptree.hpp"
 #include "boost/program_options.hpp"
@@ -26,16 +26,15 @@ class OptionBasic {
 public:
   std::string m_name;
   std::string m_description;
-  std::string m_tag;
+  std::string m_type;
 
   public:
 
   OptionBasic(const pt::ptree& configurations);
 
-  std::string concatenate(const pt::ptree& pt, const std::string& path) const;
   std::string getName() const { return m_name; }
   std::string getDescription() const { return m_description; }
-  std::string getTag() const { return m_tag; }
+  std::string getType() const { return m_type; }
   void printOption() const;
 };
 
@@ -43,21 +42,9 @@ public:
 class SubCommandOption : public OptionBasic {
   std::string m_alias;
   std::string m_defaultValue;
-  std::string m_optionType;
   std::string m_valueType;
+  std::vector<OptionBasic> m_description_array;
   pt::ptree   m_ptEmpty;
-
-  /*
-  * Map of option name vs SubCommandOption objects. Example:
-  * --run can have multiple option values like latency, throughput etc.
-  * latency : OptionBasic object
-  * throughput : OptionBasic object
-  * .................
-  * df-bw : OptionBasic object
-  */
-  std::unordered_map<std::string, OptionBasic> m_subOptionMap;
-  std::unordered_map<std::string, OptionBasic>
-  createBasicOptions(const pt::ptree& pt);
 
 public:
   SubCommandOption(const pt::ptree& configurations);
@@ -65,8 +52,7 @@ public:
   std::string getValueType() const { return m_valueType; }
   std::string getAlias() const { return m_alias; }
   std::string getDefaultValue() const { return m_defaultValue; }
-  std::string getOptionType() const { return m_optionType; }
-  std::unordered_map<std::string, OptionBasic> getSubOptionMap() const { return m_subOptionMap; }
+  std::vector<OptionBasic> createDescriptionArray(const pt::ptree& pt);
 
   void addProgramOption(po::options_description& options, const std::string& optionsType);
   void printOption() const;
@@ -80,14 +66,14 @@ class SubCommand : public OptionBasic {
   * .................
   * --run : SubCommandOption object
   */
-  std::unordered_map<std::string, SubCommandOption> m_optionMap;
+  std::map<std::string, SubCommandOption> m_optionMap;
 
-  std::unordered_map<std::string, SubCommandOption>
+  std::map<std::string, SubCommandOption>
   createSubCommandOptions(const pt::ptree& pt);
 
 public:
   SubCommand(const pt::ptree& configurations); 
-  std::unordered_map<std::string,SubCommandOption> getOptionMap() const { return m_optionMap; }
+  std::map<std::string,SubCommandOption> getOptionMap() const { return m_optionMap; }
 
   void addProgramOptions(po::options_description& options, const std::string& optionsType);
 };
@@ -106,8 +92,8 @@ class JsonConfig {
   * configure : SubCommand object
   * examine : SubCommand object 
   */
-  std::unordered_map<std::string, SubCommand> m_subCommandMap;
-  std::unordered_map<std::string, SubCommand>
+  std::map<std::string, SubCommand> m_subCommandMap;
+  std::map<std::string, SubCommand>
   createSubCommands(const pt::ptree& pt, const std::string& subCommand);
 public:
   JsonConfig(const pt::ptree& configurations, const std::string& subCommand)

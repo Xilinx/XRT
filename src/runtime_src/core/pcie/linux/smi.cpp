@@ -1,419 +1,215 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "smi.h"
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <variant>
 
 namespace xrt_core::smi {
 
-static constexpr std::string_view xrt_smi_config =
- R"(
- {
-  "subcommands":
-  [{
-    "name" : "validate",
-    "description" : "Validates the given device by executing the platform's validate executable.",
-    "tag" : "basic",
-    "options" :
-    [
-      {
-        "name": "device",
-        "alias": "d",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "format",
-        "alias": "f",
-        "description": "Report output format",
-        "tag": "basic",
-        "default_value": "JSON",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "output",
-        "alias": "o",
-        "description" : "Direct the output to the given file",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "help",
-        "alias": "h",
-        "description" : "Help to use this sub-command",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "none"
-      },
-      {
-        "name" : "run",
-        "alias" : "r",
-        "description" : ["Run a subset of the test suite. Valid options are:",
-                         "\n\taie                       - Run AIE PL test",
-                         "\n\taux-connection            - Check if auxiliary power is connected",
-                         "\n\tdma                       - Run dma test",
-                         "\n\thostmem-bw                - Run 'bandwidth kernel' when host memory is",
-                         "\n\t                            enabled",
-                         "\n\tm2m                       - Run M2M test",
-                         "\n\tmem-bw                    - Run 'bandwidth kernel' and check the",
-                         "\n\t                            throughput",
-                         "\n\tp2p                       - Run P2P test",
-                         "\n\tpcie-link                 - Check if PCIE link is active",
-                         "\n\tsc-version                - Check if SC firmware is up-to-date",
-                         "\n\tverify                    - Run 'Hello World' kernel test"
-                         ],
-        "tag" : "basic",
-        "option_type": "common",
-        "value_type" : "array",
-        "options" : [
-          {
-            "name" : "aie",
-            "tag" : "basic",
-            "description" : "Run AIE PL test"
-          },
-          {
-            "name" : "aux-connection",
-            "tag" : "basic",
-            "description" : "Check if auxiliary power is connected"
-          },
-          {
-            "name" : "dma",
-            "tag" : "basic",
-            "description" : "Run dma test"
-          },
-          {
-            "name" : "hostmem-bw",
-            "tag" : "basic",
-            "description" : "Run 'bandwidth kernel' when host memory is enabled"
-          },
-          {
-            "name" : "m2m",
-            "tag" : "basic",
-            "description" : "Run M2M test"
-          },
-          {
-            "name" : "mem-bw",
-            "tag" : "basic",
-            "description" : "Run 'bandwidth kernel' and check the throughput"
-          },
-          {
-            "name" : "p2p",
-            "tag" : "basic",
-            "description" : "Run P2P test"
-          },
-          {
-            "name" : "pcie-link",
-            "tag" : "basic",
-            "description" : "Check if PCIE link is active"
-          },
-          {
-            "name" : "tsc-version",
-            "tag" : "advanced",
-            "description" : "Check if SC firmware is up-to-date"
-          },
-          {
-            "name" : "verify",
-            "tag" : "advanced",
-            "description" : "Run 'Hello World' kernel test"
-          }
-        ]
-      },
-      {
-        "name" : "path",
-        "alias" : "p",
-        "description" : "Path to the directory containing validate xclbins",
-        "tag" : "basic",
-        "default_value": "",
-        "option_type": "hidden",
-        "value_type" : "string"
-      },
-      {
-        "name" : "param",
-        "description" : "Extended parameter for a given test. Format: <test-name>:<key>:<value>",
-        "tag" : "basic",
-        "option_type": "hidden",
-        "default_value": "",
-        "value_type" : "string"
-      },
-      {
-        "name" : "pmode",
-        "description" : "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes",
-        "tag" : "basic",
-        "option_type": "hidden",
-        "default_value": "",
-        "value_type" : "string"
-      }
-    ]
-  },
-  {
-    "name" : "examine",
-    "tag" : "basic",
-    "description": "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.",
-    "options":
-    [
-      {
-        "name": "device",
-        "alias": "d",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common",
-        "value_type": "string"
-      },
-      {
-        "name": "format",
-        "alias": "f",
-        "description": ["Report output format. Valid values are:",
-                        "\n\tJSON        - Latest JSON schema",
-                        "\n\tJSON-2020.2 - JSON 2020.2 schema"
-                        ],
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common",
-        "value_type": "string"
-      },
-      {
-        "name": "output",
-        "alias": "o",
-        "description" : "Direct the output to the given file",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "string"
-      },
-      {
-        "name": "help",
-        "alias": "h",
-        "description" : "Help to use this sub-command",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "none"
-      },
-      {
-        "name": "report",
-        "alias": "r",
-        "description": ["The type of report to be produced. Reports currently available are:",
-                         "\n\taie             - AIE metadata in xclbin",
-                         "\n\taiemem          - AIE memory tile information",
-                         "\n\taieshim         - AIE shim tile status",
-                         "\n\tdebug-ip-status - Status of Debug IPs present in xclbin loaded on device",
-                         "\n\tdynamic-regions - Information about the xclbin and the compute units",
-                         "\n\telectrical      - Electrical and power sensors present on the device",
-                         "\n\terror           - Asyncronus Error present on the device",
-                         "\n\tfirewall        - Firewall status",
-                         "\n\tmailbox         - Mailbox metrics of the device",
-                         "\n\tmechanical      - Mechanical sensors on and surrounding the device",
-                         "\n\tmemory          - Memory information present on the device",
-                         "\n\tpcie-info       - Pcie information of the device",
-                         "\n\tqspi-status     - QSPI write protection status",
-                         "\n\tthermal         - Thermal sensors present on the device"
-                        ],
-        "tag": "basic",
-        "option_type": "common",
-        "value_type": "array",
-        "options": [
-          {
-            "name": "aie",
-            "tag": "basic",
-            "description": "AIE metadata in xclbin"
-          },
-          {
-            "name": "aiemem",
-            "tag": "basic",
-            "description": "AIE memory tile information"
-          },
-          {
-            "name": "aieshim",
-            "tag": "basic",
-            "description": "AIE shim tile status"
-          },
-          {
-            "name": "debug-ip-status",
-            "tag": "basic",
-            "description": "Status of Debug IPs present in xclbin loaded on device"
-          },
-          {
-            "name": "dynamic-regions",
-            "tag": "basic",
-            "description": "Information about the xclbin and the compute units"
-          },
-          {
-            "name": "electrical",
-            "tag": "basic",
-            "description": "Electrical and power sensors present on the device"
-          },
-          {
-            "name": "error",
-            "tag": "basic",
-            "description": "Asyncronus Error present on the device"
-          },
-          {
-            "name": "firewall",
-            "tag": "basic",
-            "description": "Firewall status"
-          },
-          {
-            "name": "mailbox",
-            "tag": "basic",
-            "description": "Mailbox metrics of the device"
-          },
-          {
-            "name": "mechanical",
-            "tag": "basic",
-            "description": "Mechanical sensors on and surrounding the device"
-          },
-          {
-            "name": "memory",
-            "tag": "basic",
-            "description": "Memory information present on the device"
-          },
-          {
-            "name": "pcie-info",
-            "tag": "basic",
-            "description": "Pcie information of the device"
-          },
-          {
-            "name": "qspi-status",
-            "tag": "basic",
-            "description": "QSPI write protection status"
-          },
-          {
-            "name": "thermal",
-            "tag": "basic",
-            "description": "Thermal sensors present on the device"
-          }
-        ]
-      },
-      {
-        "name": "element",
-        "alias": "e",
-        "description" : "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'",
-        "tag": "basic",
-        "option_type": "hidden", 
-        "value_type" : "array"
-      } 
-    ]
-  },
-  {
-    "name" : "configure",
-    "tag" : "devl",
-    "description" : "Device and host configuration.",
-    "options" :
-    [
-      {
-        "name": "device",
-        "alias": "d",
-        "description": "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common",
-        "value_type": "string"
-      },
-      {
-        "name": "help",
-        "alias": "h",
-        "description" : "Help to use this sub-command",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "common", 
-        "value_type" : "none"
-      },
-      {
-        "name": "daemon",
-        "alias": "",
-        "description" : "Update the device daemon configuration",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "none"
-      },
-      {
-        "name": "purge",
-        "alias": "",
-        "description": "Remove the daemon configuration file",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden",
-        "value_type": "string"
-      },
-      {
-        "name": "host",
-        "alias": "",
-        "description" : "IP or hostname for device peer",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "security",
-        "alias": "",
-        "description" : "Update the security level for the device",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "clk_throttle",
-        "alias": "",
-        "description" : "Enable/disable the device clock throttling",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "ct_threshold_power_override",
-        "alias": "",
-        "description" : "Update the power threshold in watts",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "ct_threshold_temp_override",
-        "alias": "",
-        "description" : "Update the temperature threshold in celsius",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "ct_reset",
-        "alias": "",
-        "description" : "Reset all throttling options",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      },
-      {
-        "name": "showx",
-        "alias": "",
-        "description" : "Display the device configuration settings",
-        "tag": "basic",
-        "default_value": "",
-        "option_type": "hidden", 
-        "value_type" : "string"
-      }
-    ]
-  }]
+using boost::property_tree::ptree;
+
+static const std::vector<std::tuple<std::string, std::string, std::string>> ValidateTestDesc = {
+  {"aux-connection", "Check if auxiliary power is connected", "common"},
+  {"dma", "Run dma test", "common"},
+  {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
+  {"m2m", "Run M2M test", "common"},
+  {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
+  {"p2p", "Run P2P test", "common"},
+  {"pcie-link", "Check if PCIE link is active", "common"},
+  {"sc-version","Check if SC firmware is up-to-date", "common"},
+  {"verify", "Run 'Hello World' kernel test", "common"}
+};
+
+static const std::vector<std::tuple<std::string, std::string, std::string>> ExamineReportDesc = {
+  {"aie", "AIE metadata in xclbin", "common"},
+  {"aiemem", "AIE memory tile information", "common"},
+  {"aieshim", "AIE shim tile status", "common"},
+  {"debug-ip-status", "Status of Debug IPs present in xclbin loaded on device", "common"},
+  {"dynamic-regions", "Information about the xclbin and the compute units", "common"},
+  {"electrical", "Electrical and power sensors present on the device", "common"},
+  {"error", "Asyncronus Error present on the device", "common"},
+  {"firewall", "Firewall status", "common"},
+  {"mailbox", "Mailbox metrics of the device", "common"},
+  {"mechanical", "Mechanical sensors on and surrounding the device", "common"},
+  {"memory", "Memory information present on the device", "common"},
+  {"pcie-info", "Pcie information of the device", "common"},
+  {"qspi-status", "QSPI write protection status", "common"},
+  {"thermal", "Thermal sensors present on the device", "common"}
+};
+
+  
+struct BasicOption {
+    std::string name;
+    std::string description;
+    std::string type;
+};
+
+struct Option : public BasicOption {
+    std::string alias;
+    std::string default_value;
+    std::string value_type;
+    std::vector<BasicOption> description_array;
+
+    Option(const std::string& name, 
+           const std::string& alias, 
+           const std::string& description,
+           const std::string& type, 
+           const std::string& default_value, 
+           const std::string& value_type, 
+           const std::vector<BasicOption>& description_array = {})
+        : BasicOption{name, description, type}, 
+          alias(alias), 
+          default_value(default_value), 
+          value_type(value_type), 
+          description_array(description_array) {}
+
+    ptree toPtree() const {
+        ptree pt;
+        pt.put("name", name);
+        pt.put("description", description);
+        pt.put("type", type);
+        pt.put("alias", alias);
+        pt.put("default_value", default_value);
+        pt.put("value_type", value_type);
+        if (!description_array.empty()) {
+            ptree description_array_ptree;
+            for (const auto& desc : description_array) {
+                ptree desc_node;
+                desc_node.put("name", desc.name);
+                desc_node.put("description", desc.description);
+                desc_node.put("type", desc.type);
+                description_array_ptree.push_back(std::make_pair("", desc_node));
+            }
+            pt.add_child("description_array", description_array_ptree);
+        }
+        return pt;
+    }
+
+};
+
+ptree constructValidateSubcommand() {
+    ptree subcommand;
+    subcommand.put("name", "validate");
+    subcommand.put("description", "Validates the given device by executing the platform's validate executable.");
+    subcommand.put("type", "common");
+
+    auto constructRunOptionDescription = []() {
+        std::vector<BasicOption> runOptionDescriptions;
+        for (const auto& [name, description, type] : ValidateTestDesc) {
+            runOptionDescriptions.push_back({name, description, type});
+        }
+        return runOptionDescriptions;
+    };
+
+    std::vector<Option> options = {
+        {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
+        {"format", "f", "Report output format. Valid values are:\n"
+                        "\tJSON        - Latest JSON schema\n"
+                        "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"},
+        {"output", "o", "Direct the output to the given file", "common", "", "string"},
+        {"help", "h", "Help to use this sub-command", "common", "", "none"},
+        {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", constructRunOptionDescription()},
+        {"path", "p", "Path to the directory containing validate xclbins", "hidden", "", "string"},
+        {"param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "hidden", "", "string"},
+        {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
+    };
+
+    ptree options_ptree;
+    for (const auto& option : options) {
+        options_ptree.push_back(std::make_pair("", option.toPtree()));
+    }
+
+    subcommand.add_child("options", options_ptree);
+    return subcommand;
 }
-)"; 
 
+ptree constructExamineSubcommand() {
+    ptree subcommand;
+    subcommand.put("name", "examine");
+    subcommand.put("type", "common");
+    subcommand.put("description", "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.");
 
-std::string 
-get_smi_config()
-{
-  return std::string(xrt_smi_config);
+    auto constructReportOptionDescription = []() {
+        std::vector<BasicOption> reportOptionDescriptions;
+        for (const auto& [name, description, type] : ExamineReportDesc) {
+            reportOptionDescriptions.push_back({name, description, type});
+        }
+        return reportOptionDescriptions;
+    };
+
+    std::vector<Option> options = {
+        {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
+        {"format", "f", "Report output format. Valid values are:\n"
+                        "\tJSON        - Latest JSON schema\n"
+                        "\tJSON-2020.2 - JSON 2020.2 schema", "common", "", "string"},
+        {"output", "o", "Direct the output to the given file", "common", "", "string"},
+        {"help", "h", "Help to use this sub-command", "common", "", "none"},
+        {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", constructReportOptionDescription()},
+        {"element", "e", "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'", "hidden", "", "array"}
+    };
+
+    ptree options_ptree;
+    for (const auto& option : options) {
+        options_ptree.push_back(std::make_pair("", option.toPtree()));
+    }
+
+    subcommand.add_child("options", options_ptree);
+    return subcommand;
+}
+
+ptree constructConfigureSubcommand() {
+    ptree subcommand;
+    subcommand.put("name", "configure");
+    subcommand.put("type", "common");
+    subcommand.put("description", "Device and host configuration");
+
+    std::vector<Option> options = {
+        {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
+        {"help", "h", "Help to use this sub-command", "common", "", "none"},
+        {"daemon", "", "Update the device daemon configuration", "hidden", "", "none"},
+        {"purge", "", "Remove the daemon configuration file", "hidden", "", "string"},
+        {"host", "", "IP or hostname for device peer", "common", "", "string"},
+        {"security", "", "Update the security level for the device", "hidden", "", "string"},
+        {"clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"},
+        {"ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"},
+        {"ct_threshold_temp_override", "", "Update the temperature threshold in celsius", "hidden", "", "string"},
+        {"ct_reset", "", "Reset all throttling options", "hidden", "", "string"},
+        {"showx", "", "Display the device configuration settings", "hidden", "", "string"}
+    };
+
+    ptree options_ptree;
+    for (const auto& option : options) {
+        options_ptree.push_back(std::make_pair("", option.toPtree()));
+    }
+
+    subcommand.add_child("options", options_ptree);
+    return subcommand;
+}
+
+/*
+ * This function is primarily for xrt-smi help printing.
+ * No execution level detail should be queried from the configuration
+ * return by this API. 
+*/
+std::string get_smi_config() {
+    ptree config;
+    ptree subcommands;
+
+    subcommands.push_back(std::make_pair("", constructValidateSubcommand()));
+    subcommands.push_back(std::make_pair("", constructExamineSubcommand()));
+    subcommands.push_back(std::make_pair("", constructConfigureSubcommand()));
+
+    config.add_child("subcommands", subcommands);
+
+    std::ostringstream oss;
+    boost::property_tree::write_json(oss, config, true); 
+
+    // Since the mode of interface between shim and XRT is decided
+    // to be kept as native C++ as possible, converting to string.
+    return oss.str();
 }
 } // namespace xrt_core::smi
