@@ -12,7 +12,7 @@ else ()
   # HIP SDK installs hip files to C:/Program Files/AMD/ROCm in windows
   # Latest version installed (6.1, 5.7 or whatever available) will be picked
   # Users can set HIP_DIR to location of HIP installation or default path is used
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{HIP_DIR} "C:/Program Files/AMD/ROCm/6.1/lib/cmake/hip" "C:/Program Files/AMD/ROCm/5.7/lib/cmake/hip")
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{HIP_DIR} "C:/Program Files/AMD/ROCm/6.2/lib/cmake/hip" "C:/Program Files/AMD/ROCm/6.1/lib/cmake/hip" "C:/Program Files/AMD/ROCm/5.7/lib/cmake/hip")
 endif ()
 
 include(hip-config)
