@@ -406,11 +406,6 @@ SubCmdValidate::getTestNameDescriptions(const SubCmdValidateOptions& options, co
   return reportDescriptionCollection;
 }
 
-  // -- Build up the format options
-static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
-static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
-static const std::pair<std::string, std::string> quick_test = {"quick", "Run a subset of four tests: \n1. latency\n2. throughput\n3. cmd-chain-latency\n4. cmd-chain-throughput"};
-
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
@@ -423,15 +418,6 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commandConfig = configurations;
-
-  const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
-  jsonOptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-
-  // -- Build up the format options
-  XBUtilities::VectorPairStrings common_tests;
-  common_tests.emplace_back(all_test);
-  common_tests.emplace_back(quick_test);
-  static const auto formatRunValues = XBU::create_suboption_list_map("", jsonOptions, common_tests);
 }
 
 void
@@ -443,31 +429,7 @@ SubCmdValidate::print_help_internal(const SubCmdValidateOptions& options) const
   }
 
   const std::string deviceClass = XBU::get_device_class(options.m_device, true);
-  auto it = jsonOptions.find(deviceClass);
-
-  XBUtilities::VectorPairStrings help_tests = { all_test };
-  if (it != jsonOptions.end() && it->second.size() > 3)
-    help_tests.emplace_back(quick_test);
-
-  const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-  static const std::string testOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, help_tests);
-  std::vector<std::string> tempVec;
-  boost::program_options::options_description common_options;
-
-  /* TODO: xrt-smi rearchitecture
-  * These add_options calls should be obsoleted and help printing should be done through m_jsonConfig.
-  * This is not done in patch since this help printing is tightly coupled with JSONConfigurable to get 
-  * the test names and report names. This should be refactored in a separate patch and JSONConfigurable
-  * should be obsoleted.
-  */
-  common_options.add_options()
-    ("device,d", boost::program_options::value<decltype(options.m_device)>(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("format,f", boost::program_options::value<decltype(options.m_format)>()->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(options.m_output)>()->implicit_value(""), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(), "Help to use this sub-command")
-    ("run,r", boost::program_options::value<decltype(tempVec)>()->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + testOptionValues).c_str() )
-    ;
-  printHelp(common_options, m_hiddenOptions, deviceClass, false);
+  printHelp(m_commonOptions, m_hiddenOptions, deviceClass, false);
 }
 
 void 

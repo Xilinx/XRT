@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <numeric>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
@@ -29,9 +30,33 @@ static std::unordered_map<std::string, ValueType> valueTypeMap = {
 
 OptionBasic::OptionBasic(const pt::ptree& configurations)
   : m_name(configurations.get<std::string>(std::string(const_name_literal))), 
-    m_description(configurations.get<std::string>(std::string(const_description_literal))), 
+    m_description(concatenate(configurations, std::string(const_description_literal))), 
     m_tag(configurations.get<std::string>(std::string(const_tag_literal)))
     {}
+
+std::string
+OptionBasic::concatenate(const pt::ptree& pt, const std::string& path) const
+{
+  try {
+    const auto& child = pt.get_child(path);
+
+    // Check if the path is a list
+    if (child.empty()) {
+      // Return the single string value
+      return pt.get<std::string>(path);
+    }
+    else {
+      // If the child has size, it means its a list. Concatenate strings from the list
+      return std::accumulate(child.begin(), child.end(), std::string(),
+        [](const std::string& acc, const boost::property_tree::ptree::value_type& item) {
+          return acc + item.second.get_value<std::string>();
+        });
+    }
+  } catch (const pt::ptree_error& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return "";
+  }
+}
 
 void
 OptionBasic::printOption() const

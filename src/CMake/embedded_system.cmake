@@ -41,6 +41,11 @@ endif(GIT_FOUND)
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
+# Set up what components of XRT to build
+# Indicate that we are building for edge
+include(CMake/components.cmake)
+set(XRT_EDGE 1)
+
 # --- Boost Libraries ---
 include (CMake/boostUtil.cmake)
 

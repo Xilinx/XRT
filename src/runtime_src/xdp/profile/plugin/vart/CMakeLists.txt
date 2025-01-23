@@ -19,4 +19,5 @@ target_link_libraries(xdp_vart_plugin PRIVATE xdp_core)
 
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_vart_plugin LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR})
+install (TARGETS xdp_vart_plugin
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT})

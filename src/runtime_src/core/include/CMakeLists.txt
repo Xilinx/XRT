@@ -22,7 +22,7 @@ set(XRT_CORE_HEADER_SRC
 # Legacy deprecated install
 install (FILES ${XRT_CORE_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
-  COMPONENT ${XRT_DEV_COMPONENT})
+  COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
 # Legacy experimental
 add_subdirectory(experimental)

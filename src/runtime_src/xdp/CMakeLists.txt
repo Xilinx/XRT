@@ -8,7 +8,6 @@
 # of the plugins and subdirectories.  Also, set the install
 # locations for the plugins on Linux and Windows
 # ================================================================
-
 if (NOT WIN32)
 
   include_directories(
@@ -29,13 +28,16 @@ else()
 
 endif()
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+# Only include xdp in npu, alveo, or legacy xrt components
+# For npu, set up different flags used conditionally in
+# in subdirectories.
+if (XRT_NPU)
 
- add_compile_options("-DSKIP_IOCTL")
+  set(XDP_CLIENT_BUILD_CMAKE "yes")
+  add_compile_options("-DSKIP_IOCTL")
+  add_subdirectory(profile)
 
- add_subdirectory(profile)
-
-else()
+elseif(XRT_ALVEO OR XRT_EDGE)
 
   add_subdirectory(appdebug)
   add_subdirectory(debug)
