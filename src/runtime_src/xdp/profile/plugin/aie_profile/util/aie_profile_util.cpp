@@ -761,7 +761,7 @@ namespace xdp::aie::profile {
     //    Read 3 - The sum of each event latency squared
     //    Read 4 - 31:16 Minimum measured latency, 16 bits
     //             15:0  Maximum measured latency, 16 bits
-    std::vector<uint32_t> latencyValues;
+    std::vector<uint64_t> latencyValues;
     for (uint32_t c=0; c < UC_MDM_PCDRR_LATENCY_READS; ++c) {
       uint32_t val;
       XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
@@ -771,8 +771,8 @@ namespace xdp::aie::profile {
 
     // 6. Calculate average latency
     // NOTE: for now, only report average (we also have min and max; see above)
-    uint32_t numValues = latencyValues.at(0);
-    uint32_t totalLatency = latencyValues.at(1);
+    auto numValues = latencyValues.at(0);
+    auto totalLatency = latencyValues.at(1);
     uint64_t avgLatency = (numValues == 0) ? 0 : (totalLatency / numValues);
     values.push_back(avgLatency);
   }
