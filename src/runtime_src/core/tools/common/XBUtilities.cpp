@@ -13,6 +13,7 @@
 #include "common/message.h"
 #include "common/system.h"
 #include "common/sysinfo.h"
+#include "common/smi.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
@@ -773,85 +774,4 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
   catch (...) {
     //no device available
   }
-}
-
-std::string 
-XBUtilities::loadDefaultSmiConfig()
-{
-  return std::string(
-    R"(
-{
-  "subcommands":
-  [{
-    "name" : "examine",
-    "type" : "common",
-    "description": "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.",
-    "options":
-    [
-      {
-        "name": "format",
-        "alias": "f",
-        "description": "Report output format",
-        "type": "common",
-        "default_value": "json",
-        "value_type": "string"
-      },
-      {
-        "name": "output",
-        "alias": "o",
-        "description" : "Direct the output to the given file",
-        "type": "common",
-        "default_value": "",
-        "value_type" : "string"
-      },
-      {
-        "name": "help",
-        "alias": "h",
-        "description" : "Help to use this sub-command",
-        "type": "common",
-        "default_value": "",
-        "value_type" : "none"
-      },
-      {
-        "name": "report",
-        "alias": "r",
-        "description": "The type of report to be produced. Reports currently available are:",
-        "type": "common",
-        "value_type": "array",
-        "options": [
-          {
-            "name": "host",
-            "type": "common",
-            "description": "Host information"
-          },
-          {
-            "name": "platform",
-            "type": "common",
-            "description": "Platforms flashed on the device"
-          },
-          {
-            "name": "aie-partitions",
-            "type": "common",
-            "description": "AIE partition information"
-          },
-          {
-            "name": "tememetry",
-            "type": "common",
-            "description": "Telemetry data for the device"
-          }
-        ]
-      },
-      {
-        "name": "element",
-        "alias": "e",
-        "description" : "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'",
-        "type": "hidden",
-        "value_type" : "array"
-      } 
-    ]
-  }
-  ]
-} 
-)"
-  );
 }// end of namespace XBValidateUtils
