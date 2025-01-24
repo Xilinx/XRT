@@ -202,7 +202,7 @@ ptree constructExamineSubcommand(bool isDefault = true) {
     return subcommand;
 }
 
-ptree constructConfigureSubcommand(bool isDefault = true) {
+ptree constructConfigureSubcommand() {
     ptree subcommand;
     subcommand.put("name", "configure");
     subcommand.put("type", "common");
@@ -242,7 +242,7 @@ std::string get_smi_config() {
 
     subcommands.push_back(std::make_pair("", constructValidateSubcommand(false)));
     subcommands.push_back(std::make_pair("", constructExamineSubcommand(false)));
-    subcommands.push_back(std::make_pair("", constructConfigureSubcommand(false)));
+    subcommands.push_back(std::make_pair("", constructConfigureSubcommand()));
 
     config.add_child("subcommands", subcommands);
 
