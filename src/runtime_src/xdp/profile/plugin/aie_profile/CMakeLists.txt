@@ -4,7 +4,7 @@
 
 # ====================================================================
 # This builds the AIE Profile plugin.  It is currently built
-# on both Edge, x86, client and ve2 platforms that support AIE.
+# on Edge, x86, Client, and VE2 platforms that support AIE.
 # ====================================================================
 
 if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
