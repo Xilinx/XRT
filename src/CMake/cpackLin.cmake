@@ -7,7 +7,6 @@
 # XRT_VERSION_PATCH
 # LINUX_FLAVOR
 
-
 SET(CPACK_SET_DESTDIR ON)
 SET(CPACK_PACKAGE_VERSION_RELEASE "${XRT_VERSION_RELEASE}")
 SET(CPACK_PACKAGE_VERSION_MAJOR "${XRT_VERSION_MAJOR}")
@@ -25,6 +24,22 @@ SET(CPACK_RPM_COMPONENT_INSTALL ON)
 # populate the variable explictly.
 get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
 message("Install components in the project: ${CPACK_COMPONENTS_ALL}")
+
+# Set up component dependencies on base if built
+if (${XRT_BASE_COMPONENT} STREQUAL "base")
+  set(CPACK_COMPONENT_ALVEO_DEPENDS base)
+  set(CPACK_COMPONENT_NPU_DEPENDS base)
+endif()
+
+# Set up aws component dependencies.  Can be
+# xrt or alveo depending on the build
+SET(CPACK_COMPONENT_AWS_DEPENDS ${XRT_COMPONENT})
+
+# Set up development component dependencies
+set(CPACK_COMPONENT_BASE-DEV_DEPENDS base)
+set(CPACK_COMPONENT_ALVEO-DEV_DEPENDS alveo)
+set(CPACK_COMPONENT_NPU-DEV_DEPENDS npu)
+set(CPACK_COMPONENT_XRT-DEV_DEPENDS xrt)
 
 # When the rpmbuild occurs for packaging, it uses a default version of
 # python to perform a python byte compilation.  For the CentOS 7.x OS, this
@@ -72,30 +87,52 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
   SET(CPACK_DEBIAN_AWS_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/aws/postinst;${CMAKE_CURRENT_BINARY_DIR}/aws/prerm")
   SET(CPACK_DEBIAN_AZURE_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/azure/postinst;${CMAKE_CURRENT_BINARY_DIR}/azure/prerm")
   SET(CPACK_DEBIAN_CONTAINER_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/container/postinst;${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
-
+  #set (CPACK_DEBIAN_PACKAGE_DEBUG ON)
   SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "yes")
+  set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
+
+  # Set the path to the private (cross package) shared libraries
+  # This makes CPackDeb.cmake invoke dpkg-shlibdeps with -l${dir} option
+  set (CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS ${XRT_BUILD_INSTALL_DIR}/lib)
 
   if( (${CMAKE_VERSION} VERSION_LESS "3.6.0") AND (${CPACK_DEBIAN_PACKAGE_SHLIBDEPS} STREQUAL "yes") )
     # Fix bug in CPackDeb.cmake in use of dpkg-shlibdeps
     SET(CMAKE_MODULE_PATH ${XRT_SOURCE_DIR}/CMake/patch ${CMAKE_MODULE_PATH})
   endif()
 
-  SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), dkms (>= 2.2.0), udev, python3")
+  # Dependencies not automatically detected by CPack
+  SET(CPACK_DEBIAN_BASE_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), python3")
+  SET(CPACK_DEBIAN_BASE-DEV_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), uuid-dev (>= 2.27.1)")
 
-  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
-    # applications link with -luuid
-    SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS
-      "${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS},  \
-      ocl-icd-opencl-dev (>= 2.2.0), \
-      uuid-dev (>= 2.27.1)")
-  else()
-    # xrt development package
-    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_NAME ${XRT_DEV_COMPONENT})
-    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_DEPENDS
-      "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}), \
-      ocl-icd-opencl-dev (>= 2.2.0), \
-      uuid-dev (>= 2.27.1)")
+  # If base package combines deployment and development, then
+  # include development dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base")
+    set(CPACK_DEBIAN_BASE_PACKAGE_DEPENDS
+      "${CPACK_DEBIAN_BASE_PACKAGE_DEPENDS}, \
+      ${CPACK_DEBIAN_BASE-DEV_PACKAGE_DEPENDS}")
+  endif()
+
+  # If base is included in npu, then include base dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "npu")
+    set(CPACK_DEBIAN_NPU_PACKAGE_DEPENDS
+      "${CPACK_DEBIAN_BASE_PACKAGE_DEPENDS}, \
+      ${CPACK_DEBIAN_BASE-DEV_PACKAGE_DEPENDS}")
+  endif()
+      
+  # If base is included in alveo, then include base dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "alveo")
+    set(CPACK_DEBIAN_ALVEO_PACKAGE_DEPENDS
+      "${CPACK_DEBIAN_BASE_PACKAGE_DEPENDS}, \
+      ${CPACK_DEBIAN_BASE-DEV_PACKAGE_DEPENDS}")
+  endif()
+
+  # If base is included in xrt, then include base dependencies
+  # along with dmks and udev.  This is true for XRT legacy
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "xrt")
+    set(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS
+      "${CPACK_DEBIAN_BASE_PACKAGE_DEPENDS}, \
+      ${CPACK_DEBIAN_BASE-DEV_PACKAGE_DEPENDS} 
+      dkms (>= 2.2.0), udev")
   endif()
 
   if ((${LINUX_FLAVOR} MATCHES "^(ubuntu)") AND (${LINUX_VERSION} STREQUAL "23.10"))
