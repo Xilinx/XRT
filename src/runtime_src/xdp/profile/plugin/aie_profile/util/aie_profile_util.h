@@ -37,7 +37,8 @@ namespace xdp::aie::profile {
     {module_type::core,     static_cast<uint16_t>(0)},
     {module_type::dma,      BASE_MEMORY_COUNTER},
     {module_type::shim,     BASE_SHIM_COUNTER},
-    {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
+    {module_type::mem_tile, BASE_MEM_TILE_COUNTER},
+    {module_type::uc,       BASE_UC_MDM_COUNTER}
   };
 
   const std::vector<XAie_ModuleType> falModuleTypes = {
@@ -45,7 +46,7 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
     XAIE_MEM_MOD,
-    XAIE_PL_MOD    // TODO: if needed, replace with module type for uCs
+    XAIE_PL_MOD    // TODO: replace if/when there is an uC module type
   };
 
   enum adfAPI {
@@ -225,6 +226,26 @@ namespace xdp::aie::profile {
 
   uint32_t convertToBeats(const std::string& metricSet, uint32_t bytes, uint8_t hwGen);
 
+  /**
+   * @brief Configure counters in Microblaze Debug Module (MDM) 
+   * @param aieDevInst AIE device instance
+   * @param col tile column
+   * @param row tile row
+   * @param events vector of events to use in counters
+   */
+  void configMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                         const std::vector<uint32_t> events);
+
+  /**
+   * @brief Read counters in Microblaze Debug Module (MDM) 
+   * @param aieDevInst AIE device instance
+   * @param col tile column
+   * @param row tile row
+   * @param values vector of values from counters
+   */
+  void readMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+                       std::vector<uint64_t>& values);
+  
 }  // namespace xdp::aie::profile
 
 #endif
