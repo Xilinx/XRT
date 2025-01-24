@@ -53,7 +53,7 @@ install(TARGETS xrt_hip
 )
 
 # Release headers
-install (FILES config.h xrt_hip.h
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/hip
+install (FILES xrt_hip.h
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt
   COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )

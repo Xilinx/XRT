@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,17 +14,24 @@
  * under the License.
  */
 
-#ifndef XDP_PLUGIN_AIE_DEBUG_CB_H
-#define XDP_PLUGIN_AIE_DEBUG_CB_H
+#ifndef AIE_DEBUG_DOT_H
+#define AIE_DEBUG_DOT_H
 
-#include "xdp/config.h"
+namespace xdp {
+namespace aie {
 
-extern "C"
-XDP_PLUGIN_EXPORT
-void updateAIEDebugDevice(void* handle);
+namespace debug {
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
+} // end namespace debug
 
-extern "C"
-XDP_PLUGIN_EXPORT
-void endAIEDebugRead(void* handle);
+namespace dbg {
+  void update_device(void* handle);
+  void end_poll(void* handle);
+} // end namespace dbg
+
+} // end namespace aie
+} // end namespace xdp
 
 #endif
