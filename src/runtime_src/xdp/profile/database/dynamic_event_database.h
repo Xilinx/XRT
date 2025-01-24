@@ -163,7 +163,7 @@ namespace xdp {
     XDP_CORE_EXPORT void addDependency(uint64_t id, uint64_t dependency) ;
     XDP_CORE_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
 
-    // Add and get AIE Trace Data Buffer 
+    // Add and get AIE Trace Data Buffer
     XDP_CORE_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy);
     XDP_CORE_EXPORT aie::TraceDataType* getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
 
@@ -173,7 +173,11 @@ namespace xdp {
     XDP_CORE_EXPORT std::vector<counters::Sample> getPowerSamples(uint64_t deviceId) ;
 
     XDP_CORE_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
-				   const std::vector<uint64_t>& values) ;
+				   const std::vector<uint64_t>& values);
+    XDP_CORE_EXPORT void addAIEDebugSample(uint64_t deviceId, uint8_t col,
+           uint8_t row,  uint32_t value, uint64_t offset, std::string name);
+    XDP_CORE_EXPORT std::vector<xdp::aie::AIEDebugDataType> moveAIEDebugSamples(uint64_t deviceId);
+    XDP_CORE_EXPORT std::vector<xdp::aie::AIEDebugDataType> getAIEDebugSamples(uint64_t deviceId);
     XDP_CORE_EXPORT std::vector<counters::Sample> getAIESamples(uint64_t deviceId) ;
     XDP_CORE_EXPORT std::vector<counters::Sample> moveAIESamples(uint64_t deviceId);
     XDP_CORE_EXPORT void addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
@@ -188,7 +192,7 @@ namespace xdp {
     XDP_CORE_EXPORT void setPLDeadlockInfo(uint64_t deviceId, const std::string& str);
     XDP_CORE_EXPORT std::string getPLDeadlockInfo();
   } ;
-  
+
 }
 
 #endif
