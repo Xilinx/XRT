@@ -2,7 +2,6 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
-#define XRT_CORE_COMMON_SOURCE
 // Local include files
 #include "config.h"
 

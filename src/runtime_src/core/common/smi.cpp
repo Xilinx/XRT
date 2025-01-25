@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+
+#define XRT_CORE_COMMON_SOURCE
+
+// Local - Include Files
 #include "smi.h"
+
+// 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
 #include <vector>
 #include <tuple>
 #include <string>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 namespace xrt_core::smi {
 
@@ -131,7 +136,9 @@ struct option : public basic_option {
   }
 };
 
-ptree construct_validate_subcommand(bool is_default = true) {
+ptree 
+construct_validate_subcommand(bool is_default = true) 
+{
   ptree subcommand;
   subcommand.put("name", "validate");
   subcommand.put("description", "Validates the given device by executing the platform's validate executable.");
@@ -167,7 +174,9 @@ ptree construct_validate_subcommand(bool is_default = true) {
   return subcommand;
 }
 
-ptree construct_examine_subcommand(bool is_default = true) {
+ptree 
+construct_examine_subcommand(bool is_default = true) 
+{
   ptree subcommand;
   subcommand.put("name", "examine");
   subcommand.put("type", "common");
@@ -201,7 +210,9 @@ ptree construct_examine_subcommand(bool is_default = true) {
   return subcommand;
 }
 
-ptree construct_configure_subcommand() {
+ptree 
+construct_configure_subcommand() 
+{
   ptree subcommand;
   subcommand.put("name", "configure");
   subcommand.put("type", "common");
@@ -230,7 +241,9 @@ ptree construct_configure_subcommand() {
   return subcommand;
 }
 
-std::string get_smi_config() {
+std::string 
+get_smi_config() 
+{
   ptree config;
   ptree subcommands;
 
@@ -245,19 +258,20 @@ std::string get_smi_config() {
   return oss.str();
 }
 
-std::string get_default_smi_config() {
-    ptree config;
-    ptree subcommands;
+std::string 
+get_default_smi_config() 
+{
+  ptree config;
+  ptree subcommands;
 
-    subcommands.push_back(std::make_pair("", construct_validate_subcommand()));
-    subcommands.push_back(std::make_pair("", construct_examine_subcommand()));
-    subcommands.push_back(std::make_pair("", construct_configure_subcommand()));
+  subcommands.push_back(std::make_pair("", construct_validate_subcommand()));
+  subcommands.push_back(std::make_pair("", construct_examine_subcommand()));
+  subcommands.push_back(std::make_pair("", construct_configure_subcommand()));
 
-    config.add_child("subcommands", subcommands);
+  config.add_child("subcommands", subcommands);
 
-    std::ostringstream oss;
-    boost::property_tree::write_json(oss, config, true); // Pretty print with true
-    return oss.str();
+  std::ostringstream oss;
+  boost::property_tree::write_json(oss, config, true); 
+  return oss.str();
 }
-
 } // namespace xrt_core::smi
