@@ -5,7 +5,7 @@
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
-#include "core/common/smi.h"
+#include "smi.h"
 
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"
@@ -692,7 +692,7 @@ struct xrt_smi_config
     const auto xrt_smi_config_type = std::any_cast<xrt_core::query::xrt_smi_config::type>(reqType);
     switch (xrt_smi_config_type) {
     case xrt_core::query::xrt_smi_config::type::options_config:
-      xrt_smi_config = xrt_core::smi::get_smi_config();
+      xrt_smi_config = shim_edge::get_smi_config();
       break;
     default:
       throw xrt_core::query::no_such_key(key, "Not implemented");

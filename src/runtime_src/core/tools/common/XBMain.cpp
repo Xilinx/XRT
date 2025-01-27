@@ -191,7 +191,7 @@ void  main_(int argc, char** argv,
   if (device) 
     config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
   else 
-    config = xrt_core::smi::get_default_smi_config(); 
+    config = xrt_core::smi::get_smi_config(); 
   std::istringstream command_config_stream(config);
   boost::property_tree::read_json(command_config_stream, configTreeMain);
   subCommand->setOptionConfig(configTreeMain);
