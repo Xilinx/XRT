@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef core_common_ishim_h
 #define core_common_ishim_h
 
@@ -156,6 +156,15 @@ struct ishim
   create_hw_context(const xrt::uuid& /*xclbin_uuid*/,
                     const xrt::hw_context::cfg_param_type& /*cfg_params*/,
                     xrt::hw_context::access_mode /*mode*/) const = 0;
+
+  // creates hw context using partition size
+  // Used in elf flow
+  // This function is not supported by all platforms
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(uint32_t /*partition_size*/,
+                    const xrt::hw_context::cfg_param_type& /*cfg_params*/,
+                    xrt::hw_context::access_mode /*mode*/) const
+  { throw not_supported_error{__func__}; }
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims
