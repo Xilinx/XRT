@@ -626,7 +626,7 @@ static struct xrt_ert_queue_funcs command_queue_func = {
 	.intc_config = command_queue_intc_config,
 };
 
-static int command_queue_remove(struct platform_device *pdev)
+static int __command_queue_remove(struct platform_device *pdev)
 {
 	struct xrt_ert *command_queue;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -650,6 +650,15 @@ static int command_queue_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void command_queue_remove(struct platform_device *pdev)
+{
+	__command_queue_remove(pdev);
+}
+#else
+#define command_queue_remove __command_queue_remove
+#endif
 
 static int command_queue_probe(struct platform_device *pdev)
 {

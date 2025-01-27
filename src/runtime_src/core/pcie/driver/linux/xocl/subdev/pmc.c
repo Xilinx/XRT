@@ -138,7 +138,7 @@ static struct xocl_pmc_funcs pmc_ops = {
 	.enable_reset = pmc_enable_reset,
 };
 
-static int pmc_remove(struct platform_device *pdev)
+static int __pmc_remove(struct platform_device *pdev)
 {
 	struct pmc *pmc;
 
@@ -157,6 +157,15 @@ static int pmc_remove(struct platform_device *pdev)
 	PMC_INFO(pmc, "successfully removed pmc subdev");
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void pmc_remove(struct platform_device *pdev)
+{
+	__pmc_remove(pdev);
+}
+#else
+#define pmc_remove __pmc_remove
+#endif
 
 static int pmc_probe(struct platform_device *pdev)
 {
