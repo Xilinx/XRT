@@ -758,6 +758,13 @@ done:
 	}
 	else
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
+		/* Work around added for AWS F2 Instance to perform delay */
+                if(core->pdev->device == 0xf010)
+                {
+                       userpf_info(xdev, "AWS F2 WA, waiting after AFI Load ");
+                       msleep(10000);
+                }
+	}
 
 out_done:
 	/* Update the slot */
