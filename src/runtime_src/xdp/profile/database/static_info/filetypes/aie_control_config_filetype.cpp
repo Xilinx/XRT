@@ -512,7 +512,10 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
     int startCount = 0;
 
     for (auto& graph : graphsMetadata.get()) {
-        // Only top-level graphs are listed, so search is reverse
+        // Make sure this is requested graph
+        // NOTE: Only top-level graphs are currently listed in metadata,
+        // so search is reversed to support sub-graph requests
+        // (e.g., "mygraph" is found in "mygraph.subgraph1")
         auto currGraph = graph.second.get<std::string>("name");
         if ((graph_name.find(currGraph) == std::string::npos)
             && (graph_name.compare("all") != 0))
