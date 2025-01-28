@@ -533,6 +533,26 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     opt.afi_id = afi_id;
     opt.slot_id = mBoardNumber;
     retVal = fpga_mgmt_load_local_image_with_options(&opt);
+
+    if(imageInfoOld.spec.map[FPGA_APP_PF].device_id == 0xf010)
+    {
+	const clock_freq_topology* clockSection = get_clock_freq_from_axlf(axlfbuffer);
+	uint32_t clock_mains[4];
+
+        if(clockSection) {
+		for(int32_t i = 0; i < clockSection->m_count; i++) {
+                        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+                        clock_mains[i] = clk->m_freq_Mhz;
+                }
+        }
+
+        syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
+	aws_clkgen_set_dynamic(mBoardNumber, 125 /*default */, clock_mains[2]/*clk_extra_b0*/,
+			clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/, 0);
+
+        return 0;
+     }
+
     if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
         retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
         retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
@@ -778,4 +798,14 @@ char *AwsDev::get_afi_from_axlf(const axlf *buffer)
         return nullptr;
     return afid;
 }
+
+const clock_freq_topology* AwsDev::get_clock_freq_from_axlf(const axlf *buffer)
+{
+    const axlf_section_header *clk_header = xclbin::get_axlf_section(buffer, CLOCK_FREQ_TOPOLOGY);
+    char *clk_topo = const_cast<char *>(reinterpret_cast<const char *>(buffer));
+    clk_topo += clk_header->m_sectionOffset;
+
+    return (reinterpret_cast<const clock_freq_topology*>(clk_topo));
+}
+
 #endif
