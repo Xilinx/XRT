@@ -15,9 +15,11 @@
 
 #include "xrt/detail/ert.h"
 
+#include "bo_int.h"
 #include "elf_int.h"
 #include "module_int.h"
 #include "core/common/debug.h"
+#include "core/common/dlfcn.h"
 
 #include <boost/format.hpp>
 #include <elfio/elfio.hpp>
@@ -26,6 +28,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <numeric>
 #include <map>
 #include <regex>
@@ -154,7 +157,8 @@ struct patcher
     pdi = 4,             // pdi
     ctrlpkt_pm = 5,      // preemption ctrl pkt
     pad = 6,             // scratchpad/control packet section name for next gen aie devices
-    buf_type_count = 7   // total number of buf types
+    dump = 7,            // dump section containing debug info for trace etc
+    buf_type_count = 8   // total number of buf types
   };
 
   buf_type m_buf_type = buf_type::ctrltext;
@@ -180,7 +184,8 @@ struct patcher
       ".preempt_restore",
       ".pdi",
       ".ctrlpkt.pm",
-      ".pad"
+      ".pad",
+      ".dump"
     };
 
     return section_name_array[static_cast<int>(bt)];
@@ -473,6 +478,12 @@ public:
 
   virtual xrt::bo&
   get_scratch_pad_mem()
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  virtual const buf&
+  get_dump_buf() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -1196,6 +1207,7 @@ public:
 class module_elf_aie2ps : public module_elf
 {
   std::vector<ctrlcode> m_ctrlcodes;
+  buf m_dump_buf; // buffer to hold .dump section used for debug/trace
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -1393,6 +1405,22 @@ class module_elf_aie2ps : public module_elf
     }
   }
 
+  // Extract .dump section from ELF sections
+  // return true if section exist
+  bool
+  initialize_dump_buf(buf& dump_buf)
+  {
+    for (const auto& sec : m_elfio.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::to_string(patcher::buf_type::dump)) == std::string::npos)
+        continue;
+
+      dump_buf.append_section_data(sec.get());
+      return true;
+    }
+    return false;
+  }
+
 public:
   explicit module_elf_aie2ps(const xrt::elf& elf)
     : module_elf(elf)
@@ -1400,6 +1428,7 @@ public:
     std::vector<size_t> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
     initialize_arg_patchers(m_ctrlcodes, pad_offsets);
+    initialize_dump_buf(m_dump_buf);
   }
 
   ert_cmd_opcode
@@ -1412,6 +1441,12 @@ public:
   get_data() const override
   {
     return m_ctrlcodes;
+  }
+
+  const buf&
+  get_dump_buf() const
+  {
+    return m_dump_buf;
   }
 };
 
@@ -1471,6 +1506,12 @@ class module_sram : public module_impl
     uint32_t all;
   } m_debug_mode = {};
   uint32_t m_id {0}; //TODO: it needs come from the elf file
+
+  // In platforms that support Dynamic tracing xrt bo's are
+  // created and passed to driver/firmware to hold tracing output
+  // written by it.
+  xrt::bo m_dtrace_ctrl_bo;
+  xrt::bo m_dtrace_mem_bo;
 
   bool
   inline is_dump_control_codes() const {
@@ -1885,6 +1926,140 @@ class module_sram : public module_impl
     return payload;
   }
 
+  struct dlib_handle
+  {
+    void* handle = nullptr;
+
+    dlib_handle(const std::string& path)
+    {
+      handle = xrt_core::dlopen(path.c_str(), RTLD_LAZY);
+    }
+
+    ~dlib_handle()
+    {
+      if (handle)
+        xrt_core::dlclose(handle);
+    }
+  };
+
+  struct dtrace_util
+  {
+    std::unique_ptr<dlib_handle> lib_hdl;
+    std::string ctrl_file_path;
+    std::string map_data;
+  };
+
+  static bool
+  init_dtrace_helper(const module_impl* parent, dtrace_util& dtrace_obj)
+  {
+    // The APIs used for dynamic tracing in future will be checked into
+    // AIEBU repo after Telluride related code is made public.
+    // Till then we are using local library whose path is specified using
+    // ini option. Instead of having the library as a dependency to XRT we
+    // are using dlopen/dlsym methods.
+    // TODO : remove ini options and dlopen/dlsym logic after the dtrace
+    //        API's are integrated into AIEBU repo
+    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
+    if (dtrace_lib_path.empty())
+      return false; // dtrace lib path is not set, dtrace is not enabled
+
+    dtrace_obj.lib_hdl = std::make_unique<dlib_handle>(dtrace_lib_path);
+    if (!dtrace_obj.lib_hdl->handle) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "Failed to load dtrace library");
+      return false;
+    }
+
+    static auto path = xrt_core::config::get_dtrace_control_file_path();
+    if (!std::filesystem::exists(path)) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "Dtrace control file is not accessible");
+      return false;
+    }
+    dtrace_obj.ctrl_file_path = path;
+
+    static const auto& data = parent->get_dump_buf();
+    if (data.size() == 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "Dump section is empty in ELF");
+      return false;
+    }
+
+    dtrace_obj.map_data = std::string{reinterpret_cast<const char*>(data.data()), data.size()};
+    return true;
+  }
+
+  void
+  initialize_dtrace_buf(const module_impl* parent)
+  {
+    dtrace_util dtrace;
+    if (!init_dtrace_helper(parent, dtrace))
+      return; // init failure
+
+    using get_dtrace_buffer_size_fun = uint32_t (*)(const char*, const char*, uint32_t*, uint32_t*);
+    auto get_dtrace_buffer_size =
+        (get_dtrace_buffer_size_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "get_dtrace_buffer_size");
+    if (!get_dtrace_buffer_size) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
+      return;
+    }
+
+    using create_dtrace_buffer_fun = void (*)(const char*, const char*, size_t, uint64_t*, size_t, uint64_t*);
+    auto create_dtrace_buffer =
+        (create_dtrace_buffer_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "create_dtrace_buffer");
+    if (!create_dtrace_buffer) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
+      return;
+    }
+
+    uint32_t ctrl_buf_size;
+    uint32_t mem_buf_size;
+    if (get_dtrace_buffer_size(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+                               &ctrl_buf_size, &mem_buf_size) != 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "[dtrace] : Failed to get control buffer size");
+      return;
+    }
+
+    if (!ctrl_buf_size) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "[dtrace] : Control buffer size is zero, no dtrace o/p");
+      return;
+    }
+
+    std::string msg;
+    try {
+      // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
+      m_dtrace_ctrl_bo = xrt_core::bo_int::create_dtrace_bo(m_hwctx, ctrl_buf_size * sizeof(uint32_t));
+      // also create dtrace mem buffer if size is non zero
+      if (mem_buf_size) {
+        m_dtrace_mem_bo = xrt::bo{ m_hwctx, mem_buf_size * sizeof(uint32_t), xrt::bo::flags::cacheable, 1 /* fix me */ };
+        // fill data by calling dtrace library API with bo map ptr and sync the bo
+        create_dtrace_buffer(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+                             ctrl_buf_size, m_dtrace_ctrl_bo.map<uint64_t*>(),
+                             mem_buf_size, m_dtrace_mem_bo.map<uint64_t*>());
+
+        m_dtrace_mem_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      }
+      else {
+        // fill data by calling dtrace library API without mem buffer
+        create_dtrace_buffer(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+                             ctrl_buf_size, m_dtrace_ctrl_bo.map<uint64_t*>(),
+                             0, nullptr);
+      }
+
+      // sync dtrace control buffer
+      m_dtrace_ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      msg = "[dtrace] : dtrace buffers initialized successfully";
+    }
+    catch (const std::exception &e) {
+      m_dtrace_ctrl_bo = {};
+      msg = std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what();
+    }
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
+  }
+
 public:
   module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t index = 0)
     : module_impl{ parent->get_cfg_uuid() }
@@ -1911,6 +2086,7 @@ public:
       fill_bo_addresses();
     }
     else if (os_abi == Elf_Amd_Aie2ps) {
+      initialize_dtrace_buf(m_parent.get());
       create_instruction_buffer(m_parent.get());
       fill_column_bo_address(m_parent->get_data());
     }
@@ -1976,6 +2152,50 @@ public:
     
     auto arg_value = *static_cast<const uint64_t*>(value);
     patch_value(argnm, index, arg_value);
+  }
+
+  void
+  dump_dtrace_buffer()
+  {
+    dtrace_util dtrace;
+    if (!m_dtrace_ctrl_bo || !init_dtrace_helper(m_parent.get(), dtrace))
+      return;
+
+    // sync dtrace buffers output from device
+    m_dtrace_ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    if (m_dtrace_mem_bo)
+      m_dtrace_mem_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    using create_result_file_fun = void (*)(const char*, const char*, size_t, uint64_t*,
+                                            size_t, uint64_t*, const char*);
+    auto create_result_file =
+        (create_result_file_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "create_result_file");
+    if (!create_result_file) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
+      return;
+    }
+
+    std::string msg;
+    try {
+      // dtrace output is dumped into current working directory
+      // output is a python file
+      auto result_file_path = std::filesystem::current_path().string() + "/dtrace_dump_" + std::to_string(get_id()) + ".py";
+      if (m_dtrace_mem_bo)
+        create_result_file(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+                           (m_dtrace_ctrl_bo.size() / sizeof(uint32_t)), m_dtrace_ctrl_bo.map<uint64_t*>(),
+                           (m_dtrace_mem_bo.size() / sizeof(uint32_t)), m_dtrace_mem_bo.map<uint64_t*>(),
+                           result_file_path.c_str());
+      else
+        create_result_file(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+                           (m_dtrace_ctrl_bo.size() / sizeof(uint32_t)), m_dtrace_ctrl_bo.map<uint64_t*>(),
+                           0, nullptr, result_file_path.c_str());
+      msg = std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_path;
+    }
+    catch (const std::exception &e) {
+      msg = std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what();
+    }
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
   }
 };
 
@@ -2083,6 +2303,16 @@ uint32_t
 get_partition_size(const xrt::module& module)
 {
   return module.get_handle()->get_partition_size();
+}
+
+void
+dump_dtrace_buffer(const xrt::module& module)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  module_sram->dump_dtrace_buffer();
 }
 
 } // xrt_core::module_int

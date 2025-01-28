@@ -1689,19 +1689,32 @@ get_offset(const xrt::bo& bo)
   return handle->get_offset();
 }
 
-xrt::bo
-create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
+static xrt::bo
+create_bo_helper(const xrt::hw_context& hwctx, size_t sz, uint32_t use_flag)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
   flags.flags = XRT_BO_FLAGS_CACHEABLE;
   flags.access = XRT_BO_ACCESS_LOCAL;
   flags.dir = XRT_BO_ACCESS_READ_WRITE;
-  flags.use = XRT_BO_USE_DEBUG;
+  flags.use = use_flag;
 
-  // While the memory group should be ignored (inferred) for debug
-  // buffers, it is still passed in as a default group 1 with no
-  // implied correlation to xclbin connectivity or memory group.
+  // While the memory group should be ignored (inferred) for
+  // debug / trace buffers, it is still passed in as a default
+  // group 1 with no implied correlation to xclbin connectivity
+  // or memory group.
   return xrt::bo{alloc(device_type{hwctx}, sz, flags.all, 1)};
+}
+
+xrt::bo
+create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
+{
+  return create_bo_helper(hwctx, sz, XRT_BO_USE_DEBUG);
+}
+
+xrt::bo
+create_dtrace_bo(const xrt::hw_context& hwctx, size_t sz)
+{
+  return create_bo_helper(hwctx, sz, XRT_BO_USE_DTRACE);
 }
 
 } // xrt_core::bo_int
