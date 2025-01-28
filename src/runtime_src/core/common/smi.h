@@ -28,18 +28,18 @@ struct option : public basic_option {
   std::string value_type;
   std::vector<basic_option> description_array;
 
-  option(const std::string& name, 
-         const std::string& alias, 
-         const std::string& description,
-         const std::string& type, 
-         const std::string& default_value, 
-         const std::string& value_type, 
+  option(const std::string name, 
+         const std::string alias, 
+         const std::string description,
+         const std::string type, 
+         const std::string default_value, 
+         const std::string value_type, 
          const std::vector<basic_option>& description_array = {})
-      : basic_option{name, description, type}, 
-        alias(alias), 
-        default_value(default_value), 
-        value_type(value_type), 
-        description_array(description_array) {}
+      : basic_option{std::move(name), std::move(description), std::move(type)}, 
+        alias(std::move(alias)), 
+        default_value(std::move(default_value)), 
+        value_type(std::move(value_type)), 
+        description_array(std::move(description_array)) {}
 
   boost::property_tree::ptree to_ptree() const;
 };
