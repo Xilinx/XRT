@@ -700,3 +700,16 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>({"all"});
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
 }
+
+void
+SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
+{
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
+}

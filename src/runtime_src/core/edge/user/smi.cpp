@@ -2,10 +2,12 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "smi.h"
 
-namespace shim_pcie::smi {
+namespace shim_edge::smi {
 
 const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_pcie::get_validate_test_desc() const {
+smi_edge::
+get_validate_test_desc() const 
+{
   static const std::vector<std::tuple<std::string, std::string, std::string>> validate_test_desc = {
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
@@ -21,7 +23,9 @@ smi_pcie::get_validate_test_desc() const {
 }
 
 const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_pcie::get_examine_report_desc() const {
+smi_edge::
+get_examine_report_desc() const 
+{
   static const std::vector<std::tuple<std::string, std::string, std::string>> examine_report_desc = {
     {"aie", "AIE metadata in xclbin", "common"},
     {"aiemem", "AIE memory tile information", "common"},
@@ -42,11 +46,12 @@ smi_pcie::get_examine_report_desc() const {
 }
 
 std::string
-get_smi_config(){
+get_smi_config()
+{
   // Create an instance of the derived class
-  shim_pcie::smi::smi_pcie smi_instance;
+  shim_edge::smi::smi_edge smi_instance;
 
   // Call the get_smi_config method
   return smi_instance.get_smi_config();
 }
-} // namespace shim_pcie::smi
+} // namespace shim_edge::smi
