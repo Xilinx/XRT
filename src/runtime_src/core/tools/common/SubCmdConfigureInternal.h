@@ -28,6 +28,7 @@ struct SubCmdConfigureOptions {
 class SubCmdConfigureInternal : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
+  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
   SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);

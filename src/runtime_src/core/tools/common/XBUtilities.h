@@ -153,8 +153,6 @@ namespace XBUtilities {
       m_device->close_context(m_uuid, std::numeric_limits<unsigned int>::max());
     }
   };
-  std::string loadDefaultSmiConfig();
-
 };
 
 #endif

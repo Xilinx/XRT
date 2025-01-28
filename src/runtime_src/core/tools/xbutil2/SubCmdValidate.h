@@ -23,6 +23,7 @@ struct SubCmdValidateOptions {
 class SubCmdValidate : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
+  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
   SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations);

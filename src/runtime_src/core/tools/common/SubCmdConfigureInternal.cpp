@@ -425,3 +425,15 @@ SubCmdConfigureInternal::fill_option_values(const boost::program_options::variab
   options.m_showx = vm.count("showx") ? vm["showx"].as<bool>() : false;
 }
 
+void
+SubCmdConfigureInternal::setOptionConfig(const boost::property_tree::ptree &config)
+{
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+  }
+}
