@@ -5,15 +5,16 @@
 // Local include files
 #include "config.h"
 
+// 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 namespace xrt_core::smi {
 
-using TupleVector = std::vector<std::tuple<std::string, std::string, std::string>>; 
+using tuple_vector = std::vector<std::tuple<std::string, std::string, std::string>>; 
 
 struct basic_option {
   std::string name;
@@ -43,25 +44,34 @@ struct option : public basic_option {
   boost::property_tree::ptree to_ptree() const;
 };
 
-/*
-* Each shim's smi class derives from this class
-* and adds its custom functionalities. Currently only validate tests and examine
-* reports differ between each shim but going forward, each shim can define its 
-* custom behavior for xrt-smi as required. This also gives us the flexibility
-* to add device specific xrt-smi behavior.
-*/
-
+// Each shim's smi class derives from this class
+// and adds its custom functionalities. Currently only validate tests and examine
+// reports differ between each shim but going forward, each shim can define its 
+// custom behavior for xrt-smi as required. This also gives us the flexibility
+// to add device specific xrt-smi behavior.
 class smi_base {
 protected:
-  virtual const TupleVector& get_validate_test_desc() const;
-  virtual const TupleVector& get_examine_report_desc() const;
 
-  std::vector<basic_option> construct_run_option_description() const;
-  std::vector<basic_option> construct_report_option_description() const;
+  virtual const tuple_vector& 
+  get_validate_test_desc() const;
 
-  boost::property_tree::ptree construct_validate_subcommand() const;
-  boost::property_tree::ptree construct_examine_subcommand() const;
-  boost::property_tree::ptree construct_configure_subcommand() const;
+  virtual const tuple_vector& 
+  get_examine_report_desc() const;
+
+  std::vector<basic_option> 
+  construct_run_option_description() const;
+
+  std::vector<basic_option> 
+  construct_report_option_description() const;
+
+  boost::property_tree::ptree 
+  construct_validate_subcommand() const;
+
+  boost::property_tree::ptree 
+  construct_examine_subcommand() const;
+
+  boost::property_tree::ptree 
+  construct_configure_subcommand() const;
 
 public:
   std::string get_smi_config() const;
@@ -69,4 +79,5 @@ public:
 
 XRT_CORE_COMMON_EXPORT
 std::string get_smi_config();
+
 } // namespace xrt_core::smi

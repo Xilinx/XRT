@@ -688,6 +688,7 @@ struct xrt_smi_config
   {
     if (key != key_type::xrt_smi_config)
       throw xrt_core::query::no_such_key(key, "Not implemented");
+
     std::string xrt_smi_config;
     const auto xrt_smi_config_type = std::any_cast<xrt_core::query::xrt_smi_config::type>(reqType);
     switch (xrt_smi_config_type) {

@@ -7,22 +7,20 @@
 #include "smi.h"
 
 // 3rd Party Library - Include Files
-#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
-#include <vector>
-#include <tuple>
 #include <string>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <iostream>
+#include <vector>
 
 namespace xrt_core::smi {
 
 using boost::property_tree::ptree;
 
 ptree 
-option::to_ptree() const {
+option::
+to_ptree() const 
+{
   boost::property_tree::ptree pt;
   pt.put("name", name);
   pt.put("description", description);
@@ -44,10 +42,11 @@ option::to_ptree() const {
   return pt;
 }
 
-const TupleVector& 
-smi_base::get_validate_test_desc() const {
-
-  static const TupleVector validate_test_desc = {
+const tuple_vector& 
+smi_base::
+get_validate_test_desc() const 
+{
+  static const tuple_vector validate_test_desc = {
     {"aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA", "hidden"},
     {"all", "All applicable validate tests will be executed (default)", "common"},
     {"cmd-chain-latency", "Run end-to-end latency test using command chaining", "common"},
@@ -74,10 +73,11 @@ smi_base::get_validate_test_desc() const {
   return validate_test_desc;
 }
 
-const TupleVector& 
-smi_base::get_examine_report_desc() const 
+const tuple_vector& 
+smi_base::
+get_examine_report_desc() const 
 {
-  static const TupleVector examine_report_desc = {
+  static const tuple_vector examine_report_desc = {
     {"aie-partitions", "AIE partition information", "common"},
     {"host", "Host information", "common"},
     {"platform", "Platforms flashed on the device", "common"},
@@ -101,7 +101,8 @@ smi_base::get_examine_report_desc() const
 }
 
 std::vector<basic_option> 
-smi_base::construct_run_option_description() const 
+smi_base::
+construct_run_option_description() const 
 {
   std::vector<basic_option> run_option_descriptions;
   for (const auto& [name, description, type] : get_validate_test_desc()) {
@@ -111,7 +112,9 @@ smi_base::construct_run_option_description() const
 }
 
 std::vector<basic_option> 
-smi_base::construct_report_option_description() const {
+smi_base::
+construct_report_option_description() const 
+{
   std::vector<basic_option> report_option_descriptions;
   for (const auto& [name, description, type] : get_examine_report_desc()) {
     report_option_descriptions.push_back({name, description, type});
@@ -120,7 +123,8 @@ smi_base::construct_report_option_description() const {
 }
 
 ptree 
-smi_base::construct_validate_subcommand() const 
+smi_base::
+construct_validate_subcommand() const 
 {
   ptree subcommand;
   subcommand.put("name", "validate");
@@ -140,17 +144,18 @@ smi_base::construct_validate_subcommand() const
     {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
   };
 
-    ptree options_ptree;
-    for (const auto& option : options) {
-      options_ptree.push_back(std::make_pair("", option.to_ptree()));
-    }
-
-    subcommand.add_child("options", options_ptree);
-    return subcommand;
+  ptree options_ptree;
+  for (const auto& option : options) {
+    options_ptree.push_back(std::make_pair("", option.to_ptree()));
   }
 
+  subcommand.add_child("options", options_ptree);
+  return subcommand;
+}
+
 ptree 
-smi_base::construct_examine_subcommand() const 
+smi_base::
+construct_examine_subcommand() const 
 {
   ptree subcommand;
   subcommand.put("name", "examine");
@@ -178,7 +183,8 @@ smi_base::construct_examine_subcommand() const
 }
 
 ptree 
-smi_base::construct_configure_subcommand() const 
+smi_base::
+construct_configure_subcommand() const 
 {
   ptree subcommand;
   subcommand.put("name", "configure");
@@ -209,7 +215,9 @@ smi_base::construct_configure_subcommand() const
 }
 
 std::string 
-smi_base::get_smi_config() const {
+smi_base::
+get_smi_config() const 
+{
   ptree config;
   ptree subcommands;
 

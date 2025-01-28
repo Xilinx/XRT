@@ -5,7 +5,9 @@
 namespace shim_edge::smi {
 
 const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_edge::get_validate_test_desc() const {
+smi_edge::
+get_validate_test_desc() const 
+{
   static const std::vector<std::tuple<std::string, std::string, std::string>> validate_test_desc = {
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
@@ -21,7 +23,9 @@ smi_edge::get_validate_test_desc() const {
 }
 
 const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_edge::get_examine_report_desc() const {
+smi_edge::
+get_examine_report_desc() const 
+{
   static const std::vector<std::tuple<std::string, std::string, std::string>> examine_report_desc = {
     {"aie", "AIE metadata in xclbin", "common"},
     {"aiemem", "AIE memory tile information", "common"},
@@ -42,7 +46,8 @@ smi_edge::get_examine_report_desc() const {
 }
 
 std::string
-get_smi_config(){
+get_smi_config()
+{
   // Create an instance of the derived class
   shim_edge::smi::smi_edge smi_instance;
 
