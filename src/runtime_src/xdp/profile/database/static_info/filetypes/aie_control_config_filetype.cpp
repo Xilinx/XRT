@@ -307,7 +307,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             && (portName.compare(logicalName) != 0))
             continue;
         if ((graphName.compare("all") != 0)
-            && (graphName.compare(currGraph) != 0)
+            && (currGraph.find(graphName) == std::string::npos)
             && !useColumn)
             continue;
 
@@ -512,8 +512,9 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
     int startCount = 0;
 
     for (auto& graph : graphsMetadata.get()) {
+        // Only top-level graphs are listed, so search is reverse
         auto currGraph = graph.second.get<std::string>("name");
-        if ((currGraph.find(graph_name) == std::string::npos)
+        if ((graph_name.find(currGraph) == std::string::npos)
             && (graph_name.compare("all") != 0))
             continue;
 
@@ -548,13 +549,13 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                                    module_type type,
                                    const std::string& kernel_name) const
 {
-    // Catch memory tiles and 'all' AIE tiles
+    // Catch special cases (memory tiles, memory modules, and all kernels)
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if (kernel_name.compare("all") == 0)
+    if ((type == module_type::dma) || (kernel_name.compare("all") == 0))
         return getAllAIETiles(graph_name);
 
-    // Now search by graph-kernel pairs
+    // Search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping && (kernel_name.compare("all") == 0))
         return getAIETiles(graph_name);
@@ -566,7 +567,9 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
 
+    // Traverse all tiles in kernel map
     for (auto const &mapping : kernelToTileMapping.get()) {
+        // Make sure this tile is what we're looking for
         auto currGraph = mapping.second.get<std::string>("graph");
         if ((currGraph.find(graph_name) == std::string::npos)
             && (graph_name.compare("all") != 0)) 
@@ -579,6 +582,7 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                 continue;
         }
 
+        // Store this tile
         tile_type tile;
         tile.col = mapping.second.get<uint8_t>("column");
         tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
