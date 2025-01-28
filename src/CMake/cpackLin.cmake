@@ -12,6 +12,7 @@ SET(CPACK_PACKAGE_VERSION_RELEASE "${XRT_VERSION_RELEASE}")
 SET(CPACK_PACKAGE_VERSION_MAJOR "${XRT_VERSION_MAJOR}")
 SET(CPACK_PACKAGE_VERSION_MINOR "${XRT_VERSION_MINOR}")
 SET(CPACK_PACKAGE_VERSION_PATCH "${XRT_VERSION_PATCH}")
+set(CPACK_PACKAGE_VERSION ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 SET(CPACK_PACKAGE_NAME "xrt")
 
 SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
@@ -20,7 +21,7 @@ SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
 # For some reason CMake doesn't populate CPACK_COMPONENTS_ALL when the
 # project has only one component, this leads to cpack generating
-# pacage without component name appended.  To work-around this,
+# package without component name appended.  To work-around this,
 # populate the variable explictly.
 get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
 message("Install components in the project: ${CPACK_COMPONENTS_ALL}")
@@ -192,22 +193,63 @@ elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinu
   SET(CPACK_RPM_CONTAINER_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/postinst")
   SET(CPACK_RPM_CONTAINER_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware" "/usr/share/pkgconfig")
-  SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
-  if (${LINUX_FLAVOR} MATCHES "^(sles)")
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, dkms >= 2.2.0, python3 >= 3.6")
-  elseif (${LINUX_FLAVOR} MATCHES "^(mariner)")
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
-  else()
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
+
+  set(CPACK_RPM_BASE_PACKAGE_REQUIRES "ocl-icd >= 2.2, python3 >= 3.6")
+  set(CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
+  set(CPACK_RPM_NPU_PACKAGE_REQUIRES "xrt-base = ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_RPM_NPU-DEVEL_PACKAGE_REQUIRES "xrt-npu = ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_RPM_ALVEO_PACKAGE_REQUIRES "xrt-base = ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_RPM_ALVEO-DEVEL_PACKAGE_REQUIRES "xrt-alveo= ${CPACK_PACKAGE_VERSION}")
+  set(CPACK_RPM_XRT-DEVEL_PACKAGE_REQUIRES "xrt = ${CPACK_PACKAGE_VERSION}")
+
+  # If xrt-base-devel development component is built, then it depends
+  # on xrt-base deployment.  For the cases where xrt-base-devel
+  # is folded into deployment, we don't want xrt-base dependency.
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base-devel")
+    set(CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES
+      "${CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES}, \
+      xrt-base = ${CPACK_PACKAGE_VERSION}")
+  endif()
+  
+  # If base package combines deployment and development, then
+  # include development dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base")
+    set(CPACK_RPM_BASE_PACKAGE_REQUIRES
+      "${CPACK_RPM_BASE_PACKAGE_REQUIRES}, \
+      ${CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES}")
+  endif()
+      
+  # If base is included in npu, then include base dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "npu")
+    set(CPACK_RPM_NPU_PACKAGE_REQUIRES
+      "${CPACK_RPM_BASE_PACKAGE_REQUIRES}, \
+      ${CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES}")
   endif()
 
-  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
-    # xrt is also development package
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "${CPACK_RPM_XRT_PACKAGE_REQUIRES}, ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
-  else()
-    # xrt development package
-    SET(CPACK_RPM_XRT-DEV_PACKAGE_NAME ${XRT_DEV_COMPONENT})
-    SET(CPACK_RPM_XRT-DEV_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}, ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
+  # If base is included in alveo, then include base dependencies
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "alveo")
+    set(CPACK_RPM_ALVEO_PACKAGE_REQUIRES
+      "${CPACK_RPM_BASE_PACKAGE_REQUIRES}, \
+      ${CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES}")
+  endif()
+
+  # If base is included in xrt, then include base dependencies
+  # along with dmks and udev.  This is true for XRT legacy
+  if (${XRT_BASE_DEV_COMPONENT} STREQUAL "xrt")
+    set(CPACK_RPM_XRT_PACKAGE_REQUIRES
+      "${CPACK_RPM_BASE_PACKAGE_REQUIRES}, \
+      ${CPACK_RPM_BASE-DEVEL_PACKAGE_REQUIRES}, \
+      dkms")
+  endif()
+
+  # If base component is alveo, then aws has a dependency on alveo
+  if (${XRT_BASE_COMPONENT} STREQUAL "alveo")
+    set(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt-alveo = ${CPACK_PACKAGE_VERSION}")
+  endif()
+
+  # If base component is xrt, then aws has a dependency on xrt
+  if (${XRT_BASE_COMPONENT} STREQUAL "xrt")
+    set(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt = ${CPACK_PACKAGE_VERSION}")
   endif()
 
   if (DEFINED CROSS_COMPILE)
