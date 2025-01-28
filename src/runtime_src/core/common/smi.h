@@ -52,9 +52,11 @@ struct option : public basic_option {
 class smi_base {
 protected:
 
+  XRT_CORE_COMMON_EXPORT
   virtual const tuple_vector& 
   get_validate_test_desc() const;
 
+  XRT_CORE_COMMON_EXPORT
   virtual const tuple_vector& 
   get_examine_report_desc() const;
 
@@ -74,6 +76,7 @@ protected:
   construct_configure_subcommand() const;
 
 public:
+  XRT_CORE_COMMON_EXPORT
   std::string get_smi_config() const;
 };
 
