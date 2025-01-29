@@ -62,7 +62,7 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
   {
     static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
     const auto total_cols = xrt_core::device_query_default<xq::total_cols>(device, 0);
-    pt.add("total_columns", total_cols);
+    static_region.add("total_columns", total_cols);
     break;
   }
   }
