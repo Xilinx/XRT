@@ -1926,29 +1926,18 @@ class module_sram : public module_impl
     return payload;
   }
 
-  struct dlib_handle
-  {
-    void* handle = nullptr;
-
-    dlib_handle(const std::string& path)
-    {
-      handle = xrt_core::dlopen(path.c_str(), RTLD_LAZY);
-    }
-
-    ~dlib_handle()
-    {
-      if (handle)
-        xrt_core::dlclose(handle);
-    }
-  };
-
   struct dtrace_util
   {
-    std::unique_ptr<dlib_handle> lib_hdl;
+    using dlhandle = std::unique_ptr<void, decltype(&xrt_core::dlclose)>;
+    dlhandle lib_hdl{nullptr, {}};
     std::string ctrl_file_path;
     std::string map_data;
   };
 
+  // Function that returns true on successful initialization and false otherwise
+  // Ideally exceptions should have been used but return status is used as ths
+  // exception alternative is not good because in cases of failure dtrace
+  // functionality is just a no-op.
   static bool
   init_dtrace_helper(const module_impl* parent, dtrace_util& dtrace_obj)
   {
@@ -1963,8 +1952,10 @@ class module_sram : public module_impl
     if (dtrace_lib_path.empty())
       return false; // dtrace lib path is not set, dtrace is not enabled
 
-    dtrace_obj.lib_hdl = std::make_unique<dlib_handle>(dtrace_lib_path);
-    if (!dtrace_obj.lib_hdl->handle) {
+    dtrace_obj.lib_hdl =
+        dtrace_util::dlhandle{xrt_core::dlopen(dtrace_lib_path.c_str(), RTLD_LAZY),
+                              &xrt_core::dlclose};
+    if (!dtrace_obj.lib_hdl) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "Failed to load dtrace library");
       return false;
@@ -1996,9 +1987,12 @@ class module_sram : public module_impl
     if (!init_dtrace_helper(parent, dtrace))
       return; // init failure
 
+    // dtrace is enabled and library is opened successfully
+    // Below code gets function pointers for functions
+    // get_dtrace_buffer_size and create_dtrace_buffer
     using get_dtrace_buffer_size_fun = uint32_t (*)(const char*, const char*, uint32_t*, uint32_t*);
     auto get_dtrace_buffer_size =
-        (get_dtrace_buffer_size_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "get_dtrace_buffer_size");
+        (get_dtrace_buffer_size_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_buffer_size");
     if (!get_dtrace_buffer_size) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
@@ -2006,12 +2000,14 @@ class module_sram : public module_impl
 
     using create_dtrace_buffer_fun = void (*)(const char*, const char*, size_t, uint64_t*, size_t, uint64_t*);
     auto create_dtrace_buffer =
-        (create_dtrace_buffer_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "create_dtrace_buffer");
+        (create_dtrace_buffer_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "create_dtrace_buffer");
     if (!create_dtrace_buffer) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
     }
 
+    // using function ptr get dtrace control buffer size
+    // this function also returns dtrace mem buffer size if mem read calls are used in control scipt.
     uint32_t ctrl_buf_size;
     uint32_t mem_buf_size;
     if (get_dtrace_buffer_size(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
@@ -2021,13 +2017,15 @@ class module_sram : public module_impl
       return;
     }
 
+    // control buf size is empty, control script does nothing.
     if (!ctrl_buf_size) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "[dtrace] : Control buffer size is zero, no dtrace o/p");
       return;
     }
 
-    std::string msg;
+    // Create xrt::bo's with size returned and call the API to fill the buffers with
+    // required data, buffers are synced after data is filled.
     try {
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
       m_dtrace_ctrl_bo = xrt_core::bo_int::create_dtrace_bo(m_hwctx, ctrl_buf_size * sizeof(uint32_t));
@@ -2050,14 +2048,14 @@ class module_sram : public module_impl
 
       // sync dtrace control buffer
       m_dtrace_ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      msg = "[dtrace] : dtrace buffers initialized successfully";
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              "[dtrace] : dtrace buffers initialized successfully");
     }
     catch (const std::exception &e) {
       m_dtrace_ctrl_bo = {};
-      msg = std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what());
     }
-
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
   }
 
 public:
@@ -2166,16 +2164,16 @@ public:
     if (m_dtrace_mem_bo)
       m_dtrace_mem_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
+    // Get function pointer to create result file
     using create_result_file_fun = void (*)(const char*, const char*, size_t, uint64_t*,
                                             size_t, uint64_t*, const char*);
     auto create_result_file =
-        (create_result_file_fun) xrt_core::dlsym(dtrace.lib_hdl->handle, "create_result_file");
+        (create_result_file_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "create_result_file");
     if (!create_result_file) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
     }
 
-    std::string msg;
     try {
       // dtrace output is dumped into current working directory
       // output is a python file
@@ -2189,13 +2187,14 @@ public:
         create_result_file(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
                            (m_dtrace_ctrl_bo.size() / sizeof(uint32_t)), m_dtrace_ctrl_bo.map<uint64_t*>(),
                            0, nullptr, result_file_path.c_str());
-      msg = std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_path;
+
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_path);
     }
     catch (const std::exception &e) {
-      msg = std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+                              std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
     }
-
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
   }
 };
 
