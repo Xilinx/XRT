@@ -126,15 +126,17 @@ namespace xdp::aie::profile {
                                      XAIE_EVENT_PORT_IDLE_0_PL};
       eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
                                      XAIE_EVENT_PORT_IDLE_0_PL};
-    } 
-    else if (hwGen == 5){
+    }
+#ifdef XDP_VE2_BUILD
+    else if (hwGen == 5) {
       eventSets["input_stalls"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                      XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL};
       eventSets["output_stalls"]  = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
                                      XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL};
       eventSets["input_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
       eventSets["output_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
-    }  
+    }
+#endif
     else {
       eventSets["input_stalls"]   = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                      XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
