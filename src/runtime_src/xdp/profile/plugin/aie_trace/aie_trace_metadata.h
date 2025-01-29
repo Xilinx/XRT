@@ -171,7 +171,7 @@ class AieTraceMetadata {
                                 "mm2s_ports_details", "s2mm_ports_details",
                                 "input_output_ports", "mm2s_s2mm_ports",
                                 "input_output_ports_stalls", "mm2s_s2mm_ports_stalls",
-                                "uc_dma_dm2mm", "uc_dma_mm2dm", "uc_axis",
+                                "uc_dma_dm2mm", "uc_dma_mm2dm", "uc_axis", "uc_dma",
                                 "uc_program_flow"} }
     };
 
