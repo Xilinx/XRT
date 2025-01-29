@@ -654,6 +654,12 @@ protected:
   uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::map<std::string, patcher> m_arg2patcher;
 
+  // rela->addend have offset to base-bo-addr info along with schema
+  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
+  constexpr static uint32_t addend_shift = 4;
+  constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
+  constexpr static uint32_t schema_mask = ~addend_mask;
+
   explicit module_elf(xrt::elf elf)
     : module_impl{ elf.get_cfg_uuid() }
     , m_elfio(xrt_core::elf_int::get_elfio(elf))
@@ -708,12 +714,6 @@ public:
 // module class for ELFs with os_abi - Elf_Amd_Aie2p & ELF_Amd_Aie2p_config
 class module_elf_aie2p : public module_elf
 {
-  // rela->addend have offset to base-bo-addr info along with schema
-  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
-  constexpr static uint32_t addend_shift = 4;
-  constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
-  constexpr static uint32_t schema_mask = ~addend_mask;
-
   // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
   // sections will be of format .ctrltext.* where .* has index of that section type
   // Below maps has this index as key and value is pair of <section index, data buffer>
@@ -1331,6 +1331,7 @@ class module_elf_aie2ps : public module_elf
         if (dynsym_offset >= dynsym->get_size())
           throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
         auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
         auto dynstr_offset = sym->st_name;
         if (dynstr_offset >= dynstr->get_size())
@@ -1376,7 +1377,18 @@ class module_elf_aie2ps : public module_elf
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+        patcher::symbol_type patch_scheme;
+        uint32_t add_end_addr;
+        auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
+        if (abi_version != 1) {
+          add_end_addr = rela->r_addend;
+          patch_scheme = static_cast<patcher::symbol_type>(type);
+        }
+        else {
+          // rela addend have offset to base_bo_addr info along with schema
+          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        }
         auto key_string = generate_key_string(argnm, buf_type, UINT32_MAX);
         // One arg may need to be patched at multiple offsets of control code
         // arg2patcher map contains a key & value pair of arg & patcher object
@@ -1386,9 +1398,9 @@ class module_elf_aie2ps : public module_elf
         // Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
         // On all further occurences of arg, add patch_info structure to existing vector
         if (auto search = m_arg2patcher.find(key_string); search != m_arg2patcher.end())
-          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, 0, 0});
+          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
         else
-          m_arg2patcher.emplace(std::move(key_string), patcher{symbol_type, {{abs_offset, 0}}, buf_type});
+          m_arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
     }
   }
