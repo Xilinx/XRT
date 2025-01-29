@@ -491,6 +491,23 @@ static void awsPciRescan(int index)
 #endif
 
 /*
+This thread sets the clock frequencies dynamically using aws_clkgen_set_dynamic() API.
+The intention to set these frequencies after image load is to perform clock module reset
+in the back ground which is a work around required to overcome the double image load Hang issue
+observed on the AWS F2 Instance.
+
+NOTE: This Thread has to run Asynchronously in order to avoid the double load Instance Hang issue that
+is seen on F2 instance. The delay 10 secs can be removed once the double load issue on AWS instance is
+addressed by AWS team.
+*/
+static void aws_clkgen_set_dynamic_thread(int slot_id, uint32_t clk_b_freq, uint32_t clk_c_freq, uint32_t clk_hbm_freq)
+{
+        std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 10 seconds
+        aws_clkgen_set_dynamic(slot_id, 125 /*default max */, clk_b_freq,
+                                clk_c_freq, clk_hbm_freq, 0);
+}
+
+/*
  * On AWS F1, fpga user PF without xclbin being loaded (cleared) has different
  * device id (0x1042) than that of the user PF with xclbin being loaded (0xf010)
  * Changing the device id needs pci node remove and rescan.
@@ -545,11 +562,8 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
                         clock_mains[i] = clk->m_freq_Mhz;
                 }
         }
-
         syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
-	aws_clkgen_set_dynamic(mBoardNumber, 125 /*default */, clock_mains[2]/*clk_extra_b0*/,
-			clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/, 0);
-
+        auto future = std::async(std::launch::async, aws_clkgen_set_dynamic_thread, mBoardNumber, clock_mains[2]/*clk_extra_b0*/, clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/);
         return 0;
      }
 
