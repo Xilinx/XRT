@@ -3524,7 +3524,10 @@ xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, 
 {
   auto device = get_device(dhdl);
   auto mode = hwctx_access_mode(am);  // legacy access mode to hwctx qos
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, mode}, name);
+  auto kernel = std::make_shared<xrt::kernel_impl>(device,
+                                                   xrt::hw_context{device->get_xrt_device(), xclbin_uuid, mode},
+                                                   xrt::module{},
+                                                   name);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
