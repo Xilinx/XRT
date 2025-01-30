@@ -139,14 +139,13 @@ cmake_flags+=" -DMSVC_PARALLEL_JOBS=$jcore"
 cmake_flags+=" -DKHRONOS=$KHRONOS"
 cmake_flags+=" -DBOOST_ROOT=$BOOST"
 
-echo "${cmake_flags[@]}"
-
 if [ $dbg == 1 ]; then
     cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
     mkdir -p WDebug
     cd WDebug
 
     if [ $nocmake == 0 ]; then
+        echo "${cmake_flags[@]}"
         "$CMAKE" -G "Visual Studio 17 2022" $cmake_flags ../../src
     fi
     "$CMAKE" --build . --verbose --config Debug
@@ -159,6 +158,7 @@ if [ $release == 1 ]; then
     mkdir -p WRelease
     cd WRelease
     if [ $nocmake == 0 ]; then
+        echo "${cmake_flags[@]}"
         "$CMAKE" -G "Visual Studio 17 2022" $cmake_flags ../../src
     fi
     "$CMAKE" --build . --verbose --config Release
