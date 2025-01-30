@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+if (NOT XRT_BASE)
+  return()
+endif()
+
 add_subdirectory(api)
 add_subdirectory(xdp)
 add_subdirectory(runner)
@@ -39,6 +43,7 @@ add_library(core_common_library_objects OBJECT
   sysinfo.cpp
   xclbin_parser.cpp
   xclbin_swemu.cpp
+  smi.cpp
   )
 
 target_include_directories(core_common_library_objects

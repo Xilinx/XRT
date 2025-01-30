@@ -33,7 +33,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set_target_properties(xdp_ml_timeline_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_ml_timeline_plugin
-    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
@@ -50,7 +50,7 @@ target_compile_definitions(xdp_ml_timeline_plugin PRIVATE XDP_VE2_BUILD=1)
 set_target_properties(xdp_ml_timeline_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_ml_timeline_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )
 
 endif()

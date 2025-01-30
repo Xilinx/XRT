@@ -9,5 +9,5 @@ includedir=${prefix}/include
 Name: XRT
 Description: Xilinx RunTime
 Version: @XRT_VERSION_STRING@
-Libs: -L${libdir} -lxrt_core -lxrt_coreutil
+Libs: -L${libdir} -lxrt_coreutil
 Cflags: -I${includedir}

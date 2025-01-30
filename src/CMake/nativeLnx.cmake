@@ -109,14 +109,10 @@ include (CMake/xrtVariables.cmake)
 #  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
 SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
 
-# --- Release: eula ---
-file(GLOB XRT_EULA
-  "license/*.txt"
-  )
-#install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE
+  DESTINATION ${XRT_INSTALL_DIR}/license
+  COMPONENT ${XRT_BASE_COMPONENT})
 message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
-
 
 # --- Create Version header and JSON file ---
 include (CMake/version.cmake)
@@ -135,7 +131,9 @@ xrt_add_subdirectory(runtime_src)
 # --- Python bindings ---
 xrt_add_subdirectory(python)
 
-# --- Python tests ---
+# Python tests are for XRT_ALVEO only
+if (XRT_ALVEO)
+
 set(PY_TEST_SRC
   ../tests/python/22_verify/22_verify.py
   ../tests/python/utils_binding.py
@@ -144,7 +142,10 @@ set(PY_TEST_SRC
   ../tests/python/23_bandwidth/versal_23_bandwidth.py)
 install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION ${XRT_INSTALL_DIR}/test)
+  DESTINATION ${XRT_INSTALL_DIR}/test
+  COMPONENT ${XRT_COMPONENT})
+
+endif (XRT_ALVEO)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
@@ -162,8 +163,10 @@ else()
   message("-- Skipping bundling of XRT Alveo drivers with XRT package")
 endif()
 
-# --- ICD ---
-include (CMake/icd.cmake)
+# ICD loader if for installed with base component
+if (XRT_BASE)
+  include (CMake/icd.cmake)
+endif (XRT_BASE)
 
 # --- Change Log ---
 include (CMake/changelog.cmake)

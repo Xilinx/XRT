@@ -4,11 +4,8 @@
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_INSTALL_DIR
 
-install(FILES "${XRT_SOURCE_DIR}/../CHANGELOG.rst"
-  DESTINATION "${XRT_INSTALL_DIR}/share/doc")
-
-install(FILES "${XRT_SOURCE_DIR}/../CONTRIBUTING.rst"
-  DESTINATION "${XRT_INSTALL_DIR}/share/doc")
-
-install(FILES "${XRT_SOURCE_DIR}/../NOTICE"
-  DESTINATION "${XRT_INSTALL_DIR}/share/doc")
+install(FILES
+  ${XRT_SOURCE_DIR}/../CHANGELOG.rst
+  ${XRT_SOURCE_DIR}/../CONTRIBUTING.rst
+  ${XRT_SOURCE_DIR}/../NOTICE
+  DESTINATION ${XRT_INSTALL_DIR}/share/doc COMPONENT ${XRT_BASE_COMPONENT})

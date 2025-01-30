@@ -33,7 +33,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set_target_properties(xdp_aie_halt_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_halt_plugin
-    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
 # Else, on edge-aarch64 don't build at all

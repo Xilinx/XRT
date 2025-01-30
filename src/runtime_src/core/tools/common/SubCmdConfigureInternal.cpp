@@ -93,18 +93,7 @@ static  boost::property_tree::ptree m_configurations;
 SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
     : SubCmd("configure", 
              _isUserDomain ? "Device and host configuration" : "Advanced options for configuring a device")
-    , m_device("")
-    , m_help(false)
     , m_isUserDomain(_isUserDomain)
-    , m_daemon(false)
-    , m_purge(false)
-    , m_host("")
-    , m_security("")
-    , m_clk_throttle("")
-    , m_power_override("")
-    , m_temp_override("")
-    , m_ct_reset("")
-    , m_showx(false)
 {
   const std::string longDescription = _isUserDomain ? "Device and host configuration." : "Advanced options for configuring a device";
   setLongDescription(longDescription);
@@ -112,28 +101,6 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-
-  if (!m_isUserDomain) {
-    // Options previously hidden under the config command
-    configHiddenOptions.add_options()
-      ("daemon", boost::program_options::bool_switch(&m_daemon), "Update the device daemon configuration")
-      ("purge", boost::program_options::bool_switch(&m_purge), "Remove the daemon configuration file")
-      ("host", boost::program_options::value<decltype(m_host)>(&m_host), "IP or hostname for device peer")
-      ("security", boost::program_options::value<decltype(m_security)>(&m_security), "Update the security level for the device")
-      ("clk_throttle", boost::program_options::value<decltype(m_clk_throttle)>(&m_clk_throttle), "Enable/disable the device clock throttling")
-      ("ct_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "Update the power threshold in watts")
-      ("ct_threshold_temp_override", boost::program_options::value<decltype(m_temp_override)>(&m_temp_override), "Update the temperature threshold in celsius")
-      ("ct_reset", boost::program_options::value<decltype(m_ct_reset)>(&m_ct_reset), "Reset all throttling options")
-      ("showx", boost::program_options::bool_switch(&m_showx), "Display the device configuration settings")
-    ;
-
-    m_hiddenOptions.add(configHiddenOptions);
-  }
-
-  m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
 
   for (const auto& option : optionOptionsCollection)
     addSubOption(option);
@@ -321,15 +288,17 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: configure");
   po::variables_map vm;
+  SubCmdConfigureOptions options;
   // Used for the suboption arguments.
   const auto unrecognized_options = process_arguments(vm, _options, false);
+  fill_option_values(vm, options);
   // Find the subOption
-  auto optionOption = checkForSubOption(vm, XBU::get_device_class(m_device, m_isUserDomain));
+  auto optionOption = checkForSubOption(vm, XBU::get_device_class(options.m_device, m_isUserDomain));
 
   if (!optionOption && m_isUserDomain) {
     // No suboption print help
-    if (m_help) {
-      printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
+    if (options.m_help) {
+      printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
       return;
     }
     // If help was not requested and additional options dont match we must throw to prevent
@@ -344,7 +313,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     else {
       std::cerr << "ERROR: Suboption missing" << std::endl;
     }
-    printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
+    printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -361,23 +330,23 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
   // Take care of executing hidden options for xbmgmt.
   if (!m_isUserDomain) {
     // -- process "help" option -----------------------------------------------
-    if (m_help) {
+    if (options.m_help) {
       printHelp();
       return;
     }
 
     // Non-device options
     // Remove the daemon config file
-    if (m_purge) {
+    if (options.m_purge) {
       XBU::verbose("Sub command: --purge");
       remove_daemon_config();
       return;
     }
 
     // Update daemon
-    if (m_daemon) {
+    if (options.m_daemon) {
       XBU::verbose("Sub command: --daemon");
-      update_daemon_config(m_host);
+      update_daemon_config(options.m_host);
       return;
     }
 
@@ -385,7 +354,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     std::shared_ptr<xrt_core::device> device;
 
     try {
-      device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
+      device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), false /*inUserDomain*/);
     } catch (const std::runtime_error& e) {
       // Catch only the exceptions that we have generated earlier
       std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -400,9 +369,9 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
 
     // Config commands
     // Option:m_showx
-    if (m_showx) {
+    if (options.m_showx) {
       XBU::verbose("Sub command: --showx");
-      if(m_daemon)
+      if(options.m_daemon)
         show_daemon_conf();
 
       show_device_conf(device.get());
@@ -413,29 +382,58 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     bool is_something_updated = false;
 
     // Update security
-    if (!m_security.empty())
-      is_something_updated = update_device_conf(device.get(), m_security, config_type::security);
+    if (!options.m_security.empty())
+      is_something_updated = update_device_conf(device.get(), options.m_security, config_type::security);
 
     // Clock throttling
-    if (!m_clk_throttle.empty())
-      is_something_updated = update_device_conf(device.get(), m_clk_throttle, config_type::clk_throttling);
+    if (!options.m_clk_throttle.empty())
+      is_something_updated = update_device_conf(device.get(), options.m_clk_throttle, config_type::clk_throttling);
     
     // Update threshold power override
-    if (!m_power_override.empty())
-      is_something_updated = update_device_conf(device.get(), m_power_override, config_type::threshold_power_override);
+    if (!options.m_power_override.empty())
+      is_something_updated = update_device_conf(device.get(), options.m_power_override, config_type::threshold_power_override);
 
     // Update threshold temp override
-    if (!m_temp_override.empty())
-      is_something_updated = update_device_conf(device.get(), m_temp_override, config_type::threshold_temp_override);
+    if (!options.m_temp_override.empty())
+      is_something_updated = update_device_conf(device.get(), options.m_temp_override, config_type::threshold_temp_override);
 
     // m_ct_reset?? TODO needs better comment
-    if (!m_ct_reset.empty())
-      is_something_updated = update_device_conf(device.get(), m_ct_reset, config_type::reset);
+    if (!options.m_ct_reset.empty())
+      is_something_updated = update_device_conf(device.get(), options.m_ct_reset, config_type::reset);
 
     if (!is_something_updated) {
       std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-      printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
+      printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
       throw xrt_core::error(std::errc::operation_canceled);
     }
+  }
+}
+
+void
+SubCmdConfigureInternal::fill_option_values(const boost::program_options::variables_map& vm, SubCmdConfigureOptions& options) const
+{
+  options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
+  options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
+  options.m_daemon = vm.count("daemon") ? vm["daemon"].as<bool>() : false;
+  options.m_purge = vm.count("purge") ? vm["purge"].as<bool>() : false;
+  options.m_host = vm.count("host") ? vm["host"].as<std::string>() : "";
+  options.m_security = vm.count("security") ? vm["security"].as<std::string>() : "";
+  options.m_clk_throttle = vm.count("clk_throttle") ? vm["clk_throttle"].as<std::string>() : "";
+  options.m_power_override = vm.count("ct_threshold_power_override") ? vm["ct_threshold_power_override"].as<std::string>() : "";
+  options.m_temp_override = vm.count("ct_threshold_temp_override") ? vm["ct_threshold_temp_override"].as<std::string>() : "";
+  options.m_ct_reset = vm.count("ct_reset") ? vm["ct_reset"].as<std::string>() : "";
+  options.m_showx = vm.count("showx") ? vm["showx"].as<bool>() : false;
+}
+
+void
+SubCmdConfigureInternal::setOptionConfig(const boost::property_tree::ptree &config)
+{
+  m_jsonConfig = SubCmdJsonObjects::JsonConfig(config.get_child("subcommands"), getName());
+  try{
+    m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
+    m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
+  } 
+  catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
   }
 }

@@ -2,10 +2,16 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <string>
+#include "core/common/smi.h"
 
-namespace xrt_core::smi {
+namespace shim_pcie::smi {
 
-std::string 
-get_smi_config();
+class smi_pcie : public xrt_core::smi::smi_base {
+protected:
+  const std::vector<std::tuple<std::string, std::string, std::string>>& get_validate_test_desc() const override;
+  const std::vector<std::tuple<std::string, std::string, std::string>>& get_examine_report_desc() const override;
+};
 
-} // namespace xrt_core::smi
+/* This API can be device specific since this is used by the shim*/
+std::string get_smi_config();
+} // namespace shim_pcie::smi

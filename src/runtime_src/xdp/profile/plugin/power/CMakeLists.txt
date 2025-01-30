@@ -21,5 +21,5 @@ target_link_libraries(xdp_power_plugin PRIVATE xdp_core xrt_core)
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_power_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )

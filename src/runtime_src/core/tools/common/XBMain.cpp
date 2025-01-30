@@ -5,6 +5,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "core/common/system.h"
+#include "core/common/smi.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
@@ -179,23 +180,21 @@ void  main_(int argc, char** argv,
    * instead of xrt-smi. 
    * If the device is not found, then load the default xrt-smi config.
   */
-  if (isUserDomain) {
-    std::shared_ptr<xrt_core::device> device;
-    boost::property_tree::ptree configTreeMain;
-    std::string config;
-    try {
-      device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
-    } catch (...) {
-      device = nullptr;
-    }
-    if (device) 
-      config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
-    else 
-      config = XBU::loadDefaultSmiConfig(); 
-    std::istringstream command_config_stream(config);
-    boost::property_tree::read_json(command_config_stream, configTreeMain);
-    subCommand->setOptionConfig(configTreeMain);
+  std::shared_ptr<xrt_core::device> device;
+  boost::property_tree::ptree configTreeMain;
+  std::string config;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
+  } catch (...) {
+    device = nullptr;
   }
+  if (device) 
+    config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
+  else 
+    config = xrt_core::smi::get_smi_config(); 
+  std::istringstream command_config_stream(config);
+  boost::property_tree::read_json(command_config_stream, configTreeMain);
+  subCommand->setOptionConfig(configTreeMain);
 
   // -- Execute the sub-command
   subCommand->execute(subcmd_options);

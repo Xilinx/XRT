@@ -24,5 +24,5 @@ target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl xr
 set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_device_offload_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
 )

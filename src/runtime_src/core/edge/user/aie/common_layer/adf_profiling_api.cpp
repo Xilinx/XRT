@@ -299,7 +299,7 @@ err_code profiling::profile_start_time_difference_btw_two_streams(XAie_DevInst* 
 
         std::vector< XAie_LocType > vLocs(numBcastShimColumns);
         for (int i = 0; i < numBcastShimColumns; i++)
-            vLocs[i] = XAie_TileLoc(shimColumn1 + i, 0); // Insert in order of broadcast direction: shimColumn1->shimColumn2
+            vLocs[i] = XAie_TileLoc(westShimColumn + i, 0);
 
         //reserve broadcast channel along the shim tiles
         auto pBroadcastRsc = fal_util::s_pXAieDev->broadcast(vLocs, XAIE_PL_MOD, XAIE_PL_MOD);

@@ -20,4 +20,4 @@ target_link_libraries(xdp_lop_plugin PRIVATE xdp_core xrt_coreutil)
 
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_lop_plugin LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR})
+install (TARGETS xdp_lop_plugin LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT})

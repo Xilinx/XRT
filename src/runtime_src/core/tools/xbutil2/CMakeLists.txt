@@ -91,7 +91,8 @@ if (XRT_STATIC_BUILD)
     dl
     )
   set_target_properties(${XBUTIL2_NAME}_static PROPERTIES INSTALL_RPATH "")
-  install(TARGETS ${XBUTIL2_NAME}_static RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+  install(TARGETS ${XBUTIL2_NAME}_static
+    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 target_link_libraries(${XBUTIL2_NAME}
@@ -114,11 +115,14 @@ endif()
 # This file acts as sample json file and will be removed in future releases
 if (${XRT_NATIVE_BUILD} STREQUAL "no")
   set(XRT_SUBCOMMANDS_JSON ../common/xrt_subcommands.json)
-  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_DIR}/share)
+  install(FILES ${XRT_SUBCOMMANDS_JSON}
+    DESTINATION ${XRT_INSTALL_DIR}/share COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 # Install our built executable
-install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
+install (TARGETS ${XBUTIL2_NAME}
+  RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+install (PROGRAMS ${XRT_HELPER_SCRIPTS}
+  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
 # -----------------------------------------------------------------------------

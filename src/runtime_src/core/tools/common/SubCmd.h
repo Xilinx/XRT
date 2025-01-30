@@ -22,6 +22,7 @@ class SubCmd : public JSONConfigurable {
 
  public:
    virtual void execute(const SubCmdOptions &_options) const = 0;
+   virtual void setOptionConfig(const boost::property_tree::ptree &config);
 
  public:
    const std::string &getName() const { return m_subCmdName; };
@@ -39,7 +40,6 @@ class SubCmd : public JSONConfigurable {
    const std::string & getExecutableName() const {return m_executableName; };
 
    void setGlobalOptions(const boost::program_options::options_description &globalOptions) { m_globalOptions.add(globalOptions); };
-   void setOptionConfig(const boost::property_tree::ptree &config);
 
  protected:
    const boost::program_options::options_description & getGlobalOptions() const { return m_globalOptions; };

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrthip_memory_POOL_h
 #define xrthip_memory_POOL_h
 
@@ -9,11 +9,8 @@
 #include <mutex>
 
 #include "core/common/device.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_ext.h"
-#include "xrt/config.h"
-#include "xrt/device/hal.h"
-#include "xrt/util/range.h"
+#include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 
 #include "device.h"
 #include "memory.h"

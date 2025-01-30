@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef SHIM_INT_H_
 #define SHIM_INT_H_
 
@@ -74,6 +74,9 @@ create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::cfg_param_type& cfg_param,
                   xrt::hw_context::access_mode mode);
+
+std::unique_ptr<xrt_core::hwctx_handle>
+create_hw_context(xclDeviceHandle handle, uint32_t partition_size);
 
 // get_hw_queue() -
 xrt_core::hwqueue_handle*
