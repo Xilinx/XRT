@@ -488,7 +488,6 @@ static void awsPciRescan(int index)
     //tell the user xclbin load ioctl can be re-issued now
     xrt_core::pci::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
 }
-#endif
 
 /*
 This thread sets the clock frequencies dynamically using aws_clkgen_set_dynamic() API.
@@ -502,11 +501,15 @@ addressed by AWS team.
 */
 static void aws_clkgen_set_dynamic_thread(int slot_id, uint32_t clk_b_freq, uint32_t clk_c_freq, uint32_t clk_hbm_freq)
 {
-        std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 10 seconds
-        aws_clkgen_set_dynamic(slot_id, 125 /*default max */, clk_b_freq,
-                                clk_c_freq, clk_hbm_freq, 0);
-}
+    int ret = 0;
 
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 10 seconds
+    ret = aws_clkgen_set_dynamic(slot_id, 125 /*default max */, clk_b_freq,
+                            clk_c_freq, clk_hbm_freq, 0);
+    if (ret != 0)
+        std::cerr << "aws_clkgen_set_dynamic_freq failed" << std::endl;
+}
+#endif
 /*
  * On AWS F1, fpga user PF without xclbin being loaded (cleared) has different
  * device id (0x1042) than that of the user PF with xclbin being loaded (0xf010)
@@ -563,7 +566,9 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
                 }
         }
         syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
+#ifndef INTERNAL_TESTING_FOR_AWS
         auto future = std::async(std::launch::async, aws_clkgen_set_dynamic_thread, mBoardNumber, clock_mains[2]/*clk_extra_b0*/, clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/);
+#endif
         return 0;
      }
 
@@ -636,6 +641,7 @@ int AwsDev::awsGetIcap(xcl_pr_region *data)
     FIELD(data, freq_cntr, 1) = imageInfo.metrics.f2_metrics.clocks[1].frequency[0] / 1000;
     FIELD(data, freq_cntr, 2) = imageInfo.metrics.f2_metrics.clocks[2].frequency[0] / 1000;
     data->data_retention = 1;
+    data->idcode = imageInfo.sh_version;
 #endif
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
     //seems not. we check afi before load new xclbin.
