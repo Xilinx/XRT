@@ -84,9 +84,6 @@ file(GLOB XRT_EULA
 install (FILES ${XRT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
 message("-- XRT EA eula files  ${XRT_SOURCE_DIR}/../LICENSE")
 
-# -- CPack
-include(CMake/cpackWin.cmake)
-
 # --- Create Version header and JSON file ---
 include(CMake/version.cmake)
 
@@ -98,3 +95,9 @@ include(CMake/findpackage.cmake)
 
 # --- Python bindings ---
 xrt_add_subdirectory(python)
+
+# -- CPack windows SDK if base component
+if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base_dev")
+  include(CMake/cpack-windows-sdk.cmake)
+endif()
+
