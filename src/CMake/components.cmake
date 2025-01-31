@@ -1,18 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-# Custom variables imported by this CMake stub which should be defined by parent CMake:
-# LINUX_FLAVOR
-
-if (NOT WIN32)
-  if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
-    set (XRT_DEV_COMPONENT_SUFFIX "dev")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|fedora)")
-    set (XRT_DEV_COMPONENT_SUFFIX "devel")
-  endif()
-else()
-  set(LINUX_FLAVOR "none")
-endif()
+# Custom variables imported by this CMake stub which should be defined
+# by parent CMake: LINUX_FLAVOR
 
 # The default XRT build is legacy
 if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
@@ -87,8 +77,6 @@ endif(XRT_BASE)
 # for everything enabled by XRT_NPU and XRT_BASE
 if (XRT_NPU)
   set (XRT_BASE 1)
-
-  message("-- Building NPU package")
 
   # For the time being, dump everything into npu that has not
   # been explicitly marked alveo or npu
