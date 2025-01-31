@@ -24,6 +24,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <optional>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
 
@@ -194,6 +195,16 @@ public:
   XRT_CORE_COMMON_EXPORT
   bool
   is_nodma() const;
+
+  /**
+    * get_ex_error_support() - Does this device support extended error code
+    *
+    * Return: true if device support extended error code
+    *
+    */
+  XRT_CORE_COMMON_EXPORT
+  bool
+  get_ex_error_support() const;
 
  private:
   // Private look up function for concrete query::request
@@ -476,6 +487,7 @@ public:
  private:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
+  mutable std::optional<bool> m_ex_error_support = std::nullopt;
 
   using name2idx_type = std::map<std::string, cuidx_type>;
   std::map<slot_id, name2idx_type> m_cu2idx;  // slot -> cu name mapping to cuidx
