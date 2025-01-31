@@ -2522,6 +2522,11 @@ public:
     static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
     if (dump)
       xrt_core::module_int::dump_scratchpad_mem(m_module);
+    
+    // dump dtrace buffer if ini option is enabled
+    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
+    if (!dtrace_lib_path.empty())
+      xrt_core::module_int::dump_dtrace_buffer(m_module);
 
     return state;
   }
@@ -2545,6 +2550,12 @@ public:
     else {
       state = cmd->wait();
     }
+
+    // dump dtrace buffer if ini option is enabled
+    // here dtrace is dumped in both passing and timeout cases
+    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
+    if (!dtrace_lib_path.empty())
+      xrt_core::module_int::dump_dtrace_buffer(m_module);
 
     if (state == ERT_CMD_STATE_COMPLETED) {
       m_usage_logger->log_kernel_run_info(kernel.get(), this, state);

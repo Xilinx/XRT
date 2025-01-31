@@ -75,6 +75,11 @@ get_kernel_info(const xrt::module& module);
 uint32_t
 get_partition_size(const xrt::module& module);
 
+// Dump dynamic trace buffer
+// Buffer is dumped after the kernel run is finished
+void
+dump_dtrace_buffer(const xrt::module& module);
+
 } // xrt_core::module_int
 
 #endif

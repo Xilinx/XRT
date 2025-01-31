@@ -122,10 +122,15 @@ struct xcl_bo_flags
  * XRT_BO_USE_KMD indicates that the buffer content can be shared
  * with the kernel mode driver. This type of usage is supported on 
  * specific platforms only.
+ * 
+ * XRT_BO_USE_DTRACE indicates that the buffer will be used to
+ * communicate dynamic trace data from driver / firmware back to
+ * userspace. At present this type of usage is supported only on Telluride.
  */
 #define XRT_BO_USE_NORMAL 0
 #define XRT_BO_USE_DEBUG  1
-#define XRT_BO_USE_KMD    2 
+#define XRT_BO_USE_KMD    2
+#define XRT_BO_USE_DTRACE 3 
 
 /**
  * XRT Native BO flags

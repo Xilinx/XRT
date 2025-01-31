@@ -28,6 +28,17 @@ XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_debug_bo(const xrt::hw_context& hwctx, size_t sz);
 
+// create_dtrace_bo() - Create a trace buffer object within a hwctx
+//
+// Allocates a buffer object within a hwctx used for dynamic tracing.
+// The BO is used by driver / firmware to fill dynamic tracing data
+// and is shared with user space XRT.
+// The shim allocation is through hwctx_handle::alloc_bo with
+// the XRT_BO_USE_DTRACE flag captured in extension flags.
+XRT_CORE_COMMON_EXPORT
+xrt::bo
+create_dtrace_bo(const xrt::hw_context& hwctx, size_t sz);
+
 } // bo_int, xrt_core
 
 #endif
