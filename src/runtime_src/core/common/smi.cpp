@@ -46,30 +46,7 @@ const tuple_vector&
 smi_base::
 get_validate_test_desc() const 
 {
-  static const tuple_vector validate_test_desc = {
-    {"aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA", "hidden"},
-    {"all", "All applicable validate tests will be executed (default)", "common"},
-    {"cmd-chain-latency", "Run end-to-end latency test using command chaining", "common"},
-    {"cmd-chain-throughput", "Run end-to-end throughput test using command chaining", "common"},
-    {"df-bw", "Run bandwidth test on data fabric", "common"},
-    {"gemm", "Measure the TOPS value of GEMM operations", "common"},
-    {"latency", "Run end-to-end latency test", "common"},
-    {"quick", "Run a subset of four tests: \n1. latency \n2. throughput \n3. cmd-chain-latency \n4. cmd-chain-throughput", "common"},
-    {"spatial-sharing-overhead", "Run Spatial Sharing Overhead Test", "hidden"},
-    {"tct-all-col", "Measure average TCT processing time for all columns", "common"},
-    {"tct-one-col", "Measure average TCT processing time for one column", "common"},
-    {"temporal-sharing-overhead", "Run Temporal Sharing Overhead Test", "hidden"},
-    {"throughput", "Run end-to-end throughput test", "common"},
-    {"aux-connection", "Check if auxiliary power is connected", "common"},
-    {"dma", "Run dma test", "common"},
-    {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
-    {"m2m", "Run M2M test", "common"},
-    {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
-    {"p2p", "Run P2P test", "common"},
-    {"pcie-link", "Check if PCIE link is active", "common"},
-    {"sc-version","Check if SC firmware is up-to-date", "common"},
-    {"verify", "Run 'Hello World' kernel test", "common"}
-  };
+  static const tuple_vector validate_test_desc = {};
   return validate_test_desc;
 }
 
@@ -78,24 +55,7 @@ smi_base::
 get_examine_report_desc() const 
 {
   static const tuple_vector examine_report_desc = {
-    {"aie-partitions", "AIE partition information", "common"},
-    {"host", "Host information", "common"},
-    {"platform", "Platforms flashed on the device", "common"},
-    {"telemetry", "Telemetry data for the device", "common"},
-    {"aie", "AIE metadata in xclbin", "common"},
-    {"aiemem", "AIE memory tile information", "common"},
-    {"aieshim", "AIE shim tile status", "common"},
-    {"debug-ip-status", "Status of Debug IPs present in xclbin loaded on device", "common"},
-    {"dynamic-regions", "Information about the xclbin and the compute units", "common"},
-    {"electrical", "Electrical and power sensors present on the device", "common"},
-    {"error", "Asyncronus Error present on the device", "common"},
-    {"firewall", "Firewall status", "common"},
-    {"mailbox", "Mailbox metrics of the device", "common"},
-    {"mechanical", "Mechanical sensors on and surrounding the device", "common"},
-    {"memory", "Memory information present on the device", "common"},
-    {"pcie-info", "Pcie information of the device", "common"},
-    {"qspi-status", "QSPI write protection status", "common"},
-    {"thermal", "Thermal sensors present on the device", "common"}
+    {"host", "Host information", "common"}
   };
   return examine_report_desc;
 }
