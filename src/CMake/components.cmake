@@ -10,14 +10,15 @@ if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
   set(XRT_XRT 1)
 endif()
 
-if (NOT WIN32 AND ${LINUX_FLAVOR} MATCHES "^(ubuntu|debian|rhel|centos)")
+if (NOT WIN32)
   if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     set (XRT_DEV_COMPONENT_SUFFIX "-dev")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos)")
+  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|fedora)")
     set (XRT_DEV_COMPONENT_SUFFIX "-devel")
   endif()
 endif()
 
+# NSIS packager cannot handle '-' in component names
 if (WIN32)
   set (XRT_DEV_COMPONENT_SUFFIX "_dev")
 endif()   
