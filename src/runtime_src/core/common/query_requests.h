@@ -329,7 +329,10 @@ enum class key_type
   kernel_max_bandwidth_mbps,
   sub_device_path,
   read_trace_data,
-  noop
+  noop,
+
+  xocl_errors_ex,
+  xocl_ex_error_code2string
 };
 
 struct pcie_vendor : request
@@ -1645,6 +1648,39 @@ struct error : request
   }
 };
 
+// Retrieve support for extended asynchronous xocl errors from xocl driver
+struct xocl_errors_ex : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::xocl_errors_ex;
+
+  virtual std::any
+    get(const device*) const override = 0;
+
+  static bool
+    to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
+// Retrieve support for extended asynchronous xocl errors from xocl driver
+struct xocl_ex_error_code2string : request
+{
+  using result_type = std::string;  // get value type
+  static const key_type key = key_type::xocl_ex_error_code2string;
+
+  virtual std::any
+    get(const device*) const override = 0;
+
+  static std::string
+    to_string(const std::string& errstr)
+  {
+    return std::string(errstr);
+  }
+};
+
 // Retrieve asynchronous xocl errors from xocl driver
 struct xocl_errors : request
 {
@@ -1658,6 +1694,11 @@ struct xocl_errors : request
   XRT_CORE_COMMON_EXPORT
   static std::pair<uint64_t, uint64_t>
   to_value(const std::vector<char>& buf, xrtErrorClass ecl);
+
+  // Parse buffer, get error code and timestamp
+  XRT_CORE_COMMON_EXPORT
+  static std::tuple<uint64_t, uint64_t, uint64_t>
+  to_ex_value(const std::vector<char>& buf, xrtErrorClass ecl);
 
   // Parse sysfs raw data and get list of errors
   XRT_CORE_COMMON_EXPORT

@@ -205,6 +205,7 @@ class error_impl
 {
   xrtErrorCode m_errcode = 0;
   xrtErrorTime m_timestamp = 0;
+  std::string  m_ex_error_str;
 public:
   error_impl(const xrt_core::device* device, xrtErrorClass ecl)
   {
@@ -213,12 +214,23 @@ public:
       auto buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
       if (buf.empty())
         return;
-      auto ect = xrt_core::query::xocl_errors::to_value(buf, ecl);
-      std::tie(m_errcode, m_timestamp) = ect;
-      return;
+      if (device->get_ex_error_support() == true) {
+        auto ect = xrt_core::query::xocl_errors::to_ex_value(buf, ecl);
+        m_errcode = std::get<0>(ect);
+        m_timestamp = std::get<1>(ect);
+        uint64_t ex_error_code = std::get<2>(ect);
+        m_ex_error_str = xrt_core::device_query<xrt_core::query::xocl_ex_error_code2string>(device, ex_error_code);
+      }
+      else {
+        auto ect = xrt_core::query::xocl_errors::to_value(buf, ecl);
+        std::tie(m_errcode, m_timestamp) = ect;
+        m_ex_error_str = "";
+      }
     } catch (const xrt_core::query::no_such_key&) {
       // Ignoring for now. Check below for edge if not available
       // query table of zocl doesn't have xocl_errors key
+    } catch (...) {
+      return;
     }
     //Below code will be removed after zocl changes for new format
     auto errors = xrt_core::device_query<xrt_core::query::error>(device);

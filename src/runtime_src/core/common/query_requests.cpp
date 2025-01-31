@@ -132,6 +132,35 @@ to_value(const std::vector<char>& buf, xrtErrorClass ecl)
   return {0, 0};
 }
 
+std::tuple<uint64_t, uint64_t, uint64_t>
+xrt_core::query::xocl_errors::
+to_ex_value(const std::vector<char>& buf, xrtErrorClass ecl)
+{
+  if (buf.empty())
+    return { 0, 0, 0 };
+
+  auto errors_buf = reinterpret_cast<const xcl_errors*>(buf.data());
+  if (errors_buf->num_err <= 0)
+    return { 0, 0, 0 };
+
+  if (errors_buf->num_err > XCL_ERROR_CAPACITY)
+    throw xrt_core::system_error(EINVAL, "Invalid data in sysfs");
+
+  uint64_t error_code = 0;
+  uint64_t time_stamp = 0;
+  uint64_t ex_error_code = 0;
+  for (int i = errors_buf->num_err - 1; i >= 0; i--) {
+    if (XRT_ERROR_CLASS(errors_buf->errors[i].err_code) == ecl) {
+      error_code = errors_buf->errors[i].err_code;
+      time_stamp = errors_buf->errors[i].ts;
+      ex_error_code = errors_buf->errors[i].ex_error_code;
+      break;
+    }
+  }
+
+  return { error_code, time_stamp, ex_error_code };
+}
+
 std::vector<xclErrorLast>
 xrt_core::query::xocl_errors::
 to_errors(const std::vector<char>& buf)
