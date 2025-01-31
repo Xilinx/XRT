@@ -172,7 +172,9 @@ endif (XRT_BASE)
 include (CMake/changelog.cmake)
 
 # --- Package Config ---
-include (CMake/pkgconfig.cmake)
+if (XRT_BASE)
+  include (CMake/pkgconfig.cmake)
+endif (XRT_BASE)
 
 # --- Coverity Support ---
 include (CMake/coverity.cmake)
