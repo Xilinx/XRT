@@ -7,7 +7,7 @@
 if (NOT WIN32)
   if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     set (XRT_DEV_COMPONENT_SUFFIX "dev")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos)")
+  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|fedora)")
     set (XRT_DEV_COMPONENT_SUFFIX "devel")
   endif()
 else()
@@ -88,9 +88,9 @@ if (XRT_NPU)
   # been explicitly marked alveo or npu
   set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "npu")
   set (XRT_COMPONENT "npu")
-  set (XRT_DEV_COMPONENT "npu")
-  set (XRT_BASE_COMPONENT ${XRT_COMPONENT})
-  set (XRT_BASE_DEV_COMPONENT ${XRT_DEV_COMPONENT})
+  set (XRT_DEV_COMPONENT "npu-${XRT_DEV_COMPONENT_SUFFIX}")
+  set (XRT_BASE_COMPONENT "base")
+  set (XRT_BASE_DEV_COMPONENT "base-${XRT_DEV_COMPONENT_SUFFIX}")
 endif(XRT_NPU)
 
 # Alveo builds one Alveo package for both deployment and development
