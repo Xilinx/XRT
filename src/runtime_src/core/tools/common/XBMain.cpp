@@ -130,7 +130,14 @@ void  main_(int argc, char** argv,
   // If there is a device value, parse for valid subcommands for this device.
   SubCmdsCollection devSubCmds;
   if (!sDevice.empty()) {
-    const std::string deviceClass = XBU::get_device_class(sDevice, isUserDomain);
+    std::string deviceClass;
+    try {
+      deviceClass = XBU::get_device_class(sDevice, isUserDomain); //can throw
+    } catch (const std::runtime_error& e) {
+      // Catch only the exceptions that we have generated earlier
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
     const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
     for (auto & subCmdEntry : _subCmds) {
       auto it = configs.find(subCmdEntry->getName());

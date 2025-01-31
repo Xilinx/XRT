@@ -94,8 +94,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  const auto validated_format = options.m_format.empty() ? "json" : options.m_format;
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
   try{
     if (vm.count("output") && options.m_output.empty())
       throw xrt_core::error("Output file not specified");
@@ -106,16 +105,16 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     if (vm.count("element") && options.m_elementsFilter.empty())
       throw xrt_core::error("No element filter given to be produced");
 
+    if (schemaVersion == Report::SchemaVersion::unknown) 
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
+
     // DRC check
     // When json is specified, make sure an accompanying output file is also specified
-    if (!options.m_format.empty() && options.m_output.empty())
+    if (vm.count("format") && options.m_output.empty())
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
-    if (schemaVersion == Report::SchemaVersion::unknown) 
-      throw xrt_core::error((boost::format("ERROR: Unsupported --format option value '%s'. Supported values can be found in --format's help section below.") % validated_format).str());
-
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
-      throw xrt_core::error((boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % options.m_output).str());
+      throw xrt_core::error((boost::format("The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
@@ -206,7 +205,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % validated_format % options.m_output << std::endl;
+    std::cout << boost::format("Successfully wrote the %s file: %s") % options.m_format % options.m_output << std::endl;
   }
 
   if (!is_report_output_valid)
@@ -215,7 +214,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 void SubCmdExamineInternal::fill_option_values(const po::variables_map& vm, SubCmdExamineOptions& options) const
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
-  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "";
+  options.m_format = vm.count("format") ? vm["format"].as<std::string>() : "JSON";
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;

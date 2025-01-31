@@ -454,8 +454,9 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
   if (vm.count("pmode") && options.m_pmode.empty())
     throw xrt_core::error("Power mode not specified");
 
-  if (vm.count("format") && options.m_format.empty())
-    throw xrt_core::error("Output format not specified");
+  // When json is specified, make sure an accompanying output file is also specified
+   if (vm.count("format") && options.m_output.empty())
+    throw xrt_core::error("Please specify an output file to redirect the json to");
 
   if (!options.m_output.empty() && !XBU::getForce() && std::filesystem::exists(options.m_output))
     throw xrt_core::error((boost::format("Output file already exists: '%s'") % options.m_output).str());
