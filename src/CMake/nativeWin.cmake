@@ -99,5 +99,8 @@ xrt_add_subdirectory(python)
 # -- CPack windows SDK if base component
 if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base_dev")
   include(CMake/cpack-windows-sdk.cmake)
+else()
+  # Legacy
+  include(CMake/cpackWin.cmake)
 endif()
 

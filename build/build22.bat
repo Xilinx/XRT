@@ -191,6 +191,9 @@ if [%NOCMAKE%] == [0] (
 cmake --build . --verbose --config Release --target install
 IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
+ECHO ====================== Zipping up Installation Build ============================
+cpack -G ZIP -C Release
+
 if [%CREATE_SDK%] == [1] (
   ECHO ====================== Creating SDK Installer ============================
   cpack -G NSIS -C Release
