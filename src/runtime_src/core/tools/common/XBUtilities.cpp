@@ -495,7 +495,7 @@ XBUtilities::print_exception(const std::system_error& e)
     // Remove the type of error from the message.
     const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
-    if (!msg.empty())
+    if ((!msg.empty()) && (!boost::icontains(msg, "operation canceled")))
       std::cerr << boost::format("ERROR: %s\n") % msg;
   }
   catch (const std::exception&)
