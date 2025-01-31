@@ -188,7 +188,7 @@ void  main_(int argc, char** argv,
   if (available_devices.empty()) //no device
     config = xrt_core::smi::get_smi_config();
   else if (available_devices.size() == 1 || !sDevice.empty()) { //1 device
-    auto device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);//to-do
+    auto device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
     config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
   }
   else { //multiple devices
@@ -198,7 +198,7 @@ void  main_(int argc, char** argv,
       dev = devpt.get<std::string>("bdf");
     }
     std::cout <<  (boost::format("NOTE: Multiple devices found. Showing help for %s device\n\n") % dev).str();
-    auto device = XBU::get_device(boost::algorithm::to_lower_copy(dev), isUserDomain);//to-do
+    auto device = XBU::get_device(boost::algorithm::to_lower_copy(dev), isUserDomain);
     config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
   }
 
