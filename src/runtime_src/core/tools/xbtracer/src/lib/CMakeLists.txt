@@ -18,9 +18,8 @@ else()
   target_link_libraries(xrt_capture PRIVATE xrt_coreutil uuid dl pthread)
 endif()
 
+# xrt_capture is a plug-in runtime loaded library
+# it does not have a library or namelink component
 install(TARGETS xrt_capture
-  EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
-  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
