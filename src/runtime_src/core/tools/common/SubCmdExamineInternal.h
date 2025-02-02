@@ -6,6 +6,7 @@
 
 #include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"
+#include "core/common/smi.h"
 
 struct SubCmdExamineOptions {
   std::string               m_device;
@@ -32,6 +33,7 @@ class SubCmdExamineInternal : public SubCmd {
   void print_help_internal(const SubCmdExamineOptions&) const;
 
   bool                      m_isUserDomain;
+  std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
 };
 
 #endif

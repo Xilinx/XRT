@@ -72,7 +72,7 @@ SubCommandOption::addProgramOption(po::options_description& options, const std::
   if (!m_description_array.empty()) {
     std::vector<std::pair<std::string, std::string>> temp;
     for (const auto& desc : m_description_array) {
-      if (desc.getType() == const_hidden_literal) continue;
+      if (desc.getType() == const_hidden_literal && !XBUtilities::getShowHidden()) continue;
       temp.emplace_back(std::make_pair<std::string, std::string>(desc.getName(), desc.getDescription()));
     }
     description += XBUtilities::create_suboption_list_string(temp);

@@ -56,6 +56,7 @@ enum class key_type
   edge_vendor,
   device_class,
   xrt_smi_config,
+  xrt_smi_lists,
   xclbin_name,
   sequence_name,
   elf_name,
@@ -555,6 +556,27 @@ struct xrt_smi_config : request
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
+};
+
+struct xrt_smi_lists : request
+{
+  enum class type {
+    validate_tests,
+    examine_reports
+  };
+  using result_type = std::vector<std::tuple<std::string, std::string, std::string>>;
+  static const key_type key = key_type::xrt_smi_lists;
+  static const char* name() { return "xrt_smi_lists"; }
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
 };
 
 /**
