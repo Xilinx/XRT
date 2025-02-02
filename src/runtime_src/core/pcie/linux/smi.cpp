@@ -37,31 +37,25 @@ smi_pcie() : smi_base()
   };
 }
 
+// Create an instance of the derived class
+static shim_pcie::smi::smi_pcie smi_instance;
+
 std::string
 get_smi_config(){
-  // Create an instance of the derived class
-  shim_pcie::smi::smi_pcie smi_instance;
-
   // Call the get_smi_config method
   return smi_instance.get_smi_config();
 }
 
-std::vector<std::string>
+const xrt_core::smi::tuple_vector&
 get_validate_tests()
 {
-  // Create an instance of the derived class
-  shim_pcie::smi::smi_pcie smi_instance;
-
   // Call the get_validate_tests method
   return smi_instance.get_validate_tests();
 }
 
-std::vector<std::string>
+const xrt_core::smi::tuple_vector&
 get_examine_reports()
 {
-  // Create an instance of the derived class
-  shim_pcie::smi::smi_pcie smi_instance;
-
   // Call the get_examine_reports method
   return smi_instance.get_examine_reports();
 }
