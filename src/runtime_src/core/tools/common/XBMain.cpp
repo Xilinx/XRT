@@ -81,9 +81,17 @@ void  main_(int argc, char** argv,
   // Parse the command line arguments
   po::variables_map vm;
   po::command_line_parser parser(argc, argv);
-  SubCmd::SubCmdOptions subcmd_options;
+  SubCmd::SubCmdOptions unrecognized_options;
   try {
-    subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+    unrecognized_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+    if (!unrecognized_options.empty())
+    {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
   } catch (po::error& ex) {
     std::cerr << ex.what() << std::endl;
   }
@@ -168,8 +176,7 @@ void  main_(int argc, char** argv,
     return;
   }
 
-  // -- Prepare the data
-  subcmd_options.erase(subcmd_options.begin());
+  SubCmd::SubCmdOptions subcmd_options;
 
   if (bHelp)
     subcmd_options.push_back("--help");
