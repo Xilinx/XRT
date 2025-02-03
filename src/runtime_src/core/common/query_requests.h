@@ -558,6 +558,12 @@ struct xrt_smi_config : request
   get(const device*, const std::any& req_type) const override = 0;
 };
 
+/* Used to retrieve the list of validate tests and examine reports along with 
+   their description and visibility tags. This returns the same list which is
+   used by help printing to maintain concurrency between what is printed and 
+   what is run by xrt-smi. This can be extended to other list assuming the 
+   structure is kept the same as validate_tests and examine reports
+*/
 struct xrt_smi_lists : request
 {
   enum class type {
