@@ -229,9 +229,8 @@ public:
     } catch (const xrt_core::query::no_such_key&) {
       // Ignoring for now. Check below for edge if not available
       // query table of zocl doesn't have xocl_errors key
-    } catch (...) {
-      return;
     }
+
     //Below code will be removed after zocl changes for new format
     auto errors = xrt_core::device_query<xrt_core::query::error>(device);
     for (auto& line : errors) {
