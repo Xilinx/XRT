@@ -134,7 +134,6 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Filter out reports that are not compatible for the device
   const std::string deviceClass = XBU::get_device_class(options.m_device, m_isUserDomain);
-  // ReportCollection runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
 
  // Find device of interest
   std::shared_ptr<xrt_core::device> device;
