@@ -1665,7 +1665,7 @@ struct xocl_errors_ex : request
   }
 };
 
-// Retrieve support for extended asynchronous xocl errors from xocl driver
+// Retrieve extended asynchronous xocl errors string corresponding to the error code from xocl driver
 struct xocl_ex_error_code2string : request
 {
   using result_type = std::string;  // get value type
