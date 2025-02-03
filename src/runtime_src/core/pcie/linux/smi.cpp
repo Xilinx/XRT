@@ -28,10 +28,12 @@ smi_pcie() : smi_base()
     {"electrical", "Electrical and power sensors present on the device", "common"},
     {"error", "Asyncronus Error present on the device", "common"},
     {"firewall", "Firewall status", "common"},
+    {"host", "Host information", "common"},
     {"mailbox", "Mailbox metrics of the device", "common"},
     {"mechanical", "Mechanical sensors on and surrounding the device", "common"},
     {"memory", "Memory information present on the device", "common"},
     {"pcie-info", "Pcie information of the device", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
     {"qspi-status", "QSPI write protection status", "common"},
     {"thermal", "Thermal sensors present on the device", "common"}
   };
