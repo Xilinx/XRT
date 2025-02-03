@@ -569,7 +569,7 @@ struct xrt_smi_lists : request
   static const char* name() { return "xrt_smi_lists"; }
 
   virtual std::any
-  get(const device*) const override = 0;
+  get(const device*, const std::any& req_type) const override = 0;
 
   // formatting of individual items for the vector
   static std::string

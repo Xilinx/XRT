@@ -727,5 +727,5 @@ SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
     }
   }
 
-  return std::move(matchedTests);
+  return matchedTests;
 }

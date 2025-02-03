@@ -708,15 +708,15 @@ struct xrt_smi_lists
   using result_type = std::any;
 
   static result_type
-  user(const xrt_core::device* /*device*/, xrt_key_type key)
+  get(const xrt_core::device* /*device*/, key_type key)
   {
     throw xrt_core::query::no_such_key(key, "Not implemented");
   }
 
   static result_type
-  user(const xrt_core::device* /*device*/, xrt_key_type key, const std::any& reqType)
+  get(const xrt_core::device* /*device*/, key_type key, const std::any& reqType)
   {
-    if (key != xrt_key_type::xrt_smi_lists)
+    if (key != key_type::xrt_smi_lists)
       throw xrt_core::query::no_such_key(key, "Not implemented");
 
     const auto xrt_smi_lists_type = std::any_cast<xrt_core::query::xrt_smi_lists::type>(reqType);

@@ -15,9 +15,9 @@ public:
 std::string
 get_smi_config();
 
-std::vector<std::string>
+const xrt_core::smi::tuple_vector&
 get_validate_tests();
 
-std::vector<std::string>
+const xrt_core::smi::tuple_vector&
 get_examine_reports();
 } // namespace shim_pcie::smi

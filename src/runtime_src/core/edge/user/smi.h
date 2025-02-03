@@ -13,4 +13,10 @@ public:
 
 /* This API can be device specific since this is used by the shim*/
 std::string get_smi_config();
+
+const xrt_core::smi::tuple_vector&
+get_validate_tests();
+
+const xrt_core::smi::tuple_vector&
+get_examine_reports();
 } // namespace shim_edge::smi
