@@ -931,6 +931,34 @@ struct xrt_smi_config
   }
 };
 
+struct xrt_smi_lists
+{
+  using result_type = std::any;
+
+  static result_type
+  get(const xrt_core::device* /*device*/, key_type key)
+  {
+    throw xrt_core::query::no_such_key(key, "Not implemented");
+  }
+
+  static result_type
+  get(const xrt_core::device* /*device*/, key_type key, const std::any& reqType)
+  {
+    if (key != key_type::xrt_smi_lists)
+      throw xrt_core::query::no_such_key(key, "Not implemented");
+
+    const auto xrt_smi_lists_type = std::any_cast<xrt_core::query::xrt_smi_lists::type>(reqType);
+    switch (xrt_smi_lists_type) {
+    case xrt_core::query::xrt_smi_lists::type::validate_tests:
+      return shim_pcie::smi::get_validate_tests();
+    case xrt_core::query::xrt_smi_lists::type::examine_reports:
+      return shim_pcie::smi::get_examine_reports();
+    default:
+      throw xrt_core::query::no_such_key(key, "Not implemented");
+    }
+  }
+};
+
 
 
 /* ASM counter values
@@ -1484,6 +1512,7 @@ initialize_query_table()
   emplace_func4_request<query::am_counter,                     am_counter>();
   emplace_func4_request<query::asm_counter,                    asm_counter>();
   emplace_func4_request<query::xrt_smi_config,                 xrt_smi_config>();
+  emplace_func4_request<query::xrt_smi_lists,                  xrt_smi_lists>();
   emplace_func4_request<query::lapc_status,                    lapc_status>();
   emplace_func4_request<query::spc_status,                     spc_status>();
   emplace_func4_request<query::accel_deadlock_status,          accel_deadlock_status>();

@@ -42,44 +42,24 @@ to_ptree() const
   return pt;
 }
 
-const tuple_vector& 
 smi_base::
-get_validate_test_desc() const 
+smi_base()
 {
-  static const tuple_vector validate_test_desc = {};
-  return validate_test_desc;
-}
 
-const tuple_vector& 
-smi_base::
-get_examine_report_desc() const 
-{
-  static const tuple_vector examine_report_desc = {
+  examine_report_desc = {
     {"host", "Host information", "common"}
   };
-  return examine_report_desc;
 }
 
 std::vector<basic_option> 
 smi_base::
-construct_run_option_description() const 
+construct_option_description(const tuple_vector& vec) const
 {
-  std::vector<basic_option> run_option_descriptions;
-  for (const auto& [name, description, type] : get_validate_test_desc()) {
-    run_option_descriptions.push_back({name, description, type});
+  std::vector<basic_option> option_descriptions;
+  for (const auto& [name, description, type] : vec) {
+    option_descriptions.push_back({name, description, type});
   }
-  return run_option_descriptions;
-}
-
-std::vector<basic_option> 
-smi_base::
-construct_report_option_description() const 
-{
-  std::vector<basic_option> report_option_descriptions;
-  for (const auto& [name, description, type] : get_examine_report_desc()) {
-    report_option_descriptions.push_back({name, description, type});
-  }
-  return report_option_descriptions;
+  return option_descriptions;
 }
 
 ptree 
@@ -98,7 +78,7 @@ construct_validate_subcommand() const
                     "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"},
     {"output", "o", "Direct the output to the given file", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_run_option_description()},
+    {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_option_description(validate_test_desc)},
     {"path", "p", "Path to the directory containing validate xclbins", "hidden", "", "string"},
     {"param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "hidden", "", "string"},
     {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
@@ -129,7 +109,7 @@ construct_examine_subcommand() const
                     "\tJSON-2020.2 - JSON 2020.2 schema", "common", "", "string"},
     {"output", "o", "Direct the output to the given file", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", construct_report_option_description()},
+    {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", construct_option_description(examine_report_desc)},
     {"element", "e", "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'", "hidden", "", "array"}
   };
 
@@ -154,9 +134,9 @@ construct_configure_subcommand() const
   std::vector<option> options = {
     {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"daemon", "", "Update the device daemon configuration", "common", "", "none"},
+    {"daemon", "", "Update the device daemon configuration", "hidden", "", "none"},
     {"purge", "", "Remove the daemon configuration file", "hidden", "", "string"},
-    {"host", "", "IP or hostname for device peer", "common", "", "string"},
+    {"host", "", "IP or hostname for device peer", "hidden", "", "string"},
     {"security", "", "Update the security level for the device", "hidden", "", "string"},
     {"clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"},
     {"ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"},

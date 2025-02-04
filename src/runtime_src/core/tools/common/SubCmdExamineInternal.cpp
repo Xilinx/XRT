@@ -134,18 +134,8 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Filter out reports that are not compatible for the device
   const std::string deviceClass = XBU::get_device_class(options.m_device, m_isUserDomain);
-  ReportCollection runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
 
-  // Collect the reports to be processed
-  try {
-    XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
-  } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
-    return;
-  }
-
-  // Find device of interest
+ // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
   try {
@@ -156,6 +146,25 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
+
+  ReportCollection runnableReports;
+  if (device){
+    const xrt_core::smi::tuple_vector& reportList = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::examine_reports);
+    runnableReports = getReportsList(reportList);
+  } else 
+  {
+    runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
+  }
+  // Collect the reports to be processed
+  try {
+    XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
+  } catch (const xrt_core::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    print_help_internal(options);
+    return;
+  }
+
+ 
 
   bool is_report_output_valid = true;
   // DRC check on devices and reports
@@ -232,4 +241,25 @@ SubCmdExamineInternal::setOptionConfig(const boost::property_tree::ptree &config
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
+}
+
+std::vector<std::shared_ptr<Report>>
+SubCmdExamineInternal::getReportsList(const xrt_core::smi::tuple_vector& reports) const
+{
+  // Vector to store the matched reports
+  std::vector<std::shared_ptr<Report>> matchedReports;
+
+  for (const auto& report : fullReportCollection) {
+    auto it = std::find_if(reports.begin(), reports.end(),
+      [&report](const std::tuple<std::string, std::string, std::string>& rep) {
+        return (std::get<0>(rep) == report->getReportName() && 
+                (std::get<2>(rep) != "hidden" || XBU::getShowHidden()));
+      });
+
+    if (it != reports.end()) {
+      matchedReports.push_back(report);
+    }
+  }
+
+  return matchedReports;
 }

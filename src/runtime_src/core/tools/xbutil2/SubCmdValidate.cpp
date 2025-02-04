@@ -15,7 +15,6 @@
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/TestRunner.h"
 #include "tools/common/tests/TestAuxConnection.h"
 #include "tools/common/tests/TestPcieLink.h"
 #include "tools/common/tests/TestSCVersion.h"
@@ -573,13 +572,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string& deviceClass = XBU::get_device_class(options.m_device, true);
-  auto it = testOptionsMap.find(deviceClass);
-  if (it == testOptionsMap.end())
-    XBU::throw_cancel(boost::format("Invalid device class %s. Device: %s") % deviceClass % options.m_device);
-  std::vector<std::shared_ptr<TestRunner>>& testOptions = it->second;
+  const xrt_core::smi::tuple_vector& tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+  std::vector<std::shared_ptr<TestRunner>> testOptions = getTestList(tests);
 
   // Collect all of the tests of interests
   std::vector<std::shared_ptr<TestRunner>> testObjectsToRun;
@@ -713,4 +707,24 @@ SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
+}
+
+std::vector<std::shared_ptr<TestRunner>>
+SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
+{
+  // Vector to store the matched tests
+  std::vector<std::shared_ptr<TestRunner>> matchedTests;
+
+  for (const auto& runner : testSuite) {
+    auto it = std::find_if(tests.begin(), tests.end(),
+      [&runner](const std::tuple<std::string, std::string, std::string>& test) {
+        return (std::get<0>(test) == runner->getConfigName() && 
+                (std::get<2>(test) != "hidden" || XBU::getShowHidden()));
+      });
+
+    if (it != tests.end()) {
+      matchedTests.push_back(runner);
+    }
+  }
+  return matchedTests;
 }

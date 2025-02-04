@@ -52,19 +52,11 @@ struct option : public basic_option {
 class smi_base {
 protected:
 
-  XRT_CORE_COMMON_EXPORT
-  virtual const tuple_vector& 
-  get_validate_test_desc() const;
-
-  XRT_CORE_COMMON_EXPORT
-  virtual const tuple_vector& 
-  get_examine_report_desc() const;
+  tuple_vector validate_test_desc;
+  tuple_vector examine_report_desc;
 
   std::vector<basic_option> 
-  construct_run_option_description() const;
-
-  std::vector<basic_option> 
-  construct_report_option_description() const;
+  construct_option_description(const tuple_vector&) const;
 
   boost::property_tree::ptree 
   construct_validate_subcommand() const;
@@ -77,7 +69,21 @@ protected:
 
 public:
   XRT_CORE_COMMON_EXPORT
-  std::string get_smi_config() const;
+  std::string
+  get_smi_config() const;
+
+  XRT_CORE_COMMON_EXPORT
+  const tuple_vector&
+  get_validate_tests() const
+  { return validate_test_desc; }
+
+  XRT_CORE_COMMON_EXPORT
+  const tuple_vector&
+  get_examine_reports() const
+  { return examine_report_desc; }
+
+  XRT_CORE_COMMON_EXPORT
+  smi_base();
 };
 
 XRT_CORE_COMMON_EXPORT
