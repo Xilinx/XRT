@@ -7,6 +7,8 @@ if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_trace)
   add_subdirectory(aie_debug)
   add_subdirectory(ml_timeline)
+  add_subdirectory(native)
+  add_subdirectory(user)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
