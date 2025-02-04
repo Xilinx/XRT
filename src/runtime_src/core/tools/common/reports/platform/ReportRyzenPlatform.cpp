@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // System - Include Files
@@ -51,16 +51,8 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("power_mode");
+    _output << boost::format("  %-23s: %s \n") % "Total Columns" % pt_static_region.get<std::string>("total_columns");
 
-    const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
-    if (!clocks.empty()) {
-      _output << std::endl << "Clocks" << std::endl;
-      for (const auto& kc : clocks) {
-        const boost::property_tree::ptree& pt_clock = kc.second;
-        std::string clock_name_type = pt_clock.get<std::string>("id");
-        _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
-      }
-    }
 
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
     if (watts != "N/A")

@@ -5,9 +5,6 @@
 
 #include "core/common/device.h"
 #include "core/common/api/bo.h"
-#include "xrt/config.h"
-#include "xrt/device/hal.h"
-#include "xrt/util/range.h"
 
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"

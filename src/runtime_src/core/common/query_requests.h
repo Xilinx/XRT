@@ -56,6 +56,7 @@ enum class key_type
   edge_vendor,
   device_class,
   xrt_smi_config,
+  xrt_smi_lists,
   xclbin_name,
   sequence_name,
   elf_name,
@@ -555,6 +556,33 @@ struct xrt_smi_config : request
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
+};
+
+/* Used to retrieve the list of validate tests and examine reports along with 
+   their description and visibility tags. This returns the same list which is
+   used by help printing to maintain concurrency between what is printed and 
+   what is run by xrt-smi. This can be extended to other list assuming the 
+   structure is kept the same as validate_tests and examine reports
+*/
+struct xrt_smi_lists : request
+{
+  enum class type {
+    validate_tests,
+    examine_reports
+  };
+  using result_type = std::vector<std::tuple<std::string, std::string, std::string>>;
+  static const key_type key = key_type::xrt_smi_lists;
+  static const char* name() { return "xrt_smi_lists"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
 };
 
 /**

@@ -24,6 +24,7 @@
 
 #include "aie_status.h"
 #include "aie_profile.h"
+#include "aie_debug.h"
 
 #ifndef __HWEM__
 #include "aie_trace.h"
@@ -56,6 +57,8 @@ bool load()
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();
+  if (xrt_core::config::get_aie_debug())
+    xdp::aie::debug::load();
 
   if (xrt_core::config::get_noc_profile())
     xdp::noc::profile::load();
@@ -103,6 +106,8 @@ bool load()
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();
+  if (xrt_core::config::get_aie_debug())
+    xdp::aie::debug::load();
 #endif
   return true ;
 }
