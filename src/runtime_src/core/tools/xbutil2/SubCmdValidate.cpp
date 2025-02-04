@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -314,8 +314,13 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     boost::property_tree::ptree ptTest;
     try {
       ptTest = testPtr->startTest(device);
-    } catch (const std::exception&) {
+    } catch (const std::runtime_error& e) {
+      std::cout << e.what() << std::endl;
+      return test_status::failed;
+    }
+    catch (const std::exception&) {
       ptTest = testPtr->get_test_header();
+      status = test_status::failed;
       ptTest.put("status", test_token_failed);
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
