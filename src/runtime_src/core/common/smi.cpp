@@ -42,84 +42,24 @@ to_ptree() const
   return pt;
 }
 
-const tuple_vector& 
 smi_base::
-get_validate_test_desc() const 
+smi_base()
 {
-  static const tuple_vector validate_test_desc = {
-    {"aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA", "hidden"},
-    {"all", "All applicable validate tests will be executed (default)", "common"},
-    {"cmd-chain-latency", "Run end-to-end latency test using command chaining", "common"},
-    {"cmd-chain-throughput", "Run end-to-end throughput test using command chaining", "common"},
-    {"df-bw", "Run bandwidth test on data fabric", "common"},
-    {"gemm", "Measure the TOPS value of GEMM operations", "common"},
-    {"latency", "Run end-to-end latency test", "common"},
-    {"quick", "Run a subset of four tests: \n1. latency \n2. throughput \n3. cmd-chain-latency \n4. cmd-chain-throughput", "common"},
-    {"spatial-sharing-overhead", "Run Spatial Sharing Overhead Test", "hidden"},
-    {"tct-all-col", "Measure average TCT processing time for all columns", "common"},
-    {"tct-one-col", "Measure average TCT processing time for one column", "common"},
-    {"temporal-sharing-overhead", "Run Temporal Sharing Overhead Test", "hidden"},
-    {"throughput", "Run end-to-end throughput test", "common"},
-    {"aux-connection", "Check if auxiliary power is connected", "common"},
-    {"dma", "Run dma test", "common"},
-    {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
-    {"m2m", "Run M2M test", "common"},
-    {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
-    {"p2p", "Run P2P test", "common"},
-    {"pcie-link", "Check if PCIE link is active", "common"},
-    {"sc-version","Check if SC firmware is up-to-date", "common"},
-    {"verify", "Run 'Hello World' kernel test", "common"}
-  };
-  return validate_test_desc;
-}
 
-const tuple_vector& 
-smi_base::
-get_examine_report_desc() const 
-{
-  static const tuple_vector examine_report_desc = {
-    {"aie-partitions", "AIE partition information", "common"},
-    {"host", "Host information", "common"},
-    {"platform", "Platforms flashed on the device", "common"},
-    {"telemetry", "Telemetry data for the device", "common"},
-    {"aie", "AIE metadata in xclbin", "common"},
-    {"aiemem", "AIE memory tile information", "common"},
-    {"aieshim", "AIE shim tile status", "common"},
-    {"debug-ip-status", "Status of Debug IPs present in xclbin loaded on device", "common"},
-    {"dynamic-regions", "Information about the xclbin and the compute units", "common"},
-    {"electrical", "Electrical and power sensors present on the device", "common"},
-    {"error", "Asyncronus Error present on the device", "common"},
-    {"firewall", "Firewall status", "common"},
-    {"mailbox", "Mailbox metrics of the device", "common"},
-    {"mechanical", "Mechanical sensors on and surrounding the device", "common"},
-    {"memory", "Memory information present on the device", "common"},
-    {"pcie-info", "Pcie information of the device", "common"},
-    {"qspi-status", "QSPI write protection status", "common"},
-    {"thermal", "Thermal sensors present on the device", "common"}
+  examine_report_desc = {
+    {"host", "Host information", "common"}
   };
-  return examine_report_desc;
 }
 
 std::vector<basic_option> 
 smi_base::
-construct_run_option_description() const 
+construct_option_description(const tuple_vector& vec) const
 {
-  std::vector<basic_option> run_option_descriptions;
-  for (const auto& [name, description, type] : get_validate_test_desc()) {
-    run_option_descriptions.push_back({name, description, type});
+  std::vector<basic_option> option_descriptions;
+  for (const auto& [name, description, type] : vec) {
+    option_descriptions.push_back({name, description, type});
   }
-  return run_option_descriptions;
-}
-
-std::vector<basic_option> 
-smi_base::
-construct_report_option_description() const 
-{
-  std::vector<basic_option> report_option_descriptions;
-  for (const auto& [name, description, type] : get_examine_report_desc()) {
-    report_option_descriptions.push_back({name, description, type});
-  }
-  return report_option_descriptions;
+  return option_descriptions;
 }
 
 ptree 
@@ -138,7 +78,7 @@ construct_validate_subcommand() const
                     "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"},
     {"output", "o", "Direct the output to the given file", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_run_option_description()},
+    {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_option_description(validate_test_desc)},
     {"path", "p", "Path to the directory containing validate xclbins", "hidden", "", "string"},
     {"param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "hidden", "", "string"},
     {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
@@ -169,7 +109,7 @@ construct_examine_subcommand() const
                     "\tJSON-2020.2 - JSON 2020.2 schema", "common", "", "string"},
     {"output", "o", "Direct the output to the given file", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", construct_report_option_description()},
+    {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", construct_option_description(examine_report_desc)},
     {"element", "e", "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'", "hidden", "", "array"}
   };
 
@@ -194,9 +134,9 @@ construct_configure_subcommand() const
   std::vector<option> options = {
     {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"daemon", "", "Update the device daemon configuration", "common", "", "none"},
+    {"daemon", "", "Update the device daemon configuration", "hidden", "", "none"},
     {"purge", "", "Remove the daemon configuration file", "hidden", "", "string"},
-    {"host", "", "IP or hostname for device peer", "common", "", "string"},
+    {"host", "", "IP or hostname for device peer", "hidden", "", "string"},
     {"security", "", "Update the security level for the device", "hidden", "", "string"},
     {"clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"},
     {"ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"},

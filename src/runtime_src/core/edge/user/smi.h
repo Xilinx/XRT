@@ -7,15 +7,16 @@
 namespace shim_edge::smi {
 
 class smi_edge : public xrt_core::smi::smi_base {
-protected:
-  const std::vector<std::tuple<std::string, std::string, std::string>>& 
-  get_validate_test_desc() const override;
-
-  const std::vector<std::tuple<std::string, std::string, std::string>>& 
-  get_examine_report_desc() const override;
-
+public:
+  smi_edge();
 };
 
 /* This API can be device specific since this is used by the shim*/
 std::string get_smi_config();
+
+const xrt_core::smi::tuple_vector&
+get_validate_tests();
+
+const xrt_core::smi::tuple_vector&
+get_examine_reports();
 } // namespace shim_edge::smi

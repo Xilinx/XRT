@@ -1,18 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-# Custom variables imported by this CMake stub which should be defined by parent CMake:
-# LINUX_FLAVOR
-
-if (NOT WIN32)
-  if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
-    set (XRT_DEV_COMPONENT_SUFFIX "dev")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|fedora)")
-    set (XRT_DEV_COMPONENT_SUFFIX "devel")
-  endif()
-else()
-  set(LINUX_FLAVOR "none")
-endif()
+# Custom variables imported by this CMake stub which should be defined
+# by parent CMake: LINUX_FLAVOR
 
 # The default XRT build is legacy
 if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
@@ -20,13 +10,18 @@ if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
   set(XRT_XRT 1)
 endif()
 
-if (NOT WIN32 AND ${LINUX_FLAVOR} MATCHES "^(ubuntu|debian|rhel|centos)")
+if (NOT WIN32)
   if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
-    set (XRT_DEV_COMPONENT_SUFFIX "dev")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos)")
-    set (XRT_DEV_COMPONENT_SUFFIX "devel")
+    set (XRT_DEV_COMPONENT_SUFFIX "-dev")
+  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|fedora)")
+    set (XRT_DEV_COMPONENT_SUFFIX "-devel")
   endif()
 endif()
+
+# NSIS packager cannot handle '-' in component names
+if (WIN32)
+  set (XRT_DEV_COMPONENT_SUFFIX "_dev")
+endif()   
 
 # Enable development package by specifying development component name
 # If XRT_{PKG}_DEV_COMPONENT is same XRT_{PKG}_COMPONENT then only
@@ -71,7 +66,7 @@ if (XRT_BASE)
   # been explicitly marked for base
   set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "base")
   set (XRT_BASE_COMPONENT "base")
-  set (XRT_BASE_DEV_COMPONENT "base-${XRT_DEV_COMPONENT_SUFFIX}")
+  set (XRT_BASE_DEV_COMPONENT "base${XRT_DEV_COMPONENT_SUFFIX}")
 
   # Tempoary fix for cpackLin conditionally adding dependencies for
   # legacy XRT when XRT_DEV_COMPONENT equals "xrt".  We don't want the
@@ -88,9 +83,9 @@ if (XRT_NPU)
   # been explicitly marked alveo or npu
   set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "npu")
   set (XRT_COMPONENT "npu")
-  set (XRT_DEV_COMPONENT "npu-${XRT_DEV_COMPONENT_SUFFIX}")
+  set (XRT_DEV_COMPONENT "npu${XRT_DEV_COMPONENT_SUFFIX}")
   set (XRT_BASE_COMPONENT "base")
-  set (XRT_BASE_DEV_COMPONENT "base-${XRT_DEV_COMPONENT_SUFFIX}")
+  set (XRT_BASE_DEV_COMPONENT "base${XRT_DEV_COMPONENT_SUFFIX}")
 endif(XRT_NPU)
 
 # Alveo builds one Alveo package for both deployment and development

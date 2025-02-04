@@ -9,6 +9,7 @@ set DEBUG=1
 set RELEASE=1
 set EXT_DIR=C:/Xilinx/XRT/ext.new
 set CREATE_PACKAGE=0
+set CREATE_SDK=0
 set CMAKEFLAGS=
 set NOCMAKE=0
 set NOCTEST=0
@@ -39,6 +40,16 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   if [%1] == [-opt] (
     set DEBUG=0
   ) else (
+  if [%1] == [-npu] (
+    set CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1
+  ) else (
+  if [%1] == [-noabi] (
+    set CMAKEFLAGS=%CMAKEFLAGS% -DDISABLE_ABI_CHECK=1
+  ) else (
+  if [%1] == [-sdk] (
+    set CREATE_SDK=1
+    set CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1
+  ) else (
   if [%1] == [-pkg] (
     set CREATE_PACKAGE=1
   ) else (
@@ -66,7 +77,7 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   ) else (
     echo Unknown option: %1
     goto Help
-  )))))))))))))
+  ))))))))))))))))
   shift
   goto parseArgs
 
@@ -95,13 +106,16 @@ ECHO.
 ECHO [-help]                    - List this help
 ECHO [-clean]                   - Remove build directories
 ECHO [-dbg]                     - Creates a debug build
+ECHO [-noabi]                   - Do not compile with ABI version check (make incremental builds faster)
 ECHO [-opt]                     - Creates a release build
+ECHO [-sdk]                     - Create NSIS XRT SDK Installer for NPU (requires NSIS installed).
 echo [-package]                 - Packages the release build to a MSI archive.
 ECHO                              Note: Depends on the WIX application. 
 ECHO [-xclmgmt arg]             - The directory to the xclmgmt drivers (used with [-package])
 ECHO [-xocluser arg]            - The directory to the xocluser drivers (used with [-package])
 ECHO [-xclmgmt2 arg]            - The directory to the xclmgmt2 drivers (used with [-package])
 ECHO [-xocluser2 arg]           - The directory to the xocluser2 drivers (used with [-package])
+ECHO [-npu]                     - Build NPU component of XRT (deployment and development)
 ECHO [-hip]                     - Enable hip library build
 GOTO:EOF
 
@@ -132,9 +146,6 @@ if [%NOCMAKE%] == [0] (
    cmake -G "Visual Studio 17 2022" %CMAKEFLAGS% ../../src
    IF errorlevel 1 (POPD & exit /B %errorlevel%)
 )
-
-cmake --build . --verbose --config Debug
-IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 cmake --build . --verbose --config Debug --target install
 IF errorlevel 1 (POPD & exit /B %errorlevel%)
@@ -177,21 +188,16 @@ if [%NOCMAKE%] == [0] (
    IF errorlevel 1 (POPD & exit /B %errorlevel%)
 )
 
-cmake --build . --verbose --config Release
-IF errorlevel 1 (POPD & exit /B %errorlevel%)
-
 cmake --build . --verbose --config Release --target install
 IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 ECHO ====================== Zipping up Installation Build ============================
 cpack -G ZIP -C Release
 
-if [%CREATE_PACKAGE%]  == [1] (
-  ECHO ====================== Creating MSI Archive ============================
-  cpack -G WIX -C Release
+if [%CREATE_SDK%] == [1] (
+  ECHO ====================== Creating SDK Installer ============================
+  cpack -G NSIS -C Release
 )
 
 popd
 GOTO:EOF
-
-
