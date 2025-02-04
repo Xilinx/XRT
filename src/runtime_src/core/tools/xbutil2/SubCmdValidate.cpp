@@ -715,15 +715,15 @@ SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
   // Vector to store the matched tests
   std::vector<std::shared_ptr<TestRunner>> matchedTests;
 
-  for (const auto& runner : testSuite) {
-    auto it = std::find_if(tests.begin(), tests.end(),
-      [&runner](const std::tuple<std::string, std::string, std::string>& test) {
-        return (std::get<0>(test) == runner->getConfigName() && 
-                (std::get<2>(test) != "hidden" || XBU::getShowHidden()));
-      });
+  for (const auto& test : tests) {
+    auto it = std::find_if(testSuite.begin(), testSuite.end(),
+              [&test](const std::shared_ptr<TestRunner>& runner) {
+                return std::get<0>(test) == runner->getConfigName() &&
+                       (std::get<2>(test) != "hidden" || XBU::getShowHidden());
+              });
 
-    if (it != tests.end()) {
-      matchedTests.push_back(runner);
+    if (it != testSuite.end()) {
+      matchedTests.push_back(*it);
     }
   }
   return matchedTests;
