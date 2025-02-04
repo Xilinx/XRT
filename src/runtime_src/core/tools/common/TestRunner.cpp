@@ -26,7 +26,7 @@ namespace xq = xrt_core::query;
 #include <atomic>
 
 static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
-std::atomic<bool> g_should_exit(false);
+std::atomic<bool> force_exit(false);
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
@@ -36,7 +36,7 @@ namespace {
 void 
 signal_handler(int signal) {
   if (signal == SIGINT) {
-    g_should_exit = true;
+    force_exit = true;
   }
 }
 
@@ -79,7 +79,7 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
   // Start the test process
   std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running); });
   // Wait for the test process to finish or for the signal to be caught
-  while (is_thread_running && !g_should_exit) {
+  while (is_thread_running && !force_exit) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     try {
       busy_bar.check_timeout(max_test_duration);
@@ -88,10 +88,9 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
       throw;
     }
   }
-  if (g_should_exit) {
+  if (force_exit) {
     test_thread.detach();
     busy_bar.finish();
-    // Perform any additional cleanup if necessary??
     throw std::runtime_error("Test interrupted by user (Ctrl+C).");
   }
     
