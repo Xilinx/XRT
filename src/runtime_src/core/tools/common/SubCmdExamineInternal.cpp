@@ -249,15 +249,15 @@ SubCmdExamineInternal::getReportsList(const xrt_core::smi::tuple_vector& reports
   // Vector to store the matched reports
   std::vector<std::shared_ptr<Report>> matchedReports;
 
-  for (const auto& report : fullReportCollection) {
-    auto it = std::find_if(reports.begin(), reports.end(),
-      [&report](const std::tuple<std::string, std::string, std::string>& rep) {
-        return (std::get<0>(rep) == report->getReportName() && 
-                (std::get<2>(rep) != "hidden" || XBU::getShowHidden()));
-      });
+  for (const auto& rep : reports) {
+    auto it = std::find_if(fullReportCollection.begin(), fullReportCollection.end(),
+              [&rep](const std::shared_ptr<Report>& report) {
+                return std::get<0>(rep) == report->getReportName() &&
+                       (std::get<2>(rep) != "hidden" || XBU::getShowHidden());
+              });
 
-    if (it != reports.end()) {
-      matchedReports.push_back(report);
+    if (it != fullReportCollection.end()) {
+      matchedReports.push_back(*it);
     }
   }
 
