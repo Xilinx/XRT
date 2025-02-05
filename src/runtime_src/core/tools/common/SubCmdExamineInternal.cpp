@@ -114,7 +114,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
-      throw xrt_core::error((boost::format("The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+      throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier

@@ -214,20 +214,24 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
 
   std::reverse(std::begin(tokens), std::end(tokens));
 
-  //check if func was specified. func is optional
-  auto pos_of_func = tokens[0].find('.');
-  if (pos_of_func != std::string::npos) {
-    dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(0, pos_of_func)), nullptr, radix));
-    func = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(pos_of_func+1)), nullptr, radix));
+try {
+    //check if func was specified. func is optional
+    auto pos_of_func = tokens[0].find('.');
+    if (pos_of_func != std::string::npos) {
+      dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(0, pos_of_func)), nullptr, radix));
+      func = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(pos_of_func+1)), nullptr, radix));
+    }
+    else
+      dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
+
+    bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
+
+    // domain is not mandatory if it is "0000"
+    if(tokens.size() > 2)
+      domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
+  } catch (const std::invalid_argument&) {
+    //ignore
   }
-  else
-    dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
-
-  bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
-
-  // domain is not mandatory if it is "0000"
-  if(tokens.size() > 2)
-    domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
   // Iterate through the available devices to find a BDF match
   // This must not open any devices! Doing do would slow down the software

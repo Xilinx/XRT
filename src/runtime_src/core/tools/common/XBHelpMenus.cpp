@@ -228,7 +228,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
     // Examine each report name for a match 
     for (const auto & reportName : reportNamesToAdd) {
       auto iter = std::find_if(allReportsAvailable.begin(), allReportsAvailable.end(), 
-                               [&reportName](const std::shared_ptr<Report>& obj) {return obj->getReportName() == reportName;});
+                               [&reportName](const std::shared_ptr<Report>& obj) {return obj->getReportName() == boost::algorithm::to_lower_copy(reportName);});
       if (iter != allReportsAvailable.end()) 
         reportsToUse.push_back(*iter);
       else {
