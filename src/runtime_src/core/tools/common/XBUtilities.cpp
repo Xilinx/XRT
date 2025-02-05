@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XBUtilities.h"
@@ -230,7 +230,7 @@ try {
     if(tokens.size() > 2)
       domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
   } catch (const std::invalid_argument&) {
-    //ignore
+    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'") % bdfstr) + XBUtilities::str_available_devs(_inUserDomain));
   }
 
   // Iterate through the available devices to find a BDF match
