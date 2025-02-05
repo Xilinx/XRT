@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrthip_module_h
 #define xrthip_module_h
 
 #include "common.h"
 #include "context.h"
-#include "experimental/xrt_ext.h"
-#include "xrt/xrt_hw_context.h"
-#include "xrt/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 namespace xrt::core::hip {
 

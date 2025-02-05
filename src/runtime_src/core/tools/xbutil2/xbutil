@@ -43,7 +43,7 @@ XRT_LOADER_DIR="`dirname \"$0\"`"
 
 # For edge platforms loader is not required as tools are in standard location(/usr).
 # So calling unwrapped tool from this script itself.
-if [[ $XRT_LOADER_DIR =~ "/usr" || $XRT_LOADER_DIR =~ "/bin" ]]; then
+if [[ $XRT_LOADER_DIR =~ ^(/usr|/bin) ]]; then
     "${XRT_LOADER_DIR}/unwrapped/${XRT_PROG}" "${XRTWRAP_PROG_ARGS[@]}"
     exit 0
 fi

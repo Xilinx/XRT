@@ -16,8 +16,8 @@ add_library(core_pcielinux_objects OBJECT
   pcidev.cpp
   pcidrv.cpp
   shim.cpp
-  system_linux.cpp
   smi.cpp
+  system_linux.cpp
   )
 
 target_compile_definitions(core_pcielinux_objects

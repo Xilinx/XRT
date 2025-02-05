@@ -6,6 +6,7 @@
 
 #include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"
+#include "core/common/smi.h"
 
 struct SubCmdExamineOptions {
   std::string               m_device;
@@ -19,6 +20,7 @@ struct SubCmdExamineOptions {
 class SubCmdExamineInternal : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
+  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
   SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
@@ -31,6 +33,7 @@ class SubCmdExamineInternal : public SubCmd {
   void print_help_internal(const SubCmdExamineOptions&) const;
 
   bool                      m_isUserDomain;
+  std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
 };
 
 #endif

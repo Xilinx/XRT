@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
-
-#include "core/include/experimental/xrt_system.h"
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+#include "core/include/xrt/experimental/xrt_system.h"
 
 #include "hip/core/common.h"
 #include "hip/core/device.h"

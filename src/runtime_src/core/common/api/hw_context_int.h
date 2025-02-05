@@ -1,5 +1,5 @@
 // PDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_API_HW_CONTEXT_INT_H
 #define XRT_COMMON_API_HW_CONTEXT_INT_H
 
@@ -7,6 +7,7 @@
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_module.h"
 
 #include <cstdint>
 
@@ -43,6 +44,12 @@ set_exclusive(xrt::hw_context& ctx);
 XRT_CORE_COMMON_EXPORT 
 xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl);
+
+// Checks all the modules that are registered with given hw context
+// and returns the module with the given kernel name
+// throws if no module is found with given kernel name
+xrt::module
+get_module(const xrt::hw_context& hwctx, const std::string& kname);
 
 }} // hw_context_int, xrt_core
 

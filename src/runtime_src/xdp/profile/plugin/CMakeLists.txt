@@ -5,7 +5,10 @@
 if(XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_profile)  
   add_subdirectory(aie_trace)
+  add_subdirectory(aie_debug)
   add_subdirectory(ml_timeline)
+  add_subdirectory(native)
+  add_subdirectory(user)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
@@ -44,6 +47,7 @@ if (NOT WIN32)
 add_subdirectory(aie_status)
 add_subdirectory(aie_profile)
 add_subdirectory(aie_trace)
+add_subdirectory(aie_debug)
 add_subdirectory(device_offload/hw_emu)
 add_subdirectory(noc)
 add_subdirectory(power)
