@@ -62,6 +62,11 @@ namespace xdp {
     }
 
     void readValues(XAie_DevInst* aieDevInst) {
+      std::stringstream msg;
+      msg << "Debugging " << relativeOffsets.size() << " registers for tile " 
+          << +col << "," << +row;
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+
       for (auto& offset : relativeOffsets) {
         uint32_t val = 0;
         XAie_Read32(aieDevInst, offset + tileOffset, &val);
