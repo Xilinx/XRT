@@ -549,7 +549,7 @@ display_subcommand_options(const std::string& executable,
   if (usageSuboption.empty())
     std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s %s\n" + fh.fgc_reset) % executable % subcommand % usage;
   else
-    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s [ %s ] %s\n" + fh.fgc_reset) % executable % subcommand % usageSuboption % usage;
+    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s %s %s\n" + fh.fgc_reset) % executable % subcommand % usageSuboption % usage;
 
   std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>> commonJsonOptions;
   if (commandConfig.empty())
