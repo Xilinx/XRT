@@ -131,7 +131,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
-	num_of_sections = axlf_head.m_header.m_numSections - 1;
+	num_of_sections = axlf_head.m_header.m_numSections;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
 	axlf = vmalloc(axlf_size);
 	if (!axlf) {
