@@ -76,8 +76,8 @@ namespace xdp {
     std::unique_ptr<RegisterInterpreter> regInterp = 
       std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
     
-    xrt_core::message::send(severity_level::debug, "XRT", "Writing " 
-      + std::to_string(samples.size()) + " samples to AIE Debug file.");
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+      "Writing " + std::to_string(samples.size()) + " samples to AIE Debug file.");
 
     for (auto& sample : samples) {
       // Print out full 32-bit values (for debug purposes)
