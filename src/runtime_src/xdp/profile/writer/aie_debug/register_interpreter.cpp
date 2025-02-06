@@ -32,7 +32,7 @@ namespace xdp {
           writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
         else if (mAieGeneration == 5)
           writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
-        else if ((hwGen > 1) && (hwGen < 10)) {
+        else if ((mAieGeneration > 1) && (mAieGeneration <= 9)) {
           writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
 
         std::map<std::string, std::vector<WriterUsedRegisters::RegData>>& writerUsedRegistersMap = 
