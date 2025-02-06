@@ -14,12 +14,15 @@
  * under the License.
  */
 #include <fstream>
+
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+
+#include "core/common/message.h"
 
 namespace xdp {
   AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName, uint64_t deviceIndex)

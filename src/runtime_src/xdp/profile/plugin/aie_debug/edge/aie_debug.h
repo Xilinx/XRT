@@ -26,6 +26,7 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 
+#include "core/common/message.h"
 #include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
