@@ -652,7 +652,7 @@ err:
 	return ret;
 }
 
-static int intc_remove(struct platform_device *pdev)
+static int __intc_remove(struct platform_device *pdev)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -671,6 +671,15 @@ static int intc_remove(struct platform_device *pdev)
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void intc_remove(struct platform_device *pdev)
+{
+	__intc_remove(pdev);
+}
+#else
+#define intc_remove __intc_remove
+#endif
 
 static struct xocl_intc_funcs intc_ops = {
 	.request_intr	= request_intr,

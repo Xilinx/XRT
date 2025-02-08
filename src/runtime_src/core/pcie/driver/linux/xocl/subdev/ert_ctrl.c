@@ -880,7 +880,7 @@ static int ert_ctrl_cq_init(struct platform_device *pdev)
 	return 0;
 }
 
-static int ert_ctrl_remove(struct platform_device *pdev)
+static int __ert_ctrl_remove(struct platform_device *pdev)
 {
 	struct ert_ctrl	*ec = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -911,6 +911,15 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ert_ctrl_remove(struct platform_device *pdev)
+{
+	__ert_ctrl_remove(pdev);
+}
+#else
+#define ert_ctrl_remove __ert_ctrl_remove
+#endif
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
