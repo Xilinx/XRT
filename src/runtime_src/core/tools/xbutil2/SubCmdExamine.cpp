@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -16,6 +16,7 @@
 #include "tools/common/reports/ReportAiePartitions.h"
 #include "tools/common/reports/ReportAsyncError.h"
 #include "tools/common/reports/ReportBOStats.h"
+#include "tools/common/reports/ReportClocks.h"
 #include "tools/common/reports/ReportCmcStatus.h"
 #include "tools/common/reports/ReportDynamicRegion.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
@@ -26,6 +27,7 @@
 #include "tools/common/reports/ReportMechanical.h"
 #include "tools/common/reports/ReportMemory.h"
 #include "tools/common/reports/ReportPcieInfo.h"
+#include "tools/common/reports/ReportPreemption.h"
 #include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/reports/ReportPsKernels.h"
 #include "tools/common/reports/ReportQspiStatus.h"
@@ -41,12 +43,14 @@
     std::make_shared<ReportAiePartitions>(),
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
+    std::make_shared<ReportClocks>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
+    std::make_shared<ReportPreemption>(),
     std::make_shared<ReportPsKernels>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
