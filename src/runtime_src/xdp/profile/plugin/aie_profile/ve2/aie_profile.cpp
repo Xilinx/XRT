@@ -280,6 +280,7 @@ namespace xdp {
     bool runtimeCounters = false;
 
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
+    auto hwGen = metadata->getHardwareGen();
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
@@ -308,7 +309,7 @@ namespace xdp {
         if (module == static_cast<int>(module_type::uc)) {
           // Configure
           auto events = microcontrollerEvents[metricSet];
-          aie::profile::configMDMCounters(aieDevInst, col, row, events);
+          aie::profile::configMDMCounters(aieDevInst, hwGen, col, row, events);
           // Record
           tile_type recordTile;
           recordTile.col = col;
@@ -517,6 +518,7 @@ namespace xdp {
     uint32_t prevColumn = 0;
     uint32_t prevRow = 0;
     uint64_t timerValue = 0;
+    auto hwGen = metadata->getHardwareGen();
 
     // Iterate over all AIE Counters & Timers
     auto numCounters = db->getStaticInfo().getNumAIECounter(index);
@@ -608,7 +610,7 @@ namespace xdp {
       auto events = ucTile.second;
 
       std::vector<uint64_t> counterValues;
-      aie::profile::readMDMCounters(aieDevInst, tile.col, tile.row, counterValues);
+      aie::profile::readMDMCounters(aieDevInst, hwGen, tile.col, tile.row, counterValues);
 
       double timestamp = xrt_core::time_ns() / 1.0e6;
 

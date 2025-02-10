@@ -228,6 +228,7 @@ public:
     core_addresses.emplace(aie1::cm_performance_counter1_event_value);
     core_addresses.emplace(aie1::cm_performance_counter2_event_value);
     core_addresses.emplace(aie1::cm_performance_counter3_event_value);
+    core_addresses.emplace(aie1::cm_ecc_scrubbing_event);
 
     // Memory modules
     memory_addresses.emplace(aie1::mm_performance_control0);
@@ -1589,6 +1590,7 @@ public:
     core_addresses.emplace(aie2::cm_performance_counter1_event_value);
     core_addresses.emplace(aie2::cm_performance_counter2_event_value);
     core_addresses.emplace(aie2::cm_performance_counter3_event_value);
+    core_addresses.emplace(aie2::cm_ecc_scrubbing_event);
 
     // Memory modules
     memory_addresses.emplace(aie2::mm_performance_control0);
@@ -4548,6 +4550,7 @@ public:
     core_addresses.emplace(aie2ps::cm_performance_counter1_event_value);
     core_addresses.emplace(aie2ps::cm_performance_counter2_event_value);
     core_addresses.emplace(aie2ps::cm_performance_counter3_event_value);
+    core_addresses.emplace(aie2ps::cm_ecc_scrubbing_event);
 
     // Memory modules
     memory_addresses.emplace(aie2ps::mm_performance_control0);
@@ -4576,6 +4579,7 @@ public:
     interface_addresses.emplace(aie2ps::shim_performance_counter5);
     interface_addresses.emplace(aie2ps::shim_performance_counter0_event_value);
     interface_addresses.emplace(aie2ps::shim_performance_counter1_event_value);
+    interface_addresses.emplace(aie2ps::uc_memory_privileged);
 
     // Memory tiles
     memory_tile_addresses.emplace(aie2ps::mem_performance_control0);
