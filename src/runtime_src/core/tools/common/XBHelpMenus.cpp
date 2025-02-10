@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -228,7 +228,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
     // Examine each report name for a match 
     for (const auto & reportName : reportNamesToAdd) {
       auto iter = std::find_if(allReportsAvailable.begin(), allReportsAvailable.end(), 
-                               [&reportName](const std::shared_ptr<Report>& obj) {return obj->getReportName() == reportName;});
+                               [&reportName](const std::shared_ptr<Report>& obj) {return obj->getReportName() == boost::algorithm::to_lower_copy(reportName);});
       if (iter != allReportsAvailable.end()) 
         reportsToUse.push_back(*iter);
       else {

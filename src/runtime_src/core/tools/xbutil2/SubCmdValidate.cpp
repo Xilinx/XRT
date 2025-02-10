@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -458,7 +458,8 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
     throw xrt_core::error("Please specify an output file to redirect the json to");
 
   if (!options.m_output.empty() && !XBU::getForce() && std::filesystem::exists(options.m_output))
-    throw xrt_core::error((boost::format("Output file already exists: '%s'") % options.m_output).str());
+    throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+
 
   if (options.m_tests_to_run.empty())
     throw xrt_core::error("No test given to validate against.");

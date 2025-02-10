@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
@@ -549,7 +549,7 @@ display_subcommand_options(const std::string& executable,
   if (usageSuboption.empty())
     std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s %s\n" + fh.fgc_reset) % executable % subcommand % usage;
   else
-    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s [ %s ] %s\n" + fh.fgc_reset) % executable % subcommand % usageSuboption % usage;
+    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s %s %s\n" + fh.fgc_reset) % executable % subcommand % usageSuboption % usage;
 
   std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>> commonJsonOptions;
   if (commandConfig.empty())
