@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -114,7 +114,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
-      throw xrt_core::error((boost::format("The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+      throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
