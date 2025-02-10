@@ -56,7 +56,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["host", "platform", "aie-partitions", "telemetry"]
+      "report": ["aie", "aiemem", "aieshim", "host", "platform", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
