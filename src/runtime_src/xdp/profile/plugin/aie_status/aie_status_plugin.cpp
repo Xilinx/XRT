@@ -40,10 +40,18 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
+#ifdef XDP_VE2_BUILD
+    auto drv = aiarm::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr;
+    auto aieArray = drv->get_aie_array();
+#else
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)
-      return nullptr ;
+      return nullptr;
     auto aieArray = drv->getAieArray();
+#endif
+
     if (!aieArray)
       return nullptr ;
     return aieArray->get_dev();
