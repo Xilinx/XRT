@@ -772,28 +772,28 @@ get_device_offline_timer()
 inline std::string
 get_aie_debug_settings_core_registers()
 {
-  static std::string value = detail::get_string_value("AIE_debug_settings.core_registers", "all");
+  static std::string value = detail::get_string_value("AIE_debug_settings.core_registers", "");
   return value;
 }
 
 inline std::string
 get_aie_debug_settings_memory_registers()
 {
-  static std::string value = detail::get_string_value("AIE_debug_settings.memory_registers", "all");
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_registers", "");
   return value;
 }
 
 inline std::string
 get_aie_debug_settings_interface_registers()
 {
-  static std::string value = detail::get_string_value("AIE_debug_settings.interface_registers", "all");
+  static std::string value = detail::get_string_value("AIE_debug_settings.interface_registers", "");
   return value;
 }
 
 inline std::string
 get_aie_debug_settings_memory_tile_registers()
 {
-  static std::string value = detail::get_string_value("AIE_debug_settings.memory_tile_registers", "all");
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_tile_registers", "");
   return value;
 }
 

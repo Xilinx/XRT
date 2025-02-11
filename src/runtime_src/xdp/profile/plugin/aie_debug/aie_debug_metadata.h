@@ -66,7 +66,7 @@ class AieDebugMetadata {
     std::map<module_type, std::vector<uint64_t>>& getRegisterValues() {
       return parsedRegValues;
     }
-    
+
     bool aieMetadataEmpty() const {return (metadataReader == nullptr);}
     xdp::aie::driver_config getAIEConfigMetadata() {return metadataReader->getDriverConfig();}
 
@@ -82,9 +82,10 @@ class AieDebugMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
- 
+
     std::string lookupRegisterName(uint64_t regVal);
     uint64_t lookupRegisterAddr(std::string regName);
+    std::map<uint64_t, uint32_t> lookupRegisterSizes();
 
   private:
     std::vector<uint64_t> stringToRegList(std::string stringEntry, module_type t);
@@ -116,7 +117,7 @@ to read) pertaining to a particuar tile, for easy extraction of tile by tile dat
 ****************************************************************** */
 class BaseReadableTile {
   public:
-    virtual void readValues(XAie_DevInst* aieDevInst)=0;
+    virtual void readValues(XAie_DevInst* aieDevInst, std::map<uint64_t, uint32_t>* lookupRegAddrToSizeMap)=0;
 
     void setTileOffset(uint64_t offset) {tileOffset = offset;}
     void addOffsetName(uint64_t rel, std::string name) {
@@ -137,7 +138,8 @@ class BaseReadableTile {
     uint8_t col;
     uint8_t row;
     uint64_t tileOffset;
-    std::vector<uint32_t> values;
+    //std::vector<uint32_t> values;
+    std::vector<xdp::aie::AieDebugValue> values;
     std::vector<uint64_t> relativeOffsets;
     std::vector<std::string> registerNames;
 };
@@ -153,6 +155,7 @@ class UsedRegisters {
     UsedRegisters() {
       populateRegNameToValueMap();
       populateRegValueToNameMap();
+      populateRegAddrToSizeMap();
     }
     virtual ~UsedRegisters() {
       core_addresses.clear();
@@ -178,18 +181,29 @@ class UsedRegisters {
 
     std::string getRegisterName(uint64_t regVal) {
       auto itr = regValueToName.find(regVal);
-      return (itr != regValueToName.end()) ? itr->second : "";
+
+      if (itr != regValueToName.end()) {
+        return itr->second;
+      } else {
+        std::stringstream ss;     
+        ss << "0x" << std::hex << std::uppercase << regVal;
+        return ss.str();
+      }
     }
     uint64_t getRegisterAddr(std::string regName) {
       auto itr = regNameToValues.find(regName);
       return (itr != regNameToValues.end()) ? itr->second : 0;
+    }
+    std::map<uint64_t, uint32_t> getRegAddrToSizeMap() {
+      return regAddrToSize;
     }
 
     virtual void populateProfileRegisters() {};
     virtual void populateTraceRegisters() {};
     virtual void populateRegNameToValueMap() {};
     virtual void populateRegValueToNameMap() {};
-    
+    virtual void populateRegAddrToSizeMap() {};
+
     void populateAllRegisters() {
       populateProfileRegisters();
       populateTraceRegisters();
@@ -202,6 +216,7 @@ class UsedRegisters {
     std::set<uint64_t> memory_tile_addresses;
     std::map<std::string, uint64_t> regNameToValues;
     std::map<uint64_t, std::string> regValueToName;
+    std::map<uint64_t, uint32_t> regAddrToSize;
 };
 
 /*************************************************************************************
@@ -212,6 +227,7 @@ public:
   AIE1UsedRegisters() {
     populateRegNameToValueMap();
     populateRegValueToNameMap();
+    populateRegAddrToSizeMap();
   }
   ~AIE1UsedRegisters() = default;
 
@@ -248,7 +264,7 @@ public:
     // Memory tiles
     // NOTE, not available on AIE1
   }
-  
+
   void populateTraceRegisters() {
     // Core modules
     core_addresses.emplace(aie1::cm_core_status);
@@ -950,7 +966,10 @@ public:
       {"shim_event_group_dma_enable", aie1::shim_event_group_dma_enable},
       {"shim_stream_switch_event_port_selection_0", aie1::shim_stream_switch_event_port_selection_0},
       {"shim_stream_switch_event_port_selection_1", aie1::shim_stream_switch_event_port_selection_1},
-      {"mem_performance_counter0", aie1::mem_performance_counter0}
+      {"mem_performance_counter0", aie1::mem_performance_counter0},
+      {"cm_core_amh0_part1", aie1::cm_core_amh0_part1},
+      {"cm_core_p2", aie1::cm_core_p2},
+      {"cm_core_s4", aie1::cm_core_s4}
     };
   }
 
@@ -1560,8 +1579,102 @@ public:
       {0x0003f22c, "cm_stream_switch_slave_dma_0_slot3"},
       {0x0003f228, "cm_stream_switch_slave_dma_0_slot2"},
       {0x0003f224, "cm_stream_switch_slave_dma_0_slot1"},
-      {0x0003f220, "cm_stream_switch_slave_dma_0_slot0"}
+      {0x0003f220, "cm_stream_switch_slave_dma_0_slot0"},
+      {0x00030660, "cm_core_amh0_part1"},
+      {0x00030120, "cm_core_p2"},
+      {0x000304C0, "cm_core_s4"}
     };
+  }
+
+  void populateRegAddrToSizeMap() {
+   regAddrToSize[0x00020000] = 128;
+   regAddrToSize[0x00024000] = 128;
+   regAddrToSize[0x00030100] = 20;
+   regAddrToSize[0x00030110] = 20;
+   regAddrToSize[0x00030120] = 20;
+   regAddrToSize[0x00030130] = 20;
+   regAddrToSize[0x00030140] = 20;
+   regAddrToSize[0x00030150] = 20;
+   regAddrToSize[0x00030160] = 20;
+   regAddrToSize[0x00030170] = 20;
+   regAddrToSize[0x00030280] = 20;
+   regAddrToSize[0x00030290] = 20;
+   regAddrToSize[0x000302A0] = 20;
+   regAddrToSize[0x000302B0] = 20;
+   regAddrToSize[0x000302C0] = 20;
+   regAddrToSize[0x000302D0] = 20;
+   regAddrToSize[0x000302E0] = 20;
+   regAddrToSize[0x000302F0] = 20;
+   regAddrToSize[0x00030300] = 20;
+   regAddrToSize[0x00030310] = 20;
+   regAddrToSize[0x00030320] = 20;
+   regAddrToSize[0x00030330] = 20;
+   regAddrToSize[0x00030340] = 20;
+   regAddrToSize[0x00030350] = 20;
+   regAddrToSize[0x00030360] = 20;
+   regAddrToSize[0x00030370] = 20;
+   regAddrToSize[0x00030380] = 20;
+   regAddrToSize[0x00030390] = 20;
+   regAddrToSize[0x000303A0] = 20;
+   regAddrToSize[0x000303B0] = 20;
+   regAddrToSize[0x000303C0] = 20;
+   regAddrToSize[0x000303D0] = 20;
+   regAddrToSize[0x000303E0] = 20;
+   regAddrToSize[0x000303F0] = 20;
+   regAddrToSize[0x00030400] = 20;
+   regAddrToSize[0x00030410] = 20;
+   regAddrToSize[0x00030420] = 20;
+   regAddrToSize[0x00030430] = 20;
+   regAddrToSize[0x00030480] = 8;
+   regAddrToSize[0x00030490] = 8;
+   regAddrToSize[0x000304A0] = 8;
+   regAddrToSize[0x000304B0] = 8;
+   regAddrToSize[0x000304C0] = 8;
+   regAddrToSize[0x000304D0] = 8;
+   regAddrToSize[0x000304E0] = 8;
+   regAddrToSize[0x000304F0] = 8;
+   regAddrToSize[0x00030500] = 20;
+   regAddrToSize[0x00030510] = 20;
+   regAddrToSize[0x00030530] = 128;
+   regAddrToSize[0x00030540] = 128;
+   regAddrToSize[0x00030550] = 128;
+   regAddrToSize[0x00030560] = 128;
+   regAddrToSize[0x00030570] = 128;
+   regAddrToSize[0x00030580] = 128;
+   regAddrToSize[0x00030590] = 128;
+   regAddrToSize[0x000305A0] = 128;
+   regAddrToSize[0x000305B0] = 128;
+   regAddrToSize[0x000305C0] = 128;
+   regAddrToSize[0x000305D0] = 128;
+   regAddrToSize[0x000305E0] = 128;
+   regAddrToSize[0x000305F0] = 128;
+   regAddrToSize[0x00030600] = 128;
+   regAddrToSize[0x00030610] = 128;
+   regAddrToSize[0x00030620] = 128;
+   regAddrToSize[0x00030630] = 128;
+   regAddrToSize[0x00030640] = 128;
+   regAddrToSize[0x00030650] = 128;
+   regAddrToSize[0x00030660] = 128;
+   regAddrToSize[0x00030670] = 128;
+   regAddrToSize[0x00030680] = 128;
+   regAddrToSize[0x00030690] = 128;
+   regAddrToSize[0x000306A0] = 128;
+   regAddrToSize[0x000306B0] = 128;
+   regAddrToSize[0x000306C0] = 128;
+   regAddrToSize[0x000306D0] = 128;
+   regAddrToSize[0x000306E0] = 128;
+   regAddrToSize[0x000306F0] = 128;
+   regAddrToSize[0x00030700] = 128;
+   regAddrToSize[0x00030710] = 128;
+   regAddrToSize[0x00030720] = 128;
+   regAddrToSize[0x00030730] = 128;
+   regAddrToSize[0x00030740] = 128;
+   regAddrToSize[0x00030750] = 128;
+   regAddrToSize[0x00030760] = 128;
+   regAddrToSize[0x00030770] = 128;
+   regAddrToSize[0x00030780] = 128;
+   regAddrToSize[0x00030790] = 128;
+   regAddrToSize[0x000307A0] = 128;
   }
 };
 
@@ -1573,6 +1686,7 @@ public:
   AIE2UsedRegisters() {
     populateRegNameToValueMap();
     populateRegValueToNameMap();
+    populateRegAddrToSizeMap();
   }
   ~AIE2UsedRegisters() = default;
 
@@ -1655,7 +1769,7 @@ public:
     core_addresses.emplace(aie2::cm_edge_detection_event_control);
     core_addresses.emplace(aie2::cm_stream_switch_event_port_selection_0);
     core_addresses.emplace(aie2::cm_stream_switch_event_port_selection_1);
-    
+
     // Memory modules
     memory_addresses.emplace(aie2::mm_trace_control0);
     memory_addresses.emplace(aie2::mm_trace_control1);
@@ -4522,6 +4636,9 @@ public:
       {0x00034520, "cm_event_group_user_event_enable"}
     };
   }
+  void populateRegAddrToSizeMap() {
+   //regAddrToSize["0x00011000"] = 32;
+  }
 };
 
 /*************************************************************************************
@@ -4532,6 +4649,7 @@ public:
   AIE2psUsedRegisters() {
     populateRegNameToValueMap();
     populateRegValueToNameMap();
+    populateRegAddrToSizeMap();
   }
   ~AIE2psUsedRegisters() = default;
 
@@ -8314,6 +8432,237 @@ public:
       {0x00034520, "cm_event_group_user_event_enable"},
       {0x000c0104, "uc_dma_dm2mm_control"}
     };
+  }
+  
+  void populateRegAddrToSizeMap() {
+   regAddrToSize[0x00030000] = 128;
+   regAddrToSize[0x00030010] = 128;
+   regAddrToSize[0x00030020] = 128;
+   regAddrToSize[0x00030030] = 128;
+   regAddrToSize[0x00030040] = 128;
+   regAddrToSize[0x00030050] = 128;
+   regAddrToSize[0x00030060] = 128;
+   regAddrToSize[0x00030070] = 128;
+   regAddrToSize[0x00030080] = 128;
+   regAddrToSize[0x00030090] = 128;
+   regAddrToSize[0x000300A0] = 128;
+   regAddrToSize[0x000300B0] = 128;
+   regAddrToSize[0x000300C0] = 128;
+   regAddrToSize[0x000300D0] = 128;
+   regAddrToSize[0x000300E0] = 128;
+   regAddrToSize[0x000300F0] = 128;
+   regAddrToSize[0x00030100] = 128;
+   regAddrToSize[0x00030110] = 128;
+   regAddrToSize[0x00030120] = 128;
+   regAddrToSize[0x00030130] = 128;
+   regAddrToSize[0x00030140] = 128;
+   regAddrToSize[0x00030150] = 128;
+   regAddrToSize[0x00030160] = 128;
+   regAddrToSize[0x00030170] = 128;
+   regAddrToSize[0x00030180] = 128;
+   regAddrToSize[0x00030190] = 128;
+   regAddrToSize[0x000301A0] = 128;
+   regAddrToSize[0x000301B0] = 128;
+   regAddrToSize[0x000301C0] = 128;
+   regAddrToSize[0x000301D0] = 128;
+   regAddrToSize[0x000301E0] = 128;
+   regAddrToSize[0x000301F0] = 128;
+   regAddrToSize[0x00030200] = 128;
+   regAddrToSize[0x00030210] = 128;
+   regAddrToSize[0x00030220] = 128;
+   regAddrToSize[0x00030230] = 128;
+   regAddrToSize[0x00030240] = 128;
+   regAddrToSize[0x00030250] = 128;
+   regAddrToSize[0x00030260] = 128;
+   regAddrToSize[0x00030270] = 128;
+   regAddrToSize[0x00030280] = 128;
+   regAddrToSize[0x00030290] = 128;
+   regAddrToSize[0x000302A0] = 128;
+   regAddrToSize[0x000302B0] = 128;
+   regAddrToSize[0x000302C0] = 128;
+   regAddrToSize[0x000302D0] = 128;
+   regAddrToSize[0x000302E0] = 128;
+   regAddrToSize[0x000302F0] = 128;
+   regAddrToSize[0x00030300] = 128;
+   regAddrToSize[0x00030310] = 128;
+   regAddrToSize[0x00030320] = 128;
+   regAddrToSize[0x00030330] = 128;
+   regAddrToSize[0x00030340] = 128;
+   regAddrToSize[0x00030350] = 128;
+   regAddrToSize[0x00030360] = 128;
+   regAddrToSize[0x00030370] = 128;
+   regAddrToSize[0x00030380] = 128;
+   regAddrToSize[0x00030390] = 128;
+   regAddrToSize[0x000303A0] = 128;
+   regAddrToSize[0x000303B0] = 128;
+   regAddrToSize[0x000303C0] = 128;
+   regAddrToSize[0x000303D0] = 128;
+   regAddrToSize[0x000303E0] = 128;
+   regAddrToSize[0x000303F0] = 128;
+   regAddrToSize[0x00030400] = 128;
+   regAddrToSize[0x00030410] = 128;
+   regAddrToSize[0x00030420] = 128;
+   regAddrToSize[0x00030430] = 128;
+   regAddrToSize[0x00030440] = 128;
+   regAddrToSize[0x00030450] = 128;
+   regAddrToSize[0x00030460] = 128;
+   regAddrToSize[0x00030470] = 128;
+   regAddrToSize[0x00030480] = 128;
+   regAddrToSize[0x00030490] = 128;
+   regAddrToSize[0x000304A0] = 128;
+   regAddrToSize[0x000304B0] = 128;
+   regAddrToSize[0x000304C0] = 128;
+   regAddrToSize[0x000304D0] = 128;
+   regAddrToSize[0x000304E0] = 128;
+   regAddrToSize[0x000304F0] = 128;
+   regAddrToSize[0x00030500] = 128;
+   regAddrToSize[0x00030510] = 128;
+   regAddrToSize[0x00030520] = 128;
+   regAddrToSize[0x00030530] = 128;
+   regAddrToSize[0x00030540] = 128;
+   regAddrToSize[0x00030550] = 128;
+   regAddrToSize[0x00030560] = 128;
+   regAddrToSize[0x00030570] = 128;
+   regAddrToSize[0x00030580] = 128;
+   regAddrToSize[0x00030590] = 128;
+   regAddrToSize[0x000305A0] = 128;
+   regAddrToSize[0x000305B0] = 128;
+   regAddrToSize[0x000305C0] = 128;
+   regAddrToSize[0x000305D0] = 128;
+   regAddrToSize[0x000305E0] = 128;
+   regAddrToSize[0x000305F0] = 128;
+   regAddrToSize[0x00030600] = 128;
+   regAddrToSize[0x00030610] = 128;
+   regAddrToSize[0x00030620] = 128;
+   regAddrToSize[0x00030630] = 128;
+   regAddrToSize[0x00030640] = 128;
+   regAddrToSize[0x00030650] = 128;
+   regAddrToSize[0x00030660] = 128;
+   regAddrToSize[0x00030670] = 128;
+   regAddrToSize[0x00030680] = 128;
+   regAddrToSize[0x00030690] = 128;
+   regAddrToSize[0x000306A0] = 128;
+   regAddrToSize[0x000306B0] = 128;
+   regAddrToSize[0x000306C0] = 128;
+   regAddrToSize[0x000306D0] = 128;
+   regAddrToSize[0x000306E0] = 128;
+   regAddrToSize[0x000306F0] = 128;
+   regAddrToSize[0x00030700] = 128;
+   regAddrToSize[0x00030710] = 128;
+   regAddrToSize[0x00030720] = 128;
+   regAddrToSize[0x00030730] = 128;
+   regAddrToSize[0x00030740] = 128;
+   regAddrToSize[0x00030750] = 128;
+   regAddrToSize[0x00030760] = 128;
+   regAddrToSize[0x00030770] = 128;
+   regAddrToSize[0x00030780] = 128;
+   regAddrToSize[0x00030790] = 128;
+   regAddrToSize[0x000307A0] = 128;
+   regAddrToSize[0x000307B0] = 128;
+   regAddrToSize[0x000307C0] = 128;
+   regAddrToSize[0x000307D0] = 128;
+   regAddrToSize[0x000307E0] = 128;
+   regAddrToSize[0x000307F0] = 128;
+   regAddrToSize[0x00031800] = 128;
+   regAddrToSize[0x00031810] = 128;
+   regAddrToSize[0x00031820] = 128;
+   regAddrToSize[0x00031830] = 128;
+   regAddrToSize[0x00031840] = 128;
+   regAddrToSize[0x00031850] = 128;
+   regAddrToSize[0x00031860] = 128;
+   regAddrToSize[0x00031870] = 128;
+   regAddrToSize[0x00031880] = 128;
+   regAddrToSize[0x00031890] = 128;
+   regAddrToSize[0x000318A0] = 128;
+   regAddrToSize[0x000318B0] = 128;
+   regAddrToSize[0x000318C0] = 128;
+   regAddrToSize[0x000318D0] = 128;
+   regAddrToSize[0x000318E0] = 128;
+   regAddrToSize[0x000318F0] = 128;
+   regAddrToSize[0x00031900] = 128;
+   regAddrToSize[0x00031910] = 128;
+   regAddrToSize[0x00031920] = 128;
+   regAddrToSize[0x00031930] = 128;
+   regAddrToSize[0x00031940] = 128;
+   regAddrToSize[0x00031950] = 128;
+   regAddrToSize[0x00031960] = 128;
+   regAddrToSize[0x00031970] = 128;
+   regAddrToSize[0x00031980] = 128;
+   regAddrToSize[0x00031990] = 128;
+   regAddrToSize[0x000319A0] = 128;
+   regAddrToSize[0x000319B0] = 128;
+   regAddrToSize[0x000319C0] = 128;
+   regAddrToSize[0x000319D0] = 128;
+   regAddrToSize[0x000319E0] = 128;
+   regAddrToSize[0x000319F0] = 128;
+   regAddrToSize[0x00031A00] = 128;
+   regAddrToSize[0x00031A10] = 128;
+   regAddrToSize[0x00031A20] = 128;
+   regAddrToSize[0x00031A30] = 128;
+   regAddrToSize[0x00031A40] = 128;
+   regAddrToSize[0x00031A50] = 128;
+   regAddrToSize[0x00031A60] = 128;
+   regAddrToSize[0x00031A70] = 128;
+   regAddrToSize[0x00031A80] = 128;
+   regAddrToSize[0x00031A90] = 128;
+   regAddrToSize[0x00031AA0] = 128;
+   regAddrToSize[0x00031AB0] = 128;
+   regAddrToSize[0x00031AC0] = 128;
+   regAddrToSize[0x00031AD0] = 128;
+   regAddrToSize[0x00031AE0] = 128;
+   regAddrToSize[0x00031AF0] = 128;
+   regAddrToSize[0x00032400] = 128;
+   regAddrToSize[0x00032410] = 128;
+   regAddrToSize[0x00032420] = 128;
+   regAddrToSize[0x00032430] = 128;
+   regAddrToSize[0x00032440] = 128;
+   regAddrToSize[0x00032450] = 128;
+   regAddrToSize[0x00032460] = 128;
+   regAddrToSize[0x00032470] = 128;
+   regAddrToSize[0x00032480] = 128;
+   regAddrToSize[0x00032490] = 128;
+   regAddrToSize[0x000324A0] = 128;
+   regAddrToSize[0x000324B0] = 128;
+   regAddrToSize[0x000324C0] = 128;
+   regAddrToSize[0x000324D0] = 128;
+   regAddrToSize[0x000324E0] = 128;
+   regAddrToSize[0x000324F0] = 128;
+   regAddrToSize[0x00032500] = 128;
+   regAddrToSize[0x00032510] = 128;
+   regAddrToSize[0x00032520] = 128;
+   regAddrToSize[0x00032530] = 128;
+   regAddrToSize[0x00032540] = 128;
+   regAddrToSize[0x00032550] = 128;
+   regAddrToSize[0x00032560] = 128;
+   regAddrToSize[0x00032570] = 128;
+   regAddrToSize[0x00032580] = 128;
+   regAddrToSize[0x00032590] = 128;
+   regAddrToSize[0x000325A0] = 128;
+   regAddrToSize[0x000325B0] = 128;
+   regAddrToSize[0x00032600] = 128;
+   regAddrToSize[0x00032610] = 128;
+   regAddrToSize[0x00032620] = 128;
+   regAddrToSize[0x00032630] = 128;
+   regAddrToSize[0x00032640] = 128;
+   regAddrToSize[0x00032650] = 128;
+   regAddrToSize[0x00032660] = 128;
+   regAddrToSize[0x00032670] = 128;
+   regAddrToSize[0x00032680] = 128;
+   regAddrToSize[0x00032690] = 128;
+   regAddrToSize[0x000326A0] = 128;
+   regAddrToSize[0x000326B0] = 128;
+   regAddrToSize[0x00032700] = 128;
+   regAddrToSize[0x00032710] = 128;
+   regAddrToSize[0x00032720] = 128;
+   regAddrToSize[0x00032730] = 128;
+   regAddrToSize[0x00032740] = 128;
+   regAddrToSize[0x00032750] = 128;
+   regAddrToSize[0x00032760] = 128;
+   regAddrToSize[0x00032770] = 128;
+   regAddrToSize[0x00032780] = 128;
+   regAddrToSize[0x00032790] = 128;
+   regAddrToSize[0x000327A0] = 128;
+   regAddrToSize[0x000327B0] = 128;
   }
 };
 

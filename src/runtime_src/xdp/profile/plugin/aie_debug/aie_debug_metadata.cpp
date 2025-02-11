@@ -48,7 +48,7 @@ namespace xdp {
     for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
 
-      std::vector<tile_type> tiles = (type == module_type::shim) 
+      std::vector<tile_type> tiles = (type == module_type::shim)
         ? metadataReader->getInterfaceTiles("all", "all", "input_output")
         : metadataReader->getTiles("all", type, "all");
 
@@ -72,16 +72,20 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Lookup register names and values given current AIE HW generation
+   * Lookup register names, values and sizes given current AIE HW generation
    ***************************************************************************/
-  std::string AieDebugMetadata::lookupRegisterName(uint64_t regVal) 
+  std::string AieDebugMetadata::lookupRegisterName(uint64_t regVal)
   {
     return usedRegisters->getRegisterName(regVal);
   }
 
-  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName) 
+  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName)
   {
     return usedRegisters->getRegisterAddr(regName);
+  }
+  std::map<uint64_t, uint32_t> AieDebugMetadata::lookupRegisterSizes()
+  {
+    return usedRegisters->getRegAddrToSizeMap();
   }
 
   /****************************************************************************
@@ -140,7 +144,7 @@ namespace xdp {
         listofRegisters.push_back(tmpRedAddr);
       }
       else {
-        xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse AIE debug metric settings. " 
+        xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse AIE debug metric settings. "
           "Please enter register addresses, names, or trace_config|profile_config|all.");
       }
       return listofRegisters;
@@ -184,7 +188,7 @@ namespace xdp {
       {module_type::shim,     {}},
       {module_type::mem_tile, {}}
     };
-    
+
     unsigned int module = 0;
     std::vector<std::string> metricsConfig;
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
@@ -202,7 +206,7 @@ namespace xdp {
           for (auto val : regValList)
             parsedRegValues[type].push_back(val);
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse: " 
+          xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse: "
             + setting + ". Debug setting will be ignored.");
         }
       }

@@ -34,6 +34,16 @@ namespace aie1
 
 // Register definitions for CM
 // ###################################
+
+// Testing 128 bit registers
+const unsigned int cm_core_amh0_part1 = 0x00030660;
+
+// Testing 20 bit registers
+const unsigned int cm_core_p2 = 0x00030120;
+
+// Testing 8 bit register
+const unsigned int cm_core_s4 = 0x000304C0;
+
 // Program Counter
 const unsigned int cm_program_counter = 0x00030280;
 // Core MD0

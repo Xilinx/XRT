@@ -18,32 +18,37 @@
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer_metadata.h"
+#include "xdp/profile/database/dynamic_info/types.h"
 #include <string>
 #include <cstdint>
+#include <vector>
+
+#define DEFAULT_REGISTER_SIZE 32
 
 namespace xdp {
 class RegisterInterpreter {
   public:
     RegisterInterpreter();
-    RegisterInterpreter(uint64_t deviceIndex, int aieGeneration);
-    
+    RegisterInterpreter(int aieGeneration);
+
     ~RegisterInterpreter()=default;
 
     struct RegInfo {
       std::string field_name;
       std::string bit_range;
-      uint32_t subval;
+      std::vector<uint32_t> subval;
 
-      RegInfo(std::string f, std::string b, uint32_t s)
+      RegInfo(std::string f, std::string b, std::vector<uint32_t> s)
         : field_name(f), bit_range(b), subval(s) {}
     };
 
-    std::vector<RegInfo> registerInfo(const std::string &regName, const uint64_t &regAddr, const uint32_t &regVal);
+    uint32_t calcSubval(const uint32_t start, uint32_t end, const std::vector<uint32_t>& regVals);
+    std::vector<RegInfo> registerInfo(const std::string &regName, const std::vector<uint32_t>& regVals);
+    // std::vector<RegInfo> registerInfo(const std::string &regName, const xdp::aie::AieDebugValue& value);
 
   private:
     std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
     int mAieGeneration;
-    uint64_t mDeviceIndex;
   };
 } // end namespace xdp
 

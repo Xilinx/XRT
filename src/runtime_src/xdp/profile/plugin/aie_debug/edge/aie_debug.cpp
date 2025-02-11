@@ -100,7 +100,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
     if (!(db->getStaticInfo().isDeviceReady(deviceID))) {
-      xrt_core::message::send(severity_level::debug, "XRT", 
+      xrt_core::message::send(severity_level::debug, "XRT",
         "Device is not ready, so no debug polling will occur.");
       return;
     }
@@ -108,13 +108,13 @@ namespace xdp {
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
     if (!aieDevInst) {
-      xrt_core::message::send(severity_level::debug, "XRT", 
+      xrt_core::message::send(severity_level::debug, "XRT",
         "AIE device instance is not available, so no debug polling will occur.");
       return;
     }
-
+    auto lookupRegAddrToSizeMap = metadata->lookupRegisterSizes();
     for (auto& tileAddr : debugTileMap) {
-      tileAddr.second->readValues(aieDevInst);
+      tileAddr.second->readValues(aieDevInst,&lookupRegAddrToSizeMap);
       tileAddr.second->printValues(deviceID, db);
     }
   }
@@ -167,12 +167,12 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         auto tile       = tileMetric.first;
         auto tileOffset = XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-        
+
         // Traverse all registers within tile
         for (auto& regAddr : Regs) {
           if (debugTileMap.find(tile) == debugTileMap.end())
             debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row, tileOffset);
-        
+
           auto regName = metadata->lookupRegisterName(regAddr);
           debugTileMap[tile]->addOffsetName(regAddr, regName);
         }

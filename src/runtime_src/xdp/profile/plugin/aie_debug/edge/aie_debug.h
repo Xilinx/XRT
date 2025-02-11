@@ -19,6 +19,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <vector>
+#include <cmath>
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -29,12 +30,17 @@
 #include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
+#include "core/common/message.h"
+
 extern "C" {
   #include <xaiengine.h>
   #include <xaiengine/xaiegbl_params.h>
 }
 
+#define DEFAULT_REGISTER_SIZE 32
+
 namespace xdp {
+  using severity_level = xrt::message::level;
   class EdgeReadableTile;
 
   class AieDebug_EdgeImpl : public AieDebugImpl {
@@ -61,11 +67,26 @@ namespace xdp {
       tileOffset = to;
     }
 
-    void readValues(XAie_DevInst* aieDevInst) {
+    void readValues(XAie_DevInst* aieDevInst, std::map<uint64_t, uint32_t>* lookupRegAddrToSizeMap) {
       for (auto& offset : relativeOffsets) {
         uint32_t val = 0;
-        XAie_Read32(aieDevInst, offset + tileOffset, &val);
-        values.push_back(val); 
+        xdp::aie::AieDebugValue value;
+        uint32_t loopnum = 0;
+
+        auto itr = lookupRegAddrToSizeMap->find(offset);
+        if (itr != lookupRegAddrToSizeMap->end()) {
+          loopnum = std::ceil(static_cast<double>(itr->second) / static_cast<double>(32));
+          value.sizeInBits = itr->second;
+        } else {
+          loopnum = 1;
+          value.sizeInBits = DEFAULT_REGISTER_SIZE;
+        }
+  
+        for (int i = 0; i < loopnum; i++){
+          XAie_Read32(aieDevInst, offset + tileOffset + 4*i, &val);
+          value.dataValue.push_back(val);
+        }
+        values.push_back(value);
       }
     }
 };

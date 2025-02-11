@@ -112,9 +112,9 @@ namespace xdp {
         "AIE device instance is not available, so no debug polling will occur.");
       return;
     }
-
+    auto lookupRegAddrToSizeMap = metadata->lookupRegisterSizes();
     for (auto& tileAddr : debugTileMap) {
-      tileAddr.second->readValues(aieDevInst);
+      tileAddr.second->readValues(aieDevInst,&lookupRegAddrToSizeMap);
       tileAddr.second->printValues(deviceID, db);
     }
   }
