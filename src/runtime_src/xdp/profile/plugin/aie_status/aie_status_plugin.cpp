@@ -35,7 +35,12 @@
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
+
+#ifdef XDP_VE2_BUILD
+#include "shim/shim.h"
+#else
 #include "core/edge/user/shim.h"
+#endif
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
