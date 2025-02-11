@@ -34,14 +34,9 @@ class WriterUsedRegisters {
     struct RegData {
       std::string field_name;
       std::string bit_range;
-      // int shift;
-      // uint64_t mask;
 
       RegData(std::string n, std::string b)
         : field_name(n), bit_range(b) {}
-
-      // RegData(std::string n, std::string b, int s, uint64_t m)
-      //   : field_name(n), bit_range(b), shift(s), mask(m) {}
     };
 
   protected:
