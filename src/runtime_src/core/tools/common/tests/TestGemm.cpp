@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -113,10 +113,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
-  // wait until clock reaches the max frequency. The performance metrics for a test
-  // are valid only when the clock reaches the max frequency.
-  uint64_t ipu_hclock = XBValidateUtils::wait_for_max_clock(dev);
-
   try {
     //run kernel
     auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
@@ -134,6 +130,14 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   auto bo_result_map = bo_result.map<uint8_t*>();
 
   //Calculate TOPS
+  uint64_t ipu_hclock = 0;
+  auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
+  for (auto &res : res_info) {
+    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_clk_max)
+      continue;
+    ipu_hclock = res.data_uint64;
+  }
+
   if (ipu_hclock == 0) {
     XBValidateUtils::logger(ptree, "Error", "IPU H-clock is 0");
     ptree.put("status", XBValidateUtils::test_token_failed);
