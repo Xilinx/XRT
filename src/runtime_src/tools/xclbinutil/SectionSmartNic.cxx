@@ -282,7 +282,7 @@ SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
 /**
  * Compares two given property trees to validate that they are the same.
- * 
+ *
  * @param primary - Primary property tree
  * @param secondary - Secondary property tree
  */
@@ -325,7 +325,7 @@ using NodeCallBackFuncs = std::map<std::string, node_sig_ptr>;
 
 /**
  * Used to traverse a node array.
- * 
+ *
  * @param nodeName The primary node name of the array
  * @param key      Optional key value that is used to determine array item uniqueness
  * @param ptParent Parent property_tree
