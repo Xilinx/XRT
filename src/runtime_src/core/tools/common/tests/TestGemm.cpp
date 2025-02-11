@@ -115,9 +115,11 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   try {
     //run kernel
-    auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
-    // Wait for kernel to be done
-    run.wait2();
+    for(int i=0; i < 200; i++) {
+      auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+      // Wait for kernel to be done
+      run.wait2();
+    }
   }
   catch (const std::exception& ex) {
     XBValidateUtils::logger(ptree, "Error", ex.what());
