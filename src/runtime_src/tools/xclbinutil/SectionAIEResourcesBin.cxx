@@ -122,12 +122,12 @@ SectionAIEResourcesBin::subSectionExists(const std::string& _sSubSectionName) co
 
     ss.write((char*)sBuffer.c_str(), sBuffer.size());
     boost::property_tree::ptree pt;
-    // Create a property tree and determine if the variables are all default values    
+    // Create a property tree and determine if the variables are all default values
     try{
-      boost::property_tree::read_json(ss, pt);  
+      boost::property_tree::read_json(ss, pt);
     }
     catch (const boost::property_tree::json_parser_error& e) {
-      (void)e;	    
+      (void)e;
       auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
       throw std::runtime_error(errMsg.str());
     }
@@ -194,7 +194,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // Convert JSON memory image into a boost property tree
   std::stringstream ss;
   ss.write((char*)memBuffer.get(), fileSize);
-  
+
   boost::property_tree::ptree pt;
 
   try{
@@ -202,10 +202,10 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   }
 
   catch (const boost::property_tree::json_parser_error& e) {
-    (void)e;	  
+    (void)e;
     auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
     throw std::runtime_error(errMsg.str());
-  }   
+  }
   // ----------------------
 
   // Extract and update the data
@@ -506,13 +506,13 @@ SectionAIEResourcesBin::readXclBinBinary(std::istream& _istream, const axlf_sect
 
   // Create a property tree and determine if the variables are all default values
   boost::property_tree::ptree pt;
-  
+
   try {
     boost::property_tree::read_json(ss, pt);
   }
 
   catch (const boost::property_tree::json_parser_error& e) {
-      (void)e;	  
+      (void)e;
       auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
       throw std::runtime_error(errMsg.str());
   }

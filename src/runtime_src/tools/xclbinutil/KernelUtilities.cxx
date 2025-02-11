@@ -135,13 +135,13 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     // but xml only taks numeric value
     // we need to conver string to correponding nemeric
     auto sFunctional = ptExtendedData.get<std::string>("functional", "");
-    sFunctional = SectionIPLayout::getFunctionalEnumStr(sFunctional); 
+    sFunctional = SectionIPLayout::getFunctionalEnumStr(sFunctional);
     ptExtendedData.put("functional", sFunctional);
 
     auto sSubType = ptExtendedData.get<std::string>("subtype", "");
-    sSubType = SectionIPLayout::getSubTypeEnumStr(sSubType); 
+    sSubType = SectionIPLayout::getSubTypeEnumStr(sSubType);
     ptExtendedData.put("subtype", sSubType);
- 
+
     boost::property_tree::ptree ptEntry;
     ptEntry.add_child("<xmlattr>", ptExtendedData);
     ptKernelXML.add_child("extended-data", ptEntry);
@@ -297,7 +297,7 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
     // if memory-connection is not empty
     //   1. for --add-pskernel, user can specify the memory bank indices in
     //      the value
-    //   2. for --add-kernel, user can specify the memory bank tag in the 
+    //   2. for --add-kernel, user can specify the memory bank tag in the
     //      input file
     if (memoryConnection == NOT_DEFINED) {
       ++argIndexID;
@@ -355,7 +355,7 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
           }
           else
           {
-            const auto errMsg = boost::format("Specified memory bank (%d) is invalid.  Valid ranges are from 0 to %d.") % memBankIndex % memTopology.size(); 
+            const auto errMsg = boost::format("Specified memory bank (%d) is invalid.  Valid ranges are from 0 to %d.") % memBankIndex % memTopology.size();
             throw std::runtime_error(errMsg.str());
           }
         }
@@ -465,7 +465,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     //   "fundtional": "0"
     //   "subtype": "1"
     //   "dpu_kernel_id": "0x101"
-    // }   
+    // }
     boost::optional< const boost::property_tree::ptree& > boExtendedData = ptKernel.get_child_optional("extended-data");
     if (boExtendedData) {
       const boost::property_tree::ptree& ptExtendedData = boExtendedData.get();

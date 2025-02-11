@@ -45,7 +45,7 @@ typedef enum {
 namespace XclBinUtilities {
 
 template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+std::vector<T> as_vector(boost::property_tree::ptree const& pt,
                          boost::property_tree::ptree::key_type const& key)
 {
     std::vector<T> r;
@@ -63,7 +63,7 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
 // This template will eventually replace "as_vector"
 // The issue is that the code needs to be refactored to use this new template
 template <typename T>
-std::vector<T> as_vector_simple(const boost::property_tree::ptree& pt, 
+std::vector<T> as_vector_simple(const boost::property_tree::ptree& pt,
                                 const boost::property_tree::ptree::key_type& key)
 {
   static const boost::property_tree::ptree ptEmpty;
@@ -86,7 +86,7 @@ class XclBinUtilException : public std::runtime_error {
 public:
     XclBinUtilException(XclBinExceptionType _eExceptionType,
                         const std::string & _msg,
-                        const char * _function = "<not_defined>", 
+                        const char * _function = "<not_defined>",
                         const char * _file = __FILE__,
                         int _line = __LINE__)
     : std::runtime_error(_msg)
@@ -98,7 +98,7 @@ public:
       // Empty
     }
 
-    ~XclBinUtilException() 
+    ~XclBinUtilException()
     {
       // Empty
     }

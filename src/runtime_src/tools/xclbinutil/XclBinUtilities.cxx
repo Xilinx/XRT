@@ -39,7 +39,7 @@
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0501
 #pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
-#endif  
+#endif
 
 #include <boost/asio/io_service.hpp>
 #include <boost/process.hpp>
@@ -105,7 +105,7 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
     std::cout << std::endl << std::flush;
 }
 
-void 
+void
 XclBinUtilities::TRACE(const boost::format &fmt, bool endl) {
   TRACE(boost::str(fmt), endl);
 }
@@ -357,7 +357,7 @@ XclBinUtilities::printKinds() {
   }
 }
 
-std::string 
+std::string
 XclBinUtilities::getUUIDAsString( const unsigned char (&_uuid)[16] )
 {
   static_assert (sizeof(boost::uuids::uuid) == 16, "Error: UUID size mismatch");
@@ -402,18 +402,18 @@ static
 const std::string &getSignatureMagicValue()
 {
   // Magic Value: 5349474E-9DFF41C0-8CCB82A7-131CC9F3
-  unsigned char magicChar[] = { 0x53, 0x49, 0x47, 0x4E, 
-                                             0x9D, 0xFF, 0x41, 0xC0, 
-                                             0x8C, 0xCB, 0x82, 0xA7, 
-                                             0x13, 0x1C, 0xC9, 0xF3};
+  unsigned char magicChar[] = { 0x53, 0x49, 0x47, 0x4E,
+                                0x9D, 0xFF, 0x41, 0xC0,
+                                0x8C, 0xCB, 0x82, 0xA7,
+                                0x13, 0x1C, 0xC9, 0xF3};
 
   static std::string sMagicString((char *) &magicChar[0], 16);
 
   return sMagicString;
 }
 
-bool 
-XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature, 
+bool
+XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
                               std::string& _sSignedBy, unsigned int & _totalSize)
 {
   _istream.seekg(0);
@@ -451,9 +451,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   return true;
 }
 
-
-
-void 
+void
 XclBinUtilities::reportSignature(const std::string& _sInputFile)
 {
   // Open the file for consumption
@@ -476,8 +474,7 @@ XclBinUtilities::reportSignature(const std::string& _sInputFile)
   std::cout << sSignature << " " << totalSize << std::endl;
 }
 
-
-void 
+void
 XclBinUtilities::removeSignature(const std::string& _sInputFile, const std::string& _sOutputFile)
 {
   // Open the file for consumption
@@ -506,7 +503,7 @@ XclBinUtilities::removeSignature(const std::string& _sInputFile, const std::stri
 
   // Copy the file contents (minus the signature)
   {
-    // copy file  
+    // copy file
     unsigned int count = 0;
     inputStream.seekg(0);
     char aChar;
@@ -585,7 +582,7 @@ XclBinUtilities::addSignature(const std::string& _sInputFile, const std::string&
 
   // Copy the file contents
   {
-    // copy file  
+    // copy file
     inputStream.seekg(0);
     char aChar;
     while (inputStream.get(aChar)) {
@@ -601,7 +598,7 @@ XclBinUtilities::addSignature(const std::string& _sInputFile, const std::string&
   outputStream.close();
 }
 
-void 
+void
 XclBinUtilities::write_htonl(std::ostream & _buf, uint32_t _word32)
 {
   uint32_t word32 = htonl(_word32);
@@ -623,7 +620,7 @@ typedef struct {
 
 
 // Creates a connection property_tree entry
-static void addConnection( std::vector<boost::property_tree::ptree> & groupConnectivity, 
+static void addConnection( std::vector<boost::property_tree::ptree> & groupConnectivity,
                            unsigned int argIndex, unsigned int ipLayoutIndex, unsigned int memIndex)
 {
   boost::property_tree::ptree ptConnection;
@@ -652,13 +649,13 @@ isEqual(const boost::property_tree::ptree & first,
 // Given the collection of connections, appends to the GROUP_TOPOLOGY and
 // GROUP_CONNECTIVITY additional entries that represents grouped memories.
 static void
-createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnections, 
-                              std::vector<boost::property_tree::ptree> & groupTopology, 
+createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnections,
+                              std::vector<boost::property_tree::ptree> & groupTopology,
                               std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Sort our collection by: IP Layout Index, Argument Index, and Base address
-  std::sort(workingConnections.begin(), workingConnections.end(), 
-            [](WorkingConnection &a, WorkingConnection &b) { 
+  std::sort(workingConnections.begin(), workingConnections.end(),
+            [](WorkingConnection &a, WorkingConnection &b) {
               if (a.ipLayoutIndex != b.ipLayoutIndex)     // Level 1: IP Layout Index
                 return a.ipLayoutIndex < b.ipLayoutIndex;
 
@@ -690,7 +687,7 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
       //    3) Same argument
       if ((nextBaseAddress != workingConnections[peekIndex].baseAddress) ||
           (workingConnections[startIndex].ipLayoutIndex != workingConnections[peekIndex].ipLayoutIndex) ||
-          (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex)) 
+          (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex))
         break;
       groupSize += workingConnections[peekIndex].size;
     }
@@ -700,28 +697,28 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
     // Group requirements:
     //    + Group size must be greater then 1
     //    + Only one (1) group per IP Argument pair
-    // 
+    //
     // Note: Because of how the collection is sorted, if there are multiple groups,
     //       they would be before or after the current group collection.
     if (startIndex == endIndex)
       continue;
 
-    if ((startIndex != 0) && 
+    if ((startIndex != 0) &&
         (workingConnections[startIndex-1].ipLayoutIndex == workingConnections[startIndex].ipLayoutIndex) &&
         (workingConnections[startIndex-1].argIndex == workingConnections[startIndex].argIndex))
       continue;
 
-    if ((endIndex < (workingConnections.size() - 1)) && 
+    if ((endIndex < (workingConnections.size() - 1)) &&
         (workingConnections[endIndex+1].ipLayoutIndex == workingConnections[endIndex].ipLayoutIndex) &&
         (workingConnections[endIndex+1].argIndex == workingConnections[endIndex].argIndex))
       continue;
 
     // The is a valid group, mark it as so
-    for (unsigned int goodIndex = startIndex; goodIndex <= endIndex; ++goodIndex) 
+    for (unsigned int goodIndex = startIndex; goodIndex <= endIndex; ++goodIndex)
       workingConnections[goodIndex].canGroup = true;
   }
 
-  // Collect the groups 
+  // Collect the groups
   for (unsigned int index = 0; index < workingConnections.size(); ++index) {
     const unsigned int startIndex = index;
     unsigned int endIndex = index;
@@ -733,18 +730,18 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
       for (; endIndex + 1 < workingConnections.size(); ++endIndex) {
         const unsigned int peekIndex = endIndex + 1;
         const uint64_t nextBaseAddress = groupBaseAddress + groupSize;
-  
+
         if ((nextBaseAddress != workingConnections[peekIndex].baseAddress) ||
             (workingConnections[startIndex].ipLayoutIndex != workingConnections[peekIndex].ipLayoutIndex) ||
-            (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex)) 
+            (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex))
           break;
         groupSize += workingConnections[peekIndex].size;
       }
     }
-    
+
     // Update to our next working index
     index = endIndex;
-        
+
     // If range is 1 then no grouping is needed
     if (startIndex == endIndex) {
       addConnection(groupConnectivity, workingConnections[startIndex].argIndex, workingConnections[startIndex].ipLayoutIndex, workingConnections[startIndex].memIndex);
@@ -757,9 +754,9 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
     // Prepare a new entry
     {
       const boost::optional<std::string> sSizeBytes = ptGroupMemory.get_optional<std::string>("m_size");
-      if (sSizeBytes.is_initialized()) 
+      if (sSizeBytes.is_initialized())
         ptGroupMemory.put("m_size", (boost::format("0x%lx") % groupSize).str());
-      else 
+      else
         ptGroupMemory.put("m_sizeKB", (boost::format("0x%lx") % (groupSize / 1024)).str());
 
       // Add a tag value to indicate that this entry was the result of grouping memories
@@ -768,10 +765,10 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
         memIndexVector.push_back(workingConnections[memIndex].memIndex);
       }
 
-      // Sort the vector 
+      // Sort the vector
       std::sort(memIndexVector.begin(), memIndexVector.end());
 
-      // Iterate over the collection producing a more compress tag. 
+      // Iterate over the collection producing a more compress tag.
       // Contigious tag specified as start:end and non-contigious are seperated by ','
       // Ex. MBG[0,2,3,4,6,8,9] becomes MBG[0,2:4,6,8:9]
       std::string newTag = "MBG[";
@@ -786,8 +783,8 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
           newTag += ":";
           newTag += std::to_string(memIndexVector[idx]);
         }
-        
-        // If terminal then add ']' otherwise add ','  
+
+        // If terminal then add ']' otherwise add ','
         newTag += (idx != memIndexVector.size() - 1) ? "," : "]";
         idx++;
       }
@@ -800,12 +797,12 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
 
     // See if this entry has already been added, if so use it
     for (groupMemIndex = 0; groupMemIndex < (unsigned int) groupTopology.size(); ++groupMemIndex) {
-      if (isEqual(groupTopology[groupMemIndex], ptGroupMemory)) 
+      if (isEqual(groupTopology[groupMemIndex], ptGroupMemory))
         break;
     }
 
     // Entry not found, add it to the array
-    if (groupMemIndex == groupTopology.size()) 
+    if (groupMemIndex == groupTopology.size())
       groupTopology.push_back(ptGroupMemory);
 
     // Create the connection entry
@@ -813,9 +810,9 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
   }
 }
 
-static void const 
+static void const
 validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
-                                const std::vector<boost::property_tree::ptree> & groupTopology, 
+                                const std::vector<boost::property_tree::ptree> & groupTopology,
                                 const std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Were there any memory groups added
@@ -836,7 +833,7 @@ validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
         if (searchIndex == index)
           continue;
 
-        // We are looking for common IP and argument indexes 
+        // We are looking for common IP and argument indexes
         if ((groupConnectivity[searchIndex].get<unsigned int>("arg_index") != argIndex) ||
             (groupConnectivity[searchIndex].get<unsigned int>("m_ip_layout_index") != ipLayoutIndex))
           continue;
@@ -863,7 +860,7 @@ validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
 
 static void
 transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::ptree> & connectivity,
-                                       std::vector<boost::property_tree::ptree> & groupTopology, 
+                                       std::vector<boost::property_tree::ptree> & groupTopology,
                                        std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Memory types that can be grouped
@@ -899,7 +896,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
       sizeBytes = XUtil::stringToUInt64(static_cast<std::string>(sSizeBytes.get()));
     else {
       boost::optional<std::string> sSizeKBytes = groupTopology[memIndex].get_optional<std::string>("m_sizeKB");
-      if (sSizeKBytes.is_initialized()) 
+      if (sSizeKBytes.is_initialized())
         sizeBytes = XUtil::stringToUInt64(static_cast<std::string>(sSizeKBytes.get())) * 1024;
     }
 
@@ -910,18 +907,18 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
 }
 
-// CR1176455: DRC to check if dpu_kernel_ids of AIE_PARTITION section matches with the m_kernel_ids of IP_LAYOUT section 
+// CR1176455: DRC to check if dpu_kernel_ids of AIE_PARTITION section matches with the m_kernel_ids of IP_LAYOUT section
 // because the dpu_kernel_id is the key in mapping between CU and PDI.
 bool
 XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
-  // Get AIE_PARTITION metadata only when AIE_PARTITION section is just added 
+  // Get AIE_PARTITION metadata only when AIE_PARTITION section is just added
   std::set<std::string> allDpuKernelIDs;
   Section *pAIEPartition = xclbin.findSection(AIE_PARTITION);
   std::string jsonFile = pAIEPartition->getPathAndName();
   // If the aie partition metadata file is not found,
   // then AIE_PARTITION section has already been added hence no-op
   if(jsonFile.empty()){
-    return true; 	  
+    return true;
   }
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(jsonFile, pt);
@@ -934,7 +931,7 @@ XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
       allDpuKernelIDs.insert(dpuKernelIDs.begin(), dpuKernelIDs.end());
     }
   }
-                                             
+
   // Get IP_LAYOUT metadata
   Section *pIPLayout = xclbin.findSection(IP_LAYOUT);
   boost::property_tree::ptree ptIPLayout;
@@ -949,27 +946,27 @@ XclBinUtilities::checkAIEPartitionIPLayoutCompliance(XclBin & xclbin){
     if(sm_type == "IP_PS_KERNEL" && sSubType == "DPU"){
       std::string sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
       if(allDpuKernelIDs.find(sKernelId) == allDpuKernelIDs.end()){
-	XUtil::TRACE("There is no matching dpu_kernel_id in AIE_PARTITION for m_kernel_id " + sKernelId + " in IP_LAYOUT");    
+        XUtil::TRACE("There is no matching dpu_kernel_id in AIE_PARTITION for m_kernel_id " + sKernelId + " in IP_LAYOUT");
         return false;
       }
     }
   }
-  return true;   
+  return true;
 }
 
-void 
+void
 XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 {
   // -- DRC checks
-  if (xclbin.findSection(ASK_GROUP_TOPOLOGY) != nullptr) 
+  if (xclbin.findSection(ASK_GROUP_TOPOLOGY) != nullptr)
     throw std::runtime_error("ERROR: GROUP_TOPOLOGY section already exists.  Unable to auto create the GROUP_TOPOLOGY section for memory bank grouping.");
 
-  if (xclbin.findSection(ASK_GROUP_CONNECTIVITY) != nullptr) 
+  if (xclbin.findSection(ASK_GROUP_CONNECTIVITY) != nullptr)
     throw std::runtime_error("ERROR: GROUP_CONNECTIVITY section already exists.  Unable to auto create the GROUP_CONNECTIVITY section for memory bank grouping.");
 
   // -- Create a copy of the MEM_TOPOLOGY section
   Section *pMemTopology = xclbin.findSection(MEM_TOPOLOGY);
-  if (pMemTopology == nullptr) 
+  if (pMemTopology == nullptr)
     throw std::runtime_error("ERROR: MEM_TOPOLOGY section doesn't exist.  Unable to auto create the memory bank grouping sections.");
 
   boost::property_tree::ptree ptMemTopology;
@@ -1011,19 +1008,19 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
       // Merge connectivity information into the group connectivity
       for (auto & connection : connectivity) {
-	      groupConnectivity.push_back(connection);
+        groupConnectivity.push_back(connection);
       }
 
       // Re-create the property tree, create and re-populate the Group Connectivity section, and add it.
       {
         boost::property_tree::ptree ptConnection;
-        for (const auto & connection : groupConnectivity) 
+        for (const auto & connection : groupConnectivity)
           ptConnection.push_back({"", connection});
-    
+
         boost::property_tree::ptree ptGroupConnection;
         ptGroupConnection.add_child("m_connection", ptConnection);
         ptGroupConnection.put("m_count", groupConnectivity.size());
-    
+
         boost::property_tree::ptree ptTop;
         ptTop.add_child("group_connectivity", ptGroupConnection);
         XUtil::TRACE_PrintTree("Group Connectivity", ptTop);
@@ -1038,7 +1035,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   // Re-create the property tree, create and re-populate the Group Topology section, and add it.
   {
     boost::property_tree::ptree ptMemData;
-    for (const auto & mem_data : groupTopology) 
+    for (const auto & mem_data : groupTopology)
       ptMemData.push_back({"", mem_data});
 
     boost::property_tree::ptree ptGroupTopology;
@@ -1074,7 +1071,7 @@ int transform_PDI_file(std::string fileName)
   return ret;
 }
 
-void 
+void
 XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
 {
   // find all sections with type "AIE_PARTITION" in xclbin
@@ -1085,7 +1082,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   //          orig/
   //             aie_partition.json
   //             1.pdi, 2.pdi ...
-  //   copy orig/ to transform/          
+  //   copy orig/ to transform/
   //   for each pdi in transform/, call pdi_transform API from aie-pdi-transform
   //      <index name>/
   //          transform/
@@ -1129,13 +1126,13 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       fs::create_directories(origDir);
     }
     catch (std::exception& e) { // Not using fs::filesystem_error since std::bad_alloc can throw too.
-      // if we couldn't create directory, usually something fundamental is wrong (e.g. user has no permission) 
+      // if we couldn't create directory, usually something fundamental is wrong (e.g. user has no permission)
       std::string errMsg = "ERROR: couldn't create directory: " + std::string(e.what());
       throw std::runtime_error(errMsg);
     }
     // std::cout << "Temporary directory created: " << origDir << std::endl;
 
-    // construct the PSD for dumpЅection
+    // construct the PSD for dumpSection
     std::string sDumpSection = sSectionKind + "[" + sSectionIndex + "]:JSON:" + origApJsonPath.string();
     // std::cout << "sDumpSection = " << sDumpSection << std::endl;
     ParameterSectionData dumpPsd(sDumpSection);
@@ -1169,7 +1166,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       XUtil::TRACE("pdi file transformed: " + entry.path().string());
     }
 
-    // construct the PSD for addЅection
+    // construct the PSD for addSection
     std::string sAddSection = sSectionKind + "[" + sSectionIndex + "]:JSON:" + tranApJsonPath.string();
     // std::cout << "sAddSection = " << sAddSection << std::endl;
     addSections.push_back(sAddSection);
@@ -1194,7 +1191,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
 
 
 #if (BOOST_VERSION >= 106400)
-int 
+int
 XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
@@ -1207,13 +1204,13 @@ XclBinUtilities::exec(const fs::path &cmd,
   std::future<std::string> data_stderr;
 
   boost::asio::io_service svc;
-  boost::process::child runningProcess( cmd.string(), 
-                                        args, 
+  boost::process::child runningProcess( cmd.string(),
+                                        args,
                                         boost::process::std_out > data_stdout,
                                         boost::process::std_err > data_stderr,
                                         boost::this_process::environment(),
                                         svc);
-  svc.run();   
+  svc.run();
   runningProcess.wait();
 
   // Update the return buffers
@@ -1228,11 +1225,11 @@ XclBinUtilities::exec(const fs::path &cmd,
                                 "     Cmd: %s %s\n"
                                 "  StdOut: %s\n"
                                 "  StdErr: %s\n")
-                                % exitCode 
+                                % exitCode
                                 % cmd.string() % boost::algorithm::join(args, " ")
                                 % os_stdout.str()
                                 % os_stderr.str();
-    if (bThrow) 
+    if (bThrow)
       throw std::runtime_error(errMsg.str());
   }
 
@@ -1240,7 +1237,7 @@ XclBinUtilities::exec(const fs::path &cmd,
 }
 
 #else
-int 
+int
 XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
@@ -1257,19 +1254,19 @@ XclBinUtilities::exec(const fs::path &cmd,
     auto errMsg = boost::format("Error: Shell command failed\n"
                                 "       Cmd: %s %s\n")
                                 % cmd.string() % boost::algorithm::join(args, " ");
-                                      
-    if (bThrow) 
+
+    if (bThrow)
       throw std::runtime_error(errMsg.str());
 
     return 1;
   }
 
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) 
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
     result += buffer.data();
 
   os_stdout << result;
 
-  return 0;                   
+  return 0;
 }
 
 
