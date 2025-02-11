@@ -53,7 +53,7 @@ namespace {
 #endif
 
     if (!aieArray)
-      return nullptr ;
+      return nullptr;
     return aieArray->get_dev();
   }
 
