@@ -1817,7 +1817,7 @@ u32 kds_get_open_clients(struct kds_sched *kds, pid_t **plist)
         pid_t *pl = NULL;
         u32 count = kds->num_client;
         u32 i = 0;
-	printk("karthik kds core count=%d", count);
+
 	if (count == 0 || plist == NULL)
                 return 0;
 
