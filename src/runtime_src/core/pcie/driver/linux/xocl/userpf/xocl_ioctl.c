@@ -20,6 +20,9 @@
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
 #include <linux/delay.h>
+#include <linux/fdtable.h>
+#include <linux/fs.h>
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
@@ -539,6 +542,35 @@ done:
 	return ret;
 }
 
+/* This function closes all the FDs associated with DRM */
+void xocl_close_drm_render_fds(pid_t pid)
+{
+    struct fdtable *fdt;
+    struct file *file;
+    int fd;
+    struct pid *client_pid = find_get_pid(pid);
+    struct task_struct *task = pid_task(client_pid, PIDTYPE_PID);
+
+    if (!task || !task->files)
+    {
+        return;
+    }
+
+    spin_lock(&task->files->file_lock);
+    fdt = files_fdtable(task->files);
+
+    for (fd = 0; fd < fdt->max_fds; fd++) {
+        file = files_lookup_fd_rcu(task->files, fd);
+        if (file && file->f_path.dentry) {
+            const char *path = file->f_path.dentry->d_name.name;
+            if (strstr(path, "renderD") != NULL) {
+                filp_close(file, task->files);
+            }
+        }
+    }
+    spin_unlock(&task->files->file_lock);
+}
+
 int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	       uint32_t qos, uint32_t *slot)
@@ -641,6 +673,20 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		err = xocl_cleanup_mem(drm_p, slot_id);
 		if (err)
 			goto out_done;
+	}
+	/* For a preload AWS device id, PCI rescan is performed post axlf load,
+	 * so, close all the DRM Render FDs opened during the context 
+	 * */
+	if((core->pdev->device == 0x1042/*AWS F1*/) || (core->pdev->device == 0x9048/*AWS F2*/))
+	{
+		pid_t *plist = NULL;
+		u32 i=0, clients =xocl_kds_get_open_clients(xdev, &plist);
+		for (i = 0; i < clients; i++)
+		{
+			xocl_close_drm_render_fds(plist[i]);
+		}
+		/* Free the pid list allocated by kds core. */
+		vfree(plist);
 	}
 
 	/* All contexts are closed. No outstanding commands */
