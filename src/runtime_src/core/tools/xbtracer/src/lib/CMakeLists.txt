@@ -22,4 +22,5 @@ endif()
 # it does not have a library or namelink component
 install(TARGETS xrt_capture
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT}
 )
