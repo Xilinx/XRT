@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 link_directories($ENV{XILINX_XRT}/lib)
 
 add_library(xrt_capture SHARED

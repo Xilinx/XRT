@@ -1,5 +1,5 @@
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "TestAIEReconfigOverhead.h"
 #include "TestValidateUtilities.h"
