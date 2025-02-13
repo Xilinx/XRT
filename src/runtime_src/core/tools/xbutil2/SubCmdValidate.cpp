@@ -390,11 +390,18 @@ SubCmdValidate::getTestNameDescriptions(const SubCmdValidateOptions& options, co
     reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 
-  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  const auto& testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string& deviceClass = XBU::get_device_class(options.m_device, true);
-  const auto it = testOptionsMap.find(deviceClass);
-  const std::vector<std::shared_ptr<TestRunner>>& testOptions = (it == testOptionsMap.end()) ? testSuite : it->second;
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  const xrt_core::smi::tuple_vector& tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+  std::vector<std::shared_ptr<TestRunner>> testOptions = getTestList(tests);
 
   // report names and description
   for (const auto& test : testOptions) {
@@ -720,7 +727,7 @@ SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
     auto it = std::find_if(testSuite.begin(), testSuite.end(),
               [&test](const std::shared_ptr<TestRunner>& runner) {
                 return std::get<0>(test) == runner->getConfigName() &&
-                       (std::get<2>(test) != "hidden" || XBU::getShowHidden());
+                       (std::get<2>(test) != "hidden" || XBU::getAdvanced());
               });
 
     if (it != testSuite.end()) {

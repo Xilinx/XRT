@@ -40,6 +40,7 @@ void  main_(int argc, char** argv,
   bool bHelp = false;
   bool bBatchMode = false;
   bool bShowHidden = false;
+  bool bAdvanced = false;
   bool bForce = false;
   bool bVersion = false;
   std::string sDevice;
@@ -67,6 +68,7 @@ void  main_(int argc, char** argv,
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
+    ("advanced",    boost::program_options::bool_switch(&bAdvanced), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
@@ -101,6 +103,7 @@ void  main_(int argc, char** argv,
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
   XBU::setShowHidden( bShowHidden );
+  XBU::setAdvanced( bAdvanced );
   XBU::setForce( bForce );
 
   // Was default device requested?

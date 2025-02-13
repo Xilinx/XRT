@@ -51,7 +51,9 @@ namespace XBUtilities {
   void setTrace(bool _bVerbose);
 
   void setShowHidden(bool _bShowHidden);
+  void setAdvanced(bool _bAdvanced);
   bool getShowHidden();
+  bool getAdvanced();
 
   void setForce(bool _bForce);
   bool getForce();
