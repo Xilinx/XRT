@@ -1582,6 +1582,16 @@ class module_sram : public module_impl
       ptr += ctrlcode.size();
     }
 
+    if (is_dump_control_codes()) {
+      // dump pre patched instruction buffer
+      std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
+      dump_bo(m_buffer, dump_file_name);
+
+      std::stringstream ss;
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(m_buffer.size());
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+    }
+
     // Iterate over control packets of all columns & patch it in instruction
     // buffer
     auto col_data = m_parent->get_data();
@@ -1837,6 +1847,15 @@ class module_sram : public module_impl
         throw std::runtime_error{ fmt.str() };
       }
       m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      if (is_dump_control_codes()) {
+        std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_buffer, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
     }
     else if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
