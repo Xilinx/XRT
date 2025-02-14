@@ -38,6 +38,7 @@ static bool m_bVerbose = false;
 static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
 static bool m_bShowHidden = false;
+static bool m_bAdvanced = false;
 static bool m_bForce = false;
 
 
@@ -85,10 +86,27 @@ XBUtilities::setShowHidden(bool _bShowHidden)
   m_bShowHidden = _bShowHidden;
 }
 
+void
+XBUtilities::setAdvanced(bool _bAdvanced)
+{
+  if (_bAdvanced)
+    trace("Advanced commands and options will be shown.");
+  else
+    trace("Advanced commands and options will be hidden");
+
+  m_bAdvanced = _bAdvanced;
+}
+
 bool
 XBUtilities::getShowHidden()
 {
   return m_bShowHidden;
+}
+
+bool 
+XBUtilities::getAdvanced()
+{
+  return m_bAdvanced;
 }
 
 void
