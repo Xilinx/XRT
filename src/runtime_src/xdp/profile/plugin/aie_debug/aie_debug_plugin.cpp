@@ -205,11 +205,16 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endAIEDebugRead");
+    if (!mPollRegisters)
+      return;
+
     auto deviceID = getDeviceIDFromHandle(handle);
     xrt_core::message::send(severity_level::debug, "XRT",
-      "AieDebugPlugin::endAIEDebugRead deviceID is " + std::to_string(deviceID));
+      "AieDebugPlugin::endAIEDebugRead - polling registers for device " + std::to_string(deviceID));
+
+    // Poll all requested AIE registers
     handleToAIEData[handle].implementation->poll(deviceID, handle);
+    mPollRegisters = false;
   }
 
   /****************************************************************************
@@ -225,7 +230,15 @@ namespace xdp {
     if (!AIEData.valid)
       return;
 
-    //AIEData.implementation->poll(0, handle);
+    // Poll all requested AIE registers (if not done already)
+    if (mPollRegisters) {
+      auto deviceID = getDeviceIDFromHandle(handle);
+      xrt_core::message::send(severity_level::debug, "XRT",
+        "AieDebugPlugin::endPollforDevice - polling registers for device " + std::to_string(deviceID));
+
+      AIEData.implementation->poll(deviceID, handle);
+      mPollRegisters = false;
+    }
 
     handleToAIEData.erase(handle);
   }

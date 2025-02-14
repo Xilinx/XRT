@@ -28,12 +28,12 @@ namespace xdp {
     std::vector<RegisterInterpreter::RegInfo>
     RegisterInterpreter::registerInfo(const std::string& regName, const uint64_t& /*regAddr*/, const uint32_t& regVal) 
     {
-        if ((mAieGeneration >= 2) && (mAieGeneration <= 4))
-            writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
+        if (mAieGeneration == 1)
+          writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
         else if (mAieGeneration == 5)
-            writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
-        else
-            writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
+          writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
+        else if ((mAieGeneration > 1) && (mAieGeneration <= 9))
+          writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
 
         std::map<std::string, std::vector<WriterUsedRegisters::RegData>>& writerUsedRegistersMap = 
           writerUsedRegisters->getRegDataMap();

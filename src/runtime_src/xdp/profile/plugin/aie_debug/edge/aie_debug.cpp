@@ -97,7 +97,7 @@ namespace xdp {
    ***************************************************************************/
   void AieDebug_EdgeImpl::poll(const uint64_t deviceID, void* handle)
   {
-    xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
+    xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Debug Poll.");
 
     if (!(db->getStaticInfo().isDeviceReady(deviceID))) {
       xrt_core::message::send(severity_level::debug, "XRT", 
@@ -112,6 +112,9 @@ namespace xdp {
         "AIE device instance is not available, so no debug polling will occur.");
       return;
     }
+
+    xrt_core::message::send(severity_level::debug, "XRT", 
+      "Debugging registers for " + std::to_string(debugTileMap.size()) + " AIE tiles.");
 
     for (auto& tileAddr : debugTileMap) {
       tileAddr.second->readValues(aieDevInst);
