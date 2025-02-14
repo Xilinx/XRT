@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_telemetry.h"
 #include "query_requests.h"
@@ -49,15 +49,17 @@ aie2_preemption_info(const xrt_core::device* device)
   for (const auto& kp : data) {
   boost::property_tree::ptree pt_preempt;
 
+  // if no hw ctx is running, don't populate
+  if(static_cast<int>(kp.preemption_data.slot_index) == -1)
+    continue;
+
   auto populate_value = [](uint64_t value) {
     return (value == static_cast<uint64_t>(-1) || value == UINT64_MAX) ? "N/A" : std::to_string(value);
   };
 
   pt_preempt.put("user_task", user_task++);
   pt_preempt.put("slot_index", populate_value(kp.preemption_data.slot_index));
-  pt_preempt.put("preemption_flag_set", populate_value(kp.preemption_data.preemption_flag_set));
-  pt_preempt.put("preemption_flag_unset", populate_value(kp.preemption_data.preemption_flag_unset));
-  pt_preempt.put("preemption_checkpoint_event", populate_value(kp.preemption_data.preemption_checkpoint_event));
+  pt_preempt.put("preemption_layer_boundary_events", populate_value(kp.preemption_data.preemption_checkpoint_event));
   pt_preempt.put("preemption_frame_boundary_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
 
   pt_rtos_array.push_back({"", pt_preempt});
