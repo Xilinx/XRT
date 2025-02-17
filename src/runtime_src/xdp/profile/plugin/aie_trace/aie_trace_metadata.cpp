@@ -494,9 +494,9 @@ namespace xdp {
         maxRow = aie::convertStringToUint8(maxTile[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
-        msg << "Tile range specification in tile_based_" << tileName
-            << "_tile_metrics is not of valid format and hence skipped [1].";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        msg << "Valid Tile range specification in tile_based_" << tileName
+            << "_tile_metrics is not met, it will re-processed for single-tile specification.";
+        xrt_core::message::send(severity_level::info, "XRT", msg.str());
         continue;       
       }
 
@@ -505,8 +505,8 @@ namespace xdp {
       // Ensure range is valid 
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
-        msg << "Tile range specification in tile_based_" << tileName 
-            << "_tile_metrics is not of valid format and hence skipped [2].";
+        msg << "Tile range specification in tile_based_" << tileName
+            << "_tile_metrics is not of valid range ({col1,row1}<={col2,row2}) and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
