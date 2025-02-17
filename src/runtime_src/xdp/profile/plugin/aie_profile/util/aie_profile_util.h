@@ -233,7 +233,7 @@ namespace xdp::aie::profile {
    * @param row tile row
    * @param events vector of events to use in counters
    */
-  void configMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+  void configMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
                          const std::vector<uint32_t> events);
 
   /**
@@ -243,7 +243,7 @@ namespace xdp::aie::profile {
    * @param row tile row
    * @param values vector of values from counters
    */
-  void readMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+  void readMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
                        std::vector<uint64_t>& values);
   
 }  // namespace xdp::aie::profile

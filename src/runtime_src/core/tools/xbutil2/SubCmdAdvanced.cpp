@@ -8,7 +8,6 @@
 #include "OO_AieRegRead.h"
 #include "OO_MemRead.h"
 #include "OO_MemWrite.h"
-#include "OO_Reports.h"
 #include "SubCmdAdvanced.h"
 
 #include "common/device.h"
@@ -54,7 +53,6 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
 
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));
-  addSubOption(std::make_shared<OO_Reports>("report"));
 // Only defined for embedded platform
 #ifndef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
   addSubOption(std::make_shared<OO_AieRegRead>("read-aie-reg"));

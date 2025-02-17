@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -114,7 +114,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
-      throw xrt_core::error((boost::format("The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+      throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
@@ -134,18 +134,8 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Filter out reports that are not compatible for the device
   const std::string deviceClass = XBU::get_device_class(options.m_device, m_isUserDomain);
-  ReportCollection runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
 
-  // Collect the reports to be processed
-  try {
-    XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
-  } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
-    return;
-  }
-
-  // Find device of interest
+ // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
   try {
@@ -156,6 +146,25 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
+
+  ReportCollection runnableReports;
+  if (device){
+    const xrt_core::smi::tuple_vector& reportList = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::examine_reports);
+    runnableReports = getReportsList(reportList);
+  } else 
+  {
+    runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
+  }
+  // Collect the reports to be processed
+  try {
+    XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
+  } catch (const xrt_core::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    print_help_internal(options);
+    return;
+  }
+
+ 
 
   bool is_report_output_valid = true;
   // DRC check on devices and reports
@@ -232,4 +241,25 @@ SubCmdExamineInternal::setOptionConfig(const boost::property_tree::ptree &config
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
+}
+
+std::vector<std::shared_ptr<Report>>
+SubCmdExamineInternal::getReportsList(const xrt_core::smi::tuple_vector& reports) const
+{
+  // Vector to store the matched reports
+  std::vector<std::shared_ptr<Report>> matchedReports;
+
+  for (const auto& rep : reports) {
+    auto it = std::find_if(fullReportCollection.begin(), fullReportCollection.end(),
+              [&rep](const std::shared_ptr<Report>& report) {
+                return std::get<0>(rep) == report->getReportName() &&
+                       (std::get<2>(rep) != "hidden" || XBU::getShowHidden());
+              });
+
+    if (it != fullReportCollection.end()) {
+      matchedReports.push_back(*it);
+    }
+  }
+
+  return matchedReports;
 }

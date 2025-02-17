@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 link_directories($ENV{XILINX_XRT}/lib)
 
 add_library(xrt_capture SHARED
@@ -22,4 +24,5 @@ endif()
 # it does not have a library or namelink component
 install(TARGETS xrt_capture
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT}
 )

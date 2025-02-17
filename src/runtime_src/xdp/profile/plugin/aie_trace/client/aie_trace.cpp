@@ -678,27 +678,28 @@ namespace xdp {
         }
         else if (type == module_type::shim) {
           // Interface tiles (e.g., GMIO)
-          bool isMaster = ((portnum >= 2) || (metricSet.find("input") == std::string::npos));
-          auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
-          uint8_t streamPortId = isMaster ? ((channelNum == 0) ? 2 : 3)
-                               : ((channelNum == 0) ? 3 : 7);
+          // NOTE: skip configuration of extra ports for tile if stream_ids are not available.
+          if (portnum >= tile.stream_ids.size())
+            continue;
 
-          std::string typeName = isMaster ? "master" : "slave";
+          auto slaveOrMaster   = (tile.is_master_vec.at(portnum) == 0)   ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          uint8_t streamPortId = static_cast<uint8_t>(tile.stream_ids.at(portnum));
+          std::string typeName = (tile.is_master_vec.at(portnum) == 0) ? "slave" : "master";
+
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " port with stream ID of " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
-          
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = channelNum;
-          config.port_trace_is_master[portnum] = isMaster;
+          config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
           
-          if (isMaster)
-            config.s2mm_channels[channelNum] = channelNum;
+          if (tile.is_master_vec.at(portnum) == 0)
+            config.mm2s_channels[channelNum] = channel; // Slave or Input Port
           else
-            config.mm2s_channels[channelNum] = channelNum;
+            config.s2mm_channels[channelNum] = channel; // Master or Output Port
         }
         else {
           // Memory tiles

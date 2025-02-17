@@ -111,9 +111,9 @@ void insertTargetMode(const std::string & _sTarget, std::vector<std::string> & _
 
   // Build the SYS:mode key value
   std::string modeValue;
-  if (_sTarget == "hw") 
+  if (_sTarget == "hw")
     modeValue = bDfxEnable ? "hw_pr" : "flat";
-  else if (_sTarget == "hw_emu") 
+  else if (_sTarget == "hw_emu")
     modeValue = bDfxEnable ? "hw_emu_pr" : "hw_emu";
   else if (_sTarget == "sw_emu") {
     if (bDfxEnable)
@@ -291,12 +291,12 @@ int main_(int argc, const char** argv) {
     return RC_SUCCESS;
   }
 
-  if (!bQuiet) 
+  if (!bQuiet)
     FormattedOutput::reportVersion(true);
 
   // Actions not requiring --input
   if (bListSections || bListNames) {
-    if (argc != 2) 
+    if (argc != 2)
       throw std::runtime_error("ERROR: The '--list-sections' argument is a stand alone option.  No other options can be specified with it.");
 
     XUtil::printKinds();
@@ -307,13 +307,13 @@ int main_(int argc, const char** argv) {
   // -- Map the target to the mode
   if (!sTarget.empty()) {
     // Make sure that SYS:mode isn't being used
-    if (!XclBin::findKeyAndGetValue("SYS","mode", keyValuePairs).empty()) 
+    if (!XclBin::findKeyAndGetValue("SYS","mode", keyValuePairs).empty())
       throw std::runtime_error("ERROR: The option '--target' and the key 'SYS:mode' are mutually exclusive.");
 
     insertTargetMode(sTarget, keyValuePairs);
   } else {
     // Validate that the SYS:dfx_enable is not set
-    if (!XclBin::findKeyAndGetValue("SYS","dfx_enable", keyValuePairs).empty()) 
+    if (!XclBin::findKeyAndGetValue("SYS","dfx_enable", keyValuePairs).empty())
       throw std::runtime_error("ERROR: The option '--target' needs to be defined when using 'SYS:dfx_enable'.");
   }
 
@@ -323,21 +323,21 @@ int main_(int argc, const char** argv) {
 
   // Signing DRCs
   if (bValidateSignature == true) {
-    if (sCertificate.empty()) 
+    if (sCertificate.empty())
       throw std::runtime_error("ERROR: Validate signature specified with no certificate defined.");
 
-    if (sInputFile.empty()) 
+    if (sInputFile.empty())
       throw std::runtime_error("ERROR: Validate signature specified with no input file defined.");
   }
 
-  if (!sPrivateKey.empty() && sOutputFile.empty()) 
+  if (!sPrivateKey.empty() && sOutputFile.empty())
     throw std::runtime_error("ERROR: Private key specified, but no output file defined.");
 
-  if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty()) 
+  if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty())
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
 
   // Report option conflicts
-  if ((!sSignature.empty() && !sPrivateKey.empty())) 
+  if ((!sSignature.empty() && !sPrivateKey.empty()))
     throw std::runtime_error("ERROR: The options '-add-signature' (a private signature) and '-private-key' (a PKCS signature) are mutually exclusive.");
 
   // Actions requiring --input
@@ -345,13 +345,13 @@ int main_(int argc, const char** argv) {
   // Check to see if there any file conflicts
   std::vector< std::string> inputFiles;
   {
-    if (!sInputFile.empty()) 
+    if (!sInputFile.empty())
       inputFiles.push_back(sInputFile);
 
-    if (!sCertificate.empty()) 
+    if (!sCertificate.empty())
       inputFiles.push_back(sCertificate);
 
-    if (!sPrivateKey.empty()) 
+    if (!sPrivateKey.empty())
       inputFiles.push_back(sPrivateKey);
 
     for (const auto &section : sectionsToAdd) {
@@ -382,11 +382,11 @@ int main_(int argc, const char** argv) {
 
   std::vector< std::string> outputFiles;
   {
-    if (!sOutputFile.empty()) 
+    if (!sOutputFile.empty())
       outputFiles.push_back(sOutputFile);
 
     if (!sInfoFile.empty()) {
-      if (sInfoFile != "<console>") 
+      if (sInfoFile != "<console>")
         outputFiles.push_back(sInfoFile);
     }
 
@@ -407,7 +407,7 @@ int main_(int argc, const char** argv) {
 
   // Dump the signature
   if (!sSignatureOutputFile.empty()) {
-    if (sInputFile.empty()) 
+    if (sInputFile.empty())
       throw std::runtime_error("ERROR: Missing input file.");
 
     dumpSignatureFile(sInputFile, sSignatureOutputFile);
@@ -415,23 +415,23 @@ int main_(int argc, const char** argv) {
   }
 
   // Validate signature for the input file
-  if (bValidateSignature == true) 
+  if (bValidateSignature == true)
     verifyXclBinImage(sInputFile, sCertificate, bSignatureDebug);
 
   if (!sSignature.empty()) {
-    if (sInputFile.empty()) 
+    if (sInputFile.empty())
       throw std::runtime_error("ERROR: Cannot add signature.  Missing input file.");
-    
-    if(sOutputFile.empty()) 
+
+    if(sOutputFile.empty())
       throw std::runtime_error("ERROR: Cannot add signature.  Missing output file.");
-    
+
     XUtil::addSignature(sInputFile, sOutputFile, sSignature, "");
     XUtil::QUIET("Exiting");
     return RC_SUCCESS;
   }
 
   if (bGetSignature) {
-    if(sInputFile.empty()) 
+    if(sInputFile.empty())
       throw std::runtime_error("ERROR: Cannot read signature.  Missing input file.");
 
     XUtil::reportSignature(sInputFile);
@@ -440,12 +440,12 @@ int main_(int argc, const char** argv) {
   }
 
   if (bRemoveSignature) {
-    if(sInputFile.empty()) 
+    if(sInputFile.empty())
       throw std::runtime_error("ERROR: Cannot remove signature.  Missing input file.");
-    
-    if(sOutputFile.empty()) 
+
+    if(sOutputFile.empty())
       throw std::runtime_error("ERROR: Cannot remove signature.  Missing output file.");
-    
+
     XUtil::removeSignature(sInputFile, sOutputFile);
     XUtil::QUIET("Exiting");
     return RC_SUCCESS;
@@ -461,7 +461,7 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Remove Sections --
-  for (const auto &section : sectionsToRemove) 
+  for (const auto &section : sectionsToRemove)
     xclBin.removeSection(section);
 
   // -- Add or Replace Sections --
@@ -508,13 +508,13 @@ int main_(int argc, const char** argv) {
   // -- Add PS Kernels
   for (const auto &psKernel : addPsKernels)
     xclBin.addPsKernel(psKernel);
-  
+
   // -- Add Fixed Kernels files
   for (const auto &kernel : addKernels)
     xclBin.addKernels(kernel);
 
   // -- Post Section Processing --
-  if ( bResetBankGrouping || 
+  if ( bResetBankGrouping ||
       (( !addKernels.empty() || !addPsKernels.empty()) && !bSkipBankGrouping)) {
     if (xclBin.findSection(ASK_GROUP_TOPOLOGY) != nullptr)
       xclBin.removeSection("GROUP_TOPOLOGY");
@@ -522,12 +522,13 @@ int main_(int argc, const char** argv) {
     if (xclBin.findSection(ASK_GROUP_CONNECTIVITY) != nullptr)
       xclBin.removeSection("GROUP_CONNECTIVITY");
   }
-  
+
   if (xclBin.findSection(IP_LAYOUT) != nullptr && xclBin.findSection(AIE_PARTITION) != nullptr){
     if(!XUtil::checkAIEPartitionIPLayoutCompliance(xclBin)){
       throw std::runtime_error("ERROR: The AIE_PARTITION section in the xclbin is not compliant with IP_LAYOUT section");
     }
-  } 
+  }
+
   // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
   if ((bSkipBankGrouping == false) &&
       (xclBin.findSection(ASK_GROUP_TOPOLOGY) == nullptr) &&
@@ -535,7 +536,7 @@ int main_(int argc, const char** argv) {
       (xclBin.findSection(MEM_TOPOLOGY) != nullptr))
     XUtil::createMemoryBankGrouping(xclBin);
 
-  // add support for transform-pdi 
+  // add support for transform-pdi
   // transform the PDIs in AIE_PARTITION sections before writing out the output xclbin
   if (bTransformPdi) {
 #ifndef _WIN32
@@ -547,11 +548,11 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Remove Keys --
-  for (const auto &key : keysToRemove) 
+  for (const auto &key : keysToRemove)
     xclBin.removeKey(key);
 
   // -- Add / Set Keys --
-  for (const auto &keyValue : keyValuePairs) 
+  for (const auto &keyValue : keyValuePairs)
     xclBin.setKeyValue(keyValue);
 
   // -- Update Interface uuid in xclbin --
@@ -572,7 +573,7 @@ int main_(int argc, const char** argv) {
   if (!sOutputFile.empty()) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
 
-    if (!sPrivateKey.empty() && !sCertificate.empty()) 
+    if (!sPrivateKey.empty() && !sCertificate.empty())
       signXclBinImage(sOutputFile, sPrivateKey, sCertificate, sDigestAlgorithm, bSignatureDebug);
   }
 
@@ -591,14 +592,14 @@ int main_(int argc, const char** argv) {
       oInfoFile.close();
     }
   }
-  
+
   if (fileCheck) {
     if (!xclBin.checkForValidSection() && !xclBin.checkForPlatformVbnv())
       throw std::runtime_error("ERROR: The xclbin is missing platformVBNV information and at least one section required by the 'file' command to identify its file type and display file characteristics.");
-    
+
     else if (!xclBin.checkForPlatformVbnv())
       throw std::runtime_error("ERROR: The xclbin is missing platformVBNV information required by the 'file' command to identify its file type and display file characteristics.");
-   
+
     else if (!xclBin.checkForValidSection())
       throw std::runtime_error("ERROR: The xclbin is missing at least one section required by the 'file' command to identify its file type and display file characteristics.");
   }

@@ -69,6 +69,25 @@ is_nodma() const
   return *m_nodma;
 }
 
+bool
+device::
+get_ex_error_support() const
+{
+  std::lock_guard lk(m_mutex);
+  if (m_ex_error_support != std::nullopt)
+    return *m_ex_error_support;
+
+  try {
+    auto ex_error_support = xrt_core::device_query<xrt_core::query::xocl_errors_ex>(this);
+    m_ex_error_support = xrt_core::query::xocl_errors_ex::to_bool(ex_error_support);
+  }
+  catch (const std::exception&) {
+    m_ex_error_support = false;
+  }
+
+  return *m_ex_error_support;
+}
+
 uuid
 device::
 get_xclbin_uuid() const

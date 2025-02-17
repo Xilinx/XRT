@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -15,7 +15,6 @@
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/TestRunner.h"
 #include "tools/common/tests/TestAuxConnection.h"
 #include "tools/common/tests/TestPcieLink.h"
 #include "tools/common/tests/TestSCVersion.h"
@@ -317,6 +316,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
       ptTest = testPtr->startTest(device);
     } catch (const std::exception&) {
       ptTest = testPtr->get_test_header();
+      XBValidateUtils::logger(ptTest, "Error", "The test timed out");
       ptTest.put("status", test_token_failed);
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
@@ -459,7 +459,8 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
     throw xrt_core::error("Please specify an output file to redirect the json to");
 
   if (!options.m_output.empty() && !XBU::getForce() && std::filesystem::exists(options.m_output))
-    throw xrt_core::error((boost::format("Output file already exists: '%s'") % options.m_output).str());
+    throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+
 
   if (options.m_tests_to_run.empty())
     throw xrt_core::error("No test given to validate against.");
@@ -573,13 +574,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string& deviceClass = XBU::get_device_class(options.m_device, true);
-  auto it = testOptionsMap.find(deviceClass);
-  if (it == testOptionsMap.end())
-    XBU::throw_cancel(boost::format("Invalid device class %s. Device: %s") % deviceClass % options.m_device);
-  std::vector<std::shared_ptr<TestRunner>>& testOptions = it->second;
+  const xrt_core::smi::tuple_vector& tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+  std::vector<std::shared_ptr<TestRunner>> testOptions = getTestList(tests);
 
   // Collect all of the tests of interests
   std::vector<std::shared_ptr<TestRunner>> testObjectsToRun;
@@ -713,4 +709,24 @@ SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
+}
+
+std::vector<std::shared_ptr<TestRunner>>
+SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
+{
+  // Vector to store the matched tests
+  std::vector<std::shared_ptr<TestRunner>> matchedTests;
+
+  for (const auto& test : tests) {
+    auto it = std::find_if(testSuite.begin(), testSuite.end(),
+              [&test](const std::shared_ptr<TestRunner>& runner) {
+                return std::get<0>(test) == runner->getConfigName() &&
+                       (std::get<2>(test) != "hidden" || XBU::getShowHidden());
+              });
+
+    if (it != testSuite.end()) {
+      matchedTests.push_back(*it);
+    }
+  }
+  return matchedTests;
 }

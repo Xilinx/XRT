@@ -719,12 +719,30 @@ namespace xdp::aie::profile {
    * Configure counters in Microblaze Debug Module (MDM)
    * TODO: convert to using XAie_Events once support is available from driver
    ***************************************************************************/
-  void configMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+  void configMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
                          const std::vector<uint32_t> events)
   {
+    // Ensure supported generation and not privileged
+    if (hwGen < 5) 
+      return;
+
+    uint32_t val;
+    static bool showWarning = true;
     auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
+    XAie_Read32(aieDevInst, tileOffset + UC_MEMORY_PRIVILEGED, &val);
+
+    if (val) {
+      if (showWarning) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+          "Unable to configure MDM counters since debug port is privileged.");
+        showWarning = false;
+      }
+      return;
+    }
     
+    //
     // Use MDM protocol to configure counters
+    //
     // 1. Reset to first counter
     XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_RESET_BIT);
     
@@ -740,12 +758,30 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Read counters in Microblaze Debug Module (MDM)
    ***************************************************************************/
-  void readMDMCounters(XAie_DevInst* aieDevInst, uint8_t col, uint8_t row, 
+  void readMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
                        std::vector<uint64_t>& values)
   {
-    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
+    // Ensure supported generation and not privileged
+    if (hwGen < 5) 
+      return;
 
+    uint32_t val;
+    static bool showWarning = true;
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
+    XAie_Read32(aieDevInst, tileOffset + UC_MEMORY_PRIVILEGED, &val);
+
+    if (val) {
+      if (showWarning) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+          "Unable to read MDM counters since debug port is privileged.");
+        showWarning = false;
+      }
+      return;
+    }
+
+    //
     // Use MDM protocol to read counters
+    //
     // 1. Sample and stop counters
     XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_SAMPLE_BIT);
     // NOTE: Do counters need to be stopped before reading? If so, uncomment line below.
@@ -769,7 +805,10 @@ namespace xdp::aie::profile {
       }
     }
 
-    // 4. Read values of event counters
+    // 4. Reset to first counter
+    XAie_Write32(aieDevInst, tileOffset + UC_MDM_PCCMDR, 1 << UC_MDM_PCCMDR_RESET_BIT);
+
+    // 5. Read values of event counters
     for (uint32_t c=0; c < UC_NUM_EVENT_COUNTERS; ++c) {
       uint32_t val;
       XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
@@ -777,7 +816,7 @@ namespace xdp::aie::profile {
       values.push_back(val2);
     }
 
-    // 5. Read four values from latency counter
+    // 6. Read four values from latency counter
     //    Read 1 - The number of times the event occurred
     //    Read 2 - The sum of each event latency
     //    Read 3 - The sum of each event latency squared
@@ -791,7 +830,7 @@ namespace xdp::aie::profile {
       latencyValues.push_back(val2);
     }
 
-    // 6. Calculate average latency
+    // 7. Calculate average latency
     // NOTE: for now, only report average (we also have min and max; see above)
     auto numValues = latencyValues.at(0);
     auto totalLatency = latencyValues.at(1);

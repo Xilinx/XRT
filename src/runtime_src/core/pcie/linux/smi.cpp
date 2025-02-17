@@ -4,9 +4,10 @@
 
 namespace shim_pcie::smi {
 
-const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_pcie::get_validate_test_desc() const {
-  static const std::vector<std::tuple<std::string, std::string, std::string>> validate_test_desc = {
+smi_pcie::
+smi_pcie() : smi_base()
+{
+  validate_test_desc = {
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
     {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
@@ -17,12 +18,8 @@ smi_pcie::get_validate_test_desc() const {
     {"sc-version","Check if SC firmware is up-to-date", "common"},
     {"verify", "Run 'Hello World' kernel test", "common"}
   };
-  return validate_test_desc;
-}
 
-const std::vector<std::tuple<std::string, std::string, std::string>>& 
-smi_pcie::get_examine_report_desc() const {
-  static const std::vector<std::tuple<std::string, std::string, std::string>> examine_report_desc = {
+  examine_report_desc = {
     {"aie", "AIE metadata in xclbin", "common"},
     {"aiemem", "AIE memory tile information", "common"},
     {"aieshim", "AIE shim tile status", "common"},
@@ -31,22 +28,38 @@ smi_pcie::get_examine_report_desc() const {
     {"electrical", "Electrical and power sensors present on the device", "common"},
     {"error", "Asyncronus Error present on the device", "common"},
     {"firewall", "Firewall status", "common"},
+    {"host", "Host information", "common"},
     {"mailbox", "Mailbox metrics of the device", "common"},
     {"mechanical", "Mechanical sensors on and surrounding the device", "common"},
     {"memory", "Memory information present on the device", "common"},
     {"pcie-info", "Pcie information of the device", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
     {"qspi-status", "QSPI write protection status", "common"},
     {"thermal", "Thermal sensors present on the device", "common"}
   };
-  return examine_report_desc;
 }
+
+// Create an instance of the derived class
+static shim_pcie::smi::smi_pcie smi_instance;
 
 std::string
 get_smi_config(){
-  // Create an instance of the derived class
-  shim_pcie::smi::smi_pcie smi_instance;
-
   // Call the get_smi_config method
   return smi_instance.get_smi_config();
 }
+
+const xrt_core::smi::tuple_vector&
+get_validate_tests()
+{
+  // Call the get_validate_tests method
+  return smi_instance.get_validate_tests();
+}
+
+const xrt_core::smi::tuple_vector&
+get_examine_reports()
+{
+  // Call the get_examine_reports method
+  return smi_instance.get_examine_reports();
+}
+
 } // namespace shim_pcie::smi

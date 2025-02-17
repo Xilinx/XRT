@@ -152,4 +152,44 @@ enum xrtErrorClass {
   XRT_ERROR_CLASS_LAST_ENTRY = XRT_ERROR_CLASS_UNKNOWN
 };
 
+typedef uint64_t xrtExErrorCode;
+
+/**
+*xrtExErrorCode layout
+*
+* This layout is internal to XRT(akin to a POSIX error code).
+*
+* The error code is populated by driver and consumed by XRT
+* implementation where it is translated into an actual error / info /
+* warning that is propagated to the end user.
+*
+*63 - 48   47 - 32   31 - 16   15 - 0
+* --------------------------------------
+* |    |    |    |    |    |    |----|  ExErrorID
+* |    |    |    |    |----|----------- AIE_LOC_COL
+* |    |    |----|----------------------AIR_LOC_ROW
+* |----|--------------------------------RESERVED
+*
+*/
+
+#define XRT_EX_ERROR_ID_MASK          0xFFFFUL
+#define XRT_EX_ERROR_ID_SHIFT         0
+#define XRT_EX_ERROR_LOC_COL_MASK     0xFFFFUL
+#define XRT_EX_ERROR_LOC_COL_SHIFT    16
+#define XRT_EX_ERROR_LOC_ROW_MASK     0xFFFFUL
+#define XRT_EX_ERROR_LOC_ROW_SHIFT    32
+#define XRT_EX_ERROR_RESERVED_MASK    0xFFFFUL
+#define XRT_EX_ERROR_RESERVED_SHIFT   48
+
+#define  XRT_EX_ERROR_CODE_BUILD(ID, COL, ROW, RESERVED) \
+    ((static_cast<uint64_t>((ID) & XRT_EX_ERROR_ID_MASK) << XRT_ERROR_NUM_SHIFT) | \
+    (static_cast<uint64_t>((COL) & XRT_EX_ERROR_LOC_COL_MASK) << XRT_EX_ERROR_LOC_COL_SHIFT) | \
+    (static_cast<uint64_t>((ROW) & XRT_EX_ERROR_LOC_ROW_MASK) << XRT_EX_ERROR_LOC_ROW_SHIFT) | \
+    (static_cast<uint64_t>((RESERVED) & XRT_EX_ERROR_RESERVED_MASK) << XRT_EX_ERROR_RESERVED_SHIFT))
+
+#define XRT_EX_ERROR_ID(code) (((code) >> XRT_EX_ERROR_ID_SHIFT) & XRT_EX_ERROR_ID_MASK)
+#define XRT_EX_ERROR_LOC_COL(code) (((code) >> XRT_EX_ERROR_LOC_COL_SHIFT) & XRT_EX_ERROR_LOC_COL_MASK)
+#define XRT_EX_ERROR_LOC_ROW(code) (((code) >> XRT_EX_ERROR_LOC_ROW_SHIFT) & XRT_EX_ERROR_LOC_ROW_MASK)
+
+
 #endif

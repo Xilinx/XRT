@@ -51,9 +51,10 @@
  * xrtErrorCode (64 bits) = ErrorNum + Driver + Severity + Module + Class
  */
 typedef struct xclErrorLast {
-	xrtErrorCode	err_code;	/* 64 bits; XRT error code */
-	xrtErrorTime	ts;		/* 64 bits; timestamp */
-	unsigned        pid;            /* 32 bits; pid associated with error, if available */
+	xrtErrorCode	 err_code;	/* 64 bits; XRT error code */
+	xrtErrorTime	 ts;		/* 64 bits; timestamp */
+	unsigned       pid;            /* 32 bits; pid associated with error, if available */
+  xrtExErrorCode ex_error_code; /* 64 bits; XRT extra error code*/
 } xclErrorLast;
 
 typedef struct xcl_errors {
