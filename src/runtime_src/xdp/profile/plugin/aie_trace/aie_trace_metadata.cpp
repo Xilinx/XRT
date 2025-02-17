@@ -474,7 +474,6 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
       
-      processed.insert(i);
       uint8_t minCol = 0, minRow = 0;
       uint8_t maxCol = 0, maxRow = 0;
 
@@ -496,16 +495,18 @@ namespace xdp {
       } catch (...) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << tileName
-            << "_tile_metrics is not of valid format and hence skipped.";
+            << "_tile_metrics is not of valid format and hence skipped [1].";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;       
       }
+
+      processed.insert(i);
 
       // Ensure range is valid 
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << tileName 
-            << "_tile_metrics is not of valid format and hence skipped.";
+            << "_tile_metrics is not of valid format and hence skipped [2].";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
