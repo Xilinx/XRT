@@ -520,7 +520,7 @@ namespace xdp {
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << modName
-            << "_metrics is not valid format and hence skipped.";
+            << "_metrics is not a valid range ({col1,row1}<={col2,row2}) and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
