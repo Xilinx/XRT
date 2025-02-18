@@ -318,6 +318,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
       ptTest = testPtr->get_test_header();
       XBValidateUtils::logger(ptTest, "Error", "The test timed out");
       ptTest.put("status", test_token_failed);
+      status = test_status::failed;
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
