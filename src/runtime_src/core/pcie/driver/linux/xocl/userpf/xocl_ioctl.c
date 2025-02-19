@@ -578,6 +578,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	void *ulp_blob;
 	void *kernels;
 	int rc = 0;
+	struct xocl_dev_core *core = XDEV(drm_p->xdev);
 
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
@@ -803,7 +804,7 @@ done:
 
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
-	else
+	else {
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
 		/* Work around added for AWS F2 Instance to perform delay */
                 if(core->pdev->device == 0xf010)
