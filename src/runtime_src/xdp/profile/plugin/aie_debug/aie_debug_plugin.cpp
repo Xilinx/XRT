@@ -182,7 +182,7 @@ namespace xdp {
 #ifdef _WIN32
     std::tm tm{};
     localtime_s(&tm, &time);
-    std::string deviceName = "win_device";
+    std::string deviceName = "aie_debug_win_device";
 #else
     auto tm = *std::localtime(&time);
     std::string deviceName = util::getDeviceName(handle);
