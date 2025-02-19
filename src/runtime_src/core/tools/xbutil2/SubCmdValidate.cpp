@@ -320,7 +320,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     } catch (const std::exception&) {
       ptTest = testPtr->get_test_header();
       status = test_status::failed;
-      ptTest.put("status", test_token_failed);
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
