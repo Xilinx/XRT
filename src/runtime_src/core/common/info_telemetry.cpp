@@ -126,7 +126,7 @@ aie2_telemetry_info(const xrt_core::device* device)
 
   try {
     const auto misc_telem = xrt_core::device_query<xrt_core::query::misc_telemetry>(device);
-    if(is_value_na(misc_telem.l1_interrupts))
+    if(!is_value_na(misc_telem.l1_interrupts))
       pt.put("level_one_interrupt_count", misc_telem.l1_interrupts);
 
     add_rtos_tasks(device, pt);
