@@ -8,6 +8,7 @@
 #include <vector>
 
 namespace {
+constexpr uint64_t na_value = std::numeric_limits<uint64_t>::max();
 
 static void
 add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
@@ -16,7 +17,7 @@ add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
   boost::property_tree::ptree pt_rtos_array;
   for (const auto& rtos_task : data) {
     boost::property_tree::ptree pt_rtos_inst;
-    if(static_cast<int>(rtos_task.context_starts) == -1) 
+    if(rtos_task.context_starts == na_value) 
       return; //not supported
     pt_rtos_inst.put("started_count", rtos_task.context_starts);
     pt_rtos_inst.put("scheduled_count", rtos_task.schedules);
@@ -27,7 +28,7 @@ add_rtos_tasks(const xrt_core::device* device, boost::property_tree::ptree& pt)
     boost::property_tree::ptree pt_dtlbs;
     for (const auto& dtlb : rtos_task.dtlbs) {
       boost::property_tree::ptree pt_dtlb;
-      if(static_cast<int>(dtlb.misses) == -1) 
+      if(dtlb.misses == na_value) 
       return; //not supported
       pt_dtlb.put("dtlb_misses", dtlb.misses);
       pt_dtlbs.push_back({"", pt_dtlb});
@@ -50,11 +51,11 @@ aie2_preemption_info(const xrt_core::device* device)
   boost::property_tree::ptree pt_preempt;
 
   // if no hw ctx is running, don't populate
-  if(static_cast<int>(kp.preemption_data.slot_index) == -1)
+  if(kp.preemption_data.slot_index == na_value)
     continue;
 
   auto populate_value = [](uint64_t value) {
-    return (value == static_cast<uint64_t>(-1) || value == UINT64_MAX) ? "N/A" : std::to_string(value);
+    return value == na_value ? "N/A" : std::to_string(value);
   };
 
   pt_preempt.put("user_task", user_task++);
@@ -75,7 +76,7 @@ add_opcode_info(const xrt_core::device* device, boost::property_tree::ptree& pt)
   boost::property_tree::ptree pt_opcodes;
   for (const auto& opcode : opcode_telem) {
     boost::property_tree::ptree pt_opcode;
-    if(static_cast<int>(opcode.count) == -1) 
+    if(opcode.count == na_value) 
       return; //not supported
     pt_opcode.put("received_count", opcode.count);
     pt_opcodes.push_back({"", pt_opcode});
@@ -90,7 +91,7 @@ add_stream_buffer_info(const xrt_core::device* device, boost::property_tree::ptr
   boost::property_tree::ptree pt_stream_buffers;
   for (const auto& stream_buf : stream_buffer_telem) {
     boost::property_tree::ptree pt_stream_buffer;
-    if(static_cast<int>(stream_buf.tokens) == -1)
+    if(stream_buf.tokens == na_value)
       return; //not supported
     pt_stream_buffer.put("tokens", stream_buf.tokens);
     pt_stream_buffers.push_back({"", pt_stream_buffer});
@@ -105,7 +106,7 @@ add_aie_info(const xrt_core::device* device, boost::property_tree::ptree& pt)
   boost::property_tree::ptree pt_aie_cols;
   for (const auto& aie_col : aie_telem) {
     boost::property_tree::ptree pt_aie_col;
-    if(static_cast<int>(aie_col.deep_sleep_count) == -1)
+    if(aie_col.deep_sleep_count == na_value)
       return; //not supported
     pt_aie_col.put("deep_sleep_count", aie_col.deep_sleep_count);
     pt_aie_cols.push_back({"", pt_aie_col});
@@ -120,7 +121,7 @@ aie2_telemetry_info(const xrt_core::device* device)
 
   try {
     const auto misc_telem = xrt_core::device_query<xrt_core::query::misc_telemetry>(device);
-    if(static_cast<int>(misc_telem.l1_interrupts) != -1)
+    if(misc_telem.l1_interrupts != na_value)
       pt.put("level_one_interrupt_count", misc_telem.l1_interrupts);
 
     add_rtos_tasks(device, pt);
