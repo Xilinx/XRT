@@ -162,7 +162,7 @@ namespace xdp {
       // Traverse all active tiles for this module type
       for (auto& tileMetric : configMetrics) {
         auto tile        = tileMetric.first;
-        auto tileOffset  = XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
+        auto tileOffset = (tile.col << 25) + (tile.row << 20);
 
         for (int i = 0; i < Regs.size(); i++) {
           op_debug_data.emplace_back(register_data_t{Regs[i] + tileOffset});
