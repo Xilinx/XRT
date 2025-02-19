@@ -43,7 +43,6 @@ namespace xdp {
   private:
     static bool live;
     bool mPollRegisters = true;
-    uint32_t mIndex = 0;
 
     // This struct and handleToAIEData map is created to provision multiple AIEs
     // on the same machine, each denoted by its own handle
