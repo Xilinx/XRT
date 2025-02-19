@@ -536,7 +536,7 @@ populate_cdo_groups(const char* pBase,
     boost::property_tree::ptree ptElement;
 
     // Name
-    auto sName = reinterpret_cast<const char*>(pBase + element.mpo_name); 
+    auto sName = reinterpret_cast<const char*>(pBase + element.mpo_name);
     ptElement.put("name", sName);
     XUtil::TRACE("Populating CDO group: " + std::string(sName));
 
@@ -657,7 +657,7 @@ writeAIEPartitionImage(const char* pBuffer,
   // kernel_commit_id, we should make sure the offset is NOT 0
   auto sKernelCommitId = "";
   if (pHdr->kernel_commit_id != 0) {
-    sKernelCommitId = reinterpret_cast<const char*>(pBuffer + pHdr->kernel_commit_id); 
+    sKernelCommitId = reinterpret_cast<const char*>(pBuffer + pHdr->kernel_commit_id);
   } else {
     XUtil::TRACE(boost::format("Open an existing xclbin: kernel_commit_id is 0x%lx") % pHdr->kernel_commit_id);
   }
@@ -720,7 +720,7 @@ SectionAIEPartition::readXclBinBinary(std::istream& iStream,
 
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(aie_partition)) {
-    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the aie_partition structure (%d)") 
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the aie_partition structure (%d)")
                                 % m_bufferSize % sizeof(aie_partition);
     throw std::runtime_error(boost::str(errMsg));
   }

@@ -107,7 +107,7 @@ void
 XclBin::printSections(std::ostream& _ostream) const
 {
   XUtil::TRACE("Printing Section Header(s)");
-  for (const auto pSection : m_sections) 
+  for (const auto pSection : m_sections)
     pSection->printHeader(_ostream);
 }
 
@@ -203,12 +203,12 @@ XclBin::readXclBinBinary(const std::string& _binaryFileName,
 bool
 XclBin::checkForValidSection()
 {
-  if (FormattedOutput::getXclBinUuidAsString(m_xclBinHeader) != "" && 
-     FormattedOutput::getTimeStampAsString(m_xclBinHeader) != "" && 
-     m_xclBinHeader.m_header.m_length != 0 && 
+  if (FormattedOutput::getXclBinUuidAsString(m_xclBinHeader) != "" &&
+     FormattedOutput::getTimeStampAsString(m_xclBinHeader) != "" &&
+     m_xclBinHeader.m_header.m_length != 0 &&
      m_xclBinHeader.m_header.m_numSections != 0)
     return true;
-  
+
   return false;
 }
 
@@ -217,7 +217,7 @@ XclBin::checkForPlatformVbnv()
 {
   if (FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader) != "")
     return true;
- 
+
   return false;
 }
 
@@ -766,9 +766,9 @@ XclBin::findSection(enum axlf_section_kind _eKind,
                     const std::string& _indexName) const
 {
   for (auto& section : m_sections) {
-    if (section->getSectionKind() != _eKind) 
+    if (section->getSectionKind() != _eKind)
       continue;
-      
+
     if (section->getSectionIndexName().compare(_indexName) == 0)
       return section;
   }
@@ -783,9 +783,9 @@ XclBin::findSection(enum axlf_section_kind _eKind,
 {
   std::vector<Section*> vSections;
   for (auto& section : m_sections) {
-    if (section->getSectionKind() != _eKind) 
+    if (section->getSectionKind() != _eKind)
       continue;
-     
+
     if (_ignoreIndex || section->getSectionIndexName().compare(_indexName) == 0)
       vSections.push_back(section);
   }
@@ -852,7 +852,7 @@ XclBin::removeSection(const std::string& _sSectionToRemove)
   }
 
   XUtil::QUIET("");
-  XUtil::QUIET(boost::format("Section '%s%s'(%d) was successfully removed") 
+  XUtil::QUIET(boost::format("Section '%s%s'(%d) was successfully removed")
                              % _sSectionToRemove % indexEntry
                              % (unsigned int) _eKind);
 }
@@ -1009,7 +1009,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   pSection->readSubPayload(iSectionFile, _PSD.getSubSectionName(), _PSD.getFormatType());
 
   // Clean-up
-  if (bNewSection == true) 
+  if (bNewSection == true)
     addSection(pSection);
 
   std::string sSectionAddedName = pSection->getSectionKindAsString();
@@ -1020,7 +1020,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
                           % (sSubSection.empty() ? "" : "-")
                           % sSubSection % (unsigned int)  pSection->getSectionKind()));
   std::string optionalIndex;
-  if (!(pSection->getSectionIndexName().empty())) 
+  if (!(pSection->getSectionIndexName().empty()))
     optionalIndex = (boost::format("[%s]") % pSection->getSectionIndexName()).str();
 
   XUtil::QUIET("");
@@ -1047,7 +1047,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   // See if the user is attempting to add a sub-section
   {
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection
       addSubSection(_PSD);
       return;
     }
@@ -1197,7 +1197,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
     updateHeaderFromSection(pSection);
     XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
-    XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'") 
+    XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'")
                                % pSection->getSectionKindAsString()
                                % (unsigned int) pSection->getSectionKind()
                                % _PSD.getFormatTypeAsStr() % sectionName);
@@ -1332,7 +1332,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   XUtil::QUIET("");
 
   std::string optionalIndex;
-  if (!(pSection->getSectionIndexName().empty())) 
+  if (!(pSection->getSectionIndexName().empty()))
     optionalIndex = boost::str(boost::format("[%s]") % pSection->getSectionIndexName());
 
   XUtil::QUIET(boost::format("Section: '%s%s%s%s'(%d) was successfully written.\nFormat : %s\nFile   : '%s'")
@@ -1355,7 +1355,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
   // See if the user is attempting to dump a sub-section
   {
     if (!_PSD.getSubSectionName().empty() ||           // A subsection name has been added
-        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection
       dumpSubSection(_PSD);
       return;
     }
@@ -1553,14 +1553,14 @@ XclBin::setKeyValue(const std::string& _keyValue)
         m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_AIE;
       }
       else if (sValue == "LOAD_PDI") {
-        m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_PDI; 	
+        m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_PDI;
       }
       else {
         auto errMsg = boost::format("ERROR: Unknown bit mask '%s' for the key '%s'. Key-value pair: '%s'.") % sValue % sKey % _keyValue;
         throw std::runtime_error(errMsg.str());
       }
       return; // Key processed
-    }   
+    }
 
     if (sKey == "FeatureRomTimestamp") {
       m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
@@ -1718,7 +1718,7 @@ parsePSKernelString(const std::string& encodedString,
 // Note: A file name can contain a colen (e.g., C:\test)
 {
   XUtil::TRACE("Parsing PSKernel command argument: '" + encodedString + "'");
-  const std::string delimiters = ":";  
+  const std::string delimiters = ":";
 
   // Working variables
   std::string::size_type pos = 0;
@@ -1733,7 +1733,7 @@ parsePSKernelString(const std::string& encodedString,
 
     // Update the substring end to be at then end of the encodedString if:
     // a. No more delimiters were found.
-    // b. The last known 'token' is being parsed. 
+    // b. The last known 'token' is being parsed.
     if ((pos == std::string::npos) ||
         (tokens.size() == maxTokens-1)) {
       pos = encodedString.length();
@@ -1765,11 +1765,11 @@ parsePSKernelString(const std::string& encodedString,
   // -- [3]: Mem banks --
   mem_banks = (tokens.size() > 3) ? tokens[3] : "";
 
-  // add check for leading and trailing ;
+  // add check for leading and trailing ','
   if (!mem_banks.empty()) {
     if (mem_banks.front() == ',' || mem_banks.back() == ',' )
       throw std::runtime_error("Specified mem_banks is not valid");
-    
+
     std::cout << "Attention: Specifying memory banks in --add-pskernel is an advanced feature." << std::endl;
     std::cout << "           Be sure to validate connections after performing this operation." << std::endl;
   }
@@ -1860,7 +1860,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   XUtil::createPSKernelMetadata(memBanks, numInstances, ptFunctions, kernelLibrary, ptPSKernels);
 
   // Update the EMBEDDED_METADATA, MEM_TOPOLOGY, IP_LAYOUT, and CONNECTIVITY sections
-  const boost::property_tree::ptree ptEmpty;  
+  const boost::property_tree::ptree ptEmpty;
 
   const boost::property_tree::ptree ptKernels = ptPSKernels.get_child("ps-kernels", ptEmpty);
   auto kernels = XUtil::as_vector<boost::property_tree::ptree>(ptKernels, "kernels");
@@ -1989,7 +1989,7 @@ XclBin::updateInterfaceuuid()
     }
   }
 
-  // Updating axlf header interface_uuid with interface_uuid from partition_metadata  
+  // Updating axlf header interface_uuid with interface_uuid from partition_metadata
   boost::property_tree::ptree ptInterface = ptInterfaces[0];
   auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
   sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'

@@ -32,11 +32,12 @@
 
 
 namespace XUtil = XclBinUtilities;
+namespace fs = std::filesystem;
 
 static
 auto findExecutablePath(const std::string& executable)
 {
-  std::filesystem::path executablePath;
+  fs::path executablePath;
 
 #if 0                       // Only enabled for the Vitis version of xclbinutil
   // -- Check to see if XILINX_VITIS has been set
@@ -46,7 +47,7 @@ auto findExecutablePath(const std::string& executable)
     executablePath = xilinxVitisEnv;
     executablePath = executablePath / "aietools" / "tps" / "lnx64" / "gcc" / "bin" / executable;
     XUtil::TRACE("Step 1: Looking for executable at: '" + executablePath.string() + "'");
-    if (!std::filesystem::exists(executablePath)) {
+    if (!fs::exists(executablePath)) {
       executablePath = "";           // Executable doesn't exist
       XUtil::TRACE("Not found");
     }
@@ -59,7 +60,7 @@ auto findExecutablePath(const std::string& executable)
     XUtil::TRACE("Step 2: Looking for executable path");
     auto path = boost::process::search_path(executable);
     executablePath = path.string();
-    if (!std::filesystem::exists(executablePath))
+    if (!fs::exists(executablePath))
       XUtil::TRACE("Not found");
 
   }
@@ -67,7 +68,7 @@ auto findExecutablePath(const std::string& executable)
 
   // -- Default path /usr/bin
   if (executablePath.string().empty())
-    executablePath = std::filesystem::path("/usr") / "bin" / executable;
+    executablePath = fs::path("/usr") / "bin" / executable;
 
   return executablePath;
 }
@@ -875,10 +876,10 @@ drcCheckExportedFunctions(const std::vector<std::string> exportedFunctions)
   // Report all of the mangled functions
   if (!mangledFunctions.empty()) {
     std::sort(mangledFunctions.begin(), mangledFunctions.end());
-              
+
     auto errMsg = boost::str(boost::format("ERROR: C++ mangled functions are not supported, please export the function. \nOffending function(s):\n"));
 
-    for (const auto& entry : mangledFunctions) 
+    for (const auto& entry : mangledFunctions)
       errMsg += boost::str(boost::format("     %s\n") % entry);
 
     throw std::runtime_error(errMsg);

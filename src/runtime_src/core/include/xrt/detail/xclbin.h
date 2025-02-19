@@ -221,7 +221,7 @@ extern "C" {
 
     enum ACTION_MASK {
       AM_LOAD_AIE = 0x1,                     /* Indicates to the driver to load the AIE PID section */
-      AM_LOAD_PDI = 0x2,                     /* Indicates to the driver to program the PDI */   	      
+      AM_LOAD_PDI = 0x2,                     /* Indicates to the driver to program the PDI */
     };
 
     struct axlf_section_header {
@@ -262,9 +262,9 @@ extern "C" {
         uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
         struct axlf_header m_header;                /* Inline header */
 #if defined(__linux__) && defined(__KERNEL__)
-	struct axlf_section_header m_sections[];   // One or more section headers follow. Flexible array size suitable for kernel space.
+        struct axlf_section_header m_sections[];   // One or more section headers follow. Flexible array size suitable for kernel space.
 #else
-	struct axlf_section_header m_sections[1];   /* One or more section headers follow */
+        struct axlf_section_header m_sections[1];   /* One or more section headers follow */
 #endif
     };
 
@@ -369,7 +369,7 @@ extern "C" {
                                  //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
                                  // properties is also used for ps kernel (i.e. -add-pskernel)
-       
+
             // PS Kernels
             // m_type: IP_PS_KERNEL
             struct {
@@ -461,7 +461,7 @@ extern "C" {
 #if defined(__linux__) && defined(__KERNEL__)
         struct clock_freq m_clock_freq[]; // Clock array. Flexible array size suitable for kernel space.
 #else
-	struct clock_freq m_clock_freq[1]; /* Clock array */
+        struct clock_freq m_clock_freq[1]; /* Clock array */
 #endif
     };
 
@@ -630,15 +630,15 @@ extern "C" {
         uint8_t reserved[72];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition_info) == 88, "partition_info structure no longer is 88 bytes in size");
-    
+
     struct aie_partition {
         uint8_t schema_version;             // Group schema version (default 0)
-        uint8_t padding0[3];                // Byte alignment          
-        uint32_t mpo_name;                  // Name of the aie_partition 
+        uint8_t padding0[3];                // Byte alignment
+        uint32_t mpo_name;                  // Name of the aie_partition
         uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
         uint8_t padding[4];
         uint64_t inference_fingerprint;     // The unique hash value of the inference function
-        uint64_t pre_post_fingerprint;      // The unique hash value of pre post 
+        uint64_t pre_post_fingerprint;      // The unique hash value of pre post
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         //   kernel_commit_id is modeled after mpo_name
@@ -647,7 +647,7 @@ extern "C" {
         //
         //     The pointer to access the string is initialized as follows:
         //     char * pCharString = (address_of_section) + (mpo value)
-        uint32_t kernel_commit_id;          // The git repo commit id for DPU_PHX_KERNEL 
+        uint32_t kernel_commit_id;          // The git repo commit id for DPU_PHX_KERNEL
         uint8_t reserved[52];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
@@ -655,7 +655,7 @@ extern "C" {
 
     /**** END : Xilinx internal section *****/
 
-# if defined(__cplusplus) && !defined(__KERNEL__) && !defined(_KERNEL_MODE) 
+# if defined(__cplusplus) && !defined(__KERNEL__) && !defined(_KERNEL_MODE)
     namespace xclbin {
       inline const axlf_section_header*
       get_axlf_section(const axlf* top, axlf_section_kind kind)

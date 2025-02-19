@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -114,7 +114,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
-      throw xrt_core::error((boost::format("The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+      throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
@@ -249,15 +249,15 @@ SubCmdExamineInternal::getReportsList(const xrt_core::smi::tuple_vector& reports
   // Vector to store the matched reports
   std::vector<std::shared_ptr<Report>> matchedReports;
 
-  for (const auto& report : fullReportCollection) {
-    auto it = std::find_if(reports.begin(), reports.end(),
-      [&report](const std::tuple<std::string, std::string, std::string>& rep) {
-        return (std::get<0>(rep) == report->getReportName() && 
-                (std::get<2>(rep) != "hidden" || XBU::getShowHidden()));
-      });
+  for (const auto& rep : reports) {
+    auto it = std::find_if(fullReportCollection.begin(), fullReportCollection.end(),
+              [&rep](const std::shared_ptr<Report>& report) {
+                return std::get<0>(rep) == report->getReportName() &&
+                       (std::get<2>(rep) != "hidden" || XBU::getShowHidden());
+              });
 
-    if (it != reports.end()) {
-      matchedReports.push_back(report);
+    if (it != fullReportCollection.end()) {
+      matchedReports.push_back(*it);
     }
   }
 

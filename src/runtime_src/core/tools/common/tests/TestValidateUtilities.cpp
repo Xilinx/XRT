@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -145,41 +145,6 @@ get_instr_size(const std::string& dpu_file) {
   return size;
 }
 
-/**
- * @brief Waits for the IPU clock frequency to reach the target maximum clock frequency.
- *
- * This function queries the device for the target maximum clock frequency and then
- * continuously checks the current IPU clock frequency until it reaches the target.
- *
- * @param dev A shared pointer to the xrt_core::device.
- * @return The IPU clock frequency when it reaches the target maximum clock frequency.
- */
-uint64_t
-wait_for_max_clock(std::shared_ptr<xrt_core::device> dev) {
-  uint64_t target_h_clock_freq = 0;
-  uint64_t ipu_hclock = 0;
-  auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
-  if (res_info.empty())
-    return ipu_hclock;
-
-  for (auto &res : res_info)
-  {
-    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_clk_max)
-      continue;
-    target_h_clock_freq = res.data_uint64;
-  }
-  while (ipu_hclock < target_h_clock_freq) {
-    //get h-clock
-    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int c = 0; c < clock_topology->m_count; c++) {
-      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
-        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
-  return ipu_hclock;
-}
 /*
  * mini logger to log errors, warnings and details produced by the test cases
  */

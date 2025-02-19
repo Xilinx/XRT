@@ -50,6 +50,7 @@ constexpr uint32_t UC_MDM_PCCMDR                    = 0x000b5480;
 constexpr uint32_t UC_MDM_PCSR                      = 0x000b54c0;
 constexpr uint32_t UC_MDM_PCDRR                     = 0x000b5580;
 constexpr uint32_t UC_MDM_PCWR                      = 0x000b55c0;
+constexpr uint32_t UC_MEMORY_PRIVILEGED             = 0x000c0034;
 constexpr uint32_t UC_NUM_EVENT_COUNTERS            = 5;
 constexpr uint32_t UC_NUM_LATENCY_COUNTERS          = 1;
 constexpr uint32_t UC_MDM_PCCMDR_CLEAR_BIT          = 4;

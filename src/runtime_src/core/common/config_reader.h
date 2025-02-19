@@ -1031,6 +1031,20 @@ get_aie_trace_settings_enable_system_timeline()
   return value;
 }
 
+inline std::string
+get_dtrace_lib_path()
+{
+  static std::string value = detail::get_string_value("Debug.dtrace_lib_path", "");
+  return value;
+}
+
+inline std::string
+get_dtrace_control_file_path()
+{
+  static std::string value = detail::get_string_value("Debug.dtrace_control_file_path", "");
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
