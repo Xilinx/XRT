@@ -314,6 +314,9 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     boost::property_tree::ptree ptTest;
     try {
       ptTest = testPtr->startTest(device);
+    } catch (const std::runtime_error& e) {
+      std::cout << e.what() << std::endl;
+      return test_status::failed;
     } catch (const std::exception&) {
       ptTest = testPtr->get_test_header();
       XBValidateUtils::logger(ptTest, "Error", "The test timed out");
