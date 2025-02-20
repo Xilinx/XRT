@@ -77,10 +77,12 @@ static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
 
 void
-doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNames)
+doesTestExist(const std::string& userTestName, std::vector<std::shared_ptr<TestRunner>>& testNames)
 {
   const auto iter = std::find_if( testNames.begin(), testNames.end(),
-    [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
+    [&userTestName](const std::shared_ptr<TestRunner>& testRunner){ 
+      return userTestName == "all" || userTestName == "quick" || userTestName == testRunner->get_name();
+    });
 
   if (iter == testNames.end())
     throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
@@ -383,33 +385,6 @@ static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
 //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-
-XBU::VectorPairStrings
-SubCmdValidate::getTestNameDescriptions(const SubCmdValidateOptions& options, const bool addAdditionOptions) const
-{
-  XBU::VectorPairStrings reportDescriptionCollection;
-
-  // 'verbose' option
-  if (addAdditionOptions) {
-    reportDescriptionCollection.emplace_back("all", "All applicable validate tests will be executed (default)");
-    reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
-  }
-
-  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  const auto& testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string& deviceClass = XBU::get_device_class(options.m_device, true);
-  const auto it = testOptionsMap.find(deviceClass);
-  const std::vector<std::shared_ptr<TestRunner>>& testOptions = (it == testOptionsMap.end()) ? testSuite : it->second;
-
-  // report names and description
-  for (const auto& test : testOptions) {
-    std::string testName = boost::algorithm::to_lower_copy(test.get()->getConfigName());
-    reportDescriptionCollection.emplace_back(testName, test.get()->get_test_header().get("description", "<no description>"));
-  }
-
-  return reportDescriptionCollection;
-}
-
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
@@ -440,12 +415,10 @@ void
                                                  
 SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::variables_map& vm,
                                                  const SubCmdValidateOptions& options,
+                                                 std::vector<std::shared_ptr<TestRunner>>& testOptions,
                                                  std::vector<std::string>& validatedTests,
                                                  std::vector<std::string>& param) const
 {
-
-  const auto testNameDescription = getTestNameDescriptions(options, true /* Add "all" and "quick" options*/);
-
   if (vm.count("output") && options.m_output.empty())
     throw xrt_core::error("Output file not specified ");
 
@@ -466,21 +439,27 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
     throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
 
-  if (options.m_tests_to_run.empty())
-    throw xrt_core::error("No test given to validate against.");
-
+  auto testsToRun = options.m_tests_to_run;
+  if (testsToRun.empty()) {
+    if (!XBU::getAdvance()) {
+      testsToRun = std::vector<std::string>({"all"});
+    }
+    else {
+      throw xrt_core::error("No test given to validate against.");
+    }
+  }
   // Validate the user test requests
-  for (auto &userTestName : options.m_tests_to_run) {
+  for (auto &userTestName : testsToRun) {
     const auto validateTestName = boost::algorithm::to_lower_copy(userTestName);
 
-    if ((validateTestName == "all") && (options.m_tests_to_run.size() > 1))
+    if ((validateTestName == "all") && (testsToRun.size() > 1))
       throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
 
-    if ((validateTestName == "quick") && (options.m_tests_to_run.size() > 1))
+    if ((validateTestName == "quick") && (testsToRun.size() > 1))
       throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
     // Verify the current user test request exists in the test suite
-    doesTestExist(validateTestName, testNameDescription);
+    doesTestExist(validateTestName, testOptions);
     validatedTests.push_back(validateTestName);
   }
   //check if param option is provided
@@ -493,7 +472,7 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
       throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % options.m_param).str());
 
     //check test case name
-    doesTestExist(param[0], testNameDescription);
+    doesTestExist(param[0], testOptions);
 
     //check parameter name
     auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(),
@@ -541,14 +520,32 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;
+
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  //get list of tests supported by a device
+  auto tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+  auto testOptions = getTestList(tests);
+
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
 
+    auto tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+    auto testOptions = getTestList(tests);
+
     // All Error Handling for xrt-smi validate should go here
-    handle_errors_and_validate_tests(vm, options, validatedTests, param); 
+    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
 
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
@@ -566,20 +563,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     print_help_internal(options);
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-
-  // Find device of interest
-  std::shared_ptr<xrt_core::device> device;
-  try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
-  } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  const xrt_core::smi::tuple_vector& tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
-  std::vector<std::shared_ptr<TestRunner>> testOptions = getTestList(tests);
 
   // Collect all of the tests of interests
   std::vector<std::shared_ptr<TestRunner>> testObjectsToRun;
@@ -698,7 +681,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_param = vm.count("param") ? vm["param"].as<std::string>() : "";
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
-  options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>({"all"});
+  options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
 }
 
@@ -725,7 +708,7 @@ SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
     auto it = std::find_if(testSuite.begin(), testSuite.end(),
               [&test](const std::shared_ptr<TestRunner>& runner) {
                 return std::get<0>(test) == runner->getConfigName() &&
-                       (std::get<2>(test) != "hidden" || XBU::getShowHidden());
+                       (std::get<2>(test) != "hidden" || XBU::getAdvance());
               });
 
     if (it != testSuite.end()) {

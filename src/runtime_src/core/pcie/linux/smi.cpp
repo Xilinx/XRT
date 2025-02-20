@@ -8,6 +8,7 @@ smi_pcie::
 smi_pcie() : smi_base()
 {
   validate_test_desc = {
+    {"all", "All applicable validate tests will be executed (default)", "common"},
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
     {"hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
@@ -15,6 +16,7 @@ smi_pcie() : smi_base()
     {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
     {"p2p", "Run P2P test", "common"},
     {"pcie-link", "Check if PCIE link is active", "common"},
+    {"quick", "Only the first 4 tests will be executed", "common"},
     {"sc-version","Check if SC firmware is up-to-date", "common"},
     {"verify", "Run 'Hello World' kernel test", "common"}
   };
