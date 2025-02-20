@@ -32,34 +32,52 @@ if (${XRT_CLANGTIDY_REVIEW})
   return()
 endif()
 
-if (DEFINED XRT_AIE_BUILD)
+if (DEFINED EDGE_VE2)
   add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
     $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
     $<TARGET_OBJECTS:core_common_objects>
     $<TARGET_OBJECTS:core_edge_user_aie_object>
     $<TARGET_OBJECTS:core_edge_common_objects>
+    $<TARGET_OBJECTS:core_edge_ve2_objects>
     )
-else()
-  add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
-    $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
-    $<TARGET_OBJECTS:core_common_objects>
-    $<TARGET_OBJECTS:core_edge_common_objects>
-    )
-endif()
 
-if (DEFINED XRT_AIE_BUILD)
   add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
     $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
     $<TARGET_OBJECTS:core_edge_common_objects>
     $<TARGET_OBJECTS:core_common_objects>
     $<TARGET_OBJECTS:core_edge_user_aie_object>
+    $<TARGET_OBJECTS:core_edge_ve2_objects>
     )
 else()
-  add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
-    $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
-    $<TARGET_OBJECTS:core_edge_common_objects>
-    $<TARGET_OBJECTS:core_common_objects>
-    )
+  if (DEFINED XRT_AIE_BUILD)
+    add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
+      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
+      $<TARGET_OBJECTS:core_common_objects>
+      $<TARGET_OBJECTS:core_edge_user_aie_object>
+      $<TARGET_OBJECTS:core_edge_common_objects>
+      )
+  else()
+    add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
+      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
+      $<TARGET_OBJECTS:core_common_objects>
+      $<TARGET_OBJECTS:core_edge_common_objects>
+      )
+  endif()
+
+  if (DEFINED XRT_AIE_BUILD)
+    add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
+      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
+      $<TARGET_OBJECTS:core_edge_common_objects>
+      $<TARGET_OBJECTS:core_common_objects>
+      $<TARGET_OBJECTS:core_edge_user_aie_object>
+      )
+  else()
+    add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
+      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
+      $<TARGET_OBJECTS:core_edge_common_objects>
+      $<TARGET_OBJECTS:core_common_objects>
+      )
+  endif()
 endif()
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
