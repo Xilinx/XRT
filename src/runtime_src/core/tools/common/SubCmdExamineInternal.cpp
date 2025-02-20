@@ -135,6 +135,12 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     }
   }
 
+  if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
+    std::cerr << "ERROR: The 'all' value for the reports to run cannot be used with any other named reports.\n";
+    print_help_internal(options);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
 

@@ -540,10 +540,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
-
-    auto tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
-    auto testOptions = getTestList(tests);
-
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
 
