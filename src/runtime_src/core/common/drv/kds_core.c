@@ -1810,6 +1810,37 @@ int is_bad_state(struct kds_sched *kds)
 	return kds->bad_state;
 }
 
+u32 kds_get_open_clients(struct kds_sched *kds, pid_t **plist)
+{
+	const struct list_head *ptr;
+        struct kds_client *client;
+        pid_t *pl = NULL;
+        u32 count = kds->num_client;
+        u32 i = 0;
+
+	if (count == 0 || plist == NULL)
+                return 0;
+
+        mutex_lock(&kds->lock);
+	/* Collect list of PIDs of active client */
+        pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
+        if (pl == NULL)
+		return 0;
+
+	/* Get Open clients */
+	list_for_each(ptr, &kds->clients) {
+		client = list_entry(ptr, struct kds_client, link);
+		pl[i] = pid_nr(client->pid);
+		i++;
+	}
+
+	*plist = pl;
+        mutex_unlock(&kds->lock);
+
+        return count;
+}
+
+
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 {
 	u32 count = 0;

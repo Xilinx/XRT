@@ -341,6 +341,25 @@ static const char *get_uuid_from_firmware(struct platform_device *pdev,
 	return NULL;
 }
 
+static void set_vbnv_name(struct platform_device *pdev)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	char sh_version[9];
+	struct feature_rom *rom = platform_get_drvdata(pdev);
+	uint32_t idcode = xocl_icap_get_data(xdev, IDCODE); /* Get the shell version from AWS interface */
+
+	/* return if the instance is F1 as its already updated in feature_rom_probe(),
+	 *  The F1 instance is static and is not going to change in future.
+	 */
+	if (idcode == 0x04261818)
+		return;
+
+	snprintf(sh_version, sizeof(sh_version), "%lx", idcode);
+	memset(rom->header.VBNVName, 0, sizeof(rom->header.VBNVName));
+	strncpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
+	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);
+}
+
 static inline bool is_multi_rp(struct feature_rom *rom)
 {
 	return strlen(rom->uuid) > 0;
@@ -581,6 +600,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.load_firmware = load_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
 	.get_uuid = get_uuid,
+	.set_vbnv_name = set_vbnv_name,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -725,10 +745,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 	if (val != MAGIC_NUM) {
 		vendor = XOCL_PL_TO_PCI_DEV(pdev)->vendor;
 		did = XOCL_PL_TO_PCI_DEV(pdev)->device;
-		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010 || did == 0xf011)) { // MAGIC, we should define elsewhere
-#define AWS_F1_XDMA_SHELL_NAME "xilinx_aws-vu9p-f1_shell-v04261818_201920_3"
-#define AWS_F1_NODMA_SHELL_NAME "xilinx_aws-vu9p-f1_nodma-shell-v09142114_202120_1"
-#define AWS_F1_DYNAMIC_SHELL_NAME "xilinx_aws-vu9p-f1_dynamic-shell"
+		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010 || did == 0xf011 || did == 0x9048 || did == 0x9248)) {
 			xocl_dbg(&pdev->dev,
 				"Found AWS VU9P Device without featureROM");
 			/*
@@ -749,6 +766,9 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			else if (did == 0xf011)
 				strncpy(rom->header.VBNVName,
 					AWS_F1_NODMA_SHELL_NAME, strlen(AWS_F1_NODMA_SHELL_NAME));
+			else if (did == 0x9048 || did == 0x9248)
+				strncpy(rom->header.VBNVName,
+					AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
 			else
 				strncpy(rom->header.VBNVName,
 					AWS_F1_DYNAMIC_SHELL_NAME, strlen(AWS_F1_DYNAMIC_SHELL_NAME));
