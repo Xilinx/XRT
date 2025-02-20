@@ -296,15 +296,13 @@ namespace xdp {
     // Currently, assuming only one Hw Context is alive at a time
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
     uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
-    
+    // NOTE: below is the hard-coded value from metadata
+    // uint8_t startCol = metadata->getPartitionOverlayStartCols().front();
+    aie::displayColShiftInfo(startCol);
+
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
-
-    // Get the column shift for partition
-    // NOTE: If partition is not used, this value is zero.
-    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
-    aie::displayColShiftInfo(startColShift);
 
     // Zero trace event tile counts
     for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
@@ -350,11 +348,13 @@ namespace xdp {
     coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
 
     // Iterate over all used/specified tiles
-    // NOTE: rows are stored as absolute as required by resource manager
+    // NOTE 1: Rows are absolute values as required by driver
+    // NOTE 2: If partitions are used, then columns are relative values as required by driver
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
-      auto col        = tile.col + startColShift;
+      auto col        = tile.col;
+      auto colReport  = col + startCol;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
       auto type       = aie::getModuleType(row, metadata->getRowOffset());
@@ -403,7 +403,7 @@ namespace xdp {
       }
 
       // AIE config object for this tile
-      auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
+      auto cfgTile = std::make_unique<aie_cfg_tile>(colReport, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
       cfgTile->active_core = tile.active_core;
@@ -863,7 +863,8 @@ namespace xdp {
 
         auto shimTrace = shim.traceControl();
 
-        if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        if ((col == 0) && compilerOptions.enable_multi_layer 
+            && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
         {
           if (shimTrace->setCntrEvent(XAIE_EVENT_COMBO_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
             break;

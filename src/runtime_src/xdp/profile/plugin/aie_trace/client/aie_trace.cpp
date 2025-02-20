@@ -966,6 +966,7 @@ namespace xdp {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
       auto col        = tile.col;
+      auto colReport  = col + startCol;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
       auto type       = getTileType(row);
@@ -999,7 +1000,7 @@ namespace xdp {
       }
 
       // AIE config object for this tile
-      auto cfgTile = std::make_unique<aie_cfg_tile>(col+startCol, row, type);
+      auto cfgTile = std::make_unique<aie_cfg_tile>(colReport, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
       cfgTile->active_core = tile.active_core;
