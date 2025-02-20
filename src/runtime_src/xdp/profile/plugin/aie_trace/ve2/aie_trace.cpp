@@ -862,18 +862,11 @@ namespace xdp {
         }
 
         auto shimTrace = shim.traceControl();
-
-        if ((col == 0) && compilerOptions.enable_multi_layer 
-            && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
-        {
-          if (shimTrace->setCntrEvent(XAIE_EVENT_COMBO_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
-            break;
-        }
-        else
-        {
-          if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
-            break;
-        }
+        XAie_Events shimStart = ((col == 0) && compilerOptions.enable_multi_layer 
+                                 && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+                              ? XAIE_EVENT_COMBO_EVENT_0_PL : interfaceTileTraceStartEvent;
+        if (shimTrace->setCntrEvent(shimStart, interfaceTileTraceEndEvent) != XAIE_OK)
+          break;
 
         auto ret = shimTrace->reserve();
         if (ret != XAIE_OK) {
