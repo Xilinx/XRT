@@ -59,30 +59,18 @@ if (${XRT_CLANGTIDY_REVIEW})
   return()
 endif()
 
-if (DEFINED EDGE_VE2)
-  add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
-    $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
-    $<TARGET_OBJECTS:core_common_objects>
-    $<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>
-    $<TARGET_OBJECTS:core_edge_common_objects>
-    $<TARGET_OBJECTS:core_edge_ve2_hw_emu_objects>
-    )
-else()
-  if (DEFINED XRT_AIE_BUILD)
-    add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
-      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
-      $<TARGET_OBJECTS:core_common_objects>
-      $<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>
-      $<TARGET_OBJECTS:core_edge_common_objects>
-      )
-  else()
-    add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
-      $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
-      $<TARGET_OBJECTS:core_common_objects>
-      $<TARGET_OBJECTS:core_edge_common_objects>
-      )
-  endif()
-endif()
+set(AIE_BUILD_DEFINED "$<BOOL:DEFINED XRT_AIE_BUILD>")
+set(VE2_DEFINED "$<BOOL:DEFINED EDGE_VE2>")
+set(AIE_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_user_aie_object_hw_em>")
+set(VE2_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_ve2_hw_emu_objects>")
+
+add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
+  $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
+  $<TARGET_OBJECTS:core_common_objects>
+  $<TARGET_OBJECTS:core_edge_common_objects>
+  $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>>
+  $<$<AND:${VE2_DEFINED},${VE2_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_ve2_hw_emu_objects>>
+)
 
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
