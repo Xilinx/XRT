@@ -560,7 +560,7 @@ void xocl_close_drm_render_fds(pid_t pid)
     fdt = files_fdtable(task->files);
 
     for (fd = 0; fd < fdt->max_fds; fd++) {
-        file = files_lookup_fd_rcu(task->files, fd);
+        file = files_lookup_fd_raw(task->files, fd);
         if (file && file->f_path.dentry) {
             const char *path = file->f_path.dentry->d_name.name;
             if (strstr(path, "renderD") != NULL) {
