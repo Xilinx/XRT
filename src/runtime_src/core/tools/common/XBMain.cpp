@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -42,7 +42,6 @@ void  main_(int argc, char** argv,
   bool bShowHidden = false;
   bool bForce = false;
   bool bVersion = false;
-  // bool bElf = false;
   std::string sDevice;
   std::string sCmd;
 
@@ -50,7 +49,6 @@ void  main_(int argc, char** argv,
   po::options_description globalSubCmdOptions("Global Command Options");
   globalSubCmdOptions.add_options()
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
-    // ("elf",     boost::program_options::bool_switch(&bElf), "Enable ELF flow")
     ("batch",   boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
     ("force",   boost::program_options::bool_switch(&bForce), "When possible, force an operation")
   ;
@@ -101,7 +99,6 @@ void  main_(int argc, char** argv,
   // -- Enable/Disable helper "global" options
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
-  // XBU::setElf( bElf );
   XBU::setTrace( bTrace );
   XBU::setShowHidden( bShowHidden );
   XBU::setForce( bForce );
