@@ -1166,6 +1166,17 @@ namespace xdp {
         if (type == module_type::mem_tile)
           aieConfig = cfgTile->memory_tile_trace_config;
 
+        // Only enable Core -> MEM. Block everything else in both modules
+        if (XAie_EventBroadcastBlockMapDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, 0xFF00, XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_SOUTH) != XAIE_OK)
+          break;
+        if (XAie_EventBroadcastBlockMapDir(&aieDevInst, loc, XAIE_MEM_MOD, XAIE_EVENT_SWITCH_A, 0xFF00, XAIE_EVENT_BROADCAST_EAST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_SOUTH) != XAIE_OK)
+          break;
+
+        for (uint8_t i = 8; i < 16; i++)
+          if (XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, i, XAIE_EVENT_BROADCAST_EAST) != XAIE_OK)
+            break;
+        xrt_core::message::send(severity_level::info, "XRT", "!!! Configured Core/MemoryTile broadcasting.");
+
         // Configure combo events for metric sets that include DMA events        
         auto comboEvents = configComboEvents(loc, mod, type, metricSet, aieConfig);
         if (comboEvents.size() == 2) {
