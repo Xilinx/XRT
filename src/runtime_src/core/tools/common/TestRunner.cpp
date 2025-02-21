@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -22,12 +22,23 @@ namespace xq = xrt_core::query;
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <csignal>
+#include <atomic>
 
 static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
+std::atomic<bool> force_exit(false);
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 namespace {
+
+// Signal handler function
+void 
+signal_handler(int signal) {
+  if (signal == SIGINT) {
+    force_exit = true;
+  }
+}
 
 static void
 runTestInternal(std::shared_ptr<xrt_core::device> dev,
@@ -52,7 +63,8 @@ TestRunner::TestRunner (const std::string & test_name,
     , m_description(description) 
     , m_explicit(is_explicit)
 {
-  //Empty
+  // Set up the signal handler for SIGINT
+  std::signal(SIGINT, signal_handler);
 }
 
 boost::property_tree::ptree
@@ -66,8 +78,8 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
 
   // Start the test process
   std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running); });
-  // Wait for the test process to finish
-  while (is_thread_running) {
+  // Wait for the test process to finish or for the signal to be caught
+  while (is_thread_running && !force_exit) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     try {
       busy_bar.check_timeout(max_test_duration);
@@ -76,6 +88,12 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
       throw;
     }
   }
+  if (force_exit) {
+    test_thread.detach();
+    busy_bar.finish();
+    throw std::runtime_error("Test interrupted by user (Ctrl+C).");
+  }
+    
   test_thread.join();
   busy_bar.finish();
 
