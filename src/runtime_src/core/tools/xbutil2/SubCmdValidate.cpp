@@ -533,6 +533,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  XBU::setElf(options.m_elf);
+
   // -- Process the options --------------------------------------------
   Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
   std::vector<std::string> param;
@@ -697,6 +699,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>({"all"});
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
+  options.m_elf = vm.count("elf") ? vm["elf"].as<bool>() : false;
 }
 
 void

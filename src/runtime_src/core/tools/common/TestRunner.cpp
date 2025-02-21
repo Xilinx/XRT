@@ -184,20 +184,20 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
 
 
 /*
- * Gets kernel depending on if 2nd param is dpu sequence or elf file
+ * Gets kernel depending on if elf_path (3rd argument) is provided
  */
 xrt::kernel
-TestRunner::get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf)
+TestRunner::get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_name, 
+                       const std::string& elf_path)
 {
-  if (kernel_or_elf.find(".elf") == std::string::npos) {
-    return xrt::kernel(hwctx, kernel_or_elf);
+  if (elf_path.find(".elf") == std::string::npos) {
+    return xrt::kernel(hwctx, kernel_name);
   }
   else {
     xrt::elf elf;
-    elf = xrt::elf(kernel_or_elf);
+    elf = xrt::elf(elf_path);
     xrt::module mod{elf};
-
-    return xrt::ext::kernel{hwctx, mod, "dpu:{nop}"};
+    return xrt::ext::kernel{hwctx, mod, kernel_name};
   }
 }
 

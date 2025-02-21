@@ -48,6 +48,10 @@ namespace XBUtilities {
    */
   void setVerbose(bool _bVerbose);
   bool getVerbose();
+
+  void setElf(bool _bElf);
+  bool getElf();
+
   void setTrace(bool _bVerbose);
 
   void setShowHidden(bool _bShowHidden);

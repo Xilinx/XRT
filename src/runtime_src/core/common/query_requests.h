@@ -598,7 +598,8 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm
+    gemm, 
+    validate_elf
   };
 
   static std::string
@@ -609,6 +610,8 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
+      case type::validate_elf:
+        return "validate_elf";
     }
     return "unknown";
   }
@@ -672,12 +675,17 @@ struct sequence_name : request
 struct elf_name : request
 {
   enum class type {
+    df_bandwidth, 
     nop
   };
 
   static std::string
   enum_to_str(const type& type)
   {
+    switch (type) {
+      case type::df_bandwidth:
+        return "df_bandwidth";
+    }
     switch (type) {
       case type::nop:
         return "nop";
