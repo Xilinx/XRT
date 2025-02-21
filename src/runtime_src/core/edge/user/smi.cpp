@@ -10,7 +10,7 @@ smi_edge() : smi_base()
   validate_test_desc = {
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
-    {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
+    {"hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
     {"m2m", "Run M2M test", "common"},
     {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
     {"p2p", "Run P2P test", "common"},
