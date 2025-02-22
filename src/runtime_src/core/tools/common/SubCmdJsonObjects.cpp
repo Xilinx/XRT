@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <iostream>
 #include <string>
@@ -72,7 +72,7 @@ SubCommandOption::addProgramOption(po::options_description& options, const std::
   if (!m_description_array.empty()) {
     std::vector<std::pair<std::string, std::string>> temp;
     for (const auto& desc : m_description_array) {
-      if (desc.getType() == const_hidden_literal && !XBUtilities::getShowHidden()) continue;
+      if (desc.getType() == const_hidden_literal && !XBUtilities::getAdvance()) continue;
       temp.emplace_back(std::make_pair<std::string, std::string>(desc.getName(), desc.getDescription()));
     }
     description += XBUtilities::create_suboption_list_string(temp);

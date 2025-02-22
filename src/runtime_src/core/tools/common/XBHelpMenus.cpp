@@ -118,7 +118,7 @@ XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollec
   // Add the report names and description
   for (const auto & report : _reportCollection) {
     // Skip hidden reports
-    if (!XBU::getShowHidden() && report->isHidden()) 
+    if (!XBU::getAdvance() && report->isHidden()) 
       continue;
     reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
   }
@@ -171,7 +171,7 @@ XBUtilities::create_suboption_list_map(const std::string& deviceClass,
           continue;
 
         // Skip hidden reports
-        if (!XBU::getShowHidden() && report->getConfigHidden()) 
+        if (!XBU::getAdvance() && report->getConfigHidden()) 
           continue;
         collection.emplace_back(report->getConfigName(), report->getConfigDescription());
       }
