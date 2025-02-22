@@ -23,9 +23,8 @@
 #include <iomanip>
 #include <fstream>
 #include <uuid/uuid.h>
-#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/md5.h>
-#undef OPENSSL_SUPPRESS_DEPRECATED
+#include <openssl/evp.h>
 #include "xrt/detail/xclbin.h"
 #include "container.h"
 
@@ -223,10 +222,10 @@ int Container::retrieve_xclbin(const xclBin *&orig, std::vector<char> &real_xclb
 std::string Container::calculate_md5(char *buf, size_t len)
 {
     unsigned char s[16];
-    MD5_CTX context;
-    MD5_Init(&context);
-    MD5_Update(&context, buf, len);
-    MD5_Final(s, &context);
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_DigestInit(context, EVP_md5());
+    EVP_DigestUpdate(context, buf, len);
+    EVP_DigestFinal(context, s, NULL);
 
     std::stringstream md5;
     md5 << std::hex << std::setfill('0');
@@ -235,6 +234,7 @@ std::string Container::calculate_md5(char *buf, size_t len)
         md5 << std::setw(2) << (int)byte;
     }
 
+    EVP_MD_CTX_free(context);    
     return md5.str();
 }
 
