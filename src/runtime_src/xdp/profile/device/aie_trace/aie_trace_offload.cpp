@@ -230,10 +230,10 @@ bool AIETraceOffload::initReadTrace()
       // For trace, use bd# 0 for S2MM0, use bd# 4 for S2MM1
       uint16_t bdNum = channelNumber * 4;
       // Write to shim DMA BD AxiMM registers
-      XAie_DmaWriteBd_16(devInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
+      XAie_DmaWriteBd(devInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
 
       // Enqueue BD
-      XAie_DmaChannelPushBdToQueue_16(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
+      XAie_DmaChannelPushBdToQueue(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
 
 #endif
     }
