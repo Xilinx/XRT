@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +40,7 @@ static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
 static bool m_bShowHidden = false;
 static bool m_bForce = false;
+static bool m_bElf = false; 
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -60,6 +62,25 @@ bool
 XBUtilities::getVerbose()
 {
   return m_bVerbose;
+}
+
+void
+XBUtilities::setElf(bool _bElf)
+{
+  bool prevElf = m_bElf;
+
+  if ((prevElf == true) && (_bElf == false))
+    verbose("Disabling ELF");
+  
+  m_bElf = _bElf;
+  
+  if ((prevElf == false) && (_bElf == true))
+    verbose("Enabling ELF");
+}
+
+bool XBUtilities::getElf()
+{
+  return m_bElf;
 }
 
 void

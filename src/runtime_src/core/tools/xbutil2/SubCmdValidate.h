@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2020 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __SubCmdValidate_h_
 #define __SubCmdValidate_h_
@@ -21,6 +21,7 @@ struct SubCmdValidateOptions {
   std::string m_xclbin_path;
   std::string m_pmode;
   std::vector<std::string> m_tests_to_run;
+  bool m_elf;
   bool m_help;
 };
 
