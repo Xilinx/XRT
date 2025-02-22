@@ -256,7 +256,7 @@ failed:
 	return ret;
 }
 
-static int msix_xdma_remove(struct platform_device *pdev)
+static int __msix_xdma_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev;
 	struct xocl_msix_xdma *msix_xdma;
@@ -293,6 +293,15 @@ static int msix_xdma_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void msix_xdma_remove(struct platform_device *pdev)
+{
+	__msix_xdma_remove(pdev);
+}
+#else
+#define msix_xdma_remove __msix_xdma_remove
+#endif
 
 struct xocl_drv_private msix_xdma_priv = {
 	.ops = &msix_xdma_ops,
