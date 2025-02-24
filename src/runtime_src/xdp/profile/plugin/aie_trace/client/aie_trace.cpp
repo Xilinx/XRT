@@ -1206,7 +1206,6 @@ namespace xdp {
           for (uint8_t i = 8; i < 16; i++)
             if (XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, i, XAIE_EVENT_BROADCAST_EAST) != XAIE_OK)
               break;
-          xrt_core::message::send(severity_level::info, "XRT", "!!! Configured broadcast mask for core to memory events");
         }
 
         // Configure event ports on stream switch
