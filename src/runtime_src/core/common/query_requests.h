@@ -676,6 +676,7 @@ struct elf_name : request
 {
   enum class type {
     df_bandwidth, 
+    aie_reconfig_overhead,
     nop
   };
 
@@ -685,6 +686,10 @@ struct elf_name : request
     switch (type) {
       case type::df_bandwidth:
         return "df_bandwidth";
+    }
+    switch (type) {
+      case type::aie_reconfig_overhead:
+        return "aie_reconfig_overhead";
     }
     switch (type) {
       case type::nop:
