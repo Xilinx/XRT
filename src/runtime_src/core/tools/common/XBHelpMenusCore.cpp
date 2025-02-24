@@ -313,7 +313,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   for (auto& subCmdEntry : _subCmds) {
     // Filter out hidden subcommand
-    if (!XBU::getShowHidden() && subCmdEntry->isHidden())
+    if (!XBU::getAdvance() && subCmdEntry->isHidden())
       continue;
 
     // Depricated sub-command
@@ -373,7 +373,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   report_option_help("OPTIONS", _optionDescription);
 
-  if (XBU::getShowHidden())
+  if (XBU::getAdvance())
     report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden);
 }
 
@@ -494,7 +494,7 @@ create_suboption_usage_string(const std::vector<std::shared_ptr<JSONConfigurable
 {
   std::string usage;
   for (const auto& subOption : subOptions) {
-    if (subOption->getConfigHidden() && !XBU::getShowHidden())
+    if (subOption->getConfigHidden() && !XBU::getAdvance())
       continue;
 
     if (!usage.empty())
@@ -575,7 +575,7 @@ display_subcommand_options(const std::string& executable,
 
   report_option_help("OPTIONS", options, false, false, commonJsonOptions, deviceClass); // Make a new report_option_help that prints the separated by device class?
 
-  if (XBU::getShowHidden())
+  if (XBU::getAdvance())
     report_option_help("OPTIONS (Hidden)", hiddenOptions, false, false, hiddenJsonOptions, deviceClass);
 }
 
