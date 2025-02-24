@@ -1991,6 +1991,13 @@ registerAieArray()
   aied = std::make_unique<zynqaie::aied>(mCoreDevice.get());
 }
 
+void
+shim::
+reset_aie_array()
+{
+  m_aie_array.reset();
+}
+
 bool
 shim::
 isAieRegistered()
@@ -2009,7 +2016,9 @@ int
 shim::
 resetAIEArray(drm_zocl_aie_reset &reset)
 {
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
+  auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
+  reset_aie_array();
+  return ret;
 }
 
 int

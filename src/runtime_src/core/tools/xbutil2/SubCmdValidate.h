@@ -39,9 +39,9 @@ class SubCmdValidate : public SubCmd {
   void print_help_internal(const SubCmdValidateOptions& ) const;
   void handle_errors_and_validate_tests(const boost::program_options::variables_map&, 
                                         const SubCmdValidateOptions&,
+                                        std::vector<std::shared_ptr<TestRunner>>&,
                                         std::vector<std::string>&,
                                         std::vector<std::string>&) const;
-  XBUtilities::VectorPairStrings getTestNameDescriptions(const SubCmdValidateOptions&, const bool addAdditionOptions) const;
   std::vector<std::shared_ptr<TestRunner>> getTestList(const xrt_core::smi::tuple_vector&) const;
 };
 
