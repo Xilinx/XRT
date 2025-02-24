@@ -163,6 +163,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			// We come here if user sets force_xclbin_program
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
+
+		} else if((slot->aie) && (slot->aie->aie_reset == true)) { 
+			//since AIE reset happened load xclbin again
+			DRM_WARN("%s After AIE reset, loading xclbin again", __func__);
+
 		} else if (!is_aie_only(axlf)) {
 			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
 			vfree(axlf);
