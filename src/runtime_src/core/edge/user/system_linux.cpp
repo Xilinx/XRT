@@ -112,43 +112,54 @@ enumerate_devices()
     return 0;
   }
 
-  auto check_validity = [](const std::string& drm_dev_name, const std::string& ver_name) {
-    if (!std::filesystem::exists(drm_dev_name))
-      return false;
+  unsigned device_count = 0;
+  // lambda function that checks validity of /dev/dri/renderD* device node
+  // and inserts in global map with its type of device and increments device count
+  auto validate_and_insert_in_map =
+      [&](const std::string& drm_dev_name, const std::string& ver_name, const enum dev_type& type) {
+    try {
+      if (!std::filesystem::exists(drm_dev_name))
+        throw std::runtime_error(drm_dev_name + " device node doesn't exist");
 
-    int fd = open(drm_dev_name.c_str(), O_RDWR);
-    if (fd < 0)
-      return false;
+      auto file_d = open(drm_dev_name.c_str(), O_RDWR);
+      // lambda for closing fd
+      auto fd_close = [](int* fd){
+        if (fd && *fd >= 0) {
+          close(*fd);
+        }
+      };
+      auto fd = std::unique_ptr<int, decltype(fd_close)>(&file_d, fd_close);
+      if (*fd < 0)
+        throw std::runtime_error("Failed to open device file " + drm_dev_name);
 
-    std::vector<char> name(128,0);
-    std::vector<char> desc(512,0);
-    std::vector<char> date(128,0);
-    drm_version version;
-    std::memset(&version, 0, sizeof(version));
-    version.name = name.data();
-    version.name_len = 128;
-    version.desc = desc.data();
-    version.desc_len = 512;
-    version.date = date.data();
-    version.date_len = 128;
-    int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
-    if (result) {
-      close(fd);
-      return false;
+      // validate DRM version name
+      std::vector<char> name(128,0);
+      std::vector<char> desc(512,0);
+      std::vector<char> date(128,0);
+      drm_version version;
+      std::memset(&version, 0, sizeof(version));
+      version.name = name.data();
+      version.name_len = 128;
+      version.desc = desc.data();
+      version.desc_len = 512;
+      version.date = date.data();
+      version.date_len = 128;
+
+      if (ioctl(*fd, DRM_IOCTL_VERSION, &version) != 0)
+        throw std::runtime_error("Failed to get DRM version for device file " + drm_dev_name);
+
+      if (std::strncmp(version.name, ver_name.c_str(), ver_name.length()) != 0)
+        throw std::runtime_error("Driver DRM version check failed for device file " + drm_dev_name);
+
+      dev_map[device_count++] = type;
     }
-    result = std::strncmp(version.name, ver_name.c_str(), ver_name.length());
-    close(fd);
-    return (result == 0) ? true : false;
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", e.what());
+    }
   };
 
-  unsigned device_count = 0;
-  if (check_validity("/dev/dri/" + aiarm_render_devname, "AIARM")) {
-    dev_map[device_count++] = dev_type::aiarm;
-  }
-
-  if (check_validity("/dev/dri/" + zocl_render_devname, "zocl")) {
-    dev_map[device_count++] = dev_type::zocl;
-  }
+  validate_and_insert_in_map("/dev/dri/" + aiarm_render_devname, "AIARM", dev_type::aiarm);
+  validate_and_insert_in_map("/dev/dri/" + zocl_render_devname, "zocl", dev_type::zocl);
 
   return device_count;
 }
