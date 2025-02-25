@@ -273,7 +273,7 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Trace IPU updateDevice.");
 
-    // compile-time trace
+    // Make sure compiler trace option is available as runtime
     if (!metadata->getRuntimeMetrics())
       return;
 

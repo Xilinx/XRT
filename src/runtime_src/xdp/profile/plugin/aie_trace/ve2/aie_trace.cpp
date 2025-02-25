@@ -256,7 +256,7 @@ namespace xdp {
       return false;
     }
 
-    // Check compile-time trace
+    // Make sure compiler trace option is available as runtime
     if (!metadata->getRuntimeMetrics()) {
       return false;
     }
