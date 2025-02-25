@@ -273,7 +273,7 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Trace IPU updateDevice.");
 
-    // compile-time trace
+    // Make sure compiler trace option is available as runtime
     if (!metadata->getRuntimeMetrics())
       return;
 
@@ -1188,6 +1188,15 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
           cfgTile->core_trace_config.internal_events_broadcast[9] = phyEvent;
 
+          if(m_trace_start_broadcast)
+            traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastChId1);
+          else
+            traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
+          traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
+          firstBroadcastId = 10;
+        }
+
+        if (type == module_type::core) {
           // Only enable Core -> MEM. Block everything else in both modules
           if (XAie_EventBroadcastBlockMapDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, 0xFF00, XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_SOUTH) != XAIE_OK)
             break;
@@ -1197,13 +1206,6 @@ namespace xdp {
           for (uint8_t i = 8; i < 16; i++)
             if (XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, i, XAIE_EVENT_BROADCAST_EAST) != XAIE_OK)
               break;
-
-          if(m_trace_start_broadcast)
-            traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastChId1);
-          else
-            traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
-          traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
-          firstBroadcastId = 10;
         }
 
         // Configure event ports on stream switch
