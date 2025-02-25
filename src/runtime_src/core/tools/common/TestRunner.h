@@ -42,9 +42,9 @@ class TestRunner : public JSONConfigurable {
              boost::property_tree::ptree& _ptTest);
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
-    // xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf);
+    xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf);
     xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_name, 
-      const std::string& elf_path=""); 
+      const std::string& elf_path); 
 
     std::string m_xclbin;
  
