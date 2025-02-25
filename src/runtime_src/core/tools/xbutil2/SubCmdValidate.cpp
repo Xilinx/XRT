@@ -42,8 +42,6 @@
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 namespace XBU = XBUtilities;
 
-#include "core/common/unistd.h"
-
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
