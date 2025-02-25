@@ -607,8 +607,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   //get current performance mode
-  const auto curr_mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  const auto parsed_curr_mode = xrt_core::query::performance_mode::parse_status(curr_mode);
+  const auto og_pmode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
+  const auto parsed_og_pmode = xrt_core::query::performance_mode::parse_status(og_pmode);
+
+  auto is_curr_pmode_perf = [&]() {
+    auto tmp_pmode = xrt_core::query::performance_mode::parse_status(
+                     xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0));
+    return boost::iequals(tmp_pmode, "PERFORMANCE");
+  };
   //--pmode
   try {
     if (!options.m_pmode.empty()) {
@@ -631,11 +637,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       }
       XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % options.m_pmode));
     }
-    else if(!boost::iequals(parsed_curr_mode, "PERFORMANCE")) {
+    else if(!is_curr_pmode_perf()) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
       XBU::verbose("Setting power mode to `performance`\n");
-    }
-    
+    } 
   } catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   } catch(const xrt_core::error& e) {
@@ -644,7 +649,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
     if(boost::icontains(ex.what(), "Permission denied"))
-      std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") % parsed_curr_mode << std::endl;
+      std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") 
+                                    % parsed_og_pmode << std::endl;
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
@@ -652,8 +658,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   try {
     //reset pmode
-    if(!boost::iequals(parsed_curr_mode, "PERFORMANCE"))
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
+    if(!is_curr_pmode_perf())
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(og_pmode));
   } catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
   } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
