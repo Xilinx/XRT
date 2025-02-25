@@ -69,7 +69,7 @@ AieTrace_x86Impl::AieTrace_x86Impl(VPDatabase *database,
 }
 
 void AieTrace_x86Impl::updateDevice() {
-  // compile-time trace
+  // Make sure compiler trace option is available as runtime
   if (!metadata->getRuntimeMetrics()) {
     return;
   }
