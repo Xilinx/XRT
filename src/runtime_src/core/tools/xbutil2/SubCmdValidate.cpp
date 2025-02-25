@@ -42,6 +42,8 @@
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 namespace XBU = XBUtilities;
 
+#include "core/common/unistd.h"
+
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
@@ -606,6 +608,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   //get current performance mode
   const auto curr_mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
+  const auto parsed_curr_mode = xrt_core::query::performance_mode::parse_status(curr_mode);
   //--pmode
   try {
     if (!options.m_pmode.empty()) {
@@ -628,19 +631,20 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       }
       XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % options.m_pmode));
     }
-    else {
+    else if(!boost::iequals(parsed_curr_mode, "PERFORMANCE")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
       XBU::verbose("Setting power mode to `performance`\n");
     }
     
-  }
-  catch (const xrt_core::query::no_such_key&) {
+  } catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
-  }
-  catch(const xrt_core::error& e) {
+  } catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(boost::icontains(ex.what(), "Permission denied"))
+      std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") % parsed_curr_mode << std::endl;
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
@@ -648,9 +652,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   try {
     //reset pmode
-    xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
+    if(!boost::iequals(parsed_curr_mode, "PERFORMANCE"))
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
   } catch (const xrt_core::query::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(!boost::icontains(ex.what(), "Permission denied")) {
+      std::cerr << boost::format("\nERROR: %s\n") % ex.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
   }
 
   // -- Write output file ----------------------------------------------
