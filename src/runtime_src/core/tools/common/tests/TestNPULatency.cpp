@@ -15,9 +15,10 @@ namespace XBU = XBUtilities;
 
 #include <filesystem>
 
-static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 20;
 static constexpr int itr_count = 10000;
+
+static size_t host_app = 1; //opcode - default to be 1 for DPU sequence
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestNPULatency::TestNPULatency()
@@ -30,8 +31,24 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  // Check Whether Use ELF or DPU Sequence
+  auto elf = XBU::getElf();
+  if (!elf) 
+    XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
+  else 
+    XBValidateUtils::logger(ptree, "Details", "Using ELF");
+  
+  // Find xclbin File
+  std::string xclbin_path;
+  if (!elf) { // DPU
+    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  }
+  else { // ELF
+    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate_elf);
+    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  }
+
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
@@ -46,6 +63,24 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
+
+  // Determine The DPU Kernel Name
+  auto xkernels = xclbin.get_kernels();
+
+  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    auto name = k.get_name();
+    return name.rfind("DPU",0) == 0; // Starts with "DPU"
+  });
+
+  xrt::xclbin::kernel xkernel;
+  if (itr!=xkernels.end())
+    xkernel = *itr;
+  else {
+    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    return ptree;
+  }
+  auto kernelName = xkernel.get_name();
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -84,7 +119,8 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 	    run.set_arg(arg_idx, static_cast<uint32_t>(1));
     else if (arg.get_host_type().find('*') != std::string::npos) {
       xrt::bo bo;
-
+      std::cout << "arg_size: " << arg.get_size() << std::endl;
+      std::cout << "arg_size: " << arg.get_size() << std::endl;
       if (arg.get_name() == "instruct")
         bo = xrt::bo(hwctx, arg.get_size(), xrt::bo::flags::cacheable, testker.group_id(arg_idx));
       else 

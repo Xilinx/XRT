@@ -124,8 +124,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     host_app = 3; // Opcode 3 for ELF Flow
     const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::aie_reconfig_overhead);
     auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
-    const auto elf_nop_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
-    auto elf_nop_path = XBValidateUtils::findPlatformFile(elf_nop_name, ptree);
     
     if (!std::filesystem::exists(elf_path))
       return ptree;
@@ -133,7 +131,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     try {
       hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
       kernel = get_kernel(hwctx, kernelName, elf_path);
-      // kernel_no_op = get_kernel(hwctx, kernelName, elf_nop_path);
       kernel_no_op = get_kernel(hwctx, kernelName); 
     } 
     catch (const std::exception& )
