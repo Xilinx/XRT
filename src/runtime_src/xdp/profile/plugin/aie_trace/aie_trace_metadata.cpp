@@ -94,7 +94,7 @@ namespace xdp {
     if (!getRuntimeMetrics()) {
       std::stringstream msg;
       msg << "AIE trace will not be configured since design was not compiled with --event-trace=runtime."
-          << " If runtime configuration is desired, please use --event-trace=runtime."
+          << " If runtime configuration is desired, please use --event-trace=runtime.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return;
     }
