@@ -914,7 +914,7 @@ class module_elf_aie2p : public module_elf
       
       uint32_t index = get_section_name_index(name);
       buf.append_section_data(sec.get());
-      map.emplace(std::make_pair(index, std::make_pair(sec_index, buf)));
+      map.emplace(index, std::pair{sec_index, buf});
     }
   }
 
@@ -928,7 +928,7 @@ class module_elf_aie2p : public module_elf
       
       buf pdi_buf;
       pdi_buf.append_section_data(sec.get());
-      m_pdi_buf_map.emplace(std::make_pair(name, pdi_buf));
+      m_pdi_buf_map.emplace(name, pdi_buf);
     }
   }
 
@@ -1143,7 +1143,7 @@ public:
     auto it = m_instr_buf_map.find(index);
     if (it != m_instr_buf_map.end())
       return it->second;
-    return std::make_pair(UINT32_MAX, instr_buf::get_empty_buf());
+    return {UINT32_MAX, instr_buf::get_empty_buf()};
   }
 
   std::pair<uint32_t, const control_packet&>
@@ -1152,7 +1152,7 @@ public:
     auto it = m_ctrl_packet_map.find(index);
     if (it != m_ctrl_packet_map.end())
       return it->second;
-    return std::make_pair(UINT32_MAX, control_packet::get_empty_buf());
+    return {UINT32_MAX, control_packet::get_empty_buf()};
   }
 
   const std::set<std::string>&
