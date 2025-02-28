@@ -35,7 +35,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   // Check Whether Use ELF or DPU Sequence
-  auto elf = XBU::getElf();
+  auto elf = XBValidateUtils::getElf(dev, ptree);
   if (!elf) 
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
   else 

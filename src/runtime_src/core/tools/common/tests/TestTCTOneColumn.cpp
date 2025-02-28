@@ -32,7 +32,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  auto elf = XBU::getElf();
+  auto elf = XBValidateUtils::getElf(dev, ptree);
   if (!elf) 
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
   else 

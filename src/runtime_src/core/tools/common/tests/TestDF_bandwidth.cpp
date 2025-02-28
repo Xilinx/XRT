@@ -37,7 +37,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
   
   // Check Whether Use ELF or DPU Sequence
-  auto elf = XBU::getElf();
+  auto elf = XBValidateUtils::getElf(dev, ptree);
   if (!elf) 
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
   else 
@@ -104,7 +104,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     catch (const std::exception& )
     {
       XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
 
