@@ -186,9 +186,51 @@ static int ulite_receive(struct uart_port *port, int stat)
 	return 1;
 }
 
+/* commit 1788cf6a91d9 ("tty: serial: switch from circ_buf to kfifo") */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+static inline bool ulite_uart_is_empty(struct uart_port *p)
+{
+	return uart_circ_empty(&p->state->xmit);
+}
+static inline unsigned ulite_uart_pending(struct uart_port *p)
+{
+	return uart_circ_chars_pending(&p->state->xmit);
+}
+static inline int ulite_uart_pop_char(struct uart_port *port)
+{
+	struct circ_buf *xmit = &port->state->xmit;
+	u8 ret = xmit->buf[xmit->tail];
+
+	/*
+	 * When the tail of the circular buffer is reached, the next
+	 * byte is transferred to the beginning of the buffer.
+	 */
+	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE-1);
+	return ret;
+}
+#else
+static inline bool ulite_uart_is_empty(struct uart_port *p)
+{
+	return kfifo_is_empty(&p->state->port.xmit_fifo);
+}
+static inline unsigned ulite_uart_pending(struct uart_port *p)
+{
+	return kfifo_len(&p->state->port.xmit_fifo);
+}
+static inline int ulite_uart_pop_char(struct uart_port *port)
+{
+	struct tty_port *tport = &port->state->port;
+	u8 ret;
+
+	if (!kfifo_get(&tport->xmit_fifo, &ret))
+		return -1;
+	return ret;
+}
+#endif
+
 static int ulite_transmit(struct uart_port *port, int stat)
 {
-	struct circ_buf *xmit  = &port->state->xmit;
+	int ch;
 
 	if (stat & ULITE_STATUS_TXFULL)
 		return 0;
@@ -200,15 +242,17 @@ static int ulite_transmit(struct uart_port *port, int stat)
 		return 1;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (ulite_uart_is_empty(port) || uart_tx_stopped(port))
 		return 0;
 
-	uart_out32(xmit->buf[xmit->tail], ULITE_TX, port);
-	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE-1);
+	ch = ulite_uart_pop_char(port);
+	if (ch <= 0)
+		return 0;
+	uart_out32((char)ch, ULITE_TX, port);
 	port->icount.tx++;
 
 	/* wake up */
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+	if (ulite_uart_pending(port) < WAKEUP_CHARS)
 		uart_write_wakeup(port);
 
 	return 1;
@@ -564,7 +608,7 @@ done:
  * `return`.
  * https://elixir.bootlin.com/linux/latest/source/include/linux/platform_device.h#L211
  */
-static int ulite_remove(struct platform_device *pdev)
+static int __ulite_remove(struct platform_device *pdev)
 {
 	struct uart_port *port = platform_get_drvdata(pdev);
 	struct uartlite_data *pdata;
@@ -588,6 +632,15 @@ static int ulite_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void ulite_remove(struct platform_device *pdev)
+{
+	__ulite_remove(pdev);
+}
+#else
+#define ulite_remove __ulite_remove
+#endif
 
 struct xocl_drv_private ulite_priv = {
 	.ops = NULL,

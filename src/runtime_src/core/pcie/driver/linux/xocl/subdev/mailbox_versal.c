@@ -240,7 +240,7 @@ static struct xocl_mailbox_versal_funcs mailbox_versal_ops = {
 	.free_intr      = mailbox_versal_free_intr,
 };
 
-static int mailbox_versal_remove(struct platform_device *pdev)
+static int __mailbox_versal_remove(struct platform_device *pdev)
 {
 	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
 
@@ -251,6 +251,15 @@ static int mailbox_versal_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mailbox_versal_remove(struct platform_device *pdev)
+{
+	__mailbox_versal_remove(pdev);
+}
+#else
+#define mailbox_versal_remove __mailbox_versal_remove
+#endif
 
 static int mailbox_versal_probe(struct platform_device *pdev)
 {

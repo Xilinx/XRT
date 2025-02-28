@@ -312,7 +312,7 @@ failed:
 }
 
 
-static int xocl_ddr_srsr_remove(struct platform_device *pdev)
+static int __xocl_ddr_srsr_remove(struct platform_device *pdev)
 {
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
 
@@ -332,6 +332,15 @@ static int xocl_ddr_srsr_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xocl_ddr_srsr_remove(struct platform_device *pdev)
+{
+	__xocl_ddr_srsr_remove(pdev);
+}
+#else
+#define xocl_ddr_srsr_remove __xocl_ddr_srsr_remove
+#endif
 
 struct xocl_drv_private srsr_priv = {
 	.ops = &srsr_ops,

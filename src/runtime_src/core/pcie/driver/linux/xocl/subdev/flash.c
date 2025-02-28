@@ -1397,7 +1397,7 @@ static void sysfs_destroy_flash(struct xocl_flash *flash)
 		sysfs_remove_group(&flash->pdev->dev.kobj, &flash_attr_group);
 }
 
-static int flash_remove(struct platform_device *pdev)
+static int __flash_remove(struct platform_device *pdev)
 {
 	struct xocl_flash *flash;
 	void *hdl;
@@ -1421,6 +1421,15 @@ static int flash_remove(struct platform_device *pdev)
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void flash_remove(struct platform_device *pdev)
+{
+	__flash_remove(pdev);
+}
+#else
+#define flash_remove __flash_remove
+#endif
 
 static int flash_probe(struct platform_device *pdev)
 {
