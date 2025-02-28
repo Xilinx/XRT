@@ -74,18 +74,18 @@ namespace xdp {
   /****************************************************************************
    * Lookup register names, values and sizes given current AIE HW generation
    ***************************************************************************/
-  std::string AieDebugMetadata::lookupRegisterName(uint64_t regVal)
+  std::string AieDebugMetadata::lookupRegisterName(uint64_t regVal,module_type mod)
   {
-    return usedRegisters->getRegisterName(regVal);
+    return usedRegisters->getRegisterName(regVal, mod);
   }
 
-  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName)
+  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName,module_type mod)
   {
     return usedRegisters->getRegisterAddr(regName);
   }
-  std::map<uint64_t, uint32_t> AieDebugMetadata::lookupRegisterSizes()
+  uint32_t AieDebugMetadata::lookupRegisterSizes(uint64_t regVal,int mod)
   {
-    return usedRegisters->getRegAddrToSizeMap();
+    return usedRegisters->getRegAddrToSize(regVal,mod);
   }
 
   /****************************************************************************
@@ -139,13 +139,12 @@ namespace xdp {
     }
     else {
       // Find specific register names
-      uint64_t tmpRedAddr = lookupRegisterAddr(stringEntry);
+      uint64_t tmpRedAddr = lookupRegisterAddr(stringEntry, mod);
       if (tmpRedAddr != -1) {
         listofRegisters.push_back(tmpRedAddr);
       }
       else {
-        xrt_core::message::send(severity_level::warning, "XRT", "Unable to parse AIE debug metric settings. "
-          "Please enter register addresses, names, or trace_config|profile_config|all.");
+        xrt_core::message::send(severity_level::warning, "XRT", "abcdefg") ;
       }
       return listofRegisters;
     }

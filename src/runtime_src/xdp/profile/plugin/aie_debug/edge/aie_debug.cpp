@@ -112,9 +112,10 @@ namespace xdp {
         "AIE device instance is not available, so no debug polling will occur.");
       return;
     }
-    auto lookupRegAddrToSizeMap = metadata->lookupRegisterSizes();
+    //auto lookupRegAddrToSizeMap = metadata->lookupRegisterSizes();
     for (auto& tileAddr : debugTileMap) {
-      tileAddr.second->readValues(aieDevInst,&lookupRegAddrToSizeMap);
+      //tileAddr.second->readValues(aieDevInst,&lookupRegAddrToSizeMap);
+      tileAddr.second->readValues(aieDevInst,metadata);
       tileAddr.second->printValues(deviceID, db);
     }
   }
@@ -173,8 +174,8 @@ namespace xdp {
           if (debugTileMap.find(tile) == debugTileMap.end())
             debugTileMap[tile] = std::make_unique<EdgeReadableTile>(tile.col, tile.row, tileOffset);
 
-          auto regName = metadata->lookupRegisterName(regAddr);
-          debugTileMap[tile]->addOffsetName(regAddr, regName);
+          auto regName = metadata->lookupRegisterName(regAddr,mod);
+          debugTileMap[tile]->addOffsetName(regAddr, regName,mod);
         }
       }
     }
