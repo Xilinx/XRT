@@ -81,7 +81,8 @@ construct_validate_subcommand() const
     {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_option_description(validate_test_desc)},
     {"path", "p", "Path to the directory containing validate xclbins", "hidden", "", "string"},
     {"param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "hidden", "", "string"},
-    {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
+    {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}, 
+    {"elf", "", "Run the test in ELF mode", "hidden", "", "none"}
   };
 
   ptree options_ptree;

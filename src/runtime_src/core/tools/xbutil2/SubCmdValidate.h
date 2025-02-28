@@ -21,6 +21,7 @@ struct SubCmdValidateOptions {
   std::string m_xclbin_path;
   std::string m_pmode;
   std::vector<std::string> m_tests_to_run;
+  bool m_elf;
   bool m_help;
 };
 
