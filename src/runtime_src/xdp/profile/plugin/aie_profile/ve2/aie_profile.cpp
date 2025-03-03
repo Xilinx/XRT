@@ -433,7 +433,7 @@ namespace xdp {
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
             perfCounter = aie::profile::configProfileAPICounters(aieDevInst, aieDevice, metadata, xaieModule, 
                             mod, type, metricSet, startEvent, endEvent, resetEvent, i, perfCounters.size(),
-                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap);
+                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap, adfAPIBroadcastEventsMap);
           }
           else {
             // Request counter from resource manager
@@ -474,7 +474,7 @@ namespace xdp {
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
-                metadata->getModuleName(module), counterName);
+                metadata->getModuleName(module), counterName, tile.stream_ids[0]);
           counterId++;
           numCounters++;
         } // numFreeCtr
@@ -548,7 +548,7 @@ namespace xdp {
           uint32_t srcCounterValue = 0;
           uint32_t destCounterValue = 0;
           try {
-            std::string srcDestPairKey = metadata->getSrcDestPairKey(aie->column, aie->row);
+            std::string srcDestPairKey = metadata->getSrcDestPairKey(aie->column, aie->row, aie->streamId);
             uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
             uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
             auto srcPerfCount = perfCounters.at(srcPcIdx);

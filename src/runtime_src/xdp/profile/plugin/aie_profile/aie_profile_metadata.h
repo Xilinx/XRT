@@ -108,10 +108,12 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    std::map<tile_type, LatencyConfig> latencyConfigMap;
+
+    std::map<tileKey, LatencyConfig> latencyConfigMap;
     std::vector<std::pair<tile_type, std::string>> configMetricLatencyVec; // configuration order vector
-    std::map<tile_type, uint32_t> bytesTransferConfigMap;
     std::map<std::string, LatencyCache> keysCache;
+
+    std::map<tile_type, uint32_t> bytesTransferConfigMap;
     uint32_t defaultTransferBytes = 1;
 
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
@@ -189,7 +191,8 @@ class AieProfileMetadata {
                          uint8_t col2, uint8_t row2, uint8_t portID2);
     bool getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const;
     bool getDestTile(const tile_type& pairTyle, tile_type& destTile) const;
-    std::string getSrcDestPairKey(uint8_t col, uint8_t row);
+    bool getSrcTile(const tile_type& pairTyle, tile_type& srcTile) const;
+    std::string getSrcDestPairKey(uint8_t col, uint8_t row, uint8_t streamId);
     GraphPortPair getSrcDestGraphPair(const std::string& srcDestKey) const;
 
     std::vector<tile_type>

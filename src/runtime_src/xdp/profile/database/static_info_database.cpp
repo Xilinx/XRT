@@ -1075,14 +1075,14 @@ namespace xdp {
                                        uint16_t start, uint16_t end,
                                        uint8_t reset, uint64_t load,
                                        double freq, const std::string& mod,
-                                       const std::string& aieName)
+                                       const std::string& aieName, uint8_t streamId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
     deviceInfo[deviceId]->addAIECounter(i, col, row, num, start, end, reset,
-                                        load, freq, mod, aieName) ;
+                                        load, freq, mod, aieName, streamId) ;
   }
 
   void VPStaticDatabase::addAIECounterResources(uint64_t deviceId,
