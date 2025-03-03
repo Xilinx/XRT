@@ -433,7 +433,7 @@ namespace xdp {
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
             perfCounter = aie::profile::configProfileAPICounters(aieDevInst, aieDevice, metadata, xaieModule, 
                             mod, type, metricSet, startEvent, endEvent, resetEvent, i, perfCounters.size(),
-                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap);
+                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap, adfAPIBroadcastEventsMap);
           }
           else {
             // Request counter from resource manager
