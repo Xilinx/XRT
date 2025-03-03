@@ -716,6 +716,7 @@ struct xocl_rom_funcs {
 		size_t *fw_size);
 	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
 	char *(*get_uuid)(struct platform_device *pdev);
+	void (*set_vbnv_name)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -761,6 +762,8 @@ struct xocl_rom_funcs {
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
 #define xocl_rom_get_uuid(xdev)				\
 	(ROM_CB(xdev, get_uuid) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
+#define xocl_rom_set_vbnv_name(xdev)                   \
+	(ROM_CB(xdev, set_vbnv_name) ? ROM_OPS(xdev)->set_vbnv_name(ROM_DEV(xdev)) : NULL)
 
 /* version_ctrl callbacks */
 struct xocl_version_ctrl_funcs {

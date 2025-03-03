@@ -1098,6 +1098,11 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 	return kds_live_clients(&XDEV(xdev)->kds, plist);
 }
 
+u32 xocl_kds_get_open_clients(struct xocl_dev *xdev, pid_t **plist)
+{
+        return kds_get_open_clients(&XDEV(xdev)->kds, plist);
+}
+
 static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index,
 		uint32_t slot_id)
 {
