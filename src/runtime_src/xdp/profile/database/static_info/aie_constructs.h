@@ -101,7 +101,7 @@ namespace xdp {
     // For debugging function to print tile_type all fields stream_ids, is_master_vec using stringstream 
     friend std::ostream& operator<<(std::ostream& os, const tile_type& tile) {
       std::stringstream ss;
-      ss << "!!! Tile: " << +tile.col << "," << +tile.row << " Subtype: " << +tile.subtype;
+      ss << "Tile: " << +tile.col << "," << +tile.row << " Subtype: " << +tile.subtype;
       ss << " Stream IDs: ";
       for (auto id : tile.stream_ids) {
       ss << +id << " ";
