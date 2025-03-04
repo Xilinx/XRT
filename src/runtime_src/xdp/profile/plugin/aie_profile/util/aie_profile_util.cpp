@@ -18,6 +18,11 @@
 
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie4_attributes.h"
 
 #include <cmath>
 #include <cstring>
@@ -26,9 +31,6 @@
 
 #include "core/common/message.h"
 
-// ***************************************************************
-// Anonymous namespace for helper functions local to this file
-// ***************************************************************
 namespace xdp::aie::profile {
   using severity_level = xrt_core::message::severity_level;
 
@@ -59,7 +61,7 @@ namespace xdp::aie::profile {
                                    XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
 
-    if (hwGen == 1) {
+    if (xdp::aie::isAIE1(hwGen)) {
       eventSets["floating_point"]   = {XAIE_EVENT_FP_OVERFLOW_CORE,    XAIE_EVENT_FP_UNDERFLOW_CORE,
                                        XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
     } else {
@@ -84,7 +86,7 @@ namespace xdp::aie::profile {
       {"dma_locks",               {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}
     };
 
-    if (hwGen == 1) {
+    if (xdp::aie::isAIE1(hwGen)) {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
       eventSets["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
@@ -112,7 +114,12 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
+    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps:shim_num_counters
+                    : (xdp::aie::isAIE4(hwGen)  ? aie4:shim_num_counters 
+                    : aie2:shim_num_counters);
+
     std::map<std::string, std::vector<XAie_Events>> eventSets;
+
     eventSets = {
       {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
@@ -121,50 +128,50 @@ namespace xdp::aie::profile {
       {METRIC_LATENCY,              {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
-    if (hwGen == 1) {
-      eventSets["input_stalls"]   = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                     XAIE_EVENT_PORT_IDLE_0_PL};
-      eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                     XAIE_EVENT_PORT_IDLE_0_PL};
+    if (xdp::aie::isAIE1(hwGen)) {
+      eventSets["input_stalls"]        = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                          XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"]       = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                          XAIE_EVENT_PORT_IDLE_0_PL};
     }
-#ifdef XDP_VE2_BUILD
-    else if (hwGen == 5) {
-      eventSets["input_stalls"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                     XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      eventSets["output_stalls"]  = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                     XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL};
-      eventSets["input_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
-      eventSets["output_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
+    else if (xdp::aie::isAIE2(hwGen)) {
+      eventSets["input_stalls"]        = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"]       = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
-#endif
-    else {
-      eventSets["input_stalls"]   = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      eventSets["output_stalls"]  = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                     XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
+    else if (xdp::aie::isAIE2ps(hwGen)) {
+      eventSets["input_stalls"]       = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,
+                                         XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
+                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL,
+                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STALLED_LOCK_PL};
+      eventSets["output_stalls"]      = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,
+                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL, 
+                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
+                                         XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL,
+                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STREAM_STARVATION_PL,
+                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL};
+      eventSets["input_throughputs"]  = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL, 
+                                         XAIE_EVENT_PORT_RUNNING_0_PL,
+                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL, 
+                                         XAIE_EVENT_PORT_RUNNING_1_PL};
+      eventSets["output_throughputs"] = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
+                                         XAIE_EVENT_PORT_RUNNING_0_PL,
+                                         XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL,
+                                         XAIE_EVENT_PORT_RUNNING_1_PL};
+    }
+    else if (isAIE4(hwGen)) {
+
     }
 
     // Microcontroller sets
-    if (hwGen >= 5) {
-#ifdef XDP_CLIENT_BUILD
-      // eventSets["uc_dma_activity"] = {
-      //     XAIE_EVENT_UC_DMA_DM2MM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_DM2MM_A_LOCAL_MEMORY_STARVATION,
-	    //     XAIE_EVENT_UC_DMA_DM2MM_A_REMOTE_MEMORY_BACKPRESSURE,
-      //     XAIE_EVENT_UC_DMA_MM2DM_A_FINISHED_BD,           XAIE_EVENT_UC_DMA_MM2DM_A_LOCAL_MEMORY_STARVATION,
-	    //     XAIE_EVENT_UC_DMA_MM2DM_A_REMOTE_MEMORY_BACKPRESSURE};
-      // eventSets["uc_axis_throughputs"] = {
-      //     XAIE_EVENT_UC_CORE_AXIS_MASTER_RUNNING,          XAIE_EVENT_UC_CORE_AXIS_MASTER_STALLED,
-      //     XAIE_EVENT_UC_CORE_AXIS_MASTER_TLAST,
-	    //     XAIE_EVENT_UC_CORE_AXIS_SLAVE_RUNNING,           XAIE_EVENT_UC_CORE_AXIS_SLAVE_STALLED,
-      //     XAIE_EVENT_UC_CORE_AXIS_SLAVE_TLAST};
-      // eventSets["uc_core"] = {
-      //     XAIE_EVENT_UC_CORE_REG_WRITE,                    XAIE_EVENT_UC_CORE_JUMP_TAKEN,
-      //     XAIE_EVENT_UC_CORE_DATA_READ,                    XAIE_EVENT_UC_CORE_DATA_WRITE,
-      //     XAIE_EVENT_UC_CORE_STREAM_GET,                   XAIE_EVENT_UC_CORE_STREAM_PUT};
-      eventSets["uc_dma_activity"] = {};
-      eventSets["uc_axis_throughputs"] = {};
-      eventSets["uc_core"] = {};
-#else
+    if (xdp::aie::isMicroSupported(hwGen)) {
       eventSets["uc_dma_activity"] = {
           XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
@@ -179,7 +186,6 @@ namespace xdp::aie::profile {
           XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
           XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
           XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
-#endif
     }
     else {
       eventSets["uc_dma_activity"] = {};
@@ -235,7 +241,7 @@ namespace xdp::aie::profile {
                                    XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
     };
 
-    if (hwGen < 40) {
+    if (!xdp::aie::isAIE4(hwGen)) {
       eventSets["conflict_stats1"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
@@ -256,20 +262,14 @@ namespace xdp::aie::profile {
         XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
-#ifdef XDP_CLIENT_BUILD
       // Banks 16-23 are not defined for all generations
-      // eventSets["conflict_stats2"] = {
-      //   XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-      //   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
-      //   XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
-      //   XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
-      //   XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
-      //   XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
-#else
       eventSets["conflict_stats2"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
-#endif
+        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+        XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
       eventSets["conflict_stats3"] = {};
       eventSets["conflict_stats4"] = {};
     }
@@ -285,17 +285,13 @@ namespace xdp::aie::profile {
 
   /****************************************************************************
    * Get metric sets for microcontrollers
-   * TODO: convert to XAie_Events once support is available from driver
    ***************************************************************************/
-  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen)
-  std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen)
+  std::map<std::string, std::vector<uint8_t>> getMicrocontrollerEventSets(const int hwGen)
   {
-    //std::map<std::string, std::vector<XAie_Events>> eventSets;
-    std::map<std::string, std::vector<uint32_t>> eventSets;
-    if (hwGen < 5)
+    std::map<std::string, std::vector<uint8_t>> eventSets;
+    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
       return eventSets;
 
-    // TODO: replace with enums once driver supports the MDM
     eventSets = {
       {"execution",               {16, 17, 18, 19, 20, 62}},
       {"interrupt_stalls",        {23, 24, 25, 26, 27, 57}},
@@ -381,7 +377,7 @@ namespace xdp::aie::profile {
 
     // Calculate throughput differently for PLIO or AIE1 devices
     // since DMA-related events are not defined in those cases
-    if ((subtype == io_type::PLIO) || (hwGen == 1)) {
+    if ((subtype == io_type::PLIO) || xdp::aie::isAIE1(hwGen)) {
       std::replace(events.begin(), events.end(), 
         XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,              XAIE_EVENT_PORT_STALLED_0_PL);
       std::replace(events.begin(), events.end(), 
@@ -397,7 +393,7 @@ namespace xdp::aie::profile {
     // Modify events based on channel number
     if (channel > 0) {
       // Interface tiles
-#ifdef XDP_VE2_BUILD
+      // VE2 devices
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
       std::replace(events.begin(), events.end(), 
@@ -406,7 +402,7 @@ namespace xdp::aie::profile {
           XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
-#else
+      // All other devices
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
       std::replace(events.begin(), events.end(), 
@@ -415,168 +411,6 @@ namespace xdp::aie::profile {
           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,       XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,         XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
-#endif
-    }
-  }
-
-  /****************************************************************************
-   * Check if stream switch port event
-   ***************************************************************************/
-  bool isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    if (isPortRunningEvent(event) || isPortStalledEvent(event) ||
-        isPortIdleEvent(event) || isPortTlastEvent(event))
-      return true;
-
-    return false;
-  }
-
-  /****************************************************************************
-   * Check if port running event
-   ***************************************************************************/
-  bool isPortRunningEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> runningEvents = {
-      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
-      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
-      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
-      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
-      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
-      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
-      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
-      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
-      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
-    };
-
-    return (runningEvents.find(event) != runningEvents.end());
-  }
-
-  /****************************************************************************
-   * Check if port stalled event
-   ***************************************************************************/
-  bool isPortStalledEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> stalledEvents = {
-      XAIE_EVENT_PORT_STALLED_0_CORE,     XAIE_EVENT_PORT_STALLED_1_CORE,
-      XAIE_EVENT_PORT_STALLED_2_CORE,     XAIE_EVENT_PORT_STALLED_3_CORE,
-      XAIE_EVENT_PORT_STALLED_4_CORE,     XAIE_EVENT_PORT_STALLED_5_CORE,
-      XAIE_EVENT_PORT_STALLED_6_CORE,     XAIE_EVENT_PORT_STALLED_7_CORE,
-      XAIE_EVENT_PORT_STALLED_0_PL,       XAIE_EVENT_PORT_STALLED_1_PL,
-      XAIE_EVENT_PORT_STALLED_2_PL,       XAIE_EVENT_PORT_STALLED_3_PL,
-      XAIE_EVENT_PORT_STALLED_4_PL,       XAIE_EVENT_PORT_STALLED_5_PL,
-      XAIE_EVENT_PORT_STALLED_6_PL,       XAIE_EVENT_PORT_STALLED_7_PL,
-      XAIE_EVENT_PORT_STALLED_0_MEM_TILE, XAIE_EVENT_PORT_STALLED_1_MEM_TILE,
-      XAIE_EVENT_PORT_STALLED_2_MEM_TILE, XAIE_EVENT_PORT_STALLED_3_MEM_TILE,
-      XAIE_EVENT_PORT_STALLED_4_MEM_TILE, XAIE_EVENT_PORT_STALLED_5_MEM_TILE,
-      XAIE_EVENT_PORT_STALLED_6_MEM_TILE, XAIE_EVENT_PORT_STALLED_7_MEM_TILE
-    };
-
-    return (stalledEvents.find(event) != stalledEvents.end());
-  }
-
-  /****************************************************************************
-   * Check if port idle event
-   ***************************************************************************/
-  bool isPortIdleEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> idleEvents = {
-      XAIE_EVENT_PORT_IDLE_0_CORE,     XAIE_EVENT_PORT_IDLE_1_CORE,
-      XAIE_EVENT_PORT_IDLE_2_CORE,     XAIE_EVENT_PORT_IDLE_3_CORE,
-      XAIE_EVENT_PORT_IDLE_4_CORE,     XAIE_EVENT_PORT_IDLE_5_CORE,
-      XAIE_EVENT_PORT_IDLE_6_CORE,     XAIE_EVENT_PORT_IDLE_7_CORE,
-      XAIE_EVENT_PORT_IDLE_0_PL,       XAIE_EVENT_PORT_IDLE_1_PL,
-      XAIE_EVENT_PORT_IDLE_2_PL,       XAIE_EVENT_PORT_IDLE_3_PL,
-      XAIE_EVENT_PORT_IDLE_4_PL,       XAIE_EVENT_PORT_IDLE_5_PL,
-      XAIE_EVENT_PORT_IDLE_6_PL,       XAIE_EVENT_PORT_IDLE_7_PL,
-      XAIE_EVENT_PORT_IDLE_0_MEM_TILE, XAIE_EVENT_PORT_IDLE_1_MEM_TILE,
-      XAIE_EVENT_PORT_IDLE_2_MEM_TILE, XAIE_EVENT_PORT_IDLE_3_MEM_TILE,
-      XAIE_EVENT_PORT_IDLE_4_MEM_TILE, XAIE_EVENT_PORT_IDLE_5_MEM_TILE,
-      XAIE_EVENT_PORT_IDLE_6_MEM_TILE, XAIE_EVENT_PORT_IDLE_7_MEM_TILE
-    };
-
-    return (idleEvents.find(event) != idleEvents.end());
-  }
-
-  /****************************************************************************
-   * Check if port Tlast event
-   ***************************************************************************/
-  bool isPortTlastEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> tlastEvents = {
-      XAIE_EVENT_PORT_TLAST_0_CORE,     XAIE_EVENT_PORT_TLAST_1_CORE,
-      XAIE_EVENT_PORT_TLAST_2_CORE,     XAIE_EVENT_PORT_TLAST_3_CORE,
-      XAIE_EVENT_PORT_TLAST_4_CORE,     XAIE_EVENT_PORT_TLAST_5_CORE,
-      XAIE_EVENT_PORT_TLAST_6_CORE,     XAIE_EVENT_PORT_TLAST_7_CORE,
-      XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL,
-      XAIE_EVENT_PORT_TLAST_2_PL,       XAIE_EVENT_PORT_TLAST_3_PL,
-      XAIE_EVENT_PORT_TLAST_4_PL,       XAIE_EVENT_PORT_TLAST_5_PL,
-      XAIE_EVENT_PORT_TLAST_6_PL,       XAIE_EVENT_PORT_TLAST_7_PL,
-      XAIE_EVENT_PORT_TLAST_0_MEM_TILE, XAIE_EVENT_PORT_TLAST_1_MEM_TILE,
-      XAIE_EVENT_PORT_TLAST_2_MEM_TILE, XAIE_EVENT_PORT_TLAST_3_MEM_TILE,
-      XAIE_EVENT_PORT_TLAST_4_MEM_TILE, XAIE_EVENT_PORT_TLAST_5_MEM_TILE,
-      XAIE_EVENT_PORT_TLAST_6_MEM_TILE, XAIE_EVENT_PORT_TLAST_7_MEM_TILE
-    };
-
-    return (tlastEvents.find(event) != tlastEvents.end());
-  }
-
-  uint8_t getPortNumberFromEvent(const XAie_Events event)
-  {
-    switch (event) {
-    case XAIE_EVENT_PORT_RUNNING_7_CORE:
-    case XAIE_EVENT_PORT_STALLED_7_CORE:
-    case XAIE_EVENT_PORT_IDLE_7_CORE:
-    case XAIE_EVENT_PORT_RUNNING_7_PL:
-    case XAIE_EVENT_PORT_STALLED_7_PL:
-    case XAIE_EVENT_PORT_IDLE_7_PL:
-      return 7;
-    case XAIE_EVENT_PORT_RUNNING_6_CORE:
-    case XAIE_EVENT_PORT_STALLED_6_CORE:
-    case XAIE_EVENT_PORT_IDLE_6_CORE:
-    case XAIE_EVENT_PORT_RUNNING_6_PL:
-    case XAIE_EVENT_PORT_STALLED_6_PL:
-    case XAIE_EVENT_PORT_IDLE_6_PL:
-      return 6;
-    case XAIE_EVENT_PORT_RUNNING_5_CORE:
-    case XAIE_EVENT_PORT_STALLED_5_CORE:
-    case XAIE_EVENT_PORT_IDLE_5_CORE:
-    case XAIE_EVENT_PORT_RUNNING_5_PL:
-    case XAIE_EVENT_PORT_STALLED_5_PL:
-    case XAIE_EVENT_PORT_IDLE_5_PL:
-      return 5;
-    case XAIE_EVENT_PORT_RUNNING_4_CORE:
-    case XAIE_EVENT_PORT_STALLED_4_CORE:
-    case XAIE_EVENT_PORT_IDLE_4_CORE:
-    case XAIE_EVENT_PORT_RUNNING_4_PL:
-    case XAIE_EVENT_PORT_STALLED_4_PL:
-    case XAIE_EVENT_PORT_IDLE_4_PL:
-      return 4;
-    case XAIE_EVENT_PORT_RUNNING_3_CORE:
-    case XAIE_EVENT_PORT_STALLED_3_CORE:
-    case XAIE_EVENT_PORT_IDLE_3_CORE:
-    case XAIE_EVENT_PORT_RUNNING_3_PL:
-    case XAIE_EVENT_PORT_STALLED_3_PL:
-    case XAIE_EVENT_PORT_IDLE_3_PL:
-      return 3;
-    case XAIE_EVENT_PORT_RUNNING_2_CORE:
-    case XAIE_EVENT_PORT_STALLED_2_CORE:
-    case XAIE_EVENT_PORT_IDLE_2_CORE:
-    case XAIE_EVENT_PORT_RUNNING_2_PL:
-    case XAIE_EVENT_PORT_STALLED_2_PL:
-    case XAIE_EVENT_PORT_IDLE_2_PL:
-      return 2;
-    case XAIE_EVENT_PORT_RUNNING_1_CORE:
-    case XAIE_EVENT_PORT_STALLED_1_CORE:
-    case XAIE_EVENT_PORT_IDLE_1_CORE:
-    case XAIE_EVENT_PORT_RUNNING_1_PL:
-    case XAIE_EVENT_PORT_STALLED_1_PL:
-    case XAIE_EVENT_PORT_IDLE_1_PL:
-      return 1;
-    default:
-      return 0;
     }
   }
 
@@ -713,13 +547,12 @@ namespace xdp::aie::profile {
 
   /****************************************************************************
    * Configure counters in Microblaze Debug Module (MDM)
-   * TODO: convert to using XAie_Events once support is available from driver
    ***************************************************************************/
   void configMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
-                         const std::vector<uint32_t> events)
+                         const std::vector<uint8_t> events)
   {
     // Ensure supported generation and not privileged
-    if (hwGen < 5) 
+    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
       return;
 
     uint32_t val;
@@ -758,7 +591,7 @@ namespace xdp::aie::profile {
                        std::vector<uint64_t>& values)
   {
     // Ensure supported generation and not privileged
-    if (hwGen < 5) 
+    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
       return;
 
     uint32_t val;
@@ -790,12 +623,12 @@ namespace xdp::aie::profile {
     std::vector<bool> overflows;
     uint32_t numCounters = UC_NUM_EVENT_COUNTERS + UC_NUM_LATENCY_COUNTERS;
     for (uint32_t c=0; c < numCounters; ++c) {
-      uint32_t val1;
-      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCSR, &val1);
-      bool overflow = (((val1 >> UC_MDM_PCSR_OVERFLOW_BIT) & 0x1) == 1);
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCSR, &val);
+      bool overflow = (((val >> UC_MDM_PCSR_OVERFLOW_BIT) & 0x1) == 1);
       overflows.push_back(overflow);
 
-      if ((val1 >> UC_MDM_PCSR_FULL_BIT) & 0x1) {
+      if ((val >> UC_MDM_PCSR_FULL_BIT) & 0x1) {
         std::cout << "Full bit of tile " << col << "," << row << " microcontroller counter " 
                   << c << " is high" << std::endl;
       }
@@ -806,9 +639,9 @@ namespace xdp::aie::profile {
 
     // 5. Read values of event counters
     for (uint32_t c=0; c < UC_NUM_EVENT_COUNTERS; ++c) {
-      uint32_t val1;
-      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val1);
-      uint64_t val2 = (overflows.at(c)) ? (val1 + OVERFLOW_32BIT) : val1;
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
+      uint64_t val2 = (overflows.at(c)) ? (val + OVERFLOW_32BIT) : val;
       values.push_back(val2);
     }
 
@@ -820,9 +653,9 @@ namespace xdp::aie::profile {
     //             15:0  Maximum measured latency, 16 bits
     std::vector<uint64_t> latencyValues;
     for (uint32_t c=0; c < UC_MDM_PCDRR_LATENCY_READS; ++c) {
-      uint32_t val1;
-      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val1);
-      uint64_t val2 = (overflows.at(UC_NUM_EVENT_COUNTERS)) ? (val1 + OVERFLOW_32BIT) : val1;
+      uint32_t val;
+      XAie_Read32(aieDevInst, tileOffset + UC_MDM_PCDRR, &val);
+      uint64_t val2 = (overflows.at(UC_NUM_EVENT_COUNTERS)) ? (val + OVERFLOW_32BIT) : val;
       latencyValues.push_back(val2);
     }
 

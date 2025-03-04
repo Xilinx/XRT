@@ -26,6 +26,7 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/plugin/aie_base/aie_utlity.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
@@ -60,15 +61,14 @@ namespace xdp {
 
     // Get generation-specific register locations
     auto hwGen = getHardwareGen();
-    if (hwGen == 1) {
+    if (aie::isAIE1(hwGen))
       usedRegisters = std::make_unique<AIE1UsedRegisters>();
-    }
-    else if (hwGen == 5) {
-      usedRegisters = std::make_unique<AIE2psUsedRegisters>();
-    }
-    else if ((hwGen > 1) && (hwGen < 10)) {
+    else if (aie::isAIE2(hwGen))
       usedRegisters = std::make_unique<AIE2UsedRegisters>();
-    }
+    else if (aie::isAIE2ps(hwGen))
+      usedRegisters = std::make_unique<AIE2psUsedRegisters>();
+    else if (aie::isAIE4(hwGen))
+      usedRegisters = std::make_unique<AIE4UsedRegisters>();
   }
 
   /****************************************************************************
