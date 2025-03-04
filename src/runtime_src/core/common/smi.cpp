@@ -43,18 +43,15 @@ to_ptree() const
 }
 
 smi_base::
-smi_base()
-{
-
-  examine_report_desc = {
+smi_base() : 
+  examine_report_desc {
     {"host", "Host information", "common"}
-  };
-
-  configure_options = {
+  },
+  configure_options {
     {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"}
-  };
-}
+  }
+{}
 
 std::vector<basic_option> 
 smi_base::
