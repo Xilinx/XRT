@@ -80,7 +80,7 @@ namespace xdp {
     return usedRegisters->getRegisterName(regVal, mod);
   }
 
-  std::optional<uint64_t> AieDebugMetadata::lookupRegisterAddr(std::string regName,module_type mod)
+  std::optional<uint64_t> AieDebugMetadata::lookupRegisterAddr(const std::string& regName,module_type mod)
   {
     if (mod==module_type::core && regName.rfind("cm_", 0) != 0) {
         xrt_core::message::send(severity_level::warning, "XRT", "Register"

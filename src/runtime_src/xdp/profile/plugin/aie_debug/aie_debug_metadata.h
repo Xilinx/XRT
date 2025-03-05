@@ -85,7 +85,7 @@ class AieDebugMetadata {
     }
 
     std::string lookupRegisterName(uint64_t regVal, module_type mod);
-    std::optional<uint64_t> lookupRegisterAddr(std::string regName, module_type mod);
+    std::optional<uint64_t> lookupRegisterAddr(const std::string& regName, module_type mod);
     //std::map<uint64_t, uint32_t> lookupRegisterSizes();
     uint32_t lookupRegisterSizes(uint64_t regVal,module_type mod);
 
