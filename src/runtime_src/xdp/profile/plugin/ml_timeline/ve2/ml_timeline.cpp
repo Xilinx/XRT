@@ -23,8 +23,6 @@
 #include <fstream>
 #include <regex>
 
-#include "shim/shim.h"
-
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/device.h"

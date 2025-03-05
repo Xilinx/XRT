@@ -338,7 +338,7 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 {
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     update_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
     finish_flush_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
   #else
@@ -473,11 +473,23 @@ update_device(void* handle)
   if (xrt_core::config::get_ml_timeline()) {
     try {
       xrt_core::xdp::ml_timeline::load();
+      xrt_core::xdp::ml_timeline::update_device(handle);
     }
     catch (...) {
       return;
     }
     xrt_core::xdp::ml_timeline::update_device(handle);
+  }
+
+  if (xrt_core::config::get_aie_halt()) {
+    try {
+      xrt_core::xdp::aie::halt::load();
+      xrt_core::xdp::aie::halt::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Halt library.");  
+    }    
   }
 
 #else
@@ -518,6 +530,8 @@ finish_flush_device(void* handle)
 
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
+  if (xrt_core::config::get_aie_halt())
+    xrt_core::xdp::aie::halt::finish_flush_device(handle);
 
 #else
 
