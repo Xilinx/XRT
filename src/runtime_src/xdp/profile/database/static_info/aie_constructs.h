@@ -24,6 +24,7 @@
 #include <vector>
 #include "xdp/profile/device/tracedefs.h"
 #include <iostream>
+#include <sstream>
 
 namespace xdp::aie {
   struct aiecompiler_options
@@ -86,6 +87,33 @@ namespace xdp {
       if (row != tile.row) return row < tile.row;
       return subtype < tile.subtype;
     }
+
+     // Function to get the first stream_id
+    uint8_t getFirstStreamId() const {
+      return stream_ids.empty() ? 0 : stream_ids[0];
+    }
+
+    // Function to get the first is_master value
+    uint8_t getFirstIsMaster() const {
+      return is_master_vec.empty() ? 0 : is_master_vec[0];
+    }
+
+    // For debugging function to print tile_type all fields stream_ids, is_master_vec using stringstream 
+    friend std::ostream& operator<<(std::ostream& os, const tile_type& tile) {
+      std::stringstream ss;
+      ss << "Tile: " << +tile.col << "," << +tile.row << " Subtype: " << +tile.subtype;
+      ss << " Stream IDs: ";
+      for (auto id : tile.stream_ids) {
+      ss << +id << " ";
+      }
+      ss << " Master: ";
+      for (auto master : tile.is_master_vec) {
+      ss << +master << " ";
+      }
+      os << ss.str();
+      return os;
+    }
+
   };
 
   struct compareTileByLoc {
@@ -155,11 +183,12 @@ namespace xdp {
     double clockFreqMhz;
     std::string module;
     std::string name;
+    uint8_t streamId;
 
     AIECounter(uint32_t i, uint8_t col, uint8_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
                uint64_t load, double freq, const std::string& mod, 
-               const std::string& aieName)
+               const std::string& aieName, uint8_t id=0)
       : id(i)
       , column(col)
       , row(r)
@@ -171,6 +200,7 @@ namespace xdp {
       , clockFreqMhz(freq)
       , module(mod)
       , name(aieName)
+      , streamId(id)
     {}
   };
 
@@ -343,6 +373,58 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  // Flattened key structure for tile_type or graph:port pair
+  struct tileKey {
+    uint8_t row;
+    uint8_t col;
+    uint8_t stream_id;
+    uint8_t is_master;
+    uint64_t itr_mem_addr;
+    bool active_core;
+    bool active_memory;
+    bool is_trigger;
+    io_type subtype;
+
+    bool operator<(const tileKey& other) const {
+      return std::tie(row, col, stream_id, is_master, itr_mem_addr, active_core, 
+              active_memory, is_trigger, subtype) <
+         std::tie(other.row, other.col, other.stream_id, other.is_master, 
+              other.itr_mem_addr, other.active_core, other.active_memory, 
+              other.is_trigger, other.subtype);
+    }
+
+    bool operator==(const tileKey& other) const {
+      return (row == other.row) && (col == other.col) && 
+             (stream_id == other.stream_id) && (is_master == other.is_master) &&
+             (itr_mem_addr == other.itr_mem_addr) && (active_core == other.active_core) &&
+             (active_memory == other.active_memory) && (is_trigger == other.is_trigger) &&
+             (subtype == other.subtype);
+    }
+
+    // Debug method to print the tileKey
+    friend std::ostream& operator<<(std::ostream& os, const tileKey& key) {
+      os << "TileKey: (" << +key.col << ", " << +key.row << ", " << +key.stream_id << ", " << +key.is_master
+       << ", " << +key.itr_mem_addr << ", " << key.active_core << ", " << key.active_memory << ", " << key.is_trigger
+       << ", " << (int)key.subtype << ")";
+      return os;
+    }
+  };
+
+  // Function to create a tileKey from a tile_type
+  inline tileKey create_tileKey(const tile_type& tile) {
+    return tileKey{
+      tile.row,
+      tile.col,
+      tile.getFirstStreamId(),
+      tile.getFirstIsMaster(),
+      tile.itr_mem_addr,
+      tile.active_core,
+      tile.active_memory,
+      tile.is_trigger,
+      tile.subtype
+    };
+  }
+
   struct GraphPortPair {
     std::string srcGraphName;
     std::string srcGraphPort;
@@ -365,7 +447,6 @@ namespace xdp {
       std::string metricSet;
       uint32_t tranx_no;
       bool isSource;
-      uint8_t portId;
       GraphPortPair graphPortPair;
 
       LatencyConfig() = default;
@@ -373,7 +454,6 @@ namespace xdp {
                     std::string g1, std::string p1, std::string g2, std::string p2) :
                     src(s), dest(d), metricSet(m), tranx_no(t), isSource(i),
                     graphPortPair(g1, p1, g2, p2) {}
-      void updatePortId(uint8_t& id) { portId=id; }
   };
 
   struct LatencyCache
@@ -391,7 +471,7 @@ namespace xdp {
     using tile_vec     = std::vector<std::map<tile_type, std::string>>;
     using tile_channel = std::map<tile_type, uint8_t>;
     using tile_bytes   = std::map<tile_type, uint32_t>;
-    using tile_latencyMap = std::map<tile_type, LatencyConfig>;
+    using tile_latencyMap = std::map<tileKey, LatencyConfig>;
 
     tile_vec configMetrics;
     tile_channel configChannel0;
@@ -408,6 +488,26 @@ namespace xdp {
                           configChannel1(cc1), tileRowOffset(offset),
                           bytesTransferConfigMap(byteMap), latencyConfigMap(latencyMap) {}
   };
+
+  // Structure to hold the graph/port pair for latency
+  struct latency_payload {
+    uint8_t col1;
+    uint8_t row1;
+    uint8_t portID1;
+    uint8_t col2;
+    uint8_t row2;
+    uint8_t portID2;
+
+    // print using << operator
+    friend std::ostream& operator<<(std::ostream& os, const latency_payload& payload) {
+      os << "col1: " << +payload.col1 << ", row1: " << +payload.row1
+        << ", portID1: " << +payload.portID1 << ", col2: " << +payload.col2
+        << ", row2: " << +payload.row2 << ", portID2: " << +payload.portID2;
+      return os;
+    }
+  };
+
+
 
 } // end namespace xdp
 
