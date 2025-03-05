@@ -82,7 +82,7 @@ namespace xdp {
         else if (i == module_type::shim && elm.second == METRIC_LATENCY) {
           if(validConfig.latencyConfigMap.find(create_tileKey(elm.first)) != validConfig.latencyConfigMap.end())
             metrics.back() += "," + std::to_string(+validConfig.latencyConfigMap.at(create_tileKey(elm.first)).tranx_no) +
-                              "," + std::to_string(+elm.first.stream_ids[0]);
+                      "," + (elm.first.stream_ids.size() > 0 ? std::to_string(+elm.first.stream_ids[0]) : "0");
         }
       }
       filteredConfig[static_cast<module_type>(i)] = metrics;
