@@ -33,7 +33,7 @@ jobs:
         clang-tidy-html build.clangtidy.log
     - name: Upload clang raw log
       if: steps.cache-sha.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: clang-tidy-log
         path: build.clangtidy.log
