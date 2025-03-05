@@ -27,10 +27,12 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <numeric>
 #include <map>
+#include <memory>
 #include <regex>
 #include <set>
 #include <string>
@@ -370,14 +372,13 @@ demangle(const std::string& mangled_name)
     throw std::runtime_error("Error demangling kernel signature");
 #else
   int status = 0;
-  char* demangled_name = abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr,  &status);
+  std::unique_ptr<char, decltype(&std::free)> demangled_name
+    (abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr, &status), std::free);
 
   if (status)
     throw std::runtime_error("Error demangling kernel signature");
 
-  std::string result {demangled_name};
-  std::free(demangled_name); // Free the allocated memory by api
-  return result;
+  return demangled_name.get();
 #endif
 }
 
