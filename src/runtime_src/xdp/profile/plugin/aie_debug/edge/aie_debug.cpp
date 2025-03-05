@@ -76,6 +76,39 @@ namespace xdp {
   using tile_type = xdp::tile_type;
   using module_type = xdp::module_type;
 
+
+  /****************************************************************************
+   * Reads the value at all the registers
+   ***************************************************************************/
+  void EdgeReadableTile::readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata)
+  {
+    std::vector<uint64_t>* addrVectors[] = {&coreRelativeOffsets, &memoryRelativeOffsets, &shimRelativeOffsets, &memTileRelativeOffsets};
+    std::vector<xdp::aie::AieDebugValue>* valueVectors[] = {&coreValues, &memoryValues, &shimValues, &memTileValues};
+    for (int i = 0; i < NUMBEROFMODULES ; ++i) {
+      //Iterating over the relative offsets of the corresponding module type
+      auto relOffsets = *(addrVectors[i]);
+      for (int j = 0; j < relOffsets.size(); ++j) {
+        xdp::aie::AieDebugValue value;
+        uint32_t loopnum = 0;
+        uint32_t regBitSize = metadata->lookupRegisterSizes(relOffsets[j],static_cast<module_type>(i));
+        if(regBitSize!=DEFAULT_REGISTER_SIZE) {
+          loopnum = std::ceil(static_cast<double>(regBitSize) / static_cast<double>(32));
+          value.sizeInBits = regBitSize;
+        } else {
+          loopnum = 1;
+          value.sizeInBits = DEFAULT_REGISTER_SIZE;
+        }
+        value.moduleType= i;
+        for (int k = 0; k < loopnum; k++){
+          uint32_t val = 0;
+          XAie_Read32(aieDevInst, relOffsets[j] + tileOffset + 4*k, &val);
+          value.dataValue.push_back(val);
+        }
+        valueVectors[i]->push_back(value);
+      }
+    }
+  }
+
   /****************************************************************************
    * Edge constructor
    ***************************************************************************/
@@ -119,6 +152,7 @@ namespace xdp {
       tileAddr.second->printValues(deviceID, db);
     }
   }
+
 
   /****************************************************************************
    * Update device

@@ -16,8 +16,9 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "aie_debug_metadata.h"
 
+
+#include "aie_debug_metadata.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -79,11 +80,32 @@ namespace xdp {
     return usedRegisters->getRegisterName(regVal, mod);
   }
 
-  uint64_t AieDebugMetadata::lookupRegisterAddr(std::string regName,module_type mod)
+  std::optional<uint64_t> AieDebugMetadata::lookupRegisterAddr(std::string regName,module_type mod)
   {
+    if (mod==module_type::core && regName.rfind("cm_", 0) != 0) {
+        xrt_core::message::send(severity_level::warning, "XRT", "Register"
+            + regName + ". does not belong in core module settings. Hence will be ignored.");
+        return std::nullopt;
+    }
+    else if (mod==module_type::dma && regName.rfind("mm_", 0) != 0) {
+        xrt_core::message::send(severity_level::warning, "XRT", "Register"
+            + regName + ". does not belong in memory module settings. Hence will be ignored.");
+        return std::nullopt;
+    }
+    else if (mod==module_type::shim && !(regName.rfind("shim_", 0) == 0 || regName.rfind("uc_", 0) == 0)) {
+        xrt_core::message::send(severity_level::warning, "XRT", "Register"
+            + regName + ". does not belong in interface module settings. Hence will be ignored.");
+        return std::nullopt;
+    }
+    else if (mod==module_type::mem_tile && regName.rfind("mem_", 0) != 0) {
+        xrt_core::message::send(severity_level::warning, "XRT", "Register"
+            + regName + ". does not belong in memTile settings. Hence will be ignored.");
+        return std::nullopt;
+    }
     return usedRegisters->getRegisterAddr(regName);
   }
-  uint32_t AieDebugMetadata::lookupRegisterSizes(uint64_t regVal,int mod)
+
+  uint32_t AieDebugMetadata::lookupRegisterSizes(uint64_t regVal,module_type mod)
   {
     return usedRegisters->getRegAddrToSize(regVal,mod);
   }
@@ -139,40 +161,55 @@ namespace xdp {
     }
     else {
       // Find specific register names
-      uint64_t tmpRedAddr = lookupRegisterAddr(stringEntry, mod);
+      //uint64_t tmpRedAddr = lookupRegisterAddr(stringEntry, mod);
+      std::optional<uint64_t> tmpRedAddr = lookupRegisterAddr(stringEntry, mod);
+      /*
       if (tmpRedAddr != -1) {
         listofRegisters.push_back(tmpRedAddr);
       }
       else {
         xrt_core::message::send(severity_level::warning, "XRT", "abcdefg") ;
       }
+      */
+      if (tmpRedAddr.has_value()) {
+        listofRegisters.push_back(tmpRedAddr.value());
+      } else {
+        xrt_core::message::send(severity_level::warning, "XRT", "Incorrect register name") ;
+      }
       return listofRegisters;
     }
 
-    if (mod == module_type::core) {
-      auto coreAddressList = usedRegisters->getCoreAddresses();
-      listofRegisters.insert(listofRegisters.end(), coreAddressList.begin(),
-                             coreAddressList.end() );
-    }
-    else if (mod == module_type::dma) {
-      auto memoryAddressList = usedRegisters->getMemoryAddresses();
-      listofRegisters.insert(listofRegisters.end(), memoryAddressList.begin(),
-                             memoryAddressList.end() );
-    }
-    else if (mod == module_type::shim) {
-      auto interfaceAddressList = usedRegisters->getInterfaceAddresses();
-      listofRegisters.insert(listofRegisters.end(), interfaceAddressList.begin(),
-                             interfaceAddressList.end() );
-    }
-    else if (mod == module_type::mem_tile) {
-      auto memoryTileAddressList = usedRegisters->getMemoryTileAddresses();
-      listofRegisters.insert(listofRegisters.end(), memoryTileAddressList.begin(),
-                             memoryTileAddressList.end() );
-    }
-    else if (mod == module_type::uc) {
-      xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
-    }
-
+    switch (mod){
+      case module_type::core : {
+        auto coreAddressList = usedRegisters->getCoreAddresses();
+        listofRegisters.insert(listofRegisters.end(), coreAddressList.begin(),
+                              coreAddressList.end() );
+      }
+      break;
+      case module_type::dma : {
+        auto memoryAddressList = usedRegisters->getMemoryAddresses();
+        listofRegisters.insert(listofRegisters.end(), memoryAddressList.begin(),
+                              memoryAddressList.end() );
+      }
+      break;
+      case module_type::shim : {
+        auto interfaceAddressList = usedRegisters->getInterfaceAddresses();
+        listofRegisters.insert(listofRegisters.end(), interfaceAddressList.begin(),
+                              interfaceAddressList.end() );
+      }
+      break;
+      case module_type::mem_tile : {
+        auto memoryTileAddressList = usedRegisters->getMemoryTileAddresses();
+        listofRegisters.insert(listofRegisters.end(), memoryTileAddressList.begin(),
+                              memoryTileAddressList.end() );
+      }
+      break;
+      case module_type::uc : {
+        xrt_core::message::send(severity_level::debug, "XRT", "Debugging microcontroller registers not supported yet");
+      }
+      break;
+      default: break;
+      }
     return listofRegisters;
   }
 

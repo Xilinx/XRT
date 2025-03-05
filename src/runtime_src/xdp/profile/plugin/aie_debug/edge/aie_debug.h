@@ -69,38 +69,7 @@ namespace xdp {
     }
 
     //void readValues(XAie_DevInst* aieDevInst, std::map<uint64_t, uint32_t>* lookupRegAddrToSizeMap) {
-     void readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata) {
-      std::vector<uint64_t>* addrVectors[] = {&coreRelativeOffsets, &memoryRelativeOffsets, &shimRelativeOffsets, &memTileRelativeOffsets};
-      std::vector<xdp::aie::AieDebugValue>* valueVectors[] = {&coreValues, &memoryValues, &shimValues, &memTileValues};
-      for (int i = 0; i < NUMBEROFMODULES ; ++i) {
-        for (int j = 0; j < addrVectors[i]->size(); ++j) {
-        //for (auto& offset : relativeOffsets) {
-          //uint32_t val = 0;
-          xdp::aie::AieDebugValue value;
-          uint32_t loopnum = 0;
-
-          //auto itr = lookupRegAddrToSizeMap->find((*addrVectors[i])[j]);
-          uint32_t regBitSize = metadata->lookupRegisterSizes((*addrVectors[i])[j],i);
-          //if (itr != lookupRegAddrToSizeMap->end()) {
-          if(regBitSize!=DEFAULT_REGISTER_SIZE) {
-            loopnum = std::ceil(static_cast<double>(regBitSize) / static_cast<double>(32));
-            value.sizeInBits = regBitSize;
-          } else {
-            loopnum = 1;
-            value.sizeInBits = DEFAULT_REGISTER_SIZE;
-          }
-          value.moduleType= i;
-          for (int k = 0; k < loopnum; k++){
-            uint32_t val = 0;
-            XAie_Read32(aieDevInst, (*addrVectors[i])[j] + tileOffset + 4*k, &val);
-            value.dataValue.push_back(val);
-          }
-          //values.push_back(value);
-          valueVectors[i]->push_back(value);
-        }
-      }
-
-    }
+    void readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata);
 };
 
 } // end namespace xdp
