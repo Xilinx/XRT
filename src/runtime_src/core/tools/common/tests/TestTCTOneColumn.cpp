@@ -99,7 +99,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     catch (const std::exception& )
     {
       XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
     const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::tct_one_column);
@@ -131,7 +131,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     catch (const std::exception& )
     {
       XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }

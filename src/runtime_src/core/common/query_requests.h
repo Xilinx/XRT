@@ -679,6 +679,7 @@ struct elf_name : request
     tct_one_column, 
     tct_all_column, 
     aie_reconfig_overhead,
+    gemm_int8, 
     nop
   };
 
@@ -694,6 +695,8 @@ struct elf_name : request
         return "tct_all_column";
       case type::aie_reconfig_overhead:
         return "aie_reconfig_overhead";
+      case type::gemm_int8:
+        return "gemm_int8";
       case type::nop:
         return "nop";
     }

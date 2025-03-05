@@ -102,7 +102,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     catch (const std::exception& )
     {
       XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
 
@@ -136,7 +136,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     catch (const std::exception& )
     {
       XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
