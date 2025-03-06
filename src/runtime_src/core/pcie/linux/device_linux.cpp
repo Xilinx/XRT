@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -287,7 +287,7 @@ struct sdm_sensor_info
       data.status    = std::string(*tok_it++);
       data.unitm     = std::stoi(std::string(*tok_it++));
       if (data.status == sd_present_check)
-	 output.push_back(data);
+	 output.push_back(std::move(data));
     }
 
     return output;
@@ -377,7 +377,7 @@ struct sdm_sensor_info
     result_type output;
     //sensors are stored in hwmon sysfs dir with name starts with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
-    auto type = sname_start[static_cast<int>(req_type)];
+    const auto& type = sname_start[static_cast<int>(req_type)];
 
     if (type == "in")
       return read_sensors_raw_data(device, "voltage_sensors_raw");
@@ -402,9 +402,9 @@ struct sdm_sensor_info
        * Similarly, end string of sysfs node name will be retrieved using end[].
        */
       std::string tpath = path + "/" + type + std::to_string(start_id) + "_";
-      data = parse_sysfs_nodes(device, tpath, &next_id);
+      data = parse_sysfs_nodes(device, std::move(tpath), &next_id);
       if (!data.label.empty())
-        output.push_back(data);
+        output.push_back(std::move(data));
 
       start_id++;
     } //while (!next_id)
@@ -564,7 +564,7 @@ struct kds_cu_info
       data.status    = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages    = std::stoul(std::string(*tok_it++));
 
-      cuStats.push_back(data);
+      cuStats.push_back(std::move(data));
     }
 
     return cuStats;
@@ -674,7 +674,7 @@ struct clk_scaling_info
     std::vector<std::string> stat;
     boost::split(stat, keyValue, boost::is_any_of(":"));
     if (stat.size() != 2) {
-      const auto errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
+      const auto& errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
       throw std::runtime_error(errMsg.str());
     }
     return std::stoi(std::string(stat.at(1)));
@@ -767,7 +767,7 @@ struct kds_scu_info
       data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages = std::stoul(std::string(*tok_it++));
 
-      cu_stats.push_back(data);
+      cu_stats.push_back(std::move(data));
     }
 
     return cu_stats;
@@ -826,7 +826,7 @@ struct mac_addr_list
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
       if (!addr.empty())
-        list.push_back(addr);
+        list.push_back(std::move(addr));
     }
 
     if (list.empty()) {
