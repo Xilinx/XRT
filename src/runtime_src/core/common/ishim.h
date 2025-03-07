@@ -8,20 +8,23 @@
 #include "xcl_graph.h"
 #include "xrt.h"
 
-#include "core/common/shim/hwctx_handle.h"
-#include "core/include/shim_int.h"
-#include "core/include/xdp/counters.h"
+#include "core/common/api/elf_int.h"
 #include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/graph_handle.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/profile_handle.h"
+#include "core/include/shim_int.h"
+#include "core/include/xdp/counters.h"
 
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
+#include "xrt/experimental/xrt_elf.h"
 #include "xrt/experimental/xrt_fence.h"
 #include "xrt/experimental/xrt-next.h"
+
 
 #include <stdexcept>
 #include <condition_variable>
@@ -157,7 +160,7 @@ struct ishim
                     const xrt::hw_context::cfg_param_type& /*cfg_params*/,
                     xrt::hw_context::access_mode /*mode*/) const = 0;
 
-  // creates hw context using partition size
+  // Create a hw context using partition size
   // Used in elf flow
   // This function is not supported by all platforms
   virtual std::unique_ptr<hwctx_handle>
@@ -165,6 +168,14 @@ struct ishim
                     const xrt::hw_context::cfg_param_type& /*cfg_params*/,
                     xrt::hw_context::access_mode /*mode*/) const
   { throw not_supported_error{__func__}; }
+
+  // Create a hw context from a configation elf
+  // This function is not supported by all platforms
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::elf& elf,
+                    const xrt::hw_context::cfg_param_type& cfg,
+                    xrt::hw_context::access_mode mode) const
+  { return create_hw_context(elf_int::get_partition_size(elf), cfg, mode); }
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims

@@ -71,10 +71,6 @@ dump_scratchpad_mem(const xrt::module& module);
 const kernel_info&
 get_kernel_info(const xrt::module& module);
 
-// Get partition size if ELF has the info
-uint32_t
-get_partition_size(const xrt::module& module);
-
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
 void

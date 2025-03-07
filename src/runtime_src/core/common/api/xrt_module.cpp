@@ -585,13 +585,6 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // get partition size if elf has the info
-  virtual uint32_t
-  get_partition_size() const
-  {
-    throw std::runtime_error("Not supported");
-  }
-
   // get kernel info (name, properties and args) if elf has the info
   virtual const xrt_core::module_int::kernel_info&
   get_kernel_info() const
@@ -662,6 +655,7 @@ public:
 class module_elf : public module_impl
 {
 protected:
+  xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
   uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::map<std::string, patcher> m_arg2patcher;
@@ -674,7 +668,8 @@ protected:
 
   explicit module_elf(xrt::elf elf)
     : module_impl{ elf.get_cfg_uuid() }
-    , m_elfio(xrt_core::elf_int::get_elfio(elf))
+    , m_elf{std::move(elf)}
+    , m_elfio(xrt_core::elf_int::get_elfio(m_elf))
     , m_os_abi(m_elfio.get_os_abi())
   {}
 
@@ -698,12 +693,16 @@ public:
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
-        ss << "Patched " << patcher::to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type)
+           << " using argument index " << index
+           << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
-        ss << "Patched " << patcher::to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type)
+           << " using argument name " << argnm
+           << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
@@ -1084,7 +1083,8 @@ class module_elf_aie2p : public module_elf
 
 public:
   explicit module_elf_aie2p(const xrt::elf& elf)
-    : module_elf(elf)
+    : module_elf{elf}
+    , m_partition_size{xrt_core::elf_int::get_partition_size(elf)}
   {
     initialize_partition_size();
     initialize_kernel_info();
@@ -1184,14 +1184,6 @@ public:
   get_preempt_restore() const override
   {
     return {m_restore_buf_sec_idx, m_restore_buf};
-  }
-
-  virtual uint32_t
-  get_partition_size() const override
-  {
-    if (m_partition_size == UINT32_MAX)
-      throw std::runtime_error("No partition info available, wrong ELF passed\n");
-    return m_partition_size;
   }
 
   virtual const xrt_core::module_int::kernel_info&
@@ -2328,12 +2320,6 @@ const xrt_core::module_int::kernel_info&
 get_kernel_info(const xrt::module& module)
 {
   return module.get_handle()->get_kernel_info();
-}
-
-uint32_t
-get_partition_size(const xrt::module& module)
-{
-  return module.get_handle()->get_partition_size();
 }
 
 void

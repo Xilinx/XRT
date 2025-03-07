@@ -106,7 +106,7 @@ public:
    * @param device
    *  Device where context is created
    * @param elf
-   *  XRT Elf object created from config Elf file
+   *  Elf configuration object
    * @param cfg_param
    *  Configuration Parameters (incl. Quality of Service)
    * @param mode
@@ -118,8 +118,21 @@ public:
    */
   XRT_API_EXPORT
   hw_context(const xrt::device& device, const xrt::elf& elf,
-             const cfg_param_type& cfg_param = cfg_param_type{},
-             access_mode mode = access_mode::shared);
+             const cfg_param_type& cfg_param, access_mode mode);
+
+  /**
+    * hw_context() - Constructor with Elf file with implied qos and mode
+    *
+    * @param device
+    *  Device where context is created
+    * @param elf
+    *  Elf configuration object
+    *
+    * This constructor defaults optional configuration parameters
+    * and creates a hw context with shared access mode.
+    */
+  XRT_API_EXPORT
+  hw_context(const xrt::device& device, const xrt::elf& elf);
 
   /**
    * add_config() - adds config Elf file to the context
