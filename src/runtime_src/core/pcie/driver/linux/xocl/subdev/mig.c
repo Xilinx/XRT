@@ -498,7 +498,7 @@ static int mig_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mig_remove(struct platform_device *pdev)
+static int __mig_remove(struct platform_device *pdev)
 {
 	struct xocl_mig	*mig;
 
@@ -516,6 +516,15 @@ static int mig_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void mig_remove(struct platform_device *pdev)
+{
+	__mig_remove(pdev);
+}
+#else
+#define mig_remove __mig_remove
+#endif
 
 struct xocl_drv_private mig_priv = {
 	.ops = &mig_ops,
