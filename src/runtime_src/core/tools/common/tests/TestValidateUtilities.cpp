@@ -414,4 +414,16 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
     return elf_path;
   }
 }
+
+bool 
+getElf(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& ptTest)
+{
+  auto device_id = xrt_core::device_query<xrt_core::query::pcie_id>(device).device_id;
+  if (XBUtilities::getElf() && (device_id != 6128)) {
+    XBValidateUtils::logger(ptTest, "Details", boost::str(boost::format("--elf option on Device %d is not supported, using default") % device_id));
+    return 0;
+  }
+  return XBUtilities::getElf(); 
+}
+
 }// end of namespace XBValidateUtils
