@@ -29,13 +29,7 @@
 #include "xdp/profile/plugin/aie_halt/ve2/aie_halt.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
-extern "C" {
-  #include <xaiengine.h>
-  #include <xaiengine/xaiegbl_params.h>
-}
-
 namespace xdp {
-
 
   AIEHaltVE2Impl::AIEHaltVE2Impl(VPDatabase*dB)
     : AIEHaltImpl(dB)
@@ -47,28 +41,43 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
               "In AIEHaltVE2Impl::updateDevice");
 
+    std::string inputCtrlCode = xrt_core::config::get_aie_halt_settings();
+    if (inputCtrlCode.empty()) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "No input control code file for AIE Halt provided. Defaulting to \"aieHalt4x4.elf\".");
+      inputCtrlCode = "aieHalt4x4.elf";
+    }
+    
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
 
-    xrt::elf haltElf("aiehalt4x4.elf");
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-              "In AIEHaltVE2Impl New Elf Object created for custom Elf");
+    xrt::elf haltElf;
+    try {
+      haltElf = xrt::elf(inputCtrlCode);
+    } catch (...) {
+      std::string msg = "Failed to load " + inputCtrlCode + ". Cannot configure AIE to halt."
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      return;
+    }
 
     xrt::module mod{haltElf};
+    xrt::kernel krnl;
+    try {
+      krnl = xrt::ext::kernel{hwContext, mod, "XDP_KERNEL:{IPUV1CNN}"};
+    } catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                "XDP_KERNEL not found in HW Context. Cannot configure AIE to halt.");
+      return;
+    }
 
-    xrt::kernel krnl = xrt::ext::kernel{hwContext, mod, "XDP_KERNEL:{IPUV1CNN}"};
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-              "In AIEHaltVE2Impl New Kernel Object for XDP_KERNEL created for running custom Elf");      
+              "In AIEHaltVE2Impl New Kernel Object for XDP_KERNEL created for running control code Elf");      
 
     xrt::run rn{krnl};
-
     rn.start();
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
               "In AIEHaltVE2Impl run start, going to wait");  
 
     rn.wait2();
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-              "In AIEHaltVE2Impl wait completed");  
-
   }
 
   void AIEHaltVE2Impl::finishflushDevice(void* /*hwCtxImpl*/)
