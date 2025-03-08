@@ -476,9 +476,9 @@ update_device(void* handle)
       xrt_core::xdp::ml_timeline::update_device(handle);
     }
     catch (...) {
-      return;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load ML Timeline library."); 
     }
-    xrt_core::xdp::ml_timeline::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_halt()) {
