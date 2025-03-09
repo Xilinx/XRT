@@ -41,7 +41,7 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
               "In AIEHaltVE2Impl::updateDevice");
 
-    std::string inputCtrlCode = xrt_core::config::get_aie_halt_settings();
+    std::string inputCtrlCode = xrt_core::config::get_aie_halt_settings_control_code();
     if (inputCtrlCode.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "No input control code file for AIE Halt provided. Defaulting to \"aieHalt4x4.elf\".");

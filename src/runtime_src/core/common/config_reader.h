@@ -276,7 +276,7 @@ get_aie_halt()
 }
 
 inline std::string
-get_aie_halt_settings()
+get_aie_halt_settings_control_code()
 {
   static std::string value = detail::get_string_value("AIE_halt_settings.control_code", "");
   return value;
