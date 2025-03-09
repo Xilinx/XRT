@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 include_directories(
   ${DRM_INCLUDE_DIRS}
   ${CMAKE_BINARY_DIR} # include gen/version.h
@@ -25,12 +25,6 @@ file(GLOB XRT_EDGE_USER_FILES "*.cpp")
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
-
-# Bypass binary targets if clangtidy is enabled,
-# same targets are defined for DC
-if (${XRT_CLANGTIDY_REVIEW})
-  return()
-endif()
 
 set(AIE_BUILD_DEFINED "$<BOOL:DEFINED XRT_AIE_BUILD>")
 set(VE2_DEFINED "$<BOOL:DEFINED EDGE_VE2>")
