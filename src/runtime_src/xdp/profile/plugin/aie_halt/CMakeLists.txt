@@ -40,7 +40,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   )
 
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_halt_plugin MODULE ${XDP_AIE_HALT_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
+  add_library(xdp_aie_halt_plugin MODULE ${XDP_AIE_HALT_PLUGIN_FILES})
   add_dependencies(xdp_aie_halt_plugin xdp_core xrt_coreutil)
 
   #target_include_directories(xdp_aie_halt_plugin PRIVATE ${AIERT_DIR}/include)

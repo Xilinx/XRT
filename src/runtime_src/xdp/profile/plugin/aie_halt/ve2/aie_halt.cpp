@@ -54,7 +54,7 @@ namespace xdp {
     try {
       haltElf = xrt::elf(inputCtrlCode);
     } catch (...) {
-      std::string msg = "Failed to load " + inputCtrlCode + ". Cannot configure AIE to halt."
+      std::string msg = "Failed to load " + inputCtrlCode + ". Cannot configure AIE to halt.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
