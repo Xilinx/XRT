@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,8 @@
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/plugin/aie_halt/clientDev/aie_halt.h"
+#elif defined (XDP_VE2_BUILD)
+#include "xdp/profile/plugin/aie_halt/ve2/aie_halt.h"
 #endif
 
 namespace xdp {
@@ -85,12 +87,32 @@ namespace xdp {
     DeviceDataEntry.implementation = std::make_unique<AIEHaltClientDevImpl>(db);
     DeviceDataEntry.implementation->setHwContext(hwContext);
     DeviceDataEntry.implementation->updateDevice(mHwCtxImpl);
+
+#elif defined (XDP_VE2_BUILD)
+    if (mHwCtxImpl) {
+      // For VE2 device flow, only 1 device and xclbin is supported now.
+      return;
+    }
+    mHwCtxImpl = hwCtxImpl;
+
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+
+    // Only one device for VE2 Device flow
+    uint64_t deviceId = db->addDevice("ve2_device");
+    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).setDeviceName(deviceId, "ve2_device");
+
+    DeviceDataEntry.valid = true;
+    DeviceDataEntry.implementation = std::make_unique<AIEHaltVE2Impl>(db);
+    DeviceDataEntry.implementation->setHwContext(hwContext);
+    DeviceDataEntry.implementation->updateDevice(mHwCtxImpl);
 #endif
   }
 
   void AIEHaltPlugin::finishflushDevice(void* hwCtxImpl)
   {
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     if (!mHwCtxImpl || !DeviceDataEntry.valid) {
       return;
     }
@@ -108,7 +130,7 @@ namespace xdp {
 
   void AIEHaltPlugin::writeAll(bool /*openNewFiles*/)
   {
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
 
     if (!mHwCtxImpl || !DeviceDataEntry.valid) {
       return;

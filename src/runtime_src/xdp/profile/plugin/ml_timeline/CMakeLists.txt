@@ -41,8 +41,6 @@ elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
 add_library(xdp_ml_timeline_plugin MODULE ${ML_TIMELINE_PLUGIN_FILES})
 add_dependencies(xdp_ml_timeline_plugin xdp_core xrt_coreutil)
 
-target_include_directories(xdp_ml_timeline_plugin PRIVATE ${CMAKE_SOURCE_DIR}/src)
-
 target_link_libraries(xdp_ml_timeline_plugin PRIVATE xdp_core xrt_coreutil)
 
 target_compile_definitions(xdp_ml_timeline_plugin PRIVATE XDP_VE2_BUILD=1)
