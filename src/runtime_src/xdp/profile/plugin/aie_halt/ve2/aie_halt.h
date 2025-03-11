@@ -30,6 +30,12 @@ namespace xdp {
 
       ~AIEHaltVE2Impl() override = default;
 
+      AIEHaltVE2Impl(const AIEHaltVE2Impl&) = delete;
+      AIEHaltVE2Impl(AIEHaltVE2Impl&&)      = delete;
+
+      AIEHaltVE2Impl& operator=(const AIEHaltVE2Impl&) = delete;
+      AIEHaltVE2Impl& operator=(AIEHaltVE2Impl&&)      = delete;
+
       void updateDevice(void* hwCtxImpl) override;
       void finishflushDevice(void* hwCtxImpl) override;
   };
