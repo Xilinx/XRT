@@ -501,11 +501,21 @@ namespace xdp {
 
         std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-        minCol = aie::convertStringToUint8(minTile[0]);
-        minRow = aie::convertStringToUint8(minTile[1]) + rowOffset;
 
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
+        
+        if (minTile.size() != 2 || maxTile.size() != 2) {
+          std::stringstream msg;
+          msg << "Tile range specification in tile_based_" << modName
+              << "_metrics is not a valid format and hence skipped. Should be {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          continue;
+        }
+              
+        minCol = aie::convertStringToUint8(minTile[0]);
+        minRow = aie::convertStringToUint8(minTile[1]) + rowOffset;
+
         maxCol = aie::convertStringToUint8(maxTile[0]);
         maxRow = aie::convertStringToUint8(maxTile[1]) + rowOffset;
       }

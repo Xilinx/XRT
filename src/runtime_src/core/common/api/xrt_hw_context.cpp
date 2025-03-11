@@ -9,6 +9,7 @@
 
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_module.h"
+#include "elf_int.h"
 #include "hw_context_int.h"
 #include "module_int.h"
 #include "xclbin_int.h"
@@ -65,18 +66,16 @@ public:
     , m_mode{mode}
   {}
 
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::elf& elf, cfg_param_type cfg_param, access_mode mode)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::elf& elf,
+                  cfg_param_type cfg_param, access_mode mode)
     : m_core_device{std::move(device)}
+    , m_partition_size{xrt_core::elf_int::get_partition_size(elf)}
     , m_cfg_param{std::move(cfg_param)}
     , m_mode{mode}
+    , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
   {
-    // Create module object to parse Elf
-    auto module = xrt::module(elf);
-    // Get partition size and pass it to diver for hw ctx creation
-    m_partition_size = xrt_core::module_int::get_partition_size(module);
-    m_hdl = m_core_device->create_hw_context(m_partition_size, m_cfg_param, mode);
-
     // creation successful, store the module in the map
+    xrt::module module{elf};
     auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
     m_module_map.emplace(std::move(kernel_name), std::move(module));
   }
@@ -119,13 +118,13 @@ public:
   {
     auto module = xrt::module(elf);
     auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
-    auto part_size = xrt_core::module_int::get_partition_size(module);
+    auto part_size = xrt_core::elf_int::get_partition_size(elf);
 
     // create hw ctx handle if not already created
     if (!m_hdl) {
       m_module_map.emplace(std::move(kernel_name), std::move(module));
       m_partition_size = part_size;
-      m_hdl = m_core_device->create_hw_context(m_partition_size, m_cfg_param, m_mode);
+      m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       return;
     }
 
@@ -301,6 +300,11 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mo
 hw_context::
 hw_context(const xrt::device& device, const xrt::elf& elf, const cfg_param_type& cfg_param, access_mode mode)
   : detail::pimpl<hw_context_impl>(alloc_hwctx_from_elf(device, elf, cfg_param, mode))
+{}
+
+hw_context::
+hw_context(const xrt::device& device, const xrt::elf& elf)
+  : hw_context(device, elf, {}, access_mode::shared)
 {}
 
 hw_context::

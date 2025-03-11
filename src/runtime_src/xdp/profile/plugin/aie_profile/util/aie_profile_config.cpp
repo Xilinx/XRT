@@ -181,9 +181,9 @@ namespace xdp::aie::profile {
       auto pc = configInterfaceLatency(aieDevInst, aieDevice, metadata, xaieModule, xaieModType, xdpModType, 
                                        metricSet, startEvent, endEvent, resetEvent, pcIndex, threshold, 
                                        retCounterEvent, tile, isSourceTile, bcResourcesLatency, adfAPIBroadcastEventsMap);
-      std::string srcDestPairKey = metadata->getSrcDestPairKey(tile.col, tile.row, tile.stream_ids[0]);
+      std::string srcDestPairKey = metadata->getSrcDestPairKey(tile.col, tile.row, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
       if (isSourceTile) {
-        std::string srcDestPairKey = metadata->getSrcDestPairKey(tile.col, tile.row, tile.stream_ids[0]);
+        std::string srcDestPairKey = metadata->getSrcDestPairKey(tile.col, tile.row, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].isSourceTile = true; 
         adfAPIResourceInfoMap[aie::profile::adfAPI::INTF_TILE_LATENCY][srcDestPairKey].srcPcIdx = counterIndex;
       }
@@ -397,7 +397,7 @@ namespace xdp::aie::profile {
     
     metadata->getSrcTile(currTileLoc, srcTile);
     metadata->getDestTile(currTileLoc, destTile);
-    std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, srcTile.stream_ids[0]);
+    std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, (srcTile.stream_ids.empty() ? 0 : srcTile.stream_ids[0]));
     
     if (adfAPIBroadcastEventsMap.find(srcDestTileKey) == adfAPIBroadcastEventsMap.end()) {
       auto bcPair = getShimBroadcastChannel(aieDevice, srcTile, destTile, metadata, bcResourcesLatency);
@@ -420,7 +420,7 @@ namespace xdp::aie::profile {
                         std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap)
   {
     tile_type srcTile = currTileLoc;
-    std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, srcTile.stream_ids[0]);
+    std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, (srcTile.stream_ids.empty() ? 0 : srcTile.stream_ids[0]));
     
     if (adfAPIBroadcastEventsMap.find(srcDestTileKey) == adfAPIBroadcastEventsMap.end()) {
       return {-1, XAIE_EVENT_NONE_CORE};

@@ -474,7 +474,7 @@ namespace xdp {
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
-                metadata->getModuleName(module), counterName, tile.stream_ids[0]);
+                metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
           numCounters++;
         } // numFreeCtr
