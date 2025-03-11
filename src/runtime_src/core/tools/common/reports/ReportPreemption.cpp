@@ -66,11 +66,6 @@ ReportPreemption::writeReport(const xrt_core::device* ,
   const bpt empty_ptree;
   bpt telemetry_array = pt.get_child("telemetry", empty_ptree);
   _output << "Premption Telemetry Data\n";
-  if (telemetry_array.empty()) {
-    _output << " No hardware contexts running on device\n\n";
-    return;
-  }
-
   _output << generate_preemption_string(telemetry_array);
   _output << std::endl;
 }
