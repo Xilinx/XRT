@@ -6,6 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "xrt/experimental/xrt_module.h"
+#include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
 #include "xrt/experimental/xrt_ext.h"
 
@@ -725,6 +726,7 @@ public:
 // module class for ELFs with os_abi - Elf_Amd_Aie2p & ELF_Amd_Aie2p_config
 class module_elf_aie2p : public module_elf
 {
+  xrt::aie::program m_program;
   // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
   // sections will be of format .ctrltext.* where .* has index of that section type
   // Below maps has this index as key and value is pair of <section index, data buffer>
@@ -837,8 +839,8 @@ class module_elf_aie2p : public module_elf
       arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
       // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
       arg.type = (str.find('*') != std::string::npos)
-               ? xrt_core::xclbin::kernel_argument::argtype::global
-               : xrt_core::xclbin::kernel_argument::argtype::scalar;
+        ? xrt_core::xclbin::kernel_argument::argtype::global
+        : xrt_core::xclbin::kernel_argument::argtype::scalar;
 
       // At present only global args are supported
       // TODO : Add support for scalar args in ELF flow
@@ -1044,25 +1046,25 @@ class module_elf_aie2p : public module_elf
       }
 
       std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-      patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                               // st_size is is encoded using register value mask for scaler_32
-                               // for other pacthing scheme it is encoded using size of dma
-                               patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) } :
-                               patcher::patch_info{ offset, add_end_addr, 0 };
+      patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind
+        // st_size is is encoded using register value mask for scaler_32
+        // for other pacthing scheme it is encoded using size of dma
+        ? patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
+        : patcher::patch_info{ offset, add_end_addr, 0 };
 
       auto key_string = generate_key_string(argnm, buf_type, sec_index);
 
       if (auto search = m_arg2patcher.find(key_string); search != m_arg2patcher.end())
         search->second.m_ctrlcode_patchinfo.emplace_back(pi);
-      else {
+      else
         m_arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
-      }
     }
   }
 
 public:
   explicit module_elf_aie2p(const xrt::elf& elf)
     : module_elf{elf}
+    , m_program{elf}
   {
     initialize_kernel_info();
     initialize_buf(patcher::buf_type::ctrltext, m_instr_buf_map);
@@ -1176,6 +1178,7 @@ public:
 // module class for ELFs with os_abi - Elf_Amd_Aie2ps
 class module_elf_aie2ps : public module_elf
 {
+  xrt::aie::program m_program;
   std::vector<ctrlcode> m_ctrlcodes;
   buf m_dump_buf; // buffer to hold .dump section used for debug/trace
 
@@ -1405,7 +1408,8 @@ class module_elf_aie2ps : public module_elf
 
 public:
   explicit module_elf_aie2ps(const xrt::elf& elf)
-    : module_elf(elf)
+    : module_elf{elf}
+    , m_program{elf}
   {
     std::vector<size_t> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
@@ -2311,8 +2315,8 @@ dump_dtrace_buffer(const xrt::module& module)
 
 } // xrt_core::module_int
 
-namespace
-{
+namespace {
+
 static std::shared_ptr<xrt::module_elf>
 construct_module_elf(const xrt::elf& elf)
 {
@@ -2327,13 +2331,14 @@ construct_module_elf(const xrt::elf& elf)
     throw std::runtime_error("unknown ELF type passed\n");
   }
 }
-}
+
+} // namespace
 
 ////////////////////////////////////////////////////////////////
 // xrt_module C++ API implementation (xrt_module.h)
 ////////////////////////////////////////////////////////////////
-namespace xrt
-{
+namespace xrt {
+
 module::
 module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(construct_module_elf(elf))
