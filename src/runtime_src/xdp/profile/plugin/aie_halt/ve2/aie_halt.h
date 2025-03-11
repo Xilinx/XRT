@@ -26,12 +26,12 @@ namespace xdp {
   {
 
     public :
-      AIEHaltVE2Impl(VPDatabase* dB);
+      explicit AIEHaltVE2Impl(VPDatabase* dB);
 
-      ~AIEHaltVE2Impl() = default;
+      ~AIEHaltVE2Impl() override = default;
 
-      virtual void updateDevice(void* hwCtxImpl);
-      virtual void finishflushDevice(void* hwCtxImpl);
+      void updateDevice(void* hwCtxImpl) override;
+      void finishflushDevice(void* hwCtxImpl) override;
   };
 
 }
