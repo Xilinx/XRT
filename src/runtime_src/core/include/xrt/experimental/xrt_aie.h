@@ -7,6 +7,8 @@
 #include "xrt/experimental/xrt_elf.h"
 
 #ifdef __cplusplus
+#include <type_traits>
+
 namespace xrt::aie {
 
 /**
@@ -41,8 +43,12 @@ public:
    * program() - Create a program object using xrt::elf constructors.
    *
    * Construction fails if the ELF is not a valid AIE program.
+   *
+   * This constructor is enabled only for types that do not match
+   * program, this avoids forwaring reference overload
    */
-  template <typename ArgType>
+  template <typename ArgType,
+            typename = std::enable_if_t<!std::is_same_v<std::decay_t<ArgType>, program>>>
   explicit
   program(ArgType&& arg)
     : xrt::elf{std::forward<ArgType>(arg)}

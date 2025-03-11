@@ -40,6 +40,12 @@ test_program(const std::string& elf_fnm)
   true_or_error(elf.get_handle() == program2.get_handle(), "expected same elf handles");
   
   //auto col2 = program2.get_partition_size();
+
+  xrt::aie::program program3{program2};
+  true_or_error(elf.get_handle() == program3.get_handle(), "expected same elf handles");
+
+  xrt::aie::program program4{std::move(program3)};
+  true_or_error(elf.get_handle() == program4.get_handle(), "expected same elf handles");
 }
 
 static void
