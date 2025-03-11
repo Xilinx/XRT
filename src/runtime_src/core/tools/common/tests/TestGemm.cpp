@@ -19,8 +19,11 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 #include <thread>
 
-static constexpr size_t host_app = 1; //opcode
 static constexpr uint32_t num_of_cores = 32;
+static constexpr size_t buffer_size_gb = 1;
+static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
+
+static size_t host_app = 1; //opcode - default to be 1 for DPU sequence
 
 /*
 * Total OPs= = 196K OPs.
@@ -38,8 +41,24 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
-  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  // Check Whether Use ELF or DPU Sequence
+  auto elf = XBValidateUtils::getElf(dev, ptree);
+  if (!elf) 
+    XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
+  else 
+    XBValidateUtils::logger(ptree, "Details", "Using ELF");
+  
+  // Find xclbin File
+  std::string xclbin_path;
+  if (!elf) { // DPU
+    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
+    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  }
+  else { // ELF
+    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm_elf);
+    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  }
+
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
@@ -76,47 +95,81 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
+  size_t instr_size = 0;
+  std::string dpu_instr;
+
   xrt::hw_context hwctx;
   xrt::kernel kernel;
-  try {
-    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
-    kernel = xrt::kernel(hwctx, kernelName);
-  } 
-  catch (const std::exception& )
-  {
-    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
+  
+  if (!elf) {
+    try {
+      hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+      kernel = xrt::kernel(hwctx, kernelName);
+    } 
+    catch (const std::exception& )
+    {
+      XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+      ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::gemm_int8);
-  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
-  if (!std::filesystem::exists(dpu_instr))
-    return ptree;
+    const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::gemm_int8);
+    dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
+    if (!std::filesystem::exists(dpu_instr))
+      return ptree;
 
-  size_t instr_size = 0;
-  try {
-    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
+    try {
+      instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
+    }
+    catch(const std::exception& ex) {
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
   }
-  catch(const std::exception& ex) {
-    XBValidateUtils::logger(ptree, "Error", ex.what());
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
+  else {
+    host_app = 3; // Opcode 3 for ELF Flow
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::gemm_int8);
+    auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
+
+    if (!std::filesystem::exists(elf_path)) {
+      XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
+      return ptree;
+    }
+
+    try {
+      hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+      kernel = get_kernel(hwctx, kernelName, elf_path);
+    } 
+    catch (const std::exception& )
+    {
+      XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
   }
 
   //Create Instruction BO
-  xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
-  //Sync Instruction BO
-  bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  xrt::bo bo_instr;
+  if (!elf) {
+    bo_instr = xrt::bo(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
+    //Sync Instruction BO
+    bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  }
 
   // Create 128KB Debug BO to capture TOPS data
   xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
   try {
+    xrt::run run;
     //run kernel
     for(int i=0; i < 200; i++) {
-      auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+      if (!elf) {
+        run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+      } else {
+        run = kernel(host_app, 0, 0, 0, 0, 0, 0, 0);
+      }
       // Wait for kernel to be done
       run.wait2();
     }

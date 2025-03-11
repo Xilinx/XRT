@@ -599,7 +599,8 @@ struct xclbin_name : request
   enum class type {
     validate,
     gemm, 
-    validate_elf
+    validate_elf,
+    gemm_elf
   };
 
   static std::string
@@ -612,6 +613,8 @@ struct xclbin_name : request
         return "gemm";
       case type::validate_elf:
         return "validate_elf";
+      case type::gemm_elf:
+        return "gemm_elf";
     }
     return "unknown";
   }
