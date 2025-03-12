@@ -171,7 +171,7 @@ namespace xdp {
                  << " Moving to next segment on the buffer for next uC."
                  << " Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
 
-            ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32));
+            ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
 
             nxtSegmentMsg << " Next Segment Address 0x" << std::hex << ptr << std::dec
                            << std::endl;
