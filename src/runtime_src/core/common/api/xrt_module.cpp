@@ -762,27 +762,6 @@ class module_elf_aie2p : public module_elf
     return (pos == 0) ? 0 : std::stoul(name.substr(pos + 1, 1));
   }
 
-  void
-  initialize_partition_size()
-  {
-    static constexpr const char* partition_section_name {".note.xrt.configuration"};
-    // note 0 in .note.xrt.configuration section has partition size
-    static constexpr ELFIO::Elf_Word partition_note_num = 0;
-
-    auto partition_section = m_elfio.sections[partition_section_name];
-    if (!partition_section)
-      return; // elf doesn't have partition info section, partition size holds UINT32_MAX
-
-    ELFIO::note_section_accessor accessor(m_elfio, partition_section);
-    ELFIO::Elf_Word type;
-    std::string name;
-    char* desc;
-    ELFIO::Elf_Word desc_size;
-    if (!accessor.get_note(partition_note_num, type, name, desc, desc_size))
-      throw std::runtime_error("Failed to get partition info, partition note not found\n");
-    m_partition_size = std::stoul(std::string{static_cast<char*>(desc), desc_size});
-  }
-
   std::string
   get_kernel_signature()
   {
@@ -1084,9 +1063,7 @@ class module_elf_aie2p : public module_elf
 public:
   explicit module_elf_aie2p(const xrt::elf& elf)
     : module_elf{elf}
-    , m_partition_size{xrt_core::elf_int::get_partition_size(elf)}
   {
-    initialize_partition_size();
     initialize_kernel_info();
     initialize_buf(patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(patcher::buf_type::ctrldata, m_ctrl_packet_map);
