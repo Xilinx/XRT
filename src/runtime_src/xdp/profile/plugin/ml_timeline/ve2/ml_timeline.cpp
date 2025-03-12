@@ -130,7 +130,7 @@ namespace xdp {
     ptHeader.put("id_size", sizeof(uint32_t));
     ptHeader.put("cycle_size", 2*sizeof(uint32_t));
     ptHeader.put("buffer_size", mBufSz);
-    ptHeader.put("num_buffer_segments", numBufSegments)
+    ptHeader.put("num_buffer_segments", numBufSegments);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
@@ -167,14 +167,14 @@ namespace xdp {
             xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
             break;
           } else if (numBufSegments > 1) {
-            std::stringstream nxtSegmentMsg = " Got both id and ts field as ZERO." 
+            std::stringstream nxtSegmentMsg << " Got both id and ts field as ZERO." 
                  << " Moving to next segment on the buffer for next uC."
                  << " Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
 
             ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
 
             nxtSegmentMsg << " Next Segment Address 0x" << std::hex << ptr << std::dec
-                           << std::endl;
+                          << std::endl;
             currSegmentPtr = ptr;
           } else {
             break;
