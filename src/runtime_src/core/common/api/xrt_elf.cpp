@@ -3,6 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_elf.h
 #define XRT_API_SOURCE         // exporting xrt_elf.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
 #include "xrt/xrt_uuid.h"
 
@@ -144,3 +145,26 @@ get_cfg_uuid() const
 }
 
 } // namespace xrt
+
+////////////////////////////////////////////////////////////////
+// xrt::aie::program C++ API implementation (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt::aie {
+
+void
+program::
+valid_or_error()
+{
+  // Validate that the ELF file is a valid AIE program
+}
+
+program::size_type
+program::
+get_partition_size() const
+{
+  return get_handle()->get_partition_size();
+}
+
+} // namespace xrt::aie
+  
+
