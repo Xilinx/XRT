@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -42,7 +29,7 @@ void  main_(int argc, char** argv,
   bool bTrace = false;
   bool bHelp = false;
   bool bBatchMode = false;
-  bool bShowHidden = false;
+  bool bAdvance = false;
   bool bForce = false;
   std::string sDevice;
 
@@ -65,7 +52,7 @@ void  main_(int argc, char** argv,
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value("")->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
+    ("advance", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
     ("subCmd",      po::value<std::string>(), "Command to execute")
     ("subCmdArgs",  po::value<std::vector<std::string> >(), "Arguments for command")
   ;
@@ -103,7 +90,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
-  XBU::setShowHidden( bShowHidden );
+  XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
   // Check to see if help was requested and no command was found

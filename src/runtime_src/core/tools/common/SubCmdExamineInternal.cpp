@@ -126,7 +126,19 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // Determine report level
   std::vector<std::string> reportsToRun(options.m_reportNames);
   if (reportsToRun.empty()) {
-    reportsToRun.push_back("host");
+    if (!XBU::getAdvance()) {
+      reportsToRun.push_back("host");
+    } 
+    else {
+      print_help_internal(options);
+      return;
+    }
+  }
+
+  if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
+    std::cerr << "ERROR: The 'all' value for the reports to run cannot be used with any other named reports.\n";
+    print_help_internal(options);
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- Process the options --------------------------------------------
@@ -139,7 +151,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
   
   try {
-    if(reportsToProcess.size() > 1 || reportsToRun.front().compare("host") != 0)
+    if(reportsToRun.front().compare("host") != 0)
       device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), m_isUserDomain /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
@@ -253,7 +265,7 @@ SubCmdExamineInternal::getReportsList(const xrt_core::smi::tuple_vector& reports
     auto it = std::find_if(fullReportCollection.begin(), fullReportCollection.end(),
               [&rep](const std::shared_ptr<Report>& report) {
                 return std::get<0>(rep) == report->getReportName() &&
-                       (std::get<2>(rep) != "hidden" || XBU::getShowHidden());
+                       (std::get<2>(rep) != "hidden" || XBU::getAdvance());
               });
 
     if (it != fullReportCollection.end()) {

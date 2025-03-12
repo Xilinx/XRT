@@ -41,7 +41,7 @@
 #pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
 #endif
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/env.hpp>
@@ -1203,7 +1203,7 @@ XclBinUtilities::exec(const fs::path &cmd,
   std::future<std::string> data_stdout;
   std::future<std::string> data_stderr;
 
-  boost::asio::io_service svc;
+  boost::asio::io_context svc;
   boost::process::child runningProcess( cmd.string(),
                                         args,
                                         boost::process::std_out > data_stdout,

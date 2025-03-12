@@ -278,6 +278,10 @@ public:
     core_addresses.emplace(aie1::cm_event_broadcast13);
     core_addresses.emplace(aie1::cm_event_broadcast14);
     core_addresses.emplace(aie1::cm_event_broadcast15);
+    core_addresses.emplace(aie1::cm_event_broadcast_block_south_value);
+    core_addresses.emplace(aie1::cm_event_broadcast_block_west_value);
+    core_addresses.emplace(aie1::cm_event_broadcast_block_north_value);
+    core_addresses.emplace(aie1::cm_event_broadcast_block_east_value);
     core_addresses.emplace(aie1::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie1::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie1::cm_timer_low);
@@ -1650,6 +1654,10 @@ public:
     core_addresses.emplace(aie2::cm_event_broadcast13);
     core_addresses.emplace(aie2::cm_event_broadcast14);
     core_addresses.emplace(aie2::cm_event_broadcast15);
+    core_addresses.emplace(aie2::cm_event_broadcast_block_south_value);
+    core_addresses.emplace(aie2::cm_event_broadcast_block_west_value);
+    core_addresses.emplace(aie2::cm_event_broadcast_block_north_value);
+    core_addresses.emplace(aie2::cm_event_broadcast_block_east_value);
     core_addresses.emplace(aie2::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie2::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie2::cm_timer_low);
@@ -4627,6 +4635,10 @@ public:
     core_addresses.emplace(aie2ps::cm_event_broadcast13);
     core_addresses.emplace(aie2ps::cm_event_broadcast14);
     core_addresses.emplace(aie2ps::cm_event_broadcast15);
+    core_addresses.emplace(aie2ps::cm_event_broadcast_block_south_value);
+    core_addresses.emplace(aie2ps::cm_event_broadcast_block_west_value);
+    core_addresses.emplace(aie2ps::cm_event_broadcast_block_north_value);
+    core_addresses.emplace(aie2ps::cm_event_broadcast_block_east_value);
     core_addresses.emplace(aie2ps::cm_timer_trig_event_low_value);
     core_addresses.emplace(aie2ps::cm_timer_trig_event_high_value);
     core_addresses.emplace(aie2ps::cm_timer_low);

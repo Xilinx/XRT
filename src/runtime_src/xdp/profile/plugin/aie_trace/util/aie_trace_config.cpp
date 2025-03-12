@@ -524,7 +524,7 @@ namespace xdp::aie::trace {
     uint8_t broadcastId2 = traceStartBroadcastCh2->getBc();
 
     //build broadcast network
-    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, broadcastId2, XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, broadcastId1, broadcastId2, XAIE_EVENT_COMBO_EVENT_0_PL, startCol, numCols);
 
     //set timer control register
     for (auto& tileMetric : metadata->getConfigMetrics()) {
@@ -538,7 +538,7 @@ namespace xdp::aie::trace {
         XAie_Events resetEvent = (XAie_Events)(XAIE_EVENT_BROADCAST_A_0_PL + broadcastId2);
         if(col == startCol)
         {
-          resetEvent = XAIE_EVENT_USER_EVENT_0_PL;
+          resetEvent = XAIE_EVENT_COMBO_EVENT_0_PL;
         }
 
         XAie_SetTimerResetEvent(aieDevInst, loc, XAIE_PL_MOD, resetEvent, XAIE_RESETDISABLE);
@@ -556,7 +556,7 @@ namespace xdp::aie::trace {
     }
 
     //Generate the event to trigger broadcast network to reset timer
-    XAie_EventGenerate(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_0_PL);
+    XAie_EventGenerate(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, XAIE_EVENT_COMBO_EVENT_0_PL);
 
     //reset timer control register so that timer are not reset after this point
     for (auto& tileMetric : metadata->getConfigMetrics()) {

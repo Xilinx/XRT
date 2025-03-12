@@ -501,11 +501,21 @@ namespace xdp {
 
         std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-        minCol = aie::convertStringToUint8(minTile[0]);
-        minRow = aie::convertStringToUint8(minTile[1]) + rowOffset;
 
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
+        
+        if (minTile.size() != 2 || maxTile.size() != 2) {
+          std::stringstream msg;
+          msg << "Tile range specification in tile_based_" << modName
+              << "_metrics is not a valid format and hence skipped. Should be {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          continue;
+        }
+              
+        minCol = aie::convertStringToUint8(minTile[0]);
+        minRow = aie::convertStringToUint8(minTile[1]) + rowOffset;
+
         maxCol = aie::convertStringToUint8(maxTile[0]);
         maxRow = aie::convertStringToUint8(maxTile[1]) + rowOffset;
       }
@@ -520,7 +530,7 @@ namespace xdp {
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << modName
-            << "_metrics is not valid format and hence skipped.";
+            << "_metrics is not a valid range ({col1,row1}<={col2,row2}) and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -1259,22 +1269,19 @@ namespace xdp {
       auto tileDest =  metadataReader->getInterfaceTiles(g2, p2, metricName);
 
       if (tileSrc.empty() || tileDest.empty()) {
+        xrt_core::message::send(severity_level::info, "XRT", "No valid tiles found for the graph ports " 
+          + g1 + ":" + p1 + " or " + g2 + ":" + p2 + ", skipping this setting. Please confirm if these are valid graph ports.");
         continue;
       }
-      if ((tileSrc[0].col == tileDest[0].col) && (tileSrc[0].row == tileDest[0].row)) {
-        xrt_core::message::send(severity_level::warning, "XRT", "The ports " + g1 + ":" + p1
-            + " and " + g2 + ":" + p2 + " were mapped to the same interface tile."
-            + " Latency measurement of these ports is not supported in 2024.2.");
-        continue;
-      }
+
       std::string tranx_no = tileMetrics[i].size() <= 4 ? "0" : tileMetrics[i].back();
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
         return;
       }
 
       // Update the latencyConfigMap to store the complete config.
-      latencyConfigMap[tileSrc[0]]  = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true, g1, p1, g2, p2));
-      latencyConfigMap[tileDest[0]] = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2));
+      latencyConfigMap[create_tileKey(tileSrc[0])]  = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true, g1, p1, g2, p2));
+      latencyConfigMap[create_tileKey(tileDest[0])] = std::move(LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false, g1, p1, g2, p2));
 
       // Also update the common configMetrics 
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
@@ -1363,11 +1370,11 @@ namespace xdp {
       }
     }
     else if(metricSet == METRIC_LATENCY) {
-      if (latencyConfigMap.find(tile) == latencyConfigMap.end()) {
+      if (latencyConfigMap.find(create_tileKey(tile)) == latencyConfigMap.end()) {
         return 0;
       }
       else{
-        return latencyConfigMap.at(tile).tranx_no;
+        return latencyConfigMap.at(create_tileKey(tile)).tranx_no;
       }
     }
     return 0;
@@ -1383,39 +1390,50 @@ namespace xdp {
     if (!isValidLatencyTile(tile))
       return false;
     
-    return latencyConfigMap.at(tile).isSource;
+    return latencyConfigMap.at(create_tileKey(tile)).isSource;
   }
 
-  bool AieProfileMetadata::getSourceTile(const tile_type& pairTyle, tile_type& sourceTile) const
+  bool AieProfileMetadata::getSourceTile(const tile_type& pairTile, tile_type& sourceTile) const
   {
-    if (!isValidLatencyTile(pairTyle))
+    if (!isValidLatencyTile(pairTile))
       return false;
 
-    sourceTile = latencyConfigMap.at(pairTyle).src;
+    auto tile_key = create_tileKey(pairTile);
+    sourceTile = latencyConfigMap.at(create_tileKey(pairTile)).src;
     return true;
   }
 
-  bool AieProfileMetadata::getDestTile(const tile_type& pairTyle, tile_type& destTile) const
+  bool AieProfileMetadata::getDestTile(const tile_type& pairTile, tile_type& destTile) const
   {
-    if (!isValidLatencyTile(pairTyle))
+    if (!isValidLatencyTile(pairTile))
       return false;
 
-    destTile = latencyConfigMap.at(pairTyle).dest;
+    destTile = latencyConfigMap.at(create_tileKey(pairTile)).dest;
     return true;
   }
 
-  std::string AieProfileMetadata::getSrcDestPairKey(uint8_t col, uint8_t row)
+  bool AieProfileMetadata::getSrcTile(const tile_type& pairTile, tile_type& srcTile) const
   {
-    std::string key = "";
+    if (!isValidLatencyTile(pairTile))
+      return false;
 
-    std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row);
-    if(keysCache.find(cacheKey) != keysCache.end())
+    srcTile = latencyConfigMap.at(create_tileKey(pairTile)).src;
+    return true;
+  }
+
+  std::string AieProfileMetadata::getSrcDestPairKey(uint8_t col, uint8_t row, uint8_t streamId)
+  {
+    std::string cacheKey = "fetch_" + aie::uint8ToStr(col) + "," + aie::uint8ToStr(row) + "," + aie::uint8ToStr(streamId);
+    if(keysCache.find(cacheKey) != keysCache.end()) {
       return keysCache.at(cacheKey).srcDestKey;
+    }
 
-    for(const auto &config : latencyConfigMap) {
-      if(config.first.col == col && config.first.row == row) {
-        key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)+
-              "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row);
+    std::string key = "";
+    // Iterate through the latencyConfigMap to find the matching key
+    for (const auto &config : latencyConfigMap) {
+      if (config.first.col == col && config.first.row == row && config.first.stream_id == streamId) {
+        key = "src_"  + aie::uint8ToStr(config.second.src.col)  + "," + aie::uint8ToStr(config.second.src.row)  + "," + aie::uint8ToStr(config.second.src.stream_ids.at(0)) + ":" +
+              "dest_" + aie::uint8ToStr(config.second.dest.col) + "," + aie::uint8ToStr(config.second.dest.row) + "," + aie::uint8ToStr(config.second.dest.stream_ids.at(0));
         keysCache[cacheKey] = LatencyCache(key,
                                            config.second.graphPortPair.srcGraphName,
                                            config.second.graphPortPair.srcGraphPort,
@@ -1424,6 +1442,7 @@ namespace xdp {
         return key;
       }
     }
+  
     return key;
   }
 
@@ -1441,7 +1460,7 @@ namespace xdp {
 
   bool AieProfileMetadata::isValidLatencyTile(const tile_type& tile) const
   {
-    return latencyConfigMap.find(tile) != latencyConfigMap.end();
+    return latencyConfigMap.find(create_tileKey(tile)) != latencyConfigMap.end();
   }
 
   uint64_t AieProfileMetadata::getIntfLatencyPayload(const tile_type& tile)
@@ -1449,9 +1468,9 @@ namespace xdp {
     if (!isValidLatencyTile(tile))
       return 0;
 
-    LatencyConfig latencyCfg = latencyConfigMap.at(tile);
+    LatencyConfig latencyCfg = latencyConfigMap.at(create_tileKey(tile));
     return createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_ids.at(0),
-                        latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_ids.at(0));
+                         latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_ids.at(0));
   }
 
  std::vector<tile_type>
@@ -1473,5 +1492,18 @@ namespace xdp {
                        (static_cast<uint64_t>(portID2) << 0);
     return payload;
   }
+  
+// Function to extract values from the payload
+latency_payload extractPayloadValues(uint64_t payload) {
+  latency_payload values;
+  values.col1    = (payload >> 40) & 0xFF;
+  values.row1    = (payload >> 32) & 0xFF;
+  values.portID1 = (payload >> 24) & 0xFF;
+  values.col2    = (payload >> 16) & 0xFF;
+  values.row2    = (payload >> 8) & 0xFF;
+  values.portID2 = payload & 0xFF;
+  return values;
+}
+
 
 }  // namespace xdp

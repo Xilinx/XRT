@@ -88,15 +88,15 @@ namespace xdp {
     if (!metadataReader)
       return;
     
-    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    // Make sure compiler trace option is available as runtime
     auto compilerOptions = metadataReader->getAIECompilerOptions();
     setRuntimeMetrics(compilerOptions.event_trace == "runtime");
-
     if (!getRuntimeMetrics()) {
       std::stringstream msg;
-      msg << "Found compiler trace option of " << compilerOptions.event_trace
-          << ". No runtime AIE metrics will be changed.";
+      msg << "AIE trace will not be configured since design was not compiled with --event-trace=runtime."
+          << " If runtime configuration is desired, please use --event-trace=runtime.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return;
     }
 
     // Process AIE_trace_settings metrics
@@ -474,7 +474,6 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
       
-      processed.insert(i);
       uint8_t minCol = 0, minRow = 0;
       uint8_t maxCol = 0, maxRow = 0;
 
@@ -495,17 +494,19 @@ namespace xdp {
         maxRow = aie::convertStringToUint8(maxTile[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
-        msg << "Tile range specification in tile_based_" << tileName
-            << "_tile_metrics is not of valid format and hence skipped.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        msg << "Valid Tile range specification in tile_based_" << tileName
+            << "_tile_metrics is not met, it will re-processed for single-tile specification.";
+        xrt_core::message::send(severity_level::info, "XRT", msg.str());
         continue;       
       }
+
+      processed.insert(i);
 
       // Ensure range is valid 
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
-        msg << "Tile range specification in tile_based_" << tileName 
-            << "_tile_metrics is not of valid format and hence skipped.";
+        msg << "Tile range specification in tile_based_" << tileName
+            << "_tile_metrics is not of valid range ({col1,row1}<={col2,row2}) and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }

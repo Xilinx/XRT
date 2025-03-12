@@ -10,7 +10,7 @@ smi_edge() : smi_base()
   validate_test_desc = {
     {"aux-connection", "Check if auxiliary power is connected", "common"},
     {"dma", "Run dma test", "common"},
-    {"thostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
+    {"hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
     {"m2m", "Run M2M test", "common"},
     {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
     {"p2p", "Run P2P test", "common"},
@@ -36,6 +36,20 @@ smi_edge() : smi_base()
     {"platform", "Platforms flashed on the device", "common"},
     {"qspi-status", "QSPI write protection status", "common"},
     {"thermal", "Thermal sensors present on the device", "common"}
+  };
+
+  configure_options = {
+    {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
+    {"help", "h", "Help to use this sub-command", "common", "", "none"},
+    {"daemon", "", "Update the device daemon configuration", "hidden", "", "none"},
+    {"purge", "", "Remove the daemon configuration file", "hidden", "", "string"},
+    {"host", "", "IP or hostname for device peer", "hidden", "", "string"},
+    {"security", "", "Update the security level for the device", "hidden", "", "string"},
+    {"clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"},
+    {"ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"},
+    {"ct_threshold_temp_override", "", "Update the temperature threshold in celsius", "hidden", "", "string"},
+    {"ct_reset", "", "Reset all throttling options", "hidden", "", "string"},
+    {"showx", "", "Display the device configuration settings", "hidden", "", "string"}
   };
 }
 
