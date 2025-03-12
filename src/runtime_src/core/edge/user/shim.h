@@ -346,6 +346,7 @@ public:
   zynqaie::aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
+  void reset_aie_array();
   bool isAieRegistered();
   int getPartitionFd(drm_zocl_aie_fd &aiefd);
   int resetAIEArray(drm_zocl_aie_reset &reset);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
@@ -563,8 +563,8 @@ private:
         /* to enable aio batching, the stream needs to have its own context
          * and any of the
          */
-        if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
-            std::lock_guard<std::mutex> lk(reqLock);
+        std::lock_guard<std::mutex> lk(reqLock);
+	if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
             qExit = false;
             qWorker = std::thread(&queue_cb::queue_aio_worker, this);
             qAioBatchEn = true;
@@ -590,9 +590,9 @@ public:
         io_destroy(qAioCtx);
     }
 
-    const bool queue_aio_ctx_enabled(void) { return qAioEn; }
-    const bool queue_is_h2c(void) { return h2c; }
-    const int queue_get_handle(void) { return qhndl; }
+    bool queue_aio_ctx_enabled() { return qAioEn; }
+    bool queue_is_h2c() { return h2c; }
+    int queue_get_handle() { return static_cast<int>(qhndl); }
 
     // optional configurations
     int set_option(int type, uint32_t val)
@@ -718,7 +718,9 @@ public:
                 error = io_submit(*aio_ctx, 1, cbs);
                 if (error <= 0)
                     break;
-                rc += wr->bufs[i].len;
+                if ((uint64_t)SSIZE_MAX - rc < wr->bufs[i].len)
+                    return -1;
+		rc += wr->bufs[i].len;
             }
             std::lock_guard<std::mutex> lk(reqLock);
             cbSubmitCnt += wr->buf_num;
@@ -797,7 +799,7 @@ int shim::dev_init()
     }
 
     // We're good now.
-    mDev = dev;
+    mDev = std::move(dev);
     (void) xclGetDeviceInfo2(&mDeviceInfo);
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 

@@ -48,6 +48,12 @@ public:
   explicit
   elf(std::istream& stream);
 
+  /**
+   * get_cfg_uuid() - Get the configuration UUID of the elf
+   *
+   * @return
+   *  The configuration UUID of the elf
+   */
   XRT_API_EXPORT
   xrt::uuid
   get_cfg_uuid() const;

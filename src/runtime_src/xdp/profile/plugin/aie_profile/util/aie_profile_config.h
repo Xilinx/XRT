@@ -82,7 +82,8 @@ namespace xdp::aie::profile {
                            XAie_Events resetEvent, int pcIndex, size_t counterIndex, 
                            size_t threshold, XAie_Events& retCounterEvent, const tile_type& tile,
                            std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency,
-                           std::map<adfAPI, std::map<std::string, adfAPIResourceInfo>>& adfAPIResourceInfoMap);
+                           std::map<adfAPI, std::map<std::string, adfAPIResourceInfo>>& adfAPIResourceInfoMap,
+                           std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap);
 
    /**
    * @brief Start a performance counter
@@ -124,9 +125,10 @@ namespace xdp::aie::profile {
    * @return channel and event
    */
   std::pair<int, XAie_Events>
-  getPLBroadcastChannel(xaiefal::XAieDev* aieDevice, const tile_type& srcTile, 
-                        std::shared_ptr<AieProfileMetadata> metadata,
-                        std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency);
+  getShimBroadcastChannel(xaiefal::XAieDev* aieDevice, const tile_type& srcTile, const tile_type& destTile,
+                          std::shared_ptr<AieProfileMetadata> metadata,
+                          std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency,
+                          std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap);
 
   /**
    * @brief Setup broadcast channel
@@ -139,7 +141,14 @@ namespace xdp::aie::profile {
   std::pair<int, XAie_Events>
   setupBroadcastChannel(xaiefal::XAieDev* aieDevice, const tile_type& currTileLoc, 
                         std::shared_ptr<AieProfileMetadata> metadata,
-                        std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency);
+                        std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency,
+                        std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap);
+  
+   std::pair<int, XAie_Events>
+   getSetBroadcastChannel(xaiefal::XAieDev* aieDevice, const tile_type& currTileLoc, 
+                          std::shared_ptr<AieProfileMetadata> metadata,
+                          std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency,
+                          std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap);
 
   /**
    * @brief Configure interface tile counter for latency
@@ -169,7 +178,8 @@ namespace xdp::aie::profile {
                          XAie_Events startEvent, XAie_Events endEvent, XAie_Events resetEvent, 
                          int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
                          const tile_type& tile, bool& isSource,
-                         std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency);
+                         std::vector<std::shared_ptr<xaiefal::XAieBroadcast>>& bcResourcesLatency,
+                         std::map<std::string, std::pair<int, XAie_Events>>& adfAPIBroadcastEventsMap);
 
    /**
    * @brief Configure individual AIE events for metric sets related to Profile APIs
