@@ -14,12 +14,15 @@
  * under the License.
  */
 #include <fstream>
+
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+
+#include "core/common/message.h"
 
 namespace xdp {
   AIEDebugWriter::AIEDebugWriter(const char* fileName, const char* deviceName, uint64_t deviceIndex)
@@ -70,7 +73,11 @@ namespace xdp {
 
     // Create register interpreter for current AIE generation
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-    std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(aieGeneration);
+    std::unique_ptr<RegisterInterpreter> regInterp = 
+      std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
+    
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+      "Writing " + std::to_string(samples.size()) + " samples to AIE Debug file.");
 
     for (auto& sample : samples) {
       // Print out full 32-bit values (for debug purposes)    

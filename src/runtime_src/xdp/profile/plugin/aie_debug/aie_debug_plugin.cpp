@@ -182,7 +182,7 @@ namespace xdp {
 #ifdef _WIN32
     std::tm tm{};
     localtime_s(&tm, &time);
-    std::string deviceName = "win_device";
+    std::string deviceName = "aie_debug_win_device";
 #else
     auto tm = *std::localtime(&time);
     std::string deviceName = util::getDeviceName(handle);
@@ -193,11 +193,9 @@ namespace xdp {
     std::string timestamp = timeOss.str();
 
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
+    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
-
-    mIndex++;
   }
 
   /****************************************************************************
@@ -205,11 +203,16 @@ namespace xdp {
    ***************************************************************************/
   void AieDebugPlugin::endAIEDebugRead(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endAIEDebugRead");
+    if (!mPollRegisters)
+      return;
+
     auto deviceID = getDeviceIDFromHandle(handle);
     xrt_core::message::send(severity_level::debug, "XRT",
-      "AieDebugPlugin::endAIEDebugRead deviceID is " + std::to_string(deviceID));
+      "AieDebugPlugin::endAIEDebugRead - polling registers for device " + std::to_string(deviceID));
+
+    // Poll all requested AIE registers
     handleToAIEData[handle].implementation->poll(deviceID, handle);
+    mPollRegisters = false;
   }
 
   /****************************************************************************
@@ -225,7 +228,15 @@ namespace xdp {
     if (!AIEData.valid)
       return;
 
-    //AIEData.implementation->poll(0, handle);
+    // Poll all requested AIE registers (if not done already)
+    if (mPollRegisters) {
+      auto deviceID = getDeviceIDFromHandle(handle);
+      xrt_core::message::send(severity_level::debug, "XRT",
+        "AieDebugPlugin::endPollforDevice - polling registers for device " + std::to_string(deviceID));
+
+      AIEData.implementation->poll(deviceID, handle);
+      mPollRegisters = false;
+    }
 
     handleToAIEData.erase(handle);
   }

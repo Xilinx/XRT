@@ -21,9 +21,16 @@
 #include <vector>
 
 namespace xdp {
-    RegisterInterpreter::RegisterInterpreter() { }
     RegisterInterpreter::RegisterInterpreter(int aieGeneration)
-      : mAieGeneration(aieGeneration) { }
+      : mAieGeneration(aieGeneration) 
+    { 
+      if (mAieGeneration == 1)
+        writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
+      else if (mAieGeneration == 5)
+        writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
+      else if ((mAieGeneration > 1) && (mAieGeneration <= 9))
+        writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
+    }
 
     uint32_t RegisterInterpreter::calcSubval(const uint32_t start, uint32_t end, const std::vector<uint32_t>& regVals) {
         int endIndex = end / DEFAULT_REGISTER_SIZE; 
@@ -57,24 +64,15 @@ namespace xdp {
     // RegisterInterpreter::registerInfo(const std::string& regName, const xdp::aie::AieDebugValue& aieDebugVal)
     RegisterInterpreter::registerInfo(const std::string& regName, const std::vector<uint32_t>& regVals)
     {
-        if ((mAieGeneration >= 2) && (mAieGeneration <= 4)) {
-            writerUsedRegisters = std::make_unique<AIE2WriterUsedRegisters>();
-        } else if (mAieGeneration == 5) {
-            writerUsedRegisters = std::make_unique<AIE2PSWriterUsedRegisters>();
-        } else {
-            writerUsedRegisters = std::make_unique<AIE1WriterUsedRegisters>();
-        }
-
-        auto& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
-        
-        if (regVals.size() == 0) {
+        if (regVals.size() == 0)
             return { RegisterInterpreter::RegInfo("", "", {0}) };
-        } 
         
         // int expectedSize = (aieDebugVal.sizeInBits + DEFAULT_REGISTER_SIZE - 1) / DEFAULT_REGISTER_SIZE;
         // if (aieDebugVal.dataValue.size() != expectedSize) {
         //     throw std::runtime_error("Vector dataValue should have " + std::to_string(expectedSize) + " 32 bit Register value(s), but it has " + std::to_string(regVals.size()) + " 32 bit Register value(s)");
         // }
+
+        auto& writerUsedRegistersMap = writerUsedRegisters->getRegDataMap();
 
         std::vector<RegisterInterpreter::RegInfo> regInfoVec;
         auto it = writerUsedRegistersMap.find(regName);

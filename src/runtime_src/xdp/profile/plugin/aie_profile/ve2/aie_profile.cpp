@@ -280,6 +280,7 @@ namespace xdp {
     bool runtimeCounters = false;
 
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
+    auto hwGen = metadata->getHardwareGen();
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
     uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
@@ -308,7 +309,7 @@ namespace xdp {
         if (module == static_cast<int>(module_type::uc)) {
           // Configure
           auto events = microcontrollerEvents[metricSet];
-          aie::profile::configMDMCounters(aieDevInst, col, row, events);
+          aie::profile::configMDMCounters(aieDevInst, hwGen, col, row, events);
           // Record
           tile_type recordTile;
           recordTile.col = col;
@@ -432,7 +433,7 @@ namespace xdp {
             XAie_Events retCounterEvent = XAIE_EVENT_NONE_CORE;
             perfCounter = aie::profile::configProfileAPICounters(aieDevInst, aieDevice, metadata, xaieModule, 
                             mod, type, metricSet, startEvent, endEvent, resetEvent, i, perfCounters.size(),
-                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap);
+                            threshold, retCounterEvent, tile, bcResourcesLatency, adfAPIResourceInfoMap, adfAPIBroadcastEventsMap);
           }
           else {
             // Request counter from resource manager
@@ -473,7 +474,7 @@ namespace xdp {
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
-                metadata->getModuleName(module), counterName);
+                metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
           numCounters++;
         } // numFreeCtr
@@ -517,6 +518,7 @@ namespace xdp {
     uint32_t prevColumn = 0;
     uint32_t prevRow = 0;
     uint64_t timerValue = 0;
+    auto hwGen = metadata->getHardwareGen();
 
     // Iterate over all AIE Counters & Timers
     auto numCounters = db->getStaticInfo().getNumAIECounter(index);
@@ -546,9 +548,9 @@ namespace xdp {
           uint32_t srcCounterValue = 0;
           uint32_t destCounterValue = 0;
           try {
-            std::string srcDestPairKey = metadata->getSrcDestPairKey(aie->column, aie->row);
-            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
-            uint8_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
+            std::string srcDestPairKey = metadata->getSrcDestPairKey(aie->column, aie->row, aie->streamId);
+            uint64_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).srcPcIdx;
+            uint64_t destPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::INTF_TILE_LATENCY).at(srcDestPairKey).destPcIdx;
             auto srcPerfCount = perfCounters.at(srcPcIdx);
             auto destPerfCount = perfCounters.at(destPcIdx);
             srcPerfCount->readResult(srcCounterValue);
@@ -565,7 +567,7 @@ namespace xdp {
         {
           try {
             std::string srcKey = "(" + aie::uint8ToStr(aie->column) + "," + aie::uint8ToStr(aie->row) + ")";
-            uint8_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(srcKey).srcPcIdx;
+            uint64_t srcPcIdx = adfAPIResourceInfoMap.at(aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED).at(srcKey).srcPcIdx;
             auto perfCounter = perfCounters.at(srcPcIdx);
             perfCounter->readResult(counterValue);
             uint64_t storedValue = adfAPIResourceInfoMap[aie::profile::adfAPI::START_TO_BYTES_TRANSFERRED][srcKey].profileResult;
@@ -608,7 +610,7 @@ namespace xdp {
       auto events = ucTile.second;
 
       std::vector<uint64_t> counterValues;
-      aie::profile::readMDMCounters(aieDevInst, tile.col, tile.row, counterValues);
+      aie::profile::readMDMCounters(aieDevInst, hwGen, tile.col, tile.row, counterValues);
 
       double timestamp = xrt_core::time_ns() / 1.0e6;
 

@@ -38,6 +38,7 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_debug_plugin PRIVATE FAL_LINUX="on" XDP_VE2_BUILD=1)
   target_include_directories(xdp_aie_debug_plugin PRIVATE ${CMAKE_SOURCE_DIR}/src)
+  
   install (TARGETS xdp_aie_debug_plugin
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
   )

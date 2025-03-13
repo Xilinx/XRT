@@ -27,6 +27,7 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 
+#include "core/common/message.h"
 #include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
@@ -68,8 +69,18 @@ namespace xdp {
       tileOffset = to;
     }
 
-    //void readValues(XAie_DevInst* aieDevInst, std::map<uint64_t, uint32_t>* lookupRegAddrToSizeMap) {
-    void readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata);
+    void readValues(XAie_DevInst* aieDevInst) {
+      std::stringstream msg;
+      msg << "Debugging " << relativeOffsets.size() << " registers for tile " 
+          << +col << "," << +row;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+
+      for (auto& offset : relativeOffsets) {
+        uint32_t val = 0;
+        XAie_Read32(aieDevInst, offset + tileOffset, &val);
+        values.push_back(val); 
+      }
+    }
 };
 
 } // end namespace xdp

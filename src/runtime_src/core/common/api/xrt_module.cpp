@@ -6,6 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "xrt/experimental/xrt_module.h"
+#include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
 #include "xrt/experimental/xrt_ext.h"
 
@@ -27,10 +28,12 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <numeric>
 #include <map>
+#include <memory>
 #include <regex>
 #include <set>
 #include <string>
@@ -370,14 +373,13 @@ demangle(const std::string& mangled_name)
     throw std::runtime_error("Error demangling kernel signature");
 #else
   int status = 0;
-  char* demangled_name = abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr,  &status);
+  std::unique_ptr<char, decltype(&std::free)> demangled_name
+    (abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr, &status), std::free);
 
   if (status)
     throw std::runtime_error("Error demangling kernel signature");
 
-  std::string result {demangled_name};
-  std::free(demangled_name); // Free the allocated memory by api
-  return result;
+  return demangled_name.get();
 #endif
 }
 
@@ -584,13 +586,6 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // get partition size if elf has the info
-  virtual uint32_t
-  get_partition_size() const
-  {
-    throw std::runtime_error("Not supported");
-  }
-
   // get kernel info (name, properties and args) if elf has the info
   virtual const xrt_core::module_int::kernel_info&
   get_kernel_info() const
@@ -661,6 +656,7 @@ public:
 class module_elf : public module_impl
 {
 protected:
+  xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
   uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::map<std::string, patcher> m_arg2patcher;
@@ -673,7 +669,8 @@ protected:
 
   explicit module_elf(xrt::elf elf)
     : module_impl{ elf.get_cfg_uuid() }
-    , m_elfio(xrt_core::elf_int::get_elfio(elf))
+    , m_elf{std::move(elf)}
+    , m_elfio(xrt_core::elf_int::get_elfio(m_elf))
     , m_os_abi(m_elfio.get_os_abi())
   {}
 
@@ -697,12 +694,16 @@ public:
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
-        ss << "Patched " << patcher::to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type)
+           << " using argument index " << index
+           << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
-        ss << "Patched " << patcher::to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::to_string(type)
+           << " using argument name " << argnm
+           << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
@@ -725,6 +726,7 @@ public:
 // module class for ELFs with os_abi - Elf_Amd_Aie2p & ELF_Amd_Aie2p_config
 class module_elf_aie2p : public module_elf
 {
+  xrt::aie::program m_program;
   // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
   // sections will be of format .ctrltext.* where .* has index of that section type
   // Below maps has this index as key and value is pair of <section index, data buffer>
@@ -760,27 +762,6 @@ class module_elf_aie2p : public module_elf
     // Elf_Amd_Aie2p_config has sections .sec_name.*
     auto pos = name.find_last_of(".");
     return (pos == 0) ? 0 : std::stoul(name.substr(pos + 1, 1));
-  }
-
-  void
-  initialize_partition_size()
-  {
-    static constexpr const char* partition_section_name {".note.xrt.configuration"};
-    // note 0 in .note.xrt.configuration section has partition size
-    static constexpr ELFIO::Elf_Word partition_note_num = 0;
-
-    auto partition_section = m_elfio.sections[partition_section_name];
-    if (!partition_section)
-      return; // elf doesn't have partition info section, partition size holds UINT32_MAX
-
-    ELFIO::note_section_accessor accessor(m_elfio, partition_section);
-    ELFIO::Elf_Word type;
-    std::string name;
-    char* desc;
-    ELFIO::Elf_Word desc_size;
-    if (!accessor.get_note(partition_note_num, type, name, desc, desc_size))
-      throw std::runtime_error("Failed to get partition info, partition note not found\n");
-    m_partition_size = std::stoul(std::string{static_cast<char*>(desc), desc_size});
   }
 
   std::string
@@ -858,8 +839,8 @@ class module_elf_aie2p : public module_elf
       arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
       // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
       arg.type = (str.find('*') != std::string::npos)
-               ? xrt_core::xclbin::kernel_argument::argtype::global
-               : xrt_core::xclbin::kernel_argument::argtype::scalar;
+        ? xrt_core::xclbin::kernel_argument::argtype::global
+        : xrt_core::xclbin::kernel_argument::argtype::scalar;
 
       // At present only global args are supported
       // TODO : Add support for scalar args in ELF flow
@@ -914,7 +895,7 @@ class module_elf_aie2p : public module_elf
       
       uint32_t index = get_section_name_index(name);
       buf.append_section_data(sec.get());
-      map.emplace(std::make_pair(index, std::make_pair(sec_index, buf)));
+      map.emplace(index, std::pair{sec_index, buf});
     }
   }
 
@@ -928,7 +909,7 @@ class module_elf_aie2p : public module_elf
       
       buf pdi_buf;
       pdi_buf.append_section_data(sec.get());
-      m_pdi_buf_map.emplace(std::make_pair(name, pdi_buf));
+      m_pdi_buf_map.emplace(name, pdi_buf);
     }
   }
 
@@ -1065,27 +1046,26 @@ class module_elf_aie2p : public module_elf
       }
 
       std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-      patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                               // st_size is is encoded using register value mask for scaler_32
-                               // for other pacthing scheme it is encoded using size of dma
-                               patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) } :
-                               patcher::patch_info{ offset, add_end_addr, 0 };
+      patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind
+        // st_size is is encoded using register value mask for scaler_32
+        // for other pacthing scheme it is encoded using size of dma
+        ? patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
+        : patcher::patch_info{ offset, add_end_addr, 0 };
 
       auto key_string = generate_key_string(argnm, buf_type, sec_index);
 
       if (auto search = m_arg2patcher.find(key_string); search != m_arg2patcher.end())
         search->second.m_ctrlcode_patchinfo.emplace_back(pi);
-      else {
+      else
         m_arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
-      }
     }
   }
 
 public:
   explicit module_elf_aie2p(const xrt::elf& elf)
-    : module_elf(elf)
+    : module_elf{elf}
+    , m_program{elf}
   {
-    initialize_partition_size();
     initialize_kernel_info();
     initialize_buf(patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(patcher::buf_type::ctrldata, m_ctrl_packet_map);
@@ -1143,7 +1123,7 @@ public:
     auto it = m_instr_buf_map.find(index);
     if (it != m_instr_buf_map.end())
       return it->second;
-    return std::make_pair(UINT32_MAX, instr_buf::get_empty_buf());
+    return {UINT32_MAX, instr_buf::get_empty_buf()};
   }
 
   std::pair<uint32_t, const control_packet&>
@@ -1152,7 +1132,7 @@ public:
     auto it = m_ctrl_packet_map.find(index);
     if (it != m_ctrl_packet_map.end())
       return it->second;
-    return std::make_pair(UINT32_MAX, control_packet::get_empty_buf());
+    return {UINT32_MAX, control_packet::get_empty_buf()};
   }
 
   const std::set<std::string>&
@@ -1185,14 +1165,6 @@ public:
     return {m_restore_buf_sec_idx, m_restore_buf};
   }
 
-  virtual uint32_t
-  get_partition_size() const override
-  {
-    if (m_partition_size == UINT32_MAX)
-      throw std::runtime_error("No partition info available, wrong ELF passed\n");
-    return m_partition_size;
-  }
-
   virtual const xrt_core::module_int::kernel_info&
   get_kernel_info() const override
   {
@@ -1206,6 +1178,7 @@ public:
 // module class for ELFs with os_abi - Elf_Amd_Aie2ps
 class module_elf_aie2ps : public module_elf
 {
+  xrt::aie::program m_program;
   std::vector<ctrlcode> m_ctrlcodes;
   buf m_dump_buf; // buffer to hold .dump section used for debug/trace
 
@@ -1435,7 +1408,8 @@ class module_elf_aie2ps : public module_elf
 
 public:
   explicit module_elf_aie2ps(const xrt::elf& elf)
-    : module_elf(elf)
+    : module_elf{elf}
+    , m_program{elf}
   {
     std::vector<size_t> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
@@ -1580,6 +1554,16 @@ class module_sram : public module_impl
     for (const auto& ctrlcode : ctrlcodes) {
       std::memcpy(ptr, ctrlcode.data(), ctrlcode.size());
       ptr += ctrlcode.size();
+    }
+
+    if (is_dump_control_codes()) {
+      // dump pre patched instruction buffer
+      std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
+      dump_bo(m_buffer, dump_file_name);
+
+      std::stringstream ss;
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(m_buffer.size());
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
     // Iterate over control packets of all columns & patch it in instruction
@@ -1837,6 +1821,15 @@ class module_sram : public module_impl
         throw std::runtime_error{ fmt.str() };
       }
       m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      if (is_dump_control_codes()) {
+        std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_buffer, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
     }
     else if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -2310,12 +2303,6 @@ get_kernel_info(const xrt::module& module)
   return module.get_handle()->get_kernel_info();
 }
 
-uint32_t
-get_partition_size(const xrt::module& module)
-{
-  return module.get_handle()->get_partition_size();
-}
-
 void
 dump_dtrace_buffer(const xrt::module& module)
 {
@@ -2328,8 +2315,8 @@ dump_dtrace_buffer(const xrt::module& module)
 
 } // xrt_core::module_int
 
-namespace
-{
+namespace {
+
 static std::shared_ptr<xrt::module_elf>
 construct_module_elf(const xrt::elf& elf)
 {
@@ -2344,13 +2331,14 @@ construct_module_elf(const xrt::elf& elf)
     throw std::runtime_error("unknown ELF type passed\n");
   }
 }
-}
+
+} // namespace
 
 ////////////////////////////////////////////////////////////////
 // xrt_module C++ API implementation (xrt_module.h)
 ////////////////////////////////////////////////////////////////
-namespace xrt
-{
+namespace xrt {
+
 module::
 module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(construct_module_elf(elf))

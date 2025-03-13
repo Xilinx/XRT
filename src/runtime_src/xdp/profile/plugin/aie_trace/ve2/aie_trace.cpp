@@ -256,7 +256,7 @@ namespace xdp {
       return false;
     }
 
-    // Check compile-time trace
+    // Make sure compiler trace option is available as runtime
     if (!metadata->getRuntimeMetrics()) {
       return false;
     }
@@ -297,10 +297,6 @@ namespace xdp {
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
     uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
     
-    //TODO: Remove below 2 lines once aie_partition_info from XRT returns correct values
-    const char* envNumCols = std::getenv("NUM_COLS");
-    numCols = envNumCols ? static_cast<uint8_t>(std::stoi(envNumCols)) : 4 ;
-    
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
@@ -337,7 +333,7 @@ namespace xdp {
         traceStartBroadcastCh1->reserve();
         traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
         traceStartBroadcastCh2->reserve();
-        aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastCh1->getBc(), traceStartBroadcastCh2->getBc(), XAIE_EVENT_USER_EVENT_0_PL, startCol, numCols);
+        aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastCh1->getBc(), traceStartBroadcastCh2->getBc(), XAIE_EVENT_COMBO_EVENT_0_PL, startCol, numCols);
 
         coreTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastCh1->getBc());
         memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastCh1->getBc());
@@ -869,7 +865,7 @@ namespace xdp {
 
         if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
         {
-          if (shimTrace->setCntrEvent(XAIE_EVENT_USER_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
+          if (shimTrace->setCntrEvent(XAIE_EVENT_COMBO_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
             break;
         }
         else

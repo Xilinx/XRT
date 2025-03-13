@@ -28,10 +28,8 @@
 namespace xdp {
 class RegisterInterpreter {
   public:
-    RegisterInterpreter();
     RegisterInterpreter(int aieGeneration);
-
-    ~RegisterInterpreter()=default;
+    ~RegisterInterpreter() {};
 
     struct RegInfo {
       std::string field_name;

@@ -9,9 +9,6 @@
 # XRT_VERSION_MINOR
 # XRT_VERSION_PATCH
 
-# install under c:/xrt
-set (CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/xilinx")
-
 # pdb install dir
 set (CMAKE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/symbols")
 

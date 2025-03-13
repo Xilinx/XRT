@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
@@ -9,13 +9,10 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/pcie/common/device_pcie.h"
-#include "core/pcie/linux/pcidev.h"
 
 namespace xrt_core {
-
-// Forward declaration
-namespace pci {
-class dev;
+    namespace pci {
+        class dev; // Forward declaration of device class
 }
 
 // concrete class derives from device_pcie, but mixes in

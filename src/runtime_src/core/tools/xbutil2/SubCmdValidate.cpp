@@ -41,6 +41,7 @@
 #include "tools/common/tests/TestSpatialSharingOvd.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 namespace XBU = XBUtilities;
+namespace xq = xrt_core::query;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -77,10 +78,12 @@ static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
 
 void
-doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNames)
+doesTestExist(const std::string& userTestName, std::vector<std::shared_ptr<TestRunner>>& testNames)
 {
   const auto iter = std::find_if( testNames.begin(), testNames.end(),
-    [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
+    [&userTestName](const std::shared_ptr<TestRunner>& testRunner){ 
+      return userTestName == "all" || userTestName == "quick" || userTestName == testRunner->get_name();
+    });
 
   if (iter == testNames.end())
     throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
@@ -249,9 +252,9 @@ static void
 get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
-  ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  ptTree.put("power_mode", xrt_core::query::performance_mode::parse_status(mode));
+  ptTree.put("platform", xrt_core::device_query<xq::rom_vbnv>(device));
+  const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
+  ptTree.put("power_mode", xq::performance_mode::parse_status(mode));
 }
 
 static void
@@ -260,14 +263,14 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
                   Report::SchemaVersion /*schemaVersion*/,
                   std::ostream& oStream)
 {
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-  ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+  auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
+  ptTree.put("device_id", xq::pcie_bdf::to_string(bdf));
 
-  switch (xrt_core::device_query<xrt_core::query::device_class>(device)) {
-  case xrt_core::query::device_class::type::alveo:
+  switch (xrt_core::device_query<xq::device_class>(device)) {
+  case xq::device_class::type::alveo:
     get_alveo_platform_info(device, ptTree);
     break;
-  case xrt_core::query::device_class::type::ryzen:
+  case xq::device_class::type::ryzen:
     get_ryzen_platform_info(device, ptTree);
     break;
   }
@@ -287,7 +290,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
     oStream << boost::format("    %-22s: %s\n") % "Power Mode" % power_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
-    oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
+    oStream << boost::format("    %-22s: %s Watts\n") % "Estimated Power" % power;
 }
 
 static test_status
@@ -309,18 +312,23 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   int test_idx = 0;
 
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
 
     boost::property_tree::ptree ptTest;
     try {
       ptTest = testPtr->startTest(device);
+    } catch (const std::runtime_error& e) {
+      std::cout << e.what() << std::endl;
+      return test_status::failed;
     } catch (const std::exception&) {
       ptTest = testPtr->get_test_header();
+      XBValidateUtils::logger(ptTest, "Error", "The test timed out");
       ptTest.put("status", test_token_failed);
+      status = test_status::failed;
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    pretty_print_test_desc(ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     pretty_print_test_run(ptTest, status, std::cout);
   }
 
@@ -378,33 +386,6 @@ static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
 //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-
-XBU::VectorPairStrings
-SubCmdValidate::getTestNameDescriptions(const SubCmdValidateOptions& options, const bool addAdditionOptions) const
-{
-  XBU::VectorPairStrings reportDescriptionCollection;
-
-  // 'verbose' option
-  if (addAdditionOptions) {
-    reportDescriptionCollection.emplace_back("all", "All applicable validate tests will be executed (default)");
-    reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
-  }
-
-  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  const auto& testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string& deviceClass = XBU::get_device_class(options.m_device, true);
-  const auto it = testOptionsMap.find(deviceClass);
-  const std::vector<std::shared_ptr<TestRunner>>& testOptions = (it == testOptionsMap.end()) ? testSuite : it->second;
-
-  // report names and description
-  for (const auto& test : testOptions) {
-    std::string testName = boost::algorithm::to_lower_copy(test.get()->getConfigName());
-    reportDescriptionCollection.emplace_back(testName, test.get()->get_test_header().get("description", "<no description>"));
-  }
-
-  return reportDescriptionCollection;
-}
-
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
@@ -435,12 +416,10 @@ void
                                                  
 SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::variables_map& vm,
                                                  const SubCmdValidateOptions& options,
+                                                 std::vector<std::shared_ptr<TestRunner>>& testOptions,
                                                  std::vector<std::string>& validatedTests,
                                                  std::vector<std::string>& param) const
 {
-
-  const auto testNameDescription = getTestNameDescriptions(options, true /* Add "all" and "quick" options*/);
-
   if (vm.count("output") && options.m_output.empty())
     throw xrt_core::error("Output file not specified ");
 
@@ -461,21 +440,27 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
     throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
 
 
-  if (options.m_tests_to_run.empty())
-    throw xrt_core::error("No test given to validate against.");
-
+  auto testsToRun = options.m_tests_to_run;
+  if (testsToRun.empty()) {
+    if (!XBU::getAdvance()) {
+      testsToRun = std::vector<std::string>({"all"});
+    }
+    else {
+      throw xrt_core::error("No test given to validate against.");
+    }
+  }
   // Validate the user test requests
-  for (auto &userTestName : options.m_tests_to_run) {
+  for (auto &userTestName : testsToRun) {
     const auto validateTestName = boost::algorithm::to_lower_copy(userTestName);
 
-    if ((validateTestName == "all") && (options.m_tests_to_run.size() > 1))
+    if ((validateTestName == "all") && (testsToRun.size() > 1))
       throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
 
-    if ((validateTestName == "quick") && (options.m_tests_to_run.size() > 1))
+    if ((validateTestName == "quick") && (testsToRun.size() > 1))
       throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
     // Verify the current user test request exists in the test suite
-    doesTestExist(validateTestName, testNameDescription);
+    doesTestExist(validateTestName, testOptions);
     validatedTests.push_back(validateTestName);
   }
   //check if param option is provided
@@ -488,7 +473,7 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
       throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % options.m_param).str());
 
     //check test case name
-    doesTestExist(param[0], testNameDescription);
+    doesTestExist(param[0], testOptions);
 
     //check parameter name
     auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(),
@@ -536,14 +521,28 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = options.m_xclbin_path;
+
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  //get list of tests supported by a device
+  auto tests = xrt_core::device_query<xq::xrt_smi_lists>(device, xq::xrt_smi_lists::type::validate_tests);
+  auto testOptions = getTestList(tests);
+
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(options.m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
-
     // All Error Handling for xrt-smi validate should go here
-    handle_errors_and_validate_tests(vm, options, validatedTests, param); 
+    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
 
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
@@ -561,20 +560,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     print_help_internal(options);
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-
-  // Find device of interest
-  std::shared_ptr<xrt_core::device> device;
-  try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
-  } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  const xrt_core::smi::tuple_vector& tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
-  std::vector<std::shared_ptr<TestRunner>> testOptions = getTestList(tests);
 
   // Collect all of the tests of interests
   std::vector<std::shared_ptr<TestRunner>> testObjectsToRun;
@@ -621,20 +606,21 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   //get current performance mode
-  const auto curr_mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
+  const auto og_pmode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
+  const auto parsed_og_pmode = xq::performance_mode::parse_status(og_pmode);
   //--pmode
   try {
     if (!options.m_pmode.empty()) {
       XBU::verbose("Sub command: --param");
 
       if (boost::iequals(options.m_pmode, "DEFAULT")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::basic); // default
       }
       else if (boost::iequals(options.m_pmode, "PERFORMANCE")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::performance);
       }
       else if (boost::iequals(options.m_pmode, "TURBO")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::turbo);
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::turbo);
       }
       else if (boost::iequals(options.m_pmode, "POWERSAVER") || boost::iequals(options.m_pmode, "BALANCED")) {
         throw xrt_core::error(boost::str(boost::format("No tests are supported in %s mode\n") % options.m_pmode));
@@ -644,19 +630,20 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       }
       XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % options.m_pmode));
     }
-    else {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+    else if(!boost::iequals(parsed_og_pmode, "PERFORMANCE")) {
+      xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::performance);
       XBU::verbose("Setting power mode to `performance`\n");
-    }
-    
-  }
-  catch (const xrt_core::query::no_such_key&) {
+    } 
+  } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
-  }
-  catch(const xrt_core::error& e) {
+  } catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(boost::icontains(ex.what(), "Permission denied"))
+      std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") 
+                                    % parsed_og_pmode << std::endl;
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
@@ -664,9 +651,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   try {
     //reset pmode
-    xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
-  } catch (const xrt_core::query::no_such_key&) {
+    xrt_core::device_update<xq::performance_mode>(device.get(), static_cast<xq::performance_mode::power_type>(og_pmode));
+  } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(!boost::icontains(ex.what(), "Permission denied")) {
+      std::cerr << boost::format("\nERROR: %s\n") % ex.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
   }
 
   // -- Write output file ----------------------------------------------
@@ -693,7 +685,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_param = vm.count("param") ? vm["param"].as<std::string>() : "";
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
-  options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>({"all"});
+  options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
 }
 
@@ -720,7 +712,7 @@ SubCmdValidate::getTestList(const xrt_core::smi::tuple_vector& tests) const
     auto it = std::find_if(testSuite.begin(), testSuite.end(),
               [&test](const std::shared_ptr<TestRunner>& runner) {
                 return std::get<0>(test) == runner->getConfigName() &&
-                       (std::get<2>(test) != "hidden" || XBU::getShowHidden());
+                       (std::get<2>(test) != "hidden" || XBU::getAdvance());
               });
 
     if (it != testSuite.end()) {

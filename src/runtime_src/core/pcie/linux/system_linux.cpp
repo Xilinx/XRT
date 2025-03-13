@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include files
 #include "device_linux.h"
@@ -310,7 +310,7 @@ get_dev(unsigned index, bool user)
 void
 register_driver(std::shared_ptr<drv> driver)
 {
-  driver_list::append(driver);
+  driver_list::append(std::move(driver));
 }
 
 } // namespace pci

@@ -54,6 +54,7 @@ protected:
 
   tuple_vector validate_test_desc;
   tuple_vector examine_report_desc;
+  std::vector<option> configure_options;
 
   std::vector<basic_option> 
   construct_option_description(const tuple_vector&) const;

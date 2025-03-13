@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __TestValidateUtilities_h_
 #define __TestValidateUtilities_h_
@@ -75,7 +75,6 @@ constexpr std::string_view test_token_passed = "PASSED";
 
 void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
 size_t get_instr_size(const std::string& dpu_file);
-uint64_t wait_for_max_clock(std::shared_ptr<xrt_core::device>);
 void logger(boost::property_tree::ptree& , const std::string&, const std::string&);
 std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
 std::string findPlatformFile(const std::string& file_path, boost::property_tree::ptree& ptTest);
