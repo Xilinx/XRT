@@ -34,6 +34,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -189,7 +190,7 @@ namespace xdp {
           }
 
           aie::profile::configGroupEvents(&aieDevInst, loc, mod, type, metricSet, startEvent, channel0);
-          if (aie::profile::isStreamSwitchPortEvent(startEvent))
+          if (aie::isStreamSwitchPortEvent(startEvent))
             configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0, startEvent);
 
           // Convert enums to physical event IDs for reporting purposes
@@ -263,7 +264,7 @@ namespace xdp {
   {
     // Hardcoded
     uint8_t rscId = 0;
-    uint8_t portnum = aie::profile::getPortNumberFromEvent(startEvent);
+    uint8_t portnum = aie::getPortNumberFromEvent(startEvent);
     // AIE Tiles (e.g., trace streams)
     if (type == module_type::core) {
       auto slaveOrMaster = (metricSet.find("mm2s") != std::string::npos) ?
