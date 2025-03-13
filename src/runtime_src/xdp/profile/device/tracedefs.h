@@ -90,7 +90,7 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 
 #define AIE_TRACE_BUF_REUSE_WARN              "AIE reuse_buffer may cause overrun. \
 Recommended settings: \
-buffer_size/stream: functions >= 8M functions_partial_stalls >= 16M functions_all_stalls >= 32M, \
+buffer_size/stream: functions >= 8M partial_stalls >= 16M all_stalls >= 32M, \
 trace streams <= 4, buffer_offload_interval_us <= 100. \
 For large tile count, use granular trace. "
 
