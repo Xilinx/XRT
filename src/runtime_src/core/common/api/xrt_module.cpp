@@ -42,6 +42,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_set>
+#include <variant>
 
 #ifdef _WIN32
 #include <dbghelp.h>
@@ -293,107 +294,83 @@ struct patcher
   }
 
   void
-  patch_it(uint8_t* base, uint64_t value)
-  {
-    patch_it_impl(base, value);
-  }
-
-  void
-  patch_it(xrt::bo bo, uint64_t value)
-  {
-    patch_it_impl(bo, value);
-  }
-
-private:
-  template<typename T>
-  void
-  patch_it_impl(T base_or_bo, uint64_t new_value)
+  patch_it(std::variant<xrt::bo, uint8_t*> base_or_bo, uint64_t new_value)
   {
     // base_or_bo is either a pointer to base address of buffer to be patched
     // or xrt::bo object itself
     // shim tests call this function with address directly and call sync themselves
     // but when xrt::bo is passed, we need to call sync explictly
-    uint8_t* base;
-    if constexpr (std::is_same_v<T, xrt::bo>) {
-      base = reinterpret_cast<uint8_t*>(base_or_bo.map());
-    }
-    else
-      base = base_or_bo;
 
-    for (auto& item : m_ctrlcode_patchinfo) {
-      auto offset = item.offset_to_patch_buffer;
-      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
-      if (!item.dirty) {
-        // first time patching cache bd ptr values using bd ptrs array in patch info
-        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
-        item.dirty = true;
-      }
-      else {
-        // not the first time patching, restore bd ptr values from patch info bd ptrs array
-        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
-      }
+    // Lambda for syncing the BO, it's a no-op for uint8_t*
+    auto sync = [&](size_t size, size_t offset) {
+      std::visit([&](auto&& arg) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, xrt::bo>)
+          arg.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+      }, base_or_bo);
+    };
 
-      // lambda for calling sync bo if template arg is of type xrt::bo
-      // We only sync the words that are patched not the entire bo
-      auto sync = [&](size_t size) {
-        if constexpr (std::is_same_v<T, xrt::bo>) {
-          base_or_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    std::visit([&](auto&& arg) {
+      using T = std::decay_t<decltype(arg)>;
+
+      uint8_t* base = nullptr;
+      if constexpr (std::is_same_v<T, xrt::bo>)
+        // map the xrt::bo to get base address
+        base = reinterpret_cast<uint8_t*>(arg.map());
+      else
+        // If it's uint8_t*, use it directly as base address
+        base = arg;
+
+      for (auto& item : m_ctrlcode_patchinfo) {
+        auto offset = item.offset_to_patch_buffer;
+        auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
+
+        if (!item.dirty) {
+          // First time patching, cache bd ptr values using bd ptrs array in patch info
+          std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
+          item.dirty = true;
         }
-      };
-
-      switch (m_symbol_type) {
-      case symbol_type::address_64:
-        // new_value is a 64bit address
-        patch64(bd_data_ptr, new_value);
-        // sync 64 bits patched
-        sync(sizeof(uint64_t));
-        break;
-      case symbol_type::scalar_32bit_kind:
-        // new_value is a register value
-        if (item.mask) {
-          patch32(bd_data_ptr, new_value, item.mask);
-          // sync 32 bits patched
-          sync(sizeof(uint32_t));
+        else {
+          // Not the first time patching, restore bd ptr values from patch info bd ptrs array
+          std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
         }
-        break;
-      case symbol_type::shim_dma_base_addr_symbol_kind:
-        // new_value is a bo address
-        patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written to 8th offset of bd_data_ptr
-        // so sync all the words (max_bd_words)
-        sync(sizeof(uint32_t) * max_bd_words);
-        break;
-      case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
-        // new_value is a bo address
-        patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // sync 64 bits or 2 words
-        sync(sizeof(uint64_t));
-        break;
-      case symbol_type::control_packet_57:
-        // new_value is a bo address
-        patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
-        break;
-      case symbol_type::control_packet_48:
-        // new_value is a bo address
-        patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
-        break;
-      case symbol_type::shim_dma_48:
-        // new_value is a bo address
-        patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 2nd offset of bd_data_ptr
-        // so syncing 3 words
-        sync(3 * sizeof(uint32_t));    // NOLINT
-        break;
-      default:
-        throw std::runtime_error("Unsupported symbol type");
+
+        // Perform patching based on symbol type
+        switch (m_symbol_type) {
+          case symbol_type::address_64:
+            patch64(bd_data_ptr, new_value);
+            sync(sizeof(uint64_t), offset);
+            break;
+          case symbol_type::scalar_32bit_kind:
+            if (item.mask) {
+              patch32(bd_data_ptr, new_value, item.mask);
+              sync(sizeof(uint32_t), offset);
+            }
+            break;
+          case symbol_type::shim_dma_base_addr_symbol_kind:
+            patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+            sync(sizeof(uint32_t) * max_bd_words, offset);
+            break;
+          case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+            patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+            sync(sizeof(uint64_t), offset);
+            break;
+          case symbol_type::control_packet_57:
+            patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+            sync(sizeof(uint32_t) * 4, offset);    // NOLINT
+            break;
+          case symbol_type::control_packet_48:
+            patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+            sync(sizeof(uint32_t) * 4, offset);    // NOLINT
+            break;
+          case symbol_type::shim_dma_48:
+            patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+            sync(sizeof(uint32_t) * 3, offset);    // NOLINT
+            break;
+          default:
+            throw std::runtime_error("Unsupported symbol type");
+        }
       }
-    }
+    }, base_or_bo);
   }
 };
 
