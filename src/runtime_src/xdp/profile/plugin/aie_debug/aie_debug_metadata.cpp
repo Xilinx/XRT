@@ -16,8 +16,6 @@
 
 #define XDP_PLUGIN_SOURCE
 
-
-
 #include "aie_debug_metadata.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>

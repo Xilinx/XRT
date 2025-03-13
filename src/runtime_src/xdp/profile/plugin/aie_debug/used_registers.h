@@ -94,9 +94,7 @@ class UsedRegisters {
       std::stringstream ss;
       ss << "0x" << std::hex << std::uppercase << regVal;
       return ss.str();
-      }
-
-
+    }
 
     uint64_t getRegisterAddr(const std::string& regName) {
       auto itr=regNameToValue.find(regName);
@@ -105,7 +103,7 @@ class UsedRegisters {
 
     uint32_t getRegAddrToSize(uint64_t regVal,module_type mod) {
       std::map<uint64_t, uint32_t>::iterator itr;
-      switch (mod){
+      switch (mod) {
         case module_type::core : {
           itr = coreRegAddrToSize.find(regVal);
            if (itr != coreRegAddrToSize.end())
@@ -147,7 +145,6 @@ class UsedRegisters {
     }
 
   protected:
-  //public:
     std::set<uint64_t> core_addresses;
     std::set<uint64_t> memory_addresses;
     std::set<uint64_t> interface_addresses;
@@ -159,7 +156,6 @@ class UsedRegisters {
     std::map<uint64_t, std::string> memTileRegValueToName;
     std::map<uint64_t, std::string> ucRegValueToName;
     std::map<uint64_t, std::string> npiRegValueToName;
-    //std::map<uint64_t, uint32_t> regAddrToSize;
     std::map<uint64_t, uint32_t> coreRegAddrToSize;
     std::map<uint64_t, uint32_t> memoryRegAddrToSize;
     std::map<uint64_t, uint32_t> shimRegAddrToSize;
@@ -181,15 +177,10 @@ public:
   virtual ~AIE1UsedRegisters() {}
 
   void populateProfileRegisters();
-
-  void populateTraceRegisters() ;
-
+  void populateTraceRegisters();
   void populateRegNameToValueMap();
-
-  void populateRegValueToNameMap() ;
-
-  void populateRegAddrToSizeMap() ;
-
+  void populateRegValueToNameMap();
+  void populateRegAddrToSizeMap();
 };
 
 /*************************************************************************************
@@ -202,20 +193,13 @@ public:
     populateRegValueToNameMap();
     populateRegAddrToSizeMap();
   }
- // ~AIE2UsedRegisters() = default;
   virtual ~AIE2UsedRegisters() {}
 
-  void populateProfileRegisters() ;
-
-  void populateTraceRegisters() ;
-
-void populateRegNameToValueMap() ;
-
-void populateRegValueToNameMap() ;
-
-void populateRegAddrToSizeMap() ;
-
-
+  void populateProfileRegisters();
+  void populateTraceRegisters();
+  void populateRegNameToValueMap();
+  void populateRegValueToNameMap();
+  void populateRegAddrToSizeMap();
 };
 
 /*************************************************************************************
@@ -228,19 +212,13 @@ public:
     populateRegValueToNameMap();
     populateRegAddrToSizeMap();
   }
-  //~AIE2psUsedRegisters() = default;
   virtual ~AIE2psUsedRegisters() {}
 
   void populateProfileRegisters();
-
   void populateTraceRegisters();
-
-  void populateRegNameToValueMap() ;
-
+  void populateRegNameToValueMap();
   void populateRegValueToNameMap();
-
-  void populateRegAddrToSizeMap() ;
-
+  void populateRegAddrToSizeMap();
 };
 } // end XDP namespace
 
