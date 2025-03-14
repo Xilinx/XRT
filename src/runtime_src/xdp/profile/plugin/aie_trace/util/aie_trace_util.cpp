@@ -179,6 +179,7 @@ namespace xdp::aie::trace {
     };
 
     // Banks 16-23 are not defined for all generations
+#ifdef XDP_AIE4_BUILD
     if (aie::isAIE4(hwGen)) {
       eventSets["memory_conflicts3"] = {
           XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
@@ -186,6 +187,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
           XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
     }
+#endif
 
     eventSets["s2mm_channels"]        = eventSets["input_channels"];
     eventSets["s2mm_channels_stalls"] = eventSets["input_channels_stalls"];
