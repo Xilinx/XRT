@@ -292,7 +292,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIEDebugSample(uint64_t deviceId, uint8_t col,
-          uint8_t row, uint32_t value, uint64_t offset, std::string name) 
+          uint8_t row, const xdp::aie::AieDebugValue& value, uint64_t offset, std::string name)
   {
     auto device_db = getDeviceDB(deviceId);
     device_db->addAIEDebugSample(col, row, value, offset, name);

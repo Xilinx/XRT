@@ -19,6 +19,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <vector>
+#include <cmath>
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -30,12 +31,18 @@
 #include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
+#include "core/common/message.h"
+
 extern "C" {
   #include <xaiengine.h>
   #include <xaiengine/xaiegbl_params.h>
 }
 
+#define DEFAULT_REGISTER_SIZE 32
+#define NUMBEROFMODULES 4
+
 namespace xdp {
+  using severity_level = xrt::message::level;
   class EdgeReadableTile;
 
   class AieDebug_EdgeImpl : public AieDebugImpl {
