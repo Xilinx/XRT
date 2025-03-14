@@ -198,6 +198,17 @@ namespace xdp::aie {
     return config;
   }
 
+  uint8_t
+  getNumRows(const boost::property_tree::ptree& aie_meta,
+            const std::string& location)
+  {
+    static std::optional<uint8_t> numRows;
+    if (!numRows.has_value()) {
+      numRows = aie_meta.get_child(location).get_value<uint8_t>();
+    }
+    return *numRows;
+  }
+
   /****************************************************************************
    * Get first row offset of AIE tiles in array
    ***************************************************************************/
