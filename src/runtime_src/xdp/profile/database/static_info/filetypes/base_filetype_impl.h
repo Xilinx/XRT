@@ -41,6 +41,8 @@ class BaseFiletypeImpl {
         virtual aiecompiler_options
         getAIECompilerOptions() const = 0;
         
+        virtual uint8_t getNumRows() const = 0;
+
         virtual uint8_t getAIETileRowOffset() const = 0;
 
         virtual std::vector<uint8_t>

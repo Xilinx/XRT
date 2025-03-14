@@ -71,6 +71,12 @@ AIEControlConfigFiletype::getAIECompilerOptions() const
     return aiecompiler_options;
 }
 
+uint8_t
+AIEControlConfigFiletype::getNumRows() const
+{
+    return xdp::aie::getNumRows(aie_meta, "aie_metadata.driver_config.num_rows");
+}
+
 uint8_t 
 AIEControlConfigFiletype::getAIETileRowOffset() const {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");

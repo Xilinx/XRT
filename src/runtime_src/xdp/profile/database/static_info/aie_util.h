@@ -66,6 +66,11 @@ namespace xdp::aie {
   
   XDP_CORE_EXPORT
   uint8_t
+  getNumRows(const boost::property_tree::ptree& aie_meta,
+            const std::string& location);
+
+  XDP_CORE_EXPORT
+  uint8_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                       const std::string& location);
   
