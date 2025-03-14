@@ -42,7 +42,6 @@ class RegisterInterpreter {
 
     uint32_t calcSubval(const uint32_t start, uint32_t end, const std::vector<uint32_t>& regVals);
     std::vector<RegInfo> registerInfo(const std::string &regName, const std::vector<uint32_t>& regVals);
-    // std::vector<RegInfo> registerInfo(const std::string &regName, const xdp::aie::AieDebugValue& value);
 
   private:
     std::unique_ptr<WriterUsedRegisters> writerUsedRegisters;
