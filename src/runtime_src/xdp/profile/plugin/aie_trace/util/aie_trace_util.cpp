@@ -69,9 +69,6 @@ namespace xdp::aie::trace {
       eventSets["mm2s_channels_stalls"]   = eventSets["functions"];
     }
 
-    // Deprecated after 2024.1
-    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
-    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
@@ -138,9 +135,6 @@ namespace xdp::aie::trace {
     eventSets["mm2s_channels"]   = eventSets["s2mm_channels"];
     eventSets["all_stalls_mm2s"] = eventSets["all_stalls_s2mm"];
 
-    // Deprecated after 2024.1
-    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
-    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
