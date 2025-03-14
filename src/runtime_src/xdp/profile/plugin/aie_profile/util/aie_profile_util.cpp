@@ -263,6 +263,7 @@ namespace xdp::aie::profile {
         XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
       // Banks 16-23 are not defined for all generations
+#ifdef XDP_AIE4_BUILD
       eventSets["conflict_stats2"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
@@ -270,6 +271,7 @@ namespace xdp::aie::profile {
         XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+#endif
       eventSets["conflict_stats3"] = {};
       eventSets["conflict_stats4"] = {};
     }
