@@ -114,9 +114,9 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
-    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps:shim_num_counters
-                    : (xdp::aie::isAIE4(hwGen)  ? aie4:shim_num_counters 
-                    : aie2:shim_num_counters);
+    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::shim_num_counters
+                    : (xdp::aie::isAIE4(hwGen)  ? aie4::shim_num_counters
+                    : aie2::shim_num_counters);
 
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
