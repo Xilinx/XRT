@@ -333,7 +333,8 @@ enum class key_type
   noop,
 
   xocl_errors_ex,
-  xocl_ex_error_code2string
+  xocl_ex_error_code2string,
+  frame_boundary_preemption
 };
 
 struct pcie_vendor : request
@@ -3980,6 +3981,25 @@ struct preemption : request
 
   virtual void
   put(const device*, const std::any&) const override = 0;
+
+};
+
+/*
+ * this request force enables or disables frame boundary pre-emption globally
+ * 1: enable; 0: disable
+*/
+struct frame_boundary_preemption : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::frame_boundary_preemption;
+
+  virtual std::any
+    get(const device*) const override = 0;
+
+  virtual void
+    put(const device*, const std::any&) const override = 0;
 
 };
 
