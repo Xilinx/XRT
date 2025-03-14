@@ -5,7 +5,7 @@
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
-#include "smi.h"
+#include "smi_edge.h"
 
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"

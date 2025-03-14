@@ -45,16 +45,13 @@ struct option : public basic_option {
 };
 
 // Each shim's smi class derives from this class
-// and adds its custom functionalities. Currently only validate tests and examine
-// reports differ between each shim but going forward, each shim can define its 
-// custom behavior for xrt-smi as required. This also gives us the flexibility
-// to add device specific xrt-smi behavior.
+// and adds its custom functionalities. Each shim can define its 
+// custom behavior for xrt-smi as required. This gives us the flexibility
+// to add device/platform specific xrt-smi behavior.
 class smi_base {
-protected:
-
   tuple_vector validate_test_desc;
   tuple_vector examine_report_desc;
-  std::vector<option> configure_options;
+  std::vector<option> configure_suboptions_desc;
 
   std::vector<basic_option> 
   construct_option_description(const tuple_vector&) const;
@@ -71,7 +68,7 @@ protected:
 public:
   XRT_CORE_COMMON_EXPORT
   std::string
-  get_smi_config() const;
+  build_smi_config() const;
 
   XRT_CORE_COMMON_EXPORT
   const tuple_vector&
@@ -85,9 +82,15 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   smi_base();
+
+  XRT_CORE_COMMON_EXPORT
+  smi_base(const tuple_vector validate_test_desc, 
+           const tuple_vector examine_report_desc, 
+           const std::vector<option> configure_suboptions_desc);
 };
 
 XRT_CORE_COMMON_EXPORT
-std::string get_smi_config();
+std::string 
+get_smi_config();
 
 } // namespace xrt_core::smi
