@@ -31,18 +31,21 @@ namespace xdp::aie {
 
   bool isAIE2(const int hwGen)
   {
-    return ((hwGen > XAIE_DEV_GEN_AIE) && (hwGen <= XAIE_DEV_GEN_AIE2P_STRIX_B0)
-            && (hwGen != XAIE_DEV_GEN_AIE2PS));
+    //return ((hwGen > XAIE_DEV_GEN_AIE) && (hwGen <= XAIE_DEV_GEN_AIE2P_STRIX_B0)
+    //        && (hwGen != XAIE_DEV_GEN_AIE2PS));
+    return ((hwGen > XAIE_DEV_GEN_AIE) && (hwGen <= 9) && (hwGen != 5));
   }
 
   bool isAIE2ps(const int hwGen)
   {
-    return (hwGen == XAIE_DEV_GEN_AIE2PS);
+    //return (hwGen == XAIE_DEV_GEN_AIE2PS);
+    return (hwGen == 5);
   }
 
   bool isAIE4(const int hwGen)
   {
-    return (hwGen >= XAIE_DEV_GEN_AIE4_SOUNDWAVE);
+    //return (hwGen >= XAIE_DEV_GEN_AIE4_SOUNDWAVE);
+    return (hwGen >= 40);
   }
 
   bool isMicroSupported(const int hwGen)

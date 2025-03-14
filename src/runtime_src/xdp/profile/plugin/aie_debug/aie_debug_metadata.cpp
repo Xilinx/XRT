@@ -26,7 +26,7 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/aie_base/aie_utlity.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
