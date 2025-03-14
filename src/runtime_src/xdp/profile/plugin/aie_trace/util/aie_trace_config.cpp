@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <boost/algorithm/string.hpp>
@@ -100,11 +101,11 @@ namespace xdp::aie::trace {
     for (int i=0; i < events.size(); ++i) {
       // Ensure applicable event
       auto event = events.at(i);
-      if (!isStreamSwitchPortEvent(event))
+      if (!aie::isStreamSwitchPortEvent(event))
         continue;
 
       bool newPort = false;
-      auto portnum = getPortNumberFromEvent(event);
+      auto portnum = aie::getPortNumberFromEvent(event);
       uint8_t channelNum = portnum % 2;
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
@@ -179,7 +180,7 @@ namespace xdp::aie::trace {
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
       XAie_Events ssEvent;
-      if (isPortRunningEvent(event))
+      if (aie::isPortRunningEvent(event))
         switchPortRsc->getSSRunningEvent(ssEvent);
       else
         switchPortRsc->getSSStalledEvent(ssEvent);
@@ -213,7 +214,7 @@ namespace xdp::aie::trace {
                     aie_cfg_base& config)
   {
     // Only needed for core/memory modules and metric sets that include DMA events
-    if (!isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
+    if (!aie::isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
       return {};
 
     std::vector<XAie_Events> comboEvents;
@@ -288,7 +289,7 @@ namespace xdp::aie::trace {
                          const std::string metricSet)
   {
     // Only needed for core module and metric sets that include DMA events
-    if (!isDmaSet(metricSet) || (type != module_type::core))
+    if (!aie::isDmaSet(metricSet) || (type != module_type::core))
       return;
 
     // Set masks for group events

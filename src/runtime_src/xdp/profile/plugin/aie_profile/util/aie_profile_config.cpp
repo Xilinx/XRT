@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <cmath>
