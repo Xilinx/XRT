@@ -617,8 +617,6 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
-    bool showWarning2 = true;
-    bool showWarning3 = true;
     std::vector<tile_type> offTiles;
     auto defaultSet = defaultSets[type];
     auto coreSets = metricSets[module_type::core];
