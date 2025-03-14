@@ -16,6 +16,7 @@
 
 #define XDP_PLUGIN_SOURCE
 
+#include <set>
 #include "xdp/profile/plugin/aie_base/aie_utility.h"
 
 namespace xdp::aie {
