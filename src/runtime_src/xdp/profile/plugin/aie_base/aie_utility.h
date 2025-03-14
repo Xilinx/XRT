@@ -18,6 +18,7 @@
 #define AIE_UTILITY_DOT_H
 
 #include <cstdint>
+#include <string>
 
 extern "C" {
 #include <xaiengine.h>
