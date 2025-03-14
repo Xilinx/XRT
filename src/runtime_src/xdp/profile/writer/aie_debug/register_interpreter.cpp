@@ -61,7 +61,6 @@ namespace xdp {
     }
 
     std::vector<RegisterInterpreter::RegInfo>
-    // RegisterInterpreter::registerInfo(const std::string& regName, const xdp::aie::AieDebugValue& aieDebugVal)
     RegisterInterpreter::registerInfo(const std::string& regName, const std::vector<uint32_t>& regVals)
     {
         if (regVals.size() == 0)
