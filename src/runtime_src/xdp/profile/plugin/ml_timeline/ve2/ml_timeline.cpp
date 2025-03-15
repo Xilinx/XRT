@@ -167,15 +167,20 @@ namespace xdp {
             xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
             break;
           } else if (numBufSegments > 1) {
-            std::stringstream nxtSegmentMsg << " Got both id and ts field as ZERO." 
-                 << " Moving to next segment on the buffer for next uC."
-                 << " Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
+            std::stringstream nxtSegmentMsg;
+            nxtSegmentMsg << " Got both id and timestamp field as ZERO." 
+                 << " Moving to next segment on the buffer."
+                 << " Size of each segment in bytes 0x " << std::hex << segmentSzInBytes << std::dec
+                 << ". Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
 
             ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
 
-            nxtSegmentMsg << " Next Segment Address 0x" << std::hex << ptr << std::dec
-                          << std::endl;
+            nxtSegmentMsg << ". Next Segment Address 0x" << std::hex << ptr << std::dec 
+                          << "." << std::endl;
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", nxtSegmentMsg.str());
+
             currSegmentPtr = ptr;
+            continue;
           } else {
             break;
           }
