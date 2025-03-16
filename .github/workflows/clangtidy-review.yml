@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+name: clang-tidy-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: master
+    
+  workflow_dispatch:
+
+jobs:
+  clangtidy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Create clang-tidy review
+      id: review
+      uses: stsoe/clang-tidy-review@patches
+      with:
+        build_dir: build/Release
+        apt_packages: |
+         cmake, g++, pkg-config, libdrm-dev,
+         ocl-icd-dev, ocl-icd-libopencl1, ocl-icd-opencl-dev,
+         libboost-dev, libboost-filesystem-dev, libboost-program-options-dev,
+         libncurses5-dev,
+         libssl-dev,
+         rapidjson-dev,
+         libelf-dev,
+         libprotoc-dev, protobuf-compiler,
+         uuid-dev,
+         systemtap-sdt-dev,
+         curl, libcurl4-openssl-dev,
+         libudev-dev
+        cmake_command: cmake -B build/Release -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        # disable default checks and rely on closest .clangtidy
+        clang_tidy_checks: ''
+        split_workflow: true
+
+    - name: Upload clang-tidy review
+      uses: stsoe/clang-tidy-review/upload@patches
+      id: upload-review

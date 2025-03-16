@@ -87,7 +87,7 @@ namespace xdp {
       }
 
       std::pair<int, XAie_Events>
-      getPLBroadcastChannel(const tile_type& srcTile);
+      getShimBroadcastChannel(const tile_type& srcTile);
 
       void
       displayAdfAPIResults();
@@ -120,7 +120,7 @@ namespace xdp {
       std::map<aie::profile::adfAPI, std::map<std::string, aie::profile::adfAPIResourceInfo>> adfAPIResourceInfoMap;
       
       // This stores the map of location of tile and configured broadcast channel event
-      std::map<tile_type, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
+      std::map<std::string, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
 
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesBytesTx;
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesLatency;

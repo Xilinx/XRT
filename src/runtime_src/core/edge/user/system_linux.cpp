@@ -1,24 +1,10 @@
-/**
- * Copyright (C) 2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-// Local - Include files
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 #include "device_linux.h"
+#include "core/common/message.h"
 #include "core/common/time.h"
 
 #include "plugin/xdp/hal_profile.h"
@@ -54,6 +40,10 @@
 #include "shim/device.h"
 #endif
 
+#ifdef EDGE_VE2_XDNA
+#include "shim/xdna_device.h"
+#endif
+
 // This system class enumerates both Traditional Edge devices(Zocl driver)
 // and Edge VE2 devices(AIARM driver).
 // Map for holding valid devices of combined shim
@@ -64,61 +54,98 @@ namespace {
 enum class dev_type : uint16_t
 {
   aiarm = 0,
-  zocl = 1
+  zocl = 1,
+  aiarm_xdna = 2
 };
 static std::unordered_map<uint16_t, dev_type> dev_map;
 
-static unsigned int
-enumerate_devices()
+namespace fs = std::filesystem;
+
+static void
+enumerate_accel_devices(unsigned int& device_count)
 {
-  /*
-   * Zocl node is not present in some platforms static dtb, it gets loaded
-   * using overlay dtb, drm device node is not created until zocl is present
-   * So if enable_flat is set return 1 valid device
-   * Valid for SOM kind of platforms
-   */
-  if (xrt_core::config::get_enable_flat())
-    return 1;
+  // For Ve2 accel device (xdna driver) we search /sys/class/accel/accel* entries
+  // to find the device node for our accel device
+  // We match device tree entry 'telluride_drm'
+  // Checking for AIARM accel device entry by getting accel name from
+  // paths - /sys/class/accel/accel*/device/of_node/name
+  const std::string of_node_name{"telluride_drm"};
+  const std::string base_path = "/sys/class/accel";
+  const std::string of_node_path = "/device/of_node/name";
+  const std::regex accel_regex("accel.*");
+  std::string accel_dev_name;
 
-  static const std::string render_dev_sym_dir{"/dev/dri/by-path/"};
-  std::string aiarm_render_devname;
-  std::string zocl_render_devname;
-
-  // On Edge VE2 kind of devices 'telluride_drm' is the name of aiarm node in device tree
-  // On Edge traditional devices 'zyxclmm_drm' is the name of zocl node in device tree
-  // A symlink to render devices are created based on these node names
   try {
-    static const std::regex aiarm_filter{"platform.*telluride_drm-render"};
-    static const std::regex zocl_filter{"platform.*zyxclmm_drm-render"};
-    if (!std::filesystem::exists(render_dev_sym_dir)) {
-      std::string msg{"DRM device path - " + render_dev_sym_dir +
-                      "doesn't exist, cannot detect devices"};
-      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
-      return 0;
-    }
-    std::filesystem::directory_iterator end_itr;
-    for (std::filesystem::directory_iterator itr{render_dev_sym_dir}; itr != end_itr; ++itr) {
-      if (std::regex_match(itr->path().filename().string(), aiarm_filter)) {
-        aiarm_render_devname = std::filesystem::read_symlink(itr->path()).filename().string();
+    for (const auto& entry : fs::directory_iterator(base_path)) {
+      if (fs::is_directory(entry) && std::regex_match(entry.path().filename().string(), accel_regex)) {
+        const std::string accel_file_path = entry.path().string() + of_node_path;
+        if (fs::exists(accel_file_path)) {
+          std::ifstream accel_file(accel_file_path);
+          std::string name;
+          std::getline(accel_file, name);
+	  // trim \0 at the end for proper comparision
+	  if (!name.empty() && name.back() == '\0')
+	    name = name.substr(0, name.size() - 1);
+
+	  if (name.compare(of_node_name) == 0) {
+            accel_dev_name = entry.path().filename().string();
+	    break;
+	  }
+        }
       }
-      if (std::regex_match(itr->path().filename().string(), zocl_filter)) {
-        zocl_render_devname = std::filesystem::read_symlink(itr->path()).filename().string();
-      }
     }
+
+    if (accel_dev_name.empty())
+      throw std::runtime_error("Entry not found\n");
+
+    // check accel file existance and insert device in map
+    const std::string accel_dev_sym_dir{"/dev/accel/"};
+    if (fs::exists(accel_dev_sym_dir + accel_dev_name))
+      dev_map[device_count++] = dev_type::aiarm_xdna;
   }
   catch (const std::exception& e) {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT",
-                            std::string{"Unable to read renderD* path of devices"} + e.what());
-    return 0;
+    std::string msg = "Error while searching for AIARM accel device: " + std::string(e.what());
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
+}
 
-  unsigned device_count = 0;
+static void
+enumerate_render_devices(unsigned int& device_count)
+{
+  // For Render kind of devices a symlink entry is found in /dev/dri/by-path
+  // with device tree node name of corresponding device
+  // On Edge traditional devices 'zyxclmm_drm' is the name of zocl node in device tree
+  // and on Ve2 render device 'telluride_drm' is the name in device tree
+  // A symlink to render devices are created based on these node names
+  auto match = [](const std::string& dir_path, const std::regex& filter) {
+    if (!fs::exists(dir_path)) {
+      throw std::runtime_error("Device search path: " + dir_path + " doesn't exist\n");
+    }
+
+    fs::directory_iterator end_itr;
+    for (fs::directory_iterator itr{dir_path}; itr != end_itr; ++itr) {
+      if (std::regex_match(itr->path().filename().string(), filter)) {
+        return fs::read_symlink(itr->path()).filename().string();
+      }
+    }
+
+    throw std::runtime_error("Device node symlink cannot be found\n");
+  };
+
+  // Checking for Render device entries (aiarm, zocl)
+  static const std::regex aiarm_filter{"platform.*telluride_drm-render"};
+  static const std::regex zocl_filter{"platform.*zyxclmm_drm-render"};
+
   // lambda function that checks validity of /dev/dri/renderD* device node
   // and inserts in global map with its type of device and increments device count
   auto validate_and_insert_in_map =
-      [&](const std::string& drm_dev_name, const std::string& ver_name, const enum dev_type& type) {
+      [&](const std::regex& filter, const std::string& ver_name, const enum dev_type& type) {
     try {
-      if (!std::filesystem::exists(drm_dev_name))
+      const std::string dev_path{"/dev/dri/"};
+      const std::string render_dev_sym_dir{"/dev/dri/by-path/"};
+
+      auto drm_dev_name = dev_path + match(render_dev_sym_dir, filter);
+      if (!fs::exists(drm_dev_name))
         throw std::runtime_error(drm_dev_name + " device node doesn't exist");
 
       auto file_d = open(drm_dev_name.c_str(), O_RDWR);
@@ -158,8 +185,25 @@ enumerate_devices()
     }
   };
 
-  validate_and_insert_in_map("/dev/dri/" + aiarm_render_devname, "AIARM", dev_type::aiarm);
-  validate_and_insert_in_map("/dev/dri/" + zocl_render_devname, "zocl", dev_type::zocl);
+  validate_and_insert_in_map(aiarm_filter, "AIARM", dev_type::aiarm);
+  validate_and_insert_in_map(zocl_filter, "zocl", dev_type::zocl);
+}
+
+static unsigned int
+enumerate_devices()
+{
+  /*
+   * Zocl node is not present in some platforms static dtb, it gets loaded
+   * using overlay dtb, drm device node is not created until zocl is present
+   * So if enable_flat is set return 1 valid device
+   * Valid for SOM kind of platforms
+   */
+  if (xrt_core::config::get_enable_flat())
+    return 1;
+
+  unsigned device_count = 0;
+  enumerate_accel_devices(device_count);
+  enumerate_render_devices(device_count);
 
   return device_count;
 }
@@ -176,6 +220,13 @@ get_device_handle(xrt_core::device::id_type id)
     }
 
     auto type = dev_map[id];
+#ifdef EDGE_VE2_XDNA
+    if (type == dev_type::aiarm_xdna) {
+      auto handle = new shim_xdna_edge::shim(id);
+      return static_cast<xclDeviceHandle>(handle);
+    }
+#endif
+
 #ifdef EDGE_VE2
     if (type == dev_type::aiarm) {
       auto handle = new aiarm::shim(id);
@@ -186,6 +237,7 @@ get_device_handle(xrt_core::device::id_type id)
       return static_cast<xclDeviceHandle>(handle);
     }
 #endif
+
     if (type == dev_type::zocl) {
       auto handle = new ZYNQ::shim(id);
       if (!ZYNQ::shim::handleCheck(handle)) {
@@ -284,6 +336,13 @@ get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   auto type = dev_map[id];
 
+#ifdef EDGE_VE2_XDNA
+  if (type == dev_type::aiarm_xdna) {
+    // deliberately not using std::make_shared (used with weak_ptr)
+    return std::shared_ptr<shim_xdna_edge::device_xdna>(new shim_xdna_edge::device_xdna(handle, id));
+  }
+#endif
+
 #ifdef EDGE_VE2
   if (type == dev_type::aiarm) {
     // deliberately not using std::make_shared (used with weak_ptr)
@@ -303,8 +362,7 @@ std::shared_ptr<device>
 system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
+  throw std::runtime_error("Not Supported\n");
 }
 
 void

@@ -41,6 +41,7 @@
 #include "tools/common/tests/TestSpatialSharingOvd.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 namespace XBU = XBUtilities;
+namespace xq = xrt_core::query;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -251,9 +252,9 @@ static void
 get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
-  ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  ptTree.put("power_mode", xrt_core::query::performance_mode::parse_status(mode));
+  ptTree.put("platform", xrt_core::device_query<xq::rom_vbnv>(device));
+  const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
+  ptTree.put("power_mode", xq::performance_mode::parse_status(mode));
 }
 
 static void
@@ -262,14 +263,14 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
                   Report::SchemaVersion /*schemaVersion*/,
                   std::ostream& oStream)
 {
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-  ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+  auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
+  ptTree.put("device_id", xq::pcie_bdf::to_string(bdf));
 
-  switch (xrt_core::device_query<xrt_core::query::device_class>(device)) {
-  case xrt_core::query::device_class::type::alveo:
+  switch (xrt_core::device_query<xq::device_class>(device)) {
+  case xq::device_class::type::alveo:
     get_alveo_platform_info(device, ptTree);
     break;
-  case xrt_core::query::device_class::type::ryzen:
+  case xq::device_class::type::ryzen:
     get_ryzen_platform_info(device, ptTree);
     break;
   }
@@ -289,7 +290,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
     oStream << boost::format("    %-22s: %s\n") % "Power Mode" % power_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
-    oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
+    oStream << boost::format("    %-22s: %s Watts\n") % "Estimated Power" % power;
 }
 
 static test_status
@@ -311,7 +312,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   int test_idx = 0;
 
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
 
     boost::property_tree::ptree ptTest;
     try {
@@ -327,7 +328,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    pretty_print_test_desc(ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     pretty_print_test_run(ptTest, status, std::cout);
   }
 
@@ -532,7 +533,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   //get list of tests supported by a device
-  auto tests = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::validate_tests);
+  auto tests = xrt_core::device_query<xq::xrt_smi_lists>(device, xq::xrt_smi_lists::type::validate_tests);
   auto testOptions = getTestList(tests);
 
   try {
@@ -605,20 +606,21 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   //get current performance mode
-  const auto curr_mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
+  const auto og_pmode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
+  const auto parsed_og_pmode = xq::performance_mode::parse_status(og_pmode);
   //--pmode
   try {
     if (!options.m_pmode.empty()) {
       XBU::verbose("Sub command: --param");
 
       if (boost::iequals(options.m_pmode, "DEFAULT")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::basic); // default
       }
       else if (boost::iequals(options.m_pmode, "PERFORMANCE")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::performance);
       }
       else if (boost::iequals(options.m_pmode, "TURBO")) {
-        xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::turbo);
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::turbo);
       }
       else if (boost::iequals(options.m_pmode, "POWERSAVER") || boost::iequals(options.m_pmode, "BALANCED")) {
         throw xrt_core::error(boost::str(boost::format("No tests are supported in %s mode\n") % options.m_pmode));
@@ -628,19 +630,20 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       }
       XBU::verbose(boost::str(boost::format("Setting power mode to `%s` \n") % options.m_pmode));
     }
-    else {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::performance);
+    else if(!boost::iequals(parsed_og_pmode, "PERFORMANCE")) {
+      xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::performance);
       XBU::verbose("Setting power mode to `performance`\n");
-    }
-    
-  }
-  catch (const xrt_core::query::no_such_key&) {
+    } 
+  } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
-  }
-  catch(const xrt_core::error& e) {
+  } catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(boost::icontains(ex.what(), "Permission denied"))
+      std::cout << boost::format("WARNING: User doesn't have admin permissions to set performance mode. Running validate in %s mode") 
+                                    % parsed_og_pmode << std::endl;
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
@@ -648,9 +651,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   try {
     //reset pmode
-    xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), static_cast<xrt_core::query::performance_mode::power_type>(curr_mode));
-  } catch (const xrt_core::query::no_such_key&) {
+    xrt_core::device_update<xq::performance_mode>(device.get(), static_cast<xq::performance_mode::power_type>(og_pmode));
+  } catch (const xq::no_such_key&) {
     // Do nothing, as performance mode setting is not supported
+  } catch (const std::exception & ex) { //check if permission was denied, i.e., no sudo access
+    if(!boost::icontains(ex.what(), "Permission denied")) {
+      std::cerr << boost::format("\nERROR: %s\n") % ex.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
   }
 
   // -- Write output file ----------------------------------------------

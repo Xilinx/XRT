@@ -6,6 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
+#include "core/common/message.h"
 #include <functional>
 
 #ifdef _WIN32
@@ -337,7 +338,7 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 {
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     update_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
     finish_flush_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
   #else
@@ -401,65 +402,70 @@ update_device(void* handle)
   }
   #endif
 
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+      xrt_core::xdp::ml_timeline::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load ML Timeline library.");      
+    }
+  }
+
   if (xrt_core::config::get_aie_halt()) {
     try {
       xrt_core::xdp::aie::halt::load();
+      xrt_core::xdp::aie::halt::update_device(handle);
     }
     catch (...) {
-      return;
-    }
-    xrt_core::xdp::aie::halt::update_device(handle);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Halt library.");  
+    }    
   }
 
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
+      xrt_core::xdp::aie::profile::update_device(handle);
     } 
     catch (...) {
-      return;
-    }
-    xrt_core::xdp::aie::profile::update_device(handle);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Profile library."); 
+    }  
   }
 
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
+      xrt_core::xdp::aie::trace::update_device(handle);
     } 
     catch (...) {
-      return;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Trace library."); 
     }
-    xrt_core::xdp::aie::trace::update_device(handle);
-    
   }
 
   if (xrt_core::config::get_aie_debug()) {
     try {
       xrt_core::xdp::aie::debug::load();
+      xrt_core::xdp::aie::debug::update_device(handle);
     } 
     catch (...) {
-      return;
-    }
-    xrt_core::xdp::aie::debug::update_device(handle);
-  }
-
-  if (xrt_core::config::get_ml_timeline()) {
-    try {
-      xrt_core::xdp::ml_timeline::load();
-    }
-    catch (...) {
-      return;
-    }
-    xrt_core::xdp::ml_timeline::update_device(handle);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Debug library."); 
+    }    
   }
 
   if (xrt_core::config::get_aie_pc()) {
     try {
       xrt_core::xdp::aie_pc::load();
+      xrt_core::xdp::aie_pc::update_device(handle);
     }
     catch (...) {
-      return;
-    }
-    xrt_core::xdp::aie_pc::update_device(handle);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE PC library."); 
+    }    
   }
 
 #elif defined(XDP_VE2_BUILD)
@@ -467,11 +473,23 @@ update_device(void* handle)
   if (xrt_core::config::get_ml_timeline()) {
     try {
       xrt_core::xdp::ml_timeline::load();
+      xrt_core::xdp::ml_timeline::update_device(handle);
     }
     catch (...) {
-      return;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load ML Timeline library."); 
     }
-    xrt_core::xdp::ml_timeline::update_device(handle);
+  }
+
+  if (xrt_core::config::get_aie_halt()) {
+    try {
+      xrt_core::xdp::aie::halt::load();
+      xrt_core::xdp::aie::halt::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+        "Failed to load AIE Halt library.");  
+    }    
   }
 
 #else
@@ -495,6 +513,8 @@ finish_flush_device(void* handle)
 
 #ifdef XDP_CLIENT_BUILD
 
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_halt())
     xrt_core::xdp::aie::halt::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
@@ -503,8 +523,6 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
-  if (xrt_core::config::get_ml_timeline())
-    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_pc())
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
 
@@ -512,6 +530,8 @@ finish_flush_device(void* handle)
 
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
+  if (xrt_core::config::get_aie_halt())
+    xrt_core::xdp::aie::halt::finish_flush_device(handle);
 
 #else
 

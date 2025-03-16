@@ -326,14 +326,14 @@ namespace xdp {
                                  uint8_t num, uint16_t start, uint16_t end,
                                  uint8_t reset, uint64_t load, double freq,
                                  const std::string& mod,
-                                 const std::string& aieName)
+                                 const std::string& aieName, uint8_t streamId)
   {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
 
     config->addAIECounter(i, col, row, num, start, end,
-                          reset, load, freq, mod, aieName) ;
+                          reset, load, freq, mod, aieName, streamId) ;
   }
 
   void DeviceInfo::addAIECounterResources(uint32_t numCounters,
