@@ -37,6 +37,9 @@ class WriterUsedRegisters {
       int shift;
       uint32_t mask;
 
+      RegData(std::string n, std::string b)
+        : field_name(n), bit_range(b) {}
+
       RegData(std::string n, std::string b, int s, uint32_t m)
         : field_name(n), bit_range(b), shift(s), mask(m) {}
     };
