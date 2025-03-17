@@ -101,6 +101,20 @@ public:
 
 };
 
+/*************************************************************************************
+ AIE4 Registers
+ *************************************************************************************/
+class AIE4WriterUsedRegisters : public WriterUsedRegisters {
+public:
+  AIE4WriterUsedRegisters() {
+    populateRegDataMap();
+  }
+  ~AIE4WriterUsedRegisters() = default;
+
+  void populateRegDataMap();
+
+};
+
 } // end namesapce xdp
 
 #endif
