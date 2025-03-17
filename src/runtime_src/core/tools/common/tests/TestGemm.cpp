@@ -20,10 +20,6 @@ namespace XBU = XBUtilities;
 #include <thread>
 
 static constexpr uint32_t num_of_cores = 32;
-static constexpr size_t buffer_size_gb = 1;
-static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
-
-static size_t host_app = 1; //opcode - default to be 1 for DPU sequence
 
 /*
 * Total OPs= = 196K OPs.
@@ -42,22 +38,14 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   // Check Whether Use ELF or DPU Sequence
-  auto elf = XBValidateUtils::getElf(dev, ptree);
+  auto elf = XBValidateUtils::getElf();
   if (!elf) 
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
   else 
     XBValidateUtils::logger(ptree, "Details", "Using ELF");
   
   // Find xclbin File
-  std::string xclbin_path;
-  if (!elf) { // DPU
-    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm);
-    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
-  }
-  else { // ELF
-    const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::gemm_elf);
-    xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
-  }
+  auto xclbin_path = XBValidateUtils::get_gemm_xclbin_path(dev, elf, ptree);
 
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
@@ -128,7 +116,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   else {
-    host_app = 3; // Opcode 3 for ELF Flow
     const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::gemm_int8);
     auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
 
@@ -166,9 +153,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     //run kernel
     for(int i=0; i < 200; i++) {
       if (!elf) {
-        run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+        run = kernel(XBValidateUtils::getOpcode(), NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
       } else {
-        run = kernel(host_app, 0, 0, 0, 0, 0, 0, 0);
+        run = kernel(XBValidateUtils::getOpcode(), 0, 0, 0, 0, 0, 0, 0);
       }
       // Wait for kernel to be done
       run.wait2();

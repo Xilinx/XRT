@@ -55,14 +55,9 @@ XBUtilities::getVerbose()
 void
 XBUtilities::setElf(bool _bElf)
 {
-  bool prevElf = m_bElf;
-
-  if ((prevElf == true) && (_bElf == false))
-    verbose("Disabling ELF");
-  
   m_bElf = _bElf;
   
-  if ((prevElf == false) && (_bElf == true))
+  if (_bElf == true)
     verbose("Enabling ELF");
 }
 

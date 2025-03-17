@@ -415,15 +415,58 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
   }
 }
 
+/*
+* Check if ELF flow is enabled
+*/
 bool 
-getElf(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& ptTest)
+getElf()
 {
-  auto device_id = xrt_core::device_query<xrt_core::query::pcie_id>(device).device_id;
-  if (XBUtilities::getElf() && (device_id != 6128)) {
-    XBValidateUtils::logger(ptTest, "Details", boost::str(boost::format("--elf option on Device %d is not supported, using default") % device_id));
-    return 0;
-  }
   return XBUtilities::getElf(); 
+}
+
+/*
+* Get the host opcode for the kernel based on if ELF is enabled
+* return 1 for DPU sequence and 3 for ELF flow
+*/
+int
+getOpcode()
+{
+  if (XBUtilities::getElf())
+    return 3;
+  else
+    return 1;
+}
+
+/*
+* Get the validate xclbin path
+*/
+std::string 
+get_validate_xclbin_path(const std::shared_ptr<xrt_core::device>& device, bool is_elf, boost::property_tree::ptree& ptTest)
+{
+  std::string xclbin_name;
+  if (!is_elf) // DPU
+    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::validate);
+  else // ELF
+    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::validate_elf);
+
+  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
+  return xclbin_path;
+}
+
+/*
+* Get the Gemm xclbin path
+*/
+std::string
+get_gemm_xclbin_path(const std::shared_ptr<xrt_core::device>& device, bool is_elf, boost::property_tree::ptree& ptTest)
+{
+  std::string xclbin_name;
+  if (!is_elf) // DPU
+    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::gemm);
+  else // ELF
+    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::gemm_elf);
+  
+  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
+  return xclbin_path;
 }
 
 }// end of namespace XBValidateUtils
