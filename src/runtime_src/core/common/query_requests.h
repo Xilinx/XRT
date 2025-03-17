@@ -3995,11 +3995,11 @@ struct frame_boundary_preemption : request
 
   static const key_type key = key_type::frame_boundary_preemption;
 
-  virtual std::any
-    get(const device*) const override = 0;
+  std::any
+  get(const device*) const override = 0;
 
-  virtual void
-    put(const device*, const std::any&) const override = 0;
+  void
+  put(const device*, const std::any&) const override = 0;
 
 };
 
