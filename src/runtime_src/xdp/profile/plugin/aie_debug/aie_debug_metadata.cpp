@@ -70,8 +70,8 @@ namespace xdp {
 #ifdef XDP_AIE4_BUILD
     else if (aie::isAIE4(hwGen))
       usedRegisters = std::make_unique<AIE4UsedRegisters>();
-  }
 #endif
+  }
 
   /****************************************************************************
    * Lookup register names and values given current AIE HW generation
