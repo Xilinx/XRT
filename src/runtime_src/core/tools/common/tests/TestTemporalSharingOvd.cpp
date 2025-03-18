@@ -17,13 +17,13 @@
 
 
 namespace XBU = XBUtilities;
-static constexpr size_t buffer_size = 1024*1024*1024; //1 GB
+static constexpr size_t num_kernels = 1000;
 
 boost::property_tree::ptree 
 TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   ptree.erase("xclbin");
 
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet);
   auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
@@ -57,9 +57,23 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::mobilenet);
   auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
+    return ptree;
+
+  const auto ifm_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_ifm);
+  auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
+  if (!std::filesystem::exists(ifm_file))
+    return ptree;
+
+  const auto param_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_param); 
+  auto param_file = XBValidateUtils::findPlatformFile(param_name, ptree);
+
+  const auto buffer_sizes_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::buffer_sizes);
+  auto buffer_sizes_file = XBValidateUtils::findPlatformFile(buffer_sizes_name, ptree);
+
+  if (!std::filesystem::exists(param_file))
     return ptree;
 
   // Run 1 
@@ -67,7 +81,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 1, buffer_size, 10);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, ifm_name, param_name, buffer_sizes_file, 1, num_kernels);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 

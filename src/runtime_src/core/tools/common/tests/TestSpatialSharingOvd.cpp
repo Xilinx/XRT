@@ -15,7 +15,7 @@
 namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size = 1024 * 1024 * 1024; //1 GB
+static constexpr size_t num_kernels = 1000;
 
 // Method to run the test
 // Parameters:
@@ -27,7 +27,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
   ptree.erase("xclbin");
 
   // Query the xclbin name from the device
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet);
 
   // Find the platform file path for the xclbin
   auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
@@ -86,17 +86,45 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     }
   };
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::mobilenet);
   auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
+
   if (!std::filesystem::exists(dpu_instr))
+  {
+    XBValidateUtils::logger(ptree, "Error", "Dpu instruction file not found");
+    ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
+  }
+  
+  const auto ifm_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_ifm);
+  auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
+
+  if (!std::filesystem::exists(ifm_file))
+  {
+    XBValidateUtils::logger(ptree, "Error", "Input feature map file not found");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    return ptree;
+  }
+
+  const auto param_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_param); 
+  auto param_file = XBValidateUtils::findPlatformFile(param_name, ptree);
+
+  const auto buffer_sizes_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::buffer_sizes);
+  auto buffer_sizes_file = XBValidateUtils::findPlatformFile(buffer_sizes_name, ptree);
+
+  if (!std::filesystem::exists(param_file))
+  {
+    XBValidateUtils::logger(ptree, "Error", "Parameter file not found");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    return ptree;
+  }
 
   /* Run 1 */
   std::vector<std::thread> threads;
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 2, buffer_size, 10);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, ifm_file, param_file, buffer_sizes_file, 1, num_kernels);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
@@ -121,7 +149,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     threads[i].join();
   }
   auto end = std::chrono::high_resolution_clock::now(); 
-  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
+  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end-start).count();
 
   //Clearing so that the hardware contexts get destroyed and the Run 2 is start afresh
   testcases.clear();
@@ -144,15 +172,15 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   thr.join();
   end = std::chrono::high_resolution_clock::now(); 
-  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count(); 
+  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end-start).count(); 
   /* End of Run 2 */
 
   // Log the latencies and the overhead
   if(XBU::getVerbose()){
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle * 1000)));
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared * 1000)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared)));
   }
-  auto overhead = (latencyShared - latencySingle) * 1000;
+  auto overhead =  (latencyShared - 2 * latencySingle)/ num_kernels;
   XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
   ptree.put("status", XBValidateUtils::test_token_passed);
 
