@@ -616,6 +616,14 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
+      case type::gemm_elf:
+        return "gemm_elf";
+      case type::preemption_4x4:
+        return "preemption_4x4";
+      case type::preemption_4x8:
+        return "preemption_4x8";
+      case type::mobilenet:
+        return "mobilenet";
       case type::validate_elf:
         return "validate_elf";
       case type::gemm_elf:
@@ -626,6 +634,10 @@ struct xclbin_name : request
         return "preemption_4x4";
       case type::preemption_4x8:
         return "preemption_4x8";
+      case type::mobilenet:
+        return "mobilenet";
+      case type::gemm_elf:
+        return "gemm_elf";
     }
     return "unknown";
   }

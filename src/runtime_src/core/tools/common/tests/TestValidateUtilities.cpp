@@ -39,6 +39,23 @@ BO_set::BO_set(const xrt::device& device,
   XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
   XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
   XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), buffer_sizes.instr_size, dpu_instr);
+BO_set::BO_set(const xrt::device& device, 
+               const xrt::kernel& kernel, 
+               const BufferSizes& buffer_sizes,
+               const std::string& dpu_instr, 
+               const std::string& ifm_file, 
+               const std::string& param_file) 
+  : buffer_sizes(buffer_sizes),
+    bo_ifm      (device, buffer_sizes.ifm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
+    bo_param    (device, buffer_sizes.param_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
+    bo_ofm      (device, buffer_sizes.ofm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
+    bo_inter    (device, buffer_sizes.inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
+    bo_instr    (device, buffer_sizes.instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5)),
+    bo_mc       (device, buffer_sizes.mc_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
+{
+  XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
+  XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
+  XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), buffer_sizes.instr_size, dpu_instr);
 }
 
 // Method to synchronize buffer objects to the device
@@ -107,7 +124,7 @@ namespace XBValidateUtils{
 BufferSizes 
 read_buffer_sizes(const std::string& json_file) {
   boost::property_tree::ptree root;
-  BufferSizes buffer_sizes {};
+  BufferSizes buffer_sizes;
 
   // Read the JSON file into a property tree
   boost::property_tree::read_json(json_file, root);
