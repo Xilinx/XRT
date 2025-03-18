@@ -291,7 +291,7 @@ namespace xdp {
       return false;
     }
 
-     // Get partition columns
+    // Get partition columns
     boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
     // Currently, assuming only one Hw Context is alive at a time
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
