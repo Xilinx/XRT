@@ -184,16 +184,13 @@ xrt::xclbin
 device::
 get_xclbin(const uuid& xclbin_id) const
 {
-  {
-    // do not lock m_mutex in case of Single xclbin
-    std::lock_guard lk(m_mutex);
+  std::lock_guard lk(m_mutex);
 
-    // Allow access to xclbin in process of loading via device::load_xclbin
-    if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
-      return m_xclbin;
-    if (xclbin_id) {
-      return m_xclbins.get(xclbin_id);
-    }
+  // Allow access to xclbin in process of loading via device::load_xclbin
+  if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
+    return m_xclbin;
+  if (xclbin_id) {
+    return m_xclbins.get(xclbin_id);
   }
 
   // Single xclbin case
