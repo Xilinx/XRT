@@ -16,31 +16,32 @@
 #include "TestValidateUtilities.h"
 namespace xq = xrt_core::query;
 
-static constexpr size_t param_size = 0x100;
-static constexpr size_t inter_size = 0x100;
-static constexpr size_t mc_size = 0x100;
+// Buffer sizes for Mobilenet test
+static constexpr size_t ifm_size = 201736;
+static constexpr size_t param_size = 7233612;
+static constexpr size_t inter_size = 7192640;
+static constexpr size_t mc_size = 16;
+static constexpr size_t ofm_size = 8224;
+static constexpr size_t instr_word_size = 122575;
+static constexpr size_t instr_size = instr_word_size * sizeof(int);
 
 // Constructor for BO_set
 // BO_set is a collection of all the buffer objects so that the operations on all buffers can be done from a single object
 // Parameters:
 // - device: Reference to the xrt::device object
 // - kernel: Reference to the xrt::kernel object
-BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::string& dpu_instr, size_t buffer_size) 
-  : buffer_size(buffer_size), 
-    bo_ifm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
+BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::string& dpu_instr, const std::string& ifm_file, const std::string& param_file) 
+  : bo_ifm   (device, ifm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
     bo_param (device, param_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
-    bo_ofm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
+    bo_ofm   (device, ofm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
     bo_inter (device, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
+    bo_instr (device, instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5)),
     bo_mc    (device, mc_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
 {
-  if (dpu_instr.empty()) {
-    // Create a no-op instruction if no instruction file is provided
-    std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
-  } else {
-    size_t instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
-    bo_instr = xrt::bo(device, instr_size * sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
-  }
+  XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), ifm_size, ifm_file);
+  XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), param_size, param_file);
+  XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), instr_size, dpu_instr);
+  // XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
 }
 
 // Method to synchronize buffer objects to the device
@@ -74,7 +75,7 @@ TestCase::initialize()
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
     kernel = xrt::kernel(hw_ctx, params.kernel_name);
-    auto bos = BO_set(params.device, kernel, params.dpu_file, params.buffer_size);
+    auto bos = BO_set(params.device, kernel, params.dpu_file, params.ifm_file, params.param_file);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);
     bos.set_kernel_args(run);
@@ -124,6 +125,17 @@ init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
     ss >> std::hex >> word;
     *(instr++) = word;
   }
+}
+
+void init_buf_bin(int* buff, size_t bytesize, const std::string &filename) {
+
+  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+
+  if (!ifs.is_open()) {
+    std::cout << "Failure opening file " + filename + " for reading!!" << std::endl;
+    abort();
+  }
+  ifs.read((char *)buff, bytesize);
 }
 
 size_t 

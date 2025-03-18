@@ -19,12 +19,19 @@ public:
   xrt::device device;              
   std::string kernel_name;
   std::string dpu_file;
+  std::string ifm_file;
+  std::string param_file;
   int queue_len;
-  size_t buffer_size;
   int itr_count;
   
-  TestParams(const xrt::xclbin& xclbin, xrt::device device, const std::string& kernel_name, const std::string& dpu_file, int queue_len, size_t buffer_size, int itr_count)
-    : xclbin(xclbin), device(device), kernel_name(kernel_name), dpu_file(dpu_file), queue_len(queue_len), buffer_size(buffer_size), itr_count(itr_count) {}
+  TestParams(const xrt::xclbin& xclbin, 
+             xrt::device device, 
+             const std::string& kernel_name, 
+             const std::string& dpu_file, 
+             const std::string& ifm_file, 
+             const std::string& param_file, 
+             int queue_len, int itr_count)
+    : xclbin(xclbin), device(device), kernel_name(kernel_name), dpu_file(dpu_file), queue_len(queue_len), ifm_file(ifm_file), param_file(param_file), itr_count(itr_count) {}
 };
 
 // Class representing a set of buffer objects (BOs)
@@ -39,7 +46,7 @@ class BO_set {
 
 public:
   // Constructor to initialize buffer objects
-  BO_set(const xrt::device&, const xrt::kernel&, const std::string&, size_t);
+  BO_set(const xrt::device&, const xrt::kernel&, const std::string&, const std::string&, const std::string&);
 
   // Method to set kernel arguments
   void set_kernel_args(xrt::run&) const;
@@ -74,6 +81,7 @@ constexpr std::string_view test_token_failed = "FAILED";
 constexpr std::string_view test_token_passed = "PASSED";
 
 void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
+void init_buf_bin(int* buff, size_t bytesize, const std::string &filename);
 size_t get_instr_size(const std::string& dpu_file);
 void logger(boost::property_tree::ptree& , const std::string&, const std::string&);
 std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);

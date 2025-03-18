@@ -23,7 +23,7 @@ boost::property_tree::ptree
 TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   ptree.erase("xclbin");
 
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet);
   auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
@@ -57,9 +57,20 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::binary_name>(dev, xrt_core::query::binary_name::type::DPU_instr_mobilenet);
   auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
+    return ptree;
+
+  const auto ifm_name = xrt_core::device_query<xrt_core::query::binary_name>(dev, xrt_core::query::binary_name::type::ifm_mobilenet);
+  auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
+  if (!std::filesystem::exists(ifm_file))
+    return ptree;
+
+  const auto param_name = xrt_core::device_query<xrt_core::query::binary_name>(dev, xrt_core::query::binary_name::type::param_mobilenet); 
+  auto param_file = XBValidateUtils::findPlatformFile(param_name, ptree);
+
+  if (!std::filesystem::exists(param_file))
     return ptree;
 
   // Run 1 
@@ -67,7 +78,7 @@ TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, 1, buffer_size, 10);
+  TestParams params(xclbin, working_dev, kernelName, dpu_instr, ifm_name, param_name, 1, 100);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
