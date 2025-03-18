@@ -69,9 +69,6 @@ namespace xdp::aie::trace {
       eventSets["mm2s_channels_stalls"]   = eventSets["functions"];
     }
 
-    // Deprecated after 2024.1
-    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
-    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
@@ -138,9 +135,6 @@ namespace xdp::aie::trace {
     eventSets["mm2s_channels"]   = eventSets["s2mm_channels"];
     eventSets["all_stalls_mm2s"] = eventSets["all_stalls_s2mm"];
 
-    // Deprecated after 2024.1
-    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
-    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
@@ -709,21 +703,15 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Set up broadcast network 
    ***************************************************************************/
-  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols) 
+  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
+                                    uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event,
+                                    uint8_t startCol, uint8_t numCols, uint8_t numRows)
   {
-    std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
-    for (auto& tileMetric : metadata->getConfigMetrics()) {
-      auto tile       = tileMetric.first;
-      auto col        = tile.col;
-      auto row        = tile.row;
-      maxRowAtCol[startCol + col] = std::max(maxRowAtCol[col], (uint8_t)row);
-    }
-
     XAie_Events bcastEvent2_PL =  (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + broadcastId2);
     XAie_EventBroadcast(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2, event);
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
-      for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
+      for(uint8_t row = 0; row < numRows; row++) {
         module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
         auto loc = XAie_TileLoc(col, row);
 
@@ -735,7 +723,7 @@ namespace xdp::aie::trace {
           else {
             XAie_EventBroadcast(aieDevInst, loc, XAIE_PL_MOD, broadcastId1, bcastEvent2_PL);
           }
-          if(maxRowAtCol[col] != row) {
+          if(row != numRows-1) {
             XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST);
           }
           else {
@@ -753,7 +741,7 @@ namespace xdp::aie::trace {
           }
         }
         else if(tileType == module_type::mem_tile) {
-          if(maxRowAtCol[col] != row) {
+          if(row != numRows-1) {
             XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_MEM_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_EAST);
           }
           else {
@@ -761,7 +749,7 @@ namespace xdp::aie::trace {
           }
         }
         else { //core tile
-          if(maxRowAtCol[col] != row) {
+          if(row != numRows-1) {
             XAie_EventBroadcastBlockDir(aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_SOUTH | XAIE_EVENT_BROADCAST_WEST);
           }
           else {
@@ -776,19 +764,14 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Reset broadcast network
    ***************************************************************************/
-  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol, uint8_t numCols) {
-    std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
-    for (auto& tileMetric : metadata->getConfigMetrics()) {
-      auto tile       = tileMetric.first;
-      auto col        = tile.col;
-      auto row        = tile.row;
-      maxRowAtCol[startCol + col] = std::max(maxRowAtCol[col], (uint8_t)row);
-    }
+  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
+                                    uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol,
+                                    uint8_t numCols, uint8_t numRows) {
 
     XAie_EventBroadcastReset(aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD, broadcastId2);
 
     for(uint8_t col = startCol; col < startCol + numCols; col++) {
-      for(uint8_t row = 0; row <= maxRowAtCol[col]; row++) {
+      for(uint8_t row = 0; row < numRows; row++) {
         module_type tileType = aie::getModuleType(row, metadata->getRowOffset());
         auto loc = XAie_TileLoc(col, row);
 
