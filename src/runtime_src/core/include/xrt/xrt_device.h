@@ -6,13 +6,15 @@
 
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
-#include "experimental/xrt_xclbin.h"
+#include "xrt/detail/config.h"
+#include "xrt/experimental/xrt_xclbin.h"
 
 #ifdef __cplusplus
 # include "xrt/detail/abi.h"
 # include "xrt/detail/any.h"
 # include "xrt/detail/param_traits.h"
 # include <memory>
+# include <stdexcept>
 #endif
 
 /**
@@ -141,6 +143,38 @@ XRT_INFO_PARAM_TRAITS(device::vmr, std::string);
 class device
 {
 public:
+  /*!
+   * @class error
+   *
+   * @brief
+   * Exception base class for device errors.
+   *
+   * Device specific exceptions are defined as subclasses.
+   */
+  class error_impl;
+  class error : public detail::pimpl<error_impl>, public std::exception
+  {
+  public:
+    XRT_API_EXPORT
+    error(const std::string& msg);
+
+    XRT_API_EXPORT
+    const char*
+    what() const noexcept override;
+  };
+
+  /// The device has encountered a runtime error
+  class runtime_error : public error
+  {
+    using error::error;
+  };
+
+  /// The device reported an out of memory error
+  class oom_error : public runtime_error
+  {
+    using runtime_error::runtime_error;
+  };
+  
   /**
    * device() - Constructor for empty device
    *

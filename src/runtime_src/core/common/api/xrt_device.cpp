@@ -201,6 +201,21 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
 
 } // unnamed namespace
 
+namespace xrt {
+
+// Implementation of base device exception class
+class device::error_impl
+{
+public:
+  std::string m_message;
+
+  error_impl(std::string message)
+    : m_message(std::move(message))
+  {}
+};
+
+} // xrt
+
 namespace xrt_core::device_int {
 
 std::shared_ptr<xrt_core::device>
@@ -227,8 +242,19 @@ exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms
 namespace xrt {
 
 ////////////////////////////////////////////////////////////////
-// xrt_bo C++ API implmentations (xrt_bo.h)
+// xrt_device C++ API implmentations (xrt_device.h)
 ////////////////////////////////////////////////////////////////
+device::error::
+error(const std::string& message)
+  : detail::pimpl<device::error_impl>(std::make_shared<device::error_impl>(message))
+{}
+
+const char*
+device::error::
+what() const noexcept
+{
+  return handle->m_message.c_str();
+}           
 
 device::
 device(unsigned int index)
