@@ -30,14 +30,16 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  auto elf = XBValidateUtils::getElf();
-  if (!elf) 
+  auto elf = XBValidateUtils::get_elf();
+  std::string xclbin_path; 
+  
+  if (!elf) {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
-  else 
+  } else {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate_elf, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using ELF");
-
-  // Find xclbin File
-  auto xclbin_path = XBValidateUtils::get_validate_xclbin_path(dev, elf, ptree);
+  }
 
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
@@ -160,9 +162,9 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   try {
     xrt::run run;
     if (!elf) {
-      run = kernel(XBValidateUtils::getOpcode(), bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
+      run = kernel(XBValidateUtils::get_opcode(), bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
     } else {
-      run = kernel(XBValidateUtils::getOpcode(), 0, 0, bo_ifm, 0, bo_ofm, 0, 0);
+      run = kernel(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, bo_ofm, 0, 0);
     }
     
     // Wait for kernel to be done

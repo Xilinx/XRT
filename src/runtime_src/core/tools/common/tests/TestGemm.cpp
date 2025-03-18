@@ -38,14 +38,16 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   // Check Whether Use ELF or DPU Sequence
-  auto elf = XBValidateUtils::getElf();
-  if (!elf) 
+  auto elf = XBValidateUtils::get_elf();
+  std::string xclbin_path; 
+
+  if (!elf) {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::gemm, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
-  else 
+  } else {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::gemm_elf, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using ELF");
-  
-  // Find xclbin File
-  auto xclbin_path = XBValidateUtils::get_gemm_xclbin_path(dev, elf, ptree);
+  }
 
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
@@ -153,9 +155,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     //run kernel
     for(int i=0; i < 200; i++) {
       if (!elf) {
-        run = kernel(XBValidateUtils::getOpcode(), NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+        run = kernel(XBValidateUtils::get_opcode(), NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
       } else {
-        run = kernel(XBValidateUtils::getOpcode(), 0, 0, 0, 0, 0, 0, 0);
+        run = kernel(XBValidateUtils::get_opcode(), 0, 0, 0, 0, 0, 0, 0);
       }
       // Wait for kernel to be done
       run.wait2();

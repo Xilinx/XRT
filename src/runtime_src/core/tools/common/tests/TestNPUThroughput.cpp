@@ -31,14 +31,16 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   ptree.erase("xclbin");
 
   // Check Whether Use ELF or DPU Sequence
-  auto elf = XBValidateUtils::getElf();
-  if (!elf) 
+  auto elf = XBValidateUtils::get_elf();
+  std::string xclbin_path; 
+  
+  if (!elf) {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
-  else 
+  } else {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate_elf, ptree);
     XBValidateUtils::logger(ptree, "Details", "Using ELF");
-
-  // Find xclbin File
-  auto xclbin_path = XBValidateUtils::get_validate_xclbin_path(dev, elf, ptree);
+  }
 
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
@@ -127,7 +129,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
       for (const auto& arg : cu.get_args()) {
         auto arg_idx = static_cast<int>(arg.get_index());
         if (arg.get_host_type() == "uint64_t")
-          run.set_arg(arg_idx, static_cast<uint64_t>(XBValidateUtils::getOpcode()));
+          run.set_arg(arg_idx, static_cast<uint64_t>(XBValidateUtils::get_opcode()));
         else if (arg.get_host_type() == "uint32_t")
           run.set_arg(arg_idx, static_cast<uint32_t>(1));
         else if (arg.get_host_type().find('*') != std::string::npos) {
@@ -152,7 +154,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
       for (const auto& arg : cu.get_args()) {
         auto arg_idx = static_cast<int>(arg.get_index());
         if (arg.get_host_type() == "uint64_t") // opcode
-          run.set_arg(arg_idx, static_cast<uint64_t>(XBValidateUtils::getOpcode()));
+          run.set_arg(arg_idx, static_cast<uint64_t>(XBValidateUtils::get_opcode()));
         else if (arg.get_host_type() == "uint32_t") // nistruct
           run.set_arg(arg_idx, static_cast<uint32_t>(0));
         else if (arg.get_host_type().find('*') != std::string::npos) {

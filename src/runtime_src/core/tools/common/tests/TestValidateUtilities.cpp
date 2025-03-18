@@ -419,7 +419,7 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
 * Check if ELF flow is enabled
 */
 bool 
-getElf()
+get_elf()
 {
   return XBUtilities::getElf(); 
 }
@@ -429,42 +429,18 @@ getElf()
 * return 1 for DPU sequence and 3 for ELF flow
 */
 int
-getOpcode()
+get_opcode()
 {
-  if (XBUtilities::getElf())
-    return 3;
-  else
-    return 1;
+  return XBUtilities::getElf() ? 3 : 1;
 }
 
 /*
-* Get the validate xclbin path
+* Get the xclbin path
 */
 std::string 
-get_validate_xclbin_path(const std::shared_ptr<xrt_core::device>& device, bool is_elf, boost::property_tree::ptree& ptTest)
+get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query::xclbin_name::type test_type, boost::property_tree::ptree& ptTest)
 {
-  std::string xclbin_name;
-  if (!is_elf) // DPU
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::validate);
-  else // ELF
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::validate_elf);
-
-  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
-  return xclbin_path;
-}
-
-/*
-* Get the Gemm xclbin path
-*/
-std::string
-get_gemm_xclbin_path(const std::shared_ptr<xrt_core::device>& device, bool is_elf, boost::property_tree::ptree& ptTest)
-{
-  std::string xclbin_name;
-  if (!is_elf) // DPU
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::gemm);
-  else // ELF
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, xrt_core::query::xclbin_name::type::gemm_elf);
-  
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, test_type);
   std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
   return xclbin_path;
 }
