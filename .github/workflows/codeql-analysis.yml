@@ -40,6 +40,7 @@ jobs:
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
+        queries: security-extended
 
     # Build XRT for compiled languages
     - if: matrix.language == 'cpp'
