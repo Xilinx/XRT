@@ -24,12 +24,12 @@ public:
   int queue_len;
   int itr_count;
   
-  TestParams(const xrt::xclbin xclbin, 
+  TestParams(xrt::xclbin xclbin, 
              xrt::device device, 
-             const std::string kernel_name, 
-             const std::string dpu_file, 
-             const std::string ifm_file, 
-             const std::string param_file, 
+             std::string kernel_name, 
+             std::string dpu_file, 
+             std::string ifm_file, 
+             std::string param_file, 
              int queue_len, 
              int itr_count
              )
@@ -46,11 +46,11 @@ public:
 
 // Class representing a set of buffer objects (BOs)
 class BO_set {
-  xrt::bo bo_instr;   // Buffer object for instructions
   xrt::bo bo_ifm;     // Buffer object for input feature map
   xrt::bo bo_param;   // Buffer object for parameters
   xrt::bo bo_ofm;     // Buffer object for output feature map
   xrt::bo bo_inter;   // Buffer object for intermediate data
+  xrt::bo bo_instr;   // Buffer object for instructions
   xrt::bo bo_mc;      // Buffer object for memory controller
 
 public:

@@ -41,7 +41,6 @@ BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::
   XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), ifm_size, ifm_file);
   XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), param_size, param_file);
   XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), instr_size, dpu_instr);
-  // XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
 }
 
 // Method to synchronize buffer objects to the device
@@ -135,7 +134,7 @@ void init_buf_bin(int* buff, size_t bytesize, const std::string &filename) {
     std::cout << "Failure opening file " + filename + " for reading!!" << std::endl;
     abort();
   }
-  ifs.read(reinterpret_cast<char*>(buff), bytesize);
+  ifs.read(reinterpret_cast<char*>(buff), static_cast<std::streamsize>(bytesize));
 }
 
 size_t 
