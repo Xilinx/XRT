@@ -377,17 +377,30 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	/* prevent touching the pages (byte access) for swap-in,
 	   and prevent the pages from being swapped out */
 #ifndef VM_RESERVED
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+	#else
+	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+	#endif
+#else
+	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #endif
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-	vma->vm_flags |= VM_IO | VM_RESERVED;
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+	#else
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+	#endif
+#else
+	vma->vm_flags |= VM_IO | VM_RESERVED;
 #endif
+
 #endif
 	/* make MMIO accessible to user space */
 	rc = io_remap_pfn_range(vma, vma->vm_start, phys >> PAGE_SHIFT,
@@ -852,10 +865,16 @@ static int __init awsmgmt_init(void)
 	int res;
 
 	printk(KERN_INFO DRV_NAME " init()\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
-	awsmgmt_class = class_create(THIS_MODULE, DRV_NAME);
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 	awsmgmt_class = class_create(DRV_NAME);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	awsmgmt_class = class_create(DRV_NAME);
+	#else
+	awsmgmt_class = class_create(THIS_MODULE, DRV_NAME);
+	#endif
+#else
+	awsmgmt_class = class_create(THIS_MODULE, DRV_NAME);
 #endif
 	if (IS_ERR(awsmgmt_class))
 		return PTR_ERR(awsmgmt_class);
