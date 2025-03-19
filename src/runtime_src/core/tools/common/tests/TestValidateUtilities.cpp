@@ -445,6 +445,9 @@ get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query
   return xclbin_path;
 }
 
+/*
+* Get DPU kernel name from xclbin.
+*/
 std::string
 get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest)
 {
