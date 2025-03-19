@@ -135,7 +135,7 @@ void init_buf_bin(int* buff, size_t bytesize, const std::string &filename) {
     std::cout << "Failure opening file " + filename + " for reading!!" << std::endl;
     abort();
   }
-  ifs.read((char *)buff, bytesize);
+  ifs.read(reinterpret_cast<char*>(buff), bytesize);
 }
 
 size_t 

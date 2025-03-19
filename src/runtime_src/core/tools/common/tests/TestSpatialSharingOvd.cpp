@@ -146,7 +146,7 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
     threads[i].join();
   }
   auto end = std::chrono::high_resolution_clock::now(); 
-  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
+  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end-start).count();
 
   //Clearing so that the hardware contexts get destroyed and the Run 2 is start afresh
   testcases.clear();
@@ -169,15 +169,15 @@ boost::property_tree::ptree TestSpatialSharingOvd::run(std::shared_ptr<xrt_core:
 
   thr.join();
   end = std::chrono::high_resolution_clock::now(); 
-  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count(); 
+  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end-start).count(); 
   /* End of Run 2 */
 
   // Log the latencies and the overhead
-  // if(XBU::getVerbose()){
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle * 1000)));
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared * 1000)));
-  // }
-  auto overhead = ((latencyShared - 2 * latencySingle) * 1000 )/ num_kernels;
+  if(XBU::getVerbose()){
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f ms") % (latencySingle)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Spatially shared multiple context latency: %.1f ms") % (latencyShared)));
+  }
+  auto overhead =  (latencyShared - 2 * latencySingle)/ num_kernels;
   XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f ms") % overhead));
   ptree.put("status", XBValidateUtils::test_token_passed);
 
