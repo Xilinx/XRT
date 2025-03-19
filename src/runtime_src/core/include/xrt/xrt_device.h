@@ -156,6 +156,7 @@ public:
   {
   public:
     XRT_API_EXPORT
+    explicit
     error(const std::string& msg);
 
     XRT_API_EXPORT

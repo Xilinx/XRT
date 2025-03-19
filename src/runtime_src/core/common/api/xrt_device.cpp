@@ -209,6 +209,7 @@ class device::error_impl
 public:
   std::string m_message;
 
+  explicit
   error_impl(std::string message)
     : m_message(std::move(message))
   {}
