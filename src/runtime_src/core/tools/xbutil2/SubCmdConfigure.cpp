@@ -18,8 +18,8 @@ std::vector<std::shared_ptr<OptionOptions>> SubCmdConfigureInternal::optionOptio
   std::make_shared<OO_Preemption>("force-preemption") //hidden
 };
 
-SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
-    : SubCmdConfigureInternal(_isHidden, _isDepricated, _isPreliminary, true /*isUserDomain*/, configurations)
+SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmdConfigureInternal(_isHidden, _isDepricated, _isPreliminary, true /*isUserDomain*/)
 {
   // Empty
 }

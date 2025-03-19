@@ -90,7 +90,7 @@ static  boost::property_tree::ptree m_configurations;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
+SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain)
     : SubCmd("configure", 
              _isUserDomain ? "Device and host configuration" : "Advanced options for configuring a device")
     , m_isUserDomain(_isUserDomain)
@@ -102,10 +102,10 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
-  for (const auto& option : optionOptionsCollection)
-    addSubOption(option);
-
-  m_commandConfig = configurations;
+  for (const auto& option : optionOptionsCollection){
+    option->setExecutable(getExecutableName());
+    option->setCommand(getName());
+  }
 }
 
 static config
@@ -298,7 +298,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
   if (!optionOption && m_isUserDomain) {
     // No suboption print help
     if (options.m_help) {
-      printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
+      printHelp();
       return;
     }
     // If help was not requested and additional options dont match we must throw to prevent
@@ -313,7 +313,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     else {
       std::cerr << "ERROR: Suboption missing" << std::endl;
     }
-    printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -403,7 +403,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
 
     if (!is_something_updated) {
       std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-      printHelp(false, "", XBU::get_device_class(options.m_device, m_isUserDomain));
+      printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
     }
   }
