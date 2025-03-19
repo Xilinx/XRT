@@ -445,4 +445,24 @@ get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query
   return xclbin_path;
 }
 
+std::string
+get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest)
+{
+  // Determine The DPU Kernel Name
+  auto xkernels = xclbin.get_kernels();
+
+  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    auto name = k.get_name();
+    return name.rfind("DPU",0) == 0; // Starts with "DPU"
+  });
+
+  xrt::xclbin::kernel xkernel;
+  if (itr!=xkernels.end())
+    xkernel = *itr;
+  else {
+    XBValidateUtils::logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
+    ptTest.put("status", XBValidateUtils::test_token_failed);
+  }
+  return xkernel.get_name();
+}
 }// end of namespace XBValidateUtils
