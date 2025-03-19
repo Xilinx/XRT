@@ -84,9 +84,9 @@ public:
   smi_base();
 
   XRT_CORE_COMMON_EXPORT
-  smi_base(const tuple_vector validate_test_desc, 
-           const tuple_vector examine_report_desc, 
-           const std::vector<option> configure_suboptions_desc);
+  smi_base(tuple_vector validate_test_desc, 
+           tuple_vector examine_report_desc, 
+           std::vector<option> configure_suboptions_desc);
 };
 
 XRT_CORE_COMMON_EXPORT

@@ -54,9 +54,9 @@ smi_base() :
 {}
 
 smi_base::
-smi_base(const tuple_vector validate_test_desc, 
-         const tuple_vector examine_report_desc, 
-         const std::vector<option> configure_suboptions_desc) : 
+smi_base(tuple_vector validate_test_desc, 
+         tuple_vector examine_report_desc, 
+         std::vector<option> configure_suboptions_desc) : 
   validate_test_desc(std::move(validate_test_desc)),
   examine_report_desc(std::move(examine_report_desc)),
   configure_suboptions_desc(std::move(configure_suboptions_desc))
