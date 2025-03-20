@@ -36,7 +36,10 @@ public:
 
   // Constructor to initialize the test runner with a name and description
   TestSpatialSharingOvd()
-    : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()){}
+  //For the time, the driver mandates even 4 column hardware contexts to 
+  //Occupy all 8 columns. Thus the logic for spatial sharing is implementing temporal sharing.
+  //This should be renamed back once the MCDM driver switches to spatial sharing.
+    : TestRunner("temporal-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()){}
 };
 
 #endif

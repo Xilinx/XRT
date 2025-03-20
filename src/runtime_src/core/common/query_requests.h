@@ -60,6 +60,7 @@ enum class key_type
   xclbin_name,
   sequence_name,
   elf_name,
+  binary_name,
 
   dma_threads_raw,
 
@@ -598,7 +599,8 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm
+    gemm,
+    mobilenet
   };
 
   static std::string
@@ -609,6 +611,8 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
+      case type::mobilenet:
+        return "mobilenet";
     }
     return "unknown";
   }
@@ -688,6 +692,36 @@ struct elf_name : request
   using result_type = std::string;
   static const key_type key = key_type::elf_name;
   static const char* name() { return "elf_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
+};
+
+struct binary_name : request 
+{
+  enum class type {
+    ifm_mobilenet,
+    param_mobilenet,
+    DPU_instr_mobilenet
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::ifm_mobilenet:
+        return "ifm_mobilenet";
+      case type::param_mobilenet:
+        return "param_mobilenet";
+      case type::DPU_instr_mobilenet:
+        return "DPU_instr_mobilenet";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::binary_name;
+  static const char* name() { return "binary_name"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
