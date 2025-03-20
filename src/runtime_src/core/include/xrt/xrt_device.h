@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc.  All rights reserved.
 // Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef _XRT_DEVICE_H_
-#define _XRT_DEVICE_H_
+#ifndef XRT_DEVICE_H_
+#define XRT_DEVICE_H_
 
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/detail/config.h"
+#include "xrt/experimental/xrt_exception.h"
 #include "xrt/experimental/xrt_xclbin.h"
 
 #ifdef __cplusplus
@@ -152,7 +153,7 @@ public:
    * Device specific exceptions are defined as subclasses.
    */
   class error_impl;
-  class error : public detail::pimpl<error_impl>, public std::exception
+  class error : public detail::pimpl<error_impl>, public xrt::exception
   {
   public:
     XRT_API_EXPORT
