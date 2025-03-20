@@ -31,6 +31,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -94,7 +95,7 @@ namespace xdp {
               "Allocated buffer In MLTimelineVE2Impl::updateDevice");
   }
 
-  void MLTimelineVE2Impl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
+  void MLTimelineVE2Impl::finishflushDevice(void* hwCtxImpl, uint64_t implId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::finishflushDevice");
@@ -109,6 +110,14 @@ namespace xdp {
     uint32_t* ptr = mResultBOHolder->map();
 
     uint32_t numBufSegments = xrt_core::config::get_ml_timeline_settings_num_buffer_segments();
+    if (0 == numBufSegments) {
+      /* User has not specified "ML_timeline_settings.num_buffer_segments". 
+       * By default set it to number of cols in the design partition.
+       * For now, assume first entry in aie_partition_info corresponds to current HW Context.
+       */
+      boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+      numBufSegments = static_cast<uint32_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+    }
       
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;

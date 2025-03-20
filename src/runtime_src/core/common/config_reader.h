@@ -257,7 +257,7 @@ get_ml_timeline_settings_buffer_size()
 inline unsigned int
 get_ml_timeline_settings_num_buffer_segments()
 {
-  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 1);
+  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
   return value;
 }
 
