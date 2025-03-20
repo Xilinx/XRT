@@ -330,16 +330,28 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
-	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+		vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#elif defined(RHEL_RELEASE_CODE)
+		#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+		#else
+		vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+		#endif
 #else
-	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
-#endif
+		vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+	#endif
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
-	vma->vm_flags |= VM_IO | VM_RESERVED;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+		vm_flags_set(vma, VM_IO | VM_RESERVED);
+#elif defined(RHEL_RELEASE_CODE)
+		#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_set(vma, VM_IO | VM_RESERVED);
+		#else
+		vma->vm_flags |= VM_IO | VM_RESERVED;
+		#endif
 #else
-	vm_flags_set(vma, VM_IO | VM_RESERVED);
+		vma->vm_flags |= VM_IO | VM_RESERVED;
 #endif
 #endif
 
@@ -1779,10 +1791,16 @@ static int __init xclmgmt_init(void)
 
 	pr_info(DRV_NAME " init()\n");
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0) && !defined(RHEL_9_4_GE)
-	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 	xrt_class = class_create("xrt_mgmt");
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	xrt_class = class_create("xrt_mgmt");
+	#else
+	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
+	#endif
+#else
+	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
 #endif
 
 	if (IS_ERR(xrt_class))

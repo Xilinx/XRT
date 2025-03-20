@@ -1388,10 +1388,16 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 
 	vma->vm_private_data = obj;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0) && !defined(RHEL_9_5_GE)
-	vma->vm_flags |= VM_MIXEDMAP;
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	vm_flags_set(vma, VM_MIXEDMAP);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	vm_flags_set(vma, VM_MIXEDMAP);
+	#else
+	vma->vm_flags |= VM_MIXEDMAP;
+	#endif
+#else
+	vma->vm_flags |= VM_MIXEDMAP;
 #endif
 
 	return 0;
