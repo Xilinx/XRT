@@ -185,8 +185,11 @@ namespace xdp::aie::trace {
    * @param event          Event to trigger broadcast network
    * @param startCol       Start column of the partition
    * @param numCols        Num of columns in the partition
+   * @param numRows        Num of Rows
    */
-  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event, uint8_t startCol, uint8_t numCols);
+  void build2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
+                                    uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event,
+                                    uint8_t startCol, uint8_t numCols, uint8_t numRows);
 
   /**
    * @brief Reset 2-channel broadcast network for specified tile range
@@ -196,8 +199,11 @@ namespace xdp::aie::trace {
    * @param broadcastId2   Broadcast channel 2
    * @param startCol       Start column of the partition
    * @param numCols        Num of columns in the partition
+   * @param numRows        Num of Rows
    */
-  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata, uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol, uint8_t numCols);
+  void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
+                                    uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol,
+                                    uint8_t numCols, uint8_t numRows);
 }  // namespace xdp::aie::trace
 
 #endif
