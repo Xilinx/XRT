@@ -83,23 +83,31 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 		return -EINVAL;
 	}
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 	 * we have "struct page" for all backing pages for bo
 	 */
-	vma->vm_flags &= ~VM_PFNMAP;
 	/* Clear VM_IO flag set by drm_gem_mmap()
 	 * it prevents gdb from accessing mapped buffers
 	 */
+	vm_flags_clear(vma, VM_PFNMAP | VM_IO);
+	vm_flags_set(vma, VM_MIXEDMAP | mm->def_flags);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_clear(vma, VM_PFNMAP | VM_IO);
+		vm_flags_set(vma, VM_MIXEDMAP | mm->def_flags);
+	#else
+		vma->vm_flags &= ~VM_PFNMAP;
+		vma->vm_flags &= ~VM_IO;
+		vma->vm_flags |= VM_MIXEDMAP;
+		vma->vm_flags |= mm->def_flags;
+	#endif
+#else
+	vma->vm_flags &= ~VM_PFNMAP;
 	vma->vm_flags &= ~VM_IO;
 	vma->vm_flags |= VM_MIXEDMAP;
 	vma->vm_flags |= mm->def_flags;
-#else
-	vm_flags_clear(vma, VM_PFNMAP | VM_IO);
-	vm_flags_set(vma, VM_MIXEDMAP | mm->def_flags);
 #endif
-
 	vma->vm_pgoff = 0;
 
 	/* Override pgprot_writecombine() mapping setup by
@@ -157,11 +165,18 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+	#else
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
+	#endif
 #else
-	vm_flags_set(vma, VM_IO | VM_RESERVED);
+	vma->vm_flags |= VM_IO;
+	vma->vm_flags |= VM_RESERVED;
 #endif
 
 	ret = io_remap_pfn_range(vma, vma->vm_start,
@@ -408,8 +423,15 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
-/* This was removed in 6.8 */
-#define DRM_UNLOCKED 0
+	#define DRM_UNLOCKED 0
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	#define DRM_UNLOCKED 0
+	#else
+	#define DRM_UNLOCKED 1
+	#endif
+#else
+	#define DRM_UNLOCKED 1
 #endif
 
 static const struct drm_ioctl_desc xocl_ioctls[] = {
@@ -546,8 +568,14 @@ static struct drm_driver mm_drm_driver = {
 	.fops				= &xocl_driver_fops,
 
 	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-	.gem_prime_mmap			= xocl_gem_prime_mmap,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+#elif defined(RHEL_RELEASE_CODE)
+#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+#else
+		.gem_prime_mmap			= xocl_gem_prime_mmap,
+#endif
+#else
+		.gem_prime_mmap			= xocl_gem_prime_mmap,
 #endif
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,

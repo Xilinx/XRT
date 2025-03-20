@@ -274,16 +274,28 @@ static int trace_s2mm_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+		vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#elif defined(RHEL_RELEASE_CODE)
+		#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+		#else
+		vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+		#endif
 #else
-	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+		vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #endif
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-	vma->vm_flags |= VM_IO | VM_RESERVED;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+		vm_flags_set(vma, VM_IO | VM_RESERVED);
+#elif defined(RHEL_RELEASE_CODE)
+		#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_set(vma, VM_IO | VM_RESERVED);
+		#else
+		vma->vm_flags |= VM_IO | VM_RESERVED;
+		#endif
 #else
-	vm_flags_set(vma, VM_IO | VM_RESERVED);
+		vma->vm_flags |= VM_IO | VM_RESERVED;
 #endif
 #endif
 
