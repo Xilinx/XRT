@@ -456,7 +456,13 @@ get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest)
 
   auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
     auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
+    std::cout << "name: " << name << std::endl;
+    std::cout << "-------------------------------------------" << std::endl;
+    if ((name.rfind("DPU",0) == 0) || (name.rfind("dpu", 0) == 0)) {
+      std::cout << "Found DPU kernel" << std::endl;
+      std::cout << "-------------------------------------------" << std::endl;
+    }
+    return (name.rfind("DPU",0) == 0) || (name.rfind("dpu", 0) == 0); // Starts with "DPU"
   });
 
   xrt::xclbin::kernel xkernel;
