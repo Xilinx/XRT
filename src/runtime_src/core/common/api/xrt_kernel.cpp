@@ -2593,6 +2593,24 @@ public:
   {
     return cmd->get_ert_packet();
   }
+
+  [[nodiscard]] std::vector<char>
+  read_ctrl_scratchpad(uint32_t offset, size_t size)
+  {
+    if (!m_module)
+      throw xrt_core::error("No module associated with run object");
+  
+    return xrt_core::module_int::read_ctrl_scratchpad(m_module, offset, size);
+  }
+
+  void
+  write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& buf)
+  {
+    if (!m_module)
+      throw xrt_core::error("No module associated with run object");
+  
+    xrt_core::module_int::write_ctrl_scratchpad(m_module, offset, buf);
+  }
 };
 
 // class mailbox_impl - Extension of run_impl for mailbox support
@@ -3908,6 +3926,24 @@ submit_signal(const xrt::fence& fence)
   XRT_TRACE_POINT_SCOPE(xrt_submit_signal);
   return xdp::native::profiling_wrapper("xrt::run::submit_signal", [this, &fence]{
     handle->submit_signal(fence);
+  });
+}
+
+std::vector<char>
+run::
+read_ctrl_scratchpad(uint32_t offset, size_t size) const
+{
+  return xdp::native::profiling_wrapper("xrt::run::read_ctrl_scratchpad", [this, offset, size]{
+    return handle->read_ctrl_scratchpad(offset, size);
+  });
+}
+
+void
+run::
+write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& data)
+{
+  return xdp::native::profiling_wrapper("xrt::run::write_ctrl_scratchpad", [this, offset, &data]{
+    handle->write_ctrl_scratchpad(offset, data);
   });
 }
 

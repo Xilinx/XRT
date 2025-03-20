@@ -614,6 +614,43 @@ public:
     start(count);
   }
 
+  /**
+   * read_ctrl_scratchpad() - Read control scratchpad memory
+   * 
+   * @param offset
+   *  Offset in control scratchpad memory
+   * @param size
+   *  Number of bytes to read
+   * @return
+   *  Data read from control scratchpad memory
+   * 
+   * This API is valid only for run objects that are associated with an ELF.
+   * Use this API to read data from control scratchpad memory.
+   * This memory is created by XRT based on ELF used to create xrt::kernel.
+   * 
+   * This function throws if the read fails.
+   */
+  std::vector<char>
+  read_ctrl_scratchpad(uint32_t offset, size_t size) const;
+
+  /**
+   * write_ctrl_scratchpad() - Write data to control scratchpad memory
+   * 
+   * @param offset
+   *  Offset in control scratchpad memory to write to
+   * @param data
+   *  Data to write to control scratchpad memory
+   * 
+   * This API is valid only for run objects that are associated with an ELF.
+   * Use this API to write data to control scratchpad memory.
+   * This memory is created by XRT based on ELF used to create xrt::kernel
+   * Size of data is calculated using vector of data passed
+   * 
+   * This function throws if the write fails.
+   */
+  void
+  write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& data);
+
 public:
   /// @cond
   const std::shared_ptr<run_impl>&

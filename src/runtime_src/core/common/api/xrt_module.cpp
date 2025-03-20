@@ -70,6 +70,7 @@ static constexpr uint8_t Elf_Amd_Aie2p_config = 70;
 static constexpr size_t max_bd_words = 9;
 
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+static const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 static const char* Control_Packet_Symbol = "control-packet";
 static const char* Control_Code_Symbol = "control-code";
 
@@ -513,6 +514,12 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  virtual size_t
+  get_ctrl_scratch_pad_mem_size() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   virtual std::pair<uint32_t, const control_packet&>
   get_ctrlpkt(uint32_t /*index*/ = 0) const
   {
@@ -834,6 +841,7 @@ class module_elf_aie2p : public module_elf
   bool m_restore_buf_exist = false;
   
   size_t m_scratch_pad_mem_size = 0;
+  size_t m_ctrl_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
 
   std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
@@ -1093,6 +1101,9 @@ class module_elf_aie2p : public module_elf
       if (!m_scratch_pad_mem_size && (strcmp(symname, Scratch_Pad_Mem_Symbol) == 0)) {
         m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
       }
+      else if (!m_ctrl_scratch_pad_mem_size && (strcmp(symname, Control_ScratchPad_Symbol) == 0)) {
+        m_ctrl_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
+      }
 
       static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
       if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
@@ -1237,6 +1248,12 @@ public:
   get_scratch_pad_mem_size() const override
   {
     return m_scratch_pad_mem_size;
+  }
+
+  size_t
+  get_ctrl_scratch_pad_mem_size() const override
+  {
+    return m_ctrl_scratch_pad_mem_size;
   }
 
   std::pair<uint32_t, const buf&>
@@ -1542,6 +1559,7 @@ class module_sram : public module_impl
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
   xrt::bo m_scratch_pad_mem;
+  xrt::bo m_ctrl_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
@@ -1757,6 +1775,17 @@ class module_sram : public module_impl
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
+
+    // create ctrl scratchpad buffer and patch it if symbol is present
+    try {
+      auto size = m_parent->get_ctrl_scratch_pad_mem_size();
+      if (size > 0) {
+        m_ctrl_scratch_pad_mem = xrt::bo{ m_hwctx, size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+        patch_instr(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem,
+                    patcher::buf_type::ctrltext, m_instr_sec_idx);
+      }
+    }
+    catch (...) { /*Do Nothing*/ };
 
     // patch all pdi addresses
     auto pdi_symbols = parent->get_patch_pdis(m_index);
@@ -2279,6 +2308,49 @@ public:
                               std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
     }
   }
+
+  std::vector<char>
+  read_ctrl_scratchpad(uint32_t offset, size_t size)
+  {
+    if (!m_ctrl_scratch_pad_mem)
+      throw std::runtime_error("Control scratchpad memory is not present\n");
+    
+    // Sanity check for offset and size
+    if (offset >= m_ctrl_scratch_pad_mem.size()) {
+      throw std::runtime_error("Offset is out of bounds\n");
+    }
+
+    if ((offset + size) > m_ctrl_scratch_pad_mem.size()) {
+      throw std::runtime_error("Requested size exceeds scratchpad memory bounds\n");
+    }
+
+    // sync bo data before reading
+    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE, size, offset);
+
+    std::vector<char> data(size);
+    m_ctrl_scratch_pad_mem.read(data.data(), size, offset);
+    return data;
+  }
+
+  void
+  write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& data)
+  {
+    if (!m_ctrl_scratch_pad_mem)
+      throw std::runtime_error("Control scratchpad memory is not present\n");
+    
+    // Sanity check for offset and size
+    if (offset >= m_ctrl_scratch_pad_mem.size()) {
+      throw std::runtime_error("Offset is out of bounds\n");
+    }
+
+    if ((offset + data.size()) > m_ctrl_scratch_pad_mem.size()) {
+      throw std::runtime_error("Requested size exceeds scratchpad memory bounds\n");
+    }
+
+    // write data and sync the bo
+    m_ctrl_scratch_pad_mem.write(data.data(), data.size(), offset);
+    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_TO_DEVICE, data.size(), offset);
+  }
 };
 
 } // namespace xrt
@@ -2389,6 +2461,26 @@ dump_dtrace_buffer(const xrt::module& module)
     throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
 
   module_sram->dump_dtrace_buffer();
+}
+
+std::vector<char>
+read_ctrl_scratchpad(const xrt::module& module, uint32_t offset, size_t size)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  return module_sram->read_ctrl_scratchpad(offset, size);
+}
+
+void
+write_ctrl_scratchpad(const xrt::module& module, uint32_t offset, const std::vector<char>& data)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  module_sram->write_ctrl_scratchpad(offset, data);
 }
 
 } // xrt_core::module_int
