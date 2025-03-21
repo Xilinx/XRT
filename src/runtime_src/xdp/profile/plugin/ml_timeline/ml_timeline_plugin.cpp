@@ -41,7 +41,7 @@ namespace xdp {
   uint32_t ParseMLTimelineBufferSizeConfig()
   {
     uint32_t bufSz = 0;
-    std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
+    std::string szCfgStr = xrt_core::config::get_ml_timeline_settings_buffer_size();
     std::smatch subStr;
 
     std::stringstream msg;
