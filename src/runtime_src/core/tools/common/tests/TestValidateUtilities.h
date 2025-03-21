@@ -106,5 +106,9 @@ bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boo
 int validate_binary_file(const std::string& binaryfile);
 std::string dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
               boost::property_tree::ptree& ptTest);
+bool get_elf();
+int get_opcode();
+std::string get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query::xclbin_name::type test_type, boost::property_tree::ptree& ptTest);
+std::string get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest);
 } //End of namespace XBValidateUtils
 #endif

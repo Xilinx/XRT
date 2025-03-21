@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -599,7 +599,9 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm,
+    gemm, 
+    validate_elf,
+    gemm_elf,
     mobilenet
   };
 
@@ -613,6 +615,10 @@ struct xclbin_name : request
         return "gemm";
       case type::mobilenet:
         return "mobilenet";
+      case type::validate_elf:
+        return "validate_elf";
+      case type::gemm_elf:
+        return "gemm_elf";
     }
     return "unknown";
   }
@@ -676,6 +682,11 @@ struct sequence_name : request
 struct elf_name : request
 {
   enum class type {
+    df_bandwidth, 
+    tct_one_column, 
+    tct_all_column, 
+    aie_reconfig_overhead,
+    gemm_int8, 
     nop
   };
 
@@ -683,6 +694,16 @@ struct elf_name : request
   enum_to_str(const type& type)
   {
     switch (type) {
+      case type::df_bandwidth:
+        return "df_bandwidth";
+      case type::tct_one_column:
+        return "tct_one_column";
+      case type::tct_all_column:
+        return "tct_all_column";
+      case type::aie_reconfig_overhead:
+        return "aie_reconfig_overhead";
+      case type::gemm_int8:
+        return "gemm_int8";
       case type::nop:
         return "nop";
     }
