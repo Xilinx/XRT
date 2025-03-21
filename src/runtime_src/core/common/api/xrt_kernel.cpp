@@ -2392,9 +2392,10 @@ public:
   prep_start()
   {
     if (m_module)
-      // Sync the module to device to ensure any patches are applied,
-      // noop if module patching hasn't changed since last sync.
-      xrt_core::module_int::sync(m_module);
+      // Dump the module data when debug options are enabled,
+      // noop if debug options are not enabled and if
+      // module patching hasn't changed since last sync.
+      xrt_core::module_int::dump(m_module);
 
     encode_compute_units();
 
@@ -2417,7 +2418,7 @@ public:
   {
     if (m_runlist)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
-    
+
     prep_start();
     
     // log kernel start info
