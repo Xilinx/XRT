@@ -767,13 +767,21 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		rc = zocl_iommu_map_bo(dev, bo);
 		if (rc)
 			return rc;
-                #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-                        vma->vm_flags &= ~VM_PFNMAP;
-                        vma->vm_flags |= VM_MIXEDMAP;
-                #else
-                        vm_flags_clear(vma, VM_PFNMAP);
-                        vm_flags_set(vma, VM_MIXEDMAP);
-                #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+			vm_flags_clear(vma, VM_PFNMAP);
+			vm_flags_set(vma, VM_MIXEDMAP);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+			vm_flags_clear(vma, VM_PFNMAP);
+			vm_flags_set(vma, VM_MIXEDMAP);
+	#else
+			vma->vm_flags &= ~VM_PFNMAP;
+			vma->vm_flags |= VM_MIXEDMAP;
+	#endif
+#else
+			vma->vm_flags &= ~VM_PFNMAP;
+			vma->vm_flags |= VM_MIXEDMAP;
+#endif
 		/* Reset the fake offset used to identify the BO */
 		vma->vm_pgoff = 0;
 		return 0;
@@ -796,12 +804,19 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-        #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
-        	vma->vm_flags |= VM_IO;
-	        vma->vm_flags |= VM_RESERVED;
-        #else
-                vm_flags_set(vma, VM_IO | VM_RESERVED);
-        #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		vm_flags_set(vma, VM_IO | VM_RESERVED);
+	#else
+		vma->vm_flags |= VM_IO;
+		vma->vm_flags |= VM_RESERVED;
+	#endif
+#else
+	vma->vm_flags |= VM_IO;
+	vma->vm_flags |= VM_RESERVED;
+#endif
 	vma->vm_ops = &reg_physical_vm_ops;
 	rc = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
 				vsize, vma->vm_page_prot);
@@ -935,8 +950,16 @@ const struct vm_operations_struct zocl_bo_vm_ops = {
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
-/* This was removed in 6.8 */
-#define DRM_UNLOCKED 0
+	/* This was removed in 6.8 */
+	#define DRM_UNLOCKED 0
+#elif defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+	#define DRM_UNLOCKED 0
+	#else
+	#define DRM_UNLOCKED 1
+	#endif
+#else
+	#define DRM_UNLOCKED 1
 #endif
 
 static const struct drm_ioctl_desc zocl_ioctls[] = {
@@ -1033,10 +1056,18 @@ static struct drm_driver zocl_driver = {
 #endif
 
 	.gem_create_object         = zocl_gem_create_object,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
-	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
-        .gem_prime_mmap            = drm_gem_prime_mmap,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	#elif defined(RHEL_RELEASE_CODE)
+		#if (RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4))
+		#else
+		.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
+		.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
+		.gem_prime_mmap			= xocl_gem_prime_mmap,
+		#endif
+	#else
+		.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
+		.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
+		.gem_prime_mmap			= xocl_gem_prime_mmap,
 #endif
 	.gem_prime_import          = drm_gem_prime_import,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
