@@ -115,8 +115,13 @@ namespace xdp {
        * By default set it to number of cols in the design partition.
        * For now, assume first entry in aie_partition_info corresponds to current HW Context.
        */
-      boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+      boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(hwCtxImpl);
       numBufSegments = static_cast<uint32_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+      std::stringstream numSegmentMsg;
+      numSegmentMsg << "\"ML_timeline_settings.num_buffer_segments\" not specified."
+          << " By default, assuming " << numBufSegments << " segments in buffer."
+          << " Please check the number of columns used by the design." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
     }
       
     boost::property_tree::ptree ptTop;
@@ -177,7 +182,7 @@ namespace xdp {
             std::stringstream nxtSegmentMsg;
             nxtSegmentMsg << " Got both id and timestamp field as ZERO." 
                  << " Moving to next segment on the buffer."
-                 << " Size of each segment in bytes 0x " << std::hex << segmentSzInBytes << std::dec
+                 << " Size of each segment in bytes 0x" << std::hex << segmentSzInBytes << std::dec
                  << ". Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
 
             ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));

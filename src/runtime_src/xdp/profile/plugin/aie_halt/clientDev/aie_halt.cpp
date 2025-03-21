@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -113,7 +113,7 @@ namespace xdp {
 
     uint64_t startCol = 0, numCols = 0;
 
-    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfoClient(hwCtxImpl);
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(hwCtxImpl);
     for (const auto& e : aiePartitionPt) {
       startCol = e.second.get<uint64_t>("start_col");
       numCols  = e.second.get<uint64_t>("num_cols");
