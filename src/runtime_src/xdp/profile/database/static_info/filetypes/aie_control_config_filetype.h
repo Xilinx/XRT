@@ -42,6 +42,8 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
 
         uint8_t getAIETileRowOffset() const override;
 
+        uint8_t getNumRows() const override;
+
         std::vector<uint8_t>
         getPartitionOverlayStartCols() const override;
 
