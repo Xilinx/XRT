@@ -573,14 +573,15 @@ namespace xdp {
                                    uint8_t num, uint16_t start, uint16_t end,
                                    uint8_t reset, uint64_t load, double freq,
                                    const std::string& mod,
-                                   const std::string& aieName)
+                                   const std::string& aieName, uint8_t streamId)
     {
       for (auto xclbin : currentXclbins)
       {
         if (xclbin->aie.valid)
         {
           xclbin->aie.aieList.push_back(new AIECounter(i, col, r, num, start, end,
-                                                    reset, load, freq, mod, aieName)) ;
+                                                       reset, load, freq, mod,
+                                                       aieName,streamId)) ;
           return ;
         }
       }

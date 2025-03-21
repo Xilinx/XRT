@@ -255,12 +255,13 @@ xocl_check_section(const struct axlf_section_header *header, uint64_t len,
 
 	offset = header->m_sectionOffset;
 	size = header->m_sectionSize;
-	if (offset + size <= len)
-		return 0;
-
-	DRM_INFO("Section %s extends beyond xclbin boundary 0x%llx\n",
-			kind_to_string(kind), len);
-	return -EINVAL;
+	/* Check for overflow and boundary conditions*/
+	if (size > len || offset > len || offset > len - size) {
+		DRM_INFO("Section %s extends beyond xclbin boundary 0x%llx\n",
+				kind_to_string(kind), len);
+		return -EINVAL;
+	}
+	return 0;
 }
 
 /* Return value: Negative for error, or the size in bytes has been copied */
@@ -604,6 +605,12 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
 		return -EOPNOTSUPP;
 	}
+
+	/* Validate the length of the data */
+        if (bin_obj.m_header.m_length < sizeof(struct axlf)) {
+                userpf_err(xdev, "invalid xclbin length\n");
+                return -EINVAL;
+        }
 
 	/* Copy bitstream from user space and proceed. */
 	axlf = vmalloc(bin_obj.m_header.m_length);

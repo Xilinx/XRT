@@ -55,10 +55,6 @@ aie2_preemption_info(const xrt_core::device* device)
   for (const auto& kp : data) {
   boost::property_tree::ptree pt_preempt;
 
-  // if no hw ctx is running, don't populate
-  if(is_value_na(kp.preemption_data.slot_index))
-    continue;
-
   auto populate_value = [](uint64_t value) {
     return is_value_na(value) ? "N/A" : std::to_string(value);
   };

@@ -55,8 +55,8 @@ namespace xdp::aie::profile {
   };
 
   struct adfAPIResourceInfo {
-    uint8_t srcPcIdx;
-    uint8_t destPcIdx;
+    uint64_t srcPcIdx;
+    uint64_t destPcIdx;
     uint64_t profileResult;
     bool isSourceTile = false;
   };

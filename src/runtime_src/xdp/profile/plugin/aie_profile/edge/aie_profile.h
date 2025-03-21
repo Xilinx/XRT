@@ -85,6 +85,8 @@ namespace xdp {
       XAie_Events latencyUserBrodcastChannelEvent = XAIE_EVENT_NONE_CORE;
 
       std::map<aie::profile::adfAPI, std::map<std::string, aie::profile::adfAPIResourceInfo>> adfAPIResourceInfoMap;
+      // This stores the map of location of tile and configured broadcast channel event
+      std::map<std::string, std::pair<int, XAie_Events>> adfAPIBroadcastEventsMap;
 
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesBytesTx;
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesLatency;

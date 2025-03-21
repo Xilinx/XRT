@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2018-2022 Xilinx, Inc
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -214,7 +215,8 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power")) {
-      bd_power = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
+      if (tmp.input != std::numeric_limits<decltype(xq::sdm_sensor_info::data_type::input)>::max())
+        bd_power = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
       bd_max_power = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
     }
   }

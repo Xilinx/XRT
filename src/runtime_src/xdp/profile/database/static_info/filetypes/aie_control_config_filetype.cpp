@@ -71,6 +71,12 @@ AIEControlConfigFiletype::getAIECompilerOptions() const
     return aiecompiler_options;
 }
 
+uint8_t
+AIEControlConfigFiletype::getNumRows() const
+{
+    return xdp::aie::getNumRows(aie_meta, "aie_metadata.driver_config.num_rows");
+}
+
 uint8_t 
 AIEControlConfigFiletype::getAIETileRowOffset() const {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
@@ -331,10 +337,15 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             continue;
 
         // Make sure stream/channel number is as specified
-        // NOTE: For GMIO, we use DMA channel number; for PLIO, we use the SOUTH location
-        uint8_t idToCheck = (type == io_type::GMIO) ? channelNum : streamId;
-        if ((specifiedId >= 0) && (specifiedId != idToCheck))
+        // NOTE1: For PLIO, we use the SOUTH location only
+        // NOTE2: For GMIO, we use DMA channel number or south location
+        if (specifiedId >= 0) {
+          if ((type == io_type::PLIO) && (specifiedId != streamId))
             continue;
+          if ((type == io_type::GMIO) && (specifiedId != channelNum)
+              && (specifiedId != streamId))
+            continue;
+        }
 
         tile_type tile;
         tile.col = shimCol;

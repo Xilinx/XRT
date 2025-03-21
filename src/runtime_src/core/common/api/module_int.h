@@ -50,11 +50,12 @@ XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
 
-// Check that all arguments have been patched and sync the buffer
-// to device if necessary.  Throw if not all arguments have been
-// patched.
+// Check that all arguments have been patched and dump buffers like
+// control code, control packet, preempt save and restore if respective
+// debug options are enabled.
+// Throws if not all arguments have been patched.
 void
-sync(const xrt::module&);
+dump(const xrt::module&);
 
 // Get the ERT command opcode in ELF flow
 ert_cmd_opcode
@@ -70,10 +71,6 @@ dump_scratchpad_mem(const xrt::module& module);
 // throws exception if Elf passed has no kernel info
 const kernel_info&
 get_kernel_info(const xrt::module& module);
-
-// Get partition size if ELF has the info
-uint32_t
-get_partition_size(const xrt::module& module);
 
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
