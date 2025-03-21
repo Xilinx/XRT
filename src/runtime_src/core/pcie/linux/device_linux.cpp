@@ -17,7 +17,7 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "smi.h"
+#include "smi_pcie.h"
 #include "pcidev.h"
 #include "xrt.h"
 

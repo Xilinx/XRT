@@ -47,10 +47,19 @@ smi_base() :
   examine_report_desc {
     {"host", "Host information", "common"}
   },
-  configure_options {
+  configure_suboptions_desc {
     {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
     {"help", "h", "Help to use this sub-command", "common", "", "none"}
   }
+{}
+
+smi_base::
+smi_base(tuple_vector validate_test_desc, 
+         tuple_vector examine_report_desc, 
+         std::vector<option> configure_suboptions_desc) : 
+  validate_test_desc(std::move(validate_test_desc)),
+  examine_report_desc(std::move(examine_report_desc)),
+  configure_suboptions_desc(std::move(configure_suboptions_desc))
 {}
 
 std::vector<basic_option> 
@@ -135,7 +144,7 @@ construct_configure_subcommand() const
   subcommand.put("description", "Device and host configuration");
 
   ptree options_ptree;
-  for (const auto& option : configure_options) {
+  for (const auto& option : configure_suboptions_desc) {
     options_ptree.push_back(std::make_pair("", option.to_ptree()));
   }
 
@@ -145,7 +154,7 @@ construct_configure_subcommand() const
 
 std::string 
 smi_base::
-get_smi_config() const 
+build_smi_config() const 
 {
   ptree config;
   ptree subcommands;
@@ -166,6 +175,6 @@ get_smi_config()
 {
   xrt_core::smi::smi_base instance;
 
-  return instance.get_smi_config();
+  return instance.build_smi_config();
 }
 } // namespace xrt_core::smi

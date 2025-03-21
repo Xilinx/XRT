@@ -29,7 +29,7 @@ namespace po = boost::program_options;
 static ReportCollection fullReportCollection = {};
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
+SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain)
     : SubCmd("examine", 
              _isUserDomain ? "Status of the system and device" : "Returns detail information for the specified device.")
     , m_isUserDomain(_isUserDomain)
@@ -43,21 +43,8 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
-  m_commandConfig = configurations;
-
   for (const auto& option : uniqueReportCollection)
     fullReportCollection.push_back(option);
-}
-
-void
-SubCmdExamineInternal::print_help_internal(const SubCmdExamineOptions& options) const
-{
-  if (options.m_device.empty())
-    printHelp();
-  else {
-    const std::string deviceClass = XBU::get_device_class(options.m_device, m_isUserDomain);
-    printHelp(m_commonOptions, m_hiddenOptions, deviceClass);
-  }
 }
 
 void
@@ -84,13 +71,13 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   catch (const boost::program_options::error& e)
   {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested
   if (options.m_help) {
-    print_help_internal(options);
+    printHelp();
     return;
   }
 
@@ -119,7 +106,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -130,14 +117,14 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       reportsToRun.push_back("host");
     } 
     else {
-      print_help_internal(options);
+      printHelp();
       return;
     }
   }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
     std::cerr << "ERROR: The 'all' value for the reports to run cannot be used with any other named reports.\n";
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -172,7 +159,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     return;
   }
 
