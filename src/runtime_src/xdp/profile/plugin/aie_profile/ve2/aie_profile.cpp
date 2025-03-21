@@ -283,8 +283,14 @@ namespace xdp {
     auto hwGen = metadata->getHardwareGen();
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
-    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
-    aie::displayColShiftInfo(startColShift);
+
+    // Get partition columns
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
+    // Currently, assuming only one Hw Context is alive at a time
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
+    // NOTE: below is the hard-coded value from metadata
+    // uint8_t startCol = metadata->getPartitionOverlayStartCols().front();
+    aie::displayColShiftInfo(startCol);
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       auto configMetrics = metadata->getConfigMetricsVec(module);
@@ -298,7 +304,8 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
-        auto col         = tile.col + startColShift;
+        auto col         = tile.col;
+        auto colReport   = tile.col + startCol;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
@@ -453,7 +460,7 @@ namespace xdp {
 
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
-            XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            XAie_LocType tileloc = XAie_TileLoc(col, row);
             //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
             //      to transition the FSM from Idle->State0->State1.
             //      eventC = Port Running and eventD = stop event (counter event).
@@ -480,7 +487,7 @@ namespace xdp {
         } // numFreeCtr
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +colReport
             << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
@@ -515,6 +522,13 @@ namespace xdp {
     if (!aieDevInst)
       return;
 
+    // Get partition columns
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
+    // Currently, assuming only one Hw Context is alive at a time
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
+    // NOTE: below is the hard-coded value from metadata
+    // uint8_t startCol = metadata->getPartitionOverlayStartCols().front();
+
     uint32_t prevColumn = 0;
     uint32_t prevRow = 0;
     uint64_t timerValue = 0;
@@ -528,7 +542,7 @@ namespace xdp {
         continue;
 
       std::vector<uint64_t> values;
-      values.push_back(aie->column);
+      values.push_back(aie->column + startCol);
       values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
