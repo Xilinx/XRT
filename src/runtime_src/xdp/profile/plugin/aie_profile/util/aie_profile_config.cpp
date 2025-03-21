@@ -155,6 +155,14 @@ namespace xdp::aie::profile {
       }
     }
 
+    if ((type == module_type::shim) && (tile.subtype == io_type::PLIO) &&
+        (switchPortMap.size() < tile.stream_ids.size())) {
+      std::string msg = "Interface tile " + std::to_string(tile.col) + " has more "
+                      + "PLIO than can be monitored by metric set " + metricSet + ". Please "
+                      + "run again with different profile settings or choose a different set.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
+    }
+
     switchPortMap.clear();
   }
 
