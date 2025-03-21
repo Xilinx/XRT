@@ -414,4 +414,58 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
     return elf_path;
   }
 }
+
+/*
+* Check if ELF flow is enabled
+*/
+bool 
+get_elf()
+{
+  return XBUtilities::getElf(); 
+}
+
+/*
+* Get the host opcode for the kernel based on if ELF is enabled
+* return 1 for DPU sequence and 3 for ELF flow
+*/
+int
+get_opcode()
+{
+  return XBUtilities::getElf() ? 3 : 1;
+}
+
+/*
+* Get the xclbin path
+*/
+std::string 
+get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query::xclbin_name::type test_type, boost::property_tree::ptree& ptTest)
+{
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, test_type);
+  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
+  return xclbin_path;
+}
+
+/*
+* Get DPU kernel name from xclbin.
+*/
+std::string
+get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest)
+{
+  // Determine The DPU Kernel Name
+  auto xkernels = xclbin.get_kernels();
+
+  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    auto name = k.get_name();
+    return (name.rfind("DPU",0) == 0) || (name.rfind("dpu", 0) == 0); // Starts with "DPU"
+  });
+
+  xrt::xclbin::kernel xkernel;
+  if (itr!=xkernels.end())
+    xkernel = *itr;
+  else {
+    XBValidateUtils::logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
+    ptTest.put("status", XBValidateUtils::test_token_failed);
+  }
+  return xkernel.get_name();
+}
 }// end of namespace XBValidateUtils
