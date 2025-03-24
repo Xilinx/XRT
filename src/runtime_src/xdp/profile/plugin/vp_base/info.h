@@ -40,6 +40,7 @@ namespace info {
   const uint64_t ml_timeline     = 0x04000 ;
   const uint64_t aie_halt        = 0x08000 ;
   const uint64_t aie_pc          = 0x10000 ;
+  const uint64_t aie_debug       = 0x20000 ;
 
 } // end namespace info
 } // end namespace xdp ;
