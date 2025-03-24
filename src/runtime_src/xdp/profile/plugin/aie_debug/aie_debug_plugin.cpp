@@ -97,7 +97,7 @@ namespace xdp {
    ***************************************************************************/
   uint64_t AieDebugPlugin::getDeviceIDFromHandle(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG AieDebugPlugin::getDeviceIDFromHandle.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG getDeviceIDFromHandle.");
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
@@ -105,8 +105,7 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
 #else
-    //return db->addDevice(util::getDebugIpLayoutPath(handle));
-    return db->addDevice("temp_edge_device");
+    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
   }
 
