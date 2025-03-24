@@ -115,7 +115,7 @@ OO_Preemption::execute(const SubCmdOptions& _options) const
 
   if(boost::iequals(m_action, "status")) {
     const auto layer_boundary = xrt_core::device_query_default<xrt_core::query::preemption>(device.get(), 0);
-    const auto frame_boundary = xrt_core::device_query_default<xrt_core::query::preemption>(device.get(), 0);
+    const auto frame_boundary = xrt_core::device_query_default<xrt_core::query::frame_boundary_preemption>(device.get(), 0);
     std::cout << (boost::format("Layer boundary force preemption is %s") % int_to_status(layer_boundary)) << std::endl;
     std::cout << (boost::format("Frame boundary force preemption is %s\n") % int_to_status(frame_boundary)) << std::endl;
     return;
@@ -133,7 +133,7 @@ OO_Preemption::execute(const SubCmdOptions& _options) const
 
   try {
     if (boost::iequals(m_type, "frame-boundary")) {
-      xrt_core::device_update<xrt_core::query::preemption>(device.get(), action_to_int(m_action));
+      xrt_core::device_update<xrt_core::query::frame_boundary_preemption>(device.get(), action_to_int(m_action));
     }
     else {
       xrt_core::device_update<xrt_core::query::preemption>(device.get(), action_to_int(m_action));

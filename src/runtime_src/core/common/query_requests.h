@@ -321,6 +321,7 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
+  frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
   num_live_processes,
@@ -3965,7 +3966,7 @@ struct performance_mode : request
 };
 
 /*
- * this request force enables or disables pre-emption globally
+ * this request force enables or disables layer boundary pre-emption globally
  * 1: enable; 0: disable
 */
 struct preemption : request
@@ -3974,6 +3975,25 @@ struct preemption : request
   using value_type = uint32_t;   // put value type
 
   static const key_type key = key_type::preemption;
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  virtual void
+  put(const device*, const std::any&) const override = 0;
+
+};
+
+/*
+ * this request force enables or disables frame boundary pre-emption globally
+ * 1: enable; 0: disable
+*/
+struct frame_boundary_preemption : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::frame_boundary_preemption;
 
   virtual std::any
   get(const device*) const override = 0;
