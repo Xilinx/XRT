@@ -31,7 +31,7 @@ class SubCmdConfigureInternal : public SubCmd {
   virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
-  SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
+  SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
 
  public:
   static std::vector<std::shared_ptr<OptionOptions>> optionOptionsCollection;

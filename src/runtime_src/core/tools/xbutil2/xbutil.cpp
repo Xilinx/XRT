@@ -33,9 +33,7 @@ const std::string& command_config =
 R"(
 [{
   "alveo": [{
-    "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status", "aie", "aiemem", "aieshim"]
-    }]
+    "examine": [{}]
   },{
     "configure": [{
       "suboption": ["host-mem", "p2p"]
@@ -45,9 +43,7 @@ R"(
       "suboption": ["read-mem", "write-mem"]
     }]
   },{
-    "validate": [{
-      "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "mem-bw", "p2p", "m2m", "hostmem-bw", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
-    }]
+    "validate": [{}]
   },{
     "reset": [{}]
   },{
@@ -55,9 +51,7 @@ R"(
   }]
 },{
   "aie": [{
-    "examine": [{
-      "report": ["host", "platform", "aie-partitions", "telemetry"]
-    }]
+    "examine": [{}]
   },{
     "configure": [{
       "suboption": ["pmode", "force-preemption"]
@@ -67,9 +61,7 @@ R"(
       "suboption": ["read-aie-reg", "aie-clock", "report"]
     }]
   },{
-    "validate": [{
-      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aie-reconfig-overhead", "spatial-sharing-overhead", "temporal-sharing-overhead"]
-    }]
+    "validate": [{}]
   }]
 }]
 )";
@@ -90,7 +82,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false, configTree));
 
     // Parse sub commands from json files
     populateSubCommandsFromJSON(subCommands, executable);

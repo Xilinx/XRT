@@ -15,8 +15,8 @@ std::vector<std::shared_ptr<OptionOptions>> SubCmdConfigureInternal::optionOptio
   std::make_shared<OO_Retention>("retention"),
 };
 
-SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmdConfigureInternal(_isHidden, _isDepricated, _isPreliminary, false /*Not isUserDomain*/)
+SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+    : SubCmdConfigureInternal(_isHidden, _isDepricated, _isPreliminary, false /*Not isUserDomain*/, configurations)
 {
   // Empty
 }
