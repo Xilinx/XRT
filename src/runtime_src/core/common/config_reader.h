@@ -248,11 +248,19 @@ get_ml_timeline()
 }
 
 inline std::string
-get_ml_timeline_buffer_size()
+get_ml_timeline_settings_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "192K");
+  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "192K");
   return value;
 }
+
+inline unsigned int
+get_ml_timeline_settings_num_buffer_segments()
+{
+  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
+  return value;
+}
+
 
 inline bool
 get_aie_pc()

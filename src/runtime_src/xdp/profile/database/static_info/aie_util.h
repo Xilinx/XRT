@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -114,11 +114,7 @@ namespace xdp::aie {
 
   XDP_CORE_EXPORT
   boost::property_tree::ptree
-  getAIEPartitionInfoClient(void* hwCtxImpl);
-
-  XDP_CORE_EXPORT
-  boost::property_tree::ptree
-  getAIEPartitionInfo(void* handle);
+  getAIEPartitionInfo(void* handle, bool isHwCtxImpl = true);
 
   XDP_CORE_EXPORT
   void displayColShiftInfo(uint8_t colShift);

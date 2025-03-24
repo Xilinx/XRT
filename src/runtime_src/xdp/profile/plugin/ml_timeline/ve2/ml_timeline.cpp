@@ -31,6 +31,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -94,7 +95,7 @@ namespace xdp {
               "Allocated buffer In MLTimelineVE2Impl::updateDevice");
   }
 
-  void MLTimelineVE2Impl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
+  void MLTimelineVE2Impl::finishflushDevice(void* hwCtxImpl, uint64_t implId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::finishflushDevice");
@@ -107,6 +108,21 @@ namespace xdp {
               
     mResultBOHolder->syncFromDevice();    
     uint32_t* ptr = mResultBOHolder->map();
+
+    uint32_t numBufSegments = xrt_core::config::get_ml_timeline_settings_num_buffer_segments();
+    if (0 == numBufSegments) {
+      /* User has not specified "ML_timeline_settings.num_buffer_segments". 
+       * By default set it to number of cols in the design partition.
+       * For now, assume first entry in aie_partition_info corresponds to current HW Context.
+       */
+      boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(hwCtxImpl);
+      numBufSegments = static_cast<uint32_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+      std::stringstream numSegmentMsg;
+      numSegmentMsg << "\"ML_timeline_settings.num_buffer_segments\" not specified."
+          << " By default, assuming " << numBufSegments << " segments in buffer."
+          << " Please check the number of columns used by the design." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
+    }
       
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;
@@ -118,7 +134,7 @@ namespace xdp {
 
     boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
-    ptSchema.put("minor", "1");
+    ptSchema.put("minor", "2");
     ptSchema.put("patch", "0");
     ptHeader.add_child("schema_version", ptSchema);
     ptHeader.put("device", "Client");
@@ -126,6 +142,7 @@ namespace xdp {
     ptHeader.put("id_size", sizeof(uint32_t));
     ptHeader.put("cycle_size", 2*sizeof(uint32_t));
     ptHeader.put("buffer_size", mBufSz);
+    ptHeader.put("num_buffer_segments", numBufSegments);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
@@ -140,6 +157,9 @@ namespace xdp {
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
+    uint32_t* currSegmentPtr = ptr;
+    uint32_t  segmentSzInBytes = mBufSz / numBufSegments;
+    uint32_t  segmentsRead = 0;
     if (numEntries <= maxCount) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
@@ -152,10 +172,30 @@ namespace xdp {
         ptr++;
         ts64 |= (*ptr);
         if (0 == ts64 && 0 == id) {
-          // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
-          std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
-          break;
+          segmentsRead++;
+          if (segmentsRead == numBufSegments) {
+            // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
+            std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
+            break;
+          } else if (numBufSegments > 1) {
+            std::stringstream nxtSegmentMsg;
+            nxtSegmentMsg << " Got both id and timestamp field as ZERO." 
+                 << " Moving to next segment on the buffer."
+                 << " Size of each segment in bytes 0x" << std::hex << segmentSzInBytes << std::dec
+                 << ". Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
+
+            ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
+
+            nxtSegmentMsg << ". Next Segment Address 0x" << std::hex << ptr << std::dec 
+                          << "." << std::endl;
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", nxtSegmentMsg.str());
+
+            currSegmentPtr = ptr;
+            continue;
+          } else {
+            break;
+          }
         }
         ptIdTS.put("cycle", ts64);
         ptr++;
