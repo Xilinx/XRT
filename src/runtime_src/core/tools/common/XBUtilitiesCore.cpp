@@ -2,6 +2,7 @@
 // Copyright (C) 2019-2022 Xilinx, Inc
 // Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
+
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBUtilitiesCore.h"
@@ -27,6 +28,7 @@ static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
 static bool m_bAdvance = false;
 static bool m_bForce = false;
+static bool m_bElf = false; 
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -48,6 +50,20 @@ bool
 XBUtilities::getVerbose()
 {
   return m_bVerbose;
+}
+
+void
+XBUtilities::setElf(bool _bElf)
+{
+  m_bElf = _bElf;
+  
+  if (_bElf == true)
+    verbose("Enabling ELF");
+}
+
+bool XBUtilities::getElf()
+{
+  return m_bElf;
 }
 
 void

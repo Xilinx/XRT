@@ -8,6 +8,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
+namespace XBU = XBUtilities;
 
 // System - Include Files
 #include <fstream>
@@ -31,8 +32,18 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  // Check Whether Use ELF or DPU Sequence
+  auto elf = XBValidateUtils::get_elf();
+  std::string xclbin_path; 
+  
+  if (!elf) {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate, ptree);
+    XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
+  } else {
+    xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate_elf, ptree);
+    XBValidateUtils::logger(ptree, "Details", "Using ELF");
+  }
+
   if (!std::filesystem::exists(xclbin_path)){
     XBValidateUtils::logger(ptree, "Details", "The test is not supported on this device.");
     return ptree;
@@ -49,67 +60,86 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr!=xkernels.end())
-    xkernel = *itr;
-  else {
-    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-  auto kernelName = xkernel.get_name();
+  auto kernelName = XBValidateUtils::get_kernel_name(xclbin, ptree);
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
-  xrt::hw_context hwctx;
-  xrt::kernel kernel;
-  try {
-    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
-    kernel = xrt::kernel(hwctx, kernelName);
-  } 
-  catch (const std::exception& )
-  {
-    XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
-    ptree.put("status", XBValidateUtils::test_token_failed);ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_reconfig_overhead);
-  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
-  if (!std::filesystem::exists(dpu_instr))
-    return ptree;
 
   size_t instr_size = 0;
-  try {
-    instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
+  std::string dpu_instr;
+
+  xrt::hw_context hwctx;
+  xrt::kernel kernel, kernel_no_op;
+
+  if (!elf) { // DPU
+    try {
+      hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+      kernel = xrt::kernel(hwctx, kernelName);
+    } 
+    catch (const std::exception& )
+    {
+      XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
+
+    const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_reconfig_overhead);
+    dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
+    if (!std::filesystem::exists(dpu_instr))
+      return ptree;
+
+    try {
+      instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
+    }
+    catch(const std::exception& ex) {
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
   }
-  catch(const std::exception& ex) {
-    XBValidateUtils::logger(ptree, "Error", ex.what());
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
+  else { // ELF
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::aie_reconfig_overhead);
+    auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
+    
+    if (!std::filesystem::exists(elf_path))
+      return ptree;
+  
+    try {
+      hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+      kernel = get_kernel(hwctx, kernelName, elf_path);
+      kernel_no_op = get_kernel(hwctx, kernelName); 
+    } 
+    catch (const std::exception& )
+    {
+      XBValidateUtils::logger (ptree, "Error", "Not enough columns available. Please make sure no other workload is running on the device.");
+      ptree.put("status", XBValidateUtils::test_token_failed);
+      return ptree;
+    }
   }
 
   //Create BOs
-  int argno = 1;
-  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
-  argno++;
-  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
-  xrt::bo bo_inter(working_dev, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
-  xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno));
-  xrt::bo bo_instr_no_op(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno++));
-  argno++;
-  xrt::bo bo_mc(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
-
-  XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
-  //Create ctrlcode with NOPs
-  std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
+  xrt::bo bo_ifm, bo_ofm, bo_inter, bo_instr, bo_instr_no_op, bo_mc;
+  if (!elf) {
+    int argno = 1;
+    bo_ifm = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+    argno++;
+    bo_ofm = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+    bo_inter = xrt::bo(working_dev, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+    bo_instr = xrt::bo(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno));
+    bo_instr_no_op = xrt::bo(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno++));
+    argno++;
+    bo_mc = xrt::bo(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+  
+    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
+    //Create ctrlcode with NOPs
+    std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
+  }
+  else {
+    bo_ifm = xrt::ext::bo{working_dev, buffer_size};
+    bo_ofm = xrt::ext::bo{working_dev, buffer_size};
+    bo_inter = xrt::ext::bo{working_dev, inter_size};
+    bo_mc = xrt::ext::bo{working_dev, 16};
+  }
 
   // map input buffer
   // Incremental byte pattern
@@ -118,12 +148,14 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     ifm_mapped[i] = (int)(i % word_count);
 
   //Sync BOs
-  bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-  bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  if (!elf) { 
+    bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE); 
+    bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  }
 
   //Log
-  if(XBUtilities::getVerbose()) { 
+  if(XBU::getVerbose()) { 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f MB") % buffer_size_mb));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
@@ -131,7 +163,14 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0 ;i < itr_count ; i++){
     try{
-      auto run = kernel(1, bo_ifm, NULL, bo_ofm, bo_inter, bo_instr_no_op, instr_size, bo_mc);
+      xrt::run run;
+      if (!elf) {
+        run = kernel(XBValidateUtils::get_opcode(), bo_ifm, NULL, bo_ofm, bo_inter, bo_instr_no_op, instr_size, bo_mc);
+      } else { 
+        run = kernel_no_op(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, bo_ofm, bo_inter, 0);
+      }
+
+      // Wait for kernel to be done
       run.wait2();
     }
     catch (const std::exception& ex)
@@ -150,7 +189,14 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   for (int i = 0; i< itr_count; i++)
   {
     try{
-      auto run = kernel(1, bo_ifm, NULL, bo_ofm, bo_inter, bo_instr, instr_size, bo_mc);
+      xrt::run run;
+      if (!elf) {
+        run = kernel(XBValidateUtils::get_opcode(), bo_ifm, NULL, bo_ofm, bo_inter, bo_instr, instr_size, bo_mc);
+      }
+      else {
+        run = kernel(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, bo_ofm, bo_inter, 0);
+      }
+      // Wait for kernel to be done
       run.wait2();
     }
     catch (const std::exception& ex)

@@ -184,13 +184,14 @@ xrt::xclbin
 device::
 get_xclbin(const uuid& xclbin_id) const
 {
+  std::lock_guard lk(m_mutex);
+
   // Allow access to xclbin in process of loading via device::load_xclbin
   if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
     return m_xclbin;
-  if (xclbin_id) {
-    std::lock_guard lk(m_mutex);
+
+  if (xclbin_id)
     return m_xclbins.get(xclbin_id);
-  }
 
   // Single xclbin case
   return m_xclbin;
@@ -220,18 +221,21 @@ update_xclbin_info()
   }
 }
 
+// Compute CU sort order, kernel driver zocl and xocl now assign and
+// control the sort order, which is accessible via a query request.
+// For emulation old xclbin_parser::get_cus is used.
 void
 device::
 update_cu_info()
 {
-  // Compute CU sort order, kernel driver zocl and xocl now assign and
-  // control the sort order, which is accessible via a query request.
-  // For emulation old xclbin_parser::get_cus is used.
-  std::lock_guard lk(m_mutex);
-  m_cus.clear();
-  m_cu2idx.clear();
-  m_scu2idx.clear();
   try {
+    // Lock is scoped to try block to ensure lock is released before
+    // reaching outer catch block, where get_axlf_section() cannot be
+    // called with lock held as it in turn calls get_xclbin(uuid).
+    std::lock_guard lk(m_mutex);
+    m_cus.clear();
+    m_cu2idx.clear();
+    m_scu2idx.clear();
     // Regular CUs
     auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
 
@@ -261,6 +265,8 @@ update_cu_info()
     // there is only one default slot with number 0.
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
     if (ip_layout != nullptr) {
+      // Aquire lock again before updating m_cus and m_cu2idx
+      std::lock_guard lk(m_mutex);
       m_cus = xclbin::get_cus(ip_layout);
       m_cu2idx[0u] = xclbin::get_cu_indices(ip_layout); // default slot 0
     }
