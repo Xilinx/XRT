@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 #include "xdp/profile/writer/aie_debug/register_interpreter.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer_metadata.h"
 #include <fstream>
