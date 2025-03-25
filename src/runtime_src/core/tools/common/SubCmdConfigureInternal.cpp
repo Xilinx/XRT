@@ -102,8 +102,9 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
-  for (const auto& option : optionOptionsCollection)
+  for (const auto& option : optionOptionsCollection){
     addSubOption(option);
+  }
 
   m_commandConfig = configurations;
 }

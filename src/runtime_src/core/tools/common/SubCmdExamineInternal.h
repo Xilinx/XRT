@@ -23,15 +23,13 @@ class SubCmdExamineInternal : public SubCmd {
   virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
 
  public:
-  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
 
  public:
   static ReportCollection uniqueReportCollection;
 
  private:
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
-  void print_help_internal(const SubCmdExamineOptions&) const;
-
   bool                      m_isUserDomain;
   std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
 };
