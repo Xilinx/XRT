@@ -393,11 +393,11 @@ namespace {
           // Update config file
           uint16_t phyEvent = 0;
           auto& cfg = cfgTile.core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.coreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.coreCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.coreCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.coreCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
           cfg.event_value = config.coreCounterEventValues[i];
         }
@@ -435,11 +435,11 @@ namespace {
           // Update config file
           uint16_t phyEvent = 0;
           auto& cfg = cfgTile.memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.memoryCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.memoryCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.memoryCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.memoryCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
           cfg.event_value = config.memoryCounterEventValues[i];
         }
@@ -495,13 +495,13 @@ namespace {
           numCoreTraceEvents++;
 
           // Update config file
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
           cfgTile.core_trace_config.traced_events[slot] = phyEvent;
         }
         // Update config file
-        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.coreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.coreTraceStartEvent, &phyEvent);
         cfgTile.core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, mod, config.coreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, config.coreTraceEndEvent, &phyEvent);
         cfgTile.core_trace_config.stop_event = phyEvent;
 
         coreEvents.clear();
@@ -590,7 +590,7 @@ namespace {
           TraceE->getRscId(L, M, S);
 
           uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
 
           if (type == xdp::module_type::mem_tile) {
             cfgTile.memory_tile_trace_config.traced_events[S] = phyEvent;
@@ -619,7 +619,7 @@ namespace {
           // Get Physical event
 
           uint16_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], &phyEvent);
           // cfgTile.memory_trace_config.traced_events[S] = phyEvent;
 
           if (type == xdp::module_type::mem_tile)
@@ -637,11 +637,11 @@ namespace {
           uint16_t phyEvent = 0;
 
           if (type == xdp::module_type::mem_tile) {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
             cfgTile.memory_tile_trace_config.start_event = phyEvent;
 
           } else {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
             cfgTile.memory_trace_config.start_event = bcIdToEvent(bcId);
             cfgTile.core_trace_config.internal_events_broadcast[bcId] = phyEvent;
           }
@@ -650,10 +650,10 @@ namespace {
           bcId = memoryTrace->getStopBc();
           coreToMemBcMask |= (bcBit << bcId);
           if (type == xdp::module_type::mem_tile) {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
             cfgTile.memory_tile_trace_config.stop_event = bcIdToEvent(bcId);
           } else {
-            XAie_EventLogicalToPhysicalConv_16(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
             cfgTile.memory_trace_config.stop_event = bcIdToEvent(bcId);
             cfgTile.core_trace_config.internal_events_broadcast[bcId] = phyEvent;
 
