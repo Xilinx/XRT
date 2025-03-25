@@ -12,25 +12,76 @@ jobs:
     steps:
     - name: Checkout XRT
       uses: actions/checkout@v4
+      
     - name: Store sha
       run: echo ${{ github.sha }} > sha
+      
     - name: Compare sha
       uses: actions/cache@v4
       id: cache-sha
       with:
         path: sha
         key: clangtidy-${{ github.sha }}
+        
     - name: Install dependencies
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
         sudo pip3 install clang-html
+
+    - name: Configure legacy XRT
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        cmake -B build/legacy \
+        -DXRT_ENABLE_HIP=ON \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+        
+    - name: Configure edge XRT
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        env XRT_NATIVE_BUILD=no cmake -B build/edge \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Configure NPU XRT
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        cmake -B build/npu \
+        -DXRT_NPU=1 \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Merge compile commands
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        python <<EOF
+        import json, os
+
+        build_dirs = ["build/legacy", "build/edge", "build/npu"]
+        merged_commands = {}
+
+        for build_dir in build_dirs:
+            json_path = os.path.join(build_dir, "compile_commands.json")
+            if os.path.exists(json_path):
+                with open(json_path, "r") as f:
+                    commands = json.load(f)
+                    for entry in commands:
+                        merged_commands[entry["file"]] = entry
+
+        with open("compile_commands.json", "w") as f:
+            json.dump(list(merged_commands.values()), f, indent=2)
+
+        print("Merged compile_commands.json created.")
+        EOF
+      
     - name: Build with clangtidy
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
-        build/build.sh -clangtidy -opt -noert |& tee build.clangtidy.log
+        run-clang-tidy -p . -j 16 -export-fixes=fixes.yml |& tee build.clangtidy.log
         clang-tidy-html build.clangtidy.log
+
     - name: Upload clang raw log
       if: steps.cache-sha.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v4
