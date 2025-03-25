@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../common_em")
 set(COMMON_EM_GEN_DIR  "${CMAKE_CURRENT_BINARY_DIR}/../common_em")
@@ -26,12 +26,6 @@ file(GLOB EM_SRC_FILES
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
-
-# Bypass binary targets if clangtidy is enabled,
-# same targets are defined for DC
-if (${XRT_CLANGTIDY_REVIEW})
-  return()
-endif()
 
 add_library(sw_emu_objects OBJECT ${EM_SRC_FILES})
 add_dependencies(sw_emu_objects edge_emulation_generated_code)
