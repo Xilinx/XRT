@@ -7,13 +7,13 @@
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/detail/config.h"
-#include "xrt/experimental/xrt_exception.h"
 #include "xrt/experimental/xrt_xclbin.h"
 
 #ifdef __cplusplus
 # include "xrt/detail/abi.h"
 # include "xrt/detail/any.h"
 # include "xrt/detail/param_traits.h"
+# include "xrt/experimental/xrt_exception.h"
 # include <memory>
 # include <stdexcept>
 #endif
