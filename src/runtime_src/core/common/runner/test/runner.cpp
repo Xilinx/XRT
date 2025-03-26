@@ -168,7 +168,7 @@ run(int argc, char* argv[])
       std::cout << "Using (buffer, path): (" << buffer << ", " << datapath << ")\n";
       g_buffer2data.emplace(buffer, datapath);
     }
-    else if (cur == "-golden" || cur == "-g") {
+    else if (cur == "--golden" || cur == "-g") {
       auto pos = arg.find(":");
       if (pos == std::string::npos)
         throw std::runtime_error("golden data option must take the form of '-golden buffer:path'");
