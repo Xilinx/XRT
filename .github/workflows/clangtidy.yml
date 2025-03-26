@@ -12,6 +12,9 @@ jobs:
     steps:
     - name: Checkout XRT
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
       
     - name: Store sha
       run: echo ${{ github.sha }} > sha
