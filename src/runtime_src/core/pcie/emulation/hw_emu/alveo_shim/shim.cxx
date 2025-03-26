@@ -2675,7 +2675,10 @@ namespace xclhwemhal2 {
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
+    // Also create it only for the first time as in further
+    // iterations device is cached and returned
+    if (!mCoreDevice)
+      mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
 
     device_handles::add(this);
   }
