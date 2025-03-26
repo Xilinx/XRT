@@ -1,27 +1,18 @@
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
-// #######################################################################
-// Copyright (c) 2022 AMD, Inc.  All rights reserved.
-//
-// This   document  contains  proprietary information  which   is
-// protected by  copyright. All rights  are reserved. No  part of
-// this  document may be photocopied, reproduced or translated to
-// another  program  language  without  prior written  consent of
-// XILINX Inc., San Jose, CA. 95124
-//
-// Xilinx, Inc.
-// XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
-// COURTESY TO YOU.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
-/// ONE POSSIBLE   IMPLEMENTATION OF THIS FEATURE, APPLICATION OR
-// STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION
-// IS FREE FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE
-// FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
-// XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
-// THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO
-// ANY WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE
-// FROM CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE.
-//
-// ######################################################################
+/**
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 
 #ifndef AIE2_REGISTERS_H_
 #define AIE2_REGISTERS_H_
