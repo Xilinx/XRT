@@ -3,7 +3,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestPreemption.h"
+#include "TestPreemptionOverhead.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "core/common/unistd.h"
@@ -66,7 +66,7 @@ get_xclbin_type(int no_of_cols) {
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 double
-TestPreemption::run_preempt_test(const std::shared_ptr<xrt_core::device>& device, 
+TestPreemptionOverhead::run_preempt_test(const std::shared_ptr<xrt_core::device>& device, 
                                   boost::property_tree::ptree& ptree, int no_of_cols, const std::string& level)
 {
   const auto xclbin_path = XBU::get_xclbin_path(device, get_xclbin_type(no_of_cols), ptree);
@@ -128,12 +128,12 @@ TestPreemption::run_preempt_test(const std::shared_ptr<xrt_core::device>& device
   return elapsed_micro_secs/iterations;
 }
 
-TestPreemption::TestPreemption()
-  : TestRunner("preemption", "Measure preemption overhead at noop and memtile levels")
+TestPreemptionOverhead::TestPreemptionOverhead()
+  : TestRunner("preemption-overhead", "Measure preemption overhead at noop and memtile levels")
 {}
 
 boost::property_tree::ptree
-TestPreemption::run(std::shared_ptr<xrt_core::device> dev)
+TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
