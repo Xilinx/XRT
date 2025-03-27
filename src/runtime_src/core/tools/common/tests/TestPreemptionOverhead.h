@@ -14,6 +14,7 @@ class TestPreemptionOverhead : public TestRunner {
 
   public:
     TestPreemptionOverhead();
+    virtual ~TestPreemptionOverhead() {};
 };
 
 #endif

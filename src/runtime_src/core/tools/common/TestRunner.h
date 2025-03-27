@@ -54,6 +54,9 @@ class TestRunner : public JSONConfigurable {
     std::string m_name;
     std::string m_description;
     bool m_explicit;
+  
+  public:
+    virtual ~TestRunner() {};
 
 };
   
