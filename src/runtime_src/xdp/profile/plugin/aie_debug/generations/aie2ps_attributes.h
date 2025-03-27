@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef AIE2PS_ATTRIBUTES_H_
 #define AIE2PS_ATTRIBUTES_H_
@@ -13,12 +11,10 @@ namespace aie2ps
 // ###################################
 
 // Hardware generation
-// See: https://gitenterprise.xilinx.com/ai-engine/aie-rt/blob/main/driver/src/global/xaiegbl_defs.h#L46
 const unsigned int hw_gen = 5;
 // Tile architecture (used to determine broadcast direction)
 const char * const tile_arch = "grid";
 // Total number of rows/columns in AIE array
-// Note: See section 3.12 of AIE2ps arch spec
 const unsigned int max_rows = 14;
 const unsigned int max_cols = 60;
 // First row of AIE tiles 

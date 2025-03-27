@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef AIE2_ATTRIBUTES_H_
 #define AIE2_ATTRIBUTES_H_
@@ -13,7 +11,6 @@ namespace aie2
 // ###################################
 
 // Hardware generation
-// See: https://gitenterprise.xilinx.com/ai-engine/aie-rt/blob/main/driver/src/global/xaiegbl_defs.h#L46
 const unsigned int hw_gen = 2;
 // Tile architecture (used to determine broadcast direction)
 const char * const tile_arch = "grid";
