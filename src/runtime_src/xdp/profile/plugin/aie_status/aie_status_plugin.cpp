@@ -36,9 +36,11 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
-#ifdef XDP_VE2_BUILD
-#include "shim/shim.h"
-#else
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/api/hw_context_int.h"
+#include "shim/xdna_hwctx.h"
+
+#ifndef XDP_VE2_BUILD
 #include "core/edge/user/shim.h"
 #endif
 
@@ -46,10 +48,10 @@ namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
 #ifdef XDP_VE2_BUILD
-    auto drv = aiarm::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr;
-    auto aieArray = drv->get_aie_array();
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    auto aieArray = hwctx_obj->get_aie_array();
 #else
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)

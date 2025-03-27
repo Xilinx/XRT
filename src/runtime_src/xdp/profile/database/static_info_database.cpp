@@ -54,6 +54,7 @@
 
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/common/api/hw_context_int.h"
 
 constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
 constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
@@ -1460,6 +1461,49 @@ namespace xdp {
     return true;
   }
 
+void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
+{
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+   auto device = xrt_core::hw_context_int::get_core_device(context);
+
+   if (nullptr == device)
+      return;
+
+    xrt::uuid new_xclbin_uuid;
+
+    if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
+      // This has to be Alveo hardware emulation, which doesn't support
+      // the xclbin_slots query.
+      new_xclbin_uuid = device->get_xclbin_uuid();
+    }
+    else {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+
+      if (xclbin_slot_info.empty())
+        return;
+      new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
+    }
+
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+      return;
+
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), false);
+    if (device->is_nodma())
+      devInfo->isNoDMADevice = true;
+
+}
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.

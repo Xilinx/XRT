@@ -31,6 +31,9 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/api/hw_context_int.h"
+#include "shim/xdna_hwctx.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -39,17 +42,14 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "shim/shim.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = aiarm::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr;
-    auto aieArray = drv->get_aie_array();
-    if (!aieArray)
-      return nullptr;
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    auto aieArray = hwctx_obj->get_aie_array();
     return aieArray->get_dev();
   }
 
@@ -291,6 +291,8 @@ namespace xdp {
       return false;
     }
 
+    xrt::hw_context ctx = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto dev = xrt_core::hw_context_int::get_core_device(ctx);
      // Get partition columns
     boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle, false /* handle is not a hwCtxImpl*/);
     // Currently, assuming only one Hw Context is alive at a time

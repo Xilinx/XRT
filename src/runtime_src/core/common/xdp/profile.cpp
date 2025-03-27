@@ -43,7 +43,7 @@ std::function<void (void*)> end_poll_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
@@ -92,7 +92,7 @@ std::function<void (void*)> end_debug_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
 
     end_debug_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugRead"));
@@ -191,7 +191,7 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 { 
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
@@ -290,11 +290,10 @@ std::function<void (void*)> end_trace_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_CLIENT_BUILD
-    using ftype = void (*)(void*);
-
-    end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+    typedef void (*ftype)(void*) ;
+    end_trace_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
+    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice"));
   #else 
     (void)handle;
   #endif
@@ -379,8 +378,7 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
-
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
    */
@@ -468,30 +466,6 @@ update_device(void* handle)
     }    
   }
 
-#elif defined(XDP_VE2_BUILD)
-
-  if (xrt_core::config::get_ml_timeline()) {
-    try {
-      xrt_core::xdp::ml_timeline::load();
-      xrt_core::xdp::ml_timeline::update_device(handle);
-    }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load ML Timeline library."); 
-    }
-  }
-
-  if (xrt_core::config::get_aie_halt()) {
-    try {
-      xrt_core::xdp::aie::halt::load();
-      xrt_core::xdp::aie::halt::update_device(handle);
-    }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE Halt library.");  
-    }    
-  }
-
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
@@ -511,7 +485,7 @@ void
 finish_flush_device(void* handle)
 {
 
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
 
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
@@ -525,13 +499,6 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::debug::end_debug(handle);
   if (xrt_core::config::get_aie_pc())
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
-
-#elif defined(XDP_VE2_BUILD)
-
-  if (xrt_core::config::get_ml_timeline())
-    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
-  if (xrt_core::config::get_aie_halt())
-    xrt_core::xdp::aie::halt::finish_flush_device(handle);
 
 #else
 

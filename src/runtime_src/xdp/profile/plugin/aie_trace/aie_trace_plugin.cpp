@@ -104,7 +104,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     return;
 
   //handle relates to hw context handle in case of Client XRT
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
   xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
@@ -123,9 +123,11 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.valid = true; // initialize struct
 
   // Update the static database with information from xclbin
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD)
   (db->getStaticInfo()).updateDeviceClient(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#elif defined(XDP_VE2_BUILD)
+  (db->getStaticInfo()).updateDeviceVE2(deviceID, std::move(std::make_unique<HalDevice>(device->get_device_handle())), handle);
 #else
   // Update the static database with information from xclbin
   (db->getStaticInfo()).updateDevice(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
@@ -153,6 +155,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #elif defined(XRT_X86_BUILD)
   AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
+  AIEData.metadata->setHwContext(context);
   AIEData.implementation = std::make_unique<AieTrace_VE2Impl>(db, AIEData.metadata);
 #else
   AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
@@ -269,7 +272,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
       ,

@@ -29,7 +29,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <string>
 
-#include "shim/shim.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -37,6 +36,10 @@
 //#include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/api/hw_context_int.h"
+#include "shim/xdna_hwctx.h"
+ 
 
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
@@ -46,12 +49,10 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = aiarm::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr ;
-    auto aieArray = drv->get_aie_array();
-    if (!aieArray)
-      return nullptr;
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    auto aieArray = hwctx_obj->get_aie_array();
     return aieArray->get_dev();
   }
 

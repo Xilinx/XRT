@@ -22,13 +22,17 @@
 #include "core/include/xrt.h"
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/common/api/hw_context_int.h"
+#include "shim/xdna_hwctx.h"
+#include "shim/xdna_aie_array.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_logger_ve2.h"
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
-#include "shim/shim.h"
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -46,6 +50,8 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
+  , xrt::hw_context context
+  , std::shared_ptr<AieTraceMetadata> metadata
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -60,6 +66,8 @@ AIETraceOffload::AIETraceOffload
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
+  , m_hwcontext(context)
+  
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
@@ -79,8 +87,7 @@ AIETraceOffload::~AIETraceOffload()
 
 bool AIETraceOffload::setupPSKernel() {
 
-  auto spdevice = xrt_core::get_userpf_device(deviceHandle);
-  auto device = xrt::device(spdevice);
+  auto device = m_hwcontext.get_device();
   auto uuid = device.get_xclbin_uuid();
   auto gmio_kernel = xrt::kernel(device, uuid.get(), "aie_trace_gmio");
 
@@ -174,12 +181,9 @@ bool AIETraceOffload::initReadTrace()
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-      auto drv = aiarm::shim::handleCheck(deviceHandle);
-      if(!drv) {
-        bufferInitialized = false;
-        return bufferInitialized;
-      }
-      auto aieObj = drv->get_aie_array();
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwcontext);
+      auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+      auto aieObj = hwctx_obj->get_aie_array();
 
       XAie_DevInst* devInst = aieObj->get_dev();
 
@@ -241,10 +245,9 @@ void AIETraceOffload::endReadTrace()
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-    auto drv = aiarm::shim::handleCheck(deviceHandle);
-    if (!drv)
-      return;
-    auto aieObj = drv->get_aie_array();
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwcontext);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    auto aieObj = hwctx_obj->get_aie_array();
     XAie_DevInst* devInst = aieObj->get_dev();
 
     // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
