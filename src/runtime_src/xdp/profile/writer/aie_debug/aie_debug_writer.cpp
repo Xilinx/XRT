@@ -73,14 +73,13 @@ namespace xdp {
 
     // Create register interpreter for current AIE generation
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-    std::unique_ptr<RegisterInterpreter> regInterp = 
-      std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
-    
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+    std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(aieGeneration);
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
       "Writing " + std::to_string(samples.size()) + " samples to AIE Debug file.");
 
     for (auto& sample : samples) {
-      // Print out full 32-bit values (for debug purposes)    
+      // Print out full 32-bit values (for debug purposes)
       fout << +sample.col << ","
            << +sample.row << ","
            << sample.name << ","
@@ -88,7 +87,7 @@ namespace xdp {
           //  << "31:0" << ","
            << "full" << ","
            << "0x" << std::hex;
-      
+
       for (auto v : sample.value.dataValue) {
         fout << v;
       }

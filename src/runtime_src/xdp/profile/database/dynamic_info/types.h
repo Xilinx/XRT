@@ -85,6 +85,7 @@ namespace xdp::aie {
   struct AieDebugValue {
     std::vector<uint32_t> dataValue;
     uint32_t sizeInBits;
+    uint32_t moduleType;
   };
 
   struct AIEDebugDataType

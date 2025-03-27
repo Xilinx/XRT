@@ -69,18 +69,21 @@ namespace xdp {
       tileOffset = to;
     }
 
+    void readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata);
+    /*
     void readValues(XAie_DevInst* aieDevInst) {
       std::stringstream msg;
-      msg << "Debugging " << relativeOffsets.size() << " registers for tile " 
+      msg << "Debugging " << relativeOffsets.size() << " registers for tile "
           << +col << "," << +row;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
       for (auto& offset : relativeOffsets) {
         uint32_t val = 0;
         XAie_Read32(aieDevInst, offset + tileOffset, &val);
-        values.push_back(val); 
+        values.push_back(val);
       }
     }
+    */
 };
 
 } // end namespace xdp

@@ -172,9 +172,20 @@ class BaseReadableTile {
     uint8_t col;
     uint8_t row;
     uint64_t tileOffset;
-    std::vector<uint32_t> values;
-    std::vector<uint64_t> relativeOffsets;
-    std::vector<std::string> registerNames;
+    std::vector<xdp::aie::AieDebugValue> coreValues;
+    std::vector<xdp::aie::AieDebugValue> memoryValues;
+    std::vector<xdp::aie::AieDebugValue> shimValues;
+    std::vector<xdp::aie::AieDebugValue> memTileValues;
+    //std::vector<uint64_t> relativeOffsets;
+    std::vector<uint64_t> coreRelativeOffsets;
+    std::vector<uint64_t> memoryRelativeOffsets;
+    std::vector<uint64_t> shimRelativeOffsets;
+    std::vector<uint64_t> memTileRelativeOffsets;
+    //std::vector<std::string> registerNames;
+    std::vector<std::string> coreRegisterNames;
+    std::vector<std::string> memoryRegisterNames;
+    std::vector<std::string> shimRegisterNames;
+    std::vector<std::string> memTileRegisterNames;
 };
 
 } // end XDP namespace
