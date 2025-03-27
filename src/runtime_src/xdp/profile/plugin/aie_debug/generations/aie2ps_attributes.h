@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #ifndef AIE2PS_ATTRIBUTES_H_
 #define AIE2PS_ATTRIBUTES_H_
