@@ -66,7 +66,7 @@ void  main_(int argc, char** argv,
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("advance", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+    ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
