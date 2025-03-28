@@ -7,13 +7,20 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+
+unix2dos()
+{
+    echo $(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' <<< $1)
+}
+
+
 CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
 CPACK="/mnt/c/Program Files/CMake/bin/cpack.exe"
 EXT_DIR=/mnt/c/Xilinx/xrt/ext.new
-BOOST=$EXT_DIR
-KHRONOS=$EXT_DIR
+BOOST=$(unix2dos $EXT_DIR)
+KHRONOS=$(unix2dos $EXT_DIR)
 
 usage()
 {
@@ -138,8 +145,9 @@ if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
     exit 1
 fi
 
-BOOST=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $BOOST)
-KHRONOS=$(sed -e 's|/mnt/\([A-Za-z]\)/\(.*\)|\1:/\2|' -e 's|/|\\|g' <<< $KHRONOS)
+BOOST=$(unix2dos $BOOST)
+KHRONOS=$(unix2dos $KHRONOS)
+prefix=$(unix2dos $prefix)
 
 here=$PWD
 cd $BUILDDIR
@@ -161,7 +169,7 @@ if [ $dbg == 1 ]; then
     cd WDebug
 
     if [[ $prefix == "" ]]; then
-        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$BUILDDIR/WDebug/xilinx"
+        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$(unix2dos $BUILDDIR/WDebug/xilinx)"
     else
         cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$prefix"
     fi
@@ -180,7 +188,7 @@ if [ $release == 1 ]; then
     cd WRelease
 
     if [[ $prefix == "" ]]; then
-        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$BUILDDIR/WRelease/xilinx"
+        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$(unix2dos $BUILDDIR/WRelease/xilinx)"
     else
         cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$prefix"
     fi

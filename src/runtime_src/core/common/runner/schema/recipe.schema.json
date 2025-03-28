@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$copyright": "Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.",
+  "$license": "SPDX-License-Identifier: Apache-2.0",
+  "$id": "https://github.com/Xilinx/XRT/src/runtime_src/core/common/runner/schema/recipe.schema.json",
+  "title": "Recipe",
+  "description": "A run recipe for XRT",
+  "type": "object",
+  "properties": {
+    "version": {
+      "$comment": "Json schema version, must be 1.0",
+      "type": "string",
+      "pattern": "1.[0]"
+    },
+    "header": { "$ref": "#/$defs/header" },
+    "resources": { "$ref": "#/$defs/resources" },
+    "execution": { "$ref": "#/$defs/execution" }
+  },
+  "required": ["version", "header", "resources", "execution"],
+
+  "$defs": {
+    "key": {
+      "$comment": "key for a resource defined in resource section",
+      "type": "string"
+    },
+    "path": {
+      "$comment": "path to a file or in-memory object",
+      "type": "string"
+    },
+    "argidx": {
+      "$comment": "index of the argument in a kernel",
+      "type": "integer",
+      "minimum": 0
+    },
+    "size": {
+      "$comment": "size or offset of a buffer",
+      "type": "integer",
+      "minimum": 0
+    },
+
+    "header": {
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "xclbin": { "$ref": "#/$defs/path" }
+          },
+          "required": [ "xclbin" ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "program": { "$ref": "#/$defs/path" }
+          },
+          "required": [ "program" ],
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    
+    "resources": {
+      "type": "object",
+      "properties": {
+        "buffers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "$ref": "#/$defs/key" },
+              "type": {
+                "type": "string",
+                "enum": ["input", "output", "internal"]
+              },
+              "size": { "$ref": "#/$defs/size" }
+            },
+            "required": ["name", "type"],
+            "if": { "properties": { "type": { "const": "internal" } } },
+            "then": { "required": ["size"] },
+            "additionalProperties": false
+          }
+        },
+
+        "kernels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "$ref": "#/$defs/key" },
+              "instance": { "type": "string" },
+              "ctrlcode": { "$ref": "#/$defs/path" }
+            },
+            "additionalProperties": false
+          }
+        },
+
+        "cpus": {}
+      },
+      "additionalProperties": false
+    },
+
+    "execution": {
+      "type": "object",
+      "properties": {
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$comment": "name of the resource kernel",
+                "$ref": "#/$defs/key"
+              },
+              "where": {
+                "type": "string",
+                "enum": ["cpu", "npu"]
+              },
+              "arguments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "$comment": "name of resource buffer",
+                      "$ref": "#/$defs/key"
+                    },
+                    "argidx": { "$ref": "#/$defs/argidx" },
+                    "size": {
+                      "$comment": "if present, size of sub-buffer",
+                      "$ref": "#/$defs/size"
+                    },
+                    "offset": {
+                      "$comment": "if present, offset into sub-buffer",
+                      "$ref": "#/$defs/size"
+                    }
+                  },
+                  "required": ["name", "argidx"],
+                  "dependentRequired": {
+                    "size": ["offset"],
+                    "offset": ["size"]
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "constants": {
+                "$comment": "constant kernel arguments",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "value": { "type": "string" },
+                    "type": { "enum": ["int", "string"] },
+                    "argidx": { "$ref": "#/$defs/argidx" }
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
