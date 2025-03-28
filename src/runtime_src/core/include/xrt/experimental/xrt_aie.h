@@ -77,8 +77,21 @@ public:
   XRT_API_EXPORT
   size_type
   get_partition_size() const;
+
+  /**
+   * get_ctrl_scratchpad_mem_size - Retrieves the size of the control
+   * scratchpad memory in bytes.
+   *
+   * The control scratchpad memory is utilized to store state data
+   * during the execution of the model. This function provides the
+   * size of this memory enabling users to determine the amount of
+   * data that can be read from or written to it.
+   */
+  XRT_API_EXPORT
+  size_t
+  get_ctrl_scratchpad_mem_size() const;
 };
-  
+
 } // namespace xrt::aie
 
 #endif // __cplusplus
