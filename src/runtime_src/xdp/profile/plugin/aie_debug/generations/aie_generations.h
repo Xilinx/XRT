@@ -28,11 +28,11 @@
 #include "aie1_attributes.h"
 #include "aie2_attributes.h"
 #include "aie2ps_attributes.h"
-#include "aie4_attributes.h"
+#include "npu3_attributes.h"
 
 #include "aie1_registers.h"
 #include "aie2_registers.h"
 #include "aie2ps_registers.h"
-#include "aie4_registers.h"
+#include "npu3_registers.h"
 
 #endif /* AIE_GENERATIONS_H_ */

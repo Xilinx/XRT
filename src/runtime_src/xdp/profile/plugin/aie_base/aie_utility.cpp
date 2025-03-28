@@ -42,15 +42,15 @@ namespace xdp::aie {
     return (hwGen == 5);
   }
 
-  bool isAIE4(const int hwGen)
+  bool isNPU3(const int hwGen)
   {
-    //return (hwGen >= XAIE_DEV_GEN_AIE4_SOUNDWAVE);
+    // TODO: replace with enum once available 
     return (hwGen >= 40);
   }
 
   bool isMicroSupported(const int hwGen)
   {
-    return (isAIE2ps(hwGen) || isAIE4(hwGen));
+    return (isAIE2ps(hwGen) || isNPU3(hwGen));
   }
 
   /****************************************************************************

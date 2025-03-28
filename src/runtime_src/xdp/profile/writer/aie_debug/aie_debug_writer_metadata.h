@@ -105,14 +105,14 @@ public:
 };
 
 /*************************************************************************************
- AIE4 Registers
+ NPU3 Registers
  *************************************************************************************/
-class AIE4WriterUsedRegisters : public WriterUsedRegisters {
+class NPU3WriterUsedRegisters : public WriterUsedRegisters {
 public:
-  AIE4WriterUsedRegisters() {
+  NPU3WriterUsedRegisters() {
     populateRegDataMap();
   }
-  ~AIE4WriterUsedRegisters() = default;
+  ~NPU3WriterUsedRegisters() = default;
 
   void populateRegDataMap();
 

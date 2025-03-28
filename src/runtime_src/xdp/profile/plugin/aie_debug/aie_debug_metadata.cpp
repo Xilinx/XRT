@@ -67,9 +67,9 @@ namespace xdp {
       usedRegisters = std::make_unique<AIE2UsedRegisters>();
     else if (aie::isAIE2ps(hwGen))
       usedRegisters = std::make_unique<AIE2psUsedRegisters>();
-#ifdef XDP_AIE4_BUILD
-    else if (aie::isAIE4(hwGen))
-      usedRegisters = std::make_unique<AIE4UsedRegisters>();
+#ifdef XDP_NPU3_BUILD
+    else if (aie::isNPU3(hwGen))
+      usedRegisters = std::make_unique<NPU3UsedRegisters>();
 #endif
   }
 

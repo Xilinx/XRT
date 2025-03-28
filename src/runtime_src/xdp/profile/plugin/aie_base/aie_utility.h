@@ -49,11 +49,11 @@ namespace xdp::aie {
   bool isAIE2ps(const int hwGen);
 
   /**
-   * @brief   Check if HW generation is AIE4
+   * @brief   Check if HW generation is NPU3
    * @param   hwGen integer representing the hardware generation
-   * @return  true if HW generation is AIE4
+   * @return  true if HW generation is NPU3
    */
-  bool isAIE4(const int hwGen);
+  bool isNPU3(const int hwGen);
   
   /**
    * @brief   Check if microcontrollers are supported
