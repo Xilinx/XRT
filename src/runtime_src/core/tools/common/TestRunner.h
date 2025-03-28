@@ -56,7 +56,7 @@ class TestRunner : public JSONConfigurable {
     bool m_explicit;
   
   public:
-    virtual ~TestRunner() {};
+    virtual ~TestRunner() = default;
 
 };
   
