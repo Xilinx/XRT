@@ -239,6 +239,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
     }
     else if (aie::isAIE2ps(hwGen)) {
+#ifdef XDP_VE2_BUILD
       eventSets["input_ports_details"] = {
           XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,             XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
@@ -247,6 +248,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_NOC0_DMA_S2MM_0_START_TASK_PL,             XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_TASK_PL,          XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
+#endif
     }
     else {
       eventSets["input_ports_details"] = {

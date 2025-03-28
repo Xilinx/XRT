@@ -22,7 +22,7 @@
 #include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie4_attributes.h"
+#include "xdp/profile/plugin/aie_debug/generations/npu3_attributes.h"
 
 #include <cmath>
 #include <cstring>
@@ -115,7 +115,7 @@ namespace xdp::aie::profile {
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
     int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::shim_num_counters
-                    : (xdp::aie::isAIE4(hwGen)  ? aie4::shim_num_counters
+                    : (xdp::aie::isNPU3(hwGen)  ? aie4::shim_num_counters
                     : aie2::shim_num_counters);
 
     std::map<std::string, std::vector<XAie_Events>> eventSets;
@@ -141,6 +141,7 @@ namespace xdp::aie::profile {
                                           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
     else if (xdp::aie::isAIE2ps(hwGen)) {
+#ifdef XDP_VE2_BUILD
       eventSets["input_stalls"]       = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                          XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,
                                          XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
@@ -165,9 +166,10 @@ namespace xdp::aie::profile {
                                          XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
                                          XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL,
                                          XAIE_EVENT_PORT_RUNNING_1_PL};
+#endif
     }
-    else if (isAIE4(hwGen)) {
-
+    else if (xdp::aie::isNPU3(hwGen)) {
+      // TODO: add NPU3 sets
     }
 
     // Microcontroller sets
@@ -241,7 +243,7 @@ namespace xdp::aie::profile {
                                    XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
     };
 
-    if (!xdp::aie::isAIE4(hwGen)) {
+    if (!xdp::aie::isNPU3(hwGen)) {
       eventSets["conflict_stats1"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
@@ -263,7 +265,7 @@ namespace xdp::aie::profile {
         XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
       // Banks 16-23 are not defined for all generations
-#ifdef XDP_AIE4_BUILD
+#ifdef XDP_NPU3_BUILD
       eventSets["conflict_stats2"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
@@ -291,7 +293,7 @@ namespace xdp::aie::profile {
   std::map<std::string, std::vector<uint8_t>> getMicrocontrollerEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<uint8_t>> eventSets;
-    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
+    if (!xdp::aie::isMicroSupported(hwGen))
       return eventSets;
 
     eventSets = {
@@ -554,7 +556,7 @@ namespace xdp::aie::profile {
                          const std::vector<uint8_t> events)
   {
     // Ensure supported generation and not privileged
-    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
+    if (!xdp::aie::isMicroSupported(hwGen))
       return;
 
     uint32_t val;
@@ -593,7 +595,7 @@ namespace xdp::aie::profile {
                        std::vector<uint64_t>& values)
   {
     // Ensure supported generation and not privileged
-    if (!xdp::aie::isAIE2ps(hwGen) && !xdp::aie::isAIE4(hwGen))
+    if (!xdp::aie::isMicroSupported(hwGen))
       return;
 
     uint32_t val;

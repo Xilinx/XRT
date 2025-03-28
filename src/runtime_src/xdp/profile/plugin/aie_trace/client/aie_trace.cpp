@@ -509,7 +509,7 @@ namespace xdp {
         }
         else {
           // Memory tiles
-          auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+          auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
           std::string msg = "Configuring memory tile stream switch to monitor "
                           + typeName + " stream port " + std::to_string(channel);
