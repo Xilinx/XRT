@@ -20,6 +20,8 @@ namespace XBU = XBUtilities;
 #include <thread>
 
 static constexpr uint32_t num_of_cores = 32;
+static constexpr size_t buffer_size_gb = 1;
+static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
 
 /*
 * Total OPs= = 196K OPs.
@@ -75,7 +77,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   xrt::hw_context hwctx;
   xrt::kernel kernel;
-  
+
   if (!elf) {
     try {
       hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
@@ -123,6 +125,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
 
+  xrt::bo bo_ifm;
   //Create Instruction BO
   xrt::bo bo_instr;
   if (!elf) {
@@ -130,6 +133,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
     //Sync Instruction BO
     bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  } else {
+    bo_ifm = xrt::ext::bo{working_dev, buffer_size};
+    bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
   // Create 128KB Debug BO to capture TOPS data
@@ -142,7 +148,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
       if (!elf) {
         run = kernel(XBValidateUtils::get_opcode(), NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
       } else {
-        run = kernel(XBValidateUtils::get_opcode(), 0, 0, 0, 0, 0, 0, 0);
+        run = kernel(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, 0, 0, 0);
       }
       // Wait for kernel to be done
       run.wait2();
