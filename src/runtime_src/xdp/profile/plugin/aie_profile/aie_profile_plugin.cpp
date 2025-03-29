@@ -110,7 +110,7 @@ namespace xdp {
   /*
    * handle relates to hw context handle in case of Client XRT
    */
-    #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
         xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
         auto device = xrt_core::hw_context_int::get_core_device(context);
     #else

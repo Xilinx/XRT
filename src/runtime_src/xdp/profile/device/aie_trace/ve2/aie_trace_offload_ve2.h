@@ -19,7 +19,6 @@
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_VE2_H_
 
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 extern "C"
 {
@@ -77,8 +76,7 @@ class AIETraceOffload
                     bool     isPlio,
                     uint64_t totalSize,
                     uint64_t numStrm,
-					xrt::hw_context context,
-					std::shared_ptr<AieTraceMetadata> metadata
+                    XAie_DevInst* devInstance
                    );
 
     virtual ~AIETraceOffload();
@@ -106,9 +104,9 @@ private:
 
     void*           deviceHandle;
     uint64_t        deviceId;
-    PLDeviceIntf*     deviceIntf;
+    PLDeviceIntf*   deviceIntf;
     AIETraceLogger* traceLogger;
-    xrt::hw_context m_hwcontext;
+    XAie_DevInst*   devInst;
 
     bool isPLIO;
     uint64_t totalSz;

@@ -50,8 +50,7 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
-  , xrt::hw_context context
-  , std::shared_ptr<AieTraceMetadata> metadata
+  , XAie_DevInst* devInstance
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -66,7 +65,7 @@ AIETraceOffload::AIETraceOffload
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
-  , m_hwcontext(context)
+  , devInst(devInstance)
   
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
@@ -87,7 +86,8 @@ AIETraceOffload::~AIETraceOffload()
 
 bool AIETraceOffload::setupPSKernel() {
 
-  auto device = m_hwcontext.get_device();
+  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(deviceHandle);
+  auto device = context.get_device();
   auto uuid = device.get_xclbin_uuid();
   auto gmio_kernel = xrt::kernel(device, uuid.get(), "aie_trace_gmio");
 
@@ -181,12 +181,6 @@ bool AIETraceOffload::initReadTrace()
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwcontext);
-      auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-      auto aieObj = hwctx_obj->get_aie_array();
-
-      XAie_DevInst* devInst = aieObj->get_dev();
-
       gmioDMAInsts[i].gmioTileLoc = XAie_TileLoc(traceGMIO->shimColumn, 0);
 
       int driverStatus = XAIE_OK;
@@ -244,11 +238,6 @@ void AIETraceOffload::endReadTrace()
   } else {
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
-
-    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwcontext);
-    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-    auto aieObj = hwctx_obj->get_aie_array();
-    XAie_DevInst* devInst = aieObj->get_dev();
 
     // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
     // Enable shim DMA channel, need to start first so the status is correct
@@ -548,4 +537,3 @@ uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
 }
 
 }
-

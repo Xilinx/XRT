@@ -1461,6 +1461,7 @@ namespace xdp {
     return true;
   }
 
+  
 void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
 {
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
@@ -1504,13 +1505,14 @@ void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::D
       devInfo->isNoDMADevice = true;
 
 }
+
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
   {
-    std::shared_ptr<xrt_core::device> device =
-      xrt_core::get_userpf_device(devHandle);
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
     if (nullptr == device)
       return;
 
