@@ -203,7 +203,7 @@ class recipe
     static xrt::xclbin
     read_xclbin(const boost::property_tree::ptree& pt, const artifacts::repo& repo)
     {
-      auto path = pt.get<std::string>("xclbin_path");
+      auto path = pt.get<std::string>("xclbin");
       auto& data = repo.get(path);
       return xrt::xclbin{data};
     }
@@ -318,7 +318,7 @@ class recipe
     class kernel
     {
       std::string m_name;
-      std::string m_xclbin_name;
+      std::string m_instance;
       xrt::xclbin::kernel m_xclbin_kernel;
       xrt::kernel m_xrt_kernel;
 
@@ -327,21 +327,21 @@ class recipe
       // meta data (may not be needed).
       kernel(const xrt::hw_context& ctx, const xrt::module& mod, std::string name, std::string xname)
         : m_name{std::move(name)}
-        , m_xclbin_name{std::move(xname)}
-        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_xclbin_name)}
-        , m_xrt_kernel{xrt::ext::kernel{ctx, mod, m_xclbin_name}}
+        , m_instance{std::move(xname)}
+        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
+        , m_xrt_kernel{xrt::ext::kernel{ctx, mod, m_instance}}
       {
-        XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_xclbin_name.c_str());
+        XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
 
       // Legacy kernel (alveo)
       kernel(const xrt::hw_context& ctx, std::string name, std::string xname)
         : m_name(std::move(name))
-        , m_xclbin_name(std::move(xname))
-        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_xclbin_name)}
-        , m_xrt_kernel{xrt::kernel{ctx, m_xclbin_name}}
+        , m_instance(std::move(xname))
+        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
+        , m_xrt_kernel{xrt::kernel{ctx, m_instance}}
       {
-        XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_xclbin_name.c_str());
+        XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
 
     public:
@@ -357,10 +357,10 @@ class recipe
         auto name = pt.get<std::string>("name"); // required, default xclbin kernel name
         auto elf = pt.get<std::string>("ctrlcode", ""); // optional elf file
         if (elf.empty())
-          return kernel{hwctx, name, pt.get<std::string>("xclbin_kernel_name", name)};
+          return kernel{hwctx, name, pt.get<std::string>("instance", name)};
 
         auto mod = module_cache::get(elf, repo);
-        return kernel{hwctx, mod, name, pt.get<std::string>("xclbin_kernel_name", name)};
+        return kernel{hwctx, mod, name, pt.get<std::string>("instance", name)};
       }
 
       xrt::kernel
