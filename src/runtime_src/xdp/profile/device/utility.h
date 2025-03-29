@@ -40,7 +40,7 @@ namespace xdp { namespace util {
   std::string getDebugIpLayoutPath(void* deviceHandle);
 
   XDP_CORE_EXPORT
-  std::string getDeviceName(void* deviceHandle);
+  std::string getDeviceName(void* deviceHandle, bool isVE2build = false);
 
 
   // At compile time, each monitor inserted in the PL region is given a set 

@@ -104,6 +104,8 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
+#elif XDP_VE2_BUILD
+    return db->addDevice("ve2_device");
 #else
     return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
@@ -134,12 +136,15 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
       (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#elif defined(XDP_VE2_BUILD)
+      (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
+      std::string deviceName = util::getDeviceName(handle,true);
 #else
       (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
       std::string deviceName = util::getDeviceName(handle);
-      if (deviceName != "")
-        (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
 #endif
+      if (deviceName != "")
+      (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
     }
 
     // Delete old data
@@ -185,7 +190,11 @@ namespace xdp {
     std::string deviceName = "aie_debug_win_device";
 #else
     auto tm = *std::localtime(&time);
-    std::string deviceName = util::getDeviceName(handle);
+    #ifdef XDP_VE2_BUILD
+      std::string deviceName = util::getDeviceName(handle,true);
+    #else
+      std::string deviceName = util::getDeviceName(handle);
+    #endif
 #endif
 
     std::ostringstream timeOss;

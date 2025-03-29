@@ -1462,12 +1462,12 @@ namespace xdp {
   }
 
   
-void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
-{
+  void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
+  {
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
-   auto device = xrt_core::hw_context_int::get_core_device(context);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
 
-   if (nullptr == device)
+    if (nullptr == device)
       return;
 
     xrt::uuid new_xclbin_uuid;
@@ -1494,8 +1494,8 @@ void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::D
     }
 
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
-     * in the static data base. So, no need to read the xclbin information again.
-     */
+      * in the static data base. So, no need to read the xclbin information again.
+      */
     if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
       return;
 
@@ -1503,8 +1503,7 @@ void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::D
     DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
-
-}
+  }
 
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
@@ -2416,10 +2415,8 @@ void VPStaticDatabase::updateDeviceVE2(uint64_t deviceId, std::unique_ptr<xdp::D
     initializeProfileMonitors(devInfo, std::move(xrtXclbin));
 
     devInfo->isReady = true;
-
     if (xdpDevice != nullptr)
       createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
-
     return devInfo;
   }
 

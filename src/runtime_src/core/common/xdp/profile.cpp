@@ -191,7 +191,7 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 { 
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+  #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
@@ -292,8 +292,9 @@ register_callbacks(void* handle)
 {  
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     typedef void (*ftype)(void*) ;
-    end_trace_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice"));
+
+    end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
   #else 
     (void)handle;
   #endif
@@ -378,7 +379,7 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+#ifdef XDP_CLIENT_BUILD
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
    */
@@ -466,6 +467,63 @@ update_device(void* handle)
     }    
   }
 
+#elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+      xrt_core::xdp::ml_timeline::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load ML Timeline library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_halt()) {
+    try {
+      xrt_core::xdp::aie::halt::load();
+      xrt_core::xdp::aie::halt::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Halt library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_profile()) {
+    try {
+      xrt_core::xdp::aie::profile::load();
+      xrt_core::xdp::aie::profile::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Profile library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_trace()) {
+    try {
+      xrt_core::xdp::aie::trace::load();
+      xrt_core::xdp::aie::trace::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Trace library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_debug()) {
+    try {
+      xrt_core::xdp::aie::debug::load();
+      xrt_core::xdp::aie::debug::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Debug library.");
+    }
+  }
+
 #else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
@@ -485,7 +543,7 @@ void
 finish_flush_device(void* handle)
 {
 
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+#ifdef XDP_CLIENT_BUILD
 
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
@@ -499,6 +557,19 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::debug::end_debug(handle);
   if (xrt_core::config::get_aie_pc())
     xrt_core::xdp::aie_pc::finish_flush_device(handle);
+
+#elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
+  if (xrt_core::config::get_aie_halt())
+    xrt_core::xdp::aie::halt::finish_flush_device(handle);
+  if (xrt_core::config::get_aie_profile())
+    xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_trace())
+    xrt_core::xdp::aie::trace::end_trace(handle);
+  if (xrt_core::config::get_aie_debug())
+    xrt_core::xdp::aie::debug::end_debug(handle);
 
 #else
 

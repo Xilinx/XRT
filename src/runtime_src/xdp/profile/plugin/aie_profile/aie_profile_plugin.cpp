@@ -124,6 +124,8 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
       (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#elif defined(XDP_VE2_BUILD)
+      (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
 #else
       (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
 #endif
@@ -181,7 +183,11 @@ auto time = std::time(nullptr);
     std::string deviceName = "win_device";
 #else
     auto tm = *std::localtime(&time);
-    std::string deviceName = util::getDeviceName(handle);
+    #ifdef XDP_VE2_BUILD
+      std::string deviceName = util::getDeviceName(handle,true);
+    #else
+      std::string deviceName = util::getDeviceName(handle);
+    #endif
 #endif
 
     std::ostringstream timeOss;

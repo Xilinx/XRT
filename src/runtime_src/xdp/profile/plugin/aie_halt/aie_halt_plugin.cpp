@@ -32,6 +32,7 @@
 #include "xdp/profile/plugin/aie_halt/clientDev/aie_halt.h"
 #elif defined (XDP_VE2_BUILD)
 #include "xdp/profile/plugin/aie_halt/ve2/aie_halt.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #endif
 
 namespace xdp {
@@ -100,7 +101,7 @@ namespace xdp {
 
     // Only one device for VE2 Device flow
     uint64_t deviceId = db->addDevice("ve2_device");
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceVE2(deviceId, nullptr, hwCtxImpl);
     (db->getStaticInfo()).setDeviceName(deviceId, "ve2_device");
 
     DeviceDataEntry.valid = true;

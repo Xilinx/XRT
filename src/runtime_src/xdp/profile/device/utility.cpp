@@ -20,6 +20,7 @@
 #include "core/common/system.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -68,10 +69,18 @@ namespace xdp { namespace util {
     return path;
   }
 
-  std::string getDeviceName(void* deviceHandle)
+  std::string getDeviceName(void* deviceHandle, bool isVE2build)
   {
     std::string deviceName = "";
-    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::get_userpf_device(deviceHandle);
+    std::shared_ptr<xrt_core::device> coreDevice;
+    if(isVE2build) {
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(deviceHandle);
+      coreDevice = xrt_core::hw_context_int::get_core_device(context);
+    }
+    else {
+      coreDevice = xrt_core::get_userpf_device(deviceHandle);
+    }
+
     if (!coreDevice) {
       return deviceName;
     }
