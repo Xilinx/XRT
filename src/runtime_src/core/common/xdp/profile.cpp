@@ -132,6 +132,53 @@ end_debug(void* handle)
 
 } // end namespace xrt_core::xdp::aie::debug
 
+namespace xrt_core::xdp::aie::status {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> end_status_cb;
+
+void
+register_callbacks(void* handle)
+{
+  #if defined(XDP_VE2_BUILD)
+    using ftype = void (*)(void*);
+
+    end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
+  #else
+    (void)handle;
+  #endif
+}
+
+void
+warning_callbacks()
+{
+}
+
+void
+load()
+{
+  static xrt_core::module_loader xdp_aie_status_loader("xdp_aie_status_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void
+end_status(void* handle)
+{
+  if (end_status_cb)
+  end_status_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::aie::status
 
 namespace xrt_core::xdp::ml_timeline {
 
@@ -291,7 +338,7 @@ void
 register_callbacks(void* handle)
 {  
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
-    typedef void (*ftype)(void*) ;
+    using ftype = void (*)(void*);
 
     end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
@@ -491,17 +538,6 @@ update_device(void* handle)
     }
   }
 
-  if (xrt_core::config::get_aie_profile()) {
-    try {
-      xrt_core::xdp::aie::profile::load();
-      xrt_core::xdp::aie::profile::update_device(handle);
-    }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Profile library.");
-    }
-  }
-
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
@@ -521,6 +557,28 @@ update_device(void* handle)
     catch (...) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Debug library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_status()) {
+    try {
+      xrt_core::xdp::aie::status::load();
+      xrt_core::xdp::aie::status::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Status library.");
+    }
+  }
+
+  if (xrt_core::config::get_aie_profile()) {
+    try {
+      xrt_core::xdp::aie::profile::load();
+      xrt_core::xdp::aie::profile::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load AIE Profile library.");
     }
   }
 
@@ -564,12 +622,14 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_halt())
     xrt_core::xdp::aie::halt::finish_flush_device(handle);
-  if (xrt_core::config::get_aie_profile())
-    xrt_core::xdp::aie::profile::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
+  if (xrt_core::config::get_aie_status())
+    xrt_core::xdp::aie::status::end_status(handle);
+  if (xrt_core::config::get_aie_profile())
+    xrt_core::xdp::aie::profile::end_poll(handle);
 
 #else
 
@@ -581,4 +641,3 @@ finish_flush_device(void* handle)
 }
 
 } // end namespace xrt_core::xdp
-

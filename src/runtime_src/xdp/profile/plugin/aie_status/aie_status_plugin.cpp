@@ -42,6 +42,7 @@
 
 #ifndef XDP_VE2_BUILD
 #include "core/edge/user/shim.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #endif
 
 namespace {
@@ -437,13 +438,24 @@ namespace xdp {
     if (!xrt_core::config::get_aie_status())
       return;
 
-    mXrtCoreDevice = xrt_core::get_userpf_device(handle);
+    #ifdef XDP_VE2_BUILD
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      mXrtCoreDevice = xrt_core::hw_context_int::get_core_device(context);
+      uint64_t deviceID = db->addDevice("ve2_device");
+    #else
+      mXrtCoreDevice = xrt_core::get_userpf_device(handle);
+      uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
+    #endif
 
-    uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
+    
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
+      #ifdef XDP_VE2_BUILD
+        (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
+      #else
+        (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
+      #endif
     }
 
     // Grab AIE metadata
@@ -456,7 +468,11 @@ namespace xdp {
     getTilesForStatus();
 
     // Open the writer for this device
-    std::string devicename = util::getDeviceName(handle);
+    #ifdef XDP_VE2_BUILD
+      std::string devicename = util::getDeviceName(handle,true);
+    #else
+      std::string devicename = util::getDeviceName(handle);
+    #endif
 
     std::string currentTime = "0000_00_00_0000";
     auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

@@ -93,6 +93,8 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
 
 #ifdef XDP_CLIENT_BUILD
   return db->addDevice("win_sysfspath");
+#elif XDP_VE2_BUILD
+  return db->addDevice("ve2_device");
 #else
   return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
