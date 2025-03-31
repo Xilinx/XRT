@@ -13,6 +13,18 @@
 #include <string>
 
 #include <boost/property_tree/ptree.hpp>
+
+// Struct to hold buffer sizes
+struct BufferSizes {
+  size_t ifm_size;
+  size_t param_size;
+  size_t inter_size;
+  size_t mc_size;
+  size_t ofm_size;
+  size_t instr_word_size;
+  size_t instr_size; // Derived from instr_word_size
+};
+
 class TestParams {
 public:
   xrt::xclbin xclbin;               // Xclbin object
@@ -21,6 +33,7 @@ public:
   std::string dpu_file;
   std::string ifm_file;
   std::string param_file;
+  std::string buffer_sizes_file;
   int queue_len;
   int itr_count;
   
@@ -30,6 +43,7 @@ public:
              std::string dpu_file, 
              std::string ifm_file, 
              std::string param_file, 
+             std::string buffer_sizes_file,
              int queue_len, 
              int itr_count
              )
@@ -39,6 +53,7 @@ public:
       dpu_file(std::move(dpu_file)), 
       ifm_file(std::move(ifm_file)), 
       param_file(std::move(param_file)), 
+      buffer_sizes_file(std::move(buffer_sizes_file)),
       queue_len(queue_len), 
       itr_count(itr_count) 
     {}
@@ -46,6 +61,7 @@ public:
 
 // Class representing a set of buffer objects (BOs)
 class BO_set {
+  BufferSizes buffer_sizes;
   xrt::bo bo_ifm;     // Buffer object for input feature map
   xrt::bo bo_param;   // Buffer object for parameters
   xrt::bo bo_ofm;     // Buffer object for output feature map
@@ -55,7 +71,7 @@ class BO_set {
 
 public:
   // Constructor to initialize buffer objects
-  BO_set(const xrt::device&, const xrt::kernel&, const std::string&, const std::string&, const std::string&);
+  BO_set(const xrt::device&, const xrt::kernel&, const BufferSizes&,  const std::string&, const std::string&, const std::string&);
 
   // Method to set kernel arguments
   void set_kernel_args(xrt::run&) const;
@@ -89,6 +105,7 @@ constexpr std::string_view test_token_skipped = "SKIPPED";
 constexpr std::string_view test_token_failed = "FAILED";
 constexpr std::string_view test_token_passed = "PASSED";
 
+BufferSizes read_buffer_sizes(const std::string& json_file);
 void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
 void init_buf_bin(int* buff, size_t bytesize, const std::string &filename);
 size_t get_instr_size(const std::string& dpu_file);
