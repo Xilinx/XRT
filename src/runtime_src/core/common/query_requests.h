@@ -620,10 +620,6 @@ struct xclbin_name : request
         return "gemm_elf";
       case type::mobilenet:
         return "mobilenet";
-      case type::validate_elf:
-        return "validate_elf";
-      case type::gemm_elf:
-        return "gemm_elf";
     }
     return "unknown";
   }

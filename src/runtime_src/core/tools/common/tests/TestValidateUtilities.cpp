@@ -107,7 +107,7 @@ namespace XBValidateUtils{
 BufferSizes 
 read_buffer_sizes(const std::string& json_file) {
   boost::property_tree::ptree root;
-  BufferSizes buffer_sizes;
+  BufferSizes buffer_sizes {};
 
   // Read the JSON file into a property tree
   boost::property_tree::read_json(json_file, root);
