@@ -28,16 +28,12 @@ static xq::elf_name::type
 get_elf_type(int no_of_cols, const std::string& level) {
   if (level == "noop") {
     switch (no_of_cols) {
-      case 1: return xq::elf_name::type::preemption_noop_4x1;
-      case 2: return xq::elf_name::type::preemption_noop_4x2;
       case 4: return xq::elf_name::type::preemption_noop_4x4;
       case 8: return xq::elf_name::type::preemption_noop_4x8;
       default: throw std::invalid_argument("Invalid number of columns for 'noop'.");
     }
   } else if (level == "memtile") {
     switch (no_of_cols) {
-      case 1: return xq::elf_name::type::preemption_memtile_4x1;
-      case 2: return xq::elf_name::type::preemption_memtile_4x2;
       case 4: return xq::elf_name::type::preemption_memtile_4x4;
       case 8: return xq::elf_name::type::preemption_memtile_4x8;
       default: throw std::invalid_argument("Invalid number of columns for 'memtile'.");
@@ -51,10 +47,6 @@ get_elf_type(int no_of_cols, const std::string& level) {
 static xq::xclbin_name::type 
 get_xclbin_type(int no_of_cols) {
   switch (no_of_cols) {
-    case 1:
-      return xq::xclbin_name::type::preemption_4x1;
-    case 2:
-      return xq::xclbin_name::type::preemption_4x2;
     case 4:
       return xq::xclbin_name::type::preemption_4x4;
     case 8:
@@ -148,11 +140,11 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
   if(XBUtilities::getVerbose())
     XBU::logger(ptree, "Details", "Using ELF");
 
-  const std::vector<int> columns = {1, 2, 4, 8};
+  const std::vector<int> columns = {4, 8};
   const std::vector<std::string> levels = {"noop", "memtile"};
   for (const auto& level : levels) {
     for (auto ncol : columns) {
-      //disable force preemption
+      //disable force layer preemption
       xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(0));
       double noop_exec_time = 0;
       try {
@@ -164,7 +156,7 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
         return ptree;
       }
 
-      //enable force preemption
+      //enable force layer preemption
       xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(1));
       double noop_preempt_exec_time = 0;
       try {
