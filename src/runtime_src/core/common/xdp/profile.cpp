@@ -516,17 +516,6 @@ update_device(void* handle)
 
 #elif defined(XDP_VE2_BUILD)
 
-  if (xrt_core::config::get_ml_timeline()) {
-    try {
-      xrt_core::xdp::ml_timeline::load();
-      xrt_core::xdp::ml_timeline::update_device(handle);
-    }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load ML Timeline library.");
-    }
-  }
-
   if (xrt_core::config::get_aie_halt()) {
     try {
       xrt_core::xdp::aie::halt::load();
@@ -571,6 +560,17 @@ update_device(void* handle)
     }
   }
 
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+      xrt_core::xdp::ml_timeline::update_device(handle);
+    }
+    catch (...) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "Failed to load ML Timeline library.");
+    }
+  }
+  
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
