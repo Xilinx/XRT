@@ -748,6 +748,13 @@ get_hardware_context_type()
 }
 
 inline bool
+get_mdm_privilege_mode()
+{
+  static bool value = detail::get_bool_value("Runtime.mdm_privilege_mode", true);
+  return value;
+}
+
+inline bool
 get_is_enable_prep_target()
 {
   static bool value = detail::get_bool_value("Emulation.enable_prep_target", true);
