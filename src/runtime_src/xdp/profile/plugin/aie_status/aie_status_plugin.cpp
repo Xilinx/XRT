@@ -36,13 +36,13 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
+#ifdef XDP_VE2_BUILD
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
 #include "shim/xdna_hwctx.h"
-
-#ifndef XDP_VE2_BUILD
-#include "core/edge/user/shim.h"
 #include "xdp/profile/device/xdp_base_device.h"
+#else
+#include "core/edge/user/shim.h"
 #endif
 
 namespace {

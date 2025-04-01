@@ -139,12 +139,14 @@ namespace xdp {
 #elif defined(XDP_VE2_BUILD)
       (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
       std::string deviceName = util::getDeviceName(handle,true);
+      if (deviceName != "")
+        (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
 #else
       (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
       std::string deviceName = util::getDeviceName(handle);
-#endif
       if (deviceName != "")
-      (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
+        (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
+#endif
     }
 
     // Delete old data
