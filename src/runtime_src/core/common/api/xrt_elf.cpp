@@ -30,12 +30,12 @@ class elf_impl
   struct symbol_info
   {
     std::string name;
-    ELFIO::Elf64_Addr value;
-    ELFIO::Elf_Xword size;
-    unsigned char bind;
-    unsigned char type;
-    ELFIO::Elf_Half section_index;
-    unsigned char other;
+    ELFIO::Elf64_Addr value{};
+    ELFIO::Elf_Xword size{};
+    unsigned char bind{};
+    unsigned char type{};
+    ELFIO::Elf_Half section_index{};
+    unsigned char other{};
   };
 
 public:
@@ -107,9 +107,9 @@ public:
   }
 
   symbol_info
-  get_symbol(const ELFIO::section* section, const std::string& symbol_name) const
+  get_symbol(ELFIO::section* section, const std::string& symbol_name) const
   {
-    const ELFIO::symbol_section_accessor symbols(m_elf, const_cast<ELFIO::section*>(section));
+    const ELFIO::symbol_section_accessor symbols(m_elf, section);
     for (unsigned int i = 0; i < symbols.get_symbols_num(); ++i) {
       symbol_info info;
       symbols.get_symbol(i, info.name, info.value, info.size, info.bind,

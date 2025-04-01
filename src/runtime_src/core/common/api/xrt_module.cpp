@@ -69,10 +69,10 @@ static constexpr uint8_t Elf_Amd_Aie2p_config = 70;
 // using max bd words as 9 to cover all cases
 static constexpr size_t max_bd_words = 9;
 
-static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
-static const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
-static const char* Control_Packet_Symbol = "control-packet";
-static const char* Control_Code_Symbol = "control-code";
+static const char* const Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
+static const char* const Control_Packet_Symbol = "control-packet";
+static const char* const Control_Code_Symbol = "control-code";
 
 struct buf
 {
@@ -569,20 +569,6 @@ public:
   get_os_abi() const
   {
     throw std::runtime_error("Not supported");
-  }
-
-  // Patch ctrlcode buffer object for global argument
-  //
-  // @param bo_ctrlcode - bo containing ctrlcode
-  // @param symbol - symbol name
-  // @param index - argument index
-  // @param bo - global argument to patch into ctrlcode
-  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
-  // @param sec_index - index of section to be patched
-  virtual void
-  patch_instr(xrt::bo&, const std::string&, size_t, const xrt::bo&, patcher::buf_type, uint32_t)
-  {
-    throw std::runtime_error("Not supported ");
   }
 
   // Patch ctrlcode buffer object for global argument
@@ -1874,9 +1860,11 @@ class module_sram : public module_impl
     fill_instruction_buffer(data);
   }
 
+  // Patch the instruction buffer with global argument(xrt::bo)
+  // The symbol to be patched is identified using argnm/index
   void
   patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo,
-              patcher::buf_type type, uint32_t sec_idx) override
+              patcher::buf_type type, uint32_t sec_idx)
   {
     patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type, sec_idx);
   }
