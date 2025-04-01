@@ -747,10 +747,11 @@ get_hardware_context_type()
   return value;
 }
 
+// This flag is added to support opening privileged/non-privileged context in Telluride
 inline bool
-get_mdm_privilege_mode()
+get_privileged_context()
 {
-  static bool value = detail::get_bool_value("Runtime.mdm_privilege_mode", true);
+  static bool value = detail::get_bool_value("Runtime.privileged_context", true);
   return value;
 }
 
