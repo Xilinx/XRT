@@ -95,9 +95,9 @@ namespace {
       uint16_t bdNum = channelNumber * 4;
 
       // Write to shim DMA BD AxiMM registers
-      XAie_DmaWriteBd_16(aieDevInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
+      XAie_DmaWriteBd(aieDevInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
       // Enqueue BD
-      XAie_DmaChannelPushBdToQueue_16(aieDevInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
+      XAie_DmaChannelPushBdToQueue(aieDevInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
     }
     
     return 0;
