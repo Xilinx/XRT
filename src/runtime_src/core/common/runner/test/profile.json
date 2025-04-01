@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "type": "execution profile",
+
+  "bindings": [
+    "wts": {
+      "file": "wts.bin"
+    },
+    "ifm": {
+      "file": "ifm.bin"
+    },
+    "ofm": {
+      "file": "ofm.bin"
+    }    
+  ]
+
+  "execution" : {
+    "iterations": 1,
+    "validation": {
+      "file": "gold.bin"
+    }
+  }
+}

@@ -46,6 +46,10 @@ public:
   XRT_CORE_COMMON_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const artifacts_repository&);
 
+  // ctor - Create runner from a recipe json and execution profile json
+  XRT_CORE_COMMON_EXPORT
+  runner(const xrt::device& device, const std::string& recipe, const std::string& profile);
+
   // bind_input() - Bind a buffer object to an input tensor
   XRT_CORE_COMMON_EXPORT
   void

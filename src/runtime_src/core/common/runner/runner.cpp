@@ -975,23 +975,169 @@ public:
   }
 }; // class recipe
 
+
+// A runner_impl (xrt::runner) always has a run recipe object and
+// optionally a execution profile object. The latter is optional and default
+// created from an in-mermory json.
+//
+// The profile implements the runner_impl bind APIs and
+// execute/wait APIs, these APIs forward to the run recipe object
+// and must be called for the default execution recipe.
+//
+// An external execution profile can be used to initialize run recipe
+// resources at runner initialization time bind
+// resources per the recipe.  The calling application can still
+// explicitly bind via the xrt::runner APIs, which may override
+// the binding done by the execution recipe.
+class profile
+{
+  class bindings
+  {
+    using name_t = std::string;
+    using path_t = std::string;
+
+    // Map of resource names to file paths. Ths comes directly from
+    // the profile json.
+    std::map<name_t, path_t> m_paths;
+
+    // Map of resource names to buffers.  The buffers are initialized
+    // with data loaded from the file path corresponding to the
+    // resource name.
+    std::map<name_t, xrt::bo> m_bindings;
+
+    // Create a map of resource names to file paths from the profile json
+    static std::map<name_t, path_t>
+    init_paths(const boost::property_tree::ptree& pt)
+    {
+      std::map<name_t, path_t> paths;
+      for (const auto& [name, node] : pt)
+        paths.emplace(name, node.get<std::string>("file"));
+
+      return paths;
+    }
+
+    // Create a map of resource names to buffers initialized with data
+    // from the file paths.  The data is cached in an artifacts::repo
+    static std::map<name_t, xrt::bo>
+    create_bindings(const xrt::device& device,
+                    const std::map<name_t, path_t>& paths,
+                    const artifacts::repo& repo)
+    {
+      std::map<name_t, xrt::bo> bindings;
+      for (const auto& [name, path] : paths) {
+        const auto& data = repo.get(path);
+        xrt::bo bo = xrt::ext::bo{device, data.size()};
+        auto bo_data = bo.map<char*>();
+        std::copy(data.data(), data.data() + data.size(), bo_data);
+        bindings.emplace(name, std::move(bo));
+      }
+      return bindings;
+    }
+
+    // Reset a specific binding to its original value.  The data is
+    // retrived from the artifacts repo data member that was cached
+    // during initialization of the profile bindings.
+    void
+    reset(const std::string& name, xrt::bo& bo, const artifacts::repo& repo)
+    {
+        const auto& data = repo.get(m_paths[name]);
+        if (bo.size() != data.size())
+          throw std::runtime_error("binding size mismatch during reset");
+
+        auto bo_data = bo.map<char*>();
+        std::copy(data.data(), data.data() + data.size(), bo_data);
+    }
+
+  public:
+    bindings() = default;
+
+    bindings(const xrt::device& device, const boost::property_tree::ptree& pt, const artifacts::repo& repo)
+      : m_paths{init_paths(pt)}
+      , m_bindings{create_bindings(device, m_paths, repo)}
+    {}
+
+    // Reset all bindings to their original values
+    void
+    reset(const artifacts::repo& repo)
+    {
+      for (auto& [name, bo] : m_bindings)
+        reset(name, bo, repo);
+    }
+
+    // Reset a specific binding to its original value
+    void
+    reset(const std::string& name, const artifacts::repo& repo)
+    {
+      auto& bo = m_bindings.at(name);
+      reset(name, bo, repo);
+    }
+
+    const std::map<std::string, xrt::bo>&
+    get_bindings() const
+    {
+      return m_bindings;
+    }
+  }; // class profile::bindings
+
+  class execution
+  {
+    size_t m_iterations = 1;
+    
+  }; // class profile::execution
+  
+private:
+  boost::property_tree::ptree m_profile;
+  artifacts::file_repo m_repo;
+  xrt::device m_device;
+  recipe* m_recipe = nullptr;
+  bindings m_bindings;
+
+  static boost::property_tree::ptree
+  load(const std::string& path)
+  {
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(path, pt);
+    return pt;
+  }
+
+public:
+  profile(xrt::device device, recipe* rr, const std::string& profile)
+    : m_profile{load(profile)}
+    , m_device{std::move(device)}
+    , m_recipe{rr}
+    , m_bindings{m_device, m_profile.get_child("bindings"), m_repo}
+  {}
+
+  const std::map<std::string, xrt::bo>&
+  get_bo_bindings() const
+  {
+    return m_bindings.get_bindings();
+  }
+}; // class profile
+
 } // namespace
 
 namespace xrt_core {
 
-// class runner_impl -
+// class runner_impl - Insulated implementation of xrt::runner
 //
-// A runner implementation is default created with one instance of a
-// recipe.  But the runner can be used by multiple threads and new
-// recipe instances are created for each thread as needed.
+// Manages a run recipe and an execution profile.
 //
-// The runner can be created from any thread, but member functions
-// are thread specific.
+// The recipe defines the resources and how to run a model.
+//
+// The profile controls how resources are bound to the recipe and how
+// the recipe is executed, e.g. number of times, debug info,
+// validation, etc.
 class runner_impl
 {
-  //std::map<std::thread::id, recipe> m_recipes;
   recipe m_recipe;
-  //thread_local recipe m_thread_recipe;
+
+protected:
+  recipe*
+  get_recipe()
+  {
+    return &m_recipe;
+  }
 
 public:
   runner_impl(const xrt::device& device, const std::string& recipe)
@@ -1002,36 +1148,58 @@ public:
     : m_recipe{device, recipe, artifacts::ram_repo(artifacts)}
   {}
 
-  void
+  virtual ~runner_impl() = default;
+
+  virtual void
   bind_input(const std::string& name, const xrt::bo& bo)
   {
-    m_recipe.bind_input(name, bo);
+    m_recipe.bind(name, bo);
   }
 
-  void
+  virtual void
   bind_output(const std::string& name, const xrt::bo& bo)
   {
-    m_recipe.bind_output(name, bo);
+    m_recipe.bind(name, bo);
   }
 
-  void
+  virtual void
   bind(const std::string& name, const xrt::bo& bo)
   {
     m_recipe.bind(name, bo);
   }
 
-  void
+  virtual void
   execute()
   {
     m_recipe.execute();
   }
 
-  void
+  virtual void
   wait()
   {
     m_recipe.wait();
   }
-};
+}; // class runner_impl
+
+class profile_impl : public runner_impl
+{
+  profile m_profile;
+
+public:
+  profile_impl(const xrt::device& device, const std::string& recipe, const std::string& profile)
+    : runner_impl{device, recipe}
+    , m_profile{device, get_recipe(), profile}
+  {}
+
+  void
+  execute() override
+  {
+    for (auto& [name, bo] : m_profile.get_bo_bindings())
+      runner_impl::bind(name, bo);
+
+    runner_impl::execute();
+  }
+}; // class profile_impl
 
 ////////////////////////////////////////////////////////////////
 // Public runner interface APIs
@@ -1044,6 +1212,11 @@ runner(const xrt::device& device, const std::string& recipe)
 runner::
 runner(const xrt::device& device, const std::string& recipe, const artifacts_repository& repo)
   : m_impl{std::make_unique<runner_impl>(device, recipe, repo)}
+{}
+
+runner::
+runner(const xrt::device& device, const std::string& recipe, const std::string& profile)
+  : m_impl{std::make_unique<profile_impl>(device, recipe, profile)}
 {}
 
 void

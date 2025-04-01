@@ -1,8 +1,10 @@
 {
   "version": "1.0",
+
   "header": {
     "xclbin": "design.xclbin"
   },
+
   "resources": {
     "buffers": [
       {
@@ -46,6 +48,7 @@
       }
     ]
   },
+
   "execution": {
     "runs": [
       {
