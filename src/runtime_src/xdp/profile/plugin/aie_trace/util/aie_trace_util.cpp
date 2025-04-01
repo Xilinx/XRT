@@ -418,7 +418,7 @@ namespace xdp::aie::trace {
 
     std::stringstream msg;
     msg << "AIE trace events reserved in " << modName << " - ";
-    for (int n = 0; n <= NUM_TRACE_EVENTS; ++n) {
+    for (uint32_t n = 0; n <= NUM_TRACE_EVENTS; ++n) {
       if (numTiles[n] == 0)
         continue;
       msg << n << ": " << numTiles[n] << " tiles, ";
