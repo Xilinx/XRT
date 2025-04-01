@@ -23,10 +23,15 @@ add_executable(recipe recipe.cpp)
 target_include_directories(recipe PRIVATE ${XRT_INCLUDE_DIRS} ${XRT_ROOT}/src/runtime_src)
 target_link_libraries(recipe PRIVATE XRT::xrt_coreutil)
 
+add_executable(runner-profile runner-profile.cpp)
+target_include_directories(runner-profile PRIVATE ${XRT_INCLUDE_DIRS} ${XRT_ROOT}/src/runtime_src)
+target_link_libraries(runner-profile PRIVATE XRT::xrt_coreutil)
+
 if (NOT WIN32)
   target_link_libraries(runner PRIVATE pthread uuid dl)
+  target_link_libraries(runner-profile PRIVATE pthread uuid dl)
   target_link_libraries(recipe PRIVATE pthread uuid dl)
 endif()
 
-install(TARGETS runner recipe)
+install(TARGETS runner runner-profile recipe)
 
