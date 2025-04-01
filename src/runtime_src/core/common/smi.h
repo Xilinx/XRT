@@ -49,6 +49,7 @@ struct option : public basic_option {
 // custom behavior for xrt-smi as required. This gives us the flexibility
 // to add device/platform specific xrt-smi behavior.
 class smi_base {
+protected:
   tuple_vector validate_test_desc;
   tuple_vector examine_report_desc;
   std::vector<option> configure_suboptions_desc;
