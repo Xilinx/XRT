@@ -747,7 +747,9 @@ get_hardware_context_type()
   return value;
 }
 
-// This flag is added to support opening privileged/non-privileged context in Telluride
+// This flag is added to support opening privileged/non-privileged context in ve2.
+// By default privileged context is being opened in ve2 which restricts certain register spaces.
+// Non-privilege context is required to support XDP (eg. accessing MDM registers) and other usecases.
 inline bool
 get_privileged_context()
 {
