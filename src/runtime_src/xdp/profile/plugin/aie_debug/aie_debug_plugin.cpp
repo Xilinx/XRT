@@ -58,6 +58,7 @@ namespace xdp {
     AieDebugPlugin::live = true;
 
     db->registerPlugin(this);
+    db->registerInfo(info::aie_debug);
     db->getStaticInfo().setAieApplication();
   }
 
@@ -68,6 +69,7 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling ~AieDebugPlugin destructor.");
 
+    AieDebugPlugin::live = false;
     for (const auto& kv : handleToAIEData)
       endPollforDevice(kv.first);
 
@@ -78,9 +80,8 @@ namespace xdp {
       for (auto w : writers) {
         w->write(false);
       }
-      db->unregisterPlugin(this);}
-
-    AieDebugPlugin::live = false;
+      db->unregisterPlugin(this);
+    }
   }
 
   /****************************************************************************
@@ -96,7 +97,7 @@ namespace xdp {
    ***************************************************************************/
   uint64_t AieDebugPlugin::getDeviceIDFromHandle(void* handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG AieDebugPlugin::getDeviceIDFromHandle.");
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG getDeviceIDFromHandle.");
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
@@ -104,8 +105,7 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
 #else
-    //return db->addDevice(util::getDebugIpLayoutPath(handle));
-    return db->addDevice("temp_edge_device");
+    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
   }
 
@@ -221,7 +221,7 @@ namespace xdp {
   void AieDebugPlugin::endPollforDevice(void* handle)
   {
     xrt_core::message::send(severity_level::info, "XRT", "AIE Debug endPollforDevice");
-    if (handleToAIEData.empty())
+    if (handleToAIEData.find(handle) == handleToAIEData.end())
       return;
 
     auto& AIEData = handleToAIEData[handle];

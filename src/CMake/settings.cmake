@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-
+# Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 if (NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif (NOT CMAKE_CXX_STANDARD)
@@ -38,10 +37,6 @@ endif()
 
 if (DEFINED ENV{XRT_NATIVE_BUILD})
   set(XRT_NATIVE_BUILD $ENV{XRT_NATIVE_BUILD})
-endif()
-
-if (DEFINED ENV{XRT_CLANGTIDY_REVIEW})
-  set(XRT_CLANGTIDY_REVIEW "yes")
 endif()
 
 if (DISABLE_ABI_CHECK)

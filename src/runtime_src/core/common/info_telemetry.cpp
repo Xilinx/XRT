@@ -59,10 +59,10 @@ aie2_preemption_info(const xrt_core::device* device)
     return is_value_na(value) ? "N/A" : std::to_string(value);
   };
 
-  pt_preempt.put("user_task", user_task++);
-  pt_preempt.put("slot_index", populate_value(kp.preemption_data.slot_index));
-  pt_preempt.put("preemption_layer_boundary_events", populate_value(kp.preemption_data.preemption_checkpoint_event));
-  pt_preempt.put("preemption_frame_boundary_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
+  pt_preempt.put("fw_tid", user_task++);
+  pt_preempt.put("ctx_index", populate_value(kp.preemption_data.slot_index));
+  pt_preempt.put("layer_events", populate_value(kp.preemption_data.preemption_checkpoint_event));
+  pt_preempt.put("frame_events", populate_value(kp.preemption_data.preemption_frame_boundary_events));
 
   pt_rtos_array.push_back({"", pt_preempt});
   }

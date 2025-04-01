@@ -42,7 +42,7 @@ kernel arguments.
 ## Header
 
 For the time being, the header stores nothing but the path to the
-xclbin.  The xclbin contais the kernel meta data used by XRT when
+xclbin.  The xclbin contains the kernel meta data used by XRT when
 xrt::kernel objects are created.  The xclbin contains PDIs for each
 kernel, the PDIs are loaded by firmware prior to running a kernel.
 
@@ -75,7 +75,7 @@ be listed in the resources section.
 
 Kernels listed in the resoruces section result in runner creating
 `xrt::kernel` objects.  In XRT, the kernel objects are identified by
-name which must match a kernel name in the xclbin.
+name, which must match a kernel name in the xclbin.
 
 Kernels are constructed from the xclbin name and by specifying which
 xrt::hw_context should execute the kernel and what control code the
@@ -154,7 +154,7 @@ compiler (VAIML).
 #### External buffers (graph input and output)
 
 External buffers (input and output) are created by the framework /
-applicaiton outside of the runner and bound to the recipe during
+application outside of the runner and bound to the recipe during
 execution.  The runner itself does not create `xrt::bo` objects for
 external buffers, but does rely on the framework to bind these buffers
 to runner object created from the recipe.   The external buffers must
@@ -182,7 +182,7 @@ be used when execution sets kernel arguments.
 ``` 
 
 The `name` of the buffers in the resources section must be unique.
-The name is used in the `execution` seciton to refer to kernel or cpu
+The name is used in the `execution` section to refer to kernel or cpu
 buffer arguments.
 
 <!-- The `src` of the buffers is meant to refer to a tensor name in the
@@ -244,7 +244,7 @@ with arguments from the resources section.
 Before the runner can execute the recipe in the execution section, all
 graph inputs and outputs must be bound to the recipe. As mentioned
 earlier, external inputs and outputs are defined by the framework that
-uses the runner.  Typically these external inputs are outputs are not
+uses the runner.  Typically these external inputs and outputs are not
 available at the time when the runner is initialized from the recipe
 json.  In other words, the runner can be created even before the
 framework has created input and output tensors, but it can of course

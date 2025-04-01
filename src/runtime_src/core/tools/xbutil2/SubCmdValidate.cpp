@@ -388,7 +388,7 @@ static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
 //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
 {
@@ -398,20 +398,6 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-
-  m_commandConfig = configurations;
-}
-
-void
-SubCmdValidate::print_help_internal(const SubCmdValidateOptions& options) const
-{
-  if (options.m_device.empty()) {
-    printHelp(false);
-    return;
-  }
-
-  const std::string deviceClass = XBU::get_device_class(options.m_device, true);
-  printHelp(m_commonOptions, m_hiddenOptions, deviceClass, false);
 }
 
 void 
@@ -507,14 +493,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   catch (const boost::program_options::error& e)
   {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
 
   // Check to see if help was requested or no command was found
   if (options.m_help) {
-    print_help_internal(options);
+    printHelp();
     return;
   }
 
@@ -561,7 +547,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

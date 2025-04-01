@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user")
 set(XDP_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../user/plugin/xdp")
@@ -52,12 +52,6 @@ endif()
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
 add_library(core_edgeuser_plugin_xdp_hw_em_objects OBJECT ${XDP_PLUGIN_HW_EM_FILES})
-
-# Bypass binary targets if clangtidy is enabled,
-# same targets are defined for DC
-if (${XRT_CLANGTIDY_REVIEW})
-  return()
-endif()
 
 set(AIE_BUILD_DEFINED "$<BOOL:DEFINED XRT_AIE_BUILD>")
 set(VE2_DEFINED "$<BOOL:DEFINED EDGE_VE2>")

@@ -69,7 +69,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true, configTree));
-    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false, configTree));
+    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false, configTree));
   }
