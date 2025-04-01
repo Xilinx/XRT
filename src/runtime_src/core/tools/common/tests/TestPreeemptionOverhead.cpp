@@ -92,20 +92,15 @@ TestPreemptionOverhead::run_preempt_test(const std::shared_ptr<xrt_core::device>
     throw xrt_core::error("Not enough columns available. Please make sure no other workload is running on the device.");
   }
 
-  xrt::bo bo_ifm = xrt::ext::bo{working_dev, buffer_size};
-  xrt::bo bo_ofm = xrt::ext::bo{working_dev, buffer_size};
-  xrt::bo bo_wts1 = xrt::ext::bo{working_dev, buffer_size};
-  xrt::bo bo_wts2 = xrt::ext::bo{working_dev, buffer_size};
-
   auto run = xrt::run(kernel);
   // to-do: replace with XBU::get_opcode() when dpu sequence flow is taken out
   run.set_arg(0, 3);
   run.set_arg(1, 0);
   run.set_arg(2, 0);
-  run.set_arg(3, bo_ifm);
-  run.set_arg(4, bo_ofm);
-  run.set_arg(5, bo_wts1);
-  run.set_arg(6, bo_wts2);
+  run.set_arg(3, 0);
+  run.set_arg(4, 0);
+  run.set_arg(5, 0);
+  run.set_arg(6, 0);
   run.set_arg(7, 0);
 
   // Set kernel argument and trigger it to run
