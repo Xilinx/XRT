@@ -215,7 +215,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power")) {
-      if (tmp.input != std::numeric_limits<decltype(xq::sdm_sensor_info::data_type::input)>::max())
+      if ((tmp.input != std::numeric_limits<decltype(xq::sdm_sensor_info::data_type::input)>::max()) && (tmp.input != 0))
         bd_power = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
       bd_max_power = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
     }
