@@ -108,12 +108,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     return;
   
   //handle relates to hw context handle in case of Client XRT
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto device = xrt_core::hw_context_int::get_core_device(context);
-  #else
-    auto device = xrt_core::get_userpf_device(handle);
-  #endif
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+  auto device = xrt_core::hw_context_int::get_core_device(context);
+#else
+  auto device = xrt_core::get_userpf_device(handle);
+#endif
 
   // Clean out old data every time xclbin gets updated
   if (handleToAIEData.find(handle) != handleToAIEData.end())

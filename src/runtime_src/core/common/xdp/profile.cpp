@@ -455,7 +455,7 @@ update_device(void* handle, bool hw_context_flow)
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
-      xrt_core::xdp::aie::trace::update_device(handle, hw_context_flow);
+      xrt_core::xdp::aie::trace::update_device(handle);
     } 
     catch (...) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
@@ -553,7 +553,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Profile library.");
     }
-    xrt_core::xdp::aie::profile::update_device(handle, true);
+    xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
   }
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);

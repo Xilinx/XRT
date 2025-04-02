@@ -1517,7 +1517,7 @@ namespace xdp {
                              std::unique_ptr<xdp::Device> xdpDevice)
   {
     xrt::uuid new_xclbin_uuid;
-    //TODO:: Getting xclbin_uuid should be constant for both Client and Telluride.
+    //TODO:: Getting xclbin_uuid should be unified for both Client and Telluride.
     if(isClient()) {
       new_xclbin_uuid = device->get_xclbin_uuid();
     }
