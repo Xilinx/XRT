@@ -601,7 +601,9 @@ struct xclbin_name : request
     validate,
     gemm, 
     validate_elf,
-    gemm_elf
+    gemm_elf,
+    preemption_4x4,
+    preemption_4x8  
   };
 
   static std::string
@@ -616,6 +618,10 @@ struct xclbin_name : request
         return "validate_elf";
       case type::gemm_elf:
         return "gemm_elf";
+      case type::preemption_4x4:
+        return "preemption_4x4";
+      case type::preemption_4x8:
+        return "preemption_4x8";
     }
     return "unknown";
   }
@@ -684,7 +690,11 @@ struct elf_name : request
     tct_all_column, 
     aie_reconfig_overhead,
     gemm_int8, 
-    nop
+    nop,
+    preemption_noop_4x4,
+    preemption_noop_4x8,
+    preemption_memtile_4x4,
+    preemption_memtile_4x8
   };
 
   static std::string
@@ -703,6 +713,14 @@ struct elf_name : request
         return "gemm_int8";
       case type::nop:
         return "nop";
+      case type::preemption_noop_4x4:
+        return "preemption_noop_4x4";
+      case type::preemption_noop_4x8:
+        return "preemption_noop_4x8";
+      case type::preemption_memtile_4x4:
+        return "preemption_memtile_4x4";
+      case type::preemption_memtile_4x8:
+        return "preemption_memtile_4x8";
     }
     return "unknown";
   }

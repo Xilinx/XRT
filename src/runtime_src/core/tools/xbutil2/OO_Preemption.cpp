@@ -26,8 +26,8 @@ OO_Preemption::OO_Preemption( const std::string &_longName, bool _isHidden )
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
     ("type,t", boost::program_options::value<decltype(m_type)>(&m_type), "The type of reset to perform. Types resets available:\n"
-                                    "  layer-boundary         - Layer boundary force preeemption\n"
-                                    "  frame-boundary         - Frame boundary force preeemption\n")
+                                    "  layer         - Layer boundary force preeemption\n"
+                                    "  frame         - Frame boundary force preeemption\n")
   ;
 
   m_optionsHidden.add_options()
@@ -53,7 +53,7 @@ OO_Preemption::validate_args() const {
 
   if(m_type.empty())
     throw xrt_core::error(std::errc::operation_canceled, "Please specify a type using --type");
-  std::vector<std::string> vec_type { "layer-boundary", "frame-boundary" };
+  std::vector<std::string> vec_type { "layer", "frame" };
   if (std::find(vec_type.begin(), vec_type.end(), m_type) == vec_type.end()) {
     throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("\n'%s' is not a valid type of force-preemption\n") % m_type));
   }
@@ -128,11 +128,11 @@ OO_Preemption::execute(const SubCmdOptions& _options) const
   };
 
   auto pretty_print = [](const std::string& type) -> std::string {
-    return (boost::iequals(type, "frame-boundary")) ? "Frame boundary" : "Layer boundary";
+    return (boost::iequals(type, "frame")) ? "Frame boundary" : "Layer boundary";
   };
 
   try {
-    if (boost::iequals(m_type, "frame-boundary")) {
+    if (boost::iequals(m_type, "frame")) {
       xrt_core::device_update<xrt_core::query::frame_boundary_preemption>(device.get(), action_to_int(m_action));
     }
     else {
