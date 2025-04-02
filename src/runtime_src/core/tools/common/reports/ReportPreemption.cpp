@@ -65,7 +65,7 @@ ReportPreemption::writeReport(const xrt_core::device* ,
 {
   const bpt empty_ptree;
   bpt telemetry_array = pt.get_child("telemetry", empty_ptree);
-  _output << "Premption Telemetry Data\n";
+  _output << "Preemption Telemetry Data\n";
   _output << generate_preemption_string(telemetry_array);
   _output << std::endl;
 }
