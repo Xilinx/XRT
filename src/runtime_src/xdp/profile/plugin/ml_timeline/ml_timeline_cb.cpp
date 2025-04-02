@@ -23,10 +23,10 @@ namespace xdp {
 
   static MLTimelinePlugin mlTimelinePluginInstance;
 
-  static void updateDeviceMLTmln(void* hwCtxImpl)
+  static void updateDeviceMLTmln(void* hwCtxImpl, bool hw_context_flow)
   {
     if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.updateDevice(hwCtxImpl);
+      mlTimelinePluginInstance.updateDevice(hwCtxImpl, hw_context_flow);
     } 
   } 
 
@@ -40,9 +40,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateDeviceMLTmln(void* hwCtxImpl)
+void updateDeviceMLTmln(void* hwCtxImpl, bool hw_context_flow)
 {
-  xdp::updateDeviceMLTmln(hwCtxImpl);
+  xdp::updateDeviceMLTmln(hwCtxImpl, hw_context_flow);
 }
 
 extern "C"

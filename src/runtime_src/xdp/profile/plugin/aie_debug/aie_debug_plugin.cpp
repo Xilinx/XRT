@@ -114,35 +114,30 @@ namespace xdp {
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AieDebugPlugin::updateAIEDevice(void* handle)
+  void AieDebugPlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     if (!xrt_core::config::get_aie_debug() || !handle)
       return;
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG update AIE device.");
 
-    // Handle relates to HW context in case of Client XRT
-#ifdef XDP_CLIENT_BUILD
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto device = xrt_core::hw_context_int::get_core_device(context);
-#else
-
-#endif
+    auto device = util::convertToCoreDevice(handle, hw_context_flow);
     auto deviceID = getDeviceIDFromHandle(handle);
+    
     std::stringstream msg;
     msg<<"AieDebugPlugin::updateAIEDevice. Device Id =. "<<deviceID;
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
     // Update the static database with information from xclbin
     {
-#ifdef XDP_CLIENT_BUILD
-      (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+#if defined(XDP_CLIENT_BUILD)
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #elif defined(XDP_VE2_BUILD)
-      (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       std::string deviceName = util::getDeviceName(handle,true);
       if (deviceName != "")
         (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
 #else
-      (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
+      (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
       std::string deviceName = util::getDeviceName(handle);
       if (deviceName != "")
         (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
@@ -192,11 +187,7 @@ namespace xdp {
     std::string deviceName = "aie_debug_win_device";
 #else
     auto tm = *std::localtime(&time);
-    #ifdef XDP_VE2_BUILD
-      std::string deviceName = util::getDeviceName(handle,true);
-    #else
-      std::string deviceName = util::getDeviceName(handle);
-    #endif
+    std::string deviceName = util::getDeviceName(handle, hw_context_flow);
 #endif
 
     std::ostringstream timeOss;

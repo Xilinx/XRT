@@ -33,7 +33,7 @@ namespace xdp {
     AieDebugPlugin();
     ~AieDebugPlugin();
     static bool alive();
-    void updateAIEDevice(void* handle);
+    void updateAIEDevice(void* handle, bool hw_context_flow);
     void endAIEDebugRead(void* handle);
     void endPollforDevice(void* handle);
     

@@ -45,7 +45,7 @@ namespace xdp {
     AIEStatusPlugin();
     ~AIEStatusPlugin();
 
-    void updateAIEDevice(void* handle);
+    void updateAIEDevice(void* handle, bool hw_context_flow);
     void endPollforDevice(void* handle);
 
     static bool alive();

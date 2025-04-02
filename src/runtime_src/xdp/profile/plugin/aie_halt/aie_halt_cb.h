@@ -21,7 +21,7 @@
 
 extern "C" {
 
-  XDP_PLUGIN_EXPORT void updateDeviceAIEHalt(void* hwCtxImpl);
+  XDP_PLUGIN_EXPORT void updateDeviceAIEHalt(void* hwCtxImpl, bool hw_context_flow);
   XDP_PLUGIN_EXPORT void finishflushDeviceAIEHalt(void* hwCtxImpl);
 
 }

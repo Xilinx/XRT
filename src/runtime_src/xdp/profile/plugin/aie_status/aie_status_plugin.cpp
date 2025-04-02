@@ -432,29 +432,26 @@ namespace xdp {
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AIEStatusPlugin::updateAIEDevice(void* handle)
+  void AIEStatusPlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     // Don't update if no debug/status is requested
     if (!xrt_core::config::get_aie_status())
       return;
 
+    auto device = util::convertToCoreDevice(handle, hw_context_flow);
+
     #ifdef XDP_VE2_BUILD
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-      mXrtCoreDevice = xrt_core::hw_context_int::get_core_device(context);
       uint64_t deviceID = db->addDevice("ve2_device");
     #else
-      mXrtCoreDevice = xrt_core::get_userpf_device(handle);
       uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
     #endif
-
-    
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
       #ifdef XDP_VE2_BUILD
-        (db->getStaticInfo()).updateDeviceVE2(deviceID, nullptr, handle);
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       #else
-        (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
+        (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
       #endif
     }
 

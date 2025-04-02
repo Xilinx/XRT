@@ -25,7 +25,7 @@
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
-namespace xdp { namespace util {
+namespace xdp::util {
 
   uint64_t getAIMSlotId(uint64_t idx) {
     return ((idx - min_trace_id_aim)/num_trace_id_per_aim);
@@ -69,17 +69,15 @@ namespace xdp { namespace util {
     return path;
   }
 
-  std::string getDeviceName(void* deviceHandle, bool isVE2build)
+  std::string getDeviceName(void* deviceHandle, bool hw_context_flow)
   {
     std::string deviceName = "";
-    std::shared_ptr<xrt_core::device> coreDevice;
-    if(isVE2build) {
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(deviceHandle);
-      coreDevice = xrt_core::hw_context_int::get_core_device(context);
-    }
-    else {
-      coreDevice = xrt_core::get_userpf_device(deviceHandle);
-    }
+
+    // The deviceHandle could either be a pointer to a hw_context_impl
+    // or a shim pointer.  We need to get the core device in either case.
+
+    std::shared_ptr<xrt_core::device> coreDevice = 
+      convertToCoreDevice(deviceHandle, hw_context_flow);
 
     if (!coreDevice) {
       return deviceName;
@@ -94,6 +92,16 @@ namespace xdp { namespace util {
     return deviceName;
   }
 
-} // end namespace util
-} // end namespace xdp
+  std::shared_ptr<xrt_core::device>
+  convertToCoreDevice(void* handle, bool hw_context_flow)
+  {
+    if (hw_context_flow) {
+      xrt::hw_context context =
+        xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      return xrt_core::hw_context_int::get_core_device(context);
+    }
+    return xrt_core::get_userpf_device(handle);
+  }
+
+} // end namespace xdp::util
 

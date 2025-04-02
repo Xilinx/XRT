@@ -63,7 +63,7 @@ namespace xdp {
     return AIEPCPlugin::live;
   }
 
-  void AIEPCPlugin::updateDevice(void* hwCtxImpl)
+  void AIEPCPlugin::updateDevice(void* hwCtxImpl, bool hw_context_flow)
   {
 #ifdef XDP_CLIENT_BUILD
     if (mHwCtxImpl) {
@@ -72,12 +72,11 @@ namespace xdp {
     }
     mHwCtxImpl = hwCtxImpl;
 
-    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
-    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+    auto coreDevice = util::convertToCoreDevice(handle, hw_context_flow);
 
     // Only one device for Client Device flow
     uint64_t deviceId = db->addDevice("win_device");
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
     (db->getStaticInfo()).setDeviceName(deviceId, "win_device");
 
     DeviceDataEntry.valid = true;

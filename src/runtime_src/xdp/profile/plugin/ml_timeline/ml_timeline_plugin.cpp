@@ -26,6 +26,7 @@
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef XDP_CLIENT_BUILD
@@ -115,13 +116,14 @@ namespace xdp {
     return MLTimelinePlugin::live;
   }
 
-  void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
+  void MLTimelinePlugin::updateDevice(void* hwCtxImpl, bool hw_context_flow)
   {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
           "In ML Timeline Plugin : updateDevice.");
+      
+      
 
 #ifdef XDP_CLIENT_BUILD
-
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
       // Same Hardware Context Implementation uses the same impl and buffer
       return;
@@ -130,14 +132,12 @@ namespace xdp {
     if (0 == mBufSz)
       mBufSz = ParseMLTimelineBufferSizeConfig();
 
-    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
-
+    auto device = util::convertToCoreDevice(hwCtxImpl, hw_context_flow);
     uint64_t implId = mMultiImpl.size();
 
     std::string winDeviceName = "win_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(winDeviceName);
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, device, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
@@ -145,7 +145,6 @@ namespace xdp {
     mlImpl->updateDevice(hwCtxImpl);
 
 #elif defined (XDP_VE2_BUILD)
-
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
       // Same Hardware Context Implementation uses the same impl and buffer
       return;
@@ -154,14 +153,12 @@ namespace xdp {
     if (0 == mBufSz)
       mBufSz = ParseMLTimelineBufferSizeConfig();
 
-    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
-
+    auto device = util::convertToCoreDevice(hwCtxImpl, hw_context_flow);
     uint64_t implId = mMultiImpl.size();
 
     std::string deviceName = "ve2_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(deviceName);
-    (db->getStaticInfo()).updateDeviceVE2(deviceId, nullptr, hwCtxImpl);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, device, false);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));

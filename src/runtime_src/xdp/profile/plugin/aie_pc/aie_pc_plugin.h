@@ -30,7 +30,7 @@ namespace xdp {
     AIEPCPlugin();
     ~AIEPCPlugin();
 
-    void updateDevice(void* hwCtxImpl);
+    void updateDevice(void* hwCtxImpl, bool hw_context_flow);
     void finishflushDevice(void* hwCtxImpl);
 
     void writeAll(bool);

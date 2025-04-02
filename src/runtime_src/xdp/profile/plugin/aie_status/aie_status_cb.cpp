@@ -24,10 +24,10 @@ namespace xdp {
 
   static AIEStatusPlugin aiePluginInstance;
 
-  static void updateAIEStatusDevice(void* handle)
+  static void updateAIEStatusDevice(void* handle, bool hw_context_flow)
   {
     if (AIEStatusPlugin::alive()) {
-      aiePluginInstance.updateAIEDevice(handle);
+      aiePluginInstance.updateAIEDevice(handle, hw_context_flow);
     }
   }
 
@@ -41,9 +41,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateAIEStatusDevice(void* handle)
+void updateAIEStatusDevice(void* handle, bool hw_context_flow)
 {
-  xdp::updateAIEStatusDevice(handle);
+  xdp::updateAIEStatusDevice(handle, hw_context_flow);
 }
 
 extern "C"
