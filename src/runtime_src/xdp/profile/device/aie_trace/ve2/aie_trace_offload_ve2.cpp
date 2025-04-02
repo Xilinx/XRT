@@ -84,62 +84,6 @@ AIETraceOffload::~AIETraceOffload()
     offloadThread.join();
 }
 
-bool AIETraceOffload::setupPSKernel() {
-
-  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(deviceHandle);
-  auto device = context.get_device();
-  auto uuid = device.get_xclbin_uuid();
-  auto gmio_kernel = xrt::kernel(device, uuid.get(), "aie_trace_gmio");
-
-  std::size_t total_size = sizeof(xdp::built_in::GMIOConfiguration) + sizeof(xdp::built_in::GMIOBuffer[numStream-1]);
-  xdp::built_in::GMIOConfiguration* input_params = (xdp::built_in::GMIOConfiguration*)malloc(total_size);
-  input_params->bufAllocSz = bufAllocSz;
-  input_params->numStreams = numStream;
-
-  xdp::built_in::GMIOBuffer hostBuffer[numStream];
-  for (uint64_t i = 0; i < numStream; i ++) {
-    buffers[i].bufId = deviceIntf->allocTraceBuf(bufAllocSz, 0);
-    
-    if (!buffers[i].bufId) {
-      bufferInitialized = false;
-      return bufferInitialized;
-    }
-
-    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
-
-    VPDatabase* db = VPDatabase::Instance();
-    TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
-
-    hostBuffer[i].shimColumn = traceGMIO->shimColumn;
-    hostBuffer[i].burstLength = traceGMIO->burstLength;
-    hostBuffer[i].channelNumber = traceGMIO->channelNumber;
-    hostBuffer[i].physAddr = bufAddr;
-    input_params->gmioData[i] = hostBuffer[i];
-  }
-
-  const size_t DATA_SIZE = 4096; // Data size aligned to 4096, and won't be passed for 400 tiles
-  //Cast struct to uint8_t pointer and pass this data
-  uint8_t* temp = reinterpret_cast<uint8_t*>(input_params);
-
-  auto in_bo = xrt::bo(device, DATA_SIZE, 2);
-  auto in_bo_map = in_bo.map<uint8_t*>();
-  std::fill(in_bo_map, in_bo_map + 1024, 0);
-
-  //copy the input configuration buffer to the buffer object.
-  std::memcpy(in_bo_map, temp, total_size);
-
-  in_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-  auto run = gmio_kernel(in_bo);
-  run.wait();
-
-  std::string msg = "The aie_trace_gmio PS kernel was successfully scheduled.";
-  xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
-
-  free(input_params); 
-  bufferInitialized = true;
-  return bufferInitialized;
-}
-
 bool AIETraceOffload::initReadTrace()
 {
   buffers.clear();
@@ -150,11 +94,6 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
-
-#if defined (XRT_ENABLE_AIE) && defined (XRT_X86_BUILD)
-  bool success = setupPSKernel();
-  return success;
-#endif
 
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);

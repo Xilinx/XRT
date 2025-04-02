@@ -135,7 +135,6 @@ private:
 private:
     void readTracePLIO(bool final);
     void readTraceGMIO(bool final);
-    bool setupPSKernel();
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();

@@ -2399,8 +2399,10 @@ namespace xdp {
     initializeProfileMonitors(devInfo, std::move(xrtXclbin));
 
     devInfo->isReady = true;
+
     if (xdpDevice != nullptr)
       createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
+    
     return devInfo;
   }
 

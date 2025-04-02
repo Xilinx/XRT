@@ -23,10 +23,10 @@ namespace xdp {
 
   static AIEHaltPlugin aieHaltPluginInstance;
 
-  static void updateDeviceAIEHalt(void* hwCtxImpl,bool hw_context_flow)
+  static void updateDeviceAIEHalt(void* hwCtxImpl)
   {
     if (AIEHaltPlugin::alive()) {
-      aieHaltPluginInstance.updateDevice(hwCtxImpl, hw_context_flow);
+      aieHaltPluginInstance.updateDevice(hwCtxImpl);
     } 
   } 
 
@@ -40,9 +40,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateDeviceAIEHalt(void* hwCtxImpl, bool hw_context_flow)
+void updateDeviceAIEHalt(void* hwCtxImpl)
 {
-  xdp::updateDeviceAIEHalt(hwCtxImpl, hw_context_flow);
+  xdp::updateDeviceAIEHalt(hwCtxImpl);
 }
 
 extern "C"

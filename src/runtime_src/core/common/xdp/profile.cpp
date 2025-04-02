@@ -86,7 +86,7 @@ end_poll(void* handle)
 
 namespace xrt_core::xdp::aie::debug {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_debug_cb;
 
 void 
@@ -94,10 +94,9 @@ register_callbacks(void* handle)
 {  
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
 
     end_debug_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugRead"));
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
   #else 
     (void)handle;
   #endif
@@ -114,10 +113,10 @@ load()
 
 // Make connections
 void 
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void
@@ -131,7 +130,7 @@ end_debug(void* handle)
 
 namespace xrt_core::xdp::aie::status {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_status_cb;
 
 void
@@ -139,10 +138,9 @@ register_callbacks(void* handle)
 {
   #if defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
 
     end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
   #else
     (void)handle;
   #endif
@@ -159,10 +157,10 @@ load()
 
 // Make connections
 void
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void
@@ -176,7 +174,7 @@ end_status(void* handle)
 
 namespace xrt_core::xdp::ml_timeline {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
 
 void
@@ -184,9 +182,8 @@ register_callbacks(void* handle)
 { 
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
 
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
 
   #else
@@ -206,10 +203,10 @@ load()
 
 // Make connections
 void
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void
@@ -223,7 +220,7 @@ finish_flush_device(void* handle)
 
 namespace xrt_core::xdp::aie_pc {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
 
 void
@@ -231,9 +228,8 @@ register_callbacks(void* handle)
 { 
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
 
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEPC"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceAIEPC"));
   #else
     (void)handle;
@@ -251,10 +247,10 @@ load()
 
 // Make connections
 void
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void
@@ -312,7 +308,7 @@ finish_flush_device(void* handle)
 
 namespace xrt_core::xdp::aie::trace {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_trace_cb;
 
 
@@ -321,10 +317,9 @@ register_callbacks(void* handle)
 {  
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
 
     end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
   #else 
     (void)handle;
   #endif
@@ -340,10 +335,10 @@ load()
 
 // Make connections
 void 
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void 
@@ -357,17 +352,16 @@ end_trace(void* handle)
 
 namespace xrt_core::xdp::aie::halt {
 
-std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> update_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
 
 void
 register_callbacks(void* handle)
 {
   using ftype = void (*)(void*);
-  using utype = void (*)(void*, bool);
 
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
   #else
     (void)handle;
@@ -383,10 +377,10 @@ load()
 }
 
 void
-update_device(void* handle, bool hw_context_flow)
+update_device(void* handle)
 {
   if (update_device_cb)
-    update_device_cb(handle, hw_context_flow);
+    update_device_cb(handle);
 }
 
 void
@@ -450,7 +444,7 @@ update_device(void* handle, bool hw_context_flow)
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
-      xrt_core::xdp::aie::profile::update_device(handle);
+      xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
     } 
     catch (...) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
@@ -491,6 +485,9 @@ update_device(void* handle, bool hw_context_flow)
     }    
   }
 
+  // Avoid warning until we've added support in all plugins
+  (void)(hw_context_flow);
+
 #elif defined(XDP_VE2_BUILD)
 
   if (xrt_core::config::get_aie_halt()) {
@@ -501,7 +498,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Halt library.");
     }
-    xrt_core::xdp::aie::halt::update_device(handle, true);
+    xrt_core::xdp::aie::halt::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_trace()) {
@@ -512,7 +509,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Trace library.");
     }
-    xrt_core::xdp::aie::trace::update_device(handle, true);
+    xrt_core::xdp::aie::trace::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_debug()) {
@@ -523,7 +520,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Debug library.");
     }
-    xrt_core::xdp::aie::debug::update_device(handle, true);
+    xrt_core::xdp::aie::debug::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_status()) {
@@ -534,7 +531,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load AIE Status library.");
     }
-    xrt_core::xdp::aie::status::update_device(handle, true);
+    xrt_core::xdp::aie::status::update_device(handle);
   }
 
   if (xrt_core::config::get_ml_timeline()) {
@@ -545,7 +542,7 @@ update_device(void* handle, bool hw_context_flow)
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
         "Failed to load ML Timeline library.");
     }
-    xrt_core::xdp::ml_timeline::update_device(handle, true);
+    xrt_core::xdp::ml_timeline::update_device(handle);
   }
   
   if (xrt_core::config::get_aie_profile()) {
@@ -558,6 +555,8 @@ update_device(void* handle, bool hw_context_flow)
     }
     xrt_core::xdp::aie::profile::update_device(handle, true);
   }
+  // Avoid warning until we've added support in all plugins
+  (void)(hw_context_flow);
 
 #else
 
@@ -571,6 +570,9 @@ update_device(void* handle, bool hw_context_flow)
     }
     xrt_core::xdp::pl_deadlock::update_device(handle);
   }
+
+  // Avoid warning until we've added support in all plugins
+  (void)(hw_context_flow);
 #endif
 }
 

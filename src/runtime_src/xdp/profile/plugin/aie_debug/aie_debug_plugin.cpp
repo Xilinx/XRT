@@ -114,15 +114,20 @@ namespace xdp {
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AieDebugPlugin::updateAIEDevice(void* handle, bool hw_context_flow)
+  void AieDebugPlugin::updateAIEDevice(void* handle)
   {
     if (!xrt_core::config::get_aie_debug() || !handle)
       return;
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG update AIE device.");
 
-    auto device = util::convertToCoreDevice(handle, hw_context_flow);
+    // Handle relates to HW context in case of Client XRT
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
+#else
+
+#endif
     auto deviceID = getDeviceIDFromHandle(handle);
-    
     std::stringstream msg;
     msg<<"AieDebugPlugin::updateAIEDevice. Device Id =. "<<deviceID;
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
@@ -187,7 +192,11 @@ namespace xdp {
     std::string deviceName = "aie_debug_win_device";
 #else
     auto tm = *std::localtime(&time);
-    std::string deviceName = util::getDeviceName(handle, hw_context_flow);
+    #ifdef XDP_VE2_BUILD
+      std::string deviceName = util::getDeviceName(handle,true);
+    #else
+      std::string deviceName = util::getDeviceName(handle);
+    #endif
 #endif
 
     std::ostringstream timeOss;

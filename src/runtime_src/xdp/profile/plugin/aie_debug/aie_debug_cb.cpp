@@ -23,10 +23,10 @@ namespace xdp {
 
   static AieDebugPlugin aieDebugPluginInstance;
 
-  static void updateAIEDebugDevice(void* handle, bool hw_context_flow)
+  static void updateAIEDebugDevice(void* handle)
   {
     if (AieDebugPlugin::alive())
-      aieDebugPluginInstance.updateAIEDevice(handle, hw_context_flow);
+      aieDebugPluginInstance.updateAIEDevice(handle);
   }
 
   static void endAIEDebugRead(void* handle)
@@ -38,9 +38,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateAIEDebugDevice(void* handle, bool hw_context_flow)
+void updateAIEDebugDevice(void* handle)
 {
-  xdp::updateAIEDebugDevice(handle, hw_context_flow);
+  xdp::updateAIEDebugDevice(handle);
 }
 
 extern "C"

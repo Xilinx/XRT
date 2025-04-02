@@ -68,7 +68,7 @@ namespace xdp {
     return AIEHaltPlugin::live;
   }
 
-  void AIEHaltPlugin::updateDevice(void* hwCtxImpl, bool hw_context_flow)
+  void AIEHaltPlugin::updateDevice(void* hwCtxImpl)
   {
 #ifdef XDP_CLIENT_BUILD
     if (mHwCtxImpl) {
@@ -77,9 +77,9 @@ namespace xdp {
     }
     mHwCtxImpl = hwCtxImpl;
 
-    auto coreDevice = util::convertToCoreDevice(hwCtxImpl, hw_context_flow);
-    xrt::hw_context hwContext = 
-      xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+
     // Only one device for Client Device flow
     uint64_t deviceId = db->addDevice("win_device");
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
@@ -97,9 +97,9 @@ namespace xdp {
     }
     mHwCtxImpl = hwCtxImpl;
 
-    auto coreDevice = util::convertToCoreDevice(hwCtxImpl, hw_context_flow);
-    xrt::hw_context hwContext =
-        xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+    
     // Only one device for VE2 Device flow
     uint64_t deviceId = db->addDevice("ve2_device");
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);

@@ -176,11 +176,7 @@ auto time = std::time(nullptr);
     std::string deviceName = "win_device";
 #else
     auto tm = *std::localtime(&time);
-    #ifdef XDP_VE2_BUILD
-      std::string deviceName = util::getDeviceName(handle,true);
-    #else
-      std::string deviceName = util::getDeviceName(handle);
-    #endif
+    std::string deviceName = util::getDeviceName(handle, hw_context_flow);
 #endif
 
     std::ostringstream timeOss;

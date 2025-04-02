@@ -32,7 +32,7 @@ namespace xdp {
     MLTimelinePlugin();
     ~MLTimelinePlugin();
 
-    void updateDevice(void* hwCtxImpl, bool hw_context_flow);
+    void updateDevice(void* hwCtxImpl);
     void finishflushDevice(void* hwCtxImpl);
     void writeAll(bool openNewFiles);
 

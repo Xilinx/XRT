@@ -100,14 +100,20 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
 #endif
 }
 
-void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) {
+void AieTracePluginUnified::updateAIEDevice(void *handle) {
   xrt_core::message::send(severity_level::info, "XRT",
                           "Calling AIE Trace updateAIEDevice.");
 
   if (!handle)
     return;
-
-  auto device = util::convertToCoreDevice(handle, hw_context_flow);
+  
+  //handle relates to hw context handle in case of Client XRT
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
+  #else
+    auto device = xrt_core::get_userpf_device(handle);
+  #endif
 
   // Clean out old data every time xclbin gets updated
   if (handleToAIEData.find(handle) != handleToAIEData.end())
@@ -277,7 +283,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
       AIEData.metadata);
 #elif XDP_VE2_BUILD
-  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
   auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
   auto aieObj = hwctx_obj->get_aie_array();
@@ -439,7 +444,7 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   AIEData.implementation->flushTraceModules();
   flushOffloader(AIEData.offloader, true);
   XDPPlugin::endWrite();
-  
+
   handleToAIEData.erase(itr);
 }
 

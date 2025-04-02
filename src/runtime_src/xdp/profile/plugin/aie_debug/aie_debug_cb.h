@@ -21,7 +21,7 @@
 
 extern "C"
 XDP_PLUGIN_EXPORT
-void updateAIEDebugDevice(void* handle, bool hw_context_flow);
+void updateAIEDebugDevice(void* handle);
 
 extern "C"
 XDP_PLUGIN_EXPORT
