@@ -28,6 +28,7 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_types.h"

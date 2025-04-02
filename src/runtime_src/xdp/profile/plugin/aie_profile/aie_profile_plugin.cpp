@@ -144,6 +144,7 @@ namespace xdp {
     AIEData.valid = true;
 
 #ifdef XDP_CLIENT_BUILD
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)

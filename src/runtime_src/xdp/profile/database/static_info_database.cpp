@@ -48,7 +48,6 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/pl_device_intf.h"
-#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
