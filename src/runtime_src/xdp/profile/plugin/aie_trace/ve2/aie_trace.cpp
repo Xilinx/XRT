@@ -291,10 +291,7 @@ namespace xdp {
       return false;
     }
 
-    xrt::hw_context ctx = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto dev = xrt_core::hw_context_int::get_core_device(ctx);
-     // Get partition columns
-    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle, false /* handle is not a hwCtxImpl*/);
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
     // Currently, assuming only one Hw Context is alive at a time
     uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
     uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
