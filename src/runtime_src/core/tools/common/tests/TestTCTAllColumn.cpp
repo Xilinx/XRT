@@ -35,10 +35,12 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   
   if (!elf) {
     xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate, ptree);
-    XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
+    if (XBU::getVerbose())
+      XBValidateUtils::logger(ptree, "Details", "Using DPU Sequence");
   } else {
     xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate_elf, ptree);
-    XBValidateUtils::logger(ptree, "Details", "Using ELF");
+    if (XBU::getVerbose())
+      XBValidateUtils::logger(ptree, "Details", "Using ELF");
   }
 
   if (!std::filesystem::exists(xclbin_path)){
