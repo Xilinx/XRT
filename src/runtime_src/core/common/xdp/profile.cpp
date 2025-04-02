@@ -358,9 +358,9 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 {
-  using ftype = void (*)(void*);
-
   #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+    using ftype = void (*)(void*);
+    
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
   #else

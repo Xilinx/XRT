@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,11 +35,11 @@ namespace xdp {
 // loaded onto a device.  It will call the profiling code to update the
 // profiling data structures with the information from the new xclbin.
 inline
-void update_device(void* handle)
+void update_device(void* handle, bool hw_context_flow)
 {
   hal::update_device(handle);
   aie::update_device(handle);
-  aie::ctr::update_device(handle);
+  aie::ctr::update_device(handle, hw_context_flow); //profile
 }
 
 // The flush_device callback should be called just before a new xclbin

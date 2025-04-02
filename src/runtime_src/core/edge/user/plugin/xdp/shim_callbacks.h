@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,7 +43,7 @@ namespace xdp {
 // loaded onto a device.  It will call the profiling code to update the
 // profiling data structures with the information from the new xclbin.
 inline
-void update_device(void* handle)
+void update_device(void* handle, bool hw_context_flow)
 {
 #ifndef __HWEM__
   hal::update_device(handle); //PL device offload
@@ -51,9 +51,12 @@ void update_device(void* handle)
   //aie::dbg::update_device(handle); //debug
 #else
   hal::hw_emu::update_device(handle); //PL device offload
+  
+  // Avoid warnings until we have added hw_context support on all plugins
+  (void)(hw_context_flow);
 #endif
   aie::dbg::update_device(handle); //debug
-  aie::ctr::update_device(handle); //counters=profiling
+  aie::ctr::update_device(handle, hw_context_flow); //counters=profiling
   aie::sts::update_device(handle); //status
 }
 
@@ -86,7 +89,6 @@ void finish_flush_device(void* handle)
 {
 #ifndef __HWEM__
   aie::finish_flush_device(handle);
-  //aie::dbg::end_poll(handle);
 #endif
   aie::ctr::end_poll(handle);
   aie::dbg::end_poll(handle);
