@@ -30,7 +30,7 @@ public:
   boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
   void initializeTests(std::vector<TestCase>&);
   TestTemporalSharingOvd()
-      : TestRunner("spatial-sharing-overhead", "Run Temporal Sharing Overhead Test"), ptree(get_test_header()) {}
+      : TestRunner("spatial-sharing-overhead", "Run Spatial Sharing Overhead Test"), ptree(get_test_header()) {}
 };
 
 #endif
