@@ -18,7 +18,6 @@ namespace xq = xrt_core::query;
 #include <filesystem>
 
 static constexpr uint32_t num_of_preemptions = 500;
-static constexpr size_t buffer_size = 1024;
 static constexpr int iterations = 100;
 
 // ----- S T A T I C  M E T H O D S ------------------------------------------
