@@ -25,19 +25,6 @@ class elf_impl
 {
   ELFIO::elfio m_elf;
 
-  // Structure to hold symbol information of an
-  // entry in .dynsym section
-  struct symbol_info
-  {
-    std::string name;
-    ELFIO::Elf64_Addr value{};
-    ELFIO::Elf_Xword size{};
-    unsigned char bind{};
-    unsigned char type{};
-    ELFIO::Elf_Half section_index{};
-    unsigned char other{};
-  };
-
 public:
   explicit
   elf_impl(const std::string& fnm)
@@ -99,42 +86,11 @@ public:
   uint32_t
   get_partition_size() const
   {
-    // Partition size is stored in as note 0 in .note.xrt.configuration section
+    // Partition size is stored in as note 0 in .note.xrt.configuration section 
     if (auto section = m_elf.sections[".note.xrt.configuration"])
       return std::stoul(get_note(section, 0));
 
     throw std::runtime_error("ELF is missing xrt configuration info");
-  }
-
-  symbol_info
-  get_symbol(ELFIO::section* section, const std::string& symbol_name) const
-  {
-    const ELFIO::symbol_section_accessor symbols(m_elf, section);
-    for (unsigned int i = 0; i < symbols.get_symbols_num(); ++i) {
-      symbol_info info;
-      symbols.get_symbol(i, info.name, info.value, info.size, info.bind,
-          info.type, info.section_index, info.other);
-      if (info.name == symbol_name) {
-        return info;
-      }
-    }
-
-    throw std::runtime_error(symbol_name + " symbol not found in .dynsym");
-  }
-
-  size_t
-  get_ctrl_scratchpad_mem_size() const
-  {
-    // Symbol 'scratch-pad-ctrl' in .dynsym section represents
-    // control scratch pad memory, the symbol entry has the size info
-    static const char* section_name = ".dynsym";
-    static const char* symbol = "scratch-pad-ctrl";
-    auto section = m_elf.sections[section_name];
-    if (!section)
-      throw std::runtime_error(".dynsym section not found");
-
-    auto info = get_symbol(section, symbol); // throws if symbol not found
-    return info.size;
   }
 };
 
@@ -207,13 +163,6 @@ program::
 get_partition_size() const
 {
   return get_handle()->get_partition_size();
-}
-
-size_t
-program::
-get_ctrl_scratchpad_mem_size() const
-{
-  return get_handle()->get_ctrl_scratchpad_mem_size();
 }
 
 } // namespace xrt::aie

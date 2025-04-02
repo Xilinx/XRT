@@ -2297,47 +2297,15 @@ public:
     }
   }
 
-  std::vector<char>
-  read_ctrl_scratchpad(uint32_t offset, size_t size)
+  xrt::bo
+  get_ctrl_scratchpad_bo()
   {
     if (!m_ctrl_scratch_pad_mem)
       throw std::runtime_error("Control scratchpad memory is not present\n");
-    
-    // Sanity check for offset and size
-    if (offset >= m_ctrl_scratch_pad_mem.size()) {
-      throw std::runtime_error("Offset is out of bounds\n");
-    }
-
-    if ((offset + size) > m_ctrl_scratch_pad_mem.size()) {
-      throw std::runtime_error("Requested size exceeds scratchpad memory bounds\n");
-    }
-
-    // sync bo data before reading
-    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE, size, offset);
-
-    std::vector<char> data(size);
-    m_ctrl_scratch_pad_mem.read(data.data(), size, offset);
-    return data;
-  }
-
-  void
-  write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& data)
-  {
-    if (!m_ctrl_scratch_pad_mem)
-      throw std::runtime_error("Control scratchpad memory is not present\n");
-    
-    // Sanity check for offset and size
-    if (offset >= m_ctrl_scratch_pad_mem.size()) {
-      throw std::runtime_error("Offset is out of bounds\n");
-    }
-
-    if ((offset + data.size()) > m_ctrl_scratch_pad_mem.size()) {
-      throw std::runtime_error("Requested size exceeds scratchpad memory bounds\n");
-    }
-
-    // write data and sync the bo
-    m_ctrl_scratch_pad_mem.write(data.data(), data.size(), offset);
-    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_TO_DEVICE, data.size(), offset);
+  
+    // sync bo data before returning
+    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    return m_ctrl_scratch_pad_mem;
   }
 };
 
@@ -2451,26 +2419,15 @@ dump_dtrace_buffer(const xrt::module& module)
   module_sram->dump_dtrace_buffer();
 }
 
-std::vector<char>
-read_ctrl_scratchpad(const xrt::module& module, uint32_t offset, size_t size)
+xrt::bo
+get_ctrl_scratchpad_bo(const xrt::module& module)
 {
   auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
   if (!module_sram)
     throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
 
-  return module_sram->read_ctrl_scratchpad(offset, size);
+  return module_sram->get_ctrl_scratchpad_bo();
 }
-
-void
-write_ctrl_scratchpad(const xrt::module& module, uint32_t offset, const std::vector<char>& data)
-{
-  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
-  if (!module_sram)
-    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
-
-  module_sram->write_ctrl_scratchpad(offset, data);
-}
-
 } // xrt_core::module_int
 
 namespace {

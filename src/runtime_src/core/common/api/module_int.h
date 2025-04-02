@@ -77,14 +77,11 @@ get_kernel_info(const xrt::module& module);
 void
 dump_dtrace_buffer(const xrt::module& module);
 
-// Below APIS are used to Read/Write data from/to control scratchpad
-// memory. This memory is created using ELF associated with run object.
-// Throws if ELF doesn't contain control scratchpad memory.
-std::vector<char>
-read_ctrl_scratchpad(const xrt::module& module, uint32_t offset, size_t size);
-
-void
-write_ctrl_scratchpad(const xrt::module& module, uint32_t offset, const std::vector<char>& data);
+// Returns buffer object associated with control scratchpad memory.
+// This memory is created using ELF associated with run object.
+// Throws if ELF doesn't contain scratchpad memory
+xrt::bo
+get_ctrl_scratchpad_bo(const xrt::module& module);
 
 } // xrt_core::module_int
 

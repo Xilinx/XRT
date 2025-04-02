@@ -2594,22 +2594,13 @@ public:
     return cmd->get_ert_packet();
   }
 
-  [[nodiscard]] std::vector<char>
-  read_ctrl_scratchpad(uint32_t offset, size_t size)
+  xrt::bo
+  get_ctrl_scratchpad_bo() const
   {
     if (!m_module)
       throw xrt_core::error("No module associated with run object");
   
-    return xrt_core::module_int::read_ctrl_scratchpad(m_module, offset, size);
-  }
-
-  void
-  write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& buf)
-  {
-    if (!m_module)
-      throw xrt_core::error("No module associated with run object");
-  
-    xrt_core::module_int::write_ctrl_scratchpad(m_module, offset, buf);
+    return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
   }
 };
 
@@ -3929,21 +3920,12 @@ submit_signal(const xrt::fence& fence)
   });
 }
 
-std::vector<char>
+xrt::bo
 run::
-read_ctrl_scratchpad(uint32_t offset, size_t size) const
+get_ctrl_scratchpad_bo() const
 {
-  return xdp::native::profiling_wrapper("xrt::run::read_ctrl_scratchpad", [this, offset, size]{
-    return handle->read_ctrl_scratchpad(offset, size);
-  });
-}
-
-void
-run::
-write_ctrl_scratchpad(uint32_t offset, const std::vector<char>& data)
-{
-  return xdp::native::profiling_wrapper("xrt::run::write_ctrl_scratchpad", [this, offset, &data]{
-    handle->write_ctrl_scratchpad(offset, data);
+  return xdp::native::profiling_wrapper("xrt::run::get_ctrl_scratchpad_bo", [this]{
+    return handle->get_ctrl_scratchpad_bo();
   });
 }
 
