@@ -1536,6 +1536,11 @@ namespace xdp {
       new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
     }
 
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+      return;
     xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), true, readAIEMetadata);
   }
