@@ -11,6 +11,7 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_halt)
   add_subdirectory(native)
   add_subdirectory(user)
+  add_subdirectory(device_offload/hal)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
