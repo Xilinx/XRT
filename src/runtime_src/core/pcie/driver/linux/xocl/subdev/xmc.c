@@ -3931,7 +3931,7 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 	xmc->bdinfo_raw = NULL;
 }
 
-static int xmc_remove(struct platform_device *pdev)
+static int __xmc_remove(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 	void *hdl;
@@ -3976,6 +3976,15 @@ end:
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xmc_remove(struct platform_device *pdev)
+{
+	__xmc_remove(pdev);
+}
+#else
+#define xmc_remove __xmc_remove
+#endif
 
 static const char *xmc_get_board_info(uint32_t *bdinfo_raw,
 	uint32_t bdinfo_raw_sz, enum board_info_key key, size_t *len)

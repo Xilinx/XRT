@@ -93,7 +93,7 @@ static struct attribute_group lapc_attr_group = {
 			   .attrs = lapc_attrs,
 };
 
-static int lapc_remove(struct platform_device *pdev)
+static int __lapc_remove(struct platform_device *pdev)
 {
 	struct xocl_lapc *lapc;
 	void *hdl;
@@ -117,6 +117,15 @@ static int lapc_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void lapc_remove(struct platform_device *pdev)
+{
+	__lapc_remove(pdev);
+}
+#else
+#define lapc_remove __lapc_remove
+#endif
 
 static int lapc_probe(struct platform_device *pdev)
 {
