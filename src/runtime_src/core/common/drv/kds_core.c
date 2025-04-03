@@ -1741,6 +1741,9 @@ static int kds_cfg_xgq_update(struct kds_sched *kds)
 		if (!xcu)
 			continue;
 
+		if (xcu->info.protocol == CTRL_NONE)
+			continue;
+
 		if (xrt_cu_intr_supported(xcu))
 			continue;
 
