@@ -69,9 +69,10 @@ static constexpr uint8_t Elf_Amd_Aie2p_config = 70;
 // using max bd words as 9 to cover all cases
 static constexpr size_t max_bd_words = 9;
 
-static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
-static const char* Control_Packet_Symbol = "control-packet";
-static const char* Control_Code_Symbol = "control-code";
+static const char* const Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
+static const char* const Control_Packet_Symbol = "control-packet";
+static const char* const Control_Code_Symbol = "control-code";
 
 struct buf
 {
@@ -513,6 +514,12 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  virtual size_t
+  get_ctrl_scratch_pad_mem_size() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   virtual std::pair<uint32_t, const control_packet&>
   get_ctrlpkt(uint32_t /*index*/ = 0) const
   {
@@ -562,20 +569,6 @@ public:
   get_os_abi() const
   {
     throw std::runtime_error("Not supported");
-  }
-
-  // Patch ctrlcode buffer object for global argument
-  //
-  // @param bo_ctrlcode - bo containing ctrlcode
-  // @param symbol - symbol name
-  // @param index - argument index
-  // @param bo - global argument to patch into ctrlcode
-  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
-  // @param sec_index - index of section to be patched
-  virtual void
-  patch_instr(xrt::bo&, const std::string&, size_t, const xrt::bo&, patcher::buf_type, uint32_t)
-  {
-    throw std::runtime_error("Not supported ");
   }
 
   // Patch ctrlcode buffer object for global argument
@@ -834,6 +827,7 @@ class module_elf_aie2p : public module_elf
   bool m_restore_buf_exist = false;
   
   size_t m_scratch_pad_mem_size = 0;
+  size_t m_ctrl_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
 
   std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
@@ -1093,6 +1087,9 @@ class module_elf_aie2p : public module_elf
       if (!m_scratch_pad_mem_size && (strcmp(symname, Scratch_Pad_Mem_Symbol) == 0)) {
         m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
       }
+      else if (!m_ctrl_scratch_pad_mem_size && (strcmp(symname, Control_ScratchPad_Symbol) == 0)) {
+        m_ctrl_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
+      }
 
       static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
       if (std::string(symname).find(ctrlpkt_pm_dynsym) != std::string::npos) {
@@ -1237,6 +1234,12 @@ public:
   get_scratch_pad_mem_size() const override
   {
     return m_scratch_pad_mem_size;
+  }
+
+  size_t
+  get_ctrl_scratch_pad_mem_size() const override
+  {
+    return m_ctrl_scratch_pad_mem_size;
   }
 
   std::pair<uint32_t, const buf&>
@@ -1542,6 +1545,7 @@ class module_sram : public module_impl
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
   xrt::bo m_scratch_pad_mem;
+  xrt::bo m_ctrl_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
@@ -1758,6 +1762,17 @@ class module_sram : public module_impl
       }
     }
 
+    // create ctrl scratchpad buffer and patch it if symbol is present
+    try {
+      auto size = m_parent->get_ctrl_scratch_pad_mem_size();
+      if (size > 0) {
+        m_ctrl_scratch_pad_mem = xrt::bo{ m_hwctx, size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+        patch_instr(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem,
+                    patcher::buf_type::ctrltext, m_instr_sec_idx);
+      }
+    }
+    catch (...) { /*Do Nothing*/ };
+
     // patch all pdi addresses
     auto pdi_symbols = parent->get_patch_pdis(m_index);
     for (const auto& symbol : pdi_symbols) {
@@ -1845,9 +1860,11 @@ class module_sram : public module_impl
     fill_instruction_buffer(data);
   }
 
+  // Patch the instruction buffer with global argument(xrt::bo)
+  // The symbol to be patched is identified using argnm/index
   void
   patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo,
-              patcher::buf_type type, uint32_t sec_idx) override
+              patcher::buf_type type, uint32_t sec_idx)
   {
     patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type, sec_idx);
   }
@@ -2279,6 +2296,17 @@ public:
                               std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
     }
   }
+
+  xrt::bo
+  get_ctrl_scratchpad_bo()
+  {
+    if (!m_ctrl_scratch_pad_mem)
+      throw std::runtime_error("Control scratchpad memory is not present\n");
+  
+    // sync bo data before returning
+    m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    return m_ctrl_scratch_pad_mem;
+  }
 };
 
 } // namespace xrt
@@ -2391,6 +2419,15 @@ dump_dtrace_buffer(const xrt::module& module)
   module_sram->dump_dtrace_buffer();
 }
 
+xrt::bo
+get_ctrl_scratchpad_bo(const xrt::module& module)
+{
+  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
+  if (!module_sram)
+    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
+
+  return module_sram->get_ctrl_scratchpad_bo();
+}
 } // xrt_core::module_int
 
 namespace {
