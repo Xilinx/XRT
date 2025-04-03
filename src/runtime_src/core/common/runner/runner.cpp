@@ -1148,16 +1148,61 @@ class profile
 
   class execution
   {
-    size_t m_iterations = 1;
+    using iteration_node = boost::property_tree::ptree;
+    profile* m_profile;
+    size_t m_iterations;
+    iteration_node m_iteration;
+
+    void
+    execute_iteration(size_t idx)
+    {
+      // (Re)bind buffers to recipe if requested
+      if (m_iteration.get<bool>("bind"))
+        m_profile->bind();
+      
+      // Initialize buffers if requested
+      if (m_iteration.get<bool>("init"))
+        m_profile->init();
+      
+      m_profile->execute_recipe();
+
+      // Wait execution to complete if requested
+      if (m_iteration.get<bool>("wait"))
+        m_profile->wait_recipe();
+
+      // Validate if requested (implies wait)
+      if (m_iteration.get<bool>("validate"))
+        m_profile->validate();
+    }
+
+  public:
+    execution(profile* pr, const boost::property_tree::ptree& pt)
+      : m_profile(pr)
+      , m_iterations(pt.get<size_t>("iterations"))
+      , m_iteration(pt.get_child("iteration"))
+    {
+      // Bind buffers to the recipe prior to executing the recipe
+      m_profile->bind();
+    }
+      
+    void
+    execute()
+    {
+      for (size_t i = 0; i < m_iterations; ++i)
+        execute_iteration(i);
+    }
     
   }; // class profile::execution
   
 private:
+  friend class bindings;  // embedded class
+  friend class execution; // embedded class
   boost::property_tree::ptree m_profile;
   std::shared_ptr<artifacts::repo> m_repo;
   xrt::device m_device;
   recipe* m_recipe = nullptr;
   bindings m_bindings;
+  execution m_execution;
 
   static boost::property_tree::ptree
   load(const std::string& path)
@@ -1166,16 +1211,6 @@ private:
     boost::property_tree::read_json(path, pt);
     return pt;
   }
-
-public:
-  profile(xrt::device device, recipe* rr, const std::string& profile,
-          std::shared_ptr<artifacts::repo> repo)
-    : m_profile{load(profile)}
-    , m_repo{std::move(repo)}
-    , m_device{std::move(device)}
-    , m_recipe{rr}
-    , m_bindings{m_device, m_profile.get_child("bindings"), m_repo.get()}
-  {}
 
   void
   bind()
@@ -1196,22 +1231,40 @@ public:
   }
 
   void
+  execute_recipe()
+  {
+    m_recipe->execute();
+  }
+
+  void
+  wait_recipe()
+  {
+    m_recipe->wait();
+  }
+  
+
+public:
+  profile(xrt::device device, recipe* rr, const std::string& profile,
+          std::shared_ptr<artifacts::repo> repo)
+    : m_profile{load(profile)}
+    , m_repo{std::move(repo)}
+    , m_device{std::move(device)}
+    , m_recipe{rr}
+    , m_bindings{m_device, m_profile.get_child("bindings"), m_repo.get()}
+    , m_execution(this, m_profile.get_child("execution"))
+  {}
+
+  void
   execute()
   {
-    // TBD, fill out execution control and pass control
-    // there.   This will handle iterations and other
-    bind();
-    init();
-
-    m_recipe->execute();
+    m_execution.execute();
   }
 
   void
   wait()
   {
-    m_recipe->wait();
-
-    validate();
+    // waiting is controlled through execution in json
+    // so a noop here
   }
 }; // class profile
 
