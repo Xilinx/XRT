@@ -131,7 +131,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #elif defined(XDP_VE2_BUILD)
-  (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+  (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
 #else
   (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
 #endif
