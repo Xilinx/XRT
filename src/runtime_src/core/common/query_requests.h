@@ -616,6 +616,8 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
+      case type::validate_elf:
+        return "validate_elf";
       case type::gemm_elf:
         return "gemm_elf";
       case type::preemption_4x4:
