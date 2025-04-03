@@ -2444,9 +2444,22 @@ namespace xdp {
 
   void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool checkDisk)
   {
-    // First, check if we can find the information in the xclbin.
+    // If "checkDisk" is specified, then look on disk only for the files
     // Look for aie_trace_config first, then check for aie_control_config
-    // if we cannot find it.
+    // only if we cannot find it.
+    if (checkDisk) {
+      metadataReader =
+        aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+      if (!metadataReader)
+        metadataReader =
+          aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+      if (!metadataReader)
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                                "AIE metadata read failed!");
+      return;
+    }
+    
+    // If we aren't checking the disk, then check the currently loaded xclbin
     auto data =
       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_TRACE_METADATA);
     
@@ -2456,18 +2469,6 @@ namespace xdp {
     if (data.first && data.second) {
       metadataReader =
         aie::readAIEMetadata(data.first, data.second, aieMetadata);
-      return; // Success
-    }
-    
-    // If we didn't find it in the xclbin, and it was requested to look
-    // at the local run directory, then check the disk
-
-    if (checkDisk) {
-      metadataReader =
-        aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
-      if (!metadataReader)
-        metadataReader =
-          aie::readAIEMetadata("aie_control_config.json", aieMetadata);
     }
 
     if (!metadataReader)
