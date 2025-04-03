@@ -10,9 +10,10 @@ namespace xrt_core::xdp {
 // update_device should be called whenever a user creates a hardware context.
 // This hook will allow the XDP plugins to cache a reference to the user's
 // hardware context so the plugin can configure and read performance counters
-// that are used by the user's application.
+// that are used by the user's application.When called from the hardware
+// context construction, it should pass true in the hw_context_flow variable
 void 
-update_device(void* handle);
+update_device(void* handle, bool hw_context_flow);
 
 // finish_flush_device should be called when the application ends or a hardware context
 // is destroyed.  It is responsible for flushing out all of the device

@@ -26,12 +26,14 @@
 
 #include "xdp/profile/plugin/aie_halt/aie_halt_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/plugin/aie_halt/clientDev/aie_halt.h"
 #elif defined (XDP_VE2_BUILD)
 #include "xdp/profile/plugin/aie_halt/ve2/aie_halt.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #endif
 
 namespace xdp {
@@ -80,7 +82,7 @@ namespace xdp {
 
     // Only one device for Client Device flow
     uint64_t deviceId = db->addDevice("win_device");
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, "win_device");
 
     DeviceDataEntry.valid = true;
@@ -97,10 +99,10 @@ namespace xdp {
 
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
-
+    
     // Only one device for VE2 Device flow
     uint64_t deviceId = db->addDevice("ve2_device");
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, "ve2_device");
 
     DeviceDataEntry.valid = true;

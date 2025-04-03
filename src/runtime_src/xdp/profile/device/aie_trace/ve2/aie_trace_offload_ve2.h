@@ -19,8 +19,12 @@
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_VE2_H_
 
 #include "xdp/profile/device/tracedefs.h"
-#include "shim/aie/aie.h"
 
+extern "C"
+{
+  #include "xaiengine/xaiegbl.h"
+  #include <xaiengine.h>
+}
 
 namespace xdp {
 
@@ -71,7 +75,8 @@ class AIETraceOffload
                     PLDeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm
+                    uint64_t numStrm,
+                    XAie_DevInst* devInstance
                    );
 
     virtual ~AIETraceOffload();
@@ -99,8 +104,9 @@ private:
 
     void*           deviceHandle;
     uint64_t        deviceId;
-    PLDeviceIntf*     deviceIntf;
+    PLDeviceIntf*   deviceIntf;
     AIETraceLogger* traceLogger;
+    XAie_DevInst*   devInst;
 
     bool isPLIO;
     uint64_t totalSz;
@@ -129,7 +135,6 @@ private:
 private:
     void readTracePLIO(bool final);
     void readTraceGMIO(bool final);
-    bool setupPSKernel();
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();

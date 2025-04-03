@@ -92,12 +92,14 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
+#elif XDP_VE2_BUILD
+    return db->addDevice("ve2_device");
 #else
     return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
 #endif
   }
 
-  void AieProfilePlugin::updateAIEDevice(void* handle)
+  void AieProfilePlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
     // Don't update if no profiling is requested
@@ -107,25 +109,18 @@ namespace xdp {
     if (!handle)
       return;
 
-  /*
-   * handle relates to hw context handle in case of Client XRT
-   */
-    #ifdef XDP_CLIENT_BUILD
-        xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-        auto device = xrt_core::hw_context_int::get_core_device(context);
-    #else
-        auto device = xrt_core::get_userpf_device(handle);
-    #endif
-
+    auto device = util::convertToCoreDevice(handle, hw_context_flow);
     auto deviceID = getDeviceIDFromHandle(handle);
 
     // Update the static database with information from xclbin
     {
 #ifdef XDP_CLIENT_BUILD
-      (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#elif defined(XDP_VE2_BUILD)
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
 #else
-      (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
+      (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
 #endif
     }
 
@@ -149,6 +144,7 @@ namespace xdp {
     AIEData.valid = true;
 
 #ifdef XDP_CLIENT_BUILD
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
@@ -181,7 +177,7 @@ auto time = std::time(nullptr);
     std::string deviceName = "win_device";
 #else
     auto tm = *std::localtime(&time);
-    std::string deviceName = util::getDeviceName(handle);
+    std::string deviceName = util::getDeviceName(handle, hw_context_flow);
 #endif
 
     std::ostringstream timeOss;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 #include "hwctx_object.h"
@@ -1305,7 +1305,8 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
-  xdp::update_device(handle);
+  if (!hw_context_enable)
+    xdp::update_device(handle, false);
   #ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
   #endif
@@ -2450,7 +2451,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     if (xrt_core::xclbin::is_aie_only(buffer)) {
         // Update the profiling library with the information on this new AIE xclbin
         // configuration on this device as appropriate (when profiling is enabled).
-        xdp::update_device(handle);
+      if (!drv->get_hw_context_enable())
+        xdp::update_device(handle, false);
 
 #ifndef __HWEM__
         // Setup the user-accessible HAL API profiling interface so user host
@@ -2483,7 +2485,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 
     // Update the profiling library with the information on this new AIE xclbin
     // configuration on this device as appropriate (when profiling is enabled).
-    xdp::update_device(handle);
+    if (!drv->get_hw_context_enable())
+      xdp::update_device(handle, false);
 #ifndef __HWEM__
     // Setup the user-accessible HAL API profiling interface so user host
     // code can call functions to directly read counter values on profiling IP

@@ -1727,7 +1727,7 @@ xclLoadXclBin(const xclBin *buffer)
 
   // Update the profiling library with the information on this new xclbin
   // configuration on this device as appropriate (when profiling is enabled).
-  xdp::update_device(this);
+  xdp::update_device(this, false);
 
   // Setup the user-accessible HAL API profiling interface so user host
   // code can call functions to directly read counter values on profiling IP

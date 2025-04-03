@@ -26,6 +26,8 @@
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
+#elif XDP_VE2_BUILD
+#include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #else
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #endif

@@ -48,12 +48,12 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/pl_device_intf.h"
-#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/common/api/hw_context_int.h"
 
 constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
 constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
@@ -1463,10 +1463,13 @@ namespace xdp {
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
+  void
+  VPStaticDatabase::updateDeviceFromHandle(uint64_t deviceId,
+                                           std::unique_ptr<xdp::Device> xdpDevice,
+                                           void* devHandle)
   {
-    std::shared_ptr<xrt_core::device> device =
-      xrt_core::get_userpf_device(devHandle);
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
     if (nullptr == device)
       return;
 
@@ -1505,11 +1508,41 @@ namespace xdp {
       devInfo->isNoDMADevice = true;
   }
 
-  void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device, bool readAIEMetadata)
+  void
+  VPStaticDatabase::
+  updateDeviceFromCoreDevice(uint64_t deviceId,
+                             std::shared_ptr<xrt_core::device> device,
+                             bool readAIEMetadata,
+                             std::unique_ptr<xdp::Device> xdpDevice)
   {
-    xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    // Client should have no PL interface
-    updateDevice(deviceId, xrtXclbin, nullptr, true, readAIEMetadata);
+    xrt::uuid new_xclbin_uuid;
+    //TODO:: Getting xclbin_uuid should be unified for both Client and Telluride.
+    if(isClient()) {
+      new_xclbin_uuid = device->get_xclbin_uuid();
+    }
+    else {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+
+      if (xclbin_slot_info.empty())
+        return;
+      new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
+    }
+
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+      return;
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+    updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), true, readAIEMetadata);
   }
 
   // Return true if we should reset the device information.
@@ -2373,7 +2406,7 @@ namespace xdp {
 
     if (xdpDevice != nullptr)
       createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
-
+    
     return devInfo;
   }
 
@@ -2409,36 +2442,40 @@ namespace xdp {
     }
   }
 
-  void VPStaticDatabase::readAIEMetadataClient()
+  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool checkDisk)
   {
-    // Check for new then old file formats
-    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
-    if (!metadataReader) {
-      metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
-      if (!metadataReader) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
-        return;
-      }
-    }
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
-  } 
-
-  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild)
-  {
-    if (clientBuild) {
-      readAIEMetadataClient();
-      return;
-    }
-
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_TRACE_METADATA);
-    if (!data.first || !data.second) {
+    // First, check if we can find the information in the xclbin.
+    // Look for aie_trace_config first, then check for aie_control_config
+    // if we cannot find it.
+    auto data =
+      xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_TRACE_METADATA);
+    
+    if (!data.first || !data.second)
       data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-      if (!data.first || !data.second)
-        return;
+
+    if (data.first && data.second) {
+      metadataReader =
+        aie::readAIEMetadata(data.first, data.second, aieMetadata);
+      return; // Success
+    }
+    
+    // If we didn't find it in the xclbin, and it was requested to look
+    // at the local run directory, then check the disk
+
+    if (checkDisk) {
+      metadataReader =
+        aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+      if (!metadataReader)
+        metadataReader =
+          aie::readAIEMetadata("aie_control_config.json", aieMetadata);
     }
 
-    metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully!");
+    if (!metadataReader)
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              "AIE metadata read failed!");
+    else
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              "AIE metadata read successfully!");
   }
 
   const xdp::aie::BaseFiletypeImpl*

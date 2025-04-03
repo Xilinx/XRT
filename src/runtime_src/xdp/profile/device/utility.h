@@ -24,8 +24,9 @@
 #include <string>
 #include <memory>
 #include "xdp/config.h"
+#include "xrt/xrt_device.h"
 
-namespace xdp { namespace util {
+namespace xdp::util {
 
   XDP_CORE_EXPORT
   uint64_t getAIMSlotId(uint64_t idx);
@@ -40,7 +41,11 @@ namespace xdp { namespace util {
   std::string getDebugIpLayoutPath(void* deviceHandle);
 
   XDP_CORE_EXPORT
-  std::string getDeviceName(void* deviceHandle);
+  std::string getDeviceName(void* deviceHandle, bool hw_context_flow = false);
+
+  XDP_CORE_EXPORT
+  std::shared_ptr<xrt_core::device>
+  convertToCoreDevice(void* h, bool hw_context_flow);
 
 
   // At compile time, each monitor inserted in the PL region is given a set 
@@ -70,7 +75,6 @@ namespace xdp { namespace util {
 
   constexpr unsigned int sysfs_max_path_length = 512;
 
-} // end namespace util
-} // end namespace xdp
+} // end namespace xdp::util
 
 #endif
