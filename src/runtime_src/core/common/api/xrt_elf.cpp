@@ -49,6 +49,9 @@ public:
 
   explicit elf_impl(const void *data, size_t size)
   {
+    // Uses the same approach as in aiebu reporter.cpp
+    // ibufferstream allows reading from data without first copying over
+    // the data to create the stream
     boost::interprocess::ibufferstream istr(static_cast<const char *>(data), size);
     if (!m_elf.load(istr))
       throw std::runtime_error("not valid ELF data");

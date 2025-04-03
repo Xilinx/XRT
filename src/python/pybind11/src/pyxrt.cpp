@@ -341,8 +341,7 @@ PYBIND11_MODULE(pyxrt, m) {
  *
  */
 
-    py::class_<xrt::elf> pyelf(m, "elf",
-                                            "ELF representation of compiled AIE binary");
+    py::class_<xrt::elf> pyelf(m, "elf", "ELF representation of compiled AIE binary");
 
     py::class_<xrt::aie::program> pyprogram(m, "program",
                                             "Represents a compiled program to be executed on the AIE. "
@@ -359,8 +358,4 @@ PYBIND11_MODULE(pyxrt, m) {
             return new xrt::aie::program(xe); }))
         .def("get_partition_size", &xrt::aie::program::get_partition_size,
              "Required partition size to run the program");
-}
-
-xrt::aie::program* testp(xrt::elf &xe) {
-    return new xrt::aie::program(xe);
 }
