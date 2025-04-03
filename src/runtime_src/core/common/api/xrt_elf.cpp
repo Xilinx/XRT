@@ -90,7 +90,7 @@ public:
     if (auto section = m_elf.sections[".note.xrt.configuration"])
       return std::stoul(get_note(section, 0));
 
-    throw std::runtime_error("ELF is missing xrt configuration info");  
+    throw std::runtime_error("ELF is missing xrt configuration info");
   }
 };
 

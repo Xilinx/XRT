@@ -77,6 +77,12 @@ get_kernel_info(const xrt::module& module);
 void
 dump_dtrace_buffer(const xrt::module& module);
 
+// Returns buffer object associated with control scratchpad memory.
+// This memory is created using ELF associated with run object.
+// Throws if ELF doesn't contain scratchpad memory
+xrt::bo
+get_ctrl_scratchpad_bo(const xrt::module& module);
+
 } // xrt_core::module_int
 
 #endif

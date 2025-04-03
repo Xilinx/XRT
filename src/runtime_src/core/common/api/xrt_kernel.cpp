@@ -2593,6 +2593,15 @@ public:
   {
     return cmd->get_ert_packet();
   }
+
+  xrt::bo
+  get_ctrl_scratchpad_bo() const
+  {
+    if (!m_module)
+      throw xrt_core::error("No module associated with run object");
+  
+    return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
+  }
 };
 
 // class mailbox_impl - Extension of run_impl for mailbox support
@@ -3908,6 +3917,15 @@ submit_signal(const xrt::fence& fence)
   XRT_TRACE_POINT_SCOPE(xrt_submit_signal);
   return xdp::native::profiling_wrapper("xrt::run::submit_signal", [this, &fence]{
     handle->submit_signal(fence);
+  });
+}
+
+xrt::bo
+run::
+get_ctrl_scratchpad_bo() const
+{
+  return xdp::native::profiling_wrapper("xrt::run::get_ctrl_scratchpad_bo", [this]{
+    return handle->get_ctrl_scratchpad_bo();
   });
 }
 
