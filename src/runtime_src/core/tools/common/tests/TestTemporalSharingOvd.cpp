@@ -14,7 +14,6 @@
 
 namespace XBU = XBUtilities;
 
-static constexpr size_t host_app = 1; //opcode
 static constexpr size_t num_kernel_iterations = 1000;
 
 // Method to run the test
@@ -128,9 +127,9 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
-  for (uint32_t i = 0; i < testcases.size(); i++) {
+  for (auto& testcase : testcases) {
     try{
-      testcases[i].initialize();
+      testcase.initialize();
     } catch (const std::exception& ex) {
       XBValidateUtils::logger(ptree, "Error", ex.what());
       ptree.put("status", XBValidateUtils::test_token_failed);
