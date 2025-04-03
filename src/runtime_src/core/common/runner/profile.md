@@ -2,7 +2,7 @@
 <!-- Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved. -->
 # Execution profile for XRT runner
 
-An execution profile is an extention to a run recipe (see
+An execution profile is an extension to a run recipe (see
 [recipe](recipe.md)).  It automates the run recipe by binding
 resources to the XRT runner that executes the run recipe.
 

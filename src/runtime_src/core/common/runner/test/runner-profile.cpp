@@ -33,7 +33,7 @@
 static void
 usage()
 {
-  std::cout << "usage: %s [options]\n";
+  std::cout << "usage: runner.exe [options]\n";
   std::cout << " --recipe <recipe.json> recipe file to run\n";
   std::cout << " --profile <profile.json> execution profile\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
