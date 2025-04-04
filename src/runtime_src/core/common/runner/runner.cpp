@@ -33,9 +33,12 @@
 # pragma warning (pop)
 #endif
 
+#include <algorithm>
+#include <iostream>
 #include <istream>
 #include <map>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -47,6 +50,17 @@
 namespace {
 
 const boost::property_tree::ptree default_ptree;
+
+template <typename OptionalType>
+static boost::property_tree::ptree
+get_optional(const OptionalType& node)
+{
+#if BOOST_VERSION >= 105600
+  return node.value();
+#else
+  return node.get();
+#endif
+}
 
 // struct streambuf - wrap a std::streambuf around an external buffer
 //
@@ -102,32 +116,58 @@ protected:
 public:
   virtual ~repo() = default;
 
-  virtual const std::vector<char>&
+  // Should be std::span, but not until c++20
+  virtual const std::string_view
   get(const std::string& path) const = 0;
+
+  // Should be std::span, but not until c++20
+  static std::string_view
+  to_sv(const std::vector<char>& vec)
+  {
+    // return {vec.begin(), vec.end()};
+    return {vec.data(), vec.size()};
+  }
 };
 
 // class file_repo - file system artifact repository
 // Artifacts are loaded from disk and stored in persistent storage  
 class file_repo : public repo
 {
+  std::filesystem::path base_dir;
+
 public:
-  const std::vector<char>&
+  file_repo()
+    : base_dir{"."}
+  {}
+
+  explicit
+  file_repo(std::filesystem::path basedir)
+    : base_dir{std::move(basedir)}
+  {}
+
+  const std::string_view
   get(const std::string& path) const override
   {
-    if (auto it = m_data.find(path); it != m_data.end())
-      return (*it).second;
+    std::filesystem::path full_path = base_dir / path;
+    if (!std::filesystem::exists(full_path))
+      throw std::runtime_error{"File not found: " + full_path.string()};
 
-    std::ifstream ifs(path, std::ios::binary);
+    auto key = full_path.string();
+    if (auto it = m_data.find(key); it != m_data.end())
+      return to_sv((*it).second);
+
+    std::ifstream ifs(key, std::ios::binary);
     if (!ifs)
-      throw std::runtime_error{"Failed to open file: " + path};
+      throw std::runtime_error{"Failed to open file: " + key};
 
     ifs.seekg(0, std::ios::end);
     std::vector<char> data(ifs.tellg());
     ifs.seekg(0, std::ios::beg);
     ifs.read(data.data(), data.size());
-    auto [itr, success] = m_data.emplace(path, std::move(data));
+    auto [itr, success] = m_data.emplace(key, std::move(data));
+    XRT_DEBUGF("artifacts::file_repo::get(%s) -> %s\n", path.c_str(), success ? "success" : "failure");
     
-    return (*itr).second;
+    return to_sv((*itr).second);
   }
 };
 
@@ -141,15 +181,16 @@ public:
     : m_reference{data}
   {}
 
-  const std::vector<char>&
+  const std::string_view
   get(const std::string& path) const override
   {
     if (auto it = m_data.find(path); it != m_data.end())
-      return (*it).second;
+      return to_sv((*it).second);
 
     if (auto it = m_reference.find(path); it != m_reference.end()) {
       auto [itr, success] = m_data.emplace(path, it->second);
-      return (*itr).second;
+      XRT_DEBUGF("artifacts::ram_repo::get(%s) -> %s\n", path.c_str(), success ? "success" : "failure");
+      return to_sv((*itr).second);
     }
 
     throw std::runtime_error{"Failed to find artifact: " + path};
@@ -177,12 +218,12 @@ get(const xrt::elf& elf)
 }
 
 static xrt::module
-get(const std::string& path, const artifacts::repo& repo)
+get(const std::string& path, const artifacts::repo* repo)
 {
   if (auto it = s_path2elf.find(path); it != s_path2elf.end())
     return get((*it).second);
 
-  auto& data = repo.get(path);
+  auto data = repo->get(path);
   streambuf buf{data.data(), data.data() + data.size()};
   std::istream is{&buf};
   xrt::elf elf{is};
@@ -201,15 +242,15 @@ class recipe
     xrt::xclbin m_xclbin;
 
     static xrt::xclbin
-    read_xclbin(const boost::property_tree::ptree& pt, const artifacts::repo& repo)
+    read_xclbin(const boost::property_tree::ptree& pt, const artifacts::repo* repo)
     {
       auto path = pt.get<std::string>("xclbin");
-      auto& data = repo.get(path);
+      auto data = repo->get(path);
       return xrt::xclbin{data};
     }
 
   public:
-    header(const boost::property_tree::ptree& pt, const artifacts::repo& repo)
+    header(const boost::property_tree::ptree& pt, const artifacts::repo* repo)
       : m_xclbin{read_xclbin(pt, repo)}
     {
       XRT_DEBUGF("Loaded xclbin: %s\n", m_xclbin.get_uuid().to_string().c_str());
@@ -352,7 +393,7 @@ class recipe
       // The kernel control module is created if necessary.
       static kernel
       create_kernel(const xrt::hw_context& hwctx, const boost::property_tree::ptree& pt,
-                    const artifacts::repo& repo)
+                    const artifacts::repo* repo)
       {
         auto name = pt.get<std::string>("name"); // required, default xclbin kernel name
         auto elf = pt.get<std::string>("ctrlcode", ""); // optional elf file
@@ -439,7 +480,7 @@ class recipe
     // create_kernels - create kernel objects from kernel property tree nodes
     static std::map<std::string, kernel>
     create_kernels(xrt::device device, const xrt::hw_context& hwctx,
-                   const boost::property_tree::ptree& pt, const artifacts::repo& repo)
+                   const boost::property_tree::ptree& pt, const artifacts::repo* repo)
     {
       std::map<std::string, kernel> kernels;
       for (const auto& [name, node] : pt)
@@ -461,7 +502,7 @@ class recipe
 
   public:
     resources(xrt::device device, const xrt::xclbin& xclbin,
-              const boost::property_tree::ptree& recipe, const artifacts::repo& repo)
+              const boost::property_tree::ptree& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
       , m_hwctx{m_device, m_device.register_xclbin(xclbin)}
       , m_buffers{create_buffers(m_device, recipe.get_child("buffers"))}
@@ -923,7 +964,7 @@ class recipe
   }
 
 public:
-  recipe(xrt::device device, const std::string& path, const artifacts::repo& repo)
+  recipe(xrt::device device, const std::string& path, const artifacts::repo* repo)
     : m_device{std::move(device)}
     , m_recipe{load(path)}
     , m_header{m_recipe.get_child("header"), repo}
@@ -975,75 +1016,464 @@ public:
   }
 }; // class recipe
 
-} // namespace
-
-namespace xrt_core {
-
-// class runner_impl -
+// class profile - Execution profile
 //
-// A runner implementation is default created with one instance of a
-// recipe.  But the runner can be used by multiple threads and new
-// recipe instances are created for each thread as needed.
+// The profile class controls how a run recipe is bound to external
+// resources and how the recipe is executed.
 //
-// The runner can be created from any thread, but member functions
-// are thread specific.
-class runner_impl
+// An execution profile can be used to initialize run recipe resources
+// at runner initialization time by binding resources per the recipe.
+// The calling application can still explicitly bind via the
+// xrt::runner APIs, which may override the binding done by the
+// execution profile.
+class profile
 {
-  //std::map<std::thread::id, recipe> m_recipes;
-  recipe m_recipe;
-  //thread_local recipe m_thread_recipe;
+  // class bindings - represents the bindings sections of a profile json
+  //
+  // {
+  //   "name": buffer name in recipe
+  //   "file": (optional with init) if present use to initialize the buffer
+  //   "size": (required if no file) the size of the buffer
+  //   "init": (optional) how to initialize a buffer
+  //   "validate": how to validate a buffer after execution
+  // }
+  // 
+  // The bindings section specify what xrt::bo objects to create for
+  // external buffers. The buffers are bound to the recipe prior to
+  // first execution.
+  // 
+  // A binding can specify a file from which the buffer should be
+  // initialized.  If a "file" is specified, the buffer is created with
+  // this size unless "size" is also specified, in which case the size
+  // is exactly the size of the buffer and max size bytes of file is
+  // used to initialize the buffer.
+  //
+  // If "init" is specified, then it defines how the buffer should be
+  // initialzed. "init" takes precedence over "file" if "file" is also
+  // specified, potentially overwriting already initialized buffer.
+  //
+  // If "validate" is specified then it has instructions on how to
+  // validate a buffer after executing the recipe.
+  class bindings
+  {
+    // Convenience types for readability
+    using name_t = std::string;
+    using path_t = std::string;
+    using binding_node = boost::property_tree::ptree;
+    using validate_node = boost::property_tree::ptree;
+
+    // Map of resource name to json binding element.
+    std::map<name_t, binding_node> m_bindings;
+
+    // Map of resource names to XRT buffer objects.
+    std::map<name_t, xrt::bo> m_xrt_bos;
+
+    // Create a map of resource names to json binding nodes
+    static std::map<name_t, binding_node>
+    init_bindings(const boost::property_tree::ptree& pt)
+    {
+      std::map<name_t, binding_node> bindings;
+      for (const auto& [name, node] : pt)
+        bindings.emplace(node.get<std::string>("name"), node);
+
+      return bindings;
+    }
+
+    // Create a map of resource names to XRT buffer objects.
+    // Initialize the BO with data from the file if any.
+    // The size of the xrt::bo is either the size of the "file"
+    // if present, or it is the "size" per json.  An explicit
+    // "size" always has precedence.
+    static std::map<name_t, xrt::bo>
+    create_buffers(const xrt::device& device,
+                   const std::map<name_t, binding_node>& bindings,
+                   const artifacts::repo* repo)
+    {
+      std::map<name_t, xrt::bo> bos;
+      for (const auto& [name, node] : bindings) {
+        auto size = node.get<size_t>("size", 0);
+        auto file = node.get<std::string>("file", "");
+        auto data = file.empty() ? std::string_view{} : repo->get(file);
+        size = size ? size : data.size(); // specified size has precedence
+        xrt::bo bo = xrt::ext::bo{device, size};
+        if (!data.empty()) {
+          auto bo_data = bo.map<char*>();
+          std::copy(data.data(), data.data() + std::min<size_t>(size, data.size()), bo_data);
+          bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        }
+        bos.emplace(node.get<std::string>("name"), std::move(bo));
+      }
+      return bos;
+    }
+
+    // Validate a resource buffer per profile.json validate json node
+    // "validate": {
+    //   "size": 0,   // unused for now
+    //   "offset": 0, // unused for now
+    //   "file": "gold.bin"
+    //  }
+
+    static void
+    validate_buffer(xrt::bo& bo, const validate_node& node, const artifacts::repo* repo)
+    {
+      auto golden_data = repo->get(node.get<std::string>("file"));
+      // here we could extract offset and size of region to validate
+      
+      bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      auto bo_data = bo.map<char*>();
+      if (bo.size() != golden_data.size())
+        throw std::runtime_error("Size mismatch during validation");
+
+      if (std::equal(golden_data.data(), golden_data.data() + golden_data.size(), bo_data))
+        return;
+
+      // Error
+      for (uint64_t i = 0; i < golden_data.size(); ++i) {
+        if (golden_data[i] != bo_data[i])
+          throw std::runtime_error
+            ("gold[" + std::to_string(i) + "] = " + std::to_string(golden_data[i])
+             + " does not match bo value in bo " + std::to_string(bo_data[i]));
+      }
+    }
+
+    // Initialize a resource buffer per the binding json node
+    static void
+    init_buffer(xrt::bo& bo, const binding_node& node)
+    {
+      // Get the pattern, which must be one character
+      auto pattern = node.get<std::string>("pattern");
+      if (pattern.size() != 1)
+        throw std::runtime_error("pattern size must be 1");
+      
+      // Fill the resource buffer with the pattern
+      auto bo_data = bo.map<char*>();
+      std::fill(bo_data, bo_data + bo.size(), pattern[0]);
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    }
+
+  public:
+    bindings() = default;
+
+    bindings(const xrt::device& device, const boost::property_tree::ptree& pt, const artifacts::repo* repo)
+      : m_bindings{init_bindings(pt)}
+      , m_xrt_bos{create_buffers(device, m_bindings, repo)}
+    {}
+
+    // Validate resource buffers per json.  Validation is per bound buffer
+    // as defined in the profile json.
+    void
+    validate(const artifacts::repo* repo)
+    {
+      for (auto& [name, node] : m_bindings) {
+        if (auto validate_node = node.get_child_optional("validate")) {
+          validate_buffer(m_xrt_bos.at(name), get_optional(validate_node), repo);
+        }
+      }
+    }
+
+    // Init bindings per json.  Initialization is done by filling a
+    // pattern into a buffer that requires initialization.  The
+    // pattern is currently limited to a single character.
+    void
+    init()
+    {
+      for (auto& [name, node] : m_bindings) {
+        if (auto init_node = node.get_child_optional("init"))
+          init_buffer(m_xrt_bos.at(name), get_optional(init_node));
+      }
+    }
+
+    // Bind resources to the recipe per json
+    void
+    bind(recipe* rr)
+    {
+      for (auto& [name, node] : m_bindings) {
+        if (node.get<bool>("bind", false))
+          rr->bind(name, m_xrt_bos.at(name));
+      }
+    }
+  }; // class profile::bindings
+
+  // class execution - represents the execution section of a profile json
+  //
+  // {
+  //  "execution" : {
+  //    "iterations": 2,
+  //    "iteration" : {
+  //      "bind": false,
+  //      "init": true,
+  //      "wait": true,
+  //      "validate": true
+  //    }
+  //  }
+  //
+  // The execution section specifies how a recipe should be executed.
+  // Number of iterations specfied how many times the recipe should be
+  // executed when the application calls xrt::runnner::execute().
+  //
+  // The behavior of an iteration is within the iteration sub-node.
+  // - "bind" indicates if a buffers should be re-bound to the
+  //   recipe before an iteration.
+  // - "init" indicates of buffer should be initialized per what is
+  //    specified in the binding element.
+  // - "wait" says that execution should wait for completion between
+  //    iterations and after last iteration.
+  // - "validate" means buffer validation per what is specified in
+  //   the binding element.
+  class execution
+  {
+    using iteration_node = boost::property_tree::ptree;
+    profile* m_profile;
+    size_t m_iterations;
+    iteration_node m_iteration;
+
+    void
+    execute_iteration(size_t idx)
+    {
+      // (Re)bind buffers to recipe if requested
+      if (m_iteration.get<bool>("bind"))
+        m_profile->bind();
+      
+      // Initialize buffers if requested
+      if (m_iteration.get<bool>("init"))
+        m_profile->init();
+      
+      m_profile->execute_recipe();
+
+      // Wait execution to complete if requested
+      if (m_iteration.get<bool>("wait"))
+        m_profile->wait_recipe();
+
+      // Validate if requested (implies wait)
+      if (m_iteration.get<bool>("validate"))
+        m_profile->validate();
+    }
+
+  public:
+    execution(profile* pr, const boost::property_tree::ptree& pt)
+      : m_profile(pr)
+      , m_iterations(pt.get<size_t>("iterations"))
+      , m_iteration(pt.get_child("iteration"))
+    {
+      // Bind buffers to the recipe prior to executing the recipe. This
+      // will bind the buffers which have binding::bind set to true.
+      m_profile->bind();
+    }
+
+    // Execute the profile
+    void
+    execute()
+    {
+      for (size_t i = 0; i < m_iterations; ++i)
+        execute_iteration(i);
+    }
+    
+  }; // class profile::execution
+  
+private:
+  friend class bindings;  // embedded class
+  friend class execution; // embedded class
+  boost::property_tree::ptree m_profile;
+  std::shared_ptr<artifacts::repo> m_repo;
+  recipe* m_recipe = nullptr;
+  bindings m_bindings;
+  execution m_execution;
+
+  static boost::property_tree::ptree
+  load(const std::string& path)
+  {
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(path, pt);
+    return pt;
+  }
+
+  void
+  bind()
+  {
+    m_bindings.bind(m_recipe);
+  }
+
+  void
+  init()
+  {
+    m_bindings.init();
+  }
+
+  void
+  validate()
+  {
+    m_bindings.validate(m_repo.get());
+  }
+
+  void
+  execute_recipe()
+  {
+    m_recipe->execute();
+  }
+
+  void
+  wait_recipe()
+  {
+    m_recipe->wait();
+  }
+  
 
 public:
-  runner_impl(const xrt::device& device, const std::string& recipe)
-    : m_recipe{device, recipe, artifacts::file_repo{}}
+  // profile - constructor
+  //
+  // Reads json, creates xrt::bo bindings to recipe and initializes
+  // execution. The respository is used for looking up artifacts.
+  // The recipe is what the profile binds to and what it executes.
+  profile(const xrt::device& device, recipe* rr, const std::string& profile,
+          std::shared_ptr<artifacts::repo> repo)
+    : m_profile{load(profile)}
+    , m_repo{std::move(repo)}
+    , m_recipe{rr}
+    , m_bindings{device, m_profile.get_child("bindings"), m_repo.get()}
+    , m_execution(this, m_profile.get_child("execution"))
   {}
-
-  runner_impl(const xrt::device& device, const std::string& recipe, const runner::artifacts_repository& artifacts)
-    : m_recipe{device, recipe, artifacts::ram_repo(artifacts)}
-  {}
-
-  void
-  bind_input(const std::string& name, const xrt::bo& bo)
-  {
-    m_recipe.bind_input(name, bo);
-  }
-
-  void
-  bind_output(const std::string& name, const xrt::bo& bo)
-  {
-    m_recipe.bind_output(name, bo);
-  }
-
-  void
-  bind(const std::string& name, const xrt::bo& bo)
-  {
-    m_recipe.bind(name, bo);
-  }
 
   void
   execute()
   {
-    m_recipe.execute();
+    m_execution.execute();
   }
 
   void
   wait()
   {
+    // waiting is controlled through execution in json
+    // so a noop here
+  }
+}; // class profile
+
+} // namespace
+
+namespace xrt_core {
+
+// class runner_impl - Insulated implementation of xrt::runner
+//
+// Manages a run recipe and an execution profile.
+//
+// The recipe defines the resources and how to run a model.
+//
+// The profile controls how resources are bound to the recipe and how
+// the recipe is executed, e.g. number of times, debug info,
+// validation, etc.
+class runner_impl
+{
+  recipe m_recipe;
+
+protected:
+  recipe*
+  get_recipe()
+  {
+    return &m_recipe;
+  }
+
+public:
+  runner_impl(const xrt::device& device, const std::string& recipe,
+              const std::shared_ptr<artifacts::repo>& repo)
+    : m_recipe{device, recipe, repo.get()}
+  {}
+
+  virtual ~runner_impl() = default;
+
+  virtual void
+  bind_input(const std::string& name, const xrt::bo& bo)
+  {
+    m_recipe.bind(name, bo);
+  }
+
+  virtual void
+  bind_output(const std::string& name, const xrt::bo& bo)
+  {
+    m_recipe.bind(name, bo);
+  }
+
+  virtual void
+  bind(const std::string& name, const xrt::bo& bo)
+  {
+    m_recipe.bind(name, bo);
+  }
+
+  virtual void
+  execute()
+  {
+    m_recipe.execute();
+  }
+
+  virtual void
+  wait()
+  {
     m_recipe.wait();
   }
-};
+}; // class runner_impl
+
+class profile_impl : public runner_impl
+{
+  profile m_profile;
+
+public:
+  profile_impl(const xrt::device& device,
+               const std::string& recipe, const std::string& profile,
+               const std::shared_ptr<artifacts::repo>& repo)
+    : runner_impl{device, recipe, repo}
+    , m_profile{device, get_recipe(), profile, repo}
+  {}
+
+  void
+  execute() override
+  {
+    m_profile.execute();
+  }
+
+  void
+  wait() override
+  {
+    m_profile.wait();
+  }
+}; // class profile_impl
 
 ////////////////////////////////////////////////////////////////
 // Public runner interface APIs
 ////////////////////////////////////////////////////////////////
 runner::
-runner(const xrt::device& device, const std::string& recipe)
-  : m_impl{std::make_unique<runner_impl>(device, recipe)}
+runner(const xrt::device& device,
+       const std::string& recipe)
+  : m_impl{std::make_unique<runner_impl>
+           (device, recipe, std::make_shared<artifacts::file_repo>())}
 {} 
   
 runner::
-runner(const xrt::device& device, const std::string& recipe, const artifacts_repository& repo)
-  : m_impl{std::make_unique<runner_impl>(device, recipe, repo)}
+runner(const xrt::device& device,
+       const std::string& recipe,
+       const std::filesystem::path& dir)
+  : m_impl{std::make_unique<runner_impl>
+           (device, recipe, std::make_shared<artifacts::file_repo>(dir))}
+{} 
+
+runner::
+runner(const xrt::device& device,
+       const std::string& recipe,
+       const artifacts_repository& repo)
+  : m_impl{std::make_unique<runner_impl>
+           (device, recipe, std::make_shared<artifacts::ram_repo>(repo))}
+{}
+
+runner::
+runner(const xrt::device& device,
+       const std::string& recipe, const std::string& profile)
+  : m_impl{std::make_unique<profile_impl>
+           (device, recipe, profile, std::make_shared<artifacts::file_repo>())}
+{}
+
+runner::
+runner(const xrt::device& device,
+       const std::string& recipe, const std::string& profile,
+       const std::filesystem::path& dir)
+  : m_impl{std::make_unique<profile_impl>
+           (device, recipe, profile, std::make_shared<artifacts::file_repo>(dir))}
 {}
 
 void

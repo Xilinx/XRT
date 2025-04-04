@@ -612,7 +612,7 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, fnm]{
-      xrt::xclbin xclbin{fnm};
+      xrt::xclbin xclbin{std::string{fnm}};
       auto device = device_cache.get_or_error(dhdl);
       device->load_xclbin(xclbin);
       return 0;

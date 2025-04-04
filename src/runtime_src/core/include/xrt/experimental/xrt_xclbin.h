@@ -18,6 +18,7 @@
 # include <utility>
 # include <vector>
 # include <string>
+# include <string_view>
 #endif
 
 /**
@@ -623,6 +624,19 @@ public:
   XRT_API_EXPORT
   explicit
   xclbin(const std::vector<char>& data);
+
+  /**
+   * xclbin() - Constructor from raw data
+   *
+   * @param data
+   *  Raw data of xclbin
+   *
+   * The raw data of the xclbin can be deleted after calling the
+   * constructor.
+   */
+  XRT_API_EXPORT
+  explicit
+  xclbin(const std::string_view& data);
 
   /**
    * xclbin() - Constructor from raw data
