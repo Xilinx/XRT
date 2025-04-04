@@ -101,7 +101,7 @@ install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   install(FILES ${PROJECT_BINARY_DIR}/gen/version.json
     DESTINATION ${XRT_INSTALL_DIR}
-    COMPONENT ${XRT_BASE_DEV_COMPONENT})
+    COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall
