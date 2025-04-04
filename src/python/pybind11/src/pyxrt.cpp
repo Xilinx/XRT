@@ -13,10 +13,11 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
-#include "xrt/xrt_graph.h"
 #include "xrt/experimental/xrt_message.h"
 #include "xrt/experimental/xrt_system.h"
 #include "xrt/experimental/xrt_xclbin.h"
+#include "xrt/experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_aie.h"
 
 // Pybind11 includes
 #include <pybind11/pybind11.h>
@@ -25,8 +26,6 @@
 #include <pybind11/stl_bind.h>
 
 // C++11 includes
-#include <mutex>
-#include <thread>
 #include <string>
 
 namespace py = pybind11;
@@ -292,7 +291,7 @@ PYBIND11_MODULE(pyxrt, m) {
 
 /*
  *
- * xrt::xclbin::ip xrt::xclbin::kernel
+ * xrt::xclbin::ip, xrt::xclbin::kernel
  *
  */
     py::class_<xrt::xclbin> pyxclbin(m, "xclbin", "Represents an xclbin and provides APIs to access meta data");
@@ -336,4 +335,27 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects")
         .def("get_axlf", &xrt::xclbin::get_axlf, "Get the axlf data of the xclbin");
 
+/*
+ *
+ *  xrt::elf, xrt::aie::program
+ *
+ */
+
+    py::class_<xrt::elf> pyelf(m, "elf", "ELF representation of compiled AIE binary");
+
+    py::class_<xrt::aie::program> pyprogram(m, "program",
+                                            "Represents a compiled program to be executed on the AIE. "
+                                            "The program is an ELF file with sections and data specific to the AIE.");
+
+    pyelf
+        .def(py::init([](const std::string& fnm) {
+            return new xrt::elf(fnm); }))
+        .def(py::init([](const void *data, size_t size) {
+            return new xrt::elf(data, size); }));
+
+    pyprogram
+        .def(py::init([](xrt::elf& xe) {
+            return new xrt::aie::program(xe); }))
+        .def("get_partition_size", &xrt::aie::program::get_partition_size,
+             "Required partition size to run the program");
 }
