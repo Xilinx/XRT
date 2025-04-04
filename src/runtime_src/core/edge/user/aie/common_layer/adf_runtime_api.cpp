@@ -605,12 +605,6 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
 
 /************************************ gmio_api ************************************/
 
-/// GMIO API helper functions
-static inline u8 convertLogicalToPhysicalDMAChNum(short logicalChNum)
-{
-    return (logicalChNum > 1 ? (logicalChNum - 2) : logicalChNum);
-}
-
 size_t frontAndPop(std::queue<size_t>& bdQueue)
 {
     size_t bd = bdQueue.front();
@@ -637,13 +631,23 @@ err_code gmio_api::configure()
         gmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);
         driverStatus |= XAie_DmaDescInit(config->get_dev(), &shimDmaInst, gmioTileLoc);
         //enable shim DMA channel, need to start first so the status is correct
-        driverStatus |= XAie_DmaChannelEnable(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
+        driverStatus |= XAie_DmaChannelEnable(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
         driverStatus |= XAie_DmaGetMaxQueueSize(config->get_dev(), gmioTileLoc, &dmaStartQMaxSize);
 
-        //decide 4 BD numbers to use for this GMIO based on channel number (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+        // Assign BDs to each shim DMA channel based on the following scheme
+        // Pre-AIE* archs: one shared pool of 16 BDs for 2 S2MM and 2 MMS2 channels.
+        // - S2MM channel 0: BDs  0 -  3
+        // - S2MM channel 1: BDs  4 -  7
+        // - MM2S channel 0: BDs  8 - 11
+        // - MM2S channel 1: BDs 12 - 15
+        // type = pGMIOConfig->type, chNum = pGMIOConfig->channelNum, dmaStartQMaxSize = 4
+        // S2MM channel 0: type = 1, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  0 + j ->  0 -  3
+        // S2MM channel 1: type = 1, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  4 + j ->  4 -  7
+        // MM2S channel 0: type = 0, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  8 + j ->  8 - 11
+        // MM2S channel 1: type = 0, ((1 - type) * 2 + chNum) * dmaStartQMaxSize = 12 + j -> 12 - 15
         for (int j = 0; j < dmaStartQMaxSize; j++)
         {
-            int bdNum = pGMIOConfig->channelNum * dmaStartQMaxSize + j;
+            int bdNum = ((1 - pGMIOConfig->type) * 2 + pGMIOConfig->channelNum) * dmaStartQMaxSize + j;
             availableBDs.push(bdNum);
 
             //set AXI burst length, this won't change during runtime
@@ -672,7 +676,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     while (availableBDs.empty())
     {
         u8 numPendingBDs = 0;
-        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
+        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
 
         int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
         //move completed BDs from enqueuedBDs to availableBDs
@@ -700,7 +704,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     driverStatus |= XAie_DmaWriteBd_16(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
 
     //enqueue BD
-    driverStatus |= XAie_DmaChannelPushBdToQueue_16(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+    driverStatus |= XAie_DmaChannelPushBdToQueue_16(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
     /* Commenting out as this is increasing overhead of the performance */
@@ -727,7 +731,7 @@ err_code gmio_api::wait()
 
     debugMsg("gmio_api::wait::XAie_DmaWaitForDone ...");
 
-    while (XAie_DmaWaitForDone(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
+    while (XAie_DmaWaitForDone(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
 
     while (!enqueuedBDs.empty())
     {
