@@ -38,9 +38,10 @@
 #include "tools/common/tests/TestCmdChainLatency.h"
 #include "tools/common/tests/TestCmdChainThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
-#include "tools/common/tests/TestSpatialSharingOvd.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "tools/common/tests/TestPreemptionOverhead.h"
+#include "tools/common/tests/TestValidateUtilities.h"
+
 namespace XBU = XBUtilities;
 namespace xq = xrt_core::query;
 
@@ -114,7 +115,6 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestCmdChainLatency>(),
   std::make_shared<TestCmdChainThroughput>(),
   std::make_shared<TestAIEReconfigOverhead>(),
-  std::make_shared<TestSpatialSharingOvd>(),
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
 };
