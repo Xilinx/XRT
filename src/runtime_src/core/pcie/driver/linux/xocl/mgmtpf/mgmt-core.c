@@ -307,6 +307,13 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	BUG_ON(!lro);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
+
+	if (off > pci_resource_end(lro->core.pdev, lro->core.bar_idx) -
+			pci_resource_start(lro->core.pdev, lro->core.bar_idx) + 1) {
+		mgmt_info(lro, "invalid mmap offset: 0x%lx", off);
+		return -EINVAL;
+	}
+
 	/* BAR physical address */
 	phys = pci_resource_start(lro->core.pdev, lro->core.bar_idx) + off;
 	vsize = vma->vm_end - vma->vm_start;

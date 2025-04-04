@@ -138,13 +138,13 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	vsize = vma->vm_end - vma->vm_start;
 	res_start = pci_resource_start(XDEV(xdev)->pdev, XDEV(xdev)->bar_idx);
 
-	if (vma->vm_pgoff == 0) {
-		if (vsize > XDEV(xdev)->bar_size) {
-			userpf_err(xdev,
-				"bad size (0x%lx) for native BAR mmap", vsize);
-			return -EINVAL;
-		}
-	} else {
+	if (vsize > XDEV(xdev)->bar_size) {
+		userpf_err(xdev,
+			"bad size (0x%lx) for native BAR mmap", vsize);
+		return -EINVAL;
+	}
+
+	if (vma->vm_pgoff != 0) {
 		int ret;
 		u32 cu_addr;
 		u32 cu_idx = vma->vm_pgoff - 1;
