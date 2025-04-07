@@ -6,6 +6,7 @@
 // Local - Include Files
 #include "core/common/system.h"
 #include "core/common/smi.h"
+#include "core/common/smi_default.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
@@ -193,7 +194,7 @@ void  main_(int argc, char** argv,
   boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
 
   if (available_devices.empty()) //no device
-    config = xrt_core::smi::get_smi_config();
+    config = xrt_core::smi_default::get_default_smi_config();
   else if (available_devices.size() == 1 || !sDevice.empty()) { //1 device
     auto device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
     config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);
