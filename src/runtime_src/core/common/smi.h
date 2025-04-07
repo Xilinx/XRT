@@ -49,7 +49,8 @@ public:
         b_is_optionOption(is_optionOption) {} 
 
   virtual 
-  ~option() = default;
+  ~option() 
+  {}
 
   XRT_CORE_COMMON_EXPORT
   virtual 
@@ -80,8 +81,8 @@ public:
                std::move(type), std::move(default_value), std::move(value_type)), 
         m_description_array(std::move(description_array)) {}
 
-  virtual 
-  ~listable_description_option() = default;
+  ~listable_description_option() override
+  {};
 
   XRT_CORE_COMMON_EXPORT
   boost::property_tree::ptree 

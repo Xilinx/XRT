@@ -722,9 +722,9 @@ struct xrt_smi_lists
     const auto xrt_smi_lists_type = std::any_cast<xrt_core::query::xrt_smi_lists::type>(reqType);
     switch (xrt_smi_lists_type) {
     case xrt_core::query::xrt_smi_lists::type::validate_tests:
-      return shim_edge::smi::get_validate_tests();
+      return xrt_core::smi::get_list("validate", "tests");
     case xrt_core::query::xrt_smi_lists::type::examine_reports:
-      return shim_edge::smi::get_examine_reports();
+      return xrt_core::smi::get_list("examine", "reports");
     default:
       throw xrt_core::query::no_such_key(key, "Not implemented");
     }
