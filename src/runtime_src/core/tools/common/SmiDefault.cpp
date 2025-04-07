@@ -5,8 +5,8 @@
 
 #define XRT_CORE_COMMON_SOURCE
 
-#include "smi.h"
-#include "smi_default.h"
+#include "core/common/smi.h"
+#include "SmiDefault.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -17,7 +17,7 @@
 #include <vector>
 #include <tuple>
 
-namespace xrt_core::smi_default {
+namespace xrt_smi_default {
 
 xrt_core::smi::subcommand
 create_validate_subcommand() 
@@ -63,12 +63,11 @@ create_configure_subcommand()
 std::string 
 get_default_smi_config() 
 {
-  auto & smi_instance = xrt_core::smi::instance();
+  auto smi_instance = xrt_core::smi::instance();
   smi_instance->add_subcommand("validate", create_validate_subcommand());
   smi_instance->add_subcommand("examine", create_examine_subcommand());
   smi_instance->add_subcommand("configure", create_configure_subcommand());
 
   return smi_instance->build_smi_config();
 }
-
-} // namespace xrt_core::smi_default
+} // namespace xrt_smi_default

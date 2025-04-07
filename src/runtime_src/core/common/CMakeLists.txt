@@ -46,7 +46,6 @@ add_library(core_common_library_objects OBJECT
   xclbin_parser.cpp
   xclbin_swemu.cpp
   smi.cpp
-  smi_default.cpp
   )
 
 target_include_directories(core_common_library_objects

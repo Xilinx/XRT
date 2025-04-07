@@ -35,18 +35,21 @@ class option : public basic_option {
 
 public:
 
-  option(const std::string name, 
-         const std::string alias, 
-         const std::string description,
-         const std::string type, 
-         const std::string default_value, 
-         const std::string value_type, 
+  option(std::string name, 
+         std::string alias, 
+         std::string description,
+         std::string type, 
+         std::string default_value, 
+         std::string value_type, 
          bool is_optionOption = false)
       : basic_option{std::move(name), std::move(description), std::move(type)}, 
         m_alias(std::move(alias)), 
         m_default_value(std::move(default_value)), 
         m_value_type(std::move(value_type)),
         b_is_optionOption(is_optionOption) {} 
+
+  virtual 
+  ~option() = default;
 
   XRT_CORE_COMMON_EXPORT
   virtual 
@@ -77,12 +80,15 @@ public:
                std::move(type), std::move(default_value), std::move(value_type)), 
         m_description_array(std::move(description_array)) {}
 
+  virtual 
+  ~listable_description_option() = default;
+
   XRT_CORE_COMMON_EXPORT
-  virtual boost::property_tree::ptree 
+  boost::property_tree::ptree 
   to_ptree() const override;
 
   XRT_CORE_COMMON_EXPORT
-  virtual tuple_vector
+  tuple_vector
   get_description_array() const override; 
 };
 
@@ -101,9 +107,9 @@ public:
   boost::property_tree::ptree 
   construct_subcommand_json() const;
 
-  subcommand(const std::string name, 
-             const std::string description, 
-             const std::string type, 
+  subcommand(std::string name, 
+             std::string description, 
+             std::string type, 
              std::map<std::string, std::shared_ptr<option>> options)
       : m_name(std::move(name)), 
         m_description(std::move(description)), 
@@ -134,7 +140,7 @@ public:
 };
 
 XRT_CORE_COMMON_EXPORT
-std::shared_ptr<smi>& 
+smi*
 instance();
 
 XRT_CORE_COMMON_EXPORT

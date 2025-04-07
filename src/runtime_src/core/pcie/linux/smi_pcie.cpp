@@ -88,7 +88,7 @@ std::string
 get_smi_config()
 {
   // Get the singleton instance
-  auto& smi_instance = xrt_core::smi::instance();
+  auto smi_instance = xrt_core::smi::instance();
 
   // Add subcommands
   smi_instance->add_subcommand("validate", create_validate_subcommand());

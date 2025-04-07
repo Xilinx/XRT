@@ -17,8 +17,6 @@ namespace xrt_core::smi {
 
 using ptree = boost::property_tree::ptree;
 
-static std::shared_ptr<smi> singleton = nullptr;
-
 ptree 
 option::
 to_ptree() const 
@@ -30,7 +28,7 @@ to_ptree() const
   pt.put("alias", m_alias);
   pt.put("default_value", m_default_value);
   pt.put("value_type", m_value_type);
-  return std::move(pt);
+  return pt;
 }
 
 ptree
@@ -47,7 +45,7 @@ to_ptree() const
     description_array_ptree.push_back(std::make_pair("", desc_node));
   }
   pt.add_child("description_array", description_array_ptree);
-  return std::move(pt);
+  return pt;
 }
 
 tuple_vector
@@ -56,9 +54,9 @@ get_description_array() const
 {
   tuple_vector desc_array;
   for (const auto& desc : m_description_array) {
-    desc_array.push_back(std::make_tuple(desc.m_name, desc.m_description, desc.m_type));
+    desc_array.emplace_back(std::make_tuple(desc.m_name, desc.m_description, desc.m_type));
   }
-  return std::move(desc_array);
+  return desc_array;
 }
 
 ptree 
@@ -75,7 +73,7 @@ construct_subcommand_json() const
     options_ptree.push_back(std::make_pair("", opt.second->to_ptree()));
   }
   pt.add_child("options", options_ptree);
-  return std::move(pt);
+  return pt;
 }
 
 std::string 
@@ -116,18 +114,11 @@ get_list(const std::string& subcommand, const std::string& suboption) const
   return option->get_description_array();
 }
 
-std::shared_ptr<smi>&
+smi*
 instance() 
 {
-  if (!singleton) {
-    singleton = std::make_shared<smi>();
-    return singleton;
-  }
-
-  if (singleton)
-    return singleton;
-
-  throw std::runtime_error("Failed to create smi instance");
+  static smi instance;
+  return &instance;
 }
 
 tuple_vector

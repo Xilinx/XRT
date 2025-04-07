@@ -5,12 +5,9 @@
 
 #include <string>
 
-namespace xrt_core::smi_default {
-// This is the default behavior when no shim is loaded.
+namespace xrt_smi_default {
 
-XRT_CORE_COMMON_EXPORT
 std::string 
 get_default_smi_config();
 
-} // namespace xrt_core::smi_default
-
+} // namespace xrt_smi_default
