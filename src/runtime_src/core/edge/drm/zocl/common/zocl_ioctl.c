@@ -76,7 +76,7 @@ get_legacy_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
         slot->xclbin_type = zocl_xclbin_type;
         mutex_unlock(&slot->slot_xclbin_lock);
 	*slot_id = s_id;
-	DRM_INFO("Found free Slot-%d is selected for xclbin \n", s_id);
+	DRM_DEBUG("Found free Slot-%d is selected for xclbin \n", s_id);
         return 0;
 }
 
@@ -119,7 +119,7 @@ get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 			DRM_ERROR("%s: slot %d doesn't exists or invalid", __func__, s_id);
 			return -EINVAL;
 		}
-		DRM_INFO("Found a free slot %d for XCLBIN %pUb", s_id, &axlf->m_header.uuid);
+		DRM_DEBUG("Found a free slot %d for XCLBIN %pUb", s_id, &axlf->m_header.uuid);
 		// acquiring the free slot
 		zdev->slot_mask |= 1 << s_id;
 		*slot_id = s_id;

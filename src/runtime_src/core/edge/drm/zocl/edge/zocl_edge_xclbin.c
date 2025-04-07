@@ -240,7 +240,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	} else {
 
 		if (!(axlf_obj->za_flags & DRM_ZOCL_PLATFORM_PR)) {
-			DRM_INFO("disable partial bitstream download, "
+			DRM_DEBUG("disable partial bitstream download, "
 			    "axlf flags is %d", axlf_obj->za_flags);
 		} else {
 			 /*
@@ -330,11 +330,18 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret)
 		goto out0;
 
+	DRM_INFO("xclbin %pUb successfully loaded to slot %d\n",
+			zocl_xclbin_get_uuid(slot), slot);
+
+	goto done;
+
 out0:
+	DRM_ERROR("%s: failed to load xclbin %pUb to slot %d ret: %d\n",
+			__func__, zocl_xclbin_get_uuid(slot), slot, ret);
+
+done:
 	vfree(aie_res);
 	vfree(axlf);
-	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot),
-		ret);
 	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
 }
