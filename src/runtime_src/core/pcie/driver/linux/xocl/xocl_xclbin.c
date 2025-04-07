@@ -95,6 +95,7 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 
 		if (hdr) {
 			/* after download, update clock freq */
+			BUG_ON(hdr->m_sectionSize < sizeof(struct clock_freq_topology));
 			topo = (struct clock_freq_topology *)
 			    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
 			ret = xocl_clock_freq_scaling_by_topo(xdev, topo, 0);
@@ -152,6 +153,7 @@ static int xgq_xclbin_post_download(xdev_handle_t xdev, void *args)
 
 	if (hdr) {
 		/* after download, update clock freq */
+		BUG_ON(hdr->m_sectionSize < sizeof(struct clock_freq_topology));
 		topo = (struct clock_freq_topology *)
 		    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
 		ret = xocl_xgq_clk_scaling_by_topo(xdev, topo, 1);
