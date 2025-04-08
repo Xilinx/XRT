@@ -97,6 +97,7 @@ is_aie_only(struct axlf *axlf)
  * @param       zdev:		zocl device structure
  * @param       axlf_obj:	xclbin userspace structure
  * @param       client:		user space client attached to device
+ * @param	slot_id		slot id allocated to load xclbin
  *
  * @return      0 on success, Error code on failure.
  */
@@ -331,13 +332,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 
 	DRM_INFO("xclbin %pUb successfully loaded to slot %d\n",
-			zocl_xclbin_get_uuid(slot), slot);
+			zocl_xclbin_get_uuid(slot), slot_id);
 
 	goto done;
 
 out0:
 	DRM_ERROR("%s: failed to load xclbin %pUb to slot %d ret: %d\n",
-			__func__, zocl_xclbin_get_uuid(slot), slot, ret);
+			__func__, zocl_xclbin_get_uuid(slot), slot_id, ret);
 
 done:
 	vfree(aie_res);

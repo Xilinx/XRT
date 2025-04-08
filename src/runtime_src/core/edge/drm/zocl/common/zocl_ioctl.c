@@ -201,7 +201,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		DRM_WARN("Unable to allocate slot for xclbin.");
 		return ret;
 	}
-	DRM_INFO("Allocated slot %d to load xclbin in device.\n", slot_id);
+	DRM_DEBUG("Allocated slot %d to load xclbin in device.\n", slot_id);
 
 	return zocl_xclbin_read_axlf(zdev, axlf_obj, client, slot_id);
 }
@@ -227,7 +227,7 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file
 		DRM_WARN("Unable to allocate slot for xclbin.");
 		return ret;
 	}
-	DRM_INFO("Allocated slot %d to load xclbin in hw_context.\n", slot_id);
+	DRM_DEBUG("Allocated slot %d to load xclbin in hw_context.\n", slot_id);
 
 	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client, slot_id);
 	if (ret) {
