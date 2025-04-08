@@ -678,7 +678,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
 
     int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
     //move completed BDs from enqueuedBDs to availableBDs
-    for (int i = 0; i < numBDCompleted; i++)
+    for (int i = 0; i < numBDCompleted && !enqueuedBDs.empty(); i++)
     {
         uint16_t bdNum = frontAndPop(enqueuedBDs);
         availableBDs.push(bdNum);
