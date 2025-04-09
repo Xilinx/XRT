@@ -604,6 +604,7 @@ struct xclbin_name : request
     mobilenet, 
     validate_elf,
     gemm_elf,
+    mobilenet_elf,
     preemption_4x4,
     preemption_4x8  
   };
@@ -626,6 +627,8 @@ struct xclbin_name : request
         return "preemption_4x8";
       case type::mobilenet:
         return "mobilenet";
+      case type::mobilenet_elf:
+        return "mobilenet_elf";
     }
     return "unknown";
   }
@@ -701,7 +704,8 @@ struct elf_name : request
     preemption_noop_4x4,
     preemption_noop_4x8,
     preemption_memtile_4x4,
-    preemption_memtile_4x8
+    preemption_memtile_4x8, 
+    mobilenet
   };
 
   static std::string
@@ -728,6 +732,8 @@ struct elf_name : request
         return "preemption_memtile_4x4";
       case type::preemption_memtile_4x8:
         return "preemption_memtile_4x8";
+      case type::mobilenet:
+        return "mobilenet";
     }
     return "unknown";
   }

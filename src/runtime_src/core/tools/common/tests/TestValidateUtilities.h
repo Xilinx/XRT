@@ -72,6 +72,7 @@ class BO_set {
 public:
   // Constructor to initialize buffer objects
   BO_set(const xrt::device&, const xrt::kernel&, const BufferSizes&,  const std::string&, const std::string&, const std::string&);
+  BO_set(const xrt::device&, const BufferSizes&, const std::string&, const std::string&);
 
   // Method to set kernel arguments
   void set_kernel_args(xrt::run&) const;

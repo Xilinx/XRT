@@ -13,6 +13,7 @@
 #include "core/common/module_loader.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
+#include "xrt/experimental/xrt_ext.h"
 
 #include "TestValidateUtilities.h"
 namespace xq = xrt_core::query;
@@ -23,27 +24,27 @@ namespace xq = xrt_core::query;
 // - device: Reference to the xrt::device object
 // - kernel: Reference to the xrt::kernel object
 BO_set::BO_set(const xrt::device& device, 
-               const xrt::kernel& kernel, 
+              //  const xrt::kernel& kernel, 
                const BufferSizes& buffer_sizes,
-               const std::string& dpu_instr, 
+              //  const std::string& dpu_instr, 
                const std::string& ifm_file, 
                const std::string& param_file) 
   : buffer_sizes(buffer_sizes),
-    bo_ifm      (device, buffer_sizes.ifm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
-    bo_param    (device, buffer_sizes.param_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
-    bo_ofm      (device, buffer_sizes.ofm_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
-    bo_inter    (device, buffer_sizes.inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
-    bo_instr    (device, buffer_sizes.instr_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5)),
-    bo_mc       (device, buffer_sizes.mc_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
+    bo_ifm      (xrt::ext::bo{device, buffer_sizes.ifm_size}),
+    bo_param    (xrt::ext::bo{device, buffer_sizes.param_size}),
+    bo_ofm      (xrt::ext::bo{device, buffer_sizes.ofm_size}),
+    bo_inter    (xrt::ext::bo{device, buffer_sizes.inter_size}),
+    // bo_instr    (xrt::ext::bo{device, buffer_sizes.instr_size}),
+    bo_mc       (xrt::ext::bo{device, buffer_sizes.mc_size})
 {
   XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
   XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
-  XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), buffer_sizes.instr_size, dpu_instr);
+  // XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), buffer_sizes.instr_size, dpu_instr);
 }
 
 // Method to synchronize buffer objects to the device
 void BO_set::sync_bos_to_device() {
-  bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  // bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -53,14 +54,16 @@ void BO_set::sync_bos_to_device() {
 // Parameters:
 // - run: Reference to the xrt::run object
 void BO_set::set_kernel_args(xrt::run& run) const {
-  uint64_t opcode = 1;
+  uint64_t opcode = 3;
   run.set_arg(0, opcode);
-  run.set_arg(1, bo_ifm);
-  run.set_arg(2, bo_param);
-  run.set_arg(3, bo_ofm);
-  run.set_arg(4, bo_inter);
-  run.set_arg(5, bo_instr);
-  run.set_arg(6, bo_instr.size()/sizeof(int));
+  run.set_arg(1, 0);
+  run.set_arg(2, 0);
+  run.set_arg(3, bo_ifm);
+  run.set_arg(4, bo_param);
+  run.set_arg(5, bo_ofm);
+  run.set_arg(6, bo_inter);
+  // run.set_arg(5, bo_instr);
+  // run.set_arg(6, bo_instr.size()/sizeof(int));
   run.set_arg(7, bo_mc);
 }
 
@@ -71,9 +74,12 @@ TestCase::initialize()
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
-    kernel = xrt::kernel(hw_ctx, params.kernel_name);
+    xrt::elf elf = xrt::elf(params.dpu_file);
+    xrt::module mod{elf};
+    kernel = xrt::ext::kernel{hw_ctx, mod, params.kernel_name};
+    // kernel = xrt::kernel(hw_ctx, params.kernel_name);
     BufferSizes buffer_sizes = XBValidateUtils::read_buffer_sizes(params.buffer_sizes_file);
-    auto bos = BO_set(params.device, kernel, buffer_sizes, params.dpu_file, params.ifm_file, params.param_file);
+    auto bos = BO_set(params.device, buffer_sizes, params.ifm_file, params.param_file);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);
     bos.set_kernel_args(run);

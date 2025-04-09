@@ -26,7 +26,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   ptree.erase("xclbin");
 
   // Query the xclbin name from the device
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet);
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet_elf);
 
   // Find the platform file path for the xclbin
   auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
@@ -49,26 +49,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   }
 
   // Determine The DPU Kernel Name
-  auto xkernels = xclbin.get_kernels();
-
-  // Find the first kernel whose name starts with "DPU"
-  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    auto name = k.get_name();
-    return name.rfind("DPU",0) == 0; // Starts with "DPU"
-  });
-
-  xrt::xclbin::kernel xkernel;
-  if (itr != xkernels.end())
-    xkernel = *itr;
-  else {
-    // Log an error if no kernel with "DPU" is found and set the status to failed
-    XBValidateUtils::logger(ptree, "Error", "No kernel with `DPU` found in the xclbin");
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-
-  // Get the name of the found kernel
-  auto kernelName = xkernel.get_name();
+  auto kernelName = XBValidateUtils::get_kernel_name(xclbin, ptree);
 
   // Create a working device from the provided device
   auto working_dev = xrt::device(dev);
@@ -85,15 +66,11 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
     }
   };
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::mobilenet);
-  auto dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
+  const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
+  auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
 
-  if (!std::filesystem::exists(dpu_instr))
-  {
-    XBValidateUtils::logger(ptree, "Error", "Dpu instruction file not found");
-    ptree.put("status", XBValidateUtils::test_token_failed);
+  if (!std::filesystem::exists(elf_path))
     return ptree;
-  }
   
   const auto ifm_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_ifm);
   auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
@@ -123,7 +100,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   std::vector<TestCase> testcases;
 
   // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, dpu_instr, ifm_file, param_file, buffer_sizes_file, 1, num_kernel_iterations);
+  TestParams params(xclbin, working_dev, kernelName, elf_path, ifm_file, param_file, buffer_sizes_file, 1, num_kernel_iterations);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
