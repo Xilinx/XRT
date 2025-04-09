@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
@@ -23,20 +23,14 @@
 #include "core/include/xrt/experimental/xrt_queue.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 
-#ifdef _WIN32
-# pragma warning (push)
-# pragma warning (disable: 4702)
-#endif
-#include "boost/property_tree/json_parser.hpp"
-#include "boost/property_tree/ptree.hpp"
-#ifdef _WIN32
-# pragma warning (pop)
-#endif
+#include "core/common/json/nlohmann/json.hpp"
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <istream>
 #include <map>
+#include <random>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -49,17 +43,26 @@
 
 namespace {
 
-const boost::property_tree::ptree default_ptree;
+using json = nlohmann::json;
+const json default_json;
 
-template <typename OptionalType>
-static boost::property_tree::ptree
-get_optional(const OptionalType& node)
+// load_json() - Load a JSON from in-memory string or file
+static json
+load_json(const std::string& input)
 {
-#if BOOST_VERSION >= 105600
-  return node.value();
-#else
-  return node.get();
-#endif
+  try {
+    // Try parse as in-memory json
+    return json::parse(input);
+  }
+  catch (const json::parse_error&)
+  {
+    // Not a valid JSON - treat input as a file path
+  }
+
+  if (std::ifstream f{input})
+    return json::parse(f);
+
+  throw std::runtime_error("Failed to open JSON file: " + input);
 }
 
 // struct streambuf - wrap a std::streambuf around an external buffer
@@ -242,16 +245,16 @@ class recipe
     xrt::xclbin m_xclbin;
 
     static xrt::xclbin
-    read_xclbin(const boost::property_tree::ptree& pt, const artifacts::repo* repo)
+    read_xclbin(const json& j, const artifacts::repo* repo)
     {
-      auto path = pt.get<std::string>("xclbin");
+      auto path = j.at("xclbin").get<std::string>();
       auto data = repo->get(path);
       return xrt::xclbin{data};
     }
 
   public:
-    header(const boost::property_tree::ptree& pt, const artifacts::repo* repo)
-      : m_xclbin{read_xclbin(pt, repo)}
+    header(const json& j, const artifacts::repo* repo)
+      : m_xclbin{read_xclbin(j, repo)}
     {
       XRT_DEBUGF("Loaded xclbin: %s\n", m_xclbin.get_uuid().to_string().c_str());
     }
@@ -321,11 +324,11 @@ class recipe
 
       // create_buffer - create a buffer object from a property tree node
       static buffer
-      create_buffer(const xrt::device& device, const boost::property_tree::ptree& pt)
+      create_buffer(const xrt::device& device, const json& j)
       {
-        auto tp = to_type(pt.get<std::string>("type")); // required, input/output/internal
-        auto sz = (tp == type::internal) ? pt.get<size_t>("size") : 0; // required for internal buffers
-        return {device, pt.get<std::string>("name"), tp, sz};
+        auto tp = to_type(j.at("type").get<std::string>()); // required, input/output/internal
+        auto sz = (tp == type::internal) ? j.at("size").get<size_t>() : 0; // required for internal buffers
+        return {device, j.at("name").get<std::string>(), tp, sz};
       }
 
       // create_buffer - create a buffer object from another buffer object
@@ -392,16 +395,16 @@ class recipe
       // create_kernel - create a kernel object from a property tree node
       // The kernel control module is created if necessary.
       static kernel
-      create_kernel(const xrt::hw_context& hwctx, const boost::property_tree::ptree& pt,
+      create_kernel(const xrt::hw_context& hwctx, const json& j,
                     const artifacts::repo* repo)
       {
-        auto name = pt.get<std::string>("name"); // required, default xclbin kernel name
-        auto elf = pt.get<std::string>("ctrlcode", ""); // optional elf file
+        auto name = j.at("name").get<std::string>(); // required, default xclbin kernel name
+        auto elf = j.value<std::string>("ctrlcode", ""); // optional elf file
         if (elf.empty())
-          return kernel{hwctx, name, pt.get<std::string>("instance", name)};
+          return kernel{hwctx, name, j.value("instance", name)};
 
         auto mod = module_cache::get(elf, repo);
-        return kernel{hwctx, mod, name, pt.get<std::string>("instance", name)};
+        return kernel{hwctx, mod, name, j.value("instance", name)};
       }
 
       xrt::kernel
@@ -432,11 +435,11 @@ class recipe
 
       // create_cpu - create a cpu object from a property tree node
       static cpu
-      create_cpu(const boost::property_tree::ptree& pt)
+      create_cpu(const json& j)
       {
-        auto name = pt.get<std::string>("name"); // required
+        auto name = j.at("name").get<std::string>(); // required
         auto library_path = xrt_core::environment::xilinx_xrt()
-          / pt.get<std::string>("library_path"); // required
+          / j.at("library_name").get<std::string>(); // required
         return cpu{name, library_path.string()};
       }
 
@@ -455,11 +458,11 @@ class recipe
 
     // create_buffers - create buffer objects from buffer property tree nodes
     static std::map<std::string, buffer>
-    create_buffers(const xrt::device& device, const boost::property_tree::ptree& pt)
+    create_buffers(const xrt::device& device, const json& j)
     {
       std::map<std::string, buffer> buffers;
-      for (const auto& [name, node] : pt)
-        buffers.emplace(node.get<std::string>("name"), buffer::create_buffer(device, node));
+      for (const auto& [name, node] : j.items())
+        buffers.emplace(node.at("name").get<std::string>(), buffer::create_buffer(device, node));
 
       return buffers;
     }
@@ -480,34 +483,34 @@ class recipe
     // create_kernels - create kernel objects from kernel property tree nodes
     static std::map<std::string, kernel>
     create_kernels(xrt::device device, const xrt::hw_context& hwctx,
-                   const boost::property_tree::ptree& pt, const artifacts::repo* repo)
+                   const json& j, const artifacts::repo* repo)
     {
       std::map<std::string, kernel> kernels;
-      for (const auto& [name, node] : pt)
-        kernels.emplace(node.get<std::string>("name"), kernel::create_kernel(hwctx, node, repo));
+      for (const auto& [name, node] : j.items())
+        kernels.emplace(node.at("name").get<std::string>(), kernel::create_kernel(hwctx, node, repo));
 
       return kernels;
     }
 
     // create_cpus - create cpu objects from cpu property tree nodes
     static std::map<std::string, cpu>
-    create_cpus(const boost::property_tree::ptree& pt)
+    create_cpus(const json& j)
     {
       std::map<std::string, cpu> cpus;
-      for (const auto& [name, node] : pt)
-        cpus.emplace(node.get<std::string>("name"), cpu::create_cpu(node));
+      for (const auto& [name, node] : j.items())
+        cpus.emplace(node.at("name").get<std::string>(), cpu::create_cpu(node));
 
       return cpus;
     }
 
   public:
     resources(xrt::device device, const xrt::xclbin& xclbin,
-              const boost::property_tree::ptree& recipe, const artifacts::repo* repo)
+              const json& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
       , m_hwctx{m_device, m_device.register_xclbin(xclbin)}
-      , m_buffers{create_buffers(m_device, recipe.get_child("buffers"))}
-      , m_kernels{create_kernels(m_device, m_hwctx, recipe.get_child("kernels"), repo)}
-      , m_cpus{create_cpus(recipe.get_child("cpus", default_ptree))} // optional
+      , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
+      , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
+      , m_cpus{create_cpus(recipe.value("cpus", default_json))} // optional
     {}
 
     resources(const resources& other)
@@ -581,19 +584,20 @@ class recipe
           if (bo && (size < bo.size()))
             // sub-buffer
             return xrt::bo{bo, size, offset};
-
+          
           return bo; // may be null bo for unbound buffer arguments
         }
 
-        argument(const resources& resources, const boost::property_tree::ptree& pt)
-          : m_buffer{resources.get_buffer_or_error(pt.get<std::string>("name"))}
-          , m_offset{pt.get<size_t>("offset", 0)}
-          , m_size{pt.get<size_t>("size", 0)}
-          , m_argidx{pt.get<int>("argidx")}
+        argument(const resources& resources, const json& j)
+          : m_buffer{resources.get_buffer_or_error(j.at("name").get<std::string>())}
+          , m_offset{j.value<size_t>("offset", 0)}
+          , m_size{j.value<size_t>("size", 0)}
+          , m_argidx{j.at("argidx").get<int>()}
           , m_xrt_bo{create_xrt_bo(m_buffer, m_offset, m_size)}
         {
-          XRT_DEBUGF("recipe::execution::run::argument(%s, %lu, %lu, %d) bound(%s)\n",
-                     m_buffer.get_name().c_str(), m_offset, m_size, m_argidx, m_xrt_bo ? "true" : "false");
+            XRT_DEBUGF("recipe::execution::run::argument(%s, %lu, %lu, %d) bound(%s)\n",
+                     m_buffer.get_name().c_str(), m_offset, m_size, m_argidx,
+                     m_xrt_bo ? "true" : "false");
         }
 
         void
@@ -609,7 +613,7 @@ class recipe
           return m_xrt_bo;
         }
       }; // class recipe::execution::run::argument
-
+        
       using run_type = std::variant<xrt::run, xrt_core::cpu::run>;
       std::string m_name;
       run_type m_run;
@@ -635,56 +639,56 @@ class recipe
       };
 
       static std::map<std::string, argument>
-      create_and_set_args(const resources& resources, run_type run, const boost::property_tree::ptree& pt)
+      create_and_set_args(const resources& resources, run_type run, const json& j)
       {
         std::map<std::string, argument> args;
-        for (const auto& [name, node] : pt) {
+        for (const auto& [name, node] : j.items()) {
           argument arg {resources, node};
           if (auto bo = arg.get_xrt_bo())
             std::visit(set_arg_visitor{arg.m_argidx, std::move(bo)}, run);
 
-          args.emplace(node.get<std::string>("name"), std::move(arg));
+          args.emplace(node.at("name").get<std::string>(), std::move(arg));
         }
         return args;
       }
 
       static void
-      set_constant_args(run_type run, const boost::property_tree::ptree& pt)
+      set_constant_args(run_type run, const json& j)
       {
-        for (const auto& [name, node] : pt) {
-          auto argidx = node.get<int>("argidx");
-          auto type = node.get<std::string>("type");
+        for (const auto& [name, node] : j.items()) {
+          auto argidx = node.at("argidx").get<int>();
+          auto type = node.at("type").get<std::string>();
           if (type == "int")
-            std::visit(set_arg_visitor{argidx, node.get<int>("value")}, run);
+            std::visit(set_arg_visitor{argidx, node.at("value").get<int>()}, run);
           else if (type == "string")
-            std::visit(set_arg_visitor{argidx, node.get<std::string>("value")}, run);
+            std::visit(set_arg_visitor{argidx, node.at("value").get<std::string>()}, run);
           else
             throw std::runtime_error("Unknown constant argument type '" + type + "'");
         }
       }
 
       static xrt_core::cpu::run
-      create_cpu_run(const resources& resources, const boost::property_tree::ptree& pt)
+      create_cpu_run(const resources& resources, const json& j)
       {
-        auto name = pt.get<std::string>("name");
+        auto name = j.at("name").get<std::string>();
         return xrt_core::cpu::run{resources.get_cpu_function_or_error(name)};
       }
 
       static xrt::run
-      create_kernel_run(const resources& resources, const boost::property_tree::ptree& pt)
+      create_kernel_run(const resources& resources, const json& j)
       {
-        auto name = pt.get<std::string>("name");
+        auto name = j.at("name").get<std::string>();
         return xrt::run{resources.get_xrt_kernel_or_error(name)};
       }
 
       static run_type
-      create_run(const resources& resources, const boost::property_tree::ptree& pt)
+      create_run(const resources& resources, const json& j)
       {
-        auto where = pt.get<std::string>("where", "npu");
+        std::string where = j.value("where", "npu");
         if (where == "cpu")
-          return create_cpu_run(resources, pt);
+          return create_cpu_run(resources, j);
 
-        return create_kernel_run(resources, pt);
+        return create_kernel_run(resources, j);
       }
 
       static run_type
@@ -694,19 +698,15 @@ class recipe
       }
 
     public:
-      run(const resources& resources, const boost::property_tree::ptree& pt)
-        : m_name{pt.get<std::string>("name")}
-        , m_run{create_run(resources, pt)}
-        , m_args{create_and_set_args(resources, m_run, pt.get_child("arguments"))}
+      run(const resources& resources, const json& j)
+        : m_name{j.at("name").get<std::string>()}
+        , m_run{create_run(resources, j)}
+        , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
       {
-        XRT_DEBUGF("recipe::execution::run(%s)\n", pt.get<std::string>("name").c_str());
+        XRT_DEBUGF("recipe::execution::run(%s)\n", m_name.c_str());
 
-        if (auto constants = pt.get_child_optional("constants"))
-#if BOOST_VERSION >= 105600
-          set_constant_args(m_run, constants.value());
-#else
-          set_constant_args(m_run, constants.get());
-#endif
+        if (j.contains("constants"))
+          set_constant_args(m_run, j.at("constants"));
       }
 
       // Create a run from another run but using argument resources
@@ -854,10 +854,10 @@ class recipe
 
     // create_runs() - create a vector of runs from a property tree
     static std::vector<run>
-    create_runs(const resources& resources, const boost::property_tree::ptree& pt)
+    create_runs(const resources& resources, const json& j)
     {
       std::vector<run> runs;
-      for (const auto& [name, node] : pt)
+      for (const auto& [name, node] : j.items())
         runs.emplace_back(resources, node);
 
       return runs;
@@ -880,8 +880,8 @@ class recipe
     // execution() - create an execution object from a property tree
     // The runs are created from the property tree and either xrt::run
     // or cpu::run objects.
-    execution(const resources& resources, const boost::property_tree::ptree& recipe)
-      : m_runs{create_runs(resources, recipe.get_child("runs"))}
+    execution(const resources& resources, const json& j)
+      : m_runs{create_runs(resources, j.at("runs"))}
       , m_runlists{create_runlists(resources, m_runs)}
     {}
 
@@ -950,26 +950,18 @@ class recipe
 
   xrt::device m_device;
 
-  boost::property_tree::ptree m_recipe;
+  json m_recipe;
   header m_header;
   resources m_resources;
   execution m_execution;
 
-  static boost::property_tree::ptree
-  load(const std::string& path)
-  {
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json(path, pt);
-    return pt;
-  }
-
 public:
-  recipe(xrt::device device, const std::string& path, const artifacts::repo* repo)
+  recipe(xrt::device device, const std::string& recipe, const artifacts::repo* repo)
     : m_device{std::move(device)}
-    , m_recipe{load(path)}
-    , m_header{m_recipe.get_child("header"), repo}
-    , m_resources{m_device, m_header.get_xclbin(), m_recipe.get_child("resources"), repo}
-    , m_execution{m_resources, m_recipe.get_child("execution")}
+    , m_recipe{load_json(recipe)}
+    , m_header{m_recipe.at("header"), repo}
+    , m_resources{m_device, m_header.get_xclbin(), m_recipe.at("resources"), repo}
+    , m_execution{m_resources, m_recipe.at("execution")}
   {}
 
   recipe(const recipe&) = default;
@@ -1059,8 +1051,9 @@ class profile
     // Convenience types for readability
     using name_t = std::string;
     using path_t = std::string;
-    using binding_node = boost::property_tree::ptree;
-    using validate_node = boost::property_tree::ptree;
+    using binding_node = json;
+    using init_node = json;
+    using validate_node = json;
 
     // Map of resource name to json binding element.
     std::map<name_t, binding_node> m_bindings;
@@ -1070,11 +1063,11 @@ class profile
 
     // Create a map of resource names to json binding nodes
     static std::map<name_t, binding_node>
-    init_bindings(const boost::property_tree::ptree& pt)
+    init_bindings(const json& j)
     {
       std::map<name_t, binding_node> bindings;
-      for (const auto& [name, node] : pt)
-        bindings.emplace(node.get<std::string>("name"), node);
+      for (const auto& [name, node] : j.items())
+        bindings.emplace(node.at("name").get<std::string>(), node);
 
       return bindings;
     }
@@ -1091,8 +1084,8 @@ class profile
     {
       std::map<name_t, xrt::bo> bos;
       for (const auto& [name, node] : bindings) {
-        auto size = node.get<size_t>("size", 0);
-        auto file = node.get<std::string>("file", "");
+        auto size = node.value<size_t>("size", 0);
+        auto file = node.value<std::string>("file", "");
         auto data = file.empty() ? std::string_view{} : repo->get(file);
         size = size ? size : data.size(); // specified size has precedence
         xrt::bo bo = xrt::ext::bo{device, size};
@@ -1101,7 +1094,7 @@ class profile
           std::copy(data.data(), data.data() + std::min<size_t>(size, data.size()), bo_data);
           bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
         }
-        bos.emplace(node.get<std::string>("name"), std::move(bo));
+        bos.emplace(node.at("name").get<std::string>(), std::move(bo));
       }
       return bos;
     }
@@ -1112,11 +1105,21 @@ class profile
     //   "offset": 0, // unused for now
     //   "file": "gold.bin"
     //  }
-
-    static void
+    void
     validate_buffer(xrt::bo& bo, const validate_node& node, const artifacts::repo* repo)
     {
-      auto golden_data = repo->get(node.get<std::string>("file"));
+      std::string_view golden_data;
+
+      if (node.contains("name")) {
+        // validate against another resource
+        auto golden_bo = m_xrt_bos.at(node["name"]);
+        golden_data = std::string_view{golden_bo.map<char*>(), golden_bo.size()};
+      }
+      else {
+        // validate against content of a file
+        golden_data = repo->get(node.at("file").get<std::string>());
+      }
+
       // here we could extract offset and size of region to validate
       
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -1138,24 +1141,32 @@ class profile
 
     // Initialize a resource buffer per the binding json node
     static void
-    init_buffer(xrt::bo& bo, const binding_node& node)
+    init_buffer(xrt::bo& bo, const init_node& node)
     {
-      // Get the pattern, which must be one character
-      auto pattern = node.get<std::string>("pattern");
-      if (pattern.size() != 1)
-        throw std::runtime_error("pattern size must be 1");
+      // Fill the resource buffer with data
+      auto bo_data = bo.map<uint8_t*>();
+
+      if (node.value<bool>("random", false)) {
+        static std::random_device rd;
+        std::generate(bo_data, bo_data + bo.size(), [&]() { return static_cast<uint8_t>(rd()); });
+      }
+      else {
+        // Get the pattern, which must be one character
+        auto pattern = node.at("pattern").get<std::string>();
+        if (pattern.size() != 1)
+          throw std::runtime_error("pattern size must be 1");
       
-      // Fill the resource buffer with the pattern
-      auto bo_data = bo.map<char*>();
-      std::fill(bo_data, bo_data + bo.size(), pattern[0]);
+        std::fill(bo_data, bo_data + bo.size(), pattern[0]);
+      }
+
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
   public:
     bindings() = default;
 
-    bindings(const xrt::device& device, const boost::property_tree::ptree& pt, const artifacts::repo* repo)
-      : m_bindings{init_bindings(pt)}
+    bindings(const xrt::device& device, const json& j, const artifacts::repo* repo)
+      : m_bindings{init_bindings(j)}
       , m_xrt_bos{create_buffers(device, m_bindings, repo)}
     {}
 
@@ -1165,9 +1176,8 @@ class profile
     validate(const artifacts::repo* repo)
     {
       for (auto& [name, node] : m_bindings) {
-        if (auto validate_node = node.get_child_optional("validate")) {
-          validate_buffer(m_xrt_bos.at(name), get_optional(validate_node), repo);
-        }
+        if (node.contains("validate"))
+          validate_buffer(m_xrt_bos.at(name), node.at("validate"), repo);
       }
     }
 
@@ -1178,8 +1188,8 @@ class profile
     init()
     {
       for (auto& [name, node] : m_bindings) {
-        if (auto init_node = node.get_child_optional("init"))
-          init_buffer(m_xrt_bos.at(name), get_optional(init_node));
+        if (node.contains("init"))
+          init_buffer(m_xrt_bos.at(name), node.at("init"));
       }
     }
 
@@ -1188,7 +1198,7 @@ class profile
     bind(recipe* rr)
     {
       for (auto& [name, node] : m_bindings) {
-        if (node.get<bool>("bind", false))
+        if (node.value<bool>("bind", false))
           rr->bind(name, m_xrt_bos.at(name));
       }
     }
@@ -1208,13 +1218,13 @@ class profile
   //  }
   //
   // The execution section specifies how a recipe should be executed.
-  // Number of iterations specfied how many times the recipe should be
+  // Number of iterations specfies how many times the recipe should be
   // executed when the application calls xrt::runnner::execute().
   //
   // The behavior of an iteration is within the iteration sub-node.
-  // - "bind" indicates if a buffers should be re-bound to the
+  // - "bind" indicates if buffers should be re-bound to the
   //   recipe before an iteration.
-  // - "init" indicates of buffer should be initialized per what is
+  // - "init" indicates if buffer should be initialized per what is
   //    specified in the binding element.
   // - "wait" says that execution should wait for completion between
   //    iterations and after last iteration.
@@ -1222,7 +1232,7 @@ class profile
   //   the binding element.
   class execution
   {
-    using iteration_node = boost::property_tree::ptree;
+    using iteration_node = json;
     profile* m_profile;
     size_t m_iterations;
     iteration_node m_iteration;
@@ -1231,29 +1241,29 @@ class profile
     execute_iteration(size_t idx)
     {
       // (Re)bind buffers to recipe if requested
-      if (m_iteration.get<bool>("bind"))
+      if (m_iteration.value("bind", false))
         m_profile->bind();
       
       // Initialize buffers if requested
-      if (m_iteration.get<bool>("init"))
+      if (m_iteration.value("init", false))
         m_profile->init();
       
       m_profile->execute_recipe();
 
       // Wait execution to complete if requested
-      if (m_iteration.get<bool>("wait"))
+      if (m_iteration.value("wait", false))
         m_profile->wait_recipe();
 
       // Validate if requested (implies wait)
-      if (m_iteration.get<bool>("validate"))
+      if (m_iteration.value("validate", false))
         m_profile->validate();
     }
 
   public:
-    execution(profile* pr, const boost::property_tree::ptree& pt)
+    execution(profile* pr, const json& j)
       : m_profile(pr)
-      , m_iterations(pt.get<size_t>("iterations"))
-      , m_iteration(pt.get_child("iteration"))
+      , m_iterations(j.at("iterations").get<size_t>())
+      , m_iteration(j.at("iteration"))
     {
       // Bind buffers to the recipe prior to executing the recipe. This
       // will bind the buffers which have binding::bind set to true.
@@ -1273,19 +1283,11 @@ class profile
 private:
   friend class bindings;  // embedded class
   friend class execution; // embedded class
-  boost::property_tree::ptree m_profile;
+  json m_profile;
   std::shared_ptr<artifacts::repo> m_repo;
   recipe* m_recipe = nullptr;
   bindings m_bindings;
   execution m_execution;
-
-  static boost::property_tree::ptree
-  load(const std::string& path)
-  {
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json(path, pt);
-    return pt;
-  }
 
   void
   bind()
@@ -1326,11 +1328,11 @@ public:
   // The recipe is what the profile binds to and what it executes.
   profile(const xrt::device& device, recipe* rr, const std::string& profile,
           std::shared_ptr<artifacts::repo> repo)
-    : m_profile{load(profile)}
+    : m_profile{load_json(profile)}
     , m_repo{std::move(repo)}
     , m_recipe{rr}
-    , m_bindings{device, m_profile.get_child("bindings"), m_repo.get()}
-    , m_execution(this, m_profile.get_child("execution"))
+    , m_bindings{device, m_profile.at("bindings"), m_repo.get()}
+    , m_execution(this, m_profile.at("execution"))
   {}
 
   void
@@ -1474,6 +1476,14 @@ runner(const xrt::device& device,
        const std::filesystem::path& dir)
   : m_impl{std::make_unique<profile_impl>
            (device, recipe, profile, std::make_shared<artifacts::file_repo>(dir))}
+{}
+
+runner::
+runner(const xrt::device& device,
+       const std::string& recipe, const std::string& profile,
+       const artifacts_repository& repo)
+  : m_impl{std::make_unique<profile_impl>
+           (device, recipe, profile, std::make_shared<artifacts::ram_repo>(repo))}
 {}
 
 void

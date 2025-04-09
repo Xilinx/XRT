@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_RUNNER_RUNNER_H_
 #define XRT_COMMON_RUNNER_RUNNER_H_
 #include "core/common/config.h"
@@ -68,6 +68,13 @@ public:
   XRT_CORE_COMMON_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const std::filesystem::path& artifacts_dir);
+
+  // ctor - Create runner from a recipe json and execution profile
+  // json and artifacts repository.  The repo is not copied so the
+  // lifetime of the repo must extend the lifetime of the runner.
+  XRT_CORE_COMMON_EXPORT
+  runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
+         const artifacts_repository&);
 
   // bind_input() - Bind a buffer object to an input tensor
   XRT_CORE_COMMON_EXPORT
