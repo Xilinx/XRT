@@ -24,6 +24,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/Report.cpp"
   "../common/PsKernelUtilities.cpp"
   "../common/Table2D.cpp"
+  "../common/SmiDefault.cpp"
 )
 
 # Collect local directory files
