@@ -204,7 +204,9 @@ xrt_xclbin_get_section_hdr(const struct axlf *xclbin, enum axlf_section_kind kin
 	int i = 0;
 
 	/* Sanity check. */
-	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION)
+	if (xclbin->m_header.m_numSections > XCLBIN_MAX_NUM_SECTION
+			|| xclbin->m_header.m_length < sizeof(struct axlf) +
+			xclbin->m_header.m_numSections * sizeof(struct axlf_section_header))
 		return NULL;
 
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {

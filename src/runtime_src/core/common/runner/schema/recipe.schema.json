@@ -148,7 +148,7 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "value": { "type": "string" },
+                    "value": { "type": ["string", "integer" },
                     "type": { "enum": ["int", "string"] },
                     "argidx": { "$ref": "#/$defs/argidx" }
                   }

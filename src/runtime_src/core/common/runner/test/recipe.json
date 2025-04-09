@@ -67,11 +67,11 @@
             { "name": "ofm_int", "argidx": 5 }
         ],
         "constants": [
-            { "value": "3", "type": "int", "argidx": 0 },
-            { "value": "0", "type": "int", "argidx": 1 },
-            { "value": "0", "type": "int", "argidx": 2 },
-            { "value": "0", "type": "int", "argidx": 6 },
-            { "value": "0", "type": "int", "argidx": 7 }
+            { "value": 3, "type": "int", "argidx": 0 },
+            { "value": 0, "type": "int", "argidx": 1 },
+            { "value": 0, "type": "int", "argidx": 2 },
+            { "value": 0, "type": "int", "argidx": 6 },
+            { "value": 0, "type": "int", "argidx": 7 }
         ]
       },
       {
