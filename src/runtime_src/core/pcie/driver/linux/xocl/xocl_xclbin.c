@@ -94,6 +94,9 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
 		if (hdr) {
+		        if (hdr->m_sectionSize < sizeof(struct clock_freq_topology)) {
+                            return -EINVAL;
+		        }
 			/* after download, update clock freq */
 			topo = (struct clock_freq_topology *)
 			    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
@@ -151,6 +154,9 @@ static int xgq_xclbin_post_download(xdev_handle_t xdev, void *args)
 	int ret = 0;
 
 	if (hdr) {
+                if (hdr->m_sectionSize < sizeof(struct clock_freq_topology)) {
+	           return -EINVAL;
+                }
 		/* after download, update clock freq */
 		topo = (struct clock_freq_topology *)
 		    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
