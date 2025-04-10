@@ -25,12 +25,10 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
 
-  std::string xclbin_path; 
-
   // Query the xclbin name from the device
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet_elf);
   // Find the platform file path for the xclbin
-  xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
+  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
 
   // If the xclbin file does not exist, return the property tree
   if (!std::filesystem::exists(xclbin_path))
