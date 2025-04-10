@@ -2294,6 +2294,9 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
   module_sram->patch(argnm, index, bo);
 }
 
+// This function is used to get patch buffer size based on buf type passed.
+// It is used with internal test cases that verifies shim functionality.
+XRT_CORE_UNUSED
 size_t
 get_patch_buf_size(const xrt::module& module, patch_buf_type type, uint32_t index)
 {
@@ -2328,6 +2331,9 @@ get_patch_buf_size(const xrt::module& module, patch_buf_type type, uint32_t inde
   throw std::runtime_error{"Unsupported ELF ABI"};
 }
 
+// This function is used for patching buffers at shim level
+// It is used with internal test cases that verifies shim functionality.
+XRT_CORE_UNUSED
 void
 patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
       patch_buf_type type, uint32_t idx)
