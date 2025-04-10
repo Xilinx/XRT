@@ -24,9 +24,7 @@ namespace xq = xrt_core::query;
 // - device: Reference to the xrt::device object
 // - kernel: Reference to the xrt::kernel object
 BO_set::BO_set(const xrt::device& device, 
-              //  const xrt::kernel& kernel, 
                const BufferSizes& buffer_sizes,
-              //  const std::string& dpu_instr, 
                const std::string& ifm_file, 
                const std::string& param_file) 
   : buffer_sizes(buffer_sizes),
@@ -34,17 +32,14 @@ BO_set::BO_set(const xrt::device& device,
     bo_param    (xrt::ext::bo{device, buffer_sizes.param_size}),
     bo_ofm      (xrt::ext::bo{device, buffer_sizes.ofm_size}),
     bo_inter    (xrt::ext::bo{device, buffer_sizes.inter_size}),
-    // bo_instr    (xrt::ext::bo{device, buffer_sizes.instr_size}),
     bo_mc       (xrt::ext::bo{device, buffer_sizes.mc_size})
 {
   XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
   XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
-  // XBValidateUtils::init_buf_bin((int*)bo_instr.map<int*>(), buffer_sizes.instr_size, dpu_instr);
 }
 
 // Method to synchronize buffer objects to the device
 void BO_set::sync_bos_to_device() {
-  // bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -62,8 +57,6 @@ void BO_set::set_kernel_args(xrt::run& run) const {
   run.set_arg(4, bo_param);
   run.set_arg(5, bo_ofm);
   run.set_arg(6, bo_inter);
-  // run.set_arg(5, bo_instr);
-  // run.set_arg(6, bo_instr.size()/sizeof(int));
   run.set_arg(7, bo_mc);
 }
 
@@ -74,10 +67,9 @@ TestCase::initialize()
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
-    xrt::elf elf = xrt::elf(params.dpu_file);
+    xrt::elf elf = xrt::elf(params.elf_file);
     xrt::module mod{elf};
     kernel = xrt::ext::kernel{hw_ctx, mod, params.kernel_name};
-    // kernel = xrt::kernel(hw_ctx, params.kernel_name);
     BufferSizes buffer_sizes = XBValidateUtils::read_buffer_sizes(params.buffer_sizes_file);
     auto bos = BO_set(params.device, buffer_sizes, params.ifm_file, params.param_file);
     bos.sync_bos_to_device();
