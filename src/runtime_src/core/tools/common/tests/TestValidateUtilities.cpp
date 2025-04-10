@@ -116,10 +116,6 @@ read_buffer_sizes(const std::string& json_file) {
   buffer_sizes.inter_size = root.get<size_t>("buffer_sizes.inter_size");
   buffer_sizes.mc_size = root.get<size_t>("buffer_sizes.mc_size");
   buffer_sizes.ofm_size = root.get<size_t>("buffer_sizes.ofm_size");
-  buffer_sizes.instr_word_size = root.get<size_t>("buffer_sizes.instr_word_size");
-
-  // Calculate derived value
-  buffer_sizes.instr_size = buffer_sizes.instr_word_size * sizeof(int);
 
   return buffer_sizes;
 }
