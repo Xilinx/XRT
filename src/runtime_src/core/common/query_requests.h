@@ -533,7 +533,7 @@ struct edge_vendor : request
 };
 
 /**
- * Used to retieve the path to a configuration file required for the 
+ * Used to retieve the configuration required for the 
  * current device assuming a valid instance "type" is passed. The shim
  * decides the appropriate path and name to return, absolving XRT of
  * needing to know where to look.

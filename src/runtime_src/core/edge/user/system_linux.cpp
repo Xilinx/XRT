@@ -76,6 +76,10 @@ enumerate_accel_devices(unsigned int& device_count)
   std::string accel_dev_name;
 
   try {
+    if (!fs::exists(base_path)) {
+      throw std::runtime_error("Device search path: " + base_path + " doesn't exist\n");
+    }
+
     for (const auto& entry : fs::directory_iterator(base_path)) {
       if (fs::is_directory(entry) && std::regex_match(entry.path().filename().string(), accel_regex)) {
         const std::string accel_file_path = entry.path().string() + of_node_path;
@@ -104,7 +108,7 @@ enumerate_accel_devices(unsigned int& device_count)
       dev_map[device_count++] = dev_type::aiarm_xdna;
   }
   catch (const std::exception& e) {
-    std::string msg = "Error while searching for AIARM accel device: " + std::string(e.what());
+    std::string msg = "AIARM accel device not found : " + std::string(e.what());
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
 }
