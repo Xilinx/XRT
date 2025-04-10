@@ -120,6 +120,9 @@ zocl_aie_error_cb(void *arg)
 	struct aie_errors *errors;
 	int i;
 
+	DRM_WARN("%s: Received AIE_ERR callback, ignoring it\n", __func__);
+	return;
+
 	if (!slot) {
 		DRM_ERROR("%s: slot is not initialized\n", __func__);
 		return;
