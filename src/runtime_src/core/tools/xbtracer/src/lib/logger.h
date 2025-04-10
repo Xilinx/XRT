@@ -267,15 +267,16 @@ template <typename... Args>
 std::string concat_args(const Args&... args)
 {
   std::ostringstream oss;
-  bool first = true;
+  if constexpr (sizeof...(args) > 0) {
+      bool first = true;
 
-  // Folding expression with type check for membuf
-  ((oss << (first ? "" : ", ")
-    << (std::is_same_v<membuf, std::decay_t<Args>>
-    ? mb_stringify(args)
-    : stringify_args(args)),
-    first = false), ...);
-
+      // Folding expression with type check for membuf
+      ((oss << (first ? "" : ", ")
+        << (std::is_same_v<membuf, std::decay_t<Args>>
+        ? mb_stringify(args)
+        : stringify_args(args)),
+        first = false), ...);
+  }
   return oss.str();
 }
 
