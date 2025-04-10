@@ -49,12 +49,13 @@ XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
-// Returns instruction buffer size of the given module
+// Returns patch buffer size of the given module based on buffer type passed
+// This API may be useful for developing unit test case at SHIM level
 // New ELfs pack multiple control codes info in it, to identify which control code
 // to run we use index
 XRT_CORE_COMMON_EXPORT
 size_t
-get_instr_buf_size(const xrt::module&, uint32_t index = 0);
+get_patch_buf_size(const xrt::module&, patch_buf_type, uint32_t index = 0);
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
