@@ -421,7 +421,7 @@ class recipe
       std::string m_path;
       xrt_core::cpu::function m_fcn;
 
-      cpu(std::string name, std::string path)
+      cpu(std::string&& name, std::string&& path)
         : m_name{std::move(name)}
         , m_path{std::move(path)}
         , m_fcn{m_name, m_path}
@@ -440,7 +440,7 @@ class recipe
         auto name = j.at("name").get<std::string>(); // required
         auto library_path = xrt_core::environment::xilinx_xrt()
           / j.at("library_name").get<std::string>(); // required
-        return cpu{name, library_path.string()};
+        return cpu{std::move(name), library_path.string()};
       }
 
       xrt_core::cpu::function
