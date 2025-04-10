@@ -674,7 +674,7 @@ struct clk_scaling_info
     std::vector<std::string> stat;
     boost::split(stat, keyValue, boost::is_any_of(":"));
     if (stat.size() != 2) {
-      const auto& errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
+      const auto errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
       throw std::runtime_error(errMsg.str());
     }
     return std::stoi(std::string(stat.at(1)));
