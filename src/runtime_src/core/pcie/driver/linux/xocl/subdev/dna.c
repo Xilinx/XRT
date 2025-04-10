@@ -463,7 +463,7 @@ failed:
 }
 
 
-static int xlnx_dna_remove(struct platform_device *pdev)
+static int __xlnx_dna_remove(struct platform_device *pdev)
 {
 	struct xocl_xlnx_dna	*xlnx_dna;
 
@@ -483,6 +483,15 @@ static int xlnx_dna_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xlnx_dna_remove(struct platform_device *pdev)
+{
+	__xlnx_dna_remove(pdev);
+}
+#else
+#define xlnx_dna_remove __xlnx_dna_remove
+#endif
 
 struct xocl_drv_private dna_priv = {
 	.ops = &dna_ops,

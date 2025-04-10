@@ -148,7 +148,7 @@ static struct xocl_axigate_funcs axigate_ops = {
 	.get_status = axigate_status,
 };
 
-static int axigate_remove(struct platform_device *pdev)
+static int __axigate_remove(struct platform_device *pdev)
 {
 	struct axi_gate *gate;
 
@@ -169,6 +169,15 @@ static int axigate_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void axigate_remove(struct platform_device *pdev)
+{
+	__axigate_remove(pdev);
+}
+#else
+#define axigate_remove __axigate_remove
+#endif
 
 static int axigate_probe(struct platform_device *pdev)
 {

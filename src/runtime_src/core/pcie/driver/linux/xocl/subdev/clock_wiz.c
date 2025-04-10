@@ -1245,7 +1245,7 @@ static struct xocl_clock_wiz_funcs clock_wiz_ops = {
 	.get_data = clock_wiz_get_data,
 };
 
-static int clock_wiz_remove(struct platform_device *pdev)
+static int __clock_wiz_remove(struct platform_device *pdev)
 {
 	struct clock_wiz *clock_w;
 
@@ -1265,6 +1265,15 @@ static int clock_wiz_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void clock_wiz_remove(struct platform_device *pdev)
+{
+	__clock_wiz_remove(pdev);
+}
+#else
+#define clock_wiz_remove __clock_wiz_remove
+#endif
 
 static int clock_wiz_probe(struct platform_device *pdev)
 {

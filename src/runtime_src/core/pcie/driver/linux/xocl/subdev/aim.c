@@ -244,7 +244,7 @@ static struct attribute_group aim_attr_group = {
 			   .attrs = aim_attrs,
 };
 
-static int aim_remove(struct platform_device *pdev)
+static int __aim_remove(struct platform_device *pdev)
 {
 	struct xocl_aim *aim;
 	void *hdl;
@@ -268,6 +268,15 @@ static int aim_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void aim_remove(struct platform_device *pdev)
+{
+	__aim_remove(pdev);
+}
+#else
+#define aim_remove __aim_remove
+#endif
 
 static int aim_probe(struct platform_device *pdev)
 {

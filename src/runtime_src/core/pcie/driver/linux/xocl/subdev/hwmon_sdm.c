@@ -1229,7 +1229,7 @@ failed:
 	return err;
 }
 
-static int hwmon_sdm_remove(struct platform_device *pdev)
+static int __hwmon_sdm_remove(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
 	void *hdl;
@@ -1251,6 +1251,15 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void hwmon_sdm_remove(struct platform_device *pdev)
+{
+	__hwmon_sdm_remove(pdev);
+}
+#else
+#define hwmon_sdm_remove __hwmon_sdm_remove
+#endif
 
 static ssize_t
 bd_name_show(struct device *dev, struct device_attribute *attr, char *buf)

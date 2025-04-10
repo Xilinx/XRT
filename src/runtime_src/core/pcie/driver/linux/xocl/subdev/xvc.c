@@ -386,7 +386,7 @@ failed:
 }
 
 
-static int xvc_remove(struct platform_device *pdev)
+static int __xvc_remove(struct platform_device *pdev)
 {
 	struct xocl_xvc	*xvc;
 	void *hdl;
@@ -405,6 +405,15 @@ static int xvc_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xvc_remove(struct platform_device *pdev)
+{
+	__xvc_remove(pdev);
+}
+#else
+#define xvc_remove __xvc_remove
+#endif
 
 struct xocl_drv_private xvc_pub = {
 	.ops = NULL,
