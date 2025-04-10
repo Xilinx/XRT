@@ -2295,14 +2295,29 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
 }
 
 size_t
-get_instr_buf_size(const xrt::module& module, uint32_t index)
+get_patch_buf_size(const xrt::module& module, patch_buf_type type, uint32_t index)
 {
   auto handle = module.get_handle();
   auto os_abi = handle->get_os_abi();
 
-  if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config)
-    return handle->get_instr(index).second.size();
+  if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+    switch (type) {
+      case patch_buf_type::ctrltext :
+        return handle->get_instr(index).second.size();
+      case patch_buf_type::ctrldata :
+        return handle->get_ctrlpkt(index).second.size();
+      case patch_buf_type::preempt_save :
+        return handle->get_preempt_save().second.size();
+      case patch_buf_type::preempt_restore :
+        return handle->get_preempt_restore().second.size();
+      default :
+        throw std::runtime_error("Unknown buffer type passed");
+    }
+  }
   else if(os_abi == Elf_Amd_Aie2ps) {
+    if (type != patch_buf_type::ctrltext)
+      throw std::runtime_error("Info of given buffer type not available");
+
     const auto& instr_buf = handle->get_data();
     if (instr_buf.size() != 1)
       throw std::runtime_error{"multiple column ctrlcode is not supported in this flow"};
