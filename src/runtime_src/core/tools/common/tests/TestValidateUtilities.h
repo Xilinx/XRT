@@ -30,7 +30,7 @@ public:
   xrt::xclbin xclbin;               // Xclbin object
   xrt::device device;              
   std::string kernel_name;
-  std::string dpu_file;
+  std::string elf_file;
   std::string ifm_file;
   std::string param_file;
   std::string buffer_sizes_file;
@@ -40,7 +40,7 @@ public:
   TestParams(xrt::xclbin xclbin, 
              xrt::device device, 
              std::string kernel_name, 
-             std::string dpu_file, 
+             std::string elf_file, 
              std::string ifm_file, 
              std::string param_file, 
              std::string buffer_sizes_file,
@@ -50,7 +50,7 @@ public:
     : xclbin(std::move(xclbin)), 
       device(std::move(device)), 
       kernel_name(std::move(kernel_name)), 
-      dpu_file(std::move(dpu_file)), 
+      elf_file(std::move(elf_file)), 
       ifm_file(std::move(ifm_file)), 
       param_file(std::move(param_file)), 
       buffer_sizes_file(std::move(buffer_sizes_file)),
@@ -66,12 +66,11 @@ class BO_set {
   xrt::bo bo_param;   // Buffer object for parameters
   xrt::bo bo_ofm;     // Buffer object for output feature map
   xrt::bo bo_inter;   // Buffer object for intermediate data
-  xrt::bo bo_instr;   // Buffer object for instructions
   xrt::bo bo_mc;      // Buffer object for memory controller
 
 public:
   // Constructor to initialize buffer objects
-  BO_set(const xrt::device&, const xrt::kernel&, const BufferSizes&,  const std::string&, const std::string&, const std::string&);
+  BO_set(const xrt::device&, const BufferSizes&, const std::string&, const std::string&);
 
   // Method to set kernel arguments
   void set_kernel_args(xrt::run&) const;

@@ -601,9 +601,9 @@ struct xclbin_name : request
   enum class type {
     validate,
     gemm,
-    mobilenet, 
     validate_elf,
     gemm_elf,
+    mobilenet_elf,
     preemption_4x4,
     preemption_4x8  
   };
@@ -624,8 +624,8 @@ struct xclbin_name : request
         return "preemption_4x4";
       case type::preemption_4x8:
         return "preemption_4x8";
-      case type::mobilenet:
-        return "mobilenet";
+      case type::mobilenet_elf:
+        return "mobilenet_elf";
     }
     return "unknown";
   }
@@ -651,8 +651,7 @@ struct sequence_name : request
     tct_one_column,
     tct_all_column,
     gemm_int8,
-    aie_reconfig_overhead,
-    mobilenet
+    aie_reconfig_overhead
   };
 
   static std::string
@@ -669,8 +668,6 @@ struct sequence_name : request
         return "gemm_int8";
       case type::aie_reconfig_overhead:
         return "aie_reconfig_overhead";
-      case type::mobilenet:
-        return "mobilenet";
     }
     return "unknown";
   }
@@ -701,7 +698,8 @@ struct elf_name : request
     preemption_noop_4x4,
     preemption_noop_4x8,
     preemption_memtile_4x4,
-    preemption_memtile_4x8
+    preemption_memtile_4x8, 
+    mobilenet
   };
 
   static std::string
@@ -728,6 +726,8 @@ struct elf_name : request
         return "preemption_memtile_4x4";
       case type::preemption_memtile_4x8:
         return "preemption_memtile_4x8";
+      case type::mobilenet:
+        return "mobilenet";
     }
     return "unknown";
   }
