@@ -120,10 +120,14 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
       else if (arg.get_host_type().find('*') != std::string::npos) {
         xrt::bo bo;
 
-        if (arg.get_name() == "instruct")
+        if (arg.get_name() == "instruct") {
           bo = xrt::bo(hwctx, arg.get_size(), xrt::bo::flags::cacheable, kernel.group_id(arg_idx));
-        else 
+          auto bo_mapped = bo.map<int*>();
+            for (size_t idx = 0; idx < arg.get_size(); idx++)
+              bo_mapped[idx] = 0;
+        } else {
           bo = xrt::bo(working_dev, arg.get_size(), xrt::bo::flags::host_only, kernel.group_id(arg_idx));
+        }
 
         bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
         global_args.push_back(bo);
