@@ -49,6 +49,7 @@ void BO_set::sync_bos_to_device() {
 // Parameters:
 // - run: Reference to the xrt::run object
 void BO_set::set_kernel_args(xrt::run& run) const {
+  // to-do: replace with XBU::get_opcode() when dpu sequence flow is taken out
   uint64_t opcode = 3;
   run.set_arg(0, opcode);
   run.set_arg(1, 0);

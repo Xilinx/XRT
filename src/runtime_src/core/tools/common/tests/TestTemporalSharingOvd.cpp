@@ -68,8 +68,10 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::mobilenet);
   auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
 
-  if (!std::filesystem::exists(elf_path))
-    return ptree;
+  if (!std::filesystem::exists(elf_path)) {
+    XBValidateUtils::logger(ptree, "Error", "ELF file not found");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+  }
   
   const auto ifm_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_ifm);
   auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
