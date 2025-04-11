@@ -50,12 +50,11 @@ XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
 
-// Check that all arguments have been patched and dump buffers like
-// control code, control packet, preempt save and restore if respective
-// debug options are enabled.
-// Throws if not all arguments have been patched.
+// Check that all arguments have been patched and sync the buffer
+// to device if necessary.  Throw if not all arguments have been
+// patched.
 void
-dump(const xrt::module&);
+sync(const xrt::module&);
 
 // Get the ERT command opcode in ELF flow
 ert_cmd_opcode
