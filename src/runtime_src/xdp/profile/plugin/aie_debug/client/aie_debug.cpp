@@ -95,7 +95,7 @@ namespace xdp {
 
       if (aie::isDebugVerbosity()) {
         std::stringstream msg;
-        msg << "Debug tile (" << +col << ", " << +row << ") " << "hex address/values: " 
+        msg << "Debug tile (" << +col << ", " << +row << ") " << "hex address/values: "
             << std::hex << reg << " : " << output[i] << std::dec;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       }
@@ -103,10 +103,10 @@ namespace xdp {
       tile_type tile;
       tile.col = col;
       tile.row = row;
-      
+
       if (debugTileMap.find(tile) == debugTileMap.end())
         debugTileMap[tile] = std::make_unique<ClientReadableTile>(col, row, reg);
-        
+
       auto regName = metadata->lookupRegisterName(reg);
       debugTileMap[tile]->addOffsetName(reg, regName);
       debugTileMap[tile]->addValue(output[i]);

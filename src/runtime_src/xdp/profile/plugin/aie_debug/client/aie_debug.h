@@ -66,7 +66,7 @@ namespace xdp {
       void addValue(uint32_t val) {
         values.push_back(val);
       }
-      void readValues(XAie_DevInst* /*aieDevInst*/) {}
+      void readValues(XAie_DevInst* /*aieDevInst*/, std::map<uint64_t, uint32_t>* /*lookupRegAddrToSizeMap*/) {}
   };
 } // end namespace xdp
 

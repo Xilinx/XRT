@@ -112,7 +112,7 @@ namespace xdp {
     { aie_db.addAIETimerSample(timestamp1, timestamp2, values);  }
 
     inline
-    void addAIEDebugSample(uint8_t col, uint8_t row, uint32_t value, uint64_t offset, std::string name)
+    void addAIEDebugSample(uint8_t col, uint8_t row, const xdp::aie::AieDebugValue& value, uint64_t offset, std::string name)
     { aie_db.addAIEDebugSample(col, row, value, offset, name);  }
 
     inline std::vector<counters::Sample> getAIESamples()
