@@ -15,12 +15,12 @@
 
 #include <string>
 
-namespace {
+namespace xrt_core::patcher {
 // enum with different buffer types that supports patching
 // Some of the internal shim tests use this enum, so moving it to header
 // Ideal place for this enum would be in a header that has patching logic
 // TODO: Move this when patching logic is added to aiebu 
-enum class patch_buf_type {
+enum class buf_type {
   ctrltext = 0,        // control code
   ctrldata = 1,        // control packet
   preempt_save = 2,    // preempt_save
@@ -54,8 +54,9 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // New ELfs pack multiple control codes info in it, to identify which control code
 // to run we use index
 XRT_CORE_COMMON_EXPORT
+XRT_CORE_UNUSED
 size_t
-get_patch_buf_size(const xrt::module&, patch_buf_type, uint32_t index = 0);
+get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t index = 0);
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
@@ -66,9 +67,10 @@ get_patch_buf_size(const xrt::module&, patch_buf_type, uint32_t index = 0);
 // New ELfs pack multiple control codes info in it, to identify which control code
 // to run we use index
 XRT_CORE_COMMON_EXPORT
+XRT_CORE_UNUSED
 void
 patch(const xrt::module&, uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
-      patch_buf_type, uint32_t index = 0);
+      xrt_core::patcher::buf_type, uint32_t index = 0);
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT
