@@ -202,7 +202,7 @@ struct patcher
   {}
 
   void
-  patch64(uint32_t* data_to_patch, uint64_t addr) const
+  patch64(uint32_t* data_to_patch, uint64_t addr)
   {
     *data_to_patch = static_cast<uint32_t>(addr & 0xffffffff);
     *(data_to_patch + 1) = static_cast<uint32_t>((addr >> 32) & 0xffffffff);
@@ -294,36 +294,10 @@ struct patcher
   }
 
   void
-  patch_it(uint8_t* base, uint64_t value)
+  patch_it(uint8_t* base, uint64_t new_value)
   {
-    patch_it_impl(base, value);
-  }
-
-  void
-  patch_it(xrt::bo bo, uint64_t value)
-  {
-    patch_it_impl(bo, value);
-  }
-
-private:
-  template<typename T>
-  void
-  patch_it_impl(T base_or_bo, uint64_t new_value)
-  {
-    // base_or_bo is either a pointer to base address of buffer to be patched
-    // or xrt::bo object itself
-    // shim tests call this function with address directly and call sync themselves
-    // but when xrt::bo is passed, we need to call sync explictly
-    uint8_t* base;
-    if constexpr (std::is_same_v<T, xrt::bo>) {
-      base = reinterpret_cast<uint8_t*>(base_or_bo.map());
-    }
-    else
-      base = base_or_bo;
-
     for (auto& item : m_ctrlcode_patchinfo) {
-      auto offset = item.offset_to_patch_buffer;
-      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
+      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
       if (!item.dirty) {
         // first time patching cache bd ptr values using bd ptrs array in patch info
         std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
@@ -334,62 +308,35 @@ private:
         std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
       }
 
-      // lambda for calling sync bo if template arg is of type xrt::bo
-      // We only sync the words that are patched not the entire bo
-      auto sync = [&](size_t size) {
-        if constexpr (std::is_same_v<T, xrt::bo>) {
-          base_or_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
-        }
-      };
-
       switch (m_symbol_type) {
       case symbol_type::address_64:
-        // new_value is a 64bit address
-        patch64(bd_data_ptr, new_value);
-        // sync 64 bits patched
-        sync(sizeof(uint64_t));
+          // new_value is a 64bit address
+          patch64(bd_data_ptr, new_value);
         break;
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
-        if (item.mask) {
+        if (item.mask)
           patch32(bd_data_ptr, new_value, item.mask);
-          // sync 32 bits patched
-          sync(sizeof(uint32_t));
-        }
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
         patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written to 8th offset of bd_data_ptr
-        // so sync all the words (max_bd_words)
-        sync(sizeof(uint32_t) * max_bd_words);
         break;
       case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
         // new_value is a bo address
         patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // sync 64 bits or 2 words
-        sync(sizeof(uint64_t));
         break;
       case symbol_type::control_packet_57:
         // new_value is a bo address
         patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
         patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 3rd offset of bd_data_ptr
-        // so syncing 4 words
-        sync(4 * sizeof(uint32_t));    // NOLINT
         break;
       case symbol_type::shim_dma_48:
         // new_value is a bo address
         patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
-        // Data in this case is written till 2nd offset of bd_data_ptr
-        // so syncing 3 words
-        sync(3 * sizeof(uint32_t));    // NOLINT
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -608,21 +555,6 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // Patch symbol in control code with patch value
-  //
-  // @param bo - buffer to be patched
-  // @param symbol - symbol name
-  // @param index - argument index
-  // @param patch - patch value
-  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
-  // @param sec_index - index of section to be patched
-  // @Return true if symbol was patched, false otherwise
-  virtual bool
-  patch_it(xrt::bo, const std::string&, size_t, uint64_t, patcher::buf_type, uint32_t)
-  {
-    throw std::runtime_error("Not supported");
-  }
-
   // Get the number of patchers for arguments.  The returned
   // value is the number of arguments that must be patched before
   // the control code can be executed.
@@ -632,12 +564,10 @@ public:
     return 0;
   }
 
-  // Check that all arguments have been patched and dump buffers like
-  // control code, control packet, preempt save and restore if debug
-  // options are enabled.
-  // Throws if not all arguments have been patched.
+  // Check that all arguments have been patched and sync control code
+  // buffer if necessary.  Throw if not all arguments have been patched.
   virtual void
-  dump_if_dirty()
+  sync_if_dirty()
   {
     throw std::runtime_error("Not supported");
   }
@@ -737,11 +667,10 @@ protected:
     , m_os_abi(m_elfio.get_os_abi())
   {}
 
-private:
-  template <typename T>
+public:
   bool
-  patch_it_impl(T base, const std::string& argnm, size_t index, uint64_t patch,
-                patcher::buf_type type, uint32_t sec_index)
+  patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch,
+           patcher::buf_type type, uint32_t sec_index) override
   {
     const auto key_string = generate_key_string(argnm, type, sec_index);
     auto it = m_arg2patcher.find(key_string);
@@ -772,21 +701,6 @@ private:
       }
     }
     return true;
-  }
-
-public:
-  bool
-  patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch,
-           patcher::buf_type type, uint32_t sec_index) override
-  {
-    return patch_it_impl(base, argnm, index, patch, type, sec_index);
-  }
-
-  bool
-  patch_it(xrt::bo bo, const std::string& argnm, size_t index, uint64_t patch,
-           patcher::buf_type type, uint32_t sec_index) override
-  {
-    return patch_it_impl(bo, argnm, index, patch, type, sec_index);
   }
 
   uint8_t
@@ -1569,7 +1483,7 @@ class module_sram : public module_impl
   std::set<std::string> m_patched_args;
 
   // Dirty bit to indicate that patching was done prior to last
-  // buffer dump
+  // buffer sync to device.
   bool m_dirty{ false };
 
   union debug_flag_union {
@@ -1876,18 +1790,18 @@ class module_sram : public module_impl
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p || m_parent->get_os_abi() == Elf_Amd_Aie2p_config) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
-        if (m_parent->patch_it(m_ctrlpkt_bo, argnm, index, value, patcher::buf_type::ctrldata, m_ctrlpkt_sec_idx))
+        if (m_parent->patch_it(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata, m_ctrlpkt_sec_idx))
           patched = true;
       }
       // patch instruction buffer
-      if (m_parent->patch_it(m_instr_bo, argnm, index, value, patcher::buf_type::ctrltext, m_instr_sec_idx))
+      if (m_parent->patch_it(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext, m_instr_sec_idx))
           patched = true;
     }
     else {
-      if (m_parent->patch_it(m_buffer, argnm, index, value, patcher::buf_type::ctrltext, UINT32_MAX))
+      if (m_parent->patch_it(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext, UINT32_MAX))
         patched = true;
 
-      if (m_parent->patch_it(m_buffer, argnm, index, value, patcher::buf_type::pad, UINT32_MAX))
+      if (m_parent->patch_it(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::pad, UINT32_MAX))
         patched = true;
     }
 
@@ -1901,17 +1815,17 @@ class module_sram : public module_impl
   patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value,
                     patcher::buf_type type, uint32_t sec_index)
   {
-    if (!m_parent->patch_it(bo, argnm, index, value, type, sec_index))
+    if (!m_parent->patch_it(bo.map<uint8_t*>(), argnm, index, value, type, sec_index))
       return false;
 
     m_dirty = true;
     return true;
   }
 
-  // Check that all arguments have been patched and
-  // dump the buffers if dirty when respective debug ini options are enabled.
+  // Check that all arguments have been patched and sync the buffer
+  // to device if it is dirty.
   void
-  dump_if_dirty() override
+  sync_if_dirty() override
   {
     if (!m_dirty)
       return;
@@ -1923,6 +1837,7 @@ class module_sram : public module_impl
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
         throw std::runtime_error{ fmt.str() };
       }
+      m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
       if (is_dump_control_codes()) {
         std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
@@ -1934,6 +1849,8 @@ class module_sram : public module_impl
       }
     }
     else if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+      m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
       if (is_dump_control_codes()) {
         std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_instr_bo, dump_file_name);
@@ -1944,6 +1861,8 @@ class module_sram : public module_impl
       }
 
       if (m_ctrlpkt_bo) {
+        m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
         if (is_dump_control_packet()) {
           std::string dump_file_name = "ctr_packet_post_patch" + std::to_string(get_id()) + ".bin";
           dump_bo(m_ctrlpkt_bo, dump_file_name);
@@ -1955,6 +1874,9 @@ class module_sram : public module_impl
       }
 
       if (m_preempt_save_bo && m_preempt_restore_bo) {
+        m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
         if (is_dump_preemption_codes()) {
           std::string dump_file_name = "preemption_save_post_patch" + std::to_string(get_id()) + ".bin";
           dump_bo(m_preempt_save_bo, dump_file_name);
@@ -2382,9 +2304,9 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const v
 }
 
 void
-dump(const xrt::module& module)
+sync(const xrt::module& module)
 {
-  module.get_handle()->dump_if_dirty();
+  module.get_handle()->sync_if_dirty();
 }
 
 enum ert_cmd_opcode
