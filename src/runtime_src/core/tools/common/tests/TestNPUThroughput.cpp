@@ -32,7 +32,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
 
   // Check Whether Use ELF or DPU Sequence
   auto elf = XBValidateUtils::get_elf();
-  std::string xclbin_path; 
+  std::string xclbin_path;
   
   if (!elf) {
     xclbin_path = XBValidateUtils::get_xclbin_path(dev, xrt_core::query::xclbin_name::type::validate, ptree);
@@ -106,12 +106,12 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
     cu = ip;
     break;
   }
-  
+
   // create specified number of runs and populate with arguments
   std::vector<xrt::bo> global_args;
   std::vector<xrt::run> run_handles;
   if (!elf) {
-    for (int i=0; i < run_buffer; ++i) {
+    for (int i = 0; i < run_buffer; ++i) {
       auto run = xrt::run(kernel);
       for (const auto& arg : cu.get_args()) {
         auto arg_idx = static_cast<int>(arg.get_index());
@@ -121,15 +121,19 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
           run.set_arg(arg_idx, static_cast<uint32_t>(1));
         else if (arg.get_host_type().find('*') != std::string::npos) {
           xrt::bo bo;
-  
-          if (arg.get_name() == "instruct")
+
+          if (arg.get_name() == "instruct") {
             bo = xrt::bo(hwctx, arg.get_size(), xrt::bo::flags::cacheable, kernel.group_id(arg_idx));
-          else 
+            auto bo_mapped = bo.map<int*>();
+            for (size_t idx = 0; idx < arg.get_size(); idx++)
+              bo_mapped[idx] = 0;
+          } else {
             bo = xrt::bo(working_dev, arg.get_size(), xrt::bo::flags::host_only, kernel.group_id(arg_idx));
-  
-        bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        global_args.push_back(bo);
-        run.set_arg(arg_idx, bo);
+          }
+
+          bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+          global_args.push_back(bo);
+          run.set_arg(arg_idx, bo);
         }
       }
       run_handles.push_back(std::move(run));
