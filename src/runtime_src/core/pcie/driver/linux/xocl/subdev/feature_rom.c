@@ -869,7 +869,7 @@ failed:
 	return ret;
 }
 
-static int feature_rom_remove(struct platform_device *pdev)
+static int __feature_rom_remove(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
 
@@ -888,6 +888,15 @@ static int feature_rom_remove(struct platform_device *pdev)
 	devm_kfree(&pdev->dev, rom);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void feature_rom_remove(struct platform_device *pdev)
+{
+	__feature_rom_remove(pdev);
+}
+#else
+#define feature_rom_remove __feature_rom_remove
+#endif
 
 struct xocl_drv_private rom_priv = {
 	.ops = &rom_ops,

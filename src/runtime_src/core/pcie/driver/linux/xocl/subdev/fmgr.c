@@ -195,7 +195,7 @@ static int fmgr_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int fmgr_remove(struct platform_device *pdev)
+static int __fmgr_remove(struct platform_device *pdev)
 {
 #if defined(FPGA_MGR_SUPPORT)
 	struct fpga_manager *mgr = platform_get_drvdata(pdev);
@@ -219,6 +219,15 @@ static int fmgr_remove(struct platform_device *pdev)
 	kfree(obj);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void fmgr_remove(struct platform_device *pdev)
+{
+	__fmgr_remove(pdev);
+}
+#else
+#define fmgr_remove __fmgr_remove
+#endif
 
 static struct platform_driver	fmgr_driver = {
 	.probe		= fmgr_probe,
