@@ -2106,8 +2106,16 @@ class run_impl
         kcmd->opcode == ERT_START_NPU_PREEMPT_ELF) {
       auto payload_past_dpu = initialize_dpu(payload);
 
-      // adjust count to include the prepended ert_dpu_data structures
-      kcmd->count += payload_past_dpu - payload;
+      // Adjust count to include the prepended ert_dpu_data structures
+      // Also, for ELF flow we dont need kernel args info in cmd payload
+      // as args are patched at host side, only the first arg(opcode)
+      // info is sent in this case and it is written into the command register
+      // map at offset 0x0.   The command count is initialized earlier to 
+      // the size the command register map plus cu masks.
+      // opcode is uint64_t so (2 * uint32_t) is the size in payload so
+      // subtract register map size and add 2.
+      kcmd->count += payload_past_dpu - payload - kernel->get_regmap_size()
+          + sizeof(uint64_t) / sizeof(uint32_t); // size of arg opcode
       payload = payload_past_dpu;
     }
     return payload;
