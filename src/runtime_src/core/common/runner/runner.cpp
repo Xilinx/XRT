@@ -975,6 +975,12 @@ class recipe
         }
       };
 
+      // If single runlist then avoid the overhead of xrt::queue
+      if (m_runlists.size() == 1) {
+        m_runlists[0]->execute();
+        return;
+      }
+
       // A recipe can have multiple runlists. Each runlist can have
       // multiple runs.  Runlists are executed sequentially, execution
       // is orchestrated by xrt::queue which uses one thread to
@@ -987,6 +993,14 @@ class recipe
     wait()
     {
       XRT_DEBUGF("recipe::execution::wait()\n");
+
+      // If single runlist then it was submitted explicitly, so
+      // wait explicitly
+      if (m_runlists.size() == 1) {
+        m_runlists[0]->wait();
+        return;
+      }
+
       // Sufficient to wait for last runlist to finish since last list
       // must have waited for all previous lists to finish.
       auto runlist = m_runlists.back().get();
