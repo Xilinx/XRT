@@ -213,6 +213,22 @@ public:
   }
 
   /**
+   * update() - Update graph Run Time Parameters.
+   *
+   * @param port_name
+   *  Hierarchical name of RTP port.
+   * @param value
+   *  Pointer to the RTP value.
+   * @param bytes
+   *  The size in bytes of the RTP value.
+   */
+  void
+  update(const std::string& port_name, const void* value, size_t bytes)
+  {
+    update_port(port_name, value, bytes);
+  }
+
+  /**
    * read() - Read graph Run Time Parameters value.
    *
    * @param port_name
@@ -225,6 +241,22 @@ public:
   read(const std::string& port_name, ArgType& arg)
   {
     read_port(port_name, &arg, sizeof(arg));
+  }
+
+  /**
+   * read() - Read graph Run Time Parameters value.
+   *
+   * @param port_name
+   *  Hierarchical name of RTP port.
+   * @param value
+   *  Data pointer to hold the RTP value.
+   * @param bytes
+   *  The size in bytes of the data to be read.
+   */
+  void
+  read(const std::string& port_name, void* value, size_t bytes)
+  {
+    read_port(port_name, value, bytes);
   }
 
 private:
