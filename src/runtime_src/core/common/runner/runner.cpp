@@ -1015,7 +1015,7 @@ public:
   {}
 
   recipe(xrt::device device, const std::string& recipe, const artifacts::repo* repo)
-    : recipe{std::move(device), load_json(recipe), repo}
+    : recipe(std::move(device), load_json(recipe), repo)
   {}
 
   recipe(const recipe&) = default;
