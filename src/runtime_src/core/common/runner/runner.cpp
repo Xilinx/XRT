@@ -1014,8 +1014,8 @@ public:
     , m_execution{m_resources, m_recipe_json.at("execution")}
   {}
 
-  recipe(xrt::device device, const std::string& recipe, const artifacts::repo* repo)
-    : recipe(std::move(device), load_json(recipe), repo)
+  recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
+    : recipe(std::move(device), load_json(rr), repo)
   {}
 
   recipe(const recipe&) = default;
