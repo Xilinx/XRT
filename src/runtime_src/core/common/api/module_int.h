@@ -15,6 +15,24 @@
 
 #include <string>
 
+namespace xrt_core::patcher {
+// enum with different buffer types that supports patching
+// Some of the internal shim tests use this enum, so moving it to header
+// Ideal place for this enum would be in a header that has patching logic
+// TODO: Move this when patching logic is added to aiebu 
+enum class buf_type {
+  ctrltext = 0,        // control code
+  ctrldata = 1,        // control packet
+  preempt_save = 2,    // preempt_save
+  preempt_restore = 3, // preempt_restore
+  pdi = 4,             // pdi
+  ctrlpkt_pm = 5,      // preemption ctrl pkt
+  pad = 6,             // scratchpad/control packet section name for next gen aie devices
+  dump = 7,            // dump section containing debug info for trace etc
+  buf_type_count = 8   // total number of buf types
+};
+}
+
 namespace xrt_core::module_int {
 struct kernel_info {
   std::vector<xrt_core::xclbin::kernel_argument> args;
@@ -31,19 +49,28 @@ XRT_CORE_COMMON_EXPORT
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
+// Returns patch buffer size of the given module based on buffer type passed
+// This API may be useful for developing unit test case at SHIM level
+// New ELfs pack multiple control codes info in it, to identify which control code
+// to run we use index
+XRT_CORE_COMMON_EXPORT
+XRT_CORE_UNUSED
+size_t
+get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t index = 0);
+
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
 // you do not have access to device related "xrt::" objects, but still want
 // to obtain a patched control code buffer for device to run.
-// Note that if size passed in is 0, real buffer size required will be returned
-// without any patching. This is useful if caller wishes to discover the exact size
-// of the control code buffer.
+// This API expects buffer type that needs to be patched to identify which buffer
+// to patch (control code, control pkt, save/restore buffer etc)
 // New ELfs pack multiple control codes info in it, to identify which control code
 // to run we use index
 XRT_CORE_COMMON_EXPORT
+XRT_CORE_UNUSED
 void
-patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*,
-      uint32_t index = 0);
+patch(const xrt::module&, uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
+      xrt_core::patcher::buf_type, uint32_t index = 0);
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT
