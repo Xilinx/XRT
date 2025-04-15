@@ -1517,8 +1517,10 @@ namespace xdp {
   {
     xrt::uuid new_xclbin_uuid;
     //TODO:: Getting xclbin_uuid should be unified for both Client and Telluride.
+    bool isClientBuild = false;
     if(isClient()) {
       new_xclbin_uuid = device->get_xclbin_uuid();
+      isClientBuild = true;
     }
     else {
       std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
@@ -1542,7 +1544,7 @@ namespace xdp {
     if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
       return;
     xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
-    updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), true, readAIEMetadata);
+    updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClientBuild, readAIEMetadata);
   }
 
   // Return true if we should reset the device information.

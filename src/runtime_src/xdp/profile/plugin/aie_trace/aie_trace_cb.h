@@ -21,7 +21,7 @@
 
 extern "C" {
 
-  XDP_PLUGIN_EXPORT void updateAIEDevice(void* handle);
+  XDP_PLUGIN_EXPORT void updateAIEDevice(void* handle, bool hw_context_flow);
   XDP_PLUGIN_EXPORT void flushAIEDevice(void* handle);
   XDP_PLUGIN_EXPORT void finishFlushAIEDevice(void* handle);
 

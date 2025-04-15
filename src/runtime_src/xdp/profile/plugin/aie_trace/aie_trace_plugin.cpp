@@ -100,20 +100,14 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
 #endif
 }
 
-void AieTracePluginUnified::updateAIEDevice(void *handle) {
+void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) {
   xrt_core::message::send(severity_level::info, "XRT",
                           "Calling AIE Trace updateAIEDevice.");
 
   if (!handle)
     return;
   
-  //handle relates to hw context handle in case of Client XRT
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
-  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-  auto device = xrt_core::hw_context_int::get_core_device(context);
-#else
-  auto device = xrt_core::get_userpf_device(handle);
-#endif
+  auto device = util::convertToCoreDevice(handle, hw_context_flow);
 
   // Clean out old data every time xclbin gets updated
   if (handleToAIEData.find(handle) != handleToAIEData.end())
@@ -153,6 +147,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.valid = true; // initialize struct
 
 #ifdef XDP_CLIENT_BUILD
+  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   AIEData.metadata->setHwContext(context);
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
@@ -283,6 +278,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
       AIEData.metadata);
 #elif XDP_VE2_BUILD
+  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
   auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
   auto aieObj = hwctx_obj->get_aie_array();
@@ -330,7 +326,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #ifdef _WIN32
     std::string deviceName = "win_device";
 #else
-    std::string deviceName = util::getDeviceName(handle);
+    std::string deviceName = util::getDeviceName(handle, hw_context_flow);
 #endif
 
     // Writer for timestamp file

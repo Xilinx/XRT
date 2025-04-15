@@ -26,10 +26,10 @@ namespace xdp {
 
   static AieTracePluginUnified aieTracePluginInstance;
 
-  static void updateAIEDevice(void* handle)
+  static void updateAIEDevice(void* handle, bool hw_context_flow)
   {
     if (AieTracePluginUnified::alive())
-      aieTracePluginInstance.updateAIEDevice(handle);
+      aieTracePluginInstance.updateAIEDevice(handle, hw_context_flow);
   }
 
   static void flushAIEDevice(void* handle)
@@ -47,9 +47,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C" 
-void updateAIEDevice(void* handle)
+void updateAIEDevice(void* handle, bool hw_context_flow)
 {
-  xdp::updateAIEDevice(handle);
+  xdp::updateAIEDevice(handle, hw_context_flow);
 }
 
 extern "C" 
