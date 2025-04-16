@@ -285,16 +285,19 @@ class recipe
       // input/output which are bound during execution.
       xrt::bo m_xrt_bo;
 
-      // Only internal buffers have a size and are created during
-      // as part of loading the recipe.  External buffers are bound
-      // during execution.
+      // Internal buffers must specify a size and are created during
+      // as part of loading the recipe.  External buffers do not
+      // require a specified size if they are are bound during
+      // execution. Since size is the trigger for creating a xrt::bo
+      // for the buffer, specifying size for externally bound buffers
+      // wastes the buffer created here.
       buffer(const xrt::device& device, std::string name, type t, size_t sz)
         : m_name(std::move(name))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{m_type == type::internal ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
       {
-        XRT_DEBUGF("recipe::resources::buffer(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
       }
 
       // Copy constructor creates a new buffer with same properties as other
@@ -303,7 +306,7 @@ class recipe
         : m_name(other.m_name)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{m_type == type::internal ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
       {}
 
       static type
@@ -327,7 +330,9 @@ class recipe
       create_buffer(const xrt::device& device, const json& j)
       {
         auto tp = to_type(j.at("type").get<std::string>()); // required, input/output/internal
-        auto sz = (tp == type::internal) ? j.at("size").get<size_t>() : 0; // required for internal buffers
+        auto sz = (tp == type::internal)
+          ? j.at("size").get<size_t>()  // required for internal buffers
+          : j.value<size_t>("size", 0); // optional otherwise
         return {device, j.at("name").get<std::string>(), tp, sz};
       }
 
@@ -355,6 +360,13 @@ class recipe
       void
       bind(const xrt::bo& bo)
       {
+        // Require that if size is specified for externally bound buffer,
+        // then it must match the size of the binding buffer.
+        if (m_size && m_size != bo.size())
+          throw std::runtime_error("Invalid size (" + std::to_string(bo.size())
+                                   + ") of bo bound to '" + m_name + "', expected "
+                                   + std::to_string(m_size));
+
         m_xrt_bo = bo;
       }
     }; // class recipe::resources::buffer
@@ -588,6 +600,14 @@ class recipe
 
         xrt::bo m_xrt_bo;   // sub-buffer if m_size > 0
 
+        // create_xrt_bo() - return xrt::bo object or create sub-buffer
+        // An argument is associated with a resources::buffer. If the
+        // resources::buffer was created with an xrt::bo object (size
+        // was specified in the recipe), then this function can be
+        // used to create a sub-buffer from that bo object.  Otherwise
+        // this function simply returns the bo managed by the
+        // resources::buffer, which may be a null bo if the buffer is
+        // ubound.
         static xrt::bo
         create_xrt_bo(const resources::buffer& buffer, size_t offset, size_t size)
         {
@@ -595,7 +615,7 @@ class recipe
           if (bo && (bo.size() < size))
             throw std::runtime_error("buffer size mismatch for buffer: " + buffer.get_name());
 
-          if (bo && (size < bo.size()))
+          if (bo && size && (size < bo.size()))
             // sub-buffer
             return xrt::bo{bo, size, offset};
           
@@ -1037,21 +1057,19 @@ public:
   void
   bind_input(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind_input(%s)\n", name.c_str());
-    m_execution.bind(name, bo);
+    bind(name, bo);
   }
 
   void
   bind_output(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind_output(%s)\n", name.c_str());
-    m_execution.bind(name, bo);
+    bind(name, bo);
   }
 
   void
   bind(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind(%s)\n", name.c_str());
+    XRT_DEBUGF("recipe::bind(%s) bo::size(%d)\n", name.c_str(), bo.size());
     m_execution.bind(name, bo);
   }
 

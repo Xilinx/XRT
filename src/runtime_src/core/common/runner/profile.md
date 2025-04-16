@@ -55,11 +55,11 @@ the buffer is initialized from the content of the file.
   ],
 ```
 
-The "bind" key specifies if the buffer should be re-bound to run
+The `bind` key specifies if the buffer should be re-bound to run
 recipe in each iteration of the recipe (more about this in the
 execution section).
 
-If no file is specified, the size of the buffer must be instead be
+If no `file` is specified, the `size` of the buffer must be instead be
 present in the binding element.  Normally the size will appear along
 with an element that specifies how the buffer should be initialized.
 For example, here the binding is initialized with 1024 bytes of random
@@ -76,7 +76,21 @@ data:
     },
 ```
 
-The initialization can be a fixed pattern as well:
+It is also possible to specify the `size` even when a `file` is provided.
+In this case the specified size take precendence over the size of the file, 
+and the buffer created and bound to the recipe will be of specified
+size.  The data copied into the buffer and the minimum of the specified size
+or the size of the file.
+
+```
+    {
+      "name": "ifm",
+      "size": 4096,
+      "bind": true
+    },
+```
+
+The initialization can be a fixed `pattern` as well:
 
 ```
       "init": {
@@ -85,7 +99,7 @@ The initialization can be a fixed pattern as well:
 ```
 
 After executon, a buffer can be validated against golden data. This is
-specifed using a "validate" element for the binding.
+specifed using a `validate` element for the binding.
 
 ```
     {
@@ -131,15 +145,15 @@ iteration and before next iteration.
 ```
 
 The iteration element specifies what should happen before after each
-iteration of the run recipe.  
+iteration of the run recipe.
 
-- "bind" indicates if buffers should be re-bound to the
+- `bind` indicates if buffers should be re-bound to the
 recipe before an iteration.
-- "init" indicates if buffer should be initialized per what is
+- `init` indicates if buffer should be initialized per what is
 specified in the binding element.
-- "wait" says that execution should wait for completion between
+- `wait` says that execution should wait for completion between
 iterations and after last iteration.
-- "validate" means buffer validation per what is specified in
+- `validate` means buffer validation per what is specified in
 the binding element.
 
 # Instatiating an xrt::runner with a profile
