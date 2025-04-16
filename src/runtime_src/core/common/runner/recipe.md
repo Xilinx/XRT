@@ -157,11 +157,12 @@ compiler (VAIML).
 
 External buffers (input and output) are created by the framework /
 application outside of the runner and bound to the recipe during
-execution.  The runner itself does not create `xrt::bo` objects for
-external buffers, but does rely on the framework to bind these buffers
-to runner object created from the recipe.   The external buffers must
-still be listed in the resources section and specify a name that can 
-be used when execution sets kernel arguments.
+execution.  If the recipe buffer element doesn't specify a buffer size, 
+then the runner does not create `xrt::bo` objects for
+external buffers, but instead relies on the framework
+to bind these buffers to runner object created from the recipe.  The
+external buffers must still be listed in the resources section and
+specify a name that can be used when execution sets kernel arguments.
 
 ```
   "resources": {
@@ -182,16 +183,24 @@ be used when execution sets kernel arguments.
   }
 
 ``` 
+If a buffer `size` is specified as in:
+
+```
+      {
+        "name": "ofm",
+        "type": "output",
+        "size": 8196
+      }
+```
+then the runner will create an `xrt::bo` internally for the specified
+buffer, even as the buffer is specified as "output" it is treated as
+internal by the runner.  The application framework can still bind an
+external buffer the runner object created from the recipe, but doesn't
+have to.
 
 The `name` of the buffers in the resources section must be unique.
 The name is used in the `execution` section to refer to kernel or cpu
 buffer arguments.
-
-<!-- The `src` of the buffers is meant to refer to a tensor name in the
-graph, but the use of this field is TBD as it does not appear to be
-required.  The `name` itself is enough to identify the buffer, both
-within the recipe and for external frame works to bind external
-created buffers to the graph. -->
 
 #### Internal buffers
 
@@ -556,7 +565,12 @@ A unit test for the cpu library and corresponding sample run recipe
 that references the cpu library is under `test/cpulib.cpp` and
 `test/main.cpp`
 
+# Recipe json validation against schema
 
-
-
-
+A schema for the recipe json is available in
+[schema](schema/recipe.schema.json).  A recipe can be validated
+against the schema by running [schema-validator.py](test/schema-validator.py):
+```
+% python3 schema-validator.py recipe.json schema\recipe.schema.json
+JSON is valid against the schema.
+```

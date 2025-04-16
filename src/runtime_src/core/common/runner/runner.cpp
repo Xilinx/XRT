@@ -27,9 +27,9 @@
 
 #include <algorithm>
 #include <fstream>
-#include <iostream>
 #include <istream>
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <string_view>
@@ -44,7 +44,7 @@
 namespace {
 
 using json = nlohmann::json;
-const json default_json;
+const json empty_json;
 
 // load_json() - Load a JSON from in-memory string or file
 static json
@@ -285,16 +285,19 @@ class recipe
       // input/output which are bound during execution.
       xrt::bo m_xrt_bo;
 
-      // Only internal buffers have a size and are created during
-      // as part of loading the recipe.  External buffers are bound
-      // during execution.
+      // Internal buffers must specify a size and are created during
+      // as part of loading the recipe.  External buffers do not
+      // require a specified size if they are are bound during
+      // execution. Since size is the trigger for creating a xrt::bo
+      // for the buffer, specifying size for externally bound buffers
+      // wastes the buffer created here.
       buffer(const xrt::device& device, std::string name, type t, size_t sz)
         : m_name(std::move(name))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{m_type == type::internal ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
       {
-        XRT_DEBUGF("recipe::resources::buffer(%s)\n", m_name.c_str());
+        XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
       }
 
       // Copy constructor creates a new buffer with same properties as other
@@ -303,7 +306,7 @@ class recipe
         : m_name(other.m_name)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{m_type == type::internal ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
       {}
 
       static type
@@ -327,7 +330,9 @@ class recipe
       create_buffer(const xrt::device& device, const json& j)
       {
         auto tp = to_type(j.at("type").get<std::string>()); // required, input/output/internal
-        auto sz = (tp == type::internal) ? j.at("size").get<size_t>() : 0; // required for internal buffers
+        auto sz = (tp == type::internal)
+          ? j.at("size").get<size_t>()  // required for internal buffers
+          : j.value<size_t>("size", 0); // optional otherwise
         return {device, j.at("name").get<std::string>(), tp, sz};
       }
 
@@ -355,6 +360,13 @@ class recipe
       void
       bind(const xrt::bo& bo)
       {
+        // Require that if size is specified for externally bound buffer,
+        // then it must match the size of the binding buffer.
+        if (m_size && m_size != bo.size())
+          throw std::runtime_error("Invalid size (" + std::to_string(bo.size())
+                                   + ") of bo bound to '" + m_name + "', expected "
+                                   + std::to_string(m_size));
+
         m_xrt_bo = bo;
       }
     }; // class recipe::resources::buffer
@@ -510,7 +522,7 @@ class recipe
       , m_hwctx{m_device, m_device.register_xclbin(xclbin)}
       , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
       , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
-      , m_cpus{create_cpus(recipe.value("cpus", default_json))} // optional
+      , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
     {}
 
     resources(const resources& other)
@@ -520,6 +532,12 @@ class recipe
       , m_kernels{other.m_kernels}                           // share kernels
       , m_cpus{other.m_cpus}                                 // share cpus
     {}
+
+    xrt::device
+    get_device() const
+    {
+      return m_device;
+    }
 
     xrt::hw_context
     get_xrt_hwctx() const
@@ -561,6 +579,14 @@ class recipe
   {
     class run
     {
+      // class argument - represents a execution::run argument
+      //
+      // The argument refers to a recipe resource buffer.
+      //
+      // Note, that resource buffers manage their own xrt::bo objects
+      // either created as internal xrt::bo or bound from external
+      // xrt::bo.  If an argument is copied, then the xrt::bo with the
+      // resource buffer is also be copy created.
       struct argument
       {
         resources::buffer m_buffer;
@@ -569,11 +595,19 @@ class recipe
         // if the argument is sliced or it can be null bo if the
         // argument is unbound.
         size_t m_offset;
-        size_t m_size;   // 0 indicates the entire buffer
+        size_t m_size;      // 0 indicates the entire buffer
         int m_argidx;
 
-        xrt::bo m_xrt_bo;
+        xrt::bo m_xrt_bo;   // sub-buffer if m_size > 0
 
+        // create_xrt_bo() - return xrt::bo object or create sub-buffer
+        // An argument is associated with a resources::buffer. If the
+        // resources::buffer was created with an xrt::bo object (size
+        // was specified in the recipe), then this function can be
+        // used to create a sub-buffer from that bo object.  Otherwise
+        // this function simply returns the bo managed by the
+        // resources::buffer, which may be a null bo if the buffer is
+        // ubound.
         static xrt::bo
         create_xrt_bo(const resources::buffer& buffer, size_t offset, size_t size)
         {
@@ -581,7 +615,7 @@ class recipe
           if (bo && (bo.size() < size))
             throw std::runtime_error("buffer size mismatch for buffer: " + buffer.get_name());
 
-          if (bo && (size < bo.size()))
+          if (bo && size && (size < bo.size()))
             // sub-buffer
             return xrt::bo{bo, size, offset};
           
@@ -595,7 +629,22 @@ class recipe
           , m_argidx{j.at("argidx").get<int>()}
           , m_xrt_bo{create_xrt_bo(m_buffer, m_offset, m_size)}
         {
-            XRT_DEBUGF("recipe::execution::run::argument(%s, %lu, %lu, %d) bound(%s)\n",
+            XRT_DEBUGF("recipe::execution::run::argument(json) (%s, %lu, %lu, %d) bound(%s)\n",
+                     m_buffer.get_name().c_str(), m_offset, m_size, m_argidx,
+                     m_xrt_bo ? "true" : "false");
+        }
+
+        // Copy constructor.  Allocates new resources::buffer and new
+        // XRT buffer object.
+        argument(const resources& resources, const argument& other)
+          : m_buffer{resources::buffer::create_buffer           // new resources:buffer
+                     (resources.get_device(), other.m_buffer)}  // (see earlier comment)
+          , m_offset{other.m_offset}                            // same offset
+          , m_size{other.m_size}                                // same size
+          , m_argidx{other.m_argidx}                            // same argidx
+          , m_xrt_bo{create_xrt_bo(m_buffer, m_offset, m_size)} // new xrt::bo, maybe null
+        {
+            XRT_DEBUGF("recipe::execution::run::argument(other) (%s, %lu, %lu, %d) bound(%s)\n",
                      m_buffer.get_name().c_str(), m_offset, m_size, m_argidx,
                      m_xrt_bo ? "true" : "false");
         }
@@ -603,7 +652,10 @@ class recipe
         void
         bind(const xrt::bo& bo)
         {
+          // The full bo is bound to the resource buffer.
           m_buffer.bind(bo);
+          // The argument specific bo may be a sub-buffer per
+          // specified offset and size
           m_xrt_bo = create_xrt_bo(m_buffer, m_offset, m_size);
         }
 
@@ -648,6 +700,21 @@ class recipe
             std::visit(set_arg_visitor{arg.m_argidx, std::move(bo)}, run);
 
           args.emplace(node.at("name").get<std::string>(), std::move(arg));
+        }
+        return args;
+      }
+
+      static std::map<std::string, argument>
+      create_and_set_args(const resources& resources, run_type run,
+                          const std::map<std::string, argument>& other_args)
+      {
+        std::map<std::string, argument> args;
+        for (const auto& [name, other_arg] : other_args) {
+          argument arg{resources, other_arg};
+          if (auto bo = arg.get_xrt_bo())
+            std::visit(set_arg_visitor{arg.m_argidx, std::move(bo)}, run);
+
+          args.emplace(name, std::move(arg));
         }
         return args;
       }
@@ -709,12 +776,15 @@ class recipe
           set_constant_args(m_run, j.at("constants"));
       }
 
-      // Create a run from another run but using argument resources
+      // Create a run from another run using argument resources
       // The ctor creates a new xrt::run or cpu::run from other, these
-      // runs refer to resources per argument resources
+      // runs refer to resources per argument resources.  Arguments
+      // to the runs are copied, so this run along with the argument
+      // other run are independent in regards to argument data.
       run(const resources& resources, const run& other)
         : m_name{other.m_name}
         , m_run{create_run(resources, other)}
+        , m_args{create_and_set_args(resources, m_run, other.m_args)}
       {}
 
       bool
@@ -925,6 +995,12 @@ class recipe
         }
       };
 
+      // If single runlist then avoid the overhead of xrt::queue
+      if (m_runlists.size() == 1) {
+        m_runlists[0]->execute();
+        return;
+      }
+
       // A recipe can have multiple runlists. Each runlist can have
       // multiple runs.  Runlists are executed sequentially, execution
       // is orchestrated by xrt::queue which uses one thread to
@@ -937,6 +1013,14 @@ class recipe
     wait()
     {
       XRT_DEBUGF("recipe::execution::wait()\n");
+
+      // If single runlist then it was submitted explicitly, so
+      // wait explicitly
+      if (m_runlists.size() == 1) {
+        m_runlists[0]->wait();
+        return;
+      }
+
       // Sufficient to wait for last runlist to finish since last list
       // must have waited for all previous lists to finish.
       auto runlist = m_runlists.back().get();
@@ -950,18 +1034,22 @@ class recipe
 
   xrt::device m_device;
 
-  json m_recipe;
+  json m_recipe_json;
   header m_header;
   resources m_resources;
   execution m_execution;
 
 public:
-  recipe(xrt::device device, const std::string& recipe, const artifacts::repo* repo)
+  recipe(xrt::device device, json recipe, const artifacts::repo* repo)
     : m_device{std::move(device)}
-    , m_recipe{load_json(recipe)}
-    , m_header{m_recipe.at("header"), repo}
-    , m_resources{m_device, m_header.get_xclbin(), m_recipe.at("resources"), repo}
-    , m_execution{m_resources, m_recipe.at("execution")}
+    , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
+    , m_header{m_recipe_json.at("header"), repo}
+    , m_resources{m_device, m_header.get_xclbin(), m_recipe_json.at("resources"), repo}
+    , m_execution{m_resources, m_recipe_json.at("execution")}
+  {}
+
+  recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
+    : recipe(std::move(device), load_json(rr), repo)
   {}
 
   recipe(const recipe&) = default;
@@ -969,21 +1057,19 @@ public:
   void
   bind_input(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind_input(%s)\n", name.c_str());
-    m_execution.bind(name, bo);
+    bind(name, bo);
   }
 
   void
   bind_output(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind_output(%s)\n", name.c_str());
-    m_execution.bind(name, bo);
+    bind(name, bo);
   }
 
   void
   bind(const std::string& name, const xrt::bo& bo)
   {
-    XRT_DEBUGF("recipe::bind(%s)\n", name.c_str());
+    XRT_DEBUGF("recipe::bind(%s) bo::size(%d)\n", name.c_str(), bo.size());
     m_execution.bind(name, bo);
   }
 
@@ -1195,11 +1281,11 @@ class profile
 
     // Bind resources to the recipe per json
     void
-    bind(recipe* rr)
+    bind(recipe& rr)
     {
       for (auto& [name, node] : m_bindings) {
         if (node.value<bool>("bind", false))
-          rr->bind(name, m_xrt_bos.at(name));
+          rr.bind(name, m_xrt_bos.at(name));
       }
     }
   }; // class profile::bindings
@@ -1283,9 +1369,10 @@ class profile
 private:
   friend class bindings;  // embedded class
   friend class execution; // embedded class
-  json m_profile;
+  json m_profile_json;
   std::shared_ptr<artifacts::repo> m_repo;
-  recipe* m_recipe = nullptr;
+
+  recipe m_recipe;
   bindings m_bindings;
   execution m_execution;
 
@@ -1310,15 +1397,14 @@ private:
   void
   execute_recipe()
   {
-    m_recipe->execute();
+    m_recipe.execute();
   }
 
   void
   wait_recipe()
   {
-    m_recipe->wait();
+    m_recipe.wait();
   }
-  
 
 public:
   // profile - constructor
@@ -1326,14 +1412,22 @@ public:
   // Reads json, creates xrt::bo bindings to recipe and initializes
   // execution. The respository is used for looking up artifacts.
   // The recipe is what the profile binds to and what it executes.
-  profile(const xrt::device& device, recipe* rr, const std::string& profile,
+  profile(const xrt::device& device,
+          const std::string& recipe,
+          const std::string& profile,
           std::shared_ptr<artifacts::repo> repo)
-    : m_profile{load_json(profile)}
+    : m_profile_json{load_json(profile)}
     , m_repo{std::move(repo)}
-    , m_recipe{rr}
-    , m_bindings{device, m_profile.at("bindings"), m_repo.get()}
-    , m_execution(this, m_profile.at("execution"))
+    , m_recipe{device, load_json(recipe), m_repo.get()}
+    , m_bindings{device, m_profile_json.at("bindings"), m_repo.get()}
+    , m_execution(this, m_profile_json.at("execution"))
   {}
+
+  void
+  bind(const std::string& name, const xrt::bo& bo)
+  {
+    m_recipe.bind(name, bo);
+  }
 
   void
   execute()
@@ -1353,65 +1447,76 @@ public:
 
 namespace xrt_core {
 
-// class runner_impl - Insulated implementation of xrt::runner
-//
-// Manages a run recipe and an execution profile.
-//
-// The recipe defines the resources and how to run a model.
-//
-// The profile controls how resources are bound to the recipe and how
-// the recipe is executed, e.g. number of times, debug info,
-// validation, etc.
+// class runner_impl - Base class API for implementations of
+// xrt::runner
 class runner_impl
+{
+public:
+  virtual ~runner_impl() = default;
+
+  void
+  bind_input(const std::string& name, const xrt::bo& bo)
+  {
+    bind(name, bo);
+  }
+
+  void
+  bind_output(const std::string& name, const xrt::bo& bo)
+  {
+    bind(name, bo);
+  }
+
+  virtual void
+  bind(const std::string& name, const xrt::bo& bo) = 0;
+
+  virtual void
+  execute() = 0;
+
+  virtual void
+  wait() = 0;
+};
+
+// class recipe_impl - Insulated implementation of xrt::runner
+//
+// Manages a run recipe.
+//
+// The recipe defines resources and how to run a model.
+class recipe_impl : public runner_impl
 {
   recipe m_recipe;
 
-protected:
-  recipe*
-  get_recipe()
-  {
-    return &m_recipe;
-  }
-
 public:
-  runner_impl(const xrt::device& device, const std::string& recipe,
+  recipe_impl(const xrt::device& device, const std::string& recipe,
               const std::shared_ptr<artifacts::repo>& repo)
     : m_recipe{device, recipe, repo.get()}
   {}
 
-  virtual ~runner_impl() = default;
-
-  virtual void
-  bind_input(const std::string& name, const xrt::bo& bo)
+  void
+  bind(const std::string& name, const xrt::bo& bo) override
   {
     m_recipe.bind(name, bo);
   }
 
-  virtual void
-  bind_output(const std::string& name, const xrt::bo& bo)
-  {
-    m_recipe.bind(name, bo);
-  }
-
-  virtual void
-  bind(const std::string& name, const xrt::bo& bo)
-  {
-    m_recipe.bind(name, bo);
-  }
-
-  virtual void
-  execute()
+  void
+  execute() override
   {
     m_recipe.execute();
   }
 
-  virtual void
-  wait()
+  void
+  wait() override
   {
     m_recipe.wait();
   }
 }; // class runner_impl
 
+// class profile_impl - Insulated implementaton of xrt::runner
+//
+// Manages a profile for how to run a recipe.
+//
+// The profile controls how resources are bound to a recipe and how
+// the recipe is executed, e.g. number of times, debug info,
+// validation, etc.
 class profile_impl : public runner_impl
 {
   profile m_profile;
@@ -1420,9 +1525,14 @@ public:
   profile_impl(const xrt::device& device,
                const std::string& recipe, const std::string& profile,
                const std::shared_ptr<artifacts::repo>& repo)
-    : runner_impl{device, recipe, repo}
-    , m_profile{device, get_recipe(), profile, repo}
+    : m_profile{device, recipe, profile, repo}
   {}
+
+  void
+  bind(const std::string& name, const xrt::bo& bo) override
+  {
+    m_profile.bind(name, bo);
+  }
 
   void
   execute() override
@@ -1443,7 +1553,7 @@ public:
 runner::
 runner(const xrt::device& device,
        const std::string& recipe)
-  : m_impl{std::make_unique<runner_impl>
+  : m_impl{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::file_repo>())}
 {} 
   
@@ -1451,7 +1561,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe,
        const std::filesystem::path& dir)
-  : m_impl{std::make_unique<runner_impl>
+  : m_impl{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::file_repo>(dir))}
 {} 
 
@@ -1459,7 +1569,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe,
        const artifacts_repository& repo)
-  : m_impl{std::make_unique<runner_impl>
+  : m_impl{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::ram_repo>(repo))}
 {}
 
