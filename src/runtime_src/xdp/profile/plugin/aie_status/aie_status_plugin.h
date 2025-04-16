@@ -51,7 +51,7 @@ namespace xdp {
     static bool alive();
 
   private:
-    void getTilesForStatus();
+    void getTilesForStatus(void* handle);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
     
