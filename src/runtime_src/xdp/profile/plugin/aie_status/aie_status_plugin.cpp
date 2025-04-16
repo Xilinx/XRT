@@ -132,7 +132,7 @@ namespace xdp {
 #ifdef XDP_VE2_BUILD
     boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
     uint8_t startColShift = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
-#elif
+#else
    uint8_t startColShift = metadataReader->getPartitionOverlayStartCols().front();
    aie::displayColShiftInfo(startColShift);
 #endif
