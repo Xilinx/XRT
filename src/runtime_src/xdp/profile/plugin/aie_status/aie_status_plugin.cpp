@@ -230,7 +230,7 @@ namespace xdp {
     // AIE core register offsets
 #ifdef XDP_VE2_BUILD
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x38004;
-#elif
+#else
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
 #endif
 
