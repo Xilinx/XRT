@@ -626,6 +626,7 @@ public:
    * Throws if control scratchpad section is not absent in ELF or
    * if any error occurs while retrieving the bo
    */
+  XCL_DRIVER_DLLESPEC
   xrt::bo
   get_ctrl_scratchpad_bo() const;
 
