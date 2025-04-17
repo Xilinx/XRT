@@ -90,8 +90,8 @@ SubCmdConfigure::fill_option_values(const boost::program_options::variables_map&
 {
   options.m_device = vm.count("device") ? vm["device"].as<std::string>() : "";
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
-  options.m_pmode = vm.count("pmode") ? vm["pmode"].as<bool>() : false;
-  options.m_force_preemption = vm.count("force-preemption") ? vm["force-preemption"].as<bool>() : false;
+  options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
+  options.m_force_preemption = vm.count("force-preemption") ? vm["force-preemption"].as<std::string>() : "";
 }
 
 void
@@ -120,6 +120,7 @@ SubCmdConfigure::checkForSubOption(const boost::program_options::variables_map& 
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
+  /* Filter out optionOptions applicable for a particular device/shim*/
   auto optionOptions = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::configure_option_options);
   auto all_options = getOptionOptions(optionOptions);
 

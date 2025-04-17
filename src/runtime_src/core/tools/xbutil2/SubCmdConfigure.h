@@ -15,8 +15,8 @@ struct SubCmdConfigureOptions {
   // Common options
   std::string m_device;
   bool        m_help;
-  bool m_pmode;
-  bool m_force_preemption;
+  std::string m_pmode;
+  std::string m_force_preemption;
 };
 
 
@@ -25,10 +25,10 @@ class SubCmdConfigure : public SubCmd {
   std::vector<std::shared_ptr<OptionOptions>> m_optionOptionsCollection;
   
   std::shared_ptr<OptionOptions>
-  SubCmdConfigure::checkForSubOption(const boost::program_options::variables_map& vm, const SubCmdConfigureOptions& options) const;
+  checkForSubOption(const boost::program_options::variables_map& vm, const SubCmdConfigureOptions& options) const;
 
   std::vector<std::shared_ptr<OptionOptions>> 
-  SubCmdConfigure::getOptionOptions(const xrt_core::smi::tuple_vector& options) const;
+  getOptionOptions(const xrt_core::smi::tuple_vector& options) const;
  public:
   SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
