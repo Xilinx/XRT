@@ -130,11 +130,14 @@ SubCmdConfigure::checkForSubOption(const boost::program_options::variables_map& 
     if (vm.count(subOO->longName()) != 0) {
       // Store the matched option if no other match has been found
       if (!option)
+      {
         option = subOO;
+      }
       // XRT will not accept more than one suboption per invocation
       // Throw an exception if more than one suboption is found within the command options
-      else
+      else {
         XBUtilities::throw_cancel(boost::format("Mutually exclusive option selected: %s %s") % subOO->longName() % option->longName());
+      }
     }
   }
   return option;

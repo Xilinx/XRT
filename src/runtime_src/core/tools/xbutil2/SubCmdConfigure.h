@@ -32,8 +32,8 @@ class SubCmdConfigure : public SubCmd {
  public:
   SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
-  virtual void execute(const SubCmdOptions &_options) const;
-  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
+  void execute(const SubCmdOptions &_options) const override;
+  void setOptionConfig(const boost::property_tree::ptree &config) override;
 };
 
 #endif

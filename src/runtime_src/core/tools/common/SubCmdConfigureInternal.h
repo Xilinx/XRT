@@ -10,10 +10,12 @@
 
 class SubCmdConfigureInternal : public SubCmd {
  public:
-  virtual void execute(const SubCmdOptions &_options) const;
+  void execute(const SubCmdOptions &_options) const override;
 
  public:
   SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
+
+  static std::vector<std::shared_ptr<OptionOptions>> optionOptionsCollection;
 
  private:
   std::string m_device;
