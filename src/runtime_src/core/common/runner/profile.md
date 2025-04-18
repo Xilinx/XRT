@@ -90,11 +90,28 @@ or the size of the file.
     },
 ```
 
-The initialization can be a fixed `pattern` as well:
+As shown above, the initialization can be `random`, but a buffer can
+also be initialized with a fixed pattern at every `stride` byte.  This 
+is referred to as strided buffer initialization:
 
 ```
       "init": {
-        "pattern": "A"
+        "stride": 1,
+        "value": 239,
+        "begin": 0,
+        "end": 524288
+      }
+```
+Here the buffer range specified by `begin` and `end` is written with
+the byte value `239` at every byte (`stride` is 1). The value can be
+any uint64_t value, but must be a decimal value in order to be valid 
+json.  To initalize a buffer with with 0xdeadbeef, convert to decimal 
+and write:
+
+```
+      "init": {
+        "stride": 4,
+        "value": 3735928559
       }
 ```
 
