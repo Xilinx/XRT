@@ -19,6 +19,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <vector>
+#include <cmath>
 
 #include "xdp/profile/plugin/aie_debug/aie_debug_impl.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -30,12 +31,18 @@
 #include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
+#include "core/common/message.h"
+
 extern "C" {
   #include <xaiengine.h>
   #include <xaiengine/xaiegbl_params.h>
 }
 
+#define DEFAULT_REGISTER_SIZE 32
+#define NUMBEROFMODULES 4
+
 namespace xdp {
+  using severity_level = xrt::message::level;
   class EdgeReadableTile;
 
   class AieDebug_EdgeImpl : public AieDebugImpl {
@@ -62,18 +69,21 @@ namespace xdp {
       tileOffset = to;
     }
 
+    void readValues(XAie_DevInst* aieDevInst, std::shared_ptr<AieDebugMetadata> metadata);
+    /*
     void readValues(XAie_DevInst* aieDevInst) {
       std::stringstream msg;
-      msg << "Debugging " << relativeOffsets.size() << " registers for tile " 
+      msg << "Debugging " << relativeOffsets.size() << " registers for tile "
           << +col << "," << +row;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
       for (auto& offset : relativeOffsets) {
         uint32_t val = 0;
         XAie_Read32(aieDevInst, offset + tileOffset, &val);
-        values.push_back(val); 
+        values.push_back(val);
       }
     }
+    */
 };
 
 } // end namespace xdp

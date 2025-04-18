@@ -70,13 +70,12 @@ namespace xdp {
     // Getting all samples from database
     std::vector<xdp::aie::AIEDebugDataType> samples =
       db->getDynamicInfo().moveAIEDebugSamples(mDeviceIndex);
-    
+
     // Create register interpreter for current AIE generation
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-    std::unique_ptr<RegisterInterpreter> regInterp = 
-      std::make_unique<RegisterInterpreter>(mDeviceIndex, aieGeneration);
-    
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+    std::unique_ptr<RegisterInterpreter> regInterp = std::make_unique<RegisterInterpreter>(aieGeneration);
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
       "Writing " + std::to_string(samples.size()) + " samples to AIE Debug file.");
 
     for (auto& sample : samples) {
@@ -84,25 +83,36 @@ namespace xdp {
       fout << +sample.col << ","
            << +sample.row << ","
            << sample.name << ","
-           << "31:0" << ","
+           << std::to_string(sample.value.sizeInBits - 1) << ":0,"
+          //  << "31:0" << ","
            << "full" << ","
-           << "0x" << std::hex << sample.value
-           << std::dec << "\n";
-      
+           << "0x" << std::hex;
+
+      for (auto v : sample.value.dataValue) {
+        fout << v;
+      }
+      fout<< std::dec << "\n";
+
       // Parse all fields from register value
-      auto regInfoVec = regInterp->registerInfo(sample.name, sample.offset, sample.value);
-      
+      // auto regInfoVec = regInterp->registerInfo(sample.name, sample.value);
+      auto regInfoVec = regInterp->registerInfo(sample.name, sample.value.dataValue);
+
       // Report all fields
       for (auto& rInfo : regInfoVec) {
         if (rInfo.field_name == "")
           continue;
-        
+
         fout << +sample.col << ","
              << +sample.row << ","
              << sample.name << ","
              << rInfo.bit_range << ","
              << rInfo.field_name << ","
-             << rInfo.subval << "\n";
+             << "0x" << std::hex;
+
+        for (auto& sub : rInfo.subval) {
+          fout << sub;
+        }
+        fout << std::dec << "\n";
       }
     }
 
