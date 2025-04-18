@@ -924,7 +924,7 @@ public:
   }
 
   xrt_core::buffer_handle*
-  get_exec_bo() const override
+  get_exec_bo() const final
   {
     return m_execbuf.first.get();
   }
