@@ -721,6 +721,11 @@ public:
   ~kernel_command() override
   {
     XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
+
+    // Notify shim that any BOs bound to this kernel command are no
+    // longer used by the command.
+    get_exec_bo()->reset();
+    
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(std::move(m_execbuf));
   }
@@ -919,7 +924,7 @@ public:
   }
 
   xrt_core::buffer_handle*
-  get_exec_bo() const override
+  get_exec_bo() const final
   {
     return m_execbuf.first.get();
   }
