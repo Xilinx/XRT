@@ -8,11 +8,19 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/OptionOptions.h"
 
-struct SubCmdConfigureOptions {
+class SubCmdConfigureInternal : public SubCmd {
+ public:
+  void execute(const SubCmdOptions &_options) const override;
 
-  // Common options
+ public:
+  SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
+
+  static std::vector<std::shared_ptr<OptionOptions>> optionOptionsCollection;
+
+ private:
   std::string m_device;
   bool        m_help;
+  bool        m_isUserDomain;
   // Hidden options
   bool        m_daemon;
   bool        m_purge;
@@ -23,22 +31,6 @@ struct SubCmdConfigureOptions {
   std::string m_temp_override;
   std::string m_ct_reset;
   bool        m_showx;
-};
-
-class SubCmdConfigureInternal : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
-  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
-
- public:
-  SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
-
- public:
-  static std::vector<std::shared_ptr<OptionOptions>> optionOptionsCollection;
-
- private:
-  void fill_option_values(const boost::program_options::variables_map& vm, SubCmdConfigureOptions& options) const;
-  bool        m_isUserDomain;
 };
 
 #endif

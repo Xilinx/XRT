@@ -573,7 +573,8 @@ struct xrt_smi_lists : request
 {
   enum class type {
     validate_tests,
-    examine_reports
+    examine_reports,
+    configure_option_options,
   };
   using result_type = std::vector<std::tuple<std::string, std::string, std::string>>;
   static const key_type key = key_type::xrt_smi_lists;
