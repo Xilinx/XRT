@@ -25,7 +25,7 @@ OO_Preemption::OO_Preemption( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("type,t", boost::program_options::value<decltype(m_type)>(&m_type), "The type of reset to perform. Types resets available:\n"
+    ("type,t", boost::program_options::value<decltype(m_type)>(&m_type), "The type of force-preemption to toggle:\n"
                                     "  layer         - Layer boundary force preeemption\n"
                                     "  frame         - Frame boundary force preeemption\n")
   ;
@@ -86,11 +86,10 @@ OO_Preemption::execute(const SubCmdOptions& _options) const
 
     //validate required arguments
     validate_args(); 
-  } catch(boost::program_options::error&) {
-    if(m_help) {
-      printHelp();
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+  } catch(boost::program_options::error& ex) {
+    std::cout << ex.what() << std::endl;
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
   } catch(xrt_core::error& err) {
     std::cout << err.what() << std::endl;
     printHelp();
