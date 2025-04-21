@@ -38,75 +38,113 @@ The bindings section specifies how external buffers should be created,
 initialized, and validated. The section is an array of binding elements,
 where each binding element must reference a resource in the run-recipe.
 
-In its simplest form, a binding element references a file from which
-the resource should be created.  The xrt::runner will create an
+A binding element references a the name of the resource buffer to bind
+to the recipe along with various attributes.  The xrt::runner will create an
 `xrt::bo` for each specified binding element.  The size of the buffer
-is determined from the size of the file, and the initial value of 
-the buffer is initialized from the content of the file.
-
+is optional optional when the buffer is
+initialized from a file, but is otherwise required.
 ```
   "bindings": [
     { 
       "name": "wts",
-      "file": "wts.bin",
-      "bind": true
+      "bind": bool,
+      "size": bytes
     },
     { ... }
   ],
 ```
+A binding elememnt has some simple attributes and more complex
+nested attributes
 
-The `bind` key specifies if the buffer should be re-bound to run
+### Simple attributes of a binding element
+The simple attributes are json key-value pairs:
+```
+    { 
+      "name": "wts",     // name of a resource buffer
+      "bind": bool,
+      "size": bytes
+    },
+```
+
+- `bind` indicates if the buffer should be re-bound to the run
 recipe in each iteration of the recipe (more about this in the
 execution section).
+- `size` (optional with file initialization) specifies the size
+of the `xrt::bo` created and bound to the recipe.
 
-If no `file` is specified, the `size` of the buffer must be instead be
-present in the binding element.  Normally the size will appear along
-with an element that specifies how the buffer should be initialized.
-For example, here the binding is initialized with 1024 bytes of random
-data:
+### Nested elements of a binding element
+The binding element support the following optional nested elements:
+```
+      "init": { ... }
+      "validate": { ... }
+```
+
+- `init` (optional) specifies how the `xrt::bo` created by the runner
+should be initialized. There are multiple ways to initialize a buffer.
+- `validate` (optional) specifies if the buffer content should be 
+ validated and how after an execution of the recipe.
+ 
+### Initialization of a resource buffer
+
+The bindings element results in the creation of the `xrt::bo` buffer
+object.  Upon creation, the buffer object is initialzied per the init
+sub-element.  There are several ways to initialize a buffer only one
+of which can be specified.
+
+#### Random initialization
 
 ```
-    {
-      "name": "ifm",
-      "size": 1024,
-      "bind": true,
       "init": {
-        "random": true
+        "random": true // random initialization of the full buffer
       }
-    },
 ```
 
-It is also possible to specify the `size` even when a `file` is provided.
-In this case the specified size take precendence over the size of the file, 
-and the buffer created and bound to the recipe will be of specified
-size.  The data copied into the buffer and the minimum of the specified size
-or the size of the file.
+Random initialization is using a `std::random_device` along with
+`rd()` to create a pseudo random value for each byte of the buffer.
+If random initialization is used, the `size` of the buffer must also
+have been specified.
+
+
+#### File initialization
 
 ```
-    {
-      "name": "ifm",
-      "size": 4096,
-      "bind": true
-    },
+
+      "init": {
+        "file": "<path or repo key>",
+        "skip": bytes // skip number of bytes in file
+      }
 ```
 
-As shown above, the initialization can be `random`, but a buffer can
+File initialization implies that the resource buffer should be
+intialized with the content of the `file`.  The `file` must reference
+a key that locates a file on disk or in an artifacts repository used
+during construction of the `xrt::runner`.  If the binding element
+specifies a `size` value, then this size takes precendence over the
+size of the file, otherwise the size of the file will be the size of
+the buffer. The data copied into the buffer is the minimum of the
+specified size or the size of the file.  The optional `skip` element
+allows skipping first bytes of the file during initialization of the
+buffer.
+
+#### Strided initialization
+
+```
+      "init": {
+        "stride": 1,    // stide bytes
+        "value": 239,   // value to write at each stride
+        "begin": 0,     // begining of range to write at
+        "end": 524288   // end of range
+      }
+```
+A buffer can
 also be initialized with a fixed pattern at every `stride` byte.  This 
-is referred to as strided buffer initialization:
+is referred to as strided buffer initialization.
 
-```
-      "init": {
-        "stride": 1,
-        "value": 239,
-        "begin": 0,
-        "end": 524288
-      }
-```
-Here the buffer range specified by `begin` and `end` is written with
-the byte value `239` at every byte (`stride` is 1). The value can be
-any uint64_t value, but must be a decimal value in order to be valid 
-json.  To initalize a buffer with with 0xdeadbeef, convert to decimal 
-and write:
+In the above example, the buffer range specified by `begin` and `end`
+is written with the byte value `239` at every byte (`stride` is
+1). The value can be any uint64_t value, but must be a decimal value
+in order to be valid json.  To initalize a buffer with with
+0xdeadbeef, convert to decimal and write:
 
 ```
       "init": {
@@ -115,14 +153,13 @@ and write:
       }
 ```
 
+#### Validation
+
 After executon, a buffer can be validated against golden data. This is
 specifed using a `validate` element for the binding.
 
 ```
     {
-      "name": "ofm",
-      "size": 4,
-      "bind": true,
       "validate": {
         "file": "ofm.bin"
       }
