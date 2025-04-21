@@ -550,7 +550,11 @@ void xocl_close_drm_render_fds(pid_t pid)
     fdt = files_fdtable(task->files);
 
     for (fd = 0; fd < fdt->max_fds; fd++) {
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0)
+               file = fget(fd);
+#else
         file = files_lookup_fd_raw(task->files, fd);
+#endif
         if (file && file->f_path.dentry) {
             const char *path = file->f_path.dentry->d_name.name;
             if (strstr(path, "renderD") != NULL) {
@@ -559,6 +563,9 @@ void xocl_close_drm_render_fds(pid_t pid)
         }
     }
     spin_unlock(&task->files->file_lock);
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 18, 0)
+       fput(file);
+#endif
 }
 
 int
