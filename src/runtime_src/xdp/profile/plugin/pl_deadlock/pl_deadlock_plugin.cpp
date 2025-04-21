@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -196,7 +196,7 @@ namespace xdp {
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId,std::move(std::make_unique<HalDevice>(handle)), handle);
+      (db->getStaticInfo()).updateDeviceFromHandle(deviceId,std::move(std::make_unique<HalDevice>(handle)), handle);
     }
 
     PLDeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);

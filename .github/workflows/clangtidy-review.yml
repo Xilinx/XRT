@@ -19,14 +19,70 @@ jobs:
         submodules: recursive
         fetch-depth: 0
 
+    # Dependencies needed for external cmake configuration
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+
+    - name: Configure legacy XRT build
+      run: |
+        cmake -B build/legacy \
+        -DXRT_ENABLE_HIP=ON \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Configure edge XRT
+      run: |
+        env XRT_NATIVE_BUILD=no cmake -B build/edge \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Configure NPU XRT
+      run: |
+        cmake -B build/npu \
+        -DXRT_NPU=1 \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_BUILD_TYPE=Release src
+
+    - name: Merge databases into one compile_commands.json
+      run: |
+        python <<EOF
+        import json, os
+
+        # Last entry is preserved
+        build_dirs = ["build/npu", "build/edge", "build/legacy"]
+        merged_commands = {}
+
+        for build_dir in build_dirs:
+            json_path = os.path.join(build_dir, "compile_commands.json")
+            if os.path.exists(json_path):
+                with open(json_path, "r") as f:
+                    commands = json.load(f)
+                    for entry in commands:
+                        merged_commands[entry["file"]] = entry
+
+        with open("compile_commands.json", "w") as f:
+            json.dump(list(merged_commands.values()), f, indent=2)
+
+        print("Merged compile_commands.json created.")
+        EOF
+
+    - name: Upload merged database
+      uses: actions/upload-artifact@v4
+      with:
+        name: compile_commands
+        path: compile_commands.json
+
+    # Review uses external combined database
     - name: Create clang-tidy review
       id: review
       uses: stsoe/clang-tidy-review@patches
       with:
-        build_dir: build/Release
         apt_packages: |
          cmake, g++, pkg-config, libdrm-dev,
          ocl-icd-dev, ocl-icd-libopencl1, ocl-icd-opencl-dev,
+         libamdhip64-dev,
          libboost-dev, libboost-filesystem-dev, libboost-program-options-dev,
          libncurses5-dev,
          libssl-dev,
@@ -37,7 +93,6 @@ jobs:
          systemtap-sdt-dev,
          curl, libcurl4-openssl-dev,
          libudev-dev
-        cmake_command: cmake -B build/Release -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         # disable default checks and rely on closest .clangtidy
         clang_tidy_checks: ''
         split_workflow: true

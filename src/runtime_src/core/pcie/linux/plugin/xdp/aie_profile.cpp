@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,8 +19,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 
-namespace xdp {
-namespace aie {
+namespace xdp::aie {
 namespace profile {
 
   void load()
@@ -30,16 +29,18 @@ namespace profile {
 						    warning_callbacks);
   }
 
-  std::function<void (void*)> update_device_cb;
+  std::function<void (void*, bool)> update_device_cb;
   std::function<void (void*)> end_poll_cb;
 
   void register_callbacks(void* handle)
   {
-    using ftype = void (*)(void*); // Device handle
+    using utype = void (*)(void*, bool);
+    using ftype = void (*)(void*);
 
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
-    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-  
+    update_device_cb =
+      reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
+    end_poll_cb =
+      reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
   }
 
   void warning_callbacks()
@@ -50,10 +51,10 @@ namespace profile {
 } // end namespace profile
 
 namespace ctr {
-  void update_device(void* handle)
+  void update_device(void* handle, bool hw_context_flow)
   {
     if (profile::update_device_cb != nullptr)
-      profile::update_device_cb(handle);
+      profile::update_device_cb(handle, hw_context_flow);
     
   }
 
@@ -64,5 +65,4 @@ namespace ctr {
     
   }
 } // end namespace ctr
-} // end namespace aie
-} // end namespace xdp
+} // end namespace xdp::aie

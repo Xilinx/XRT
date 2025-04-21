@@ -28,6 +28,7 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_types.h"
@@ -281,9 +282,20 @@ namespace xdp {
     XDP_CORE_EXPORT const std::vector<std::unique_ptr<ConfigInfo>>& getLoadedConfigs(uint64_t deviceId) ;
     XDP_CORE_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;
     XDP_CORE_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
-    // Reseting device information whenever a new xclbin is added
-    XDP_CORE_EXPORT void updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle) ;
-    XDP_CORE_EXPORT void updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device, bool readAIEMetadata = true);
+    // Each of the plugins update the information in this database
+    // whenever a new hardware configuration is loaded.  This information
+    // can come from either a call to loadXclbin using an xclDeviceHandle or
+    // from the construction of an xrt::hw_context.  These two functions
+    // are the entry points for both paths.
+    XDP_CORE_EXPORT
+    void updateDeviceFromHandle(uint64_t deviceId,
+                                std::unique_ptr<xdp::Device> xdpDevice,
+                                void* devHandle);
+    XDP_CORE_EXPORT
+    void updateDeviceFromCoreDevice(uint64_t deviceId,
+                                    std::shared_ptr<xrt_core::device> device,
+                                    bool readAIEMetadata = true,
+                                    std::unique_ptr<xdp::Device> xdpDevice = nullptr);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
@@ -358,8 +370,7 @@ namespace xdp {
                                   std::function<void (void*)> deallocate,
                                   void* devHandle) ;
 
-    XDP_CORE_EXPORT void readAIEMetadataClient();
-    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild);
+    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool checkDisk);
     XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
 
     // ************************************************************************

@@ -78,7 +78,7 @@ public:
   size_type
   get_partition_size() const;
 };
-  
+
 } // namespace xrt::aie
 
 #endif // __cplusplus

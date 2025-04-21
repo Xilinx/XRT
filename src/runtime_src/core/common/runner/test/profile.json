@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+
+  "bindings": [
+    {
+      "name": "wts",
+      "file": "wts.bin",
+      "bind": true
+    },
+    {
+      "name": "ifm",
+      "file": "ifm.bin",
+      "bind": true
+    },
+    {
+      "name": "ofm",
+      "file": "ofm.bin",
+      "bind": true,
+      "init": {
+        "pattern": "A",
+      },
+      "validate": {
+        "size": 0,
+        "offset": 0,
+        "file": "gold.bin"
+      }
+    }
+  ],
+
+  "execution" : {
+    "iterations": 2,
+    "iteration" : {
+      "bind": false,
+      "init": true,
+      "validate": true
+    }
+  }
+}

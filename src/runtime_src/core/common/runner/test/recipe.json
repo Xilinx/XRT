@@ -1,7 +1,10 @@
 {
+  "version": "1.0",
+
   "header": {
-    "xclbin_path": "design.xclbin"
+    "xclbin": "design.xclbin"
   },
+
   "resources": {
     "buffers": [
       {
@@ -15,12 +18,12 @@
       {
         "name": "ifm_int",
         "type": "internal",
-        "size": "1536"
+        "size": 1536
       },
       {
         "name": "ofm_int",
         "type": "internal",
-        "size": "320"
+        "size": 320
       },
       {
         "name": "ofm",
@@ -40,11 +43,12 @@
     "kernels": [
       {
         "name": "k1",
-        "xclbin_kernel_name": "DPU",
+        "instance": "DPU",
         "ctrlcode": "no-ctrl-packet.elf"
       }
     ]
   },
+
   "execution": {
     "runs": [
       {
@@ -63,11 +67,11 @@
             { "name": "ofm_int", "argidx": 5 }
         ],
         "constants": [
-            { "value": "3", "type": "int", "argidx": 0 },
-            { "value": "0", "type": "int", "argidx": 1 },
-            { "value": "0", "type": "int", "argidx": 2 },
-            { "value": "0", "type": "int", "argidx": 6 },
-            { "value": "0", "type": "int", "argidx": 7 }
+            { "value": 3, "type": "int", "argidx": 0 },
+            { "value": 0, "type": "int", "argidx": 1 },
+            { "value": 0, "type": "int", "argidx": 2 },
+            { "value": 0, "type": "int", "argidx": 6 },
+            { "value": 0, "type": "int", "argidx": 7 }
         ]
       },
       {

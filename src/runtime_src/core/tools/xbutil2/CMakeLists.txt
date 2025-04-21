@@ -28,6 +28,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/PsKernelUtilities.cpp"
   "../common/SubCmdJSON.cpp"
   "../common/TestRunner.cpp"
+  "../common/SmiDefault.cpp"
   "../common/tests/*.cpp"
   "../common/tests/aie_pl_util/*"
   "../common/tests/ps_iops_util/*"

@@ -1,27 +1,5 @@
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
-// #######################################################################
-// Copyright (c) 2022 AMD, Inc.  All rights reserved.
-//
-// This   document  contains  proprietary information  which   is
-// protected by  copyright. All rights  are reserved. No  part of
-// this  document may be photocopied, reproduced or translated to
-// another  program  language  without  prior written  consent of
-// XILINX Inc., San Jose, CA. 95124
-//
-// Xilinx, Inc.
-// XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
-// COURTESY TO YOU.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
-/// ONE POSSIBLE   IMPLEMENTATION OF THIS FEATURE, APPLICATION OR
-// STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION
-// IS FREE FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE
-// FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
-// XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
-// THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO
-// ANY WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE
-// FROM CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE.
-//
-// ######################################################################
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #ifndef AIE2_ATTRIBUTES_H_
 #define AIE2_ATTRIBUTES_H_
@@ -33,7 +11,6 @@ namespace aie2
 // ###################################
 
 // Hardware generation
-// See: https://gitenterprise.xilinx.com/ai-engine/aie-rt/blob/main/driver/src/global/xaiegbl_defs.h#L46
 const unsigned int hw_gen = 2;
 // Tile architecture (used to determine broadcast direction)
 const char * const tile_arch = "grid";

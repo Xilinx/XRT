@@ -17,8 +17,7 @@
 #ifndef AIE_PROFILE_DOT_H
 #define AIE_PROFILE_DOT_H
 
-namespace xdp {
-namespace aie {
+namespace xdp::aie {
 
 namespace profile {
   void load();
@@ -27,11 +26,10 @@ namespace profile {
 } // end namespace profile
 
 namespace ctr {
-  void update_device(void* handle);
+  void update_device(void* handle, bool hw_context_flow);
   void end_poll(void* handle);
 } // end namespace ctr
 
-} // end namespace aie
-} // end namespace xdp
+} // end namespace xdp::aie
 
 #endif

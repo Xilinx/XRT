@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -34,7 +34,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
     pt_entry.put("status", entry.is_suspended ? "Idle" : "Active");
-    pt_entry.put("instr_bo_mem", entry.instruction_mem);
+    pt_entry.put("instr_bo_mem", entry.instruction_mem ? xrt_core::utils::unit_convert(entry.instruction_mem) : "N/A");
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
@@ -136,7 +136,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("pid"),
         hw_context.get<std::string>("context_id"),
         hw_context.get<std::string>("status"),
-        xrt_core::utils::unit_convert(hw_context.get<uint64_t>("instr_bo_mem")),
+        hw_context.get<std::string>("instr_bo_mem"),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),

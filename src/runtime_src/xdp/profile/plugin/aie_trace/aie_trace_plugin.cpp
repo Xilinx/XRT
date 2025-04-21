@@ -38,6 +38,8 @@
 #elif XDP_VE2_BUILD
 #include "ve2/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "shim/xdna_hwctx.h"
 #else
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
@@ -91,6 +93,8 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
 
 #ifdef XDP_CLIENT_BUILD
   return db->addDevice("win_sysfspath");
+#elif XDP_VE2_BUILD
+  return db->addDevice("ve2_device");
 #else
   return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
@@ -102,9 +106,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   if (!handle)
     return;
-
+  
   //handle relates to hw context handle in case of Client XRT
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
   xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
@@ -124,11 +128,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // Update the static database with information from xclbin
 #ifdef XDP_CLIENT_BUILD
-  (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+  (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#elif defined(XDP_VE2_BUILD)
+  (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
 #else
-  // Update the static database with information from xclbin
-  (db->getStaticInfo()).updateDevice(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
+  (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
 #endif
 
   // Metadata depends on static information from the database
@@ -277,6 +282,18 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
       ,
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
       AIEData.metadata);
+#elif XDP_VE2_BUILD
+  auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+  auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+  auto aieObj = hwctx_obj->get_aie_array();
+  XAie_DevInst* devInst = aieObj->get_dev();
+
+  AIEData.offloader = std::make_unique<AIETraceOffload>(
+      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
+      ,
+      aieTraceBufSize // total trace buffer size
+      ,
+      AIEData.metadata->getNumStreams(), devInst);
 #else
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?

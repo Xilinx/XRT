@@ -1036,6 +1036,11 @@ xclbin(const std::vector<char>& data)
 {}
 
 xclbin::
+xclbin(const std::string_view& data)
+  : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(std::vector<char>{data.begin(), data.end()}))
+{}
+
+xclbin::
 xclbin(const axlf* top)
   : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(top))
 {}

@@ -35,11 +35,11 @@ zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
 
         err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
         if (err) {
-                DRM_INFO("skip kind %d(%s) return code: %d", kind,
+                DRM_DEBUG("skip kind %d(%s) return code: %d", kind,
                     xrt_xclbin_kind_to_string(kind), err);
                 return 0;
         } else {
-                DRM_INFO("found kind %d(%s)", kind,
+                DRM_DEBUG("found kind %d(%s)", kind,
                     xrt_xclbin_kind_to_string(kind));
         }
 

@@ -605,12 +605,6 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
 
 /************************************ gmio_api ************************************/
 
-/// GMIO API helper functions
-static inline u8 convertLogicalToPhysicalDMAChNum(short logicalChNum)
-{
-    return (logicalChNum > 1 ? (logicalChNum - 2) : logicalChNum);
-}
-
 size_t frontAndPop(std::queue<size_t>& bdQueue)
 {
     size_t bd = bdQueue.front();
@@ -637,13 +631,23 @@ err_code gmio_api::configure()
         gmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);
         driverStatus |= XAie_DmaDescInit(config->get_dev(), &shimDmaInst, gmioTileLoc);
         //enable shim DMA channel, need to start first so the status is correct
-        driverStatus |= XAie_DmaChannelEnable(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
+        driverStatus |= XAie_DmaChannelEnable(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
         driverStatus |= XAie_DmaGetMaxQueueSize(config->get_dev(), gmioTileLoc, &dmaStartQMaxSize);
 
-        //decide 4 BD numbers to use for this GMIO based on channel number (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+        // Assign BDs to each shim DMA channel based on the following scheme
+        // Pre-AIE* archs: one shared pool of 16 BDs for 2 S2MM and 2 MMS2 channels.
+        // - S2MM channel 0: BDs  0 -  3
+        // - S2MM channel 1: BDs  4 -  7
+        // - MM2S channel 0: BDs  8 - 11
+        // - MM2S channel 1: BDs 12 - 15
+        // type = pGMIOConfig->type, chNum = pGMIOConfig->channelNum, dmaStartQMaxSize = 4
+        // S2MM channel 0: type = 1, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  0 + j ->  0 -  3
+        // S2MM channel 1: type = 1, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  4 + j ->  4 -  7
+        // MM2S channel 0: type = 0, ((1 - type) * 2 + chNum) * dmaStartQMaxSize =  8 + j ->  8 - 11
+        // MM2S channel 1: type = 0, ((1 - type) * 2 + chNum) * dmaStartQMaxSize = 12 + j -> 12 - 15
         for (int j = 0; j < dmaStartQMaxSize; j++)
         {
-            int bdNum = pGMIOConfig->channelNum * dmaStartQMaxSize + j;
+            int bdNum = ((1 - pGMIOConfig->type) * 2 + pGMIOConfig->channelNum) * dmaStartQMaxSize + j;
             availableBDs.push(bdNum);
 
             //set AXI burst length, this won't change during runtime
@@ -668,20 +672,21 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
 
     int driverStatus = XAIE_OK; //0
 
-    //wait for available BD
-    while (availableBDs.empty())
-    {
-        u8 numPendingBDs = 0;
-        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
+    //get available BDs first
+    u8 numPendingBDs = 0;
+    driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
 
-        int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
-        //move completed BDs from enqueuedBDs to availableBDs
-        for (int i = 0; i < numBDCompleted; i++)
-        {
-            uint16_t bdNumber = frontAndPop(enqueuedBDs);
-            availableBDs.push(bdNumber);
-        }
+    int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
+    //move completed BDs from enqueuedBDs to availableBDs
+    for (int i = 0; i < numBDCompleted && !enqueuedBDs.empty(); i++)
+    {
+        uint16_t bdNum = frontAndPop(enqueuedBDs);
+        availableBDs.push(bdNum);
     }
+
+    //first check if we have atleast one availabe BD to proceed
+    if (availableBDs.empty())
+        return errorMsg(err_code::internal_error, "ERROR: adf::gmio_api::enqueueBD: available BDs are empty.");
 
     //get an available BD
     uint16_t bdNumber = frontAndPop(availableBDs);
@@ -689,7 +694,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     //set up BD
     driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
 
-    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
+    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
     else
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
@@ -700,7 +705,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     driverStatus |= XAie_DmaWriteBd(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
 
     //enqueue BD
-    driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+    driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
     /* Commenting out as this is increasing overhead of the performance */
@@ -727,7 +732,7 @@ err_code gmio_api::wait()
 
     debugMsg("gmio_api::wait::XAie_DmaWaitForDone ...");
 
-    while (XAie_DmaWaitForDone(config->get_dev(), gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
+    while (XAie_DmaWaitForDone(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), 0) != XAIE_OK) {}
 
     while (!enqueuedBDs.empty())
     {

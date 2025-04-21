@@ -248,11 +248,19 @@ get_ml_timeline()
 }
 
 inline std::string
-get_ml_timeline_buffer_size()
+get_ml_timeline_settings_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "192K");
+  static std::string value = detail::get_string_value("ML_timeline_settings.buffer_size", "192K");
   return value;
 }
+
+inline unsigned int
+get_ml_timeline_settings_num_buffer_segments()
+{
+  static unsigned int value = detail::get_uint_value("ML_timeline_settings.num_buffer_segments", 0);
+  return value;
+}
+
 
 inline bool
 get_aie_pc()
@@ -736,6 +744,16 @@ inline std::string
 get_hardware_context_type()
 {
   static std::string value = detail::get_string_value("Runtime.hardware_context_type", "default");
+  return value;
+}
+
+// This flag is added to support opening privileged/non-privileged context in ve2.
+// By default privileged context is being opened in ve2 which restricts certain register spaces.
+// Non-privilege context is required to support XDP (eg. accessing MDM registers) and other usecases.
+inline bool
+get_privileged_context()
+{
+  static bool value = detail::get_bool_value("Runtime.privileged_context", true);
   return value;
 }
 

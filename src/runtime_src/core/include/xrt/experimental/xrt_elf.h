@@ -38,15 +38,27 @@ public:
   elf(const std::string& fnm);
 
   /**
-   * elf() - Constructor from raw ELF data
+   * elf() - Constructor from raw ELF data stream
    *
-   * @param data
-   *  Raw data of elf
+   * @param stream
+   *  Raw data stream of elf
    *
    */
   XRT_API_EXPORT
   explicit
   elf(std::istream& stream);
+
+  /**
+   * elf() - Constructor from raw ELF data
+   *
+   * @param data
+   *  Pointer to raw elf data
+   * @param size
+   *  Size of raw elf data
+   *
+   */
+  XRT_API_EXPORT
+  elf(const void *data, size_t size);
 
   /**
    * get_cfg_uuid() - Get the configuration UUID of the elf

@@ -56,9 +56,9 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
 
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
     if (watts != "N/A")
-      _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Power" % watts;
+      _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Estimated Power" % watts;
     else
-      _output << std::endl << boost::format("%-23s  : %s\n") % "Power" % watts;
+      _output << std::endl << boost::format("%-23s  : %s\n") % "Estimated Power" % watts;
   }
 
   _output << std::endl;

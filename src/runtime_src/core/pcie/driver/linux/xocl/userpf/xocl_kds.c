@@ -2328,6 +2328,9 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		struct xgq_cmd_resp_query_cu resp;
 		void *xgq;
 
+		if (cu_info[i].protocol == CTRL_NONE)
+		continue;
+
 		ret = xocl_kds_xgq_query_cu(xdev, cu_info[i].cu_idx, 0, &resp);
 		if (ret)
 			goto create_regular_cu;
@@ -2541,6 +2544,9 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
 		if (!xcu)
+			continue;
+
+		if (xcu->info.protocol == CTRL_NONE)
 			continue;
 
 		/* Unregister the CUs as per slot order */

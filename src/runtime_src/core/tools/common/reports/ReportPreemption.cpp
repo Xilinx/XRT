@@ -35,19 +35,19 @@ generate_preemption_string(const bpt& pt)
   std::stringstream ss;
 
   std::vector<Table2D::HeaderData> preempt_headers = {
-    {"User Task", Table2D::Justification::left},
+    {"FW TID", Table2D::Justification::left},
     {"Ctx ID", Table2D::Justification::left},
-    {"Layer Boundary Events", Table2D::Justification::left},
-    {"Frame Boundary Events", Table2D::Justification::left},
+    {"Layer Events", Table2D::Justification::left},
+    {"Frame Events", Table2D::Justification::left},
   };
   Table2D preemption_table(preempt_headers);
 
   for (const auto& [name, user_task] : pt) {
     const std::vector<std::string> rtos_data = {
-      user_task.get<std::string>("user_task"),
-      user_task.get<std::string>("slot_index"),
-      user_task.get<std::string>("preemption_layer_boundary_events"),
-      user_task.get<std::string>("preemption_frame_boundary_events"),
+      user_task.get<std::string>("fw_tid"),
+      user_task.get<std::string>("ctx_index"),
+      user_task.get<std::string>("layer_events"),
+      user_task.get<std::string>("frame_events"),
     };
     preemption_table.addEntry(rtos_data);
   }
@@ -65,7 +65,7 @@ ReportPreemption::writeReport(const xrt_core::device* ,
 {
   const bpt empty_ptree;
   bpt telemetry_array = pt.get_child("telemetry", empty_ptree);
-  _output << "Premption Telemetry Data\n";
+  _output << "Preemption Telemetry Data\n";
   _output << generate_preemption_string(telemetry_array);
   _output << std::endl;
 }

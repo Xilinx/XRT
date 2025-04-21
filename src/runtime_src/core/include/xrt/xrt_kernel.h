@@ -614,6 +614,22 @@ public:
     start(count);
   }
 
+  /**
+   * get_ctrl_scratchpad_bo() - Get the ctrl scratchpad bo object
+   * 
+   * NPU uses ctrl scratchpad memory to store control state data.
+   * This memory is created by XRT based on ELF used to create xrt::kernel
+   * The API returns the buffer object (bo) created by XRT allowing
+   * applications to read from or write to it.
+   * This API is only valid for run objects associated with an ELF.
+   * 
+   * Throws if control scratchpad section is not absent in ELF or
+   * if any error occurs while retrieving the bo
+   */
+  XCL_DRIVER_DLLESPEC
+  xrt::bo
+  get_ctrl_scratchpad_bo() const;
+
 public:
   /// @cond
   const std::shared_ptr<run_impl>&

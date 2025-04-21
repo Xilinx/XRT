@@ -38,8 +38,10 @@
 #include "tools/common/tests/TestCmdChainLatency.h"
 #include "tools/common/tests/TestCmdChainThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
-#include "tools/common/tests/TestSpatialSharingOvd.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
+#include "tools/common/tests/TestPreemptionOverhead.h"
+#include "tools/common/tests/TestValidateUtilities.h"
+
 namespace XBU = XBUtilities;
 namespace xq = xrt_core::query;
 
@@ -113,8 +115,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestCmdChainLatency>(),
   std::make_shared<TestCmdChainThroughput>(),
   std::make_shared<TestAIEReconfigOverhead>(),
-  std::make_shared<TestSpatialSharingOvd>(),
   std::make_shared<TestTemporalSharingOvd>(),
+  std::make_shared<TestPreemptionOverhead>(),
 };
 
 /*
@@ -386,7 +388,7 @@ static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
 //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate",
              "Validates the basic device acceleration functionality")
 {
@@ -396,20 +398,6 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-
-  m_commandConfig = configurations;
-}
-
-void
-SubCmdValidate::print_help_internal(const SubCmdValidateOptions& options) const
-{
-  if (options.m_device.empty()) {
-    printHelp(false);
-    return;
-  }
-
-  const std::string deviceClass = XBU::get_device_class(options.m_device, true);
-  printHelp(m_commonOptions, m_hiddenOptions, deviceClass, false);
 }
 
 void 
@@ -505,16 +493,18 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   catch (const boost::program_options::error& e)
   {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
 
   // Check to see if help was requested or no command was found
   if (options.m_help) {
-    print_help_internal(options);
+    printHelp();
     return;
   }
+
+  XBU::setElf(options.m_elf);
 
   // -- Process the options --------------------------------------------
   Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
@@ -557,7 +547,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    print_help_internal(options);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -687,6 +677,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
+  options.m_elf = vm.count("elf") ? vm["elf"].as<bool>() : false;
 }
 
 void

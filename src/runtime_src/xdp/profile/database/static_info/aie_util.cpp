@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -414,35 +414,18 @@ namespace xdp::aie {
    ****************************************************************************/
 
   boost::property_tree::ptree
-  getAIEPartitionInfoClient(void* hwCtxImpl)
+  getAIEPartitionInfo(void* handle, bool isHwCtxImpl)
   {
     boost::property_tree::ptree infoPt;
+    std::shared_ptr<xrt_core::device> device;
     try {
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-      auto device = xrt_core::hw_context_int::get_core_device(context);
-  
-      auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
-      for(const auto& e : info) {
-        boost::property_tree::ptree pt;
-        pt.put("start_col", e.start_col);
-        pt.put("num_cols", e.num_cols);
-        infoPt.push_back(std::make_pair("", pt));
+      if (isHwCtxImpl) {
+        xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+        device = xrt_core::hw_context_int::get_core_device(context);
+      } else {
+        device = xrt_core::get_userpf_device(handle);
       }
-    }
-    catch(...) {
-      xrt_core::message::send(severity_level::info, "XRT", "Could not retrieve AIE Partition Info.");
-      return infoPt;
-    }
-    return infoPt;
-  }
-
-  boost::property_tree::ptree
-  getAIEPartitionInfo(void* handle)
-  {
-    boost::property_tree::ptree infoPt;
-    try {
-      auto device = xrt_core::get_userpf_device(handle);
-
+  
       auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
       for(const auto& e : info) {
         boost::property_tree::ptree pt;

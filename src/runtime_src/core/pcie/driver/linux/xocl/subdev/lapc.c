@@ -224,6 +224,12 @@ static int lapc_mmap(struct file *filp, struct vm_area_struct *vma)
 	BUG_ON(!lapc);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
+
+	if (off > lapc->range) {
+		xocl_err(lapc->dev, "invalid mmap offset: 0x%lx", off);
+		return -EINVAL;
+       }
+
 	/* BAR physical address */
 	phys = lapc->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

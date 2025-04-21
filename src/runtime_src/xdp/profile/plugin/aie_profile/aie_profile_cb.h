@@ -21,7 +21,7 @@
 
 extern "C"
 XDP_PLUGIN_EXPORT
-void updateAIECtrDevice(void* handle);
+void updateAIECtrDevice(void* handle, bool hw_context_flow);
 
 extern "C"
 XDP_PLUGIN_EXPORT

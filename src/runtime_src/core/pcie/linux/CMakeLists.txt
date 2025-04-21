@@ -16,7 +16,7 @@ add_library(core_pcielinux_objects OBJECT
   pcidev.cpp
   pcidrv.cpp
   shim.cpp
-  smi.cpp
+  smi_pcie.cpp
   system_linux.cpp
   )
 

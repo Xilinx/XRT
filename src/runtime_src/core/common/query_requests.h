@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -60,6 +60,7 @@ enum class key_type
   xclbin_name,
   sequence_name,
   elf_name,
+  mobilenet,
 
   dma_threads_raw,
 
@@ -321,6 +322,7 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
+  frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
   num_live_processes,
@@ -531,7 +533,7 @@ struct edge_vendor : request
 };
 
 /**
- * Used to retieve the path to a configuration file required for the 
+ * Used to retieve the configuration required for the 
  * current device assuming a valid instance "type" is passed. The shim
  * decides the appropriate path and name to return, absolving XRT of
  * needing to know where to look.
@@ -598,7 +600,12 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm
+    gemm,
+    validate_elf,
+    gemm_elf,
+    mobilenet_elf,
+    preemption_4x4,
+    preemption_4x8  
   };
 
   static std::string
@@ -609,6 +616,16 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
+      case type::validate_elf:
+        return "validate_elf";
+      case type::gemm_elf:
+        return "gemm_elf";
+      case type::preemption_4x4:
+        return "preemption_4x4";
+      case type::preemption_4x8:
+        return "preemption_4x8";
+      case type::mobilenet_elf:
+        return "mobilenet_elf";
     }
     return "unknown";
   }
@@ -672,15 +689,45 @@ struct sequence_name : request
 struct elf_name : request
 {
   enum class type {
-    nop
+    df_bandwidth, 
+    tct_one_column, 
+    tct_all_column, 
+    aie_reconfig_overhead,
+    gemm_int8, 
+    nop,
+    preemption_noop_4x4,
+    preemption_noop_4x8,
+    preemption_memtile_4x4,
+    preemption_memtile_4x8, 
+    mobilenet
   };
 
   static std::string
   enum_to_str(const type& type)
   {
     switch (type) {
+      case type::df_bandwidth:
+        return "df_bandwidth";
+      case type::tct_one_column:
+        return "tct_one_column";
+      case type::tct_all_column:
+        return "tct_all_column";
+      case type::aie_reconfig_overhead:
+        return "aie_reconfig_overhead";
+      case type::gemm_int8:
+        return "gemm_int8";
       case type::nop:
         return "nop";
+      case type::preemption_noop_4x4:
+        return "preemption_noop_4x4";
+      case type::preemption_noop_4x8:
+        return "preemption_noop_4x8";
+      case type::preemption_memtile_4x4:
+        return "preemption_memtile_4x4";
+      case type::preemption_memtile_4x8:
+        return "preemption_memtile_4x8";
+      case type::mobilenet:
+        return "mobilenet";
     }
     return "unknown";
   }
@@ -688,6 +735,36 @@ struct elf_name : request
   using result_type = std::string;
   static const key_type key = key_type::elf_name;
   static const char* name() { return "elf_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
+};
+
+struct mobilenet : request 
+{
+  enum class type {
+    mobilenet_ifm,
+    mobilenet_param,
+    buffer_sizes
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::mobilenet_ifm:
+        return "mobilenet_ifm";
+      case type::mobilenet_param:
+        return "mobilenet_param";
+      case type::buffer_sizes:
+        return "buffer_sizes";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::mobilenet;
+  static const char* name() { return "mobilenet"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
@@ -3965,7 +4042,7 @@ struct performance_mode : request
 };
 
 /*
- * this request force enables or disables pre-emption globally
+ * this request force enables or disables layer boundary pre-emption globally
  * 1: enable; 0: disable
 */
 struct preemption : request
@@ -3974,6 +4051,25 @@ struct preemption : request
   using value_type = uint32_t;   // put value type
 
   static const key_type key = key_type::preemption;
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  virtual void
+  put(const device*, const std::any&) const override = 0;
+
+};
+
+/*
+ * this request force enables or disables frame boundary pre-emption globally
+ * 1: enable; 0: disable
+*/
+struct frame_boundary_preemption : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::frame_boundary_preemption;
 
   virtual std::any
   get(const device*) const override = 0;

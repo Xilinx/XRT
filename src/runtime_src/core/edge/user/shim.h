@@ -359,6 +359,9 @@ public:
   void setAIEAccessMode(xrt::aie::access_mode am);
 #endif
 
+public:
+  inline bool get_hw_context_enable() { return hw_context_enable; }
+
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   const int mBoardNumber = -1;

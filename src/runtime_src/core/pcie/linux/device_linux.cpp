@@ -17,7 +17,7 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "smi.h"
+#include "smi_pcie.h"
 #include "pcidev.h"
 #include "xrt.h"
 
@@ -674,7 +674,7 @@ struct clk_scaling_info
     std::vector<std::string> stat;
     boost::split(stat, keyValue, boost::is_any_of(":"));
     if (stat.size() != 2) {
-      const auto& errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
+      const auto errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
       throw std::runtime_error(errMsg.str());
     }
     return std::stoi(std::string(stat.at(1)));
@@ -950,9 +950,9 @@ struct xrt_smi_lists
     const auto xrt_smi_lists_type = std::any_cast<xrt_core::query::xrt_smi_lists::type>(reqType);
     switch (xrt_smi_lists_type) {
     case xrt_core::query::xrt_smi_lists::type::validate_tests:
-      return shim_pcie::smi::get_validate_tests();
+      return xrt_core::smi::get_list("validate", "run");
     case xrt_core::query::xrt_smi_lists::type::examine_reports:
-      return shim_pcie::smi::get_examine_reports();
+      return xrt_core::smi::get_list("examine", "report");
     default:
       throw xrt_core::query::no_such_key(key, "Not implemented");
     }

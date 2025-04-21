@@ -8,44 +8,38 @@
 #include <regex>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
+#include "xrt/experimental/xrt_ext.h"
 
 #include "TestValidateUtilities.h"
 namespace xq = xrt_core::query;
-
-static constexpr size_t param_size = 0x100;
-static constexpr size_t inter_size = 0x100;
-static constexpr size_t mc_size = 0x100;
 
 // Constructor for BO_set
 // BO_set is a collection of all the buffer objects so that the operations on all buffers can be done from a single object
 // Parameters:
 // - device: Reference to the xrt::device object
 // - kernel: Reference to the xrt::kernel object
-BO_set::BO_set(const xrt::device& device, const xrt::kernel& kernel, const std::string& dpu_instr, size_t buffer_size) 
-  : buffer_size(buffer_size), 
-    bo_ifm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1)),
-    bo_param (device, param_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2)),
-    bo_ofm   (device, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3)),
-    bo_inter (device, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4)),
-    bo_mc    (device, mc_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7))
+BO_set::BO_set(const xrt::device& device, 
+               const BufferSizes& buffer_sizes,
+               const std::string& ifm_file, 
+               const std::string& param_file) 
+  : buffer_sizes(buffer_sizes),
+    bo_ifm      (xrt::ext::bo{device, buffer_sizes.ifm_size}),
+    bo_param    (xrt::ext::bo{device, buffer_sizes.param_size}),
+    bo_ofm      (xrt::ext::bo{device, buffer_sizes.ofm_size}),
+    bo_inter    (xrt::ext::bo{device, buffer_sizes.inter_size}),
+    bo_mc       (xrt::ext::bo{device, buffer_sizes.mc_size})
 {
-  if (dpu_instr.empty()) {
-    // Create a no-op instruction if no instruction file is provided
-    std::memset(bo_instr.map<char*>(), (uint8_t)0, buffer_size);
-  } else {
-    size_t instr_size = XBValidateUtils::get_instr_size(dpu_instr); 
-    bo_instr = xrt::bo(device, instr_size * sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-    XBValidateUtils::init_instr_buf(bo_instr, dpu_instr);
-  }
+  XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
+  XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
 }
 
 // Method to synchronize buffer objects to the device
 void BO_set::sync_bos_to_device() {
-  bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -55,14 +49,15 @@ void BO_set::sync_bos_to_device() {
 // Parameters:
 // - run: Reference to the xrt::run object
 void BO_set::set_kernel_args(xrt::run& run) const {
-  uint64_t opcode = 1;
+  // to-do: replace with XBU::get_opcode() when dpu sequence flow is taken out
+  uint64_t opcode = 3;
   run.set_arg(0, opcode);
-  run.set_arg(1, bo_ifm);
-  run.set_arg(2, bo_param);
-  run.set_arg(3, bo_ofm);
-  run.set_arg(4, bo_inter);
-  run.set_arg(5, bo_instr);
-  run.set_arg(6, bo_instr.size()/sizeof(int));
+  run.set_arg(1, 0);
+  run.set_arg(2, 0);
+  run.set_arg(3, bo_ifm);
+  run.set_arg(4, bo_param);
+  run.set_arg(5, bo_ofm);
+  run.set_arg(6, bo_inter);
   run.set_arg(7, bo_mc);
 }
 
@@ -73,8 +68,11 @@ TestCase::initialize()
   // Initialize kernels, buffer objects, and runs
   for (int j = 0; j < params.queue_len; j++) {
     xrt::kernel kernel;
-    kernel = xrt::kernel(hw_ctx, params.kernel_name);
-    auto bos = BO_set(params.device, kernel, params.dpu_file, params.buffer_size);
+    xrt::elf elf = xrt::elf(params.elf_file);
+    xrt::module mod{elf};
+    kernel = xrt::ext::kernel{hw_ctx, mod, params.kernel_name};
+    BufferSizes buffer_sizes = XBValidateUtils::read_buffer_sizes(params.buffer_sizes_file);
+    auto bos = BO_set(params.device, buffer_sizes, params.ifm_file, params.param_file);
     bos.sync_bos_to_device();
     auto run = xrt::run(kernel);
     bos.set_kernel_args(run);
@@ -105,6 +103,24 @@ TestCase::run()
 
 namespace XBValidateUtils{
 
+BufferSizes 
+read_buffer_sizes(const std::string& json_file) {
+  boost::property_tree::ptree root;
+  BufferSizes buffer_sizes {};
+
+  // Read the JSON file into a property tree
+  boost::property_tree::read_json(json_file, root);
+
+  // Extract buffer sizes
+  buffer_sizes.ifm_size = root.get<size_t>("buffer_sizes.ifm_size");
+  buffer_sizes.param_size = root.get<size_t>("buffer_sizes.param_size");
+  buffer_sizes.inter_size = root.get<size_t>("buffer_sizes.inter_size");
+  buffer_sizes.mc_size = root.get<size_t>("buffer_sizes.mc_size");
+  buffer_sizes.ofm_size = root.get<size_t>("buffer_sizes.ofm_size");
+
+  return buffer_sizes;
+}
+
 // Copy values from text files into buff, expecting values are ascii encoded hex
 void 
 init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
@@ -124,6 +140,16 @@ init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
     ss >> std::hex >> word;
     *(instr++) = word;
   }
+}
+
+void init_buf_bin(int* buff, size_t bytesize, const std::string &filename) {
+
+  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+
+  if (!ifs.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % filename));
+  }
+  ifs.read(reinterpret_cast<char*>(buff), static_cast<std::streamsize>(bytesize));
 }
 
 size_t 
@@ -413,5 +439,59 @@ dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclb
 
     return elf_path;
   }
+}
+
+/*
+* Check if ELF flow is enabled
+*/
+bool 
+get_elf()
+{
+  return XBUtilities::getElf(); 
+}
+
+/*
+* Get the host opcode for the kernel based on if ELF is enabled
+* return 1 for DPU sequence and 3 for ELF flow
+*/
+int
+get_opcode()
+{
+  return XBUtilities::getElf() ? 3 : 1;
+}
+
+/*
+* Get the xclbin path
+*/
+std::string 
+get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query::xclbin_name::type test_type, boost::property_tree::ptree& ptTest)
+{
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, test_type);
+  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
+  return xclbin_path;
+}
+
+/*
+* Get DPU kernel name from xclbin.
+*/
+std::string
+get_kernel_name(const xrt::xclbin& xclbin, boost::property_tree::ptree& ptTest)
+{
+  // Determine The DPU Kernel Name
+  auto xkernels = xclbin.get_kernels();
+
+  auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    auto name = k.get_name();
+    return (name.rfind("DPU",0) == 0) || (name.rfind("dpu", 0) == 0); // Starts with "DPU"
+  });
+
+  xrt::xclbin::kernel xkernel;
+  if (itr!=xkernels.end())
+    xkernel = *itr;
+  else {
+    XBValidateUtils::logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
+    ptTest.put("status", XBValidateUtils::test_token_failed);
+  }
+  return xkernel.get_name();
 }
 }// end of namespace XBValidateUtils

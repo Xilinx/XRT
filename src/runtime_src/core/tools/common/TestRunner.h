@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __TestRunner_h_
 #define __TestRunner_h_
@@ -43,6 +43,8 @@ class TestRunner : public JSONConfigurable {
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
     xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf);
+    xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_name, 
+      const std::string& elf_path); 
 
     std::string m_xclbin;
  
@@ -52,6 +54,9 @@ class TestRunner : public JSONConfigurable {
     std::string m_name;
     std::string m_description;
     bool m_explicit;
+  
+  public:
+    virtual ~TestRunner() = default;
 
 };
   

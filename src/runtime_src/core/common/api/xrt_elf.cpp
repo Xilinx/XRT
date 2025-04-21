@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/interprocess/streams/bufferstream.hpp>
+
 namespace xrt {
 
 // class elf_impl - Implementation
@@ -43,6 +45,16 @@ public:
   {
     if (!m_elf.load(stream))
       throw std::runtime_error("not a valid ELF stream");
+  }
+
+  explicit elf_impl(const void *data, size_t size)
+  {
+    // Uses the same approach as in aiebu reporter.cpp
+    // ibufferstream allows reading from data without first copying over
+    // the data to create the stream
+    boost::interprocess::ibufferstream istr(static_cast<const char *>(data), size);
+    if (!m_elf.load(istr))
+      throw std::runtime_error("not valid ELF data");
   }
 
   const ELFIO::elfio&
@@ -86,11 +98,11 @@ public:
   uint32_t
   get_partition_size() const
   {
-    // Partition size is stored in as note 0 in .note.xrt.configuration section 
+    // Partition size is stored in as note 0 in .note.xrt.configuration section
     if (auto section = m_elf.sections[".note.xrt.configuration"])
       return std::stoul(get_note(section, 0));
 
-    throw std::runtime_error("ELF is missing xrt configuration info");  
+    throw std::runtime_error("ELF is missing xrt configuration info");
   }
 };
 
@@ -137,6 +149,11 @@ elf(std::istream& stream)
   : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(stream)}
 {}
 
+elf::
+elf(const void *data, size_t size)
+    : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data, size)}
+{}
+
 xrt::uuid
 elf::
 get_cfg_uuid() const
@@ -166,5 +183,3 @@ get_partition_size() const
 }
 
 } // namespace xrt::aie
-  
-

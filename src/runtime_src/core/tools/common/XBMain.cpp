@@ -6,6 +6,7 @@
 // Local - Include Files
 #include "core/common/system.h"
 #include "core/common/smi.h"
+#include "SmiDefault.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
@@ -66,7 +67,7 @@ void  main_(int argc, char** argv,
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("advance", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+    ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
@@ -193,7 +194,7 @@ void  main_(int argc, char** argv,
   boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
 
   if (available_devices.empty()) //no device
-    config = xrt_core::smi::get_smi_config();
+    config = xrt_smi_default::get_default_smi_config();
   else if (available_devices.size() == 1 || !sDevice.empty()) { //1 device
     auto device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), isUserDomain);
     config = xrt_core::device_query<xrt_core::query::xrt_smi_config>(device, xrt_core::query::xrt_smi_config::type::options_config);

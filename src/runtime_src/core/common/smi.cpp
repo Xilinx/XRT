@@ -15,143 +15,77 @@
 
 namespace xrt_core::smi {
 
-using boost::property_tree::ptree;
+using ptree = boost::property_tree::ptree;
 
 ptree 
 option::
 to_ptree() const 
 {
   boost::property_tree::ptree pt;
-  pt.put("name", name);
-  pt.put("description", description);
-  pt.put("type", type);
-  pt.put("alias", alias);
-  pt.put("default_value", default_value);
-  pt.put("value_type", value_type);
-  if (!description_array.empty()) {
-    boost::property_tree::ptree description_array_ptree;
-    for (const auto& desc : description_array) {
-      boost::property_tree::ptree desc_node;
-      desc_node.put("name", desc.name);
-      desc_node.put("description", desc.description);
-      desc_node.put("type", desc.type);
-      description_array_ptree.push_back(std::make_pair("", desc_node));
-    }
-    pt.add_child("description_array", description_array_ptree);
-  }
+  pt.put("name", m_name);
+  pt.put("description", m_description);
+  pt.put("type", m_type);
+  pt.put("alias", m_alias);
+  pt.put("default_value", m_default_value);
+  pt.put("value_type", m_value_type);
   return pt;
 }
 
-smi_base::
-smi_base() : 
-  examine_report_desc {
-    {"host", "Host information", "common"}
-  },
-  configure_options {
-    {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
-    {"help", "h", "Help to use this sub-command", "common", "", "none"}
-  }
-{}
-
-std::vector<basic_option> 
-smi_base::
-construct_option_description(const tuple_vector& vec) const
+ptree
+listable_description_option::
+to_ptree() const 
 {
-  std::vector<basic_option> option_descriptions;
-  for (const auto& [name, description, type] : vec) {
-    option_descriptions.push_back({name, description, type});
+  boost::property_tree::ptree pt = option::to_ptree();
+  boost::property_tree::ptree description_array_ptree;
+  for (const auto& desc : m_description_array) {
+    boost::property_tree::ptree desc_node;
+    desc_node.put("name", desc.m_name);
+    desc_node.put("description", desc.m_description);
+    desc_node.put("type", desc.m_type);
+    description_array_ptree.push_back(std::make_pair("", desc_node));
   }
-  return option_descriptions;
+  pt.add_child("description_array", description_array_ptree);
+  return pt;
+}
+
+tuple_vector
+listable_description_option::
+get_description_array() const 
+{
+  tuple_vector desc_array;
+  for (const auto& desc : m_description_array) {
+    desc_array.emplace_back(std::make_tuple(desc.m_name, desc.m_description, desc.m_type));
+  }
+  return desc_array;
 }
 
 ptree 
-smi_base::
-construct_validate_subcommand() const 
+subcommand::
+construct_subcommand_json() const 
 {
-  ptree subcommand;
-  subcommand.put("name", "validate");
-  subcommand.put("description", "Validates the given device by executing the platform's validate executable.");
-  subcommand.put("type", "common");
+  boost::property_tree::ptree pt;
+  pt.put("name", m_name);
+  pt.put("description", m_description);
+  pt.put("type", m_type);
 
-  std::vector<option> options = {
-    {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
-    {"format", "f", "Report output format. Valid values are:\n"
-                    "\tJSON        - Latest JSON schema\n"
-                    "\tJSON-2020.2 - JSON 2020.2 schema", "common", "JSON", "string"},
-    {"output", "o", "Direct the output to the given file", "common", "", "string"},
-    {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"run", "r", "Run a subset of the test suite. Valid options are:\n",  "common", "",  "array", construct_option_description(validate_test_desc)},
-    {"path", "p", "Path to the directory containing validate xclbins", "hidden", "", "string"},
-    {"param", "", "Extended parameter for a given test. Format: <test-name>:<key>:<value>", "hidden", "", "string"},
-    {"pmode", "", "Specify which power mode to run the benchmarks in. Note: Some tests might be unavailable for some modes", "hidden", "", "string"}
-  };
-
-  ptree options_ptree;
-  for (const auto& option : options) {
-    options_ptree.push_back(std::make_pair("", option.to_ptree()));
+  boost::property_tree::ptree options_ptree;
+  for (const auto& opt : m_options) {
+    options_ptree.push_back(std::make_pair("", opt.second->to_ptree()));
   }
-
-  subcommand.add_child("options", options_ptree);
-  return subcommand;
-}
-
-ptree 
-smi_base::
-construct_examine_subcommand() const 
-{
-  ptree subcommand;
-  subcommand.put("name", "examine");
-  subcommand.put("type", "common");
-  subcommand.put("description", "This command will 'examine' the state of the system/device and will generate a report of interest in a text or JSON format.");
-
-  std::vector<option> options = {
-    {"device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"},
-    {"format", "f", "Report output format. Valid values are:\n"
-                    "\tJSON        - Latest JSON schema\n"
-                    "\tJSON-2020.2 - JSON 2020.2 schema", "common", "", "string"},
-    {"output", "o", "Direct the output to the given file", "common", "", "string"},
-    {"help", "h", "Help to use this sub-command", "common", "", "none"},
-    {"report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", construct_option_description(examine_report_desc)},
-    {"element", "e", "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'", "hidden", "", "array"}
-  };
-
-  ptree options_ptree;
-  for (const auto& option : options) {
-    options_ptree.push_back(std::make_pair("", option.to_ptree()));
-  }
-
-  subcommand.add_child("options", options_ptree);
-  return subcommand;
-}
-
-ptree 
-smi_base::
-construct_configure_subcommand() const 
-{
-  ptree subcommand;
-  subcommand.put("name", "configure");
-  subcommand.put("type", "common");
-  subcommand.put("description", "Device and host configuration");
-
-  ptree options_ptree;
-  for (const auto& option : configure_options) {
-    options_ptree.push_back(std::make_pair("", option.to_ptree()));
-  }
-
-  subcommand.add_child("options", options_ptree);
-  return subcommand;
+  pt.add_child("options", options_ptree);
+  return pt;
 }
 
 std::string 
-smi_base::
-get_smi_config() const 
+smi::
+build_smi_config() const 
 {
   ptree config;
   ptree subcommands;
 
-  subcommands.push_back(std::make_pair("", construct_validate_subcommand()));
-  subcommands.push_back(std::make_pair("", construct_examine_subcommand()));
-  subcommands.push_back(std::make_pair("", construct_configure_subcommand()));
+  for (const auto& [name, subcmd] : m_subcommands) {
+    subcommands.push_back(std::make_pair("", subcmd.construct_subcommand_json()));
+  }
 
   config.add_child("subcommands", subcommands);
 
@@ -160,11 +94,37 @@ get_smi_config() const
   return oss.str();
 }
 
-std::string
-get_smi_config()
+tuple_vector
+smi::
+get_list(const std::string& subcommand, const std::string& suboption) const 
 {
-  xrt_core::smi::smi_base instance;
+  const auto it = m_subcommands.find(subcommand);
+  if (it == m_subcommands.end()) {
+    throw std::runtime_error("Subcommand not found: " + subcommand);
+  }
 
-  return instance.get_smi_config();
+  const auto& subcmd = it->second;
+
+  const auto it_suboption = subcmd.get_options().find(suboption);
+  if (it_suboption == subcmd.get_options().end()) {
+    throw std::runtime_error("Suboption not found: " + suboption);
+  }
+
+  const auto& option = it_suboption->second;
+  return option->get_description_array();
 }
+
+smi*
+instance() 
+{
+  static smi instance;
+  return &instance;
+}
+
+tuple_vector
+get_list(const std::string& subcommand, const std::string& suboption) 
+{
+  return instance()->get_list(subcommand, suboption);
+}
+
 } // namespace xrt_core::smi

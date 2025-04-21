@@ -26,12 +26,14 @@
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #elif defined (XDP_VE2_BUILD)
 #include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #endif
 
 namespace xdp {
@@ -41,7 +43,7 @@ namespace xdp {
   uint32_t ParseMLTimelineBufferSizeConfig()
   {
     uint32_t bufSz = 0;
-    std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
+    std::string szCfgStr = xrt_core::config::get_ml_timeline_settings_buffer_size();
     std::smatch subStr;
 
     std::stringstream msg;
@@ -118,7 +120,7 @@ namespace xdp {
   {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
           "In ML Timeline Plugin : updateDevice.");
-
+      
 #ifdef XDP_CLIENT_BUILD
 
     if (mMultiImpl.find(hwCtxImpl) != mMultiImpl.end()) {
@@ -136,7 +138,7 @@ namespace xdp {
 
     std::string winDeviceName = "win_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(winDeviceName);
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
@@ -160,7 +162,7 @@ namespace xdp {
 
     std::string deviceName = "ve2_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(deviceName);
-    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
