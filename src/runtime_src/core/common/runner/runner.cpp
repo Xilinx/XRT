@@ -1339,7 +1339,7 @@ class profile
     init_buffer_file(xrt::bo& bo, const init_node& node)
     {
       auto file = node.at("file").get<std::string>();
-      auto skip = node.value("skip", 0);
+      auto skip = node.value<size_t>("skip", 0);
       auto data = m_repo->get(file);
       if (skip > data.size())
         throw std::runtime_error("");
@@ -1406,7 +1406,7 @@ class profile
       if (node.value<bool>("debug", false)) {
         static uint64_t count = 0;
         std::ofstream ostrm("profile.debug.init[" + std::to_string(count++) + "].bin", std::ios::binary);
-        ostrm.write(bo.map<char*>(), bo.size());
+        ostrm.write(bo.map<char*>(), static_cast<std::streamsize>(bo.size()));
       }
 
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
