@@ -56,6 +56,13 @@ namespace xdp::aie {
   bool isNPU3(const int hwGen);
   
   /**
+   * @brief   Get HW generation-specific resources
+   * @param   hwGen integer representing the hardware generation
+   * @return 
+   */
+  int getNumCounters(const int hwGen, xdp::module_type mod);
+
+  /**
    * @brief   Check if microcontrollers are supported
    * @param   hwGen integer representing the hardware generation
    * @return  true if microcontrollers are available on specified generation

@@ -18,6 +18,8 @@
 
 #include <set>
 #include "xdp/profile/plugin/aie_base/aie_utility.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_debug/generations/aie_generations.h"
 
 namespace xdp::aie {
   
@@ -51,6 +53,34 @@ namespace xdp::aie {
   bool isMicroSupported(const int hwGen)
   {
     return (isAIE2ps(hwGen) || isNPU3(hwGen));
+  }
+
+  // ***************************************************************
+  // Generation-specific resources
+  // ***************************************************************
+  int getNumCounters(const int hwGen, xdp::module_type mod)
+  {
+    if (mod == xdp::module_type::core) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::cm_num_counters
+                : (xdp::aie::isNPU3(hwGen) ? aie4::cm_num_counters
+                : aie2::cm_num_counters));
+    }
+    if (mod == xdp::module_type::dma) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_counters
+                : (xdp::aie::isNPU3(hwGen) ? aie4::mm_num_counters
+                : aie2::mm_num_counters));
+    }
+    if (mod == xdp::module_type::shim) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_counters
+                : (xdp::aie::isNPU3(hwGen) ? aie4::shim_num_counters
+                : aie2::shim_num_counters));
+    }
+    if (mod == xdp::module_type::mem_tile) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_counters
+                : (xdp::aie::isNPU3(hwGen) ? aie4::mem_num_counters
+                : aie2::mem_num_counters));
+    }
+    return 0;
   }
 
   /****************************************************************************
