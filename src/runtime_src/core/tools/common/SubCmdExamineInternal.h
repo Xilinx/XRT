@@ -4,8 +4,15 @@
 #ifndef __SubCmdExamineInternal_h_
 #define __SubCmdExamineInternal_h_
 
+#include "tools/common/XBUtilities.h"
 #include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"
+
+#include <boost/program_options.hpp>
+
+#include <map>
+#include <vector>
+#include <string>
 
 
 class SubCmdExamineInternal : public SubCmd {

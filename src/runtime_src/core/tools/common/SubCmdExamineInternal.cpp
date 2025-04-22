@@ -10,13 +10,11 @@
 // Utilities
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
