@@ -672,21 +672,20 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
 
     int driverStatus = XAIE_OK; //0
 
-    //get available BDs first
-    u8 numPendingBDs = 0;
-    driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
-
-    int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
-    //move completed BDs from enqueuedBDs to availableBDs
-    for (int i = 0; i < numBDCompleted && !enqueuedBDs.empty(); i++)
+    //wait for available BD
+    while (availableBDs.empty())
     {
-        uint16_t bdNum = frontAndPop(enqueuedBDs);
-        availableBDs.push(bdNum);
-    }
+        u8 numPendingBDs = 0;
+        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
 
-    //first check if we have atleast one availabe BD to proceed
-    if (availableBDs.empty())
-        return errorMsg(err_code::internal_error, "ERROR: adf::gmio_api::enqueueBD: available BDs are empty.");
+        int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
+        //move completed BDs from enqueuedBDs to availableBDs
+        for (int i = 0; i < numBDCompleted; i++)
+        {
+            uint16_t bdNumber = frontAndPop(enqueuedBDs);
+            availableBDs.push(bdNumber);
+        }
+    }
 
     //get an available BD
     uint16_t bdNumber = frontAndPop(availableBDs);
