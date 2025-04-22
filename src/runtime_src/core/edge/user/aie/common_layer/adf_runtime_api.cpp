@@ -386,7 +386,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     bool relSelLock = true;
     bool relBufLock = true;
 
-    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
         {
@@ -542,7 +542,7 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
     XAie_LocType pongTile = XAie_TileLoc(pRTPConfig->pongColumn, pRTPConfig->pongRow + numReservedRows + 1);
 
-    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS) //modification to accommodate AIEML semaphore
     {
         if (pRTPConfig->isAsync)
             acquireVal = AIE_ML_ASYNC_ACQ;
@@ -693,7 +693,7 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
     //set up BD
     driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
 
-    if (config->get_dev()->DevProp.DevGen >= XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
+    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
     else
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
