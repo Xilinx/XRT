@@ -129,13 +129,8 @@ namespace xdp {
 
    // NOTE: AIE Status is not released product on client. Whenever client support is needed,
    // required dynamic column start shift should come from XRT and not compiler metadata
-#ifdef XDP_VE2_BUILD
-    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
-    uint8_t startColShift = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
-#else
    uint8_t startColShift = metadataReader->getPartitionOverlayStartCols().front();
    aie::displayColShiftInfo(startColShift);
-#endif
 
    if (startColShift > 0) {
     for(auto& [graph, tileVec] : mGraphCoreTilesMap) {
