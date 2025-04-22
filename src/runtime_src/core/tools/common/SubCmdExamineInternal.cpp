@@ -51,10 +51,6 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
 
   m_commandConfig = configurations;
 
-  static boost::program_options::options_description common_options;
-  static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
-  static XBUtilities::VectorPairStrings common_reports;
-
   for (const auto& option : uniqueReportCollection)
     fullReportCollection.push_back(option);
 

@@ -26,6 +26,10 @@ class SubCmdExamineInternal : public SubCmd {
   std::string               m_output;
   bool                      m_help;
   bool                      m_isUserDomain;
+
+  boost::program_options::options_description common_options;
+  std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
+  XBUtilities::VectorPairStrings common_reports;
 };
 
 #endif
