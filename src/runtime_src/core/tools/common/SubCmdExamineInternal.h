@@ -4,6 +4,8 @@
 #ifndef __SubCmdExamineInternal_h_
 #define __SubCmdExamineInternal_h_
 
+#include "tools/common/XBHelpMenus.h"
+#include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"

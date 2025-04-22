@@ -8,9 +8,7 @@
 #include "core/common/error.h"
 
 // Utilities
-#include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "tools/common/XBHelpMenus.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
