@@ -657,12 +657,12 @@ namespace xdp::aie::profile {
       uint16_t eventId = getAdfApiReservedEventId(metricSet);
       return std::make_pair(eventId, eventId);
     }
-
+    
     uint16_t tmpStart;
     uint16_t tmpEnd;
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
-
+    
     uint16_t phyStartEvent = tmpStart + getCounterBase(xdpModType);
     uint16_t phyEndEvent   = tmpEnd   + getCounterBase(xdpModType);
     return std::make_pair(phyStartEvent, phyEndEvent);
