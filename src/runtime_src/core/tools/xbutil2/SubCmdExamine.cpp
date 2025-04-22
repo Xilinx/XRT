@@ -193,7 +193,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> reportsToRun(options.m_reportNames);
   if (reportsToRun.empty()) {
     if (!XBU::getAdvance()) {
-      reportsToRun.push_back("host");
+      reportsToRun.emplace_back("host");
     } 
     else {
       printHelp();

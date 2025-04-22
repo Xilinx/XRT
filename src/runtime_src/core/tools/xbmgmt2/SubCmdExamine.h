@@ -11,7 +11,7 @@
 
 class SubCmdExamine : public SubCmdExamineInternal {
  public:
-  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations);
 
  private:
   std::string               m_device;

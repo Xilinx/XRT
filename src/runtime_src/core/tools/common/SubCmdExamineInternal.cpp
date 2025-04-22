@@ -27,9 +27,6 @@ namespace po = boost::program_options;
 #include <regex>
 
 static ReportCollection fullReportCollection = {};
-static boost::program_options::options_description common_options;
-static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
-static XBUtilities::VectorPairStrings common_reports;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
@@ -53,6 +50,10 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   setIsPreliminary(_isPreliminary);
 
   m_commandConfig = configurations;
+
+  static boost::program_options::options_description common_options;
+  static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
+  static XBUtilities::VectorPairStrings common_reports;
 
   for (const auto& option : uniqueReportCollection)
     fullReportCollection.push_back(option);

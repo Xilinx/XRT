@@ -10,7 +10,7 @@
 
 class SubCmdExamineInternal : public SubCmd {
  public:
-  virtual void execute(const SubCmdOptions &_options) const;
+  void execute(const SubCmdOptions &_options) const override;
 
  public:
   static ReportCollection uniqueReportCollection;
