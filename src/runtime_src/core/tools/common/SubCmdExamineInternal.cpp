@@ -83,10 +83,11 @@ SubCmdExamineInternal::print_help_internal() const
     const std::string deviceClass = XBU::get_device_class(m_device, m_isUserDomain);
     static const std::string reportOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, common_reports);
     std::vector<std::string> tempVec;
-    common_options.add_options()
+    auto common_options_temp = common_options;
+    common_options_temp.add_options()
       ("report,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ;
-    printHelp(common_options, m_hiddenOptions, deviceClass);
+    printHelp(common_options_temp, m_hiddenOptions, deviceClass);
   }
 }
 
@@ -121,7 +122,8 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
+  const auto validated_format = m_format.empty() ? "json" : m_format;
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
   try{
     if (vm.count("output") && m_output.empty())
       throw xrt_core::error("Output file not specified");
