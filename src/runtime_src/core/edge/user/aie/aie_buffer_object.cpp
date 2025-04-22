@@ -52,8 +52,14 @@ namespace zynqaie {
     if (async_started)
       throw xrt_core::error(-EINVAL, "Asynchronous operation is already initiated. Multiple 'async' calls are not supported");
 
-    m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
+    bd_info = m_aie_array->sync_bo_nb(bos, name.c_str(), dir, size, offset);
     async_started = true;
+  }
+
+  bool
+  aie_buffer_object::status()
+  {
+    return m_aie_array->status(name, bd_info.first, bd_info.second);
   }
 
   void

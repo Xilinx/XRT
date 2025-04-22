@@ -6,6 +6,7 @@
 #include <vector>
 #include "xrt.h"
 #include "xrt/xrt_bo.h"
+
 namespace xrt_core {
 class aie_buffer_handle
 {
@@ -26,6 +27,12 @@ public:
 
   virtual void
   async(std::vector<xrt::bo>&, xclBOSyncDirection, size_t, size_t)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual bool
+  status()
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
