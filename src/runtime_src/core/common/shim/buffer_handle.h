@@ -83,14 +83,20 @@ public:
     return XRT_NULL_BO;
   }
 
-  // Indicates to SHIM/driver that bh is going to be used by this BO. With
-  // offset and zie, it can also support using portion of bh (sub-BO).
-  // For now, this is only used when set_arg() is called upon an exec buf
-  // BO where pos is the arg index.
+  // Indicates to SHIM/driver that bh is going to be used by this
+  // BO. With offset and size, it can also support using portion of bh
+  // (sub-BO).  For now, this is only used when set_arg() is called
+  // upon an exec buf BO where pos is the arg index.
   virtual void
   bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
-  {
-  }
+  {}
+
+  // Reverse of bind_at, this function indiciates to shim that the execbo
+  // (on which the function is called) is no longer using the BOs that were
+  // bound to it.
+  virtual void
+  reset()
+  {}
 
   virtual void
   sync_aie_bo(xrt::bo&, const char *, bo_direction, size_t, size_t)

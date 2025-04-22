@@ -4,7 +4,17 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
 
-#define XRT_VERBOSE
+// AIESW-2326 The runner currently disables the use of xrt::runlist
+// #define USE_XRT_RUNLIST
+
+// If runlist contains more than XRT_RUNLIST_THRESHOLD runs then
+// switch to xrt::runlist
+#define XRT_RUNLIST_THRESHOLD 6
+
+#ifdef _DEBUG
+# define XRT_VERBOSE
+#endif
+
 #include "runner.h"
 #include "cpu.h"
 
@@ -64,6 +74,62 @@ load_json(const std::string& input)
 
   throw std::runtime_error("Failed to open JSON file: " + input);
 }
+
+// Lifted from xrt_kernel.cpp
+// Helper for converting an arbitrary sequence of bytes into
+// a range that be iterated byte-by-byte (or by ValueType)
+// Used during profile initialziation of a buffer.
+template <typename ValueType>
+class arg_range
+{
+  const ValueType* uval;
+  size_t words;
+
+  // Number of bytes must multiple of sizeof(ValueType)
+  size_t
+  validate_bytes(size_t bytes)
+  {
+    if (bytes % sizeof(ValueType))
+      throw std::runtime_error("arg_range unaligned bytes");
+    return bytes;
+  }
+
+public:
+  arg_range(const void* value, size_t bytes)
+    : uval(reinterpret_cast<const ValueType*>(value))
+    , words(validate_bytes(bytes) / sizeof(ValueType))
+  {}
+
+  const ValueType*
+  begin() const
+  {
+    return uval;
+  }
+
+  const ValueType*
+  end() const
+  {
+    return uval + words;
+  }
+
+  size_t
+  size() const
+  {
+    return words;
+  }
+
+  size_t
+  bytes() const
+  {
+    return words * sizeof(ValueType);
+  }
+
+  const ValueType*
+  data() const
+  {
+    return uval;
+  }
+};
 
 // struct streambuf - wrap a std::streambuf around an external buffer
 //
@@ -837,6 +903,7 @@ class recipe
     struct runlist
     {
       virtual ~runlist() = default;
+      virtual void add(const run& run) = 0;
       virtual void execute() = 0;
       virtual void wait() {}
     };
@@ -844,6 +911,12 @@ class recipe
     struct cpu_runlist : runlist
     {
       std::vector<xrt_core::cpu::run> m_runs;
+
+      void
+      add(const run& run) override
+      {
+        m_runs.push_back(run.get_cpu_run());
+      }
       
       void
       execute() override
@@ -853,6 +926,7 @@ class recipe
       }
     };
 
+#ifdef USE_XRT_RUNLIST
     struct npu_runlist : runlist
     {
       xrt::runlist m_runlist;
@@ -860,6 +934,12 @@ class recipe
       explicit npu_runlist(const xrt::hw_context& hwctx)
         : m_runlist{hwctx}
       {}
+
+      void
+      add(const run& run) override
+      {
+        m_runlist.add(run.get_xrt_run());
+      }
 
       void
       execute() override
@@ -873,7 +953,37 @@ class recipe
         m_runlist.wait();
       }
     };
+#else
+    struct npu_runlist : runlist
+    {
+      std::vector<xrt::run> m_runlist;
 
+      explicit npu_runlist(const xrt::hw_context&)
+      {}
+
+      void
+      add(const run& run) override
+      {
+        m_runlist.push_back(run.get_xrt_run());
+      }
+
+      void
+      execute() override
+      {
+        for (auto& run : m_runlist)
+          run.start();
+      }
+
+      void
+      wait() override
+      {
+        // While waiting for last to complete is enough, all runs
+        // must be marked completed
+        for (auto itr = m_runlist.rbegin(); itr != m_runlist.rend(); ++itr)
+          (*itr).wait2();
+      }
+    };
+#endif
 
     std::vector<run> m_runs;
     xrt::queue m_queue;        // Queue that executes the runlists in sequence
@@ -904,7 +1014,7 @@ class recipe
             runlists.push_back(std::move(rl));
           }
 
-          nrl->m_runlist.add(run.get_xrt_run());
+          nrl->add(run);
         }
         else if (run.is_cpu_run()) {
           if (nrl) 
@@ -916,7 +1026,7 @@ class recipe
             runlists.push_back(std::move(rl));
           }
 
-          crl->m_runs.push_back(run.get_cpu_run());
+          crl->add(run);
         }
       }
       return runlists;
@@ -1110,25 +1220,23 @@ class profile
   //
   // {
   //   "name": buffer name in recipe
-  //   "file": (optional with init) if present use to initialize the buffer
-  //   "size": (required if no file) the size of the buffer
+  //   "size": (required w/o fle initialization) the size of the buffer
   //   "init": (optional) how to initialize a buffer
-  //   "validate": how to validate a buffer after execution
+  //   "validate": (optional) how to validate a buffer after execution
   // }
   // 
   // The bindings section specify what xrt::bo objects to create for
   // external buffers. The buffers are bound to the recipe prior to
   // first execution.
-  // 
-  // A binding can specify a file from which the buffer should be
-  // initialized.  If a "file" is specified, the buffer is created with
-  // this size unless "size" is also specified, in which case the size
-  // is exactly the size of the buffer and max size bytes of file is
-  // used to initialize the buffer.
+  //
+  // If "size" is specified it will be the size of the buffer.
+  // "size" is required unless the buffer is initialzed from a file,
+  // in which case the size (if not explicit) is inferred from the
+  // size of the file.
   //
   // If "init" is specified, then it defines how the buffer should be
-  // initialzed. "init" takes precedence over "file" if "file" is also
-  // specified, potentially overwriting already initialized buffer.
+  // initialzed. There are several different ways in which a buffer
+  // can be initialized.
   //
   // If "validate" is specified then it has instructions on how to
   // validate a buffer after executing the recipe.
@@ -1140,6 +1248,11 @@ class profile
     using binding_node = json;
     using init_node = json;
     using validate_node = json;
+
+    xrt::device m_device;
+
+    // Cache the repo for file access during init
+    const artifacts::repo* m_repo;
 
     // Map of resource name to json binding element.
     std::map<name_t, binding_node> m_bindings;
@@ -1171,15 +1284,7 @@ class profile
       std::map<name_t, xrt::bo> bos;
       for (const auto& [name, node] : bindings) {
         auto size = node.value<size_t>("size", 0);
-        auto file = node.value<std::string>("file", "");
-        auto data = file.empty() ? std::string_view{} : repo->get(file);
-        size = size ? size : data.size(); // specified size has precedence
-        xrt::bo bo = xrt::ext::bo{device, size};
-        if (!data.empty()) {
-          auto bo_data = bo.map<char*>();
-          std::copy(data.data(), data.data() + std::min<size_t>(size, data.size()), bo_data);
-          bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        }
+        xrt::bo bo = size ? xrt::ext::bo{device, size} : xrt::bo{};
         bos.emplace(node.at("name").get<std::string>(), std::move(bo));
       }
       return bos;
@@ -1225,24 +1330,83 @@ class profile
       }
     }
 
-    // Initialize a resource buffer per the binding json node
-    static void
+    // init_buffer_file() - Initialize bo from a content of a file
+    // "init": {
+    //   "file": "path", // path to file
+    //   "skip": bytes,  // skip fist bytes of file (optional)
+    // }
+    void
+    init_buffer_file(xrt::bo& bo, const init_node& node)
+    {
+      auto file = node.at("file").get<std::string>();
+      auto skip = node.value<size_t>("skip", 0);
+      auto data = m_repo->get(file);
+      if (skip > data.size())
+        throw std::runtime_error("");
+
+      // Create the bo from the size of the file unless it was already
+      // created from explicit size
+      if (!bo)
+        bo = xrt::ext::bo{m_device, data.size()};
+
+      // Adjust the view, skipping skip bytes, then copy to bo
+      data = std::string_view{data.data() + skip, data.size() - skip};
+      auto bo_data = bo.map<char*>();
+      std::copy(data.data(), data.data() + std::min<size_t>(bo.size(), data.size()), bo_data);
+    }
+
+    // init_buffer_stride() - Initialize bo with value at stride
+    // "init": {
+    //   "stride": 1,   // write the value repeatedly at this stride
+    //   "value": 239,  // the value to write
+    //   "begin": 0,    // offset to start writing at (optional)
+    //   "end": 524288, // offset to end writing at (optional)
+    //   "debug": true  // undefined (optional)
+    // }
+    void
+    init_buffer_stride(xrt::bo& bo, const init_node& node)
+    {
+      auto bo_data = bo.map<uint8_t*>();
+      auto stride = node.at("stride").get<size_t>();
+      auto value = node.at("value").get<uint64_t>();
+      auto begin = node.value("begin", 0);
+      auto end = node.value("end", bo.size());
+      arg_range<uint8_t> vr{&value, sizeof(value)};
+      for (size_t offset = begin; offset < end; offset += stride) 
+        std::copy_n(vr.begin(), std::min<size_t>(bo.size() - offset, vr.size()), bo_data + offset);
+    }
+
+    void
+    init_buffer_random(xrt::bo& bo, const init_node&)
+    {
+      auto bo_data = bo.map<uint8_t*>();
+      static std::random_device rd;
+      std::generate(bo_data, bo_data + bo.size(), [&]() { return static_cast<uint8_t>(rd()); });
+    }
+
+    // init_buffer() - Initialize a resource buffer per the binding json node
+    // "init": {
+    //   // "stride" stride initialization
+    //   // "random" random initialization
+    // }
+    // The buffer is synced to device after iniitialization
+    void
     init_buffer(xrt::bo& bo, const init_node& node)
     {
-      // Fill the resource buffer with data
-      auto bo_data = bo.map<uint8_t*>();
+      // stride initialization with specified value
+      if (node.contains("file"))
+        init_buffer_file(bo, node);
+      else if (node.contains("stride"))
+        init_buffer_stride(bo, node);
+      else if (node.value<bool>("random", false))
+        init_buffer_random(bo, node);
+      else
+        throw std::runtime_error("Unsupported initialziation node in profile");
 
-      if (node.value<bool>("random", false)) {
-        static std::random_device rd;
-        std::generate(bo_data, bo_data + bo.size(), [&]() { return static_cast<uint8_t>(rd()); });
-      }
-      else {
-        // Get the pattern, which must be one character
-        auto pattern = node.at("pattern").get<std::string>();
-        if (pattern.size() != 1)
-          throw std::runtime_error("pattern size must be 1");
-      
-        std::fill(bo_data, bo_data + bo.size(), pattern[0]);
+      if (node.value<bool>("debug", false)) {
+        static uint64_t count = 0;
+        std::ofstream ostrm("profile.debug.init[" + std::to_string(count++) + "].bin", std::ios::binary);
+        ostrm.write(bo.map<char*>(), static_cast<std::streamsize>(bo.size()));
       }
 
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -1251,10 +1415,14 @@ class profile
   public:
     bindings() = default;
 
-    bindings(const xrt::device& device, const json& j, const artifacts::repo* repo)
-      : m_bindings{init_bindings(j)}
-      , m_xrt_bos{create_buffers(device, m_bindings, repo)}
-    {}
+    bindings(xrt::device device, const json& j, const artifacts::repo* repo)
+      : m_device{std::move(device)}
+      , m_repo{repo}
+      , m_bindings{init_bindings(j)}
+      , m_xrt_bos{create_buffers(m_device, m_bindings, repo)}
+    {
+      init();
+    }
 
     // Validate resource buffers per json.  Validation is per bound buffer
     // as defined in the profile json.
