@@ -4068,6 +4068,16 @@ add(const xrt::run& run)
   handle->add(run);
 }
 
+void
+runlist::
+add(xrt::run&& run)
+{
+  if (!handle)
+    throw xrt_core::error("cannot add run object to uninitialized runlist");
+
+  handle->add(std::move(run));
+}
+
 
 void
 runlist::
