@@ -118,7 +118,7 @@ namespace xdp {
   /****************************************************************************
    * Gather list of tiles to check status
    ***************************************************************************/
-  void AIEStatusPlugin::getTilesForStatus()
+  void AIEStatusPlugin::getTilesForStatus(void* handle)
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
@@ -223,7 +223,12 @@ namespace xdp {
       return;
 
     // AIE core register offsets
+#ifdef XDP_VE2_BUILD
+    constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x38004;
+#else
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
+#endif
+
     auto offset = metadataReader->getAIETileRowOffset();
     auto hwGen = metadataReader->getHardwareGeneration();
 
@@ -462,7 +467,7 @@ namespace xdp {
     auto hwGen =  metadataReader->getHardwareGeneration();
 
     // Update list of tiles to debug
-    getTilesForStatus();
+    getTilesForStatus(handle);
 
     // Open the writer for this device
     #ifdef XDP_VE2_BUILD

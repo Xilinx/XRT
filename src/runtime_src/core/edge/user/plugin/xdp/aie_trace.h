@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,9 +18,8 @@
 #ifndef XDP_AIE_TRACE_H
 #define XDP_AIE_TRACE_H
 
-namespace xdp {
-namespace aie {
-  void update_device(void* handle);
+namespace xdp::aie {
+  void update_device(void* handle, bool hw_context_flow);
   void flush_device(void* handle);
   void finish_flush_device(void* handle);
 
@@ -30,8 +30,7 @@ namespace trace {
   int  error_function();
 
 } // end namespace trace
-} // end namespace aie
-} // end namespace xdp
+} // end namespace xdp::aie
 
 #endif
 

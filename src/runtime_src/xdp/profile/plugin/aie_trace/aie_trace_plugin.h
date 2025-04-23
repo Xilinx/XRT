@@ -38,7 +38,7 @@ class AieTracePluginUnified : public XDPPlugin {
 public:
   AieTracePluginUnified();
   virtual ~AieTracePluginUnified();
-  void updateAIEDevice(void *handle);
+  void updateAIEDevice(void *handle, bool hw_context_flow);
   void flushAIEDevice(void *handle);
   void finishFlushAIEDevice(void *handle);
   virtual void writeAll(bool openNewFiles) override;

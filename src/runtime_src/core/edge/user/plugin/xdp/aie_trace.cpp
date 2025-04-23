@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,8 +21,7 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
-namespace xdp {
-namespace aie {
+namespace xdp::aie {
 namespace trace {
 
   void load()
@@ -32,24 +32,21 @@ namespace trace {
                                                         error_function);
   }
 
-  std::function<void (void*)> update_device_cb;
+  std::function<void (void*, bool)> update_device_cb;
   std::function<void (void*)> flush_device_cb;
   std::function<void (void*)> finish_flush_device_cb;
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*) ;
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL)
-      update_device_cb = nullptr;
+    using utype = void (*)(void*, bool);
+    using ftype = void (*)(void*);
 
-    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL)
-      flush_device_cb = nullptr;
-
-    finish_flush_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL)
-      finish_flush_device_cb = nullptr;
+    update_device_cb =
+       reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDevice"));
+    flush_device_cb =
+      reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushAIEDevice"));
+    finish_flush_device_cb =
+      reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
   }
 
   void warning_function()
@@ -63,10 +60,10 @@ namespace trace {
 
 } // end namespace trace
 
-  void update_device(void* handle)
+  void update_device(void* handle, bool hw_context_flow)
   {
     if (trace::update_device_cb != nullptr)
-      trace::update_device_cb(handle);
+      trace::update_device_cb(handle, hw_context_flow);
   }
 
   void flush_device(void* handle)
@@ -80,6 +77,5 @@ namespace trace {
     if (trace::finish_flush_device_cb != nullptr)
       trace::finish_flush_device_cb(handle);
   }
-  
-} // end namespace aie
-} // end namespace xdp
+
+} // end namespace xdp::aie
