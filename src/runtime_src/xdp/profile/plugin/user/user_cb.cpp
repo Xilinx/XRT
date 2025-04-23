@@ -85,7 +85,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = userEventsPluginInstance.getDatabase();
 
     uint64_t l = 0;

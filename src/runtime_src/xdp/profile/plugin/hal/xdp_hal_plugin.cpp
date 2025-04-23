@@ -35,7 +35,7 @@ namespace xdp {
 
   static void generic_log_function_start(const char* functionName, uint64_t id)
   {
-    auto timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = halPluginInstance.getDatabase() ;
 
     // Update counters
@@ -52,7 +52,7 @@ namespace xdp {
 
   static void generic_log_function_end(const char* functionName, uint64_t id)
   {
-    auto timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = halPluginInstance.getDatabase() ;
   
     // Update counters
@@ -74,7 +74,7 @@ namespace xdp {
     // Also create a buffer transfer event
     VPDatabase* db = halPluginInstance.getDatabase() ;
 
-    auto timestamp = xrt_core::time_ns();
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VTFEvent* event = new BufferTransfer(0, timestamp, WRITE_BUFFER, size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(bufferId, event->getEventId());
@@ -85,7 +85,7 @@ namespace xdp {
     generic_log_function_end(name, id) ;
 
     // Add trace event for end of Buffer Transfer
-    auto timestamp = xrt_core::time_ns();
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event =
       new BufferTransfer(db->getDynamicInfo().matchingStart(bufferId),
@@ -101,7 +101,7 @@ namespace xdp {
     // Also create a buffer transfer event
     VPDatabase* db = halPluginInstance.getDatabase() ;
 
-    auto timestamp = xrt_core::time_ns();
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VTFEvent* event = new BufferTransfer(0, timestamp, READ_BUFFER, size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(bufferId, event->getEventId());
@@ -112,7 +112,7 @@ namespace xdp {
     generic_log_function_end(name, id) ;
 
     // Add trace event for end of Buffer Transfer
-    auto timestamp = xrt_core::time_ns();
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event =
       new BufferTransfer(db->getDynamicInfo().matchingStart(bufferId),

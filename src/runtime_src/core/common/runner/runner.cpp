@@ -9,7 +9,7 @@
 
 // If runlist contains more than XRT_RUNLIST_THRESHOLD runs then
 // switch to xrt::runlist
-#define XRT_RUNLIST_THRESHOLD 6
+//#define USE_XRT_RUNLIST
 
 #ifdef _DEBUG
 # define XRT_VERBOSE
@@ -22,6 +22,7 @@
 #include "core/common/dlfcn.h"
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
+#include "core/common/time.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -37,6 +38,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <istream>
 #include <map>
 #include <memory>
@@ -904,7 +906,7 @@ class recipe
     {
       virtual ~runlist() = default;
       virtual void add(const run& run) = 0;
-      virtual void execute() = 0;
+      virtual void execute(size_t) = 0;
       virtual void wait() {}
     };
 
@@ -919,8 +921,9 @@ class recipe
       }
       
       void
-      execute() override
+      execute(size_t) override
       {
+        // CPU runs are synchronous, nothing to wait on
         for (auto& run : m_runs)
           run.execute();
       }
@@ -942,9 +945,13 @@ class recipe
       }
 
       void
-      execute() override
+      execute(size_t iteration) override
       {
-        m_runlist.execute();
+        // Wait until previous iteration is done
+        if (iteration > 0)
+          m_runlist.wait();
+
+        m_runlst.execute();
       }
 
       void
@@ -968,10 +975,21 @@ class recipe
       }
 
       void
-      execute() override
+      execute(size_t iteration) override
       {
-        for (auto& run : m_runlist)
+        // First iteration, just start all runs
+        if (iteration == 0) {
+          for (auto& run : m_runlist)
+            run.start();
+
+          return;
+        }
+
+        // Wait until previous iteration run is done
+        for (auto& run : m_runlist) {
+          run.wait();
           run.start();
+        }
       }
 
       void
@@ -987,10 +1005,10 @@ class recipe
 
     std::vector<run> m_runs;
     xrt::queue m_queue;        // Queue that executes the runlists in sequence
-    xrt::queue::event m_event; // Event that signals the completion of the last runlist
     std::exception_ptr m_eptr;
 
     std::vector<std::unique_ptr<runlist>> m_runlists;
+    std::vector<xrt::queue::event> m_events;  // Events that signal complettion of a runlist
 
     static std::vector<std::unique_ptr<runlist>>
     create_runlists(const resources& resources, const std::vector<run>& runs)
@@ -1072,6 +1090,12 @@ class recipe
       , m_runlists{create_runlists(resources, m_runs)}
     {}
 
+    size_t
+    num_runs() const
+    {
+      return m_runs.size();
+    }
+
     void
     bind(const std::string& name, const xrt::bo& bo)
     {
@@ -1082,41 +1106,51 @@ class recipe
         run.bind(name, bo);
     }
 
-    void
-    execute()
+    
+    // execute_runlist() - execute a runlist synchronously
+    // The lambda function is executed asynchronously by an
+    // xrt::queue object. The wait is necessary for an NPU runlist,
+    // which must complete before next enqueue operation can be
+    // executed.  Execution of an NPU runlist is itself asynchronous.
+    static void
+    execute_runlist(size_t iteration, runlist* runlist, std::exception_ptr& eptr)
     {
-      XRT_DEBUGF("recipe::execution::execute()\n");
+      try {
+        runlist->execute(iteration);
+        runlist->wait(); // needed for NPU runlists, noop for CPU
+      }
+      catch (const xrt::runlist::command_error&) {
+        eptr = std::current_exception();
+      }
+      catch (const std::exception&) {
+        eptr = std::current_exception();
+      }
+    }
 
-      // execute_runlist() - execute a runlist synchronously
-      // The lambda function is executed asynchronously by an
-      // xrt::queue object. The wait is necessary for an NPU runlist,
-      // which must complete before next enqueue operation can be
-      // executed.  Execution of an NPU runlist is itself asynchronous.
-      static auto execute_runlist = [](runlist* runlist, std::exception_ptr& eptr) {
-        try {
-          runlist->execute();
-          runlist->wait(); // needed for NPU runlists, noop for CPU
-        }
-        catch (const xrt::runlist::command_error&) {
-          eptr = std::current_exception();
-        }
-        catch (const std::exception&) {
-          eptr = std::current_exception();
-        }
-      };
+    // Execute a run-recipe iteration
+    void
+    execute(size_t iteration)
+    {
+      XRT_DEBUGF("recipe::execution::execute(%d)\n", iteration);
 
       // If single runlist then avoid the overhead of xrt::queue
       if (m_runlists.size() == 1) {
-        m_runlists[0]->execute();
+        m_runlists[0]->execute(iteration);
         return;
       }
 
-      // A recipe can have multiple runlists. Each runlist can have
-      // multiple runs.  Runlists are executed sequentially, execution
-      // is orchestrated by xrt::queue which uses one thread to
-      // asynchronously (from called pov) execute all runlists
-      for (auto& runlist : m_runlists)
-        m_event = m_queue.enqueue([this, &runlist] { execute_runlist(runlist.get(), m_eptr); });
+      // The recipe has multiple runlists (a mix of NPU and CPU).
+      // Restart the recipes, but ensure that a runlist has completed
+      // its previous iteration before restarting it.
+      int count = 0;
+      for (auto& runlist : m_runlists) {
+        if (iteration > 0)
+          m_events[count].wait();
+
+        m_events[count++] = m_queue.enqueue([this, iteration, &runlist] {
+          execute_runlist(iteration, runlist.get(), m_eptr);
+        });
+      }
     }
 
     void
@@ -1133,9 +1167,9 @@ class recipe
 
       // Sufficient to wait for last runlist to finish since last list
       // must have waited for all previous lists to finish.
-      auto runlist = m_runlists.back().get();
-      if (runlist) 
-        m_event.wait();
+      const auto& event = m_events.back();
+      if (event)
+        event.wait();
 
       if (m_eptr)
         std::rethrow_exception(m_eptr);
@@ -1164,6 +1198,12 @@ public:
 
   recipe(const recipe&) = default;
 
+  size_t
+  num_runs() const
+  {
+    return m_execution.num_runs();
+  }
+
   void
   bind_input(const std::string& name, const xrt::bo& bo)
   {
@@ -1183,17 +1223,17 @@ public:
     m_execution.bind(name, bo);
   }
 
-  // The recipe can be executed with its currently bound
-  // input and output resources
+  void
+  execute(size_t iteration)
+  {
+    XRT_DEBUGF("recipe::execute(%d)\n", iteration);
+    m_execution.execute(iteration);
+  }
+
   void
   execute()
   {
-    XRT_DEBUGF("recipe::execute()\n");
-    // Verify that all required resources are bound
-    // ...
-
-    // Execute the runlist
-    m_execution.execute();
+    execute(0);
   }
 
   void
@@ -1502,7 +1542,7 @@ class profile
       if (m_iteration.value("init", false))
         m_profile->init();
       
-      m_profile->execute_recipe();
+      m_profile->execute_recipe(idx);
 
       // Wait execution to complete if requested
       if (m_iteration.value("wait", false))
@@ -1528,10 +1568,23 @@ class profile
     void
     execute()
     {
-      for (size_t i = 0; i < m_iterations; ++i)
-        execute_iteration(i);
+      unsigned long long time_ns = 0;
+      {
+        xrt_core::time_guard tg(time_ns);
+        for (size_t i = 0; i < m_iterations; ++i)
+          execute_iteration(i);
+
+        m_profile->wait_recipe();
+      }
+
+      auto num_runs = m_profile->num_recipe_runs();
+
+      // NOLINTBEGIN
+      std::cout << "Elapsed time (us): " << time_ns / 1000 << "\n";
+      std::cout << "Average Latency (us): " << time_ns / (1000 * m_iterations * num_runs) << "\n";
+      std::cout << "Average Throughput (op/s): " << (1000000000 * m_iterations * num_runs) / time_ns << "\n";
+      // NOLINTEND
     }
-    
   }; // class profile::execution
   
 private:
@@ -1543,6 +1596,12 @@ private:
   recipe m_recipe;
   bindings m_bindings;
   execution m_execution;
+
+  size_t
+  num_recipe_runs() const
+  {
+    return m_recipe.num_runs();
+  }
 
   void
   bind()
@@ -1563,9 +1622,9 @@ private:
   }
 
   void
-  execute_recipe()
+  execute_recipe(size_t idx)
   {
-    m_recipe.execute();
+    m_recipe.execute(idx);
   }
 
   void

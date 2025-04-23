@@ -35,7 +35,7 @@ namespace xdp {
 
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
-    double timestamp = xrt_xocl::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_xocl::time_ns());
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     if (queueAddress != 0) 
@@ -58,7 +58,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
       return ;
 
-    double timestamp = xrt_xocl::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_xocl::time_ns());
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
@@ -77,7 +77,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
       return ;
 
-    double timestamp = xrt_xocl::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_xocl::time_ns());
     VPDatabase* db = lopPluginInstance.getDatabase() ;
     
     uint64_t start = 0 ;
@@ -98,7 +98,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
       return ;
 
-    double timestamp = xrt_xocl::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_xocl::time_ns());
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
@@ -118,7 +118,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
       return ;
 
-    double timestamp = xrt_xocl::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_xocl::time_ns());
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;

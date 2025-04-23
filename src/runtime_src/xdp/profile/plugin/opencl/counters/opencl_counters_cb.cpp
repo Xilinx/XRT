@@ -38,7 +38,7 @@ namespace xdp {
       return;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
-    auto timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
 
     (db->getStats()).logFunctionCallStart(functionName, timestamp) ;
     if (queueAddress != 0)
@@ -51,7 +51,7 @@ namespace xdp {
       return;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
-    auto timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
 
     (db->getStats()).logFunctionCallEnd(functionName, timestamp) ;
   }

@@ -28,7 +28,7 @@ namespace xrt_core {
  *   nanoseconds since first call
  */
 XRT_CORE_COMMON_EXPORT
-unsigned long
+unsigned long long
 time_ns();
 
 /**
@@ -50,11 +50,11 @@ timestamp(uint64_t epoch);
  */
 class time_guard
 {
-  unsigned long zero = 0;
-  unsigned long& tally;
+  unsigned long long zero = 0;
+  unsigned long long& tally;
 public:
   explicit
-  time_guard(unsigned long& t)
+  time_guard(unsigned long long& t)
     : zero(time_ns()), tally(t)
   {}
 
