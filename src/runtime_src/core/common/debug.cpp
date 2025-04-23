@@ -32,7 +32,7 @@ debugf(const char* format,...)
   debug_lock lk;
   va_list args;
   va_start(args,format);
-  printf("%lu: ",time_ns());
+  printf("%llu: ",time_ns());
   vprintf(format,args);
   va_end(args);
 }
