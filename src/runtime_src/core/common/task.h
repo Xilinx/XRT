@@ -116,8 +116,8 @@ class mpmcqueue
   mutable std::mutex m_mutex;
   std::condition_variable m_work;
   bool m_stop = false;
-  unsigned long tp = 0;       // time point when last task consumed
-  unsigned long waittime = 0; // wait time from tp to next task avail
+  unsigned long long tp = 0;       // time point when last task consumed
+  unsigned long long waittime = 0; // wait time from tp to next task avail
   bool debug = false;
 public:
   mpmcqueue()
@@ -343,8 +343,8 @@ inline void
 worker_debug(queue& q,const std::string& id)
 {
   unsigned long loops = 0;
-  unsigned long worktime = 0;
-  unsigned long waittime = 0;
+  unsigned long long worktime = 0;
+  unsigned long long waittime = 0;
   while (true) {
     ++loops;
     auto timepoint = time_ns();

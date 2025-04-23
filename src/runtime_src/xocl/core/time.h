@@ -25,7 +25,7 @@ namespace xocl {
  * @return
  *   nanoseconds since first call
  */
-inline unsigned long
+inline unsigned long long
 time_ns() 
 { 
   return xrt_xocl::time_ns(); 

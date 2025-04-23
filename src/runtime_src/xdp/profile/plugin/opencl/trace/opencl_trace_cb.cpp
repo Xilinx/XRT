@@ -34,7 +34,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     if (queueAddress != 0) 
@@ -57,7 +57,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
@@ -90,7 +90,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
@@ -124,7 +124,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
@@ -166,7 +166,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
@@ -205,7 +205,7 @@ namespace xdp {
     if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = static_cast<double>(xrt_core::time_ns());
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;

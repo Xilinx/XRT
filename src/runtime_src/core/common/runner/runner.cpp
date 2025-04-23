@@ -1578,10 +1578,12 @@ class profile
       }
 
       auto num_runs = m_profile->num_recipe_runs();
-      
+
+      // NOLINTBEGIN
       std::cout << "Elapsed time (us): " << time_ns / 1000 << "\n";
       std::cout << "Average Latency (us): " << time_ns / (1000 * m_iterations * num_runs) << "\n";
       std::cout << "Average Throughput (op/s): " << (1000000000 * m_iterations * num_runs) / time_ns << "\n";
+      // NOLINTEND
     }
   }; // class profile::execution
   
