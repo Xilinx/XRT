@@ -59,6 +59,9 @@ namespace zynqaie {
   bool
   aie_buffer_object::status()
   {
+    if (!async_started)
+      throw xrt_core::error(-EINVAL, "Asynchronous operation is not initiated.");
+
     return m_aie_array->status(name, bd_info.first, bd_info.second);
   }
 
