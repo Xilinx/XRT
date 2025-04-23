@@ -227,6 +227,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     const xrt_core::smi::tuple_vector& reportList = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::examine_reports);
     runnableReports = getReportsList(reportList);
   } 
+  else {
+    runnableReports = uniqueReportCollection;
+  }
   // Collect the reports to be processed
   try {
     XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
