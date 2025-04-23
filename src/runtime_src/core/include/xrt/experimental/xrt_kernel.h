@@ -143,6 +143,15 @@ public:
   add(const xrt::run& run);
 
   /**
+   * add() - Move a run object into the list
+   *
+   * Same behavior as copy add()
+   */
+  XRT_API_EXPORT
+  void
+  add(xrt::run&& run);
+
+  /**
    * execute() - Execute the runlist
    *
    * The runlist is submitted for execution. The run objects in the
