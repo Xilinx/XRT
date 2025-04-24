@@ -1522,7 +1522,7 @@ class profile
   //    "iteration" : {
   //      "bind": false,
   //      "init": true,
-  //      "wait": integer,
+  //      "wait": true,
   //      "validate": true
   //    }
   //  }
