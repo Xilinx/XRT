@@ -347,7 +347,7 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirec
 
 bool
 aie_array::
-status(const std::string& port_name, uint16_t bdNum, uint32_t bdInstance)
+async_status(const std::string& port_name, uint16_t bdNum, uint32_t bdInstance)
 {
   if (!dev_inst)
     throw xrt_core::error(-EINVAL, "Can't get status of GMIO: AIE is not initialized");
@@ -363,7 +363,7 @@ status(const std::string& port_name, uint16_t bdNum, uint32_t bdInstance)
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't get status of GMIO: GMIO name not found");
 
-  return gmio_itr->second->status(bdNum, bdInstance);
+  return gmio_itr->second->gmio_status(bdNum, bdInstance);
 }
 
 void

@@ -733,7 +733,7 @@ std::pair<size_t, size_t> gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t of
     return std::make_pair(bdNumber, statusBDs[bdNumber]);;
 }
 
-bool gmio_api::status(uint16_t bdNum, uint32_t bdInstance)
+bool gmio_api::gmio_status(uint16_t bdNum, uint32_t bdInstance)
 {
     if (statusBDs.find(bdNum) == statusBDs.end())
         throw xrt_core::error(-ENODEV, "ERROR: adf::gmio_api::status: Invalid BD.");

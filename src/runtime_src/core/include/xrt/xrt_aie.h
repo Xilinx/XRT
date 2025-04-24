@@ -496,9 +496,9 @@ public:
   void async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
 
   /**
-   * status() - This function gets the status of the previously initiated async operation
+   * async_status() - This function gets the status of the previously initiated async operation
    */
-  bool status() const;
+  bool async_status() const;
 
   /**
    * wait() - This function waits for the previously initiated async operation

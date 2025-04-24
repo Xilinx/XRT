@@ -70,7 +70,7 @@ public:
   err_code configure();
   void getAvailableBDs();
   std::pair<size_t, size_t> enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size);
-  bool status(uint16_t bdNum, uint32_t bdInstance);
+  bool gmio_status(uint16_t bdNum, uint32_t bdInstance);
   err_code wait();
   err_code enqueueTask(std::vector<dma_api::buffer_descriptor> bdParams, uint32_t repeatCount, bool enableTaskCompleteToken);
   std::shared_ptr<config_manager>

@@ -213,9 +213,9 @@ public:
   }
 
   bool
-  status() const
+  async_status() const
   {
-    return m_buffer_handle->status();
+    return m_buffer_handle->async_status();
   }
 
   void
@@ -518,9 +518,9 @@ async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t of
 
 bool
 buffer::
-status() const
+async_status() const
 {
-  return get_handle()->status();
+  return get_handle()->async_status();
 }
 
 void
