@@ -428,6 +428,21 @@ namespace xdp {
     }
   }
 
+  uint64_t AIEStatusPlugin::getDeviceIDFromHandle(void* handle)
+  {
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
+
+#ifdef XDP_CLIENT_BUILD
+    return db->addDevice("win_device");
+#elif XDP_VE2_BUILD
+    return db->addDevice("ve2_device");
+#else
+    return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+#endif
+  }
+
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
