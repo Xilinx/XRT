@@ -112,6 +112,10 @@ SubCmdConfigure::checkForSubOption(const boost::program_options::variables_map& 
 {
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
+  std::shared_ptr<OptionOptions> option;
+
+  if (options.m_device.empty())
+    return option;
 
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
@@ -124,7 +128,6 @@ SubCmdConfigure::checkForSubOption(const boost::program_options::variables_map& 
   auto optionOptions = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::configure_option_options);
   auto all_options = getOptionOptions(optionOptions);
 
-  std::shared_ptr<OptionOptions> option;
   // Loop through the available sub options searching for a name match
   for (auto& subOO : all_options) {
     if (vm.count(subOO->longName()) != 0) {
