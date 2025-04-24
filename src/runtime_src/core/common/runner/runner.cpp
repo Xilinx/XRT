@@ -1198,11 +1198,11 @@ public:
   {}
 
   recipe(xrt::device device, json recipe, const artifacts::repo* repo)
-    : recipe(std::move(device), std::move(recipe), {}, repo)
+    : recipe::recipe(std::move(device), std::move(recipe), {}, repo)
   {}
 
   recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
-    : recipe(std::move(device), load_json(rr), {}, repo)
+    : recipe::recipe(std::move(device), load_json(rr), {}, repo)
   {}
 
   recipe(const recipe&) = default;
