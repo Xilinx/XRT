@@ -23,14 +23,29 @@ defininng:
 
 There are two sections of profile json:
 
-1. [bindings](#bindings)
-2. [execution](#execution)
+1. [qos](#qos)
+2. [bindings](#bindings)
+3. [execution](#execution)
 
 The `bindings` section defines how external resources are created,
 initialized, and bound to a run-recipe.
 
 The `execution` section controls how the run-recipe is executed and
 how many times along with what should be done in each iteration.
+
+## QoS
+
+Simple key/value pairs designating configuration parameters for
+hardware context creation. 
+```
+  "qos": {
+    "gops": 10,
+    "fps": 30
+  },
+```
+The json schema doesn't enforce key names or value ranges, XRT will
+warn but ignore unrecoqnized keys. Improper values are implementation 
+defined.
 
 ## Bindings
 
@@ -68,7 +83,8 @@ The simple attributes are json key-value pairs:
 
 - `bind` indicates if the buffer should be re-bound to the run
 recipe in each iteration of the recipe (more about this in the
-execution section).
+execution section).  All buffers are by default bound to the 
+recipe upon creation.
 - `size` (optional with file initialization) specifies the size
 of the `xrt::bo` created and bound to the recipe.
 
@@ -193,6 +209,7 @@ iteration and before next iteration.
       "bind": false,
       "init": true,
       "wait": true,
+      "sleep": 1000,
       "validate": true
     }
   }
@@ -202,10 +219,16 @@ The iteration element specifies what should happen before after each
 iteration of the run recipe.
 
 - `bind` indicates if buffers should be re-bound to the
-recipe before an iteration.
+recipe before an iteration.  Only buffers whos binding element
+specifies `bind` are re-bound.  All buffers are by default
+bound to the recipe upon creation.
 - `init` indicates if buffer should be initialized per what is
 specified in the binding element.
 - `wait` says that execution should wait for completion between
+iterations and after last iteration.
+- `sleep` specifies how many milliseconds to sleep in between iterations
+of the recipe.  If both `wait` and `sleep` are specified, sleep will
+be applied after wait completes.
 iterations and after last iteration.
 - `validate` means buffer validation per what is specified in
 the binding element.
