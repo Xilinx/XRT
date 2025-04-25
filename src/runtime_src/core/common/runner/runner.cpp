@@ -37,6 +37,7 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -45,6 +46,7 @@
 #include <random>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -585,9 +587,10 @@ class recipe
 
   public:
     resources(xrt::device device, const xrt::xclbin& xclbin,
+              const xrt::hw_context::qos_type& qos,
               const json& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
-      , m_hwctx{m_device, m_device.register_xclbin(xclbin)}
+      , m_hwctx{m_device, m_device.register_xclbin(xclbin), qos}
       , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
       , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
       , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
@@ -1131,8 +1134,6 @@ class recipe
     void
     execute(size_t iteration)
     {
-      XRT_DEBUGF("recipe::execution::execute(%d)\n", iteration);
-
       // If single runlist then avoid the overhead of xrt::queue
       if (m_runlists.size() == 1) {
         m_runlists[0]->execute(iteration);
@@ -1156,8 +1157,6 @@ class recipe
     void
     wait()
     {
-      XRT_DEBUGF("recipe::execution::wait()\n");
-
       // If single runlist then it was submitted explicitly, so
       // wait explicitly
       if (m_runlists.size() == 1) {
@@ -1174,6 +1173,12 @@ class recipe
       if (m_eptr)
         std::rethrow_exception(m_eptr);
     }
+
+    void
+    sleep(uint32_t sleep_ms) const
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+    }
   }; // class recipe::execution
 
   xrt::device m_device;
@@ -1184,16 +1189,20 @@ class recipe
   execution m_execution;
 
 public:
-  recipe(xrt::device device, json recipe, const artifacts::repo* repo)
+  recipe(xrt::device device, json recipe, const xrt::hw_context::qos_type& qos, const artifacts::repo* repo)
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
     , m_header{m_recipe_json.at("header"), repo}
-    , m_resources{m_device, m_header.get_xclbin(), m_recipe_json.at("resources"), repo}
+    , m_resources{m_device, m_header.get_xclbin(), qos, m_recipe_json.at("resources"), repo}
     , m_execution{m_resources, m_recipe_json.at("execution")}
   {}
 
+  recipe(xrt::device device, json recipe, const artifacts::repo* repo)
+    : recipe::recipe(std::move(device), std::move(recipe), {}, repo)
+  {}
+
   recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
-    : recipe(std::move(device), load_json(rr), repo)
+    : recipe::recipe(std::move(device), load_json(rr), {}, repo)
   {}
 
   recipe(const recipe&) = default;
@@ -1241,6 +1250,13 @@ public:
   {
     XRT_DEBUGF("recipe::wait()\n");
     m_execution.wait();
+  }
+
+  void
+  sleep(uint32_t sleep_ms) const
+  {
+    XRT_DEBUGF("recipe::sleep(%d)\n", sleep_ms);
+    m_execution.sleep(sleep_ms);
   }
 }; // class recipe
 
@@ -1521,7 +1537,8 @@ class profile
   // - "init" indicates if buffer should be initialized per what is
   //    specified in the binding element.
   // - "wait" says that execution should wait for completion between
-  //    iterations and after last iteration.
+  //    iterations and and sleep for specified milliseconds before
+  //    next iteration.
   // - "validate" means buffer validation per what is specified in
   //   the binding element.
   class execution
@@ -1547,6 +1564,9 @@ class profile
       // Wait execution to complete if requested
       if (m_iteration.value("wait", false))
         m_profile->wait_recipe();
+
+      if (auto sleep_ms = m_iteration.value("sleep", 0))
+        m_profile->sleep_recipe(sleep_ms);
 
       // Validate if requested (implies wait)
       if (m_iteration.value("validate", false))
@@ -1593,6 +1613,7 @@ private:
   json m_profile_json;
   std::shared_ptr<artifacts::repo> m_repo;
 
+  xrt::hw_context::qos_type m_qos;
   recipe m_recipe;
   bindings m_bindings;
   execution m_execution;
@@ -1633,6 +1654,28 @@ private:
     m_recipe.wait();
   }
 
+  void
+  sleep_recipe(uint32_t time_ms)
+  {
+    m_recipe.sleep(time_ms);
+  }
+
+private:
+  static xrt::hw_context::qos_type
+  init_qos(const json& j)
+  {
+    if (j.empty())
+      return {};
+
+    xrt::hw_context::qos_type qos;
+    for (auto [key, value] : j.items()) {
+      XRT_DEBUGF("qos[%s] = %d\n", key.c_str(), value.get<uint32_t>());
+      qos.emplace(std::move(key), value.get<uint32_t>());
+    }
+
+    return qos;
+  }
+
 public:
   // profile - constructor
   //
@@ -1645,7 +1688,8 @@ public:
           std::shared_ptr<artifacts::repo> repo)
     : m_profile_json{load_json(profile)}
     , m_repo{std::move(repo)}
-    , m_recipe{device, load_json(recipe), m_repo.get()}
+    , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
+    , m_recipe{device, load_json(recipe), m_qos, m_repo.get()}
     , m_bindings{device, m_profile_json.at("bindings"), m_repo.get()}
     , m_execution(this, m_profile_json.at("execution"))
   {}
