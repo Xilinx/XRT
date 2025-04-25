@@ -78,15 +78,9 @@ create_configure_subcommand()
   std::map<std::string, std::shared_ptr<xrt_core::smi::option>> configure_suboptions;
   configure_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   configure_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
-  configure_suboptions.emplace("daemon", std::make_shared<xrt_core::smi::option>("daemon", "", "Update the device daemon configuration", "hidden", "", "none"));
-  configure_suboptions.emplace("purge", std::make_shared<xrt_core::smi::option>("purge", "", "Remove the daemon configuration file", "hidden", "", "string"));
-  configure_suboptions.emplace("host", std::make_shared<xrt_core::smi::option>("host", "", "IP or hostname for device peer", "hidden", "", "string"));
-  configure_suboptions.emplace("security", std::make_shared<xrt_core::smi::option>("security", "", "Update the security level for the device", "hidden", "", "string"));
-  configure_suboptions.emplace("clk_throttle", std::make_shared<xrt_core::smi::option>("clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_threshold_power_override", std::make_shared<xrt_core::smi::option>("ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_threshold_temp_override", std::make_shared<xrt_core::smi::option>("ct_threshold_temp_override", "", "Update the temperature threshold in celsius", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_reset", std::make_shared<xrt_core::smi::option>("ct_reset", "", "Reset all throttling options", "hidden", "", "string"));
-  configure_suboptions.emplace("showx", std::make_shared<xrt_core::smi::option>("showx", "", "Display the device configuration settings", "hidden", "", "string"));
+  configure_suboptions.emplace("p2p", std::make_shared<xrt_core::smi::option>("p2p", "", "Controls P2P functionality\n", "common", "", "string", true));
+  configure_suboptions.emplace("host-mem", std::make_shared<xrt_core::smi::option>("host-mem", "", "Controls host-mem functionality\n", "common", "", "string", true));
+
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }

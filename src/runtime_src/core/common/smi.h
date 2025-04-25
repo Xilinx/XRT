@@ -61,6 +61,11 @@ public:
   get_description_array() const { 
     throw std::runtime_error("Illegal call to get_description_array()");
    } 
+
+  bool 
+  get_is_optionOption() const { 
+    return b_is_optionOption; 
+  }
 };
 
 // This class is used to represent an option with a multiline description.
@@ -101,6 +106,9 @@ public:
   get_options() const 
   { return m_options; }
 
+  tuple_vector
+  get_option_options() const; 
+
   boost::property_tree::ptree 
   construct_subcommand_json() const;
 
@@ -134,6 +142,10 @@ public:
   tuple_vector
   get_list(const std::string& subcommand, const std::string& suboption) const;
 
+  XRT_CORE_COMMON_EXPORT
+  tuple_vector
+  get_option_options(const std::string& subcommand) const;
+
 };
 
 XRT_CORE_COMMON_EXPORT
@@ -143,5 +155,9 @@ instance();
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_list(const std::string& subcommand, const std::string& suboption);
+
+XRT_CORE_COMMON_EXPORT
+tuple_vector
+get_option_options(const std::string& subcommand);
 
 } // namespace xrt_core::smi

@@ -953,6 +953,8 @@ struct xrt_smi_lists
       return xrt_core::smi::get_list("validate", "run");
     case xrt_core::query::xrt_smi_lists::type::examine_reports:
       return xrt_core::smi::get_list("examine", "report");
+    case xrt_core::query::xrt_smi_lists::type::configure_option_options:
+      return xrt_core::smi::get_option_options("configure");
     default:
       throw xrt_core::query::no_such_key(key, "Not implemented");
     }
