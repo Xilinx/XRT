@@ -76,6 +76,19 @@ construct_subcommand_json() const
   return pt;
 }
 
+tuple_vector
+subcommand::
+get_option_options() const 
+{
+  tuple_vector option_options;
+  for (const auto& [name, option] : m_options) {
+    if (option->get_is_optionOption()) {
+      option_options.emplace_back(std::make_tuple(name, option->m_description, option->m_type));
+    }
+  }
+  return option_options;
+}
+
 std::string 
 smi::
 build_smi_config() const 
@@ -114,6 +127,20 @@ get_list(const std::string& subcommand, const std::string& suboption) const
   return option->get_description_array();
 }
 
+tuple_vector
+smi::
+get_option_options(const std::string& subcommand) const 
+{
+  const auto it = m_subcommands.find(subcommand);
+  if (it == m_subcommands.end()) {
+    throw std::runtime_error("Subcommand not found: " + subcommand);
+  }
+
+  const auto& subcmd = it->second;
+
+  return subcmd.get_option_options();
+}
+
 smi*
 instance() 
 {
@@ -125,6 +152,12 @@ tuple_vector
 get_list(const std::string& subcommand, const std::string& suboption) 
 {
   return instance()->get_list(subcommand, suboption);
+}
+
+tuple_vector
+get_option_options(const std::string& subcommand) 
+{
+  return instance()->get_option_options(subcommand);
 }
 
 } // namespace xrt_core::smi
