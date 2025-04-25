@@ -68,25 +68,26 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
     kds_hw_ctx = kds_get_hw_ctx_by_id(client, drm_hw_ctx->hw_context);
     if (!kds_hw_ctx) {
         DRM_ERROR("%s: No valid hw context is open", __func__);
-        mutex_unlock(&client->lock);
-        return -EINVAL;
+        ret = -EINVAL;
+        goto error_out;
     }
 
     slot = zdev->pr_slot[kds_hw_ctx->slot_idx];
     ret = zocl_unlock_bitstream(slot, slot->slot_xclbin->zx_uuid);
     if (ret) {
         DRM_ERROR("%s: Unlocking the bistream failed", __func__);
-        mutex_unlock(&client->lock);
-        return -EINVAL;
+        goto error_out;
     }
 
     s_id = kds_hw_ctx->slot_idx;
     ret = kds_free_hw_ctx(client, kds_hw_ctx);
     if (--slot->hwctx_ref_cnt == 0) {
+        zocl_destroy_aie(slot);
         zdev->slot_mask &= ~(1 << s_id);
         DRM_DEBUG("Released the slot %d", s_id);
     }
 
+error_out:
     mutex_unlock(&client->lock);
     return ret;
 }
