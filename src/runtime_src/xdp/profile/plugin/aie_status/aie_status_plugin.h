@@ -54,7 +54,7 @@ namespace xdp {
     void getTilesForStatus();
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
-    uint64_t getDeviceIDFromHandle(void* handle);
+    uint64_t getDeviceIDFromHandle(void* handle, bool hw_context_flow);
     
     // Threads used by this plugin
     void pollDeadlock(uint64_t index, void* handle);
