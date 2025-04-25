@@ -379,7 +379,7 @@ zocl_aie_slot_reset(struct drm_zocl_slot* slot)
 
 }
 
-static void
+void
 zocl_destroy_aie(struct drm_zocl_slot* slot)
 {
 	if (!slot->aie_information)
@@ -412,7 +412,7 @@ zocl_cleanup_aie(struct drm_zocl_slot *slot)
 	if (!slot)
 	{
 		DRM_ERROR("%s: Invalid slot", __func__);
-		return 0;
+		return -EINVAL;
 	}
 
 	int ret = 0;
