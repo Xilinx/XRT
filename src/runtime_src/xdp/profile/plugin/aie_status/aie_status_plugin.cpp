@@ -428,19 +428,13 @@ namespace xdp {
     }
   }
 
-  uint64_t AIEStatusPlugin::getDeviceIDFromHandle(void* handle)
+  uint64_t AIEStatusPlugin::getDeviceIDFromHandle(void* handle, bool hw_context_flow)
   {
-    auto itr = handleToAIEData.find(handle);
-    if (itr != handleToAIEData.end())
-      return itr->second.deviceID;
-
-#ifdef XDP_CLIENT_BUILD
-    return db->addDevice("win_device");
-#elif XDP_VE2_BUILD
-    return db->addDevice("ve2_device");
-#else
-    return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
-#endif
+    if (hw_context_flow)
+      return db->addDevice("ve2_device");
+    else
+      // only xcl device handle
+      return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
   }
 
   /****************************************************************************
@@ -457,7 +451,16 @@ namespace xdp {
       return;
 
     auto mXrtCoreDevice = util::convertToCoreDevice(handle, hw_context_flow);
-    auto deviceID = getDeviceIDFromHandle(handle);
+    auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
+
+    // Update the static database with information from xclbin
+    {
+      #ifdef XDP_VE2_BUILD
+        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+      #else
+        (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
+      #endif
+    }
 
     // Grab AIE metadata
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
