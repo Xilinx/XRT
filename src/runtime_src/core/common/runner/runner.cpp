@@ -1387,28 +1387,58 @@ class profile
     }
 
     // init_buffer_file() - Initialize bo from a content of a file
+    //
     // "init": {
     //   "file": "path", // path to file
     //   "skip": bytes,  // skip fist bytes of file (optional)
     // }
+    //
+    // This function fills all the bytes of the buffer with data
+    // from file.  It wraps around the file if necessary to fill
+    // the bo.
+    //
+    // The function supports initializing the buffer between iterations,
+    // copying from the file from an offset (beg) corresponding to where
+    // previous iteration reached.
     void
-    init_buffer_file(xrt::bo& bo, const init_node& node)
+    init_buffer_file(xrt::bo& bo, const init_node& node, size_t iteration)
     {
       auto file = node.at("file").get<std::string>();
       auto skip = node.value<size_t>("skip", 0);
       auto data = m_repo->get(file);
       if (skip > data.size())
-        throw std::runtime_error("");
-
-      // Create the bo from the size of the file unless it was already
-      // created from explicit size
-      if (!bo)
-        bo = xrt::ext::bo{m_device, data.size()};
+        throw std::runtime_error("bad skip value: " + std::to_string(skip));
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = std::string_view{data.data() + skip, data.size() - skip};
+
+      // Create the bo from the size of the file unless it was already
+      // created from explicit size.
+      if (!bo)
+        bo = xrt::ext::bo{m_device, data.size()};
+
+      // Copy bytes from file to bo, wrap around file if needed to
+      // fill the bo with data from file.   Copy at offset into
+      // bo based on number of bytes left to copy.  Compute file
+      // data range to copy to bo.
       auto bo_data = bo.map<char*>();
-      std::copy(data.data(), data.data() + std::min<size_t>(bo.size(), data.size()), bo_data);
+      auto bytes = bo.size(); // must fill all bytes of bo
+      XRT_DEBUGF("profile::bindings::init_buffer_file() copying (%d) bytes from file (%s)\n",
+                 bytes, file.c_str());
+
+      // This loop wraps around the source data if necessary in order
+      // to fill all bytes of the bo.  The loop adjusts for iteration.
+      while (bytes) {
+        auto bo_offset = bo.size() - bytes;
+        auto beg = ((iteration * bo.size()) + (bo_offset)) % data.size();
+        auto end = std::min<size_t>(beg + bytes, data.size());
+        bytes -= end - beg;
+
+        XRT_DEBUGF("profile::bindings::init_buffer_file() (itr,beg,end,bytes)=(%d,%d,%d,%d)\n",
+                   iteration, beg, end, bytes);
+    
+        std::copy(data.data() + beg, data.data() + end, bo_data + bo_offset);
+      }
     }
 
     // init_buffer_stride() - Initialize bo with value at stride
@@ -1447,11 +1477,11 @@ class profile
     // }
     // The buffer is synced to device after iniitialization
     void
-    init_buffer(xrt::bo& bo, const init_node& node)
+    init_buffer(xrt::bo& bo, const init_node& node, size_t iteration)
     {
       // stride initialization with specified value
       if (node.contains("file"))
-        init_buffer_file(bo, node);
+        init_buffer_file(bo, node, iteration);
       else if (node.contains("stride"))
         init_buffer_stride(bo, node);
       else if (node.value<bool>("random", false))
@@ -1468,6 +1498,12 @@ class profile
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
+    void
+    init_buffer(xrt::bo& bo, const init_node& node)
+    {
+      init_buffer(bo, node, 0);
+    }
+
   public:
     bindings() = default;
 
@@ -1477,6 +1513,8 @@ class profile
       , m_bindings{init_bindings(j)}
       , m_xrt_bos{create_buffers(m_device, m_bindings, repo)}
     {
+      // All bindings are initialized by default upon creation if they
+      // have an "init" element.
       init();
     }
 
@@ -1498,19 +1536,44 @@ class profile
     init()
     {
       for (auto& [name, node] : m_bindings) {
-        if (node.contains("init"))
+        if (node.contains("init")) {
+          XRT_DEBUGF("profile::bindings::init(%s)\n", name.c_str());
           init_buffer(m_xrt_bos.at(name), node.at("init"));
+        }
       }
     }
 
-    // Bind resources to the recipe per json
+    // Binding buffers can be re-initialized before iterating
+    // execution of the recipe.  Re-initialization is guarded
+    // by execution::iteration::init and bindings::reinit.
+    void
+    reinit(size_t iteration)
+    {
+      for (auto& [name, node] : m_bindings) {
+        if (node.value<bool>("reinit", false) && node.contains("init")) {
+          XRT_DEBUGF("profile::bindings::reinit(%s)\n", name.c_str());
+          init_buffer(m_xrt_bos.at(name), node.at("init"), iteration);
+        }
+      }
+    }
+
+    // Unconditioally bind all resources buffers tothe recipe per json
     void
     bind(recipe& rr)
     {
-      for (auto& [name, node] : m_bindings) {
-        if (node.value<bool>("bind", false))
+      for (auto& [name, node] : m_bindings)
+        rr.bind(name, m_xrt_bos.at(name));
+    }
+
+    // Binding buffers can be re-bound before iterating
+    // execution of the recipe.  Re-binding is guarded by 
+    // execution::iteration::bind and bindings::rebind
+    void
+    rebind(recipe& rr)
+    {
+      for (auto& [name, node] : m_bindings)
+        if (node.value<bool>("rebind", false))
           rr.bind(name, m_xrt_bos.at(name));
-      }
     }
   }; // class profile::bindings
 
@@ -1534,7 +1597,7 @@ class profile
   // The behavior of an iteration is within the iteration sub-node.
   // - "bind" indicates if buffers should be re-bound to the
   //   recipe before an iteration.
-  // - "init" indicates if buffer should be initialized per what is
+  // - "init" indicates if buffer should be re-initialized per what is
   //    specified in the binding element.
   // - "wait" says that execution should wait for completion between
   //    iterations and and sleep for specified milliseconds before
@@ -1549,17 +1612,19 @@ class profile
     iteration_node m_iteration;
 
     void
-    execute_iteration(size_t idx)
+    execute_iteration(size_t iteration)
     {
-      // (Re)bind buffers to recipe if requested
-      if (m_iteration.value("bind", false))
-        m_profile->bind();
+      // Bind buffers to recipe if requested.  All buffers are bound
+      // when created, so this is for subsequent iterations only
+      if (iteration > 0 && m_iteration.value("bind", false))
+        m_profile->rebind();
       
-      // Initialize buffers if requested
-      if (m_iteration.value("init", false))
-        m_profile->init();
+      // Initialize buffers if requested.  All buffers are initialized
+      // when created, so this is for subsequent iterations only
+      if (iteration > 0 && m_iteration.value("init", false))
+        m_profile->reinit(iteration);
       
-      m_profile->execute_recipe(idx);
+      m_profile->execute_recipe(iteration);
 
       // Wait execution to complete if requested
       if (m_iteration.value("wait", false))
@@ -1631,9 +1696,21 @@ private:
   }
 
   void
+  rebind()
+  {
+    m_bindings.rebind(m_recipe);
+  }
+
+  void
   init()
   {
     m_bindings.init();
+  }
+
+  void
+  reinit(size_t iteration)
+  {
+    m_bindings.reinit(iteration);
   }
 
   void

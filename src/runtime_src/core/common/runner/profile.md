@@ -53,17 +53,17 @@ The bindings section specifies how external buffers should be created,
 initialized, and validated. The section is an array of binding elements,
 where each binding element must reference a resource in the run-recipe.
 
-A binding element references a the name of the resource buffer to bind
-to the recipe along with various attributes.  The xrt::runner will create an
-`xrt::bo` for each specified binding element.  The size of the buffer
-is optional optional when the buffer is
-initialized from a file, but is otherwise required.
+A binding element references the name of the resource buffer to bind
+to the recipe along with various attributes.  The xrt::runner will
+create an `xrt::bo` for each specified binding element.  The size of
+the buffer is optional optional when the buffer is initialized from a
+file, but is otherwise required.
 ```
   "bindings": [
     { 
       "name": "wts",
-      "bind": bool,
       "size": bytes
+      ...
     },
     { ... }
   ],
@@ -72,23 +72,31 @@ A binding elememnt has some simple attributes and more complex
 nested attributes
 
 ### Simple attributes of a binding element
+
 The simple attributes are json key-value pairs:
 ```
     { 
       "name": "wts",     // name of a resource buffer
-      "bind": bool,
       "size": bytes
+      "rebind": bool,
+      "reinit": bool,
     },
 ```
 
-- `bind` indicates if the buffer should be re-bound to the run
-recipe in each iteration of the recipe (more about this in the
-execution section).  All buffers are by default bound to the 
-recipe upon creation.
+- `name` identifies the resource buffer in the recipe.
 - `size` (optional with file initialization) specifies the size
 of the `xrt::bo` created and bound to the recipe.
+- `rebind` indicates if the buffer should be re-bound to the run
+recipe in each iteration of the recipe (see execution section for more
+details). All buffers are by default bound to the recipe upon
+creation.
+- `reinit` indicates if the buffer should be re-initialized in each
+iteration of the recipe (see execution section for more details). All
+buffers are by default initialized when created if their binding
+element has an "init" element.
 
 ### Nested elements of a binding element
+
 The binding element support the following optional nested elements:
 ```
       "init": { ... }
@@ -102,7 +110,7 @@ should be initialized. There are multiple ways to initialize a buffer.
  
 ### Initialization of a resource buffer
 
-The bindings element results in the creation of the `xrt::bo` buffer
+A bindings element results in the creation of the `xrt::bo` buffer
 object.  Upon creation, the buffer object is initialzied per the init
 sub-element.  There are several ways to initialize a buffer only one
 of which can be specified.
@@ -114,12 +122,10 @@ of which can be specified.
         "random": true // random initialization of the full buffer
       }
 ```
-
 Random initialization is using a `std::random_device` along with
 `rd()` to create a pseudo random value for each byte of the buffer.
 If random initialization is used, the `size` of the buffer must also
 have been specified.
-
 
 #### File initialization
 
@@ -130,17 +136,31 @@ have been specified.
         "skip": bytes // skip number of bytes in file
       }
 ```
-
 File initialization implies that the resource buffer should be
-intialized with the content of the `file`.  The `file` must reference
+intialized with content from `file`.  The `file` must reference
 a key that locates a file on disk or in an artifacts repository used
 during construction of the `xrt::runner`.  If the binding element
 specifies a `size` value, then this size takes precendence over the
 size of the file, otherwise the size of the file will be the size of
-the buffer. The data copied into the buffer is the minimum of the
-specified size or the size of the file.  The optional `skip` element
+the buffer. The optional `skip` element
 allows skipping first bytes of the file during initialization of the
 buffer.
+
+All the bytes of a buffer are initialized regardless of the size of the
+`file`.
+
+If the file (minus skip bytes) is smaller than the buffer, then 
+the file wraps around and continues to initialize the buffer.
+
+If the file of larger than the buffer then only buffer size bytes
+of the file are used.
+
+If a bindings element specifies `reinit`, then the buffer is
+reinitialized with bytes from the file in each iteration of the
+recipe.  The initalization in an iteration picks up from an offset
+into the file at the point where the previous iteration stopped
+copying.  Again, the file wraps around when end-of-file is reached
+without filling all the bytes of the buffer.
 
 #### Strided initialization
 
@@ -206,11 +226,11 @@ iteration and before next iteration.
   "execution" : {
     "iterations": 500,
     "iteration" : {
-      "bind": false,
-      "init": true,
-      "wait": true,
-      "sleep": 1000,
-      "validate": true
+      "bind": false,    // re-bind binding buffers
+      "init": true,     // re-initialize binding buffers
+      "wait": true,     // wait for recipe completion
+      "sleep": 1000,    // sleep between iterations
+      "validate": true  // validate binding buffers
     }
   }
 ```
@@ -220,10 +240,13 @@ iteration of the run recipe.
 
 - `bind` indicates if buffers should be re-bound to the
 recipe before an iteration.  Only buffers whos binding element
-specifies `bind` are re-bound.  All buffers are by default
+specifies `rebind` are re-bound.  All buffers are by default
 bound to the recipe upon creation.
-- `init` indicates if buffer should be initialized per what is
-specified in the binding element.
+- `init` indicates if buffer should be re-initialized before an
+iteration. Only buffers whos binding element specifies has an `init`
+element and specifies `reinit` are re-initialized.  All buffers are by
+default initialized upon creation if their binding element has an
+`init` element.
 - `wait` says that execution should wait for completion between
 iterations and after last iteration.
 - `sleep` specifies how many milliseconds to sleep in between iterations
