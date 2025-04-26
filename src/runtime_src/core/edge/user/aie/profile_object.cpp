@@ -35,6 +35,9 @@ uint64_t
 profile_object::
 read()
 {
+  if (m_profile_id == invalid_profile_id)
+    return 0; // dont throw any exception/error 
+ 
   auto device = xrt_core::get_userpf_device(m_shim);
 
   if (!m_aie_array->is_context_set()) {
@@ -47,12 +50,16 @@ void
 profile_object::
 stop()
 {
+  if (m_profile_id == invalid_profile_id)
+    return; // dont throw any exception/error 
+
   auto device = xrt_core::get_userpf_device(m_shim);
 
   if (!m_aie_array->is_context_set()) {
     m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
   }
   m_aie_array->stop_profiling(m_profile_id);
+  m_profile_id = invalid_profile_id;
 }
 
 } //namespace zynqaie
