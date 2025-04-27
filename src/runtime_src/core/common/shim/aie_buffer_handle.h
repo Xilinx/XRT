@@ -8,6 +8,7 @@
 #include "xrt.h"
 #include "xrt/xrt_bo.h"
 #include "core/common/error.h"
+#include "xrt/xrt_aie.h"
 
 namespace xrt_core {
 class aie_buffer_handle
@@ -33,7 +34,7 @@ public:
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
 
-  virtual bool
+  virtual xrt::aie::aie_buffer_state
   async_status()
   {
     throw xrt_core::error(std::errc::not_supported, __func__);

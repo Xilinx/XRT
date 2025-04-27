@@ -212,7 +212,7 @@ public:
     m_buffer_handle->async(bos, dir, size, offset);
   }
 
-  bool
+  aie_buffer_state
   async_status() const
   {
     return m_buffer_handle->async_status();
@@ -516,7 +516,7 @@ async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t of
   return get_handle()->async(bos, dir, size, offset);
 }
 
-bool
+aie_buffer_state
 buffer::
 async_status() const
 {

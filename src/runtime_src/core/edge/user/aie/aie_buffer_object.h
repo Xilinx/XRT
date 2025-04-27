@@ -22,7 +22,7 @@ namespace zynqaie {
     std::string name;
     std::shared_ptr<aie_array> m_aie_array;
     std::mutex mtx;
-    bool async_started = false;
+    xrt::aie::aie_buffer_state m_state = xrt::aie::aie_buffer_state::idle;
     std::pair<uint16_t, uint64_t> bd_info;
 
   public:
@@ -34,7 +34,7 @@ namespace zynqaie {
     void
     async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) override;
 
-    bool
+    xrt::aie::aie_buffer_state
     async_status() override;
 
     void

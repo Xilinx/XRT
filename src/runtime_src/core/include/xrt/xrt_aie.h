@@ -54,6 +54,20 @@ namespace xrt { namespace aie {
  */
 enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
 
+/**
+ * @enum aie_buffer_state - aie buffer object state
+ *
+ * @var idle
+ *   Newly created aie buffer object. Ready to perform an asynchronous operation. Not allowed
+ *   to access the status of the aie buffer object at this state.
+ * @var running
+ *   An asynchronous operation is already initiated. Not allowed to initiate another asynchronous
+ *   operation.
+ * @var completed
+ *   The initiated asynchronous operation is completed.
+ */
+enum class aie_buffer_state { idle, running, completed };
+
 class device : public xrt::device
 {
 public:
@@ -498,7 +512,7 @@ public:
   /**
    * async_status() - This function gets the status of the previously initiated async operation
    */
-  bool async_status() const;
+  aie_buffer_state async_status() const;
 
   /**
    * wait() - This function waits for the previously initiated async operation
