@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 # Support building XRT or its components with local build of Boost libraries. 
 # In particular the script runtime_src/tools/script/boost.sh downloads
@@ -8,9 +8,15 @@
 if (DEFINED ENV{XRT_BOOST_INSTALL})
   set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
   set(Boost_USE_STATIC_LIBS ON)
-  find_package(Boost
-    HINTS $ENV{XRT_BOOST_INSTALL}
-    REQUIRED COMPONENTS system filesystem program_options)
+  if(CMAKE_VERSION VERSION_GREATER "3.29")
+    find_package(Boost CONFIG
+      HINTS $ENV{XRT_BOOST_INSTALL}
+      REQUIRED COMPONENTS system filesystem program_options)
+  else(CMAKE_VERSION VERSION_GREATER "3.29")
+    find_package(Boost
+      HINTS $ENV{XRT_BOOST_INSTALL}
+      REQUIRED COMPONENTS system filesystem program_options)
+  endif(CMAKE_VERSION VERSION_GREATER "3.29")
 
   # A bug in FindBoost maybe?  Doesn't set Boost_LIBRARY_DIRS when
   # Boost install has only static libraries. For static tool linking
@@ -22,8 +28,13 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
   endif()
 
 else()
-  find_package(Boost
+  if(CMAKE_VERSION VERSION_GREATER "3.29")
+    find_package(Boost CONFIG
     REQUIRED COMPONENTS system filesystem program_options)
+  else(CMAKE_VERSION VERSION_GREATER "3.29")
+    find_package(Boost
+      REQUIRED COMPONENTS system filesystem program_options)
+  endif(CMAKE_VERSION VERSION_GREATER "3.29")
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
