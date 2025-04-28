@@ -193,7 +193,7 @@ If a buffer `size` is specified as in:
       }
 ```
 then the runner will create an `xrt::bo` internally for the specified
-buffer, even as the buffer is specified as "output" it is treated as
+buffer, even if the buffer is specified as "output" it is treated as
 internal by the runner.  The application framework can still bind an
 external buffer the runner object created from the recipe, but doesn't
 have to.
