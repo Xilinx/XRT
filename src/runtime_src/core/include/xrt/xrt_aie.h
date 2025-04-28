@@ -60,6 +60,20 @@ public:
   using access_mode = xrt::aie::access_mode;
 
   /**
+   * @enum buffer_state - aie buffer object state
+   *
+   * @var idle
+   *   Newly created aie buffer object. Ready to perform an asynchronous operation. Not allowed
+   *   to access the status of the aie buffer object at this state.
+   * @var running
+   *   An asynchronous operation is already initiated. Not allowed to initiate another asynchronous
+   *   operation.
+   * @var completed
+   *   The initiated asynchronous operation is completed.
+   */
+  enum class buffer_state { idle, running, completed };
+
+  /**
    * device() - Construct device with specified access mode
    *
    * @param args
@@ -494,6 +508,11 @@ public:
    * This configures the required BDs , enqueues the task
    */
   void async(xrt::bo ping, xrt::bo pong, xclBOSyncDirection dir, size_t size, size_t offset) const;
+
+  /**
+   * async_status() - This function gets the status of the previously initiated async operation
+   */
+  device::buffer_state async_status() const;
 
   /**
    * wait() - This function waits for the previously initiated async operation
