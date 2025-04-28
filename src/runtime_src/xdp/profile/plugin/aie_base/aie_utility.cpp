@@ -18,7 +18,6 @@
 
 #include <set>
 #include "xdp/profile/plugin/aie_base/aie_utility.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie_generations.h"
 
 namespace xdp::aie {

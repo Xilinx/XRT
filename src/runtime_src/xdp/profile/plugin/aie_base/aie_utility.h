@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 extern "C" {
 #include <xaiengine.h>
