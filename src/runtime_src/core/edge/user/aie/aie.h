@@ -108,14 +108,20 @@ public:
   void
   sync_external_buffer(std::vector<xrt::bo>& bo, adf::external_buffer_config& ebuf_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
+  bool
+  status_external_buffer(adf::external_buffer_config& ebuf_config);
+
   void
   wait_external_buffer(adf::external_buffer_config& ebuf_config);
 
   void
   sync_bo(std::vector<xrt::bo>& bos, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
-  void
+  std::pair<size_t, size_t>
   sync_bo_nb(std::vector<xrt::bo>& bos, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+  bool
+  async_status(const std::string& gmioName, uint16_t bdNum, uint32_t bdInstance);
 
   void
   wait_gmio(const std::string& gmioName);
@@ -168,7 +174,7 @@ private:
   std::vector<event_record> event_records;
   std::shared_ptr<adf::config_manager> m_config;
 
-  void
+  std::pair<size_t, size_t>
   submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
   adf::shim_config
