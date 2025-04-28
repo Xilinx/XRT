@@ -17,6 +17,8 @@
 #include "adf_runtime_api.h"
 #include "adf_api_message.h"
 
+#include "core/common/error.h"
+
 #include <algorithm>
 #include <sstream>
 #include <map>
@@ -649,6 +651,7 @@ err_code gmio_api::configure()
         {
             int bdNum = ((1 - pGMIOConfig->type) * 2 + pGMIOConfig->channelNum) * dmaStartQMaxSize + j;
             availableBDs.push(bdNum);
+            statusBDs[bdNum] = 0;
 
             //set AXI burst length, this won't change during runtime
             driverStatus |= XAie_DmaSetAxi(&shimDmaInst, 0 /*Smid*/, pGMIOConfig->burstLength /*BurstLen*/, 0 /*Qos*/, 0 /*Cache*/, 0 /*Secure*/);
@@ -665,27 +668,36 @@ err_code gmio_api::configure()
     return err_code::ok;
 }
 
-err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size)
+void gmio_api::getAvailableBDs()
+{
+    u8 numPendingBDs = 0;
+    int numBDCompleted = 0;
+    int driverStatus = XAIE_OK; //0
+
+    driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
+    if (driverStatus != AieRC::XAIE_OK)
+        throw xrt_core::error(-EIO, "ERROR: adf::gmio_api::getAvailableBDs: AIE driver error.");
+
+    numBDCompleted = dmaStartQMaxSize - numPendingBDs;
+
+    for (int i = 0; i < numBDCompleted && !enqueuedBDs.empty(); i++)
+    {
+        uint16_t bdNumber = frontAndPop(enqueuedBDs);
+        statusBDs[bdNumber]++;
+        availableBDs.push(bdNumber);
+    }
+}
+
+std::pair<size_t, size_t> gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size)
 {
     if (!isConfigured)
-        return errorMsg(err_code::internal_error, "ERROR: adf::gmio_api::enqueueBD: GMIO is not configured.");
+        throw xrt_core::error(-ENODEV, "ERROR: adf::gmio_api::enqueueBD: GMIO is not configured.");
 
     int driverStatus = XAIE_OK; //0
 
     //wait for available BD
     while (availableBDs.empty())
-    {
-        u8 numPendingBDs = 0;
-        driverStatus |= XAie_DmaGetPendingBdCount(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
-
-        int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
-        //move completed BDs from enqueuedBDs to availableBDs
-        for (int i = 0; i < numBDCompleted; i++)
-        {
-            uint16_t bdNumber = frontAndPop(enqueuedBDs);
-            availableBDs.push(bdNumber);
-        }
-    }
+        getAvailableBDs();
 
     //get an available BD
     uint16_t bdNumber = frontAndPop(availableBDs);
@@ -716,9 +728,23 @@ err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size
 
     // Update status after using AIE driver
     if (driverStatus != AieRC::XAIE_OK)
-        return errorMsg(err_code::aie_driver_error, "ERROR: adf::gmio_api::enqueueBD: AIE driver error.");
+        throw xrt_core::error(-EIO, "ERROR: adf::gmio_api::enqueueBD: AIE driver error.");
 
-    return err_code::ok;
+    return std::make_pair(bdNumber, statusBDs[bdNumber]);;
+}
+
+bool gmio_api::gmio_status(uint16_t bdNum, uint32_t bdInstance)
+{
+    if (statusBDs.find(bdNum) == statusBDs.end())
+        throw xrt_core::error(-ENODEV, "ERROR: adf::gmio_api::status: Invalid BD.");
+
+    if (statusBDs[bdNum] > bdInstance)
+        return true;
+
+    //update the availableBDs queue
+    getAvailableBDs();
+
+    return statusBDs[bdNum] > bdInstance;
 }
 
 err_code gmio_api::wait()
@@ -901,6 +927,13 @@ err_code dma_api::waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t 
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::waitDMAChannelTaskQueue: AIE driver error.");
 
     return err_code::ok;
+}
+
+bool dma_api::statusDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(config, tileType, row));
+
+    return XAie_DmaWaitForDone(config->get_dev(), tileLoc, channel, (XAie_DmaDirection)dir, 0) == XAIE_OK;
 }
 
 err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)

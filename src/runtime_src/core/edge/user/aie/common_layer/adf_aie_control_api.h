@@ -112,6 +112,7 @@ public:
   err_code configureBD(int tileType, uint8_t column, uint8_t row, uint16_t bdId, const dma_api::buffer_descriptor& bdParam);
   err_code enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint16_t startBdId);
   err_code waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
+  bool statusDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
   err_code waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
   err_code updateBDAddress(int tileType, uint8_t column, uint8_t row, uint16_t bdId, uint64_t address);
   err_code updateBDAddressLin(XAie_MemInst* memInst , uint8_t column, uint8_t row, uint16_t bdId, uint64_t offset);

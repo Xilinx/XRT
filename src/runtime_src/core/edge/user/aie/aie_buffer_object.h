@@ -22,22 +22,26 @@ namespace zynqaie {
     std::string name;
     std::shared_ptr<aie_array> m_aie_array;
     std::mutex mtx;
-    bool async_started = false;
+    xrt::aie::device::buffer_state m_state = xrt::aie::device::buffer_state::idle;
+    std::pair<uint16_t, uint64_t> bd_info;
 
   public:
     aie_buffer_object(xrt_core::device* device, const xrt::uuid uuid, const char* name, zynqaie::hwctx_object* hwctx=nullptr);
 
     void
-    sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const;
+    sync(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) const override;
 
     void
-    async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset);
+    async(std::vector<xrt::bo>& bos, xclBOSyncDirection dir, size_t size, size_t offset) override;
+
+    xrt::aie::device::buffer_state
+    async_status() override;
 
     void
-    wait();
+    wait() override;
 
     std::string
-    get_name() const;
+    get_name() const override;
 
   }; // aie_buffer_object
 }

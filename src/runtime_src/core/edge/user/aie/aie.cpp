@@ -243,6 +243,25 @@ sync_external_buffer(std::vector<xrt::bo>& bos, adf::external_buffer_config& con
   }
 }
 
+bool
+aie_array::
+status_external_buffer(adf::external_buffer_config& config)
+{
+  if (config.shim_port_configs.empty())
+    throw xrt_core::error(-EINVAL, "Can't get status of External Buffer: No shim port configs");
+
+  if (config.num_bufs == 2)
+    return true; // for ping pong buffers return true
+
+  adf::dma_api dma_api_obj(m_config);
+  for (auto& port_config : config.shim_port_configs) {
+    if (!dma_api_obj.statusDMAChannelDone(1 /*adf::tile_type::shim_tile*/, port_config.shim_column, 0/*shim row*/, port_config.direction, port_config.channel_number))
+      return false;
+  }
+
+  return true;
+}
+
 void
 aie_array::
 wait_external_buffer(adf::external_buffer_config& config)
@@ -293,7 +312,7 @@ sync_bo(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirectio
   gmio_itr->second->wait();
 }
 
-void
+std::pair<size_t, size_t>
 aie_array::
 sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
@@ -309,7 +328,7 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirec
   auto ebuf_itr = external_buffer_configs.find(port_name);
   if (ebuf_itr != external_buffer_configs.end()) {
     sync_external_buffer(bos, ebuf_itr->second, dir, size, offset);
-    return;
+    return std::make_pair(-1,0); // status external buffer does not depend on the BD but port
   }
 
   if (bos.size() > 1)
@@ -323,7 +342,28 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirec
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  submit_sync_bo(bos[0], gmio_itr->second, gmio_config_itr->second, dir, size, offset);
+  return submit_sync_bo(bos[0], gmio_itr->second, gmio_config_itr->second, dir, size, offset);
+}
+
+bool
+aie_array::
+async_status(const std::string& port_name, uint16_t bdNum, uint32_t bdInstance)
+{
+  if (!dev_inst)
+    throw xrt_core::error(-EINVAL, "Can't get status of GMIO: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Can't get status of GMIO: Shared AIE context");
+
+  auto ebuf_itr = external_buffer_configs.find(port_name);
+  if (ebuf_itr != external_buffer_configs.end())
+    return status_external_buffer(ebuf_itr->second);
+
+  auto gmio_itr = gmio_apis.find(port_name);
+  if (gmio_itr == gmio_apis.end())
+    throw xrt_core::error(-EINVAL, "Can't get status of GMIO: GMIO name not found");
+
+  return gmio_itr->second->gmio_status(bdNum, bdInstance);
 }
 
 void
@@ -349,7 +389,7 @@ wait_gmio(const std::string& port_name)
   gmio_itr->second->wait();
 }
 
-void
+std::pair<size_t, size_t>
 aie_array::
 submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
@@ -370,8 +410,10 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
   aie_bd bd;
   prepare_bd(bd, bo);
-  gmio_api->enqueueBD(&bd.mem_inst, offset, size);
+  std::pair<size_t, size_t> bd_info = gmio_api->enqueueBD(&bd.mem_inst, offset, size);
   clear_bd(bd);
+
+  return bd_info;
 }
 
 void
