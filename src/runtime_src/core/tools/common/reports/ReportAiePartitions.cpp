@@ -39,7 +39,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
     pt_entry.put("errors", entry.errors);
-    pt_entry.put("ctx_suspensions", entry.ctx_suspensions);
+    pt_entry.put("suspensions", entry.suspensions);
 
     xrt_core::query::aie_partition_info::qos_info qos = entry.qos;
     pt_entry.put("gops", qos.gops ? std::to_string(qos.gops) : "N/A");
@@ -143,7 +143,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
         std::to_string(hw_context.get<uint64_t>("errors")),
-        hw_context.get<std::string>("ctx_suspensions"),
+        hw_context.get<std::string>("suspensions"),
         hw_context.get<std::string>("priority"),
         hw_context.get<std::string>("gops"),
         hw_context.get<std::string>("egops"),
