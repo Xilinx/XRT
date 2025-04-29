@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #
 # This cmake file is for native build. Host and target processor are the same.
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
@@ -23,14 +23,9 @@ endif(GIT_FOUND)
 
 include(CMake/components.cmake)
 
-include(FindBoost)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost
-  REQUIRED COMPONENTS system filesystem program_options)
-
-# Boost_VERSION_STRING is not working properly, use our own macro
-set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
+# Boost Libraries
+set(ENV{XRT_BOOST_INSTALL} "${BOOST_ROOT}")
+include (CMake/boostUtil.cmake)
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_definitions("BOOST_LOCALE_HIDE_AUTO_PTR")
