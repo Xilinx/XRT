@@ -1689,7 +1689,7 @@ get_offset(const xrt::bo& bo)
   return handle->get_offset();
 }
 
-static xrt::bo
+xrt::bo
 create_bo_helper(const xrt::hw_context& hwctx, size_t sz, uint32_t use_flag)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
@@ -1715,6 +1715,22 @@ xrt::bo
 create_dtrace_bo(const xrt::hw_context& hwctx, size_t sz)
 {
   return create_bo_helper(hwctx, sz, XRT_BO_USE_DTRACE);
+}
+
+void
+config_bo(const xrt::bo& bo, uint32_t flag, const std::map<uint32_t, size_t>& buf_sizes)
+{
+  auto bo_impl = bo.get_handle();
+  auto ctx = bo_impl->get_hwctx_handle();
+  bo_impl->get_handle()->config(ctx, flag, buf_sizes);
+}
+
+void
+unconfig_bo(const xrt::bo& bo)
+{
+  auto bo_impl = bo.get_handle();
+  auto ctx = bo_impl->get_hwctx_handle();
+  bo_impl->get_handle()->unconfig(ctx);
 }
 
 } // xrt_core::bo_int

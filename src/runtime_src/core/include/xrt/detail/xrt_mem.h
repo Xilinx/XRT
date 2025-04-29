@@ -70,8 +70,8 @@ struct xcl_bo_flags
       // extension
       uint32_t access : 2;  // [33-32]
       uint32_t dir    : 2;  // [35-34]
-      uint32_t use    : 2;  // [37-36]
-      uint32_t unused : 26; // [63-38]
+      uint32_t use    : 3;  // [38-36]
+      uint32_t unused : 25; // [63-39]
     };
   };
 };
@@ -126,11 +126,25 @@ struct xcl_bo_flags
  * XRT_BO_USE_DTRACE indicates that the buffer will be used to
  * communicate dynamic trace data from driver / firmware back to
  * userspace. At present this type of usage is supported only on Telluride.
+ *
+ * XRT_BO_USE_LOG indicates that the buffer will be used for logging info
+ * from driver / firmware back to userspace.
+ *
+ * XRT_BO_USE_DEBUG_QUEUE indicates that the buffer will be used for
+ * holding debug queue data.
  */
-#define XRT_BO_USE_NORMAL 0
-#define XRT_BO_USE_DEBUG  1
-#define XRT_BO_USE_KMD    2
-#define XRT_BO_USE_DTRACE 3 
+
+// This file is used in driver as well, so using #define instead of
+// constexpr and using NOLINT block to supress clng-tidy warnings
+
+// NOLINTBEGIN
+#define XRT_BO_USE_NORMAL      0
+#define XRT_BO_USE_DEBUG       1
+#define XRT_BO_USE_KMD         2
+#define XRT_BO_USE_DTRACE      3
+#define XRT_BO_USE_LOG         4
+#define XRT_BO_USE_DEBUG_QUEUE 5
+// NOLINTEND
 
 /**
  * XRT Native BO flags

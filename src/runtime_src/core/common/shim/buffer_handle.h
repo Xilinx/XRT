@@ -10,9 +10,11 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <map>
 #include <memory>
 
 namespace xrt_core {
+class hwctx_handle; // forward declaration
 
 // class buffer_handle - shim base class for buffer objects
 //
@@ -106,6 +108,25 @@ public:
 
   virtual void
   sync_aie_bo_nb(xrt::bo&, const char *, bo_direction, size_t, size_t)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  // Configures the buffer to be used as debug/dtrace/log bo based
+  // on the flag passed. This call creates metadata using map of
+  // column/uc index and buffer sizes and passes the info to driver.
+  virtual void
+  config(xrt_core::hwctx_handle* /*ctx*/, uint32_t /*flag*/,
+         const std::map<uint32_t, size_t>& /*buf_sizes*/)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  // Unconfigure the buffer configured earlier
+  // If this call is not made explicitly the derived buffer_handle class
+  // destoryer should handle the unconfiguring part.
+  virtual void
+  unconfig(xrt_core::hwctx_handle*)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
