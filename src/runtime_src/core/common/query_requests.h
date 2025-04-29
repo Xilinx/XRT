@@ -1956,6 +1956,7 @@ struct aie_partition_info : request
     uint64_t    errors = 0;
     uint64_t    pasid = 0;
     qos_info    qos {};
+    uint64_t    ctx_suspensions;    // Idle detection suspension
   };
 
   using result_type = std::vector<struct data>;
