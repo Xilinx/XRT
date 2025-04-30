@@ -136,7 +136,7 @@ std::function<void (void*)> end_status_cb;
 void
 register_callbacks(void* handle)
 {
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+  #if defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
     using utype = void (*)(void*, bool);
     
