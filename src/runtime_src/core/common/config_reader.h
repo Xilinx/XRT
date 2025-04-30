@@ -160,6 +160,13 @@ get_power_profile_interval_ms()
   return value ;
 }
 
+inline std::string
+get_xdp_mode()
+{
+  static std::string value = detail::get_string_value("Debug.xdp_mode", "zocl");
+  return value;
+}
+
 inline bool
 get_aie_profile()
 {
