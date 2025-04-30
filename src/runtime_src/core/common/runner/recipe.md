@@ -6,10 +6,10 @@ A run recipe defines a graph model that can be executed by XRT.
 
 This directory contains a stand-alone `xrt::runner` class that reads and 
 executes a run recipe json file.   The idea is to have tools, e.g. VAIML
-geneate the run recipe along with xclbin and control code for kernels.
+generate the run recipe along with xclbin and control code for kernels.
 
 The schema of the recipe json is defined in `schema/recipe.schema.json`. The
-implementation of the runner drove some of the defintion of the json
+implementation of the runner drove some of the definition of the json
 format.
 
 A run recipe is associated with exactly one configuration (xclbin or
@@ -75,7 +75,7 @@ be listed in the resources section.
 
 ### Kernel functions
 
-Kernels listed in the resoruces section result in runner creating
+Kernels listed in the resources section result in runner creating
 `xrt::kernel` objects.  In XRT, the kernel objects are identified by
 name, which must match a kernel instance name in the xclbin.
 
@@ -426,7 +426,7 @@ input and output are consumed during one kernel execution.  See the
 
 # Runner API
 
-The runner is contructed from a recipe json file and a device object.
+The runner is constructed from a recipe json file and a device object.
 The runner is a standard XRT C++ first class object with the following
 API.  Include documentation will be beefed up when the runner code is 
 moved to public XRT.

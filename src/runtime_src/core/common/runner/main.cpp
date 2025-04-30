@@ -39,12 +39,15 @@ usage()
 static void
 run(const std::string& recipe,
     const std::string& profile,
-    const std::string& dir)
+    const std::string& dir,
+    bool report)
 {
   xrt::device device{0};
   xrt_core::runner runner {device, recipe, profile, dir};
   runner.execute();
   runner.wait();
+  if (report)
+    std::cout << runner.get_report() << "\n";
 }
 
 static void
@@ -55,10 +58,16 @@ run(int argc, char* argv[])
   std::string recipe;
   std::string profile;
   std::string dir = ".";
+  bool report = false;
   for (auto& arg : args) {
     if (arg == "-h") {
       usage();
       return;
+    }
+
+    if (arg == "--report") {
+      report = true;
+      continue;
     }
 
     if (arg[0] == '-') {
@@ -76,7 +85,7 @@ run(int argc, char* argv[])
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
 
-  run(recipe, profile, dir);
+  run(recipe, profile, dir, report);
 }
 
 int
