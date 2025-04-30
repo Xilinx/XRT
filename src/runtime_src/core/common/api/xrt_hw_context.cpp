@@ -176,6 +176,12 @@ public:
     return m_mode;
   }
 
+  size_t
+  get_partition_size() const
+  {
+    return m_partition_size;
+  }
+
   xrt_core::hwctx_handle*
   get_hwctx_handle()
   {
@@ -237,6 +243,12 @@ xrt::module
 get_module(const xrt::hw_context& ctx, const std::string& kname)
 {
   return ctx.get_handle()->get_module(kname);
+}
+
+size_t
+get_partition_size(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_partition_size();
 }
 
 } // xrt_core::hw_context_int

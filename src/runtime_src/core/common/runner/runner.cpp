@@ -23,10 +23,12 @@
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/time.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/include/xrt/xrt_uuid.h"
 #include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_kernel.h"
@@ -184,6 +186,7 @@ namespace artifacts {
 class repo
 {
 protected:
+  using repo_error = xrt_core::runner::repo_error;
   mutable std::map<std::string, std::vector<char>> m_data;
 
 public:
@@ -223,7 +226,7 @@ public:
   {
     std::filesystem::path full_path = base_dir / path;
     if (!std::filesystem::exists(full_path))
-      throw std::runtime_error{"File not found: " + full_path.string()};
+      throw repo_error{"File not found: " + full_path.string()};
 
     auto key = full_path.string();
     if (auto it = m_data.find(key); it != m_data.end())
@@ -231,7 +234,7 @@ public:
 
     std::ifstream ifs(key, std::ios::binary);
     if (!ifs)
-      throw std::runtime_error{"Failed to open file: " + key};
+      throw repo_error{"Failed to open file: " + key};
 
     ifs.seekg(0, std::ios::end);
     std::vector<char> data(ifs.tellg());
@@ -266,7 +269,7 @@ public:
       return to_sv((*itr).second);
     }
 
-    throw std::runtime_error{"Failed to find artifact: " + path};
+    throw repo_error{"Failed to find artifact: " + path};
   }
 };
 
@@ -307,8 +310,81 @@ get(const std::string& path, const artifacts::repo* repo)
 
 } // module_cache
 
+
+// class report - Execution report
+//
+// The report class collects data about a recipe and its execution.
+// The report class has no external API, all data is collected and
+// returned as a json objects and a json tree.
+class report
+{
+public:
+  // Data is organized in sections that result in separate
+  // json objects containing key/value pairs.
+  enum class section_type { xclbin, resources, hwctx, cpu };
+
+private:
+  using report_type = std::map<section_type, json>;
+  report_type m_sections;
+
+  static const std::string&
+  to_string(section_type sect)
+  {
+    static const std::map<section_type, std::string> s2s = {
+      { section_type::xclbin, "xclbin" },
+      { section_type::resources, "resources" },
+      { section_type::hwctx, "hwctx" },
+      { section_type::cpu, "cpu" }
+    };
+
+    return s2s.at(sect);
+  }
+
+  // Return, create if necessary, the json object for a section.
+  json&
+  get_section(section_type sect)
+  {
+    auto& j = m_sections[sect];
+    if (j.is_null())
+      j = m_sections[sect] = json::object();
+
+    return j;
+  }
+  
+public:
+  // e.g. add(cpu, {{"latency", 45.0}})
+  void
+  add(section_type section, const json& j)
+  { 
+    get_section(section).insert(j.begin(), j.end());
+  }
+
+  // Add content of another report object to this
+  // report object.
+  void
+  add(const report& rpt)
+  {
+    for (auto [sec, j] : rpt.m_sections)
+      get_section(sec).insert(j.begin(), j.end());
+  }
+
+  // Convert report to a json std::string
+  std::string
+  to_string() const
+  {
+    json j = json::object();
+    for (const auto& [sec, jsec] : m_sections)
+      j[to_string(sec)] = jsec;
+
+    return j.dump();
+  }
+};
+
+// class recipe - Runner recipe
 class recipe
 {
+  using recipe_error = xrt_core::runner::recipe_error;
+  
   // class header - header section of the recipe
   class header
   {
@@ -335,6 +411,14 @@ class recipe
     get_xclbin() const
     {
       return m_xclbin;
+    }
+
+    report
+    get_report() const
+    {
+      report rpt;
+      rpt.add(report::section_type::xclbin, {{"uuid", m_xclbin.get_uuid().to_string()}});
+      return rpt;
     }
   }; // class recipe::header
 
@@ -389,7 +473,7 @@ class recipe
         if (t == "internal")
           return type::internal;
 
-        throw std::runtime_error("Unknown buffer type '" + t + "'");
+        throw recipe_error("Unknown buffer type '" + t + "'");
       }
     public:
       buffer(const buffer& rhs) = default;
@@ -433,9 +517,9 @@ class recipe
         // Require that if size is specified for externally bound buffer,
         // then it must match the size of the binding buffer.
         if (m_size && m_size != bo.size())
-          throw std::runtime_error("Invalid size (" + std::to_string(bo.size())
-                                   + ") of bo bound to '" + m_name + "', expected "
-                                   + std::to_string(m_size));
+          throw recipe_error("Invalid size (" + std::to_string(bo.size())
+                             + ") of bo bound to '" + m_name + "', expected "
+                             + std::to_string(m_size));
 
         m_xrt_bo = bo;
       }
@@ -585,12 +669,24 @@ class recipe
       return cpus;
     }
 
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device, const xrt::uuid& uuid,
+                 const xrt::hw_context::qos_type& qos)
+    {
+      try {
+        return {device, uuid, qos};
+      }
+      catch (const std::exception& ex) {
+        throw xrt_core::runner::hwctx_error{ex.what()};
+      }
+    }
+
   public:
     resources(xrt::device device, const xrt::xclbin& xclbin,
               const xrt::hw_context::qos_type& qos,
               const json& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
-      , m_hwctx{m_device, m_device.register_xclbin(xclbin), qos}
+      , m_hwctx{create_hwctx(m_device, m_device.register_xclbin(xclbin), qos)}
       , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
       , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
       , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
@@ -621,7 +717,7 @@ class recipe
     {
       auto it = m_kernels.find(name);
       if (it == m_kernels.end())
-        throw std::runtime_error("Unknown kernel '" + name + "'");
+        throw recipe_error("Unknown kernel '" + name + "'");
       return it->second.get_xrt_kernel();
     }
 
@@ -630,7 +726,7 @@ class recipe
     {
       auto it = m_cpus.find(name);
       if (it == m_cpus.end())
-        throw std::runtime_error("Unknown cpu '" + name + "'");
+        throw recipe_error("Unknown cpu '" + name + "'");
       return it->second.get_function();
     }
 
@@ -639,9 +735,26 @@ class recipe
     {
       auto it = m_buffers.find(name);
       if (it == m_buffers.end())
-        throw std::runtime_error("Unknown buffer '" + name + "'");
+        throw recipe_error("Unknown buffer '" + name + "'");
 
       return it->second;
+    }
+
+    report
+    get_report() const
+    {
+      report rpt;
+      rpt.add(report::section_type::resources, {{"buffers", m_buffers.size()}});
+      rpt.add(report::section_type::resources, {{"total_buffer_size",
+        std::accumulate(m_buffers.begin(), m_buffers.end(), size_t(0), [] (size_t value, const auto& b) {
+          if (auto bo = b.second.get_xrt_bo())
+            return value + bo.size();
+
+          return value;
+        })}});
+      rpt.add(report::section_type::resources, {{"kernels", m_kernels.size()}});
+      rpt.add(report::section_type::hwctx, {{"columns", xrt_core::hw_context_int::get_partition_size(m_hwctx) }});
+      return rpt;
     }
   }; // class recipe::resources
 
@@ -684,7 +797,7 @@ class recipe
         {
           auto bo = buffer.get_xrt_bo();
           if (bo && (bo.size() < size))
-            throw std::runtime_error("buffer size mismatch for buffer: " + buffer.get_name());
+            throw recipe_error("buffer size mismatch for buffer: " + buffer.get_name());
 
           if (bo && size && (size < bo.size()))
             // sub-buffer
@@ -801,7 +914,7 @@ class recipe
           else if (type == "string")
             std::visit(set_arg_visitor{argidx, node.at("value").get<std::string>()}, run);
           else
-            throw std::runtime_error("Unknown constant argument type '" + type + "'");
+            throw recipe_error("Unknown constant argument type '" + type + "'");
         }
       }
 
@@ -876,7 +989,7 @@ class recipe
         if (std::holds_alternative<xrt::run>(m_run))
           return std::get<xrt::run>(m_run);
 
-        throw std::runtime_error("recipe::execution::run::get_xrt_run() called on a CPU run");
+        throw recipe_error("recipe::execution::run::get_xrt_run() called on a CPU run");
       }
 
       xrt_core::cpu::run
@@ -885,7 +998,7 @@ class recipe
         if (std::holds_alternative<xrt_core::cpu::run>(m_run))
           return std::get<xrt_core::cpu::run>(m_run);
 
-        throw std::runtime_error("recipe::execution::run::get_cpu_run() called on a GPU run");
+        throw recipe_error("recipe::execution::run::get_cpu_run() called on a NPU run");
       }
 
       void
@@ -1179,6 +1292,14 @@ class recipe
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
     }
+
+    report
+    get_report() const
+    {
+      report rpt;
+      rpt.add(report::section_type::resources, {{"runs", num_runs()}});
+      return rpt;
+    }
   }; // class recipe::execution
 
   xrt::device m_device;
@@ -1258,6 +1379,17 @@ public:
     XRT_DEBUGF("recipe::sleep(%d)\n", sleep_ms);
     m_execution.sleep(sleep_ms);
   }
+
+  report
+  get_report() const
+  {
+    report rpt;
+    rpt.add(m_header.get_report());
+    rpt.add(m_resources.get_report());
+    rpt.add(m_execution.get_report());
+    return rpt;
+  }
+
 }; // class recipe
 
 // class profile - Execution profile
@@ -1272,6 +1404,9 @@ public:
 // execution profile.
 class profile
 {
+  using profile_error = xrt_core::runner::profile_error;
+  using validation_error = xrt_core::runner::validation_error;
+
   // class bindings - represents the bindings sections of a profile json
   //
   // {
@@ -1372,7 +1507,7 @@ class profile
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       auto bo_data = bo.map<char*>();
       if (bo.size() != golden_data.size())
-        throw std::runtime_error("Size mismatch during validation");
+        throw validation_error("Size mismatch during validation");
 
       if (std::equal(golden_data.data(), golden_data.data() + golden_data.size(), bo_data))
         return;
@@ -1380,7 +1515,7 @@ class profile
       // Error
       for (uint64_t i = 0; i < golden_data.size(); ++i) {
         if (golden_data[i] != bo_data[i])
-          throw std::runtime_error
+          throw validation_error
             ("gold[" + std::to_string(i) + "] = " + std::to_string(golden_data[i])
              + " does not match bo value in bo " + std::to_string(bo_data[i]));
       }
@@ -1407,7 +1542,7 @@ class profile
       auto skip = node.value<size_t>("skip", 0);
       auto data = m_repo->get(file);
       if (skip > data.size())
-        throw std::runtime_error("bad skip value: " + std::to_string(skip));
+        throw profile_error("bad skip value: " + std::to_string(skip));
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = std::string_view{data.data() + skip, data.size() - skip};
@@ -1487,7 +1622,7 @@ class profile
       else if (node.value<bool>("random", false))
         init_buffer_random(bo, node);
       else
-        throw std::runtime_error("Unsupported initialziation node in profile");
+        throw profile_error("Unsupported initialziation node in profile");
 
       if (node.value<bool>("debug", false)) {
         static uint64_t count = 0;
@@ -1610,6 +1745,8 @@ class profile
     profile* m_profile;
     size_t m_iterations;
     iteration_node m_iteration;
+    report m_report;
+    bool m_verbose = false;
 
     void
     execute_iteration(size_t iteration)
@@ -1641,8 +1778,9 @@ class profile
   public:
     execution(profile* pr, const json& j)
       : m_profile(pr)
-      , m_iterations(j.at("iterations").get<size_t>())
-      , m_iteration(j.at("iteration"))
+      , m_iterations(j.value("iterations", 1))
+      , m_iteration(j.value("iteration", json::object()))
+      , m_verbose(j.value("verbose", true))
     {
       // Bind buffers to the recipe prior to executing the recipe. This
       // will bind the buffers which have binding::bind set to true.
@@ -1665,10 +1803,24 @@ class profile
       auto num_runs = m_profile->num_recipe_runs();
 
       // NOLINTBEGIN
-      std::cout << "Elapsed time (us): " << time_ns / 1000 << "\n";
-      std::cout << "Average Latency (us): " << time_ns / (1000 * m_iterations * num_runs) << "\n";
-      std::cout << "Average Throughput (op/s): " << (1000000000 * m_iterations * num_runs) / time_ns << "\n";
+      auto elapsed = time_ns / 1000;
+      auto latency = time_ns / (1000 * m_iterations * num_runs);
+      auto throughput = (1000000000 * m_iterations * num_runs) / time_ns;
+      m_report.add(report::section_type::cpu, {{"elapsed", elapsed}});
+      m_report.add(report::section_type::cpu, {{"latency", latency}});
+      m_report.add(report::section_type::cpu, {{"throughput", throughput}});
+      if (m_verbose) {
+        std::cout << "Elapsed time (us): " << elapsed << "\n";
+        std::cout << "Average Latency (us): " << latency << "\n";
+        std::cout << "Average Throughput (op/s): " << throughput << "\n";
+      }
       // NOLINTEND
+    }
+
+    report
+    get_report() const
+    {
+      return m_report;
     }
   }; // class profile::execution
   
@@ -1767,8 +1919,8 @@ public:
     , m_repo{std::move(repo)}
     , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
     , m_recipe{device, load_json(recipe), m_qos, m_repo.get()}
-    , m_bindings{device, m_profile_json.at("bindings"), m_repo.get()}
-    , m_execution(this, m_profile_json.at("execution"))
+    , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo.get()}
+    , m_execution(this, m_profile_json.value("execution", json::object()))
   {}
 
   void
@@ -1788,6 +1940,15 @@ public:
   {
     // waiting is controlled through execution in json
     // so a noop here
+  }
+
+  report
+  get_report() const
+  {
+    report rpt;
+    rpt.add(m_recipe.get_report());
+    rpt.add(m_execution.get_report());
+    return rpt;
   }
 }; // class profile
 
@@ -1822,6 +1983,9 @@ public:
 
   virtual void
   wait() = 0;
+
+  virtual std::string
+  get_report() const = 0;
 };
 
 // class recipe_impl - Insulated implementation of xrt::runner
@@ -1856,7 +2020,13 @@ public:
   {
     m_recipe.wait();
   }
-}; // class runner_impl
+
+  std::string
+  get_report() const override
+  {
+    return m_recipe.get_report().to_string();
+  }
+}; // class recipe_impl
 
 // class profile_impl - Insulated implementaton of xrt::runner
 //
@@ -1893,15 +2063,45 @@ public:
   {
     m_profile.wait();
   }
+
+  std::string
+  get_report() const override
+  {
+    return m_profile.get_report().to_string();
+  }
 }; // class profile_impl
+
+// Implementation of base device exception class
+class runner::error_impl
+{
+public:
+  std::string m_message;
+
+  explicit
+  error_impl(std::string message)
+    : m_message(std::move(message))
+  {}
+};
 
 ////////////////////////////////////////////////////////////////
 // Public runner interface APIs
 ////////////////////////////////////////////////////////////////
+runner::error::
+error(const std::string& message)
+  : xrt::detail::pimpl<runner::error_impl>(std::make_shared<runner::error_impl>(message))
+{}
+
+const char*
+runner::error::
+what() const noexcept
+{
+  return handle->m_message.c_str();
+}           
+
 runner::
 runner(const xrt::device& device,
        const std::string& recipe)
-  : m_impl{std::make_unique<recipe_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::file_repo>())}
 {} 
   
@@ -1909,7 +2109,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe,
        const std::filesystem::path& dir)
-  : m_impl{std::make_unique<recipe_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::file_repo>(dir))}
 {} 
 
@@ -1917,14 +2117,14 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe,
        const artifacts_repository& repo)
-  : m_impl{std::make_unique<recipe_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
            (device, recipe, std::make_shared<artifacts::ram_repo>(repo))}
 {}
 
 runner::
 runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile)
-  : m_impl{std::make_unique<profile_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
            (device, recipe, profile, std::make_shared<artifacts::file_repo>())}
 {}
 
@@ -1932,7 +2132,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile,
        const std::filesystem::path& dir)
-  : m_impl{std::make_unique<profile_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
            (device, recipe, profile, std::make_shared<artifacts::file_repo>(dir))}
 {}
 
@@ -1940,7 +2140,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile,
        const artifacts_repository& repo)
-  : m_impl{std::make_unique<profile_impl>
+  : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
            (device, recipe, profile, std::make_shared<artifacts::ram_repo>(repo))}
 {}
 
@@ -1948,7 +2148,7 @@ void
 runner::
 bind_input(const std::string& name, const xrt::bo& bo)
 {
-  m_impl->bind_input(name, bo);
+  handle->bind_input(name, bo);
 }
 
 // bind_output() - Bind a buffer object to an output tensor
@@ -1956,14 +2156,14 @@ void
 runner::
 bind_output(const std::string& name, const xrt::bo& bo)
 {
-  m_impl->bind_output(name, bo);
+  handle->bind_output(name, bo);
 }
 
 void
 runner::
 bind(const std::string& name, const xrt::bo& bo)
 {
-  m_impl->bind(name, bo);
+  handle->bind(name, bo);
 }
 
 // execute() - Execute the runner
@@ -1971,14 +2171,21 @@ void
 runner::
 execute()
 {
-  m_impl->execute();
+  handle->execute();
 }
 
 void
 runner::
 wait()
 {
-  m_impl->wait();
+  handle->wait();
+}
+
+std::string
+runner::
+get_report()
+{
+  return handle->get_report();
 }
 
 } // namespace xrt_core

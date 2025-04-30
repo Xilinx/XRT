@@ -51,6 +51,11 @@ create_hw_context_from_implementation(void* hwctx_impl);
 xrt::module
 get_module(const xrt::hw_context& hwctx, const std::string& kname);
 
+// Get the partition size (number of columns).  May not be available
+// in xclbin mode.    
+size_t
+get_partition_size(const xrt::hw_context&);
+
 }} // hw_context_int, xrt_core
 
 #endif

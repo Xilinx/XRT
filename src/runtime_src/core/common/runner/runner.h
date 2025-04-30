@@ -2,7 +2,9 @@
 // Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_COMMON_RUNNER_RUNNER_H_
 #define XRT_COMMON_RUNNER_RUNNER_H_
-#include "core/common/config.h"
+#include "xrt/detail/config.h"
+#include "xrt/detail/pimpl.h"
+#include "xrt/experimental/xrt_exception.h"
 
 #include <any>
 #include <cstdint>
@@ -24,9 +26,46 @@ namespace xrt_core {
  * class runner - A class to execute a run recipe json
  */
 class runner_impl;
-class runner
+class runner : public xrt::detail::pimpl<runner_impl>
 {
-  std::shared_ptr<runner_impl> m_impl;  // probably unique_ptr is enough
+public:
+  class error_impl;
+  class error : public xrt::detail::pimpl<error_impl>, public xrt::exception
+  {
+  public:
+    XRT_API_EXPORT
+    explicit
+    error(const std::string& msg);
+
+    XRT_API_EXPORT
+    const char*
+    what() const noexcept override;
+  };
+
+  class recipe_error : public error
+  {
+    using error::error;
+  };
+
+  class profile_error : public error
+  {
+    using error::error;
+  };
+
+  class repo_error : public error
+  {
+    using error::error;
+  };
+
+  class hwctx_error : public error
+  {
+    using error::error;
+  };
+
+  class validation_error : public profile_error
+  {
+    using profile_error::profile_error;
+  };
 
 public:
   /**
@@ -41,65 +80,71 @@ public:
   // ctor - Create runner from a recipe json.
   // Any artifacts referenced by the recipe are looked up in the
   // current directory.
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe);
 
   // ctor - Create runner from a recipe json and path to directory
   // with artifacts
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe,
          const std::filesystem::path& artifacts_dir);
 
   // ctor - Create runner from a recipe json and artifacts repository
   // The repo is not copied so the lifetime of the repo must extend
   // the lifetime of the runner.
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe,
          const artifacts_repository&);
 
   // ctor - Create runner from a recipe json and execution profile json
   // Any artifacts referenced by recipe and profile are looked up in
   // the current directory.
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile);
 
   // ctor - Create runner from a recipe json and execution profile
   // json and path to directory with artifacts.
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const std::filesystem::path& artifacts_dir);
 
   // ctor - Create runner from a recipe json and execution profile
   // json and artifacts repository.  The repo is not copied so the
   // lifetime of the repo must extend the lifetime of the runner.
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const artifacts_repository&);
 
   // bind_input() - Bind a buffer object to an input tensor
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   void
   bind_input(const std::string& name, const xrt::bo& bo);
 
   // bind_output() - Bind a buffer object to an output tensor
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   void
   bind_output(const std::string& name, const xrt::bo& bo);
 
   // bind() - Bind a buffer object to a tensor
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   void
   bind(const std::string& name, const xrt::bo& bo);
 
   // execute() - Execute the runner
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   void
   execute();
 
   // wait() - Wait for the execution to complete
-  XRT_CORE_COMMON_EXPORT
+  XRT_API_EXPORT
   void
   wait();
+
+  // get_report() - Get a runner report as a json string
+  // The schema of the report is TBD
+  XRT_API_EXPORT
+  std::string
+  get_report();
 };
 
 /**
