@@ -1,0 +1,4 @@
+REPO_URL=https://gitenterprise.xilinx.com/ssw-devops/yocto-tagged-manifest.git
+BRANCH=master
+MANIFEST_PATH=/proj/yocto/basecamp/2025.1/Yocto_basecamp_2025.1_04290153
+MANIFEST_FILE=default_04290153.xml 
