@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2025 Xilinx, Inc. All rights reserved.
 #
 
 set(CMAKE_CXX_STANDARD 17)
@@ -48,7 +48,11 @@ if (NOT WIN32)
   endif()
 else()
     set(BOOST_ROOT C:/Xilinx/XRT/ext)
-    find_package(Boost)
+    if(CMAKE_VERSION VERSION_GREATER "3.29")
+      find_package(Boost CONFIG)
+    else (CMAKE_VERSION VERSION_GREATER "3.29")
+      find_package(Boost)
+    endif (CMAKE_VERSION VERSION_GREATER "3.29")
     include_directories(${Boost_INCLUDE_DIRS})
 endif(NOT WIN32)
 
