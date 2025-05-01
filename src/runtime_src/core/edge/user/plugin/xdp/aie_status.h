@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,7 +28,7 @@ namespace status {
 } // end namespace status
 
 namespace sts {
-  void update_device(void* handle);
+  void update_device(void* handle, bool hw_context_flow);
   void end_poll(void* handle);
 } // end namespace sts
 

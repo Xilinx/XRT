@@ -57,7 +57,7 @@ void update_device(void* handle, bool hw_context_flow)
 #endif
   aie::dbg::update_device(handle); //debug
   aie::ctr::update_device(handle, hw_context_flow); //counters=profiling
-  aie::sts::update_device(handle); //status
+  aie::sts::update_device(handle, hw_context_flow); //status
 }
 
 // The flush_device callback should be called just before a new xclbin
@@ -92,6 +92,7 @@ void finish_flush_device(void* handle)
 #endif
   aie::ctr::end_poll(handle);
   aie::dbg::end_poll(handle);
+  aie::sts::end_poll(handle);
 }
 
 } // end namespace xdp

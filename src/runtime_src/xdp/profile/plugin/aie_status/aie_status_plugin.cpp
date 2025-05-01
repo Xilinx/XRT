@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -427,34 +427,43 @@ namespace xdp {
     while (shouldContinue) {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
-
+      
+      mtxWriterThread.lock();
       aieWriter->write(false, handle);
+      mtxWriterThread.unlock();
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
+  }
+
+  uint64_t AIEStatusPlugin::getDeviceIDFromHandle(void* handle, bool hw_context_flow)
+  {
+    if (hw_context_flow)
+      return db->addDevice("ve2_device");
+    else
+      // only xcl device handle
+      return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
   }
 
   /****************************************************************************
    * Update AIE device
    ***************************************************************************/
-  void AIEStatusPlugin::updateAIEDevice(void* handle)
+  void AIEStatusPlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Status update AIE device.");
     // Don't update if no debug/status is requested
     if (!xrt_core::config::get_aie_status())
       return;
 
-    #ifdef XDP_VE2_BUILD
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-      mXrtCoreDevice = xrt_core::hw_context_int::get_core_device(context);
-      uint64_t deviceID = db->addDevice("ve2_device");
-    #else
-      mXrtCoreDevice = xrt_core::get_userpf_device(handle);
-      uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
-    #endif
+    if (!handle)
+      return;
 
-    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
-      // Update the static database with information from xclbin
+    auto mXrtCoreDevice = util::convertToCoreDevice(handle, hw_context_flow);
+    auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
+
+    // Update the static database with information from xclbin
+    {
       #ifdef XDP_VE2_BUILD
-      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, mXrtCoreDevice);
+        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, mXrtCoreDevice);
       #else
         (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
       #endif
@@ -503,9 +512,12 @@ namespace xdp {
    ***************************************************************************/
   void AIEStatusPlugin::endPollforDevice(void* handle)
   {
-    // Last chance at writing status reports
-    for (auto w : writers)
-      w->write(false, handle);
+    // Last chance at writing status reports 
+    for (auto w : writers) {
+      mtxWriterThread.lock();
+      w->write(false, handle);      
+      mtxWriterThread.unlock();
+    }
 
     // When ending polling for a device, if we are on edge we must instead
     // shut down all of the threads and not just a single one in order

@@ -34,21 +34,17 @@ namespace status {
   }
 
   // Callback from shim to load device information and start polling
-  std::function<void (void*)> update_device_cb;
+  std::function<void (void*, bool)> update_device_cb;
   // Callback from shim to end poll for a device when xclbin changes
   std::function<void (void*)> end_poll_cb;
 
   void register_callbacks(void* handle)
   {
-    using ftype = void (*)(void*); // Device handle
+    using utype = void (*)(void*, bool);
+    using ftype = void (*)(void*);
 
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
-    if (xrt_core::dlerror() != nullptr)
-      update_device_cb = nullptr;
-
+    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
-    if (xrt_core::dlerror() != nullptr)
-      end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
@@ -59,10 +55,10 @@ namespace status {
 } // end namespace status
 
 namespace sts {
-  void update_device(void* handle)
+  void update_device(void* handle, bool hw_context_flow)
   {
     if (status::update_device_cb != nullptr)
-      status::update_device_cb(handle);
+      status::update_device_cb(handle, hw_context_flow);
   }
 
   void end_poll(void* handle)
