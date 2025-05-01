@@ -423,8 +423,9 @@ namespace xdp {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
       
-      std::lock_guard<std::mutex> l(mtx_writer_thread);  
+      mtx_writer_thread.lock();
       aieWriter->write(false, handle);
+      mtx_writer_thread.unlock();
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
