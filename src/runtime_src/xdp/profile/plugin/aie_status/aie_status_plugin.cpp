@@ -457,7 +457,7 @@ namespace xdp {
     // Update the static database with information from xclbin
     {
       #ifdef XDP_VE2_BUILD
-        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, mXrtCoreDevice);
       #else
         (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
       #endif
