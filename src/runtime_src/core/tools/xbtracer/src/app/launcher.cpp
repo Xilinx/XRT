@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <array>
 #include <chrono>
@@ -16,10 +16,12 @@
 # include "getopt.h"
 # include <shlwapi.h>
 # include <windows.h>
+# include "core/common/windows/win_utils.h"
 #else
 # include <sys/stat.h>
 # include <unistd.h>
 # include <cstring>
+# include "core/common/linux/linux_utils.h"
 #endif /* #ifdef _WIN32 */
 
 #ifdef _WIN32
@@ -529,7 +531,8 @@ int create_child_proc_as_suspended(launcher& app)
       &app.m_si,                    // Pointer to STARTUPINFO structure
       &app.m_pi))          // Pointer to PROCESS_INFORMATION structure
   {
-    log_f("Child process creation failed");
+    log_f("Child process creation failed. Error: ",
+          sys_dep_get_last_err_msg().c_str());
     return -1;
   }
 
