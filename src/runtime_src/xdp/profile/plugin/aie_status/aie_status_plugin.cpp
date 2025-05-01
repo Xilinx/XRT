@@ -422,7 +422,8 @@ namespace xdp {
     while (shouldContinue) {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
-
+      
+      std::lock_guard<std::mutex> l(mtx_writer_thread);  
       aieWriter->write(false, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
@@ -505,8 +506,9 @@ namespace xdp {
    ***************************************************************************/
   void AIEStatusPlugin::endPollforDevice(void* handle)
   {
-    // Last chance at writing status reports
-    for (auto w : writers)
+    // Last chance at writing status reports 
+    std::lock_guard<std::mutex> l(mtx_writer_thread);
+    for (auto w : writers) 
       w->write(false, handle);
 
     // When ending polling for a device, if we are on edge we must instead
