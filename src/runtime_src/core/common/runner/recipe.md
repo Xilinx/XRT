@@ -153,10 +153,29 @@ created input and output tensors, or they can be internal buffers used
 during execution of the compiled graph at the discretion of the
 compiler (VAIML).
 
+#### Buffer types
+
+The `type` of a buffer is one of
+
+- input
+- output
+- internal
+- weight
+- spill
+- unknown
+
+For all pratical purposes the `type` is ignored by the xrt::runner
+when it creates the recipe.  The only enforcement is that internal
+buffers must specify a size so that the recipe can create an xrt::bo
+object for the internal buffer.  All other buffers are treated as
+external and must be bound to the recipe by the framework.  Note that
+binding can be implicit by using a [profile](profile.md) to explicit 
+through the xrt::runner interface.
+
 #### External buffers (graph input and output)
 
 External buffers (input and output) are created by the framework /
-application outside of the runner and bound to the recipe during
+application outside of the recipe and bound to the recipe during
 execution.  If the recipe buffer element doesn't specify a buffer size, 
 then the runner does not create `xrt::bo` objects for
 external buffers, but instead relies on the framework
