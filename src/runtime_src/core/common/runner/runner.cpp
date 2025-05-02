@@ -1500,6 +1500,12 @@ class profile
       else {
         // validate against content of a file
         golden_data = repo->get(node.at("file").get<std::string>());
+        auto skip = node.value<size_t>("skip", 0);
+        if (skip > golden_data.size())
+          throw std::runtime_error("skip bytes large than file");
+
+        // Adjust the view, skipping skip bytes
+        golden_data = std::string_view{golden_data.data() + skip, golden_data.size() - skip};
       }
 
       // here we could extract offset and size of region to validate
@@ -1622,7 +1628,7 @@ class profile
       else if (node.value<bool>("random", false))
         init_buffer_random(bo, node);
       else
-        throw profile_error("Unsupported initialziation node in profile");
+        throw profile_error("Unsupported initialization node in profile");
 
       if (node.value<bool>("debug", false)) {
         static uint64_t count = 0;
