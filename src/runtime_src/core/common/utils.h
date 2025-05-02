@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2016-2025 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -141,6 +141,19 @@ value_to_mac_addr(uint64_t mac_addr_value);
 XRT_CORE_COMMON_EXPORT
 int
 get_pid();
+
+/**
+ * @brief Retrieve the last system error message.
+ *
+ * This function fetches the last error message from the operating system,
+ * which could originate from a Linux or Windows system call. It provides
+ * a human-readable string describing the error.
+ *
+ * @return A string containing the last system error message.
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_sys_last_err_msg();
 
 }} // utils, xrt_core
 

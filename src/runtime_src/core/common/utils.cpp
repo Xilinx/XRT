@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2016-2025 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,9 +30,11 @@
 
 #ifdef __linux__
 # include <unistd.h>
+# include "core/common/linux/linux_utils.h"
 #endif
 #ifdef _WIN32
 # include <process.h>
+# include "core/common/windows/win_utils.h"
 #endif
 
 namespace {
@@ -345,6 +347,12 @@ get_pid()
 #else
   return getpid();
 #endif
+}
+
+std::string
+get_sys_last_err_msg()
+{
+  return sys_dep_get_last_err_msg();
 }
 
 }} // utils, xrt_core
