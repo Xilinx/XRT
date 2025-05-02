@@ -203,6 +203,7 @@ specified using a `validate` element for the binding.
     {
       "validate": {
         "file": "ofm.bin"
+        "skip": bytes // skip number of bytes in file
       }
     }
 ```
