@@ -1925,7 +1925,7 @@ public:
           const std::string& recipe,
           const std::string& profile,
           std::shared_ptr<artifacts::repo> repo)
-    : m_profile_json{load_json(profile)}
+    : m_profile_json(load_json(profile)) // cannot use brace-initialization (see nlohmann FAQ)
     , m_repo{std::move(repo)}
     , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
     , m_recipe{device, load_json(recipe), m_qos, m_repo.get()}
