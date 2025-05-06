@@ -30,6 +30,7 @@ namespace {
 // modules.
 
 namespace xrt_core::xdp::core {
+
   void
   load_core()
   {
@@ -63,6 +64,14 @@ void
 load()
 {
   static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
+                                                register_callbacks,
+                                                warning_callbacks_empty);
+}
+
+void
+load_xdna()
+{
+  static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin_xdna",
                                                 register_callbacks,
                                                 warning_callbacks_empty);
 }
@@ -548,14 +557,43 @@ update_device(void* handle, bool hw_context_flow)
   }
   
   if (xrt_core::config::get_aie_profile()) {
-    try {
-      xrt_core::xdp::aie::profile::load();
-    }
-    catch (...) {
+    if (xrt_core::config::get_xdp_mode() == "xdna") {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Profile library.");
+        "VE2 XDNA is set. Profiling will be available only for XDNA device.");
+
+      try {
+        xrt_core::xdp::aie::profile::load_xdna();
+        try {
+          xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
+        }
+        catch (...) {
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+              "Update device for AIE Profile VE2 XDNA failed.");
+        }
+      }
+      catch (...) {
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+            "Failed to load AIE Profile library for VE2 XDNA.");
+      }
     }
-    xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
+    else {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "VE2 XDNA is NOT set. Profiling will be available only for ZOCL device.");
+      try {
+        xrt_core::xdp::aie::profile::load();
+        try {
+          xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
+        }
+        catch (...) {
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+              "Update device for AIE Profile VE2 Non-XDNA failed.");
+        }
+      }
+      catch (...) {
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+            "Failed to load AIE Profile library for VE2 Non-XDNA.");
+      }
+    }
   }
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);

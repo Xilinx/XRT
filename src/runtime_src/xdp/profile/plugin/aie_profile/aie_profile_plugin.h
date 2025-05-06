@@ -36,7 +36,7 @@ namespace xdp {
 
   private:
     virtual void writeAll(bool openNewFiles) override;
-    uint64_t getDeviceIDFromHandle(void* handle);
+    uint64_t getDeviceIDFromHandle(void* handle, bool hw_context_flow);
     void pollAIECounters(const uint32_t index, void* handle);
     void endPoll();
 
