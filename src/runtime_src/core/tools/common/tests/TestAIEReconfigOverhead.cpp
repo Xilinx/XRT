@@ -78,12 +78,11 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   //Create BOs
-  xrt::bo bo_ifm, bo_ofm, bo_inter, bo_instr, bo_instr_no_op, bo_mc;
+  xrt::bo bo_ifm, bo_ofm, bo_inter, bo_instr, bo_instr_no_op;
   
   bo_ifm = xrt::ext::bo{working_dev, buffer_size};
   bo_ofm = xrt::ext::bo{working_dev, buffer_size};
   bo_inter = xrt::ext::bo{working_dev, inter_size};
-  bo_mc = xrt::ext::bo{working_dev, 16};
 
   // map input buffer
   // Incremental byte pattern
