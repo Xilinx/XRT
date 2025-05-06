@@ -320,7 +320,7 @@ namespace xdp {
     xrt::bo resultBO;
     uint32_t* output = nullptr;
     try {
-      resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
+      resultBO = xrt_core::bo_int::create_bo(context, 0x20000, xrt_core::bo_int::use_type::debug);
       output = resultBO.map<uint32_t*>();
       memset(output, 0, 0x20000);
     } catch (std::exception& e) {

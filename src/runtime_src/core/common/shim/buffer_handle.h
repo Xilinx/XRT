@@ -112,12 +112,11 @@ public:
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
 
-  // Configures the buffer to be used as debug/dtrace/log bo based
-  // on the flag passed. This call creates metadata using map of
-  // column/uc index and buffer sizes and passes the info to driver.
+  // Configures the buffer to be used as debug/dtrace/log bo using
+  // the flag that is used to create this bo. This call creates metadata
+  // using map of column/uc index and buffer sizes and passes the info to driver.
   virtual void
-  config(xrt_core::hwctx_handle* /*ctx*/, uint32_t /*flag*/,
-         const std::map<uint32_t, size_t>& /*buf_sizes*/)
+  config(xrt_core::hwctx_handle* /*ctx*/, const std::map<uint32_t, size_t>& /*buf_sizes*/)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
