@@ -108,6 +108,11 @@ if [ -f $SETTINGS_FILE  ]; then
     source $SETTINGS_FILE
 fi
 
+if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
+   echo "XILINX_VITIS is not available. Please source Vitis"
+   exit 1
+fi
+
 #Check if repo is installed and get its version
 if ! command -v repo &> /dev/null; then
     echo "Repo command not found. Installing repo..."
