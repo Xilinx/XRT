@@ -439,26 +439,46 @@ zocl_read_aieresbin(struct drm_zocl_slot *slot, struct axlf* axlf, char __user *
 	struct axlf_section_header *header = NULL;
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
 	int ret = 0;
+        #define num_bytes_to_copy 4
 	while (header) {
 		int err = 0;
 		long start_col = 0, num_col = 0;
+                char scol[num_bytes_to_copy], ncol[num_bytes_to_copy];
+                struct aie_resources_bin aie_p;
 
-		struct aie_resources_bin *aie_p = (struct aie_resources_bin *)(xclbin + header->m_sectionOffset);
-		void *data_portion = vmalloc(aie_p->m_image_size);
+                err = copy_from_user(&aie_p, xclbin + header->m_sectionOffset, sizeof(struct aie_resources_bin));
+                if (err)
+                        return -EFAULT;
+
+		void *data_portion = vmalloc(aie_p.m_image_size);
 		if (!data_portion)
 			return -ENOMEM;
-		err = copy_from_user(data_portion, (char *)aie_p + aie_p->m_image_offset, aie_p->m_image_size);
+
+		err = copy_from_user(data_portion, (char *)xclbin + header->m_sectionOffset + aie_p.m_image_offset, aie_p.m_image_size);
+		if (err) {
+			vfree(data_portion);
+			return err;
+		}
+		
+                //copy one byte which represents start_column
+                err = copy_from_user(scol, (char *)xclbin + header->m_sectionOffset + aie_p.m_start_column, num_bytes_to_copy);
 		if (err) {
 			vfree(data_portion);
 			return err;
 		}
 
-		if (kstrtol((char*)aie_p +aie_p->m_start_column, 10, &start_col) ||
-		    kstrtol((char*)aie_p +aie_p->m_num_columns, 10, &num_col)) {
+                //copy one byte which represents num_columns
+                err = copy_from_user(ncol, (char *)xclbin + header->m_sectionOffset + aie_p.m_num_columns, num_bytes_to_copy);
+		if (err) {
 			vfree(data_portion);
-			return -EINVAL; 
+			return err;
 		}
 
+		if (kstrtol(scol, 10, &start_col) || kstrtol(ncol, 10, &num_col))
+                {
+			vfree(data_portion);
+			return -EINVAL; 
+                }
 		//Call the AIE Driver API 
 	        if (slot->aie->partition_id == FULL_ARRAY_PARTITION_ID)
 		    ret = aie_part_rscmgr_set_static_range(slot->aie->aie_dev, start_col, num_col, data_portion);
