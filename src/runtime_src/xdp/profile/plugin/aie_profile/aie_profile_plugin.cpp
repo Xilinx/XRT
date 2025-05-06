@@ -84,7 +84,7 @@ namespace xdp {
     return AieProfilePlugin::live;
   }
 
-  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
+  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle, bool hw_context_flow)
   {
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
@@ -92,10 +92,11 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
-#elif XDP_VE2_BUILD
-    return db->addDevice("ve2_device");
 #else
-    return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+    if (hw_context_flow)
+      return db->addDevice("ve2_device");
+    else
+      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
 #endif
   }
 
@@ -110,17 +111,27 @@ namespace xdp {
       return;
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
-    auto deviceID = getDeviceIDFromHandle(handle);
 
+    if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
+      xrt_core::message::send(severity_level::warning, "XRT", "Got Non-XDNA device when VE2 XDNA flow is set. AIE Profiling is not yet supported for this combination.");
+      return;
+    }
+    else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+      xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when VE2 XDNA flow is not set. AIE Profiling is not yet supported for this combination.");
+      return;
+    }
+
+    auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
     // Update the static database with information from xclbin
     {
 #ifdef XDP_CLIENT_BUILD
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
-#elif defined(XDP_VE2_BUILD)
-      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
 #else
-      (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
+      if (hw_context_flow)
+        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+      else
+        (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
 #endif
     }
 
