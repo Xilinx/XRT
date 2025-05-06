@@ -430,7 +430,7 @@ class recipe
     {
       std::string m_name;
 
-      enum class type { input, output, internal };
+      enum class type { input, output, inout, internal, weight, spill, unknown };
       type m_type;
 
       size_t m_size;
@@ -466,15 +466,18 @@ class recipe
       static type
       to_type(const std::string& t)
       {
-        if (t == "input")
-          return type::input;
-        if (t == "output")
-          return type::output;
-        if (t == "internal")
-          return type::internal;
-
-        throw recipe_error("Unknown buffer type '" + t + "'");
+        static const std::map<std::string, buffer::type> s2t = {
+          { "input", type::input },
+          { "output", type::output },
+          { "inout", type::inout },
+          { "internal", type::internal },
+          { "weight", type::weight },
+          { "spill", type::spill },
+          { "unknown", type::unknown }
+        };
+        return s2t.at(t);
       }
+
     public:
       buffer(const buffer& rhs) = default;
       buffer(buffer&& rhs) = default;
@@ -566,11 +569,12 @@ class recipe
       {
         auto name = j.at("name").get<std::string>(); // required, default xclbin kernel name
         auto elf = j.value<std::string>("ctrlcode", ""); // optional elf file
+        auto instance = j.value("instance", name);
         if (elf.empty())
-          return kernel{hwctx, name, j.value("instance", name)};
+          return kernel{hwctx, name, instance};
 
         auto mod = module_cache::get(elf, repo);
-        return kernel{hwctx, mod, name, j.value("instance", name)};
+        return kernel{hwctx, mod, name, instance};
       }
 
       xrt::kernel

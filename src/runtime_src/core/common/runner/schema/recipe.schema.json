@@ -70,7 +70,7 @@
               "name": { "$ref": "#/$defs/key" },
               "type": {
                 "type": "string",
-                "enum": ["input", "output", "internal", "weight", "spill", "unknown"]
+                "enum": ["input", "output", "inout", "internal", "weight", "spill", "unknown"]
               },
               "size": { "$ref": "#/$defs/size" }
             },
