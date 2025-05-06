@@ -43,6 +43,7 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+#include <linux/vmalloc.h>
 
 #include "xocl_types.h"
 #include "xclbin.h"

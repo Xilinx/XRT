@@ -102,7 +102,7 @@ static int32_t gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
 	mutex_unlock(&cfg_gpio->lock);
 	return ret;
 }
-static int config_gpio_remove(struct platform_device *pdev)
+static int __config_gpio_remove(struct platform_device *pdev)
 {
 	struct config_gpio *config_gpio;
 	void *hdl;
@@ -121,6 +121,15 @@ static int config_gpio_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void config_gpio_remove(struct platform_device *pdev)
+{
+	__config_gpio_remove(pdev);
+}
+#else
+#define config_gpio_remove __config_gpio_remove
+#endif
 
 static int config_gpio_probe(struct platform_device *pdev)
 {

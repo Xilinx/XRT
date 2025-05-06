@@ -22,7 +22,7 @@ struct trace_fifo_full {
 	struct mutex 		lock;
 };
 
-static int trace_fifo_full_remove(struct platform_device *pdev)
+static int __trace_fifo_full_remove(struct platform_device *pdev)
 {
 	struct trace_fifo_full *trace_fifo_full;
 	void *hdl;
@@ -41,6 +41,15 @@ static int trace_fifo_full_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void trace_fifo_full_remove(struct platform_device *pdev)
+{
+	__trace_fifo_full_remove(pdev);
+}
+#else
+#define trace_fifo_full_remove __trace_fifo_full_remove
+#endif
 
 static int trace_fifo_full_probe(struct platform_device *pdev)
 {

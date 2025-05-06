@@ -4304,7 +4304,7 @@ static struct attribute_group icap_attr_group = {
 	.bin_attrs = icap_bin_attrs,
 };
 
-static int icap_remove(struct platform_device *pdev)
+static int __icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -4339,6 +4339,15 @@ static int icap_remove(struct platform_device *pdev)
 	xocl_drvinst_free(hdl);
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void icap_remove(struct platform_device *pdev)
+{
+	__icap_remove(pdev);
+}
+#else
+#define icap_remove __icap_remove
+#endif
 
 /*
  * Run the following sequence of canned commands to obtain IDCODE of the FPGA

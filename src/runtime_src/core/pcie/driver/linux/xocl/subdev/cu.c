@@ -518,7 +518,7 @@ err:
 	return err;
 }
 
-static int cu_remove(struct platform_device *pdev)
+static int __cu_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xrt_cu_info *info;
@@ -562,6 +562,15 @@ static int cu_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void cu_remove(struct platform_device *pdev)
+{
+	__cu_remove(pdev);
+}
+#else
+#define cu_remove __cu_remove
+#endif
 
 static struct platform_device_id cu_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_CU), 0 },

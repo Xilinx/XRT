@@ -170,7 +170,7 @@ static struct attribute_group asm_attr_group = {
 			   .attrs = asm_attrs,
 };
 
-static int asm_remove(struct platform_device *pdev)
+static int __asm_remove(struct platform_device *pdev)
 {
 	struct xocl_asm *xocl_asm;
 	void *hdl;
@@ -194,6 +194,15 @@ static int asm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void asm_remove(struct platform_device *pdev)
+{
+	__asm_remove(pdev);
+}
+#else
+#define asm_remove __asm_remove
+#endif
 
 static int asm_probe(struct platform_device *pdev)
 {

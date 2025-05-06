@@ -3351,7 +3351,7 @@ static int xgq_ospi_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int xgq_vmr_remove(struct platform_device *pdev)
+static int __xgq_vmr_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xgq_vmr	*xgq;
@@ -3390,6 +3390,16 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	XGQ_INFO(xgq, "successfully removed xgq subdev");
 	return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void xgq_vmr_remove(struct platform_device *pdev)
+{
+	__xgq_vmr_remove(pdev);
+}
+#else
+#define xgq_vmr_remove __xgq_vmr_remove
+#endif
+
 /* Function to query VMR and return the appropriate
  * SC status.
  */ 
