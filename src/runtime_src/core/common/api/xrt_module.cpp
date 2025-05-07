@@ -2181,7 +2181,9 @@ class module_sram : public module_impl
     // required data, buffers are synced after data is filled.
     try {
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
-      m_dtrace_ctrl_bo = xrt_core::bo_int::create_dtrace_bo(m_hwctx, ctrl_buf_size * sizeof(uint32_t));
+      m_dtrace_ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
+                                                     ctrl_buf_size * sizeof(uint32_t),
+                                                     xrt_core::bo_int::use_type::dtrace);
       // also create dtrace mem buffer if size is non zero
       if (mem_buf_size) {
         m_dtrace_mem_bo = xrt::bo{ m_hwctx, mem_buf_size * sizeof(uint32_t), xrt::bo::flags::cacheable, 1 /* fix me */ };

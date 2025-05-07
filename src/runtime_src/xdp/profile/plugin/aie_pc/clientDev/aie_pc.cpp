@@ -334,7 +334,7 @@ namespace xdp {
 
     xrt::bo resultBO;
     try {
-      resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x20000);
+      resultBO = xrt_core::bo_int::create_bo(mHwContext, 0x20000, xrt_core::bo_int::use_type::debug);
     } catch (std::exception& e) {
       std::stringstream msg;
       msg << "Unable to create 128KB buffer for AIE PC Profile results. Cannot get AIE PC Profile info. " << e.what() << std::endl;

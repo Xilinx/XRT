@@ -1689,14 +1689,14 @@ get_offset(const xrt::bo& bo)
   return handle->get_offset();
 }
 
-static xrt::bo
-create_bo_helper(const xrt::hw_context& hwctx, size_t sz, uint32_t use_flag)
+xrt::bo
+create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
   flags.flags = XRT_BO_FLAGS_CACHEABLE;
   flags.access = XRT_BO_ACCESS_LOCAL;
   flags.dir = XRT_BO_ACCESS_READ_WRITE;
-  flags.use = use_flag;
+  flags.use = static_cast<uint32_t>(type);
 
   // While the memory group should be ignored (inferred) for
   // debug / trace buffers, it is still passed in as a default
@@ -1705,16 +1705,20 @@ create_bo_helper(const xrt::hw_context& hwctx, size_t sz, uint32_t use_flag)
   return xrt::bo{alloc(device_type{hwctx}, sz, flags.all, 1)};
 }
 
-xrt::bo
-create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
+void
+config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes)
 {
-  return create_bo_helper(hwctx, sz, XRT_BO_USE_DEBUG);
+  auto bo_impl = bo.get_handle();
+  auto ctx = bo_impl->get_hwctx_handle();
+  bo_impl->get_handle()->config(ctx, buf_sizes);
 }
 
-xrt::bo
-create_dtrace_bo(const xrt::hw_context& hwctx, size_t sz)
+void
+unconfig_bo(const xrt::bo& bo)
 {
-  return create_bo_helper(hwctx, sz, XRT_BO_USE_DTRACE);
+  auto bo_impl = bo.get_handle();
+  auto ctx = bo_impl->get_hwctx_handle();
+  bo_impl->get_handle()->unconfig(ctx);
 }
 
 } // xrt_core::bo_int

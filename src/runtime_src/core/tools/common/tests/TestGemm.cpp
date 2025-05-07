@@ -135,7 +135,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   // Create 128KB Debug BO to capture TOPS data
-  xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
+  xrt::bo bo_result = xrt_core::bo_int::create_bo(hwctx, 0x20000, xrt_core::bo_int::use_type::debug);
 
   try {
     xrt::run run;
