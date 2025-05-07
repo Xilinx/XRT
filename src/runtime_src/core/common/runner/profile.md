@@ -224,23 +224,45 @@ specifics as needed.
 
 ## Execution
 
+The execution section of a profile specifies how many times the recipe
+should be executed and how.  It controls what should happen after each
+iteration and before next iteration. If `iterations` is not specified,
+then the recipe will execute one iteration.
+
+```
+  "execution" : {
+    "iterations": 500,     // default one iteration
+    "verbose": false,      // disable reporting of cpu time
+    "validate": true,      // validate after all iterations
+    "runlist_threshold": 1 // when to use xrt::runlist
+    "iteration" : {
+    }
+  }
+```
 This section is optional.  If not present, the recipe will execute
 one iteration.
 
-The execution section of a profile specifies how many times the recipe
-should be executed and how.  It controls what should happen after each
-iteration and before next iteration. if `iterations` is not specified,
-then the recipe will execute one iteration.
+- `iterations` (default: `1`) specifies how many times the recipe
+  should execute.
+- `verbose` (default: `true`) controls printing of metrics post all
+iterations. By default the profile execution will display to stdout
+elapsed, throughput, and latency computed from running the recipe
+specified number of iterations.
+- `validate` (default: `false`) enables validation per binding
+  elements upon completion of all iterations.
+- `runlist_threshold` (default: `6`) specifies when to
+xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
+list of separate xrt::run objects. A value of `0` disables
+xrt::runlist completely, any other value is used to trigger when to
+use xrt::runlist based on corresponding number of recipe run
+objects.
 
-By default the profile execution will display to stdout elapsed,
-throughput, and latency computed from running the recipe specified
-number of iterations.  
-This can be disabled by setting `verbose: false`.
+The `iteration` sub-element is optional, but if present specifies what
+should happen before after each iteration of the run recipe.
 
 ```
   "execution" : {
     "iterations": 500,
-    "verbose": false,   // disable reporting of cpu time
     "iteration" : {
       "bind": false,    // re-bind binding buffers
       "init": true,     // re-initialize binding buffers
@@ -251,15 +273,12 @@ This can be disabled by setting `verbose: false`.
   }
 ```
 
-The iteration element is optional, but if present specifies what
-should happen before after each iteration of the run recipe.
-
 - `bind` indicates if buffers should be re-bound to the
 recipe before an iteration.  Only buffers whose binding element
 specifies `rebind` are re-bound.  All buffers are by default
 bound to the recipe upon creation.
 - `init` indicates if buffer should be re-initialized before an
-iteration. Only buffers whose binding element specifies has an `init`
+iteration. Only buffers whose binding element has an `init`
 element and specifies `reinit` are re-initialized.  All buffers are by
 default initialized upon creation if their binding element has an
 `init` element.
