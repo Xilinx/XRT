@@ -22,21 +22,22 @@ size_t
 get_offset(const xrt::bo& bo);
 
 // enum for different buffer use flags
+// This is for internal use only
 enum class use_type {
-  normal = XRT_BO_USE_NORMAL,
-  debug = XRT_BO_USE_DEBUG,
-  kmd = XRT_BO_USE_KMD,
-  dtrace = XRT_BO_USE_DTRACE,
-  log = XRT_BO_USE_LOG,
-  debug_queue = XRT_BO_USE_DEBUG_QUEUE
+  normal = XRT_BO_USE_NORMAL, // Normal usage
+  debug = XRT_BO_USE_DEBUG, // For debug data
+  kmd = XRT_BO_USE_KMD, // Shared with kernel mode driver
+  dtrace = XRT_BO_USE_DTRACE, // For dynamic trace data
+  log = XRT_BO_USE_LOG, // For logging info
+  debug_queue = XRT_BO_USE_DEBUG_QUEUE // For debug queue data
 };
 
-// create_bo_helper() - Create a buffer object within a hwctx for specific
-// use case
+// create_bo() - Create a buffer object within a hwctx for specific use case
 //
 // Allocates a buffer object within a hwctx. All the public xrt::bo constructors
 // doesnt use 64 bit flags. So this function acts as an extension to create buffer
 // with specific use flag (debug/dtrace/log).
+XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
 
