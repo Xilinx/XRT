@@ -1070,8 +1070,8 @@ class recipe
           XRT_DEBUGF("recipe::execution creating std::vector<xrt::run>\n");
         }
 
-        virtual const std::vector<xrt::run>&
-        get_rl() const
+        const std::vector<xrt::run>&
+        get_rl() const override
         {
           return m_rl;
         }
@@ -1866,9 +1866,9 @@ class profile
     execution(profile* pr, const json& j)
       : m_profile(pr)
       , m_iterations(j.value("iterations", 1))
-      , m_validate(j.value("validate", false))
       , m_iteration(j.value("iteration", json::object()))
       , m_verbose(j.value("verbose", true))
+      , m_validate(j.value("validate", false))
     {
       // Bind buffers to the recipe prior to executing the recipe. This
       // will bind the buffers which have binding::bind set to true.
