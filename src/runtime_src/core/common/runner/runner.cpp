@@ -4,13 +4,6 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
 
-// AIESW-2326 The runner currently disables the use of xrt::runlist
-// #define USE_XRT_RUNLIST
-
-// If runlist contains more than XRT_RUNLIST_THRESHOLD runs then
-// switch to xrt::runlist
-//#define USE_XRT_RUNLIST
-
 #ifdef _DEBUG
 # define XRT_VERBOSE
 #endif
@@ -59,6 +52,10 @@
 
 namespace {
 
+// The recipe will use xrt::runlist when the number of runs
+// exceed this threshold; otherwise use std::vector<xrt::run>
+constexpr size_t default_runlist_threshold = 6;
+  
 using json = nlohmann::json;
 const json empty_json;
 
@@ -1049,89 +1046,159 @@ class recipe
       }
     };
 
-#ifdef USE_XRT_RUNLIST
+    // The NPU runlist starts out as a std::vector<xrt::run> but
+    // morphs to an xrt::runlist if number of runs exceeds
+    // runlist_threshold
     struct npu_runlist : runlist
     {
-      xrt::runlist m_runlist;
-
-      explicit npu_runlist(const xrt::hw_context& hwctx)
-        : m_runlist{hwctx}
-      {}
-
-      void
-      add(const run& run) override
+      struct impl : runlist
       {
-        m_runlist.add(run.get_xrt_run());
-      }
+        virtual const std::vector<xrt::run>&
+        get_rl() const
+        {
+          throw std::runtime_error("Internal error");
+        }
+      };
 
-      void
-      execute(size_t iteration) override
+      // Vector implementation of the NPU runlist
+      struct vrl : impl
       {
-        // Wait until previous iteration is done
-        if (iteration > 0)
-          m_runlist.wait();
+        std::vector<xrt::run> m_rl;
 
-        m_runlst.execute();
-      }
+        vrl()
+        {
+          XRT_DEBUGF("recipe::execution creating std::vector<xrt::run>\n");
+        }
 
-      void
-      wait() override
-      {
-        m_runlist.wait();
-      }
-    };
-#else
-    struct npu_runlist : runlist
-    {
-      std::vector<xrt::run> m_runlist;
+        const std::vector<xrt::run>&
+        get_rl() const override
+        {
+          return m_rl;
+        }
 
-      explicit npu_runlist(const xrt::hw_context&)
-      {}
+        void
+        add(const run& run) override
+        {
+          m_rl.push_back(run.get_xrt_run());
+        }
 
-      void
-      add(const run& run) override
-      {
-        m_runlist.push_back(run.get_xrt_run());
-      }
+        void
+        execute(size_t iteration) override
+        {
+          // First iteration, just start all runs
+          if (iteration == 0) {
+            for (auto& run : m_rl)
+              run.start();
 
-      void
-      execute(size_t iteration) override
-      {
-        // First iteration, just start all runs
-        if (iteration == 0) {
-          for (auto& run : m_runlist)
+            return;
+          }
+
+          // Wait until previous iteration run is done
+          for (auto& run : m_rl) {
+            run.wait2();
             run.start();
-
-          return;
+          }
         }
 
-        // Wait until previous iteration run is done
-        for (auto& run : m_runlist) {
-          run.wait();
-          run.start();
+        void
+        wait() override
+        {
+          // While waiting for last to complete is enough, all runs
+          // must be marked completed
+          for (auto itr = m_rl.rbegin(); itr != m_rl.rend(); ++itr)
+            (*itr).wait2();
         }
+      };
+
+      // xrt::runlist implementation of NPU runlist
+      struct xrl : impl
+      {
+        xrt::runlist m_rl;
+
+        explicit xrl(const xrt::hw_context& hwctx)
+          : m_rl{hwctx}
+        {
+          XRT_DEBUGF("recipe::execution creating xrt::runlist\n");
+        }
+
+        void
+        add(const std::vector<xrt::run>& runs)
+        {
+          for (auto run : runs)
+            m_rl.add(std::move(run));
+        }
+
+        void
+        add(const run& run) override
+        {
+          m_rl.add(run.get_xrt_run());
+        }
+
+        void
+        execute(size_t iteration) override
+        {
+          // Wait until previous iteration is done
+          if (iteration > 0)
+            m_rl.wait();
+          
+          m_rl.execute();
+        }
+
+        void
+        wait() override
+        {
+          m_rl.wait();
+        }
+      };
+
+      std::unique_ptr<impl> m_impl;
+      xrt::hw_context m_hwctx;
+      size_t m_runlist_threshold;
+      uint32_t m_count = 0;
+
+      explicit npu_runlist(xrt::hw_context hwctx, size_t rlt)
+        : m_impl(std::make_unique<vrl>())
+        , m_hwctx(std::move(hwctx))
+        , m_runlist_threshold{rlt}
+      {}
+
+      void
+      add(const run& run) override
+      {
+        // morph to xrt::runlist when threshold reached
+        XRT_DEBUGF("(count, threshold)=(%d, %d)\n", m_count, m_runlist_threshold);
+        if (++m_count == m_runlist_threshold) {
+          XRT_DEBUGF("recipe::execution switching to xrt::runlist\n");
+          auto xrlist = std::make_unique<xrl>(m_hwctx);
+          xrlist->add(m_impl->get_rl());
+          m_impl = std::move(xrlist);
+        }
+
+        m_impl->add(run);
       }
 
       void
-      wait() override
+      execute(size_t iteration) override
       {
-        // While waiting for last to complete is enough, all runs
-        // must be marked completed
-        for (auto itr = m_runlist.rbegin(); itr != m_runlist.rend(); ++itr)
-          (*itr).wait2();
+        m_impl->execute(iteration);
+      }
+
+      void wait() override
+      {
+        m_impl->wait();
       }
     };
-#endif
 
     std::vector<run> m_runs;
     xrt::queue m_queue;        // Queue that executes the runlists in sequence
     std::exception_ptr m_eptr;
-
+    size_t m_runlist_threshold = default_runlist_threshold;
     std::vector<std::unique_ptr<runlist>> m_runlists;
     std::vector<xrt::queue::event> m_events;  // Events that signal complettion of a runlist
 
+
     static std::vector<std::unique_ptr<runlist>>
-    create_runlists(const resources& resources, const std::vector<run>& runs)
+    create_runlists(const resources& resources, const std::vector<run>& runs, size_t rlt)
     {
       std::vector<std::unique_ptr<runlist>> runlists;
 
@@ -1147,7 +1214,7 @@ class recipe
             crl = nullptr;
 
           if (!nrl) {
-            auto rl = std::make_unique<npu_runlist>(resources.get_xrt_hwctx());
+            auto rl = std::make_unique<npu_runlist>(resources.get_xrt_hwctx(), rlt);
             nrl = rl.get();
             runlists.push_back(std::move(rl));
           }
@@ -1198,16 +1265,17 @@ class recipe
     // execution() - create an execution object from a property tree
     // The runs are created from the property tree and either xrt::run
     // or cpu::run objects.
-    execution(const resources& resources, const json& j)
+    execution(const resources& resources, const json& j, size_t runlist_threshold)
       : m_runs{create_runs(resources, j.at("runs"))}
-      , m_runlists{create_runlists(resources, m_runs)}
+      , m_runlist_threshold{runlist_threshold}
+      , m_runlists{create_runlists(resources, m_runs, m_runlist_threshold)}
     {}
 
     // execution() - create an execution object from existing runs
     // New run objects are created from the existing runs.
     execution(const resources& resources, const execution& other)
       : m_runs{create_runs(resources, other.m_runs)}
-      , m_runlists{create_runlists(resources, m_runs)}
+      , m_runlists{create_runlists(resources, m_runs, other.m_runlist_threshold)}
     {}
 
     size_t
@@ -1302,6 +1370,7 @@ class recipe
     {
       report rpt;
       rpt.add(report::section_type::resources, {{"runs", num_runs()}});
+      rpt.add(report::section_type::resources, {{"runlist_threshold", m_runlist_threshold}});
       return rpt;
     }
   }; // class recipe::execution
@@ -1314,20 +1383,22 @@ class recipe
   execution m_execution;
 
 public:
-  recipe(xrt::device device, json recipe, const xrt::hw_context::qos_type& qos, const artifacts::repo* repo)
+  recipe(xrt::device device, json recipe,
+         const xrt::hw_context::qos_type& qos, size_t runlist_threshold,
+         const artifacts::repo* repo)
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
     , m_header{m_recipe_json.at("header"), repo}
     , m_resources{m_device, m_header.get_xclbin(), qos, m_recipe_json.at("resources"), repo}
-    , m_execution{m_resources, m_recipe_json.at("execution")}
+    , m_execution{m_resources, m_recipe_json.at("execution"), runlist_threshold }
   {}
 
   recipe(xrt::device device, json recipe, const artifacts::repo* repo)
-    : recipe::recipe(std::move(device), std::move(recipe), {}, repo)
+    : recipe::recipe(std::move(device), std::move(recipe), {}, default_runlist_threshold, repo)
   {}
 
   recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
-    : recipe::recipe(std::move(device), load_json(rr), {}, repo)
+    : recipe::recipe(std::move(device), load_json(rr), {}, default_runlist_threshold, repo)
   {}
 
   recipe(const recipe&) = default;
@@ -1726,18 +1797,23 @@ class profile
   //
   // {
   //  "execution" : {
-  //    "iterations": 2,
+  //    "iterations": 2,   (1)
+  //    "verbose": bool,   (true)
+  //    "validate": bool,  (false)
   //    "iteration" : {
-  //      "bind": false,
-  //      "init": true,
-  //      "wait": true,
-  //      "validate": true
+  //      "bind": false,   (false)
+  //      "init": true,    (false)
+  //      "wait": true,    (false)
+  //      "validate": true (false)
   //    }
   //  }
   //
   // The execution section specifies how a recipe should be executed.
-  // Number of iterations specfies how many times the recipe should be
-  // executed when the application calls xrt::runnner::execute().
+  // - "iterations" specfies how many times the recipe should be
+  //    executed when the application calls xrt::runnner::execute().
+  // - "verbose" can be used to turn off printing of metrics
+  // - "validate" enables validation per binding nodes after all
+  //   iterations have completed
   //
   // The behavior of an iteration is within the iteration sub-node.
   // - "bind" indicates if buffers should be re-bound to the
@@ -1757,6 +1833,7 @@ class profile
     iteration_node m_iteration;
     report m_report;
     bool m_verbose = false;
+    bool m_validate = false;
 
     void
     execute_iteration(size_t iteration)
@@ -1791,6 +1868,7 @@ class profile
       , m_iterations(j.value("iterations", 1))
       , m_iteration(j.value("iteration", json::object()))
       , m_verbose(j.value("verbose", true))
+      , m_validate(j.value("validate", false))
     {
       // Bind buffers to the recipe prior to executing the recipe. This
       // will bind the buffers which have binding::bind set to true.
@@ -1808,6 +1886,9 @@ class profile
           execute_iteration(i);
 
         m_profile->wait_recipe();
+
+        if (m_validate)
+          m_profile->validate();
       }
 
       auto num_runs = m_profile->num_recipe_runs();
@@ -1841,6 +1922,7 @@ private:
   std::shared_ptr<artifacts::repo> m_repo;
 
   xrt::hw_context::qos_type m_qos;
+  size_t m_runlist_threshold;
   recipe m_recipe;
   bindings m_bindings;
   execution m_execution;
@@ -1915,6 +1997,15 @@ private:
     return qos;
   }
 
+  static size_t
+  init_runlist_threshold(const json& j)
+  {
+    //return j.value("/execution/runlist_threshold"_json_pointer, default_runlist_threshold);
+    // HAVE TO DISABLE xrt::runlist because it doesn't support
+    // new opcodes ERT_START_NPU_PREEMPT_ELF , ERT_START_NPU_PREEMPT
+    return 0; 
+  }
+
 public:
   // profile - constructor
   //
@@ -1928,7 +2019,8 @@ public:
     : m_profile_json(load_json(profile)) // cannot use brace-initialization (see nlohmann FAQ)
     , m_repo{std::move(repo)}
     , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
-    , m_recipe{device, load_json(recipe), m_qos, m_repo.get()}
+    , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
+    , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo.get()}
     , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo.get()}
     , m_execution(this, m_profile_json.value("execution", json::object()))
   {}
