@@ -111,7 +111,7 @@ namespace xdp {
       return;
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
-
+#ifdef XDP_VE2_BUILD
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
       xrt_core::message::send(severity_level::warning, "XRT", "Got Non-XDNA device when VE2 XDNA flow is set. AIE Profiling is not yet supported for this combination.");
       return;
@@ -120,6 +120,7 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when VE2 XDNA flow is not set. AIE Profiling is not yet supported for this combination.");
       return;
     }
+#endif
 
     auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
     // Update the static database with information from xclbin
