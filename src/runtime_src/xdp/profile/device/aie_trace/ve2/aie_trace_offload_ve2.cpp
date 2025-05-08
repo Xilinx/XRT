@@ -25,8 +25,13 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/common/api/hw_context_int.h"
+#ifdef XDNA_VE2
+#include "shim_ve2/xdna_hwctx.h"
+#include "shim_ve2/xdna_aie_array.h"
+#else
 #include "shim/xdna_hwctx.h"
 #include "shim/xdna_aie_array.h"
+#endif
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_logger_ve2.h"

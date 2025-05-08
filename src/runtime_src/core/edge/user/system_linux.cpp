@@ -36,11 +36,9 @@
   #define MACHINE_NODE_PATH ""
 #endif
 
-#ifdef EDGE_VE2
-#include "shim/device.h"
-#endif
-
-#ifdef EDGE_VE2_XDNA
+#ifdef XDNA_VE2
+#include "shim_ve2/xdna_device.h"
+#elif defined(EDGE_VE2_XDNA)
 #include "shim/xdna_device.h"
 #endif
 

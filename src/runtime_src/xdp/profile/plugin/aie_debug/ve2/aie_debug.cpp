@@ -38,7 +38,11 @@
 #include "core/include/experimental/xrt-next.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
+#ifdef XDNA_VE2
+#include "shim_ve2/xdna_hwctx.h"
+#else
 #include "shim/xdna_hwctx.h"
+#endif
  
 
 #include "xdp/profile/database/static_info/aie_util.h"

@@ -39,7 +39,11 @@
 #ifdef XDP_VE2_BUILD
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
+#ifdef XDNA_VE2
+#include "shim_ve2/xdna_hwctx.h"
+#else
 #include "shim/xdna_hwctx.h"
+#endif
 #else
 #include "core/edge/user/shim.h"
 #endif
