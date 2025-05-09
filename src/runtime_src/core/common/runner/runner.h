@@ -42,6 +42,11 @@ public:
     what() const noexcept override;
   };
 
+  class json_error : public error
+  {
+    using error::error;
+  };
+
   class recipe_error : public error
   {
     using error::error;
