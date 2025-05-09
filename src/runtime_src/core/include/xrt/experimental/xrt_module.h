@@ -107,13 +107,13 @@ public:
    *
    * Copy content of existing module into an allocation associated
    * with the specified hardware context.
-   * If module has multiple control codes, index is used to identify
-   * the control code that needs to be run.
+   * If module has multiple control codes, ctrl code id is used to
+   * identify the control code that needs to be run.
    *
    * Throws if module is not compatible with hardware context
    */
   XRT_API_EXPORT
-  module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx);
+  module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id);
 
   /**
    * get_cfg_uuid() - Get the uuid of the hardware configuration
