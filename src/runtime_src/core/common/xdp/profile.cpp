@@ -8,6 +8,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/message.h"
 #include <functional>
+#include <sstream>
 
 #ifdef _WIN32
 #pragma warning( disable : 4996 ) /* Disable warning for getenv */
@@ -415,7 +416,10 @@ update_device(void* handle, bool hw_context_flow)
      */
     try {
       xrt_core::xdp::core::load_core();
-    } catch (...) {
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load XDP Core library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       return;
     }
   }
@@ -424,141 +428,208 @@ update_device(void* handle, bool hw_context_flow)
   if (xrt_core::config::get_ml_timeline()) {
     try {
       xrt_core::xdp::ml_timeline::load();
-      xrt_core::xdp::ml_timeline::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load ML Timeline library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load ML Timeline library.");      
+    try {
+      xrt_core::xdp::ml_timeline::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for ML Timeline. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
   }
 
   if (xrt_core::config::get_aie_halt()) {
     try {
       xrt_core::xdp::aie::halt::load();
-      xrt_core::xdp::aie::halt::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Halt library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE Halt library.");  
-    }    
+    try {
+      xrt_core::xdp::aie::halt::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Halt. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
   }
 
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Profile library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+    try {
       xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
-    } 
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE Profile library."); 
-    }  
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Profile. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
   }
 
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Trace library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+    try {
       xrt_core::xdp::aie::trace::update_device(handle, hw_context_flow);
-    } 
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE Trace library."); 
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Trace. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
   }
 
   if (xrt_core::config::get_aie_debug()) {
     try {
       xrt_core::xdp::aie::debug::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Debug library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+    try {
       xrt_core::xdp::aie::debug::update_device(handle);
-    } 
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE Debug library."); 
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Debug. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }    
   }
 
   if (xrt_core::config::get_aie_pc()) {
     try {
       xrt_core::xdp::aie_pc::load();
-      xrt_core::xdp::aie_pc::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE PC library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-        "Failed to load AIE PC library."); 
+    try {
+      xrt_core::xdp::aie_pc::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE PC. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }    
   }
 
-  // Avoid warning until we've added support in all plugins
-  (void)(hw_context_flow);
-
 #elif defined(XDP_VE2_BUILD)
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load ML Timeline library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+    try {
+      xrt_core::xdp::ml_timeline::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for ML Timeline. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+  }
 
   if (xrt_core::config::get_aie_halt()) {
     try {
       xrt_core::xdp::aie::halt::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Halt library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Halt library.");
+    try {
+      xrt_core::xdp::aie::halt::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Halt. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::aie::halt::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_trace()) {
     try {
       xrt_core::xdp::aie::trace::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Trace library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Trace library.");
+    try {
+      xrt_core::xdp::aie::trace::update_device(handle, hw_context_flow);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Trace. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::aie::trace::update_device(handle, hw_context_flow);
   }
 
   if (xrt_core::config::get_aie_debug()) {
     try {
       xrt_core::xdp::aie::debug::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Debug library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Debug library.");
+    try {
+      xrt_core::xdp::aie::debug::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Debug. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::aie::debug::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_status()) {
     try {
       xrt_core::xdp::aie::status::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Status library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Status library.");
+    try {
+      xrt_core::xdp::aie::status::update_device(handle, hw_context_flow);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Status. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::aie::status::update_device(handle, hw_context_flow);
   }
 
-  if (xrt_core::config::get_ml_timeline()) {
-    try {
-      xrt_core::xdp::ml_timeline::load();
-    }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load ML Timeline library.");
-    }
-    xrt_core::xdp::ml_timeline::update_device(handle);
-  }
-  
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Profile library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-        "Failed to load AIE Profile library.");
+    try {
+      xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Profile. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
   }
-  // Avoid warning until we've added support in all plugins
-  (void)(hw_context_flow);
 
 #else
 
@@ -566,11 +637,18 @@ update_device(void* handle, bool hw_context_flow)
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
     try {
       xrt_core::xdp::pl_deadlock::load();
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load PL Deadlock Detection library. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    catch (...) {
-      return;
+    try {
+      xrt_core::xdp::pl_deadlock::update_device(handle);
+    } catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for PL Deadlock Detection. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
-    xrt_core::xdp::pl_deadlock::update_device(handle);
   }
 
   // Avoid warning until we've added support in all plugins
