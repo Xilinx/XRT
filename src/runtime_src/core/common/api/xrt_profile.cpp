@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -125,11 +125,28 @@ register_user_functions(void* handle)
 }
 
 static void
+register_callbacks_empty(void*)
+{
+}
+
+static void
+warning_callbacks_empty()
+{
+}
+
+static void
 load_user_profiling_plugin()
 {
+
+#ifdef _WIN32
+  static xrt_core::module_loader xdp_core_loader("xdp_core",
+                                                register_callbacks_empty,
+                                                warning_callbacks_empty);
+#endif
+
   static xrt_core::module_loader user_event_loader("xdp_user_plugin",
                                                    register_user_functions,
-                                                   nullptr);
+                                                   warning_callbacks_empty);
 }
 
 } // end anonymous
