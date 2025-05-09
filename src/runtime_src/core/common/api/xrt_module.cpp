@@ -2434,9 +2434,35 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
   auto os_abi = hdl->get_os_abi();
 
   if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
-    auto buf_info = hdl->get_instr(idx);
-    patch_index = buf_info.first;
-    inst = &(buf_info.second);
+    switch (type) {
+    case xrt_core::patcher::buf_type::ctrltext : {
+      auto buf_info = hdl->get_instr(idx);
+      patch_index = buf_info.first;
+      inst = &(buf_info.second);
+      break;
+    }
+    case xrt_core::patcher::buf_type::ctrldata : {
+      auto buf_info = hdl->get_ctrlpkt(idx);
+      patch_index = buf_info.first;
+      inst = &(buf_info.second);
+      break;
+    }
+    case xrt_core::patcher::buf_type::preempt_save : {
+      auto buf_info = hdl->get_preempt_save();
+      patch_index = buf_info.first;
+      inst = &(buf_info.second);
+      break;
+    }
+    case xrt_core::patcher::buf_type::preempt_restore : {
+      auto buf_info = hdl->get_preempt_restore();
+      patch_index = buf_info.first;
+      inst = &(buf_info.second);
+      break;
+    }
+    default :
+      throw std::runtime_error("Unknown buffer type passed");
+      break;
+    }
   }
   else if(os_abi == Elf_Amd_Aie2ps) {
     const auto& instr_buf = hdl->get_data();
