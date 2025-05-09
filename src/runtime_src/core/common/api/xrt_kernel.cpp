@@ -1323,7 +1323,7 @@ private:
   size_t num_cumasks = 1;              // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
-  uint32_t m_ctrl_code_index = 0;      // Index to identify which ctrl code to load in elf
+  std::string m_ctrl_code_id;          // ID to identify which ctrl code to load from elf
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1512,14 +1512,14 @@ private:
     return data;  // no skipping
   }
 
-  static uint32_t
-  get_ctrlcode_idx(const std::string& name)
+  static std::string
+  get_ctrlcode_id(const std::string& name)
   {
     // kernel name will be of format - <kernel_name>:<ctrl code index>
     if (auto i = name.find(":"); i != std::string::npos)
-      return std::stoul(name.substr(i+1, name.size()-i-1));
+      return name.substr(i+1, name.size()-i-1);
 
-    return 0; // default case
+    return ""; // default case
   }
 
   static uint32_t
@@ -1605,7 +1605,7 @@ public:
     , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
     , properties(xrt_core::module_int::get_kernel_info(m_module).props) // kernel info present in Elf
     , uid(create_uid())
-    , m_ctrl_code_index(get_ctrlcode_idx(nm))                           // control code index
+    , m_ctrl_code_id(get_ctrlcode_id(nm))                               // control code index
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
@@ -1680,10 +1680,10 @@ public:
     return name;
   }
 
-  uint32_t
-  get_ctrl_code_index() const
+  std::string
+  get_ctrl_code_id() const
   {
-    return m_ctrl_code_index;
+    return m_ctrl_code_id;
   }
 
   xrt::xclbin
@@ -1982,16 +1982,16 @@ class run_impl
 
   // This function copies the module into a hw_context. The module
   // will be associated with hwctx specific memory.
-  // If module has multiple control codes, index is used to identify
+  // If module has multiple control codes, id is used to identify
   // the control code that needs to be run.
-  // By default control code at zeroth index is picked
+  // By default first control code that is available is picked
   static xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx)
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, const std::string& ctrl_code_id)
   {
     if (!module)
       return {};
 
-    return {module, hwctx, ctrl_code_idx};
+    return {module, hwctx, ctrl_code_id};
   }
 
   virtual std::unique_ptr<arg_setter>
@@ -2179,7 +2179,7 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_index())}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())

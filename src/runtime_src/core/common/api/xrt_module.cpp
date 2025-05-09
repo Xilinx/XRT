@@ -488,7 +488,7 @@ public:
   }
 
   virtual std::pair<uint32_t, const instr_buf&>
-  get_instr(uint32_t /*index*/ = 0) const
+  get_instr(const std::string& /*id*/ = "") const
   {
     throw std::runtime_error("Not supported");
   }
@@ -512,7 +512,7 @@ public:
   }
 
   virtual const std::unordered_set<std::string>&
-  get_patch_pdis(uint32_t /*index*/ = 0) const
+  get_patch_pdis(const std::string& /*id*/ = "") const
   {
     throw std::runtime_error("Not supported");
   }
@@ -530,7 +530,7 @@ public:
   }
 
   virtual std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(uint32_t /*index*/ = 0) const
+  get_ctrlpkt(const std::string& /*id*/ = "") const
   {
     throw std::runtime_error("Not supported");
   }
@@ -702,13 +702,13 @@ public:
   }
 
   std::pair<uint32_t, const instr_buf&>
-  get_instr(uint32_t /*index*/) const override
+  get_instr(const std::string& /*id*/) const override
   {
     return {0, m_instr_buf};
   }
 
   std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(uint32_t /*index*/) const override
+  get_ctrlpkt(const std::string& /*id*/) const override
   {
     return {0, m_ctrl_pkt};
   }
@@ -817,16 +817,16 @@ class module_elf_aie2p : public module_elf
 {
   xrt::aie::program m_program;
   // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
-  // sections will be of format .ctrltext.* where .* has index of that section type
-  // Below maps has this index as key and value is pair of <section index, data buffer>
-  std::map<uint32_t, std::pair<uint32_t, instr_buf>> m_instr_buf_map;
-  std::map<uint32_t, std::pair<uint32_t, control_packet>> m_ctrl_packet_map;
+  // sections will be of format .ctrltext.* where .* has id of that section type
+  // Below maps has this id as key and value is pair of <section index, data buffer>
+  std::map<std::string, std::pair<uint32_t, instr_buf>> m_instr_buf_map;
+  std::map<std::string, std::pair<uint32_t, control_packet>> m_ctrl_packet_map;
 
   // Also these new Elfs have multiple PDI sections of format .pdi.*
   // Below map has pdi section symbol name as key and section data as value
   std::map<std::string, buf> m_pdi_buf_map;
   // map storing pdi symbols that needs patching in ctrl codes
-  std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
+  std::map<std::string, std::unordered_set<std::string>> m_ctrl_pdi_map;
 
   buf m_save_buf;
   uint32_t m_save_buf_sec_idx = UINT32_MAX;
@@ -845,13 +845,13 @@ class module_elf_aie2p : public module_elf
 
   xrt_core::module_int::kernel_info m_kernel_info;
 
-  static uint32_t
-  get_section_name_index(const std::string& name)
+  static std::string
+  get_section_name_id(const std::string& name)
   {
     // Elf_Amd_Aie2p has sections .sec_name
     // Elf_Amd_Aie2p_config has sections .sec_name.*
     auto pos = name.find_last_of(".");
-    return (pos == 0) ? 0 : std::stoul(name.substr(pos + 1, 1));
+    return (pos == 0) ? "" : name.substr(pos + 1);
   }
 
   std::string
@@ -973,7 +973,7 @@ class module_elf_aie2p : public module_elf
   // about order of sections in the ELF file.
   template<typename buf_type>
   void
-  initialize_buf(xrt_core::patcher::buf_type type, std::map<uint32_t, std::pair<uint32_t, buf_type>>& map)
+  initialize_buf(xrt_core::patcher::buf_type type, std::map<std::string, std::pair<uint32_t, buf_type>>& map)
   {
     for (const auto& sec : m_elfio.sections) {
       auto name = sec->get_name();
@@ -983,9 +983,9 @@ class module_elf_aie2p : public module_elf
       if (name.find(patcher::to_string(type)) == std::string::npos)
         continue;
       
-      uint32_t index = get_section_name_index(name);
+      auto id = get_section_name_id(name);
       buf.append_section_data(sec.get());
-      map.emplace(index, std::pair{sec_index, buf});
+      map.emplace(id, std::pair{sec_index, buf});
     }
   }
 
@@ -1038,17 +1038,17 @@ class module_elf_aie2p : public module_elf
   determine_section_type(const std::string& section_name)
   {
     if (section_name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos) {
-      auto index = get_section_name_index(section_name);
-      if (index >= m_instr_buf_map.size())
+      auto id = get_section_name_id(section_name);
+      if (m_instr_buf_map.find(id) == m_instr_buf_map.end())
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
-      return { m_instr_buf_map[index].second.size(), xrt_core::patcher::buf_type::ctrltext};
+      return { m_instr_buf_map[id].second.size(), xrt_core::patcher::buf_type::ctrltext};
     }
     else if (!m_ctrl_packet_map.empty() &&
              section_name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos) {
-      auto index = get_section_name_index(section_name);
-      if (index >= m_ctrl_packet_map.size())
+      auto id = get_section_name_id(section_name);
+      if (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end())
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
-      return { m_ctrl_packet_map[index].second.size(), xrt_core::patcher::buf_type::ctrldata};
+      return { m_ctrl_packet_map[id].second.size(), xrt_core::patcher::buf_type::ctrldata};
     }
     else if (m_save_buf_exist && (section_name == patcher::to_string(xrt_core::patcher::buf_type::preempt_save)))
       return { m_save_buf.size(), xrt_core::patcher::buf_type::preempt_save };
@@ -1121,8 +1121,8 @@ class module_elf_aie2p : public module_elf
 
       if (std::string(symname).find("pdi") != std::string::npos) {
         // pdi symbol, add to map of which ctrl code needs it
-        auto idx = get_section_name_index(section->get_name());
-        m_ctrl_pdi_map[idx].insert(symname);
+        auto id = get_section_name_id(section->get_name());
+        m_ctrl_pdi_map[id].insert(symname);
       }
 
       patcher::symbol_type patch_scheme;
@@ -1190,10 +1190,10 @@ public:
   }
 
   const std::unordered_set<std::string>&
-  get_patch_pdis(uint32_t index = 0) const override
+  get_patch_pdis(const std::string& id = "") const override
   {
     static const std::unordered_set<std::string> empty_set = {};
-    auto it = m_ctrl_pdi_map.find(index);
+    auto it = m_ctrl_pdi_map.find(id);
     if (it != m_ctrl_pdi_map.end())
       return it->second;
 
@@ -1211,18 +1211,18 @@ public:
   }
 
   std::pair<uint32_t, const instr_buf&>
-  get_instr(uint32_t index) const override
+  get_instr(const std::string& id) const override
   {
-    auto it = m_instr_buf_map.find(index);
+    auto it = m_instr_buf_map.find(id);
     if (it != m_instr_buf_map.end())
       return it->second;
     return {UINT32_MAX, instr_buf::get_empty_buf()};
   }
 
   std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(uint32_t index) const override
+  get_ctrlpkt(const std::string& id) const override
   {
-    auto it = m_ctrl_packet_map.find(index);
+    auto it = m_ctrl_packet_map.find(id);
     if (it != m_ctrl_packet_map.end())
       return it->second;
     return {UINT32_MAX, control_packet::get_empty_buf()};
@@ -1545,8 +1545,8 @@ class module_sram : public module_impl
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
   // New ELFs have multiple ctrl sections
-  // we need index to identify which ctrl section to pick from parent module
-  uint32_t m_index;
+  // we need id to identify which ctrl section to pick from parent module
+  std::string m_ctrl_code_id;
 
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
@@ -1571,8 +1571,8 @@ class module_sram : public module_impl
   // payload to identify the ctrlcode for each column processor.
   std::vector<std::tuple<uint16_t, uint64_t, uint64_t>> m_column_bo_address;
 
-  uint32_t m_instr_sec_idx;
-  uint32_t m_ctrlpkt_sec_idx;
+  uint32_t m_instr_sec_idx = UINT32_MAX;
+  uint32_t m_ctrlpkt_sec_idx = UINT32_MAX;
 
   // Arguments patched in the ctrlcode buffer object
   // Must match number of argument patchers in parent module
@@ -1712,7 +1712,7 @@ class module_sram : public module_impl
   create_instr_buf(const module_impl* parent)
   {
     XRT_DEBUGF("-> module_sram::create_instr_buf()\n");
-    auto instr_buf_info = parent->get_instr(m_index);
+    auto instr_buf_info = parent->get_instr(m_ctrl_code_id);
     m_instr_sec_idx = instr_buf_info.first;
     const instr_buf& data = instr_buf_info.second;
     size_t sz = data.size();
@@ -1790,7 +1790,7 @@ class module_sram : public module_impl
     catch (...) { /*Do Nothing*/ };
 
     // patch all pdi addresses
-    auto pdi_symbols = parent->get_patch_pdis(m_index);
+    auto pdi_symbols = parent->get_patch_pdis(m_ctrl_code_id);
     for (const auto& symbol : pdi_symbols) {
       const auto& pdi_data = parent->get_pdi(symbol);
       auto pdi_bo = xrt::bo{ m_hwctx, pdi_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
@@ -1821,7 +1821,7 @@ class module_sram : public module_impl
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
-    auto ctrl_pkt_info = parent->get_ctrlpkt(m_index);
+    auto ctrl_pkt_info = parent->get_ctrlpkt(m_ctrl_code_id);
     m_ctrlpkt_sec_idx = ctrl_pkt_info.first;
     const control_packet& data = ctrl_pkt_info.second;
     size_t sz = data.size();
@@ -2214,11 +2214,11 @@ class module_sram : public module_impl
   }
 
 public:
-  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t index = 0)
+  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, std::string id = "")
     : module_impl{ parent->get_cfg_uuid() }
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
-    , m_index{ index }
+    , m_ctrl_code_id{ std::move(id) }
   {
     if (xrt_core::config::get_xrt_debug()) {
       m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
@@ -2389,7 +2389,7 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
 // This function is used to get patch buffer size based on buf type passed.
 // It is used with internal test cases that verifies shim functionality.
 size_t
-get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, uint32_t index)
+get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, const std::string& id)
 {
   auto handle = module.get_handle();
   auto os_abi = handle->get_os_abi();
@@ -2397,9 +2397,9 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
   if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
     switch (type) {
       case xrt_core::patcher::buf_type::ctrltext :
-        return handle->get_instr(index).second.size();
+        return handle->get_instr(id).second.size();
       case xrt_core::patcher::buf_type::ctrldata :
-        return handle->get_ctrlpkt(index).second.size();
+        return handle->get_ctrlpkt(id).second.size();
       case xrt_core::patcher::buf_type::preempt_save :
         return handle->get_preempt_save().second.size();
       case xrt_core::patcher::buf_type::preempt_restore :
@@ -2426,7 +2426,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
 // It is used with internal test cases that verifies shim functionality.
 void
 patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
-      xrt_core::patcher::buf_type type, uint32_t idx)
+      xrt_core::patcher::buf_type type, const std::string& id)
 {
   auto hdl = module.get_handle();
   const buf* inst = nullptr;
@@ -2436,13 +2436,13 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
   if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
     switch (type) {
     case xrt_core::patcher::buf_type::ctrltext : {
-      auto buf_info = hdl->get_instr(idx);
+      auto buf_info = hdl->get_instr(id);
       patch_index = buf_info.first;
       inst = &(buf_info.second);
       break;
     }
     case xrt_core::patcher::buf_type::ctrldata : {
-      auto buf_info = hdl->get_ctrlpkt(idx);
+      auto buf_info = hdl->get_ctrlpkt(id);
       patch_index = buf_info.first;
       inst = &(buf_info.second);
       break;
@@ -2584,8 +2584,8 @@ module(const xrt::module& parent, const xrt::hw_context& hwctx)
 {}
 
 module::
-module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx)
-: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx, ctrl_code_idx) }
+module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id)
+: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx, ctrl_code_id) }
 {}
 
 xrt::uuid
