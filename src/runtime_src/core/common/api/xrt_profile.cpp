@@ -124,6 +124,9 @@ register_user_functions(void* handle)
     reinterpret_cast<nsType>(xrt_core::dlsym(handle, "user_event_time_ns_cb"));
 }
 
+#ifdef __linux__
+__attribute__((unused))
+#endif
 static void
 register_callbacks_empty(void*)
 {
