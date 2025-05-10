@@ -678,7 +678,7 @@ void gmio_api::getAvailableBDs()
     if (driverStatus != AieRC::XAIE_OK)
         throw xrt_core::error(-EIO, "ERROR: adf::gmio_api::getAvailableBDs: AIE driver error.");
 
-    numBDCompleted = dmaStartQMaxSize - numPendingBDs;
+    numBDCompleted = dmaStartQMaxSize - availableBDs.size() - numPendingBDs;
 
     for (int i = 0; i < numBDCompleted && !enqueuedBDs.empty(); i++)
     {
@@ -762,6 +762,7 @@ err_code gmio_api::wait()
     while (!enqueuedBDs.empty())
     {
         size_t bdNumber = frontAndPop(enqueuedBDs);
+        statusBDs[bdNumber]++;
         availableBDs.push(bdNumber);
     }
 
