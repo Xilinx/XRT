@@ -63,6 +63,7 @@ const json empty_json;
 static json
 load_json(const std::string& input)
 {
+  using json_error = xrt_core::runner::json_error;
   try {
     // Try parse as in-memory json
     return json::parse(input);
@@ -72,10 +73,15 @@ load_json(const std::string& input)
     // Not a valid JSON - treat input as a file path
   }
 
-  if (std::ifstream f{input})
-    return json::parse(f);
+  try {
+    if (std::ifstream f{input})
+      return json::parse(f);
+  }
+  catch (const std::exception& ex) {
+    throw json_error(ex.what());
+  }
 
-  throw std::runtime_error("Failed to open JSON file: " + input);
+  throw std::runtime_error("Failed to load json, unknown error");
 }
 
 // Lifted from xrt_kernel.cpp
