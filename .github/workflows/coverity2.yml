@@ -42,7 +42,7 @@ jobs:
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
         export PATH=`pwd`/cov-analysis-linux64/bin:$PATH
-        cov-build --dir cov-int build/build.sh -noert -opt -verbose
+        cov-build --dir cov-int build/build.sh -noert -opt -verbose -driver
 
     - name: Submut the results to Coverity Scan
       if: steps.cache-sha.outputs.cache-hit != 'true'
