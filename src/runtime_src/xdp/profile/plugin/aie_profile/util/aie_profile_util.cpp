@@ -200,7 +200,7 @@ namespace xdp::aie::profile {
                                           XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL,
                                           XAIE_EVENT_PORT_RUNNING_4_PL, XAIE_EVENT_PORT_RUNNING_5_PL};
 
-      for (uint32_t c=0; c < numCounters/2; ++c) {
+      for (int c=0; c < numCounters/2; ++c) {
         eventSets["packets"].push_back(tlasts.at(c));
         eventSets["input_throughputs"].push_back(stalled.at(c));
         eventSets["input_throughputs"].push_back(running.at(c));
