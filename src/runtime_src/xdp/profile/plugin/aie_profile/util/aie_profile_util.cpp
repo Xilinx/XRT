@@ -78,23 +78,23 @@ namespace xdp::aie::profile {
                                          XAIE_EVENT_STREAM_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE,
                                          XAIE_EVENT_CASCADE_STALL_CORE,       XAIE_EVENT_INSTR_VECTOR_CORE,
                                          XAIE_EVENT_INSTR_MATRIX_CORE,        XAIE_EVENT_INSTR_MOVE_CORE,
-                                         XAIE_EVENT_INSTR_ALU_CORE,           XAIE_EVENT_INSTR_LOAD_A_CORE,
+                                         XAIE_EVENT_INSTR_ALU_CORE,           XAIE_EVENT_INSTR_LOAD_CORE,
                                          XAIE_EVENT_INSTR_LOAD_B_CORE,        XAIE_EVENT_INSTR_STORE_CORE};
       eventSets["stalls"]             = {};
       eventSets["execution"]          = {};
-      eventSets["stream_throughputs"] = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_INSTR_STREAM_0_GET_CORE,
-                                         XAIE_EVENT_INSTR_STREAM_1_GET_CORE,  XAIE_EVENT_INSTR_STREAM_PUT_CORE,
+      eventSets["stream_throughputs"] = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_INSTR_STREAM_GET_CORE,
+                                         XAIE_EVENT_INSTR_STREAM_GET_1_CORE,  XAIE_EVENT_INSTR_STREAM_PUT_CORE,
                                          XAIE_EVENT_INSTR_CASCADE_GET_CORE,   XAIE_EVENT_INSTR_CASCADE_PUT_CORE};
       eventSets["stream_put_get"]     = {};
       eventSets["read_throughputs"]   = {};
       eventSets["write_throughputs"]  = {};
-      eventSets["dma_throughputs"]    = {XAIE_EVENT_DMA_S2MM_0_RUNNING_CORE,  XAIE_EVENTS_DMA_S2MM_0_FINISHED_BD_CORE,
+      eventSets["dma_throughputs"]    = {XAIE_EVENT_DMA_S2MM_0_RUNNING_CORE,  XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_CORE,
                                          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_CORE, 
                                          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_CORE,
-                                         XAIE_EVENT_DMA_S2MM_1_RUNNING_CORE,  XAIE_EVENTS_DMA_S2MM_1_FINISHED_BD_CORE,
+                                         XAIE_EVENT_DMA_S2MM_1_RUNNING_CORE,  XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_CORE,
                                          XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_CORE, 
                                          XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_CORE,
-                                         XAIE_EVENT_DMA_MM2S_0_RUNNING_CORE,  XAIE_EVENTS_DMA_MM2S_0_FINISHED_BD_CORE,
+                                         XAIE_EVENT_DMA_MM2S_0_RUNNING_CORE,  XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_CORE,
                                          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_CORE, 
                                          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_CORE,
                                          };
@@ -586,6 +586,7 @@ namespace xdp::aie::profile {
     
     uint16_t tmpStart;
     uint16_t tmpEnd;
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
     
