@@ -24,7 +24,6 @@
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/version.hpp>
-// #include <vector>
 #include <set>
 
 #if (BOOST_VERSION >= 106400)
