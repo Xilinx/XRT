@@ -138,7 +138,7 @@ namespace xdp {
     ptSchema.put("minor", "2");
     ptSchema.put("patch", "0");
     ptHeader.add_child("schema_version", ptSchema);
-    ptHeader.put("device", "Client");
+    ptHeader.put("device", "VE2");
     ptHeader.put("clock_freq_MHz", 1000);
     ptHeader.put("id_size", sizeof(uint32_t));
     ptHeader.put("cycle_size", 2*sizeof(uint32_t));
@@ -161,6 +161,7 @@ namespace xdp {
     uint32_t* currSegmentPtr = ptr;
     uint32_t  segmentSzInBytes = mBufSz / numBufSegments;
     uint32_t  segmentsRead = 0;
+    uint32_t  numValidEntries = 0;
     if (numEntries <= maxCount) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
@@ -176,7 +177,7 @@ namespace xdp {
           segmentsRead++;
           if (segmentsRead == numBufSegments) {
             // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
-            std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
+            std::string msgEntries = "Got " + std::to_string(numValidEntries) + " records in buffer.";
             xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
             break;
           } else if (numBufSegments > 1) {
@@ -184,11 +185,11 @@ namespace xdp {
             nxtSegmentMsg << " Got both id and timestamp field as ZERO." 
                  << " Moving to next segment on the buffer."
                  << " Size of each segment in bytes 0x" << std::hex << segmentSzInBytes << std::dec
-                 << ". Current Segment Address 0x" << std::hex << currSegmentPtr << std::dec;
+                 << ". Current Segment Address " << std::hex << currSegmentPtr << std::dec;
 
             ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
 
-            nxtSegmentMsg << ". Next Segment Address 0x" << std::hex << ptr << std::dec 
+            nxtSegmentMsg << ". Next Segment Address " << std::hex << ptr << std::dec 
                           << "." << std::endl;
             xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", nxtSegmentMsg.str());
 
@@ -199,6 +200,7 @@ namespace xdp {
           }
         }
         ptIdTS.put("cycle", ts64);
+        numValidEntries++;
         ptr++;
 
         ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
