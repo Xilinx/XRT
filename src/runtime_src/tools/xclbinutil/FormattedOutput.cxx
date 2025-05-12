@@ -22,12 +22,7 @@
 #include "XclBinSignature.h"
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <iostream>
 #include  <set>
 
 namespace XUtil = XclBinUtilities;
@@ -86,7 +81,6 @@ getSizeAsString(const axlf& _xclBinHeader)
 {
   return boost::str(boost::format("%ld") % _xclBinHeader.m_header.m_length);
 }
-
 
 std::string
 FormattedOutput::getModeAsString(const axlf& _xclBinHeader)
@@ -344,7 +338,7 @@ reportXclbinInfo(std::ostream& _ostream,
       if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_AIE) 
         _ostream << "LOAD_AIE ";
       if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_PDI)
-	_ostream << "LOAD_PDI ";      
+        _ostream << "LOAD_PDI ";      
       _ostream << std::endl;
     }
   }

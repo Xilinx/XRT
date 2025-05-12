@@ -22,18 +22,11 @@
 #include "FormattedOutput.h"
 #include "KernelUtilities.h"
 #include "Section.h"
-#include "version.h"                            // Generated include files
+#include "version.h"                             // Generated include files
 #include "XclBinUtilities.h"
-#include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/uuid/uuid.hpp>                  // for uuid
-#include <boost/uuid/uuid_io.hpp>               // for to_string
-#include <filesystem>
-#include <random>
-#include <sstream>
-#include <stdexcept>
+#include <random>                                // randomGen 
 #include <stdlib.h>
 
 // Constant data
