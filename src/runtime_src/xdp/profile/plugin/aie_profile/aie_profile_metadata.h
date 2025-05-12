@@ -54,7 +54,8 @@ class AieProfileMetadata {
           "heat_map", "stalls", "execution", "floating_point", 
           "stream_put_get", "aie_trace", "events",
           "write_throughputs", "read_throughputs", 
-          "s2mm_throughputs", "mm2s_throughputs"}
+          "s2mm_throughputs", "mm2s_throughputs",
+          "stream_throughputs", "dma_throughputs"}
       },
       {
         module_type::dma, {

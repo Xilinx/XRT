@@ -39,34 +39,77 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(const int hwGen)
   {
+    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::cm_num_counters
+                    : (xdp::aie::isNPU3(hwGen)  ? aie4::cm_num_counters
+                    : aie2::cm_num_counters);
+
     std::map<std::string, std::vector<XAie_Events>> eventSets;
+
+    // Consistent sets across generations
     eventSets = {
-      {"heat_map",                {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                                   XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
-      {"stalls",                  {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
-                                   XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
-      {"execution",               {XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_INSTR_LOAD_CORE,
-                                   XAIE_EVENT_INSTR_STORE_CORE,          XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
-      {"stream_put_get",          {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
-                                   XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
-      {"write_throughputs",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
-                                   XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
-      {"read_throughputs",        {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
-                                   XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
-      {"s2mm_throughputs",        {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
-      {"mm2s_throughputs",        {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
-      {"aie_trace",               {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
-                                   XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
-      {"events",                  {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
-                                   XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
+      {"aie_trace",                     {XAIE_EVENT_PORT_RUNNING_0_CORE,      XAIE_EVENT_PORT_STALLED_0_CORE,
+                                         XAIE_EVENT_PORT_RUNNING_1_CORE,      XAIE_EVENT_PORT_STALLED_1_CORE}},
+      {"events",                        {XAIE_EVENT_INSTR_EVENT_0_CORE,       XAIE_EVENT_INSTR_EVENT_1_CORE,
+                                         XAIE_EVENT_USER_EVENT_0_CORE,        XAIE_EVENT_USER_EVENT_1_CORE}}
     };
 
+    // Flexible sets based on number of counters
+    if (numCounters == 4) {
+      eventSets["heat_map"]           = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                         XAIE_EVENT_INSTR_VECTOR_CORE,        XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE};
+      eventSets["stalls"]             = {XAIE_EVENT_MEMORY_STALL_CORE,        XAIE_EVENT_STREAM_STALL_CORE,
+                                         XAIE_EVENT_LOCK_STALL_CORE,          XAIE_EVENT_CASCADE_STALL_CORE};
+      eventSets["execution"]          = {XAIE_EVENT_INSTR_VECTOR_CORE,        XAIE_EVENT_INSTR_LOAD_CORE,
+                                         XAIE_EVENT_INSTR_STORE_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE};
+      eventSets["stream_put_get"]     = {XAIE_EVENT_INSTR_CASCADE_GET_CORE,   XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
+                                         XAIE_EVENT_INSTR_STREAM_GET_CORE,    XAIE_EVENT_INSTR_STREAM_PUT_CORE};
+      eventSets["write_throughputs"]  = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_INSTR_STREAM_PUT_CORE,
+                                         XAIE_EVENT_INSTR_CASCADE_PUT_CORE,   XAIE_EVENT_GROUP_CORE_STALL_CORE};
+      eventSets["read_throughputs"]   = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_INSTR_STREAM_GET_CORE,
+                                         XAIE_EVENT_INSTR_CASCADE_GET_CORE,   XAIE_EVENT_GROUP_CORE_STALL_CORE};
+      eventSets["s2mm_throughputs"]   = {XAIE_EVENT_PORT_RUNNING_0_CORE,      XAIE_EVENT_PORT_STALLED_0_CORE};
+      eventSets["mm2s_throughputs"]   = {XAIE_EVENT_PORT_RUNNING_0_CORE,      XAIE_EVENT_PORT_STALLED_0_CORE};
+      eventSets["stream_throughputs"] = {};
+      eventSets["dma_throughputs"]    = {};
+    }
+    else if (numCounters == 12) {
+#ifdef XDP_NPU3_BUILD
+      eventSets["heat_map"]           = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_MEMORY_STALL_CORE,
+                                         XAIE_EVENT_STREAM_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE,
+                                         XAIE_EVENT_CASCADE_STALL_CORE,       XAIE_EVENT_INSTR_VECTOR_CORE,
+                                         XAIE_EVENT_INSTR_MATRIX_CORE,        XAIE_EVENT_INSTR_MOVE_CORE,
+                                         XAIE_EVENT_INSTR_ALU_CORE,           XAIE_EVENT_INSTR_LOAD_A_CORE,
+                                         XAIE_EVENT_INSTR_LOAD_B_CORE,        XAIE_EVENT_INSTR_STORE_CORE};
+      eventSets["stalls"]             = {};
+      eventSets["execution"]          = {};
+      eventSets["stream_throughputs"] = {XAIE_EVENT_ACTIVE_CORE,              XAIE_EVENT_INSTR_STREAM_0_GET_CORE,
+                                         XAIE_EVENT_INSTR_STREAM_1_GET_CORE,  XAIE_EVENT_INSTR_STREAM_PUT_CORE,
+                                         XAIE_EVENT_INSTR_CASCADE_GET_CORE,   XAIE_EVENT_INSTR_CASCADE_PUT_CORE};
+      eventSets["stream_put_get"]     = {};
+      eventSets["read_throughputs"]   = {};
+      eventSets["write_throughputs"]  = {};
+      eventSets["dma_throughputs"]    = {XAIE_EVENT_DMA_S2MM_0_RUNNING_CORE,  XAIE_EVENTS_DMA_S2MM_0_FINISHED_BD_CORE,
+                                         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_CORE, 
+                                         XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_CORE,
+                                         XAIE_EVENT_DMA_S2MM_1_RUNNING_CORE,  XAIE_EVENTS_DMA_S2MM_1_FINISHED_BD_CORE,
+                                         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_CORE, 
+                                         XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_CORE,
+                                         XAIE_EVENT_DMA_MM2S_0_RUNNING_CORE,  XAIE_EVENTS_DMA_MM2S_0_FINISHED_BD_CORE,
+                                         XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_CORE, 
+                                         XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_CORE,
+                                         };
+      eventSets["s2mm_throughputs"]   = {};
+      eventSets["mm2s_throughputs"]   = {};
+#endif
+    }
+
+    // Floating point events are generation-specific
     if (xdp::aie::isAIE1(hwGen)) {
-      eventSets["floating_point"]   = {XAIE_EVENT_FP_OVERFLOW_CORE,    XAIE_EVENT_FP_UNDERFLOW_CORE,
-                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
+      eventSets["floating_point"]     = {XAIE_EVENT_FP_OVERFLOW_CORE,         XAIE_EVENT_FP_UNDERFLOW_CORE,
+                                         XAIE_EVENT_FP_INVALID_CORE,          XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
     } else {
-      eventSets["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
-                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
+      eventSets["floating_point"]     = {XAIE_EVENT_FP_HUGE_CORE,             XAIE_EVENT_INT_FP_0_CORE, 
+                                         XAIE_EVENT_FP_INVALID_CORE,          XAIE_EVENT_FP_INF_CORE};
     }
 
     return eventSets;
@@ -81,11 +124,20 @@ namespace xdp::aie::profile {
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
+    // Verify number of memory module counters
+    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::mm_num_counters
+                    : (xdp::aie::isNPU3(hwGen)  ? aie4::mm_num_counters
+                    : aie2::mm_num_counters);
+    if (numCounters == 0)
+      return eventSets;
+
+    // Consistent sets across generations
     eventSets = {
-      {"conflicts",               {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
-      {"dma_locks",               {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}
+      {"conflicts",                   {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
+      {"dma_locks",                   {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}
     };
 
+    // DMA events are generation-specific
     if (xdp::aie::isAIE1(hwGen)) {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
@@ -114,31 +166,61 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
+    // Number of shim counters is generation-specific
     int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::shim_num_counters
                     : (xdp::aie::isNPU3(hwGen)  ? aie4::shim_num_counters
                     : aie2::shim_num_counters);
 
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
+    // Define profile API sets
+    // TODO: modify these to be generation-specific
     eventSets = {
-      {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
-      {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"output_throughputs",        {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {METRIC_BYTE_COUNT,           {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {METRIC_LATENCY,              {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {METRIC_BYTE_COUNT,                {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {METRIC_LATENCY,                   {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
+    // Flexible sets based on number of counters
+    if (numCounters == 2) {
+      eventSets["packets"]             = {XAIE_EVENT_PORT_TLAST_0_PL,   
+                                          XAIE_EVENT_PORT_TLAST_1_PL};
+      eventSets["input_throughputs"]   = {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, 
+                                          XAIE_EVENT_PORT_RUNNING_0_PL};
+      eventSets["output_throughputs"]  = {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, 
+                                          XAIE_EVENT_PORT_RUNNING_0_PL};
+    }
+    else {
+      std::vector<XAie_Events> tlasts  = {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL,
+                                          XAIE_EVENT_PORT_TLAST_2_PL,   XAIE_EVENT_PORT_TLAST_3_PL,
+                                          XAIE_EVENT_PORT_TLAST_4_PL,   XAIE_EVENT_PORT_TLAST_5_PL};
+      std::vector<XAie_Events> stalled = {XAIE_EVENT_PORT_STALLED_0_PL, XAIE_EVENT_PORT_STALLED_1_PL,
+                                          XAIE_EVENT_PORT_STALLED_2_PL, XAIE_EVENT_PORT_STALLED_3_PL,
+                                          XAIE_EVENT_PORT_STALLED_4_PL, XAIE_EVENT_PORT_STALLED_5_PL};
+      std::vector<XAie_Events> running = {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_1_PL,
+                                          XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL,
+                                          XAIE_EVENT_PORT_RUNNING_4_PL, XAIE_EVENT_PORT_RUNNING_5_PL};
+
+      for (uint32_t c=0; c < numCounters/2; ++c) {
+        eventSets["packets"].push_back(tlasts.at(c));
+        eventSets["input_throughputs"].push_back(stalled.at(c));
+        eventSets["input_throughputs"].push_back(running.at(c));
+        eventSets["output_throughputs"].push_back(stalled.at(c));
+        eventSets["output_throughputs"].push_back(running.at(c));
+      }
+    }
+
+    // Stall events are generation-specific
     if (xdp::aie::isAIE1(hwGen)) {
-      eventSets["input_stalls"]        = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                          XAIE_EVENT_PORT_IDLE_0_PL};
-      eventSets["output_stalls"]       = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                          XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["input_stalls"]       = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                         XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"]      = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                         XAIE_EVENT_PORT_IDLE_0_PL};
     }
     else if (xdp::aie::isAIE2(hwGen)) {
-      eventSets["input_stalls"]        = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      eventSets["output_stalls"]       = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
+      eventSets["input_stalls"]       = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"]      = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
     else if (xdp::aie::isAIE2ps(hwGen)) {
 #ifdef XDP_VE2_BUILD
@@ -167,9 +249,6 @@ namespace xdp::aie::profile {
                                          XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL,
                                          XAIE_EVENT_PORT_RUNNING_1_PL};
 #endif
-    }
-    else if (xdp::aie::isNPU3(hwGen)) {
-      // TODO: add NPU3 sets
     }
 
     // Microcontroller sets
@@ -264,7 +343,8 @@ namespace xdp::aie::profile {
       eventSets["conflict_stats4"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
-    } else {
+    } 
+    else {
       eventSets["conflict_stats1"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
