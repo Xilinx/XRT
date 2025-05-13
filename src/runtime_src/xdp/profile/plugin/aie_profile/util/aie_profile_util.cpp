@@ -39,11 +39,9 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(const int hwGen)
   {
-    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::cm_num_counters
-                    : (xdp::aie::isNPU3(hwGen)  ? aie4::cm_num_counters
-                    : aie2::cm_num_counters);
-
     std::map<std::string, std::vector<XAie_Events>> eventSets;
+
+    int numCounters = xdp::aie::getNumCounters(hwGen, xdp::module_type::core);
 
     // Consistent sets across generations
     eventSets = {
@@ -125,9 +123,7 @@ namespace xdp::aie::profile {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
     // Verify number of memory module counters
-    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::mm_num_counters
-                    : (xdp::aie::isNPU3(hwGen)  ? aie4::mm_num_counters
-                    : aie2::mm_num_counters);
+    int numCounters = xdp::aie::getNumCounters(hwGen, xdp::module_type::dma);
     if (numCounters == 0)
       return eventSets;
 
@@ -167,9 +163,7 @@ namespace xdp::aie::profile {
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
     // Number of shim counters is generation-specific
-    int numCounters = xdp::aie::isAIE2ps(hwGen) ? aie2ps::shim_num_counters
-                    : (xdp::aie::isNPU3(hwGen)  ? aie4::shim_num_counters
-                    : aie2::shim_num_counters);
+    int numCounters = xdp::aie::getNumCounters(hwGen, xdp::module_type::shim);
 
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
