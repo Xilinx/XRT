@@ -1365,11 +1365,11 @@ struct xrt_resource_raw : request
    */
   enum class resource_type
   {
-    ipu_clk_max,   // Max H-Clocks, query returns uint64 value
-    ipu_tops_max,  // Max TOPs, query returns double value
-    ipu_task_max,  // Max Tasks, query returns uint64 value
-    ipu_tops_curr, // Current TOPs, query returns double value
-    ipu_task_curr  // Current Tasks, query returns uint64 value
+    npu_clk_max,   // Max H-Clocks, query returns uint64 value
+    npu_tops_max,  // Max TOPs, query returns double value
+    npu_task_max,  // Max Tasks, query returns uint64 value
+    npu_tops_curr, // Current TOPs, query returns double value
+    npu_task_curr  // Current Tasks, query returns uint64 value
   };
 
   /**
@@ -1393,15 +1393,15 @@ struct xrt_resource_raw : request
   {
     switch (type)
     {
-    case resource_type::ipu_clk_max:
+    case resource_type::npu_clk_max:
       return "Max Supported H-Clocks";
-    case resource_type::ipu_tops_max:
+    case resource_type::npu_tops_max:
       return "Max Supported TOPs";
-    case resource_type::ipu_task_max:
+    case resource_type::npu_task_max:
       return "Max Supported Tasks";
-    case resource_type::ipu_tops_curr:
+    case resource_type::npu_tops_curr:
       return "Current TOPs";
-    case resource_type::ipu_task_curr:
+    case resource_type::npu_task_curr:
       return "Current Tasks";
     default:
       throw xrt_core::internal_error("enum value does not exists");

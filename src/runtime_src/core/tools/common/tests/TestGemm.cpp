@@ -28,7 +28,7 @@ static constexpr uint32_t total_ops = 196608; //192K OPs
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestGemm::TestGemm()
-  : TestRunner("gemm", "Measure the TOPS value of GEMM operations")
+  : TestRunner("gemm", "Measure the TOPS value of GEMM INT8 operations")
 {}
 
 boost::property_tree::ptree
@@ -161,20 +161,20 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   auto bo_result_map = bo_result.map<uint8_t*>();
 
   //Calculate TOPS
-  uint64_t ipu_hclock = 0;
+  uint64_t npu_hclock = 0;
   auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
   for (auto &res : res_info) {
-    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::ipu_clk_max)
+    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::npu_clk_max)
       continue;
-    ipu_hclock = res.data_uint64;
+    npu_hclock = res.data_uint64;
   }
 
-  if (ipu_hclock == 0) {
-    XBValidateUtils::logger(ptree, "Error", "IPU H-clock is 0");
+  if (npu_hclock == 0) {
+    XBValidateUtils::logger(ptree, "Error", "NPU H-clock is 0");
     ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
-  double ipu_hclck_period = 1000000000.0 / (ipu_hclock * 1000000); // MHz to ns
+  double npu_hclck_period = 1000000000.0 / (npu_hclock * 1000000); // MHz to ns
 
   uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map);
   double TOPS = 0.0;
@@ -187,14 +187,14 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
-    auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
+    auto temp_TOPS_per_core = total_ops/(npu_hclck_period * cycle_count * 1000);
     total_cycle_count = total_cycle_count + cycle_count;
     TOPS = TOPS + temp_TOPS_per_core;
     core_ptr++;
   }
 
   if(XBU::getVerbose()) {
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration: %.1f ns") % (npu_hclck_period * (total_cycle_count/num_of_cores))));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % (total_cycle_count/num_of_cores)));
   }
 
