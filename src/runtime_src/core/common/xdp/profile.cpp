@@ -642,7 +642,7 @@ update_device(void* handle, bool hw_context_flow)
       }
       catch (const std::exception &e) {
         std::stringstream msg;
-        msg << "Update device for AIE Profile VE2 XDNA failed. Caught exception " << e.what();
+        msg << "Failed to setup for AIE Profile XDNA failed. Caught exception " << e.what();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       }
     }
@@ -663,7 +663,7 @@ update_device(void* handle, bool hw_context_flow)
       }
       catch (const std::exception &e) {
         std::stringstream msg;
-        msg << "Update device for AIE Profile VE2 ZOCL failed. Caught exception " << e.what();
+        msg << "Failed to setup for AIE Profile ZOCL failed. Caught exception " << e.what();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       }
     }
