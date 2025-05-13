@@ -392,7 +392,7 @@ private:
 
 public:
   void
-  patch_it(uint8_t* base, uint64_t value)
+  patch_it(uint8_t* base, uint64_t value, bool first)
   {
     // this function is used by internal shim level tests
     // which does explicit sync of buffers
