@@ -14,8 +14,10 @@
 
 namespace XBU = XBUtilities;
 
-static constexpr size_t num_kernel_iterations = 20;
-static constexpr size_t queue_len = 40;
+static constexpr size_t num_kernel_iterations = 15;
+
+// To saturate the hardware
+static constexpr size_t queue_len = 60;
 
 // Method to run the test
 // Parameters:
@@ -155,8 +157,8 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
 
   // Log the latencies and the overhead
   if(XBU::getVerbose()){
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context latency: %.1f us") % (latencySingle)));
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared multiple context latency: %.1f us") % (latencyShared)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context duration: %.1f us") % (latencySingle)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared multiple context duration: %.1f us") % (latencyShared)));
   }
   auto overhead =  (latencyShared - (2 * latencySingle))/ (num_kernel_iterations * queue_len);
   XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f us") % (overhead > 0.0 ? overhead : 0.0)));
