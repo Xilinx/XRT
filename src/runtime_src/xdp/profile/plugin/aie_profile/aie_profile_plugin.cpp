@@ -91,6 +91,7 @@ namespace xdp {
       return itr->second.deviceID;
 
 #ifdef XDP_CLIENT_BUILD
+    (void)(hw_context_flow);
     return db->addDevice("win_device");
 #else
     if (hw_context_flow)
@@ -111,7 +112,7 @@ namespace xdp {
       return;
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
-#ifdef XDP_VE2_BUILD
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
       xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_config mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
       return;
