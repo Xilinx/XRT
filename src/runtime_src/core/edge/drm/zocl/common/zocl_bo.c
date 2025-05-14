@@ -763,7 +763,7 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 	}
 
 	bo = to_zocl_bo(gem_obj);
-	if (bo->flags & ZOCL_BO_FLAGS_COHERENT) {
+	if (bo->flags & ZOCL_BO_FLAGS_COHERENT && !(bo->flags & ZOCL_BO_FLAGS_CMA)) {
 		/* The CMA buf is coherent, we don't need to do anything */
 		rc = 0;
 		goto out;
