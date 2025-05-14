@@ -89,6 +89,16 @@ void  main_(int argc, char** argv,
     std::cerr << ex.what() << std::endl;
   }
 
+  if (sCmd.empty() && !subcmd_options.empty())
+  {
+    std::string error_str;
+    error_str.append("Unrecognized arguments:\n");
+    for (const auto& option : subcmd_options)
+      error_str.append(boost::str(boost::format("  %s\n") % option));
+    throw boost::program_options::error(error_str);
+  }
+
+
   if(bVersion) {
     std::cout << XBU::get_xrt_pretty_version();
     return;
