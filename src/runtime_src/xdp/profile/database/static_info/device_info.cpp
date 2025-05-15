@@ -313,13 +313,13 @@ namespace xdp {
   }
 
   void DeviceInfo::addTraceGMIO(uint32_t id, uint8_t col, uint8_t num,
-                                uint8_t stream, uint8_t len)
+                                uint8_t stream, uint8_t len, uint8_t type)
   {
-    ConfigInfo* config = currentConfig() ;
+    ConfigInfo* config = currentConfig();
     if (!config || config->currentXclbins.empty())
-      return ;
+      return;
 
-    config->addTraceGMIO(id, col, num, stream, len) ;
+    config->addTraceGMIO(id, col, num, stream, len, type);
   }
 
   void DeviceInfo::addAIECounter(uint32_t i, uint8_t col, uint8_t row,

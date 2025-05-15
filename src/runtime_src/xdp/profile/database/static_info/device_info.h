@@ -139,7 +139,7 @@ namespace xdp {
     // ****** Functions for AIE information on the current xclbin ******
     XDP_CORE_EXPORT
     void addTraceGMIO(uint32_t i, uint8_t col, uint8_t num, uint8_t stream,
-                      uint8_t len) ;
+                      uint8_t len, uint8_t type);
     XDP_CORE_EXPORT
     void addAIECounter(uint32_t i, uint8_t col, uint8_t row, uint8_t num,
                        uint16_t start, uint16_t end, uint8_t reset,

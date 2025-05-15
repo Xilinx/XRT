@@ -339,7 +339,7 @@ namespace xdp {
     getAIECfgTiles(uint64_t deviceId) ;
     XDP_CORE_EXPORT TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx) ;
     XDP_CORE_EXPORT void addTraceGMIO(uint64_t deviceId, uint32_t i, uint8_t col,
-                                 uint8_t num, uint8_t stream, uint8_t len) ;
+                                  uint8_t num, uint8_t stream, uint8_t len, uint8_t type) ;
     XDP_CORE_EXPORT void addAIECounter(uint64_t deviceId, uint32_t i, uint8_t col,
                                   uint8_t row, uint8_t num, uint16_t start,
                                   uint16_t end, uint8_t reset, uint64_t load,

@@ -242,7 +242,7 @@ namespace xdp {
     std::vector<Monitor*> getUserASMsWithTrace(XclbinInfo* xclbin) ;
 
     void addTraceGMIO(uint32_t id, uint8_t col, uint8_t num,
-                                uint8_t stream, uint8_t len) ;
+                      uint8_t stream, uint8_t len, uint8_t type) ;
     void addAIECounter(uint32_t i, uint8_t col, uint8_t r,
                                  uint8_t num, uint16_t start, uint16_t end,
                                  uint8_t reset, uint64_t load, double freq,

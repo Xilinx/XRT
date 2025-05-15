@@ -1077,14 +1077,14 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addTraceGMIO(uint64_t deviceId, uint32_t i,
-                                      uint8_t col, uint8_t num,
-                                      uint8_t stream, uint8_t len)
+                                      uint8_t col, uint8_t num, uint8_t stream, 
+                                      uint8_t len, uint8_t type)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
-    deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len) ;
+    deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len, type) ;
   }
 
   void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,

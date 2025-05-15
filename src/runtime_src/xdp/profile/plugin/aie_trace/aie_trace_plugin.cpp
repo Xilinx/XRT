@@ -190,7 +190,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         // This is later required for GMIO trace offload.
         uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
         (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
-                                           gmio.channelNum, gmio.streamId, gmio.burstLength);
+                                           gmio.channelNum, gmio.streamId, gmio.burstLength,
+                                           static_cast<uint8_t>(gmio.type));
       }
     }
 
