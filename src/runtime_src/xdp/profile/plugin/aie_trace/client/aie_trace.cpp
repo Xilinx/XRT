@@ -33,6 +33,7 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -344,6 +345,11 @@ namespace xdp {
 
   void AieTrace_WinImpl::flushTraceModules()
   {
+    if (db->infoAvailable(xdp::info::ml_timeline)) {
+      db->broadcast(VPDatabase::MessageType::READ_RECORD_TIMESTAMPS, nullptr);
+      xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
+    }
+
     if (traceFlushLocs.empty() && memoryTileTraceFlushLocs.empty() 
         && interfaceTileTraceFlushLocs.empty())
       return;
