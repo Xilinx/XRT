@@ -85,8 +85,18 @@ void  main_(int argc, char** argv,
   SubCmd::SubCmdOptions subcmd_options;
   try {
     subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+    if (sCmd.empty() && !subcmd_options.empty())
+    {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : subcmd_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
   } catch (po::error& ex) {
     std::cerr << ex.what() << std::endl;
+    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   if(bVersion) {
