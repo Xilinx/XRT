@@ -41,8 +41,12 @@
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
+#include "core/common/query_requests.h"
+#include "core/common/api/xclbin_int.h"
 #include "ve2/aie_profile.h"
 #else
+#include "core/common/query_requests.h"
+#include "core/common/api/xclbin_int.h"
 #include "core/edge/user/shim.h"
 #include "edge/aie_profile.h"
 #endif
@@ -84,18 +88,20 @@ namespace xdp {
     return AieProfilePlugin::live;
   }
 
-  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
+  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle, bool hw_context_flow)
   {
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
 #ifdef XDP_CLIENT_BUILD
+    (void)(hw_context_flow);
     return db->addDevice("win_device");
-#elif XDP_VE2_BUILD
-    return db->addDevice("ve2_device");
 #else
-    return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+    if (hw_context_flow)
+      return db->addDevice("ve2_device");
+    else
+      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
 #endif
   }
 
@@ -110,17 +116,62 @@ namespace xdp {
       return;
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
-    auto deviceID = getDeviceIDFromHandle(handle);
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+    if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
+      xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_config mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
+      return;
+    }
+    //TODO: Stop using hw_gen for below check once XRT provides and API to get device type across all hw_gen.
+    //      Also remove the relevant header files for both edge and VE2 (query_requests.h, xclbin_int.h). CR-1240834
+    else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
 
+      if (xclbin_slot_info.empty())
+        return;
+
+      auto new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
+      xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+      auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+
+      std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
+      boost::property_tree::ptree aieMetadata;
+      if (data.first && data.second) {
+        metadataReader =
+          aie::readAIEMetadata(data.first, data.second, aieMetadata);
+      }
+      if (!metadataReader)
+      {
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              "AIE metadata read failed. Hence, Profiling will not be available.");
+        return;
+      }
+      if(metadataReader->getHardwareGeneration() == 5)
+      {
+        xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_config mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
+        return;
+      }
+    }
+#endif
+
+    auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
     // Update the static database with information from xclbin
     {
 #ifdef XDP_CLIENT_BUILD
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
-#elif defined(XDP_VE2_BUILD)
-      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
 #else
-      (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
+      if (hw_context_flow)
+        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+      else
+        (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
 #endif
     }
 
