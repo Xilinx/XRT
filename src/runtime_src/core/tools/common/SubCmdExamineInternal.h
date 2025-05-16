@@ -4,34 +4,41 @@
 #ifndef __SubCmdExamineInternal_h_
 #define __SubCmdExamineInternal_h_
 
+#include "tools/common/XBHelpMenus.h"
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilities.h"
 #include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"
-#include "core/common/smi.h"
 
-struct SubCmdExamineOptions {
+#include <boost/program_options.hpp>
+
+#include <map>
+#include <vector>
+#include <string>
+
+
+class SubCmdExamineInternal : public SubCmd {
+ public:
+  void execute(const SubCmdOptions &_options) const override;
+
+ public:
+  static ReportCollection uniqueReportCollection;
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations);
+
+ private:
+  void print_help_internal() const;
+
   std::string               m_device;
   std::vector<std::string>  m_reportNames;
   std::vector<std::string>  m_elementsFilter;
   std::string               m_format;
   std::string               m_output;
   bool                      m_help;
-};
-
-class SubCmdExamineInternal : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
-  virtual void setOptionConfig(const boost::property_tree::ptree &config) override;
-
- public:
-  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
-
- public:
-  static ReportCollection uniqueReportCollection;
-
- private:
-  void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
   bool                      m_isUserDomain;
-  std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
+
+  boost::program_options::options_description common_options;
+  std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
+  XBUtilities::VectorPairStrings common_reports;
 };
 
 #endif

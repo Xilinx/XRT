@@ -12,8 +12,6 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
   "../common/SubCmdJsonObjects.cpp"
-  "../common/SubCmdConfigureInternal.cpp"
-  "../common/SubCmdExamineInternal.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"

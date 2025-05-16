@@ -18,6 +18,7 @@
 #include "tools/common/reports/ReportVmrStatus.h"
 #include "ReportPlatform.h"
 
+
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 ReportCollection SubCmdExamineInternal::uniqueReportCollection = {
   // Common reports
@@ -33,8 +34,8 @@ ReportCollection SubCmdExamineInternal::uniqueReportCollection = {
   #endif
 };
 
-SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmdExamineInternal(_isHidden, _isDepricated, _isPreliminary, false /*Not isUserDomain*/)
+SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
+    : SubCmdExamineInternal(_isHidden, _isDepricated, _isPreliminary, false /*Not isUserDomain*/, configurations)
     , m_device("")
     , m_reportNames()
     , m_elementsFilter()
