@@ -187,7 +187,16 @@ get_os_info(boost::property_tree::ptree &pt)
   //Reassign buffer size since it get override with size of value by RegGetValueA() call
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuild", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("release", value);
+
+  DWORD minor = 0;
+  DWORD minorSize = sizeof(minor);
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "UBR", RRF_RT_REG_DWORD, nullptr, &minor, &minorSize);
+
+  //major.minor
+  std::string version(value);
+  version+= "." + std::to_string(minor);
+
+  pt.put("release", version);
 
   pt.put("machine", getmachinename());
 
