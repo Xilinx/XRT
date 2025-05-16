@@ -2371,6 +2371,12 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::module_int {
 
+xrt::module
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id)
+{
+  return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id)};
+}
+
 uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
@@ -2581,11 +2587,6 @@ module(void* userptr, size_t sz, const xrt::uuid& uuid)
 module::
 module(const xrt::module& parent, const xrt::hw_context& hwctx)
 : detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx) }
-{}
-
-module::
-module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id)
-: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx, ctrl_code_id) }
 {}
 
 xrt::uuid

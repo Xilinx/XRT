@@ -39,6 +39,14 @@ struct kernel_info {
   xrt_core::xclbin::kernel_properties props;
 };
 
+// create module object that will be used with run object
+// The object created holds buffers for instruction/control-pkt
+// These buffers are patched and sent to driver/firmware for execution
+// If module has multiple control codes, ctrl_code_id is used to
+// identify the control code that needs to be run.
+xrt::module
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id);
+
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
 uint32_t*
