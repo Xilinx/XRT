@@ -1991,7 +1991,7 @@ class run_impl
     if (!module)
       return {};
 
-    return {module, hwctx, ctrl_code_id};
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id);
   }
 
   virtual std::unique_ptr<arg_setter>
