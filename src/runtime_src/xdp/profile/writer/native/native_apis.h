@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,13 +17,38 @@
 #ifndef NATIVE_APIS_DOT_H
 #define NATIVE_APIS_DOT_H
 
-namespace xdp {
-namespace native {
+namespace xdp::native {
+
+// This set of strings are all the native XRT APIs we're monitoring, and
+// match the strings passed in by the profiling_wrapper function.
+// We use this to put together a final summary table of how many times each
+// function was called and statistics on execution time.  It is a constexpr
+// to avoid creation of any strings at the point of the call to reduce
+// how long it takes to capture that the function was called.  The overhead
+// is instead at the loading time of the library and the end of the application
 
 constexpr const char* APIs[] = {
+
+  // Functions profiled in aie/xrt_graph.cpp
+  "xrt::graph::reset",
+  "xrt::graph::get_timestamp",
+  "xrt::graph::run",
+  "xrt::graph::wait",
+  "xrt::graph::suspend",
+  "xrt::graph::resume",
+  "xrt::graph::end",
+  "xrt::graph::update_port",
+  "xrt::graph::read_port",
+  "xrt::aie::profiling::start",
+  "xrt::aie::profiling::read",
+  "xrt::aie::profiling::stop",
+
+  // Functions profiled in xrt_bo.cpp
   "xrt::bo::bo",
   "xrt::bo::size",
   "xrt::bo::address",
+  "xrt::bo::memory_group",
+  "xrt::bo::get_flags",
   "xrt::bo::export_buffer",
   "xrt::bo::sync",
   "xrt::bo::map",
@@ -35,6 +60,7 @@ constexpr const char* APIs[] = {
   "xrtBOSubAlloc",
   "xrtBOImport",
   "xrtBOExport",
+  "xrtBOAllocFromXcl",
   "xrtBOFree",
   "xrtBOSize",
   "xrtBOSync",
@@ -43,11 +69,18 @@ constexpr const char* APIs[] = {
   "xrtBORead",
   "xrtBOCopy",
   "xrtBOAddress",
+
+  // Functions profiled in xrt_device.cpp
   "xrt::device::device",
   "xrt::device::load_xclbin",
+  "xrt::device::register_xclbin",
   "xrt::device::get_xclbin_uuid",
   "xrt::device::reset",
   "xrt::device::get_xclbin_section",
+  "xrt::aie::device::read_aie_mem",
+  "xrt::aie::device::write_aie_mem",
+  "xrt::device::read_aie_reg",
+  "xrt::device::write_aie_reg",
   "xrtDeviceOpen",
   "xrtDeviceOpenByBDF",
   "xrtDeviceClose",
@@ -58,27 +91,29 @@ constexpr const char* APIs[] = {
   "xrtDeviceGetXclbinUUID",
   "xrtDeviceToXclDevice",
   "xrtDeviceOpenFromXcl",
+
+  // Functions profiled in xrt_error.cpp
   "xrt::error::error",
   "xrt::error::get_timestamp",
   "xrt::error::get_error_code",
   "xrt::error::to_string",
   "xrtErrorGetLast",
   "xrtErrorGetString",
-  "xrt::graph::reset",
-  "xrt::graph::get_timestamp",
-  "xrt::graph::run",
-  "xrt::graph::wait",
-  "xrt::graph::suspend",
-  "xrt::graph::resume",
-  "xrt::graph::end",
-  "xrt::graph::update_port",
-  "xrt::graph::read_port",
+
+  // Functions profiled in xrt_ip.cpp
+  "xrt::ip::write_register",
+  "xrt::ip::read_register",
+
+  // Functions profiled in xrt_kernel.cpp
   "xrt::run::run",
   "xrt::run::start",
   "xrt::run::wait",
   "xrt::run::state",
-  "xrt::run::set_event",
+  "xrt::run::return_code",
   "xrt::run::get_ert_packet",
+  "xrt::run::submit_wait",
+  "xrt::run::submit_signal",
+  "xrt::run::get_ctrl_scratchpad_bo",  
   "xrt::kernel::kernel",
   "xrt::kernel::read_register",
   "xrt::kernel::write_register",
@@ -105,37 +140,19 @@ constexpr const char* APIs[] = {
   "xrtRunSetArgV",
   "xrtRunGetArgV",
   "xrtRunGetArgVPP",
+
+  // Functions profiled in xrt_xclbin.cpp
   "xrtXclbinAllocFilename",
   "xrtXclbinAllocRawData",
   "xrtXclbinFreeHandle",
   "xrtXclbinGetXSAName",
   "xrtXclbinGetUUID",
+  "xrtXclbinGetNumKernels",
+  "xrtXclbinGetNumKernelComputeUnits",
   "xrtXclbinGetData",
-  "xrtXclbinUUID",
-  "xrt::psrun::psrun",
-  "xrt::psrun::start",
-  "xrt::psrun::wait",
-  "xrt::psrun::state",
-  "xrt::psrun::set_event",
-  "xrt::psrun::get_ert_packet",
-  "xrt::pskernel::kernel",
-  "xrt::pskernel::offset",
-  "xrtPSKernelOpen",
-  "xrtPSKernelOpenExclusive",
-  "xrtPSKernelClose",
-  "xrtPSRunOpen",
-  "xrtPSKernelArgGroupId",
-  "xrtPSKernelArgOffset",
-  "xrtPSKernelRun",
-  "xrtPSRunClose",
-  "xrtPSRunState",
-  "xrtPSRunWait",
-  "xrtPSRunWaitFor",
-  "xrtPSRunSetCalback",
-  "xrtPSRunStart"
+  "xrtXclbinUUID"
 };
 
-} // end namespace native
-} // end namespace xdp
+} // end namespace xdp::native
 
 #endif
