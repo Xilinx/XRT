@@ -33,10 +33,10 @@
 #include "core/common/time.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
-#include "core/include/experimental/xrt-next.h"
 
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
