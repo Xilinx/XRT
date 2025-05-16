@@ -59,8 +59,12 @@ if (MSVC)
     /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
     /DEBUG      # instruct linker to create debugging info
     /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
-    /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
     )
+  if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
+    add_link_options(
+      /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
+      )
+  endif()
 endif()
 
 
@@ -86,7 +90,9 @@ add_subdirectory(runtime_src)
 include(CMake/findpackage.cmake)
 
 # --- Python bindings ---
-xrt_add_subdirectory(python)
+if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
+  xrt_add_subdirectory(python)
+endif()
 
 # -- CPack windows SDK if base component
 if (${XRT_BASE_DEV_COMPONENT} STREQUAL "base_dev")
