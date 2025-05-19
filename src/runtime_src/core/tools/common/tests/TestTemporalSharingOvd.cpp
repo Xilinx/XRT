@@ -14,10 +14,11 @@
 
 namespace XBU = XBUtilities;
 
-static constexpr size_t num_kernel_iterations = 15;
+static constexpr size_t num_kernel_iterations = 30;
 
-// To saturate the hardware
-static constexpr size_t queue_len = 60;
+// To saturate the hardware. Linux fails to create more than 25 queues due to 
+// instruction buffer space limit
+static constexpr size_t queue_len = 25;
 
 // Method to run the test
 // Parameters:
@@ -105,6 +106,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
 
   // Create two test cases and add them to the vector
   TestParams params(xclbin, working_dev, kernelName, elf_path, ifm_file, param_file, buffer_sizes_file, queue_len, num_kernel_iterations);
+  testcases.emplace_back(params);
   testcases.emplace_back(params);
   testcases.emplace_back(params);
 
