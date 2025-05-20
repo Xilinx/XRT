@@ -124,6 +124,13 @@ namespace xdp {
     //TODO: Stop using hw_gen for below check once XRT provides and API to get device type across all hw_gen.
     //      Also remove the relevant header files for both edge and VE2 (query_requests.h, xclbin_int.h). CR-1240834
     else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+  #ifdef XDP_VE2_ZOCL_BUILD
+      xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_config mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
+      return;
+  #else
+      xrt_core::message::send(severity_level::warning, "XRT", "Got EDGE device when xdp_config mode is set to ZOCL. AIE Profiling should be available.");
+  #endif
+/*
       std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
       try {
         xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
@@ -158,6 +165,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_config mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
         return;
       }
+*/
     }
 #endif
 
