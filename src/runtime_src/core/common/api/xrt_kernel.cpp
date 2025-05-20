@@ -1517,7 +1517,7 @@ private:
   {
     // kernel name will be of format - <kernel_name>:<ctrl code index>
     if (auto i = name.find(":"); i != std::string::npos)
-      return name.substr(i+1, name.size()-i-1);
+      return name.substr(i + 1);
 
     return ""; // default case
   }

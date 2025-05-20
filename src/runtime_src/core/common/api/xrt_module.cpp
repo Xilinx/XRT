@@ -2372,7 +2372,7 @@ public:
 namespace xrt_core::module_int {
 
 xrt::module
-create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, std::string ctrl_code_id)
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id)
 {
   return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id)};
 }
