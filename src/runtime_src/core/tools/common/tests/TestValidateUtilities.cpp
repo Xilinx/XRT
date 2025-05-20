@@ -45,6 +45,7 @@ void BO_set::sync_bos_to_device() {
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 }
 
+
 // Method to set kernel arguments
 // Parameters:
 // - run: Reference to the xrt::run object
