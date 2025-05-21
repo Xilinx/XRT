@@ -5,7 +5,7 @@
 This directory contains xrt::runner infrastructure. The runner is
 broken into two json components.  First is the recipe that defines a
 model executed by the xrt::runner.  Second is the profile that defines
-under what constraints how the model is executed.
+under what constraints the model is executed.
 
 - [recipe](recipe.md)
 - [profile](profile.md)
