@@ -2143,31 +2143,31 @@ class module_sram : public module_impl
     // Below code gets function pointers for functions
     // get_dtrace_col_number, get_dtrace_buffer_size and populate_dtrace_buffer
     using get_dtrace_col_numbers_fun = uint32_t (*)(const char*, const char*, uint32_t*);
-    auto get_dtrace_col_numbers =
-        (get_dtrace_col_numbers_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_col_numbers");
+    auto get_dtrace_col_numbers = reinterpret_cast<get_dtrace_col_numbers_fun>
+        (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_col_numbers"));
     if (!get_dtrace_col_numbers) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
     }
 
     using get_dtrace_buffer_size_fun = void (*)(uint64_t*);
-    auto get_dtrace_buffer_size =
-        (get_dtrace_buffer_size_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_buffer_size");
+    auto get_dtrace_buffer_size = reinterpret_cast<get_dtrace_buffer_size_fun>
+        (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_buffer_size"));
     if (!get_dtrace_buffer_size) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
     }
 
     using populate_dtrace_buffer_fun = void (*)(uint32_t*, uint64_t);
-    auto populate_dtrace_buffer =
-        (populate_dtrace_buffer_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "populate_dtrace_buffer");
+    auto populate_dtrace_buffer = reinterpret_cast<populate_dtrace_buffer_fun>
+       (xrt_core::dlsym(dtrace.lib_hdl.get(), "populate_dtrace_buffer"));
     if (!populate_dtrace_buffer) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
     }
 
     // using function ptr get dtrace control buffer size
-    uint32_t buffers_length;
+    uint32_t buffers_length = 0;
     if (get_dtrace_col_numbers(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
                                &buffers_length) != 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
@@ -2190,10 +2190,13 @@ class module_sram : public module_impl
 
       std::map<uint32_t, size_t> buf_sizes;
       size_t total_size = 0;
+
+      const uint32_t MASK32 = 0xffffffff;
+      const uint32_t SHIFT32 = 32;
       for (const auto& entry : buffers)
       {//for each entry, lower 32 is the uc index, and upper 32 is the length in word for that uc
-        buf_sizes[entry & 0xffffff] = (entry >> 32);
-	total_size += (entry >> 32);
+        buf_sizes[static_cast<uint32_t>(entry & MASK32)] = static_cast<size_t>(entry >> SHIFT32);
+	total_size += static_cast<size_t>(entry >> SHIFT32);
       }
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
       m_dtrace_ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
@@ -2323,8 +2326,8 @@ public:
 
     // Get function pointer to create result file
     using get_dtrace_result_file_fun = void (*)(const char*);
-    auto get_dtrace_result_file =
-        (get_dtrace_result_file_fun) xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_result_file");
+    auto get_dtrace_result_file = reinterpret_cast<get_dtrace_result_file_fun>
+      (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_result_file"));
     if (!get_dtrace_result_file) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
