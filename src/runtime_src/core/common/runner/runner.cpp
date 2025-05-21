@@ -1837,7 +1837,7 @@ class profile
     profile* m_profile;
     size_t m_iterations;
     iteration_node m_iteration;
-    report m_report;
+    mutable report m_report;
     bool m_verbose = false;
     bool m_validate = false;
 
@@ -1917,6 +1917,7 @@ class profile
     report
     get_report() const
     {
+      m_report.add(report::section_type::cpu, {{"iterations", m_iterations}});
       return m_report;
     }
   }; // class profile::execution
@@ -2006,10 +2007,7 @@ private:
   static size_t
   init_runlist_threshold(const json& j)
   {
-    //return j.value("/execution/runlist_threshold"_json_pointer, default_runlist_threshold);
-    // HAVE TO DISABLE xrt::runlist because it doesn't support
-    // new opcodes ERT_START_NPU_PREEMPT_ELF , ERT_START_NPU_PREEMPT
-    return 0; 
+    return j.value("/execution/runlist_threshold"_json_pointer, default_runlist_threshold);
   }
 
 public:
