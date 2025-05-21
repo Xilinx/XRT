@@ -39,6 +39,14 @@ struct kernel_info {
   xrt_core::xclbin::kernel_properties props;
 };
 
+// create module object that will be used with run object
+// The object created holds buffers for instruction/control-pkt
+// These buffers are patched and sent to driver/firmware for execution
+// If module has multiple control codes, ctrl_code_id is used to
+// identify the control code that needs to be run.
+xrt::module
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id);
+
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
 uint32_t*
@@ -52,11 +60,11 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // Returns patch buffer size of the given module based on buffer type passed
 // This API may be useful for developing unit test case at SHIM level
 // New ELfs pack multiple control codes info in it, to identify which control code
-// to run we use index
+// to run we use ctrl code id
 XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 size_t
-get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t index = 0);
+get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, const std::string& id = "");
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
@@ -65,12 +73,12 @@ get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t ind
 // This API expects buffer type that needs to be patched to identify which buffer
 // to patch (control code, control pkt, save/restore buffer etc)
 // New ELfs pack multiple control codes info in it, to identify which control code
-// to run we use index
+// to run we use ctrl code id
 XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 void
 patch(const xrt::module&, uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
-      xrt_core::patcher::buf_type, uint32_t index = 0);
+      xrt_core::patcher::buf_type, const std::string& id = "");
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT
