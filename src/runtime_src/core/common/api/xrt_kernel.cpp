@@ -2520,7 +2520,7 @@ public:
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     // dump dtrace buffer if ini option is enabled
-    static bool dtrace = !xrt_core::config::get_dtrace_lib_path();
+    static bool dtrace = !xrt_core::config::get_dtrace_lib_path().empty();
 
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
