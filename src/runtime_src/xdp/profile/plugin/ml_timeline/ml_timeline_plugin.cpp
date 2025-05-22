@@ -158,6 +158,12 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
+    if (0 != coreDevice->get_device_id()) {  // Device 0 for xdna(ML)
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "ML Timeline is not supported for current non-ML device.");
+      return;
+    }
+
     uint64_t implId = mMultiImpl.size();
 
     std::string deviceName = "ve2_device" + std::to_string(implId);
