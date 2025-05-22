@@ -2202,7 +2202,7 @@ class module_sram : public module_impl
       m_dtrace_ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
                                                      total_size * sizeof(uint32_t),
                                                      xrt_core::bo_int::use_type::dtrace);
-      // fill data by calling dtrace library API without mem buffer
+      // fill data by calling dtrace library API
       populate_dtrace_buffer(m_dtrace_ctrl_bo.map<uint32_t*>(), m_dtrace_ctrl_bo.address());
 
       // sync dtrace control buffer
