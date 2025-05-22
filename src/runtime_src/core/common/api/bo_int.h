@@ -29,7 +29,8 @@ enum class use_type {
   kmd = XRT_BO_USE_KMD, // Shared with kernel mode driver
   dtrace = XRT_BO_USE_DTRACE, // For dynamic trace data
   log = XRT_BO_USE_LOG, // For logging info
-  debug_queue = XRT_BO_USE_DEBUG_QUEUE // For debug queue data
+  debug_queue = XRT_BO_USE_DEBUG_QUEUE, // For debug queue data
+  uc_debug = XRT_BO_USE_UC_DEBUG // For microblaze debug data
 };
 
 // create_bo() - Create a buffer object within a hwctx for specific use case

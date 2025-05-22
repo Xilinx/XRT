@@ -2519,11 +2519,18 @@ public:
   [[nodiscard]] ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
+    // dump dtrace buffer if ini option is enabled
+    static bool dtrace = !xrt_core::config::get_dtrace_lib_path().empty();
+
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
-      if (cv_status == std::cv_status::timeout)
+      if (cv_status == std::cv_status::timeout) {
+        if (dtrace) {
+          xrt_core::module_int::dump_dtrace_buffer(m_module);
+	}
         return ERT_CMD_STATE_TIMEOUT;
+      }
 
       state = ert_state;
     }
@@ -2535,10 +2542,8 @@ public:
     static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
     if (dump)
       xrt_core::module_int::dump_scratchpad_mem(m_module);
-    
-    // dump dtrace buffer if ini option is enabled
-    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
-    if (!dtrace_lib_path.empty())
+
+    if (dtrace)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
 
     return state;

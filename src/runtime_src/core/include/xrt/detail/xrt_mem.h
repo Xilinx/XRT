@@ -132,6 +132,11 @@ struct xcl_bo_flags
  *
  * XRT_BO_USE_DEBUG_QUEUE indicates that the buffer will be used for
  * holding debug queue data.
+ *
+ * XRT_BO_USE_UC_DEBUG indicates that the buffer will be used to
+ * communicate debug data from microblaze back to user
+ * space. This type of usage is supported on platforms with
+ * microblaze only
  */
 
 // This file is used in driver as well, so using #define instead of
@@ -144,6 +149,7 @@ struct xcl_bo_flags
 #define XRT_BO_USE_DTRACE      3
 #define XRT_BO_USE_LOG         4
 #define XRT_BO_USE_DEBUG_QUEUE 5
+#define XRT_BO_USE_UC_DEBUG    6
 // NOLINTEND
 
 /**
