@@ -47,6 +47,12 @@ struct kernel_info {
 xrt::module
 create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id);
 
+// ELF can have multiple ctrl codes and when user doesn't provide
+// id while running the kernel then by default 1st ctrl code is run
+// This function returns the 1st available ctrl code id
+std::string
+get_default_ctrl_id(const xrt::module& module);
+
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
 uint32_t*
