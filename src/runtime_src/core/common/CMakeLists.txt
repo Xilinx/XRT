@@ -11,13 +11,12 @@ add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
-#elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
-else()
-  #set(AIEBU_FULL OFF)
+elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  set(AIEBU_FULL OFF)
   set(AIEBU_SUBMODULE ON)
   xrt_add_subdirectory(aiebu)
-#else()
-  #message(WARNING "Edge device, build of submodule aiebu disabled")
+else()
+  message(WARNING "Edge device, build of submodule aiebu disabled")
 endif()
 
 add_library(core_common_library_objects OBJECT
