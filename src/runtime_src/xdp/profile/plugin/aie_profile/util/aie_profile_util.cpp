@@ -363,7 +363,20 @@ namespace xdp::aie::profile {
 #endif
       eventSets["conflict_stats3"] = {};
       eventSets["conflict_stats4"] = {};
-      eventSets["throughputs"] = {};
+      eventSets["throughputs"] = {
+        XAIE_EVENT_DMA_S2MM_SEL0_RUNNING_MEM_TILE,
+        XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+        XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+        XAIE_EVENT_DMA_S2MM_SEL1_RUNNING_MEM_TILE,
+        XAIE_EVENT_DMA_S2MM_SEL1_STALLED_LOCK_ACQUIRE_MEM_TILE,
+        XAIE_EVENT_DMA_S2MM_SEL1_MEMORY_BACKPRESSURE_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL0_RUNNING_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL1_RUNNING_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL1_STREAM_BACKPRESSURE_MEM_TILE,
+        XAIE_EVENT_DMA_MM2S_SEL1_MEMORY_STARVATION_MEM_TILE
+      };
     }
 
     eventSets["s2mm_channels"]         = eventSets["input_channels"];
