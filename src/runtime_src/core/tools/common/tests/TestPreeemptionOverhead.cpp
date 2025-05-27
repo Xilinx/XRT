@@ -142,11 +142,16 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
       xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(0));
       double noop_exec_time = 0;
       try {
-      noop_exec_time = run_preempt_test(dev, ptree, ncol, level);
+        noop_exec_time = run_preempt_test(dev, ptree, ncol, level);
       } 
       catch (const std::exception& ex) {
-        XBU::logger(ptree, "Error", ex.what());
-        ptree.put("status", XBU::test_token_failed);
+        if (boost::icontains(ex.what(), "not supported")) {
+          XBU::logger(ptree, "Details", "The test is not supported on this device.");
+          ptree.put("status", XBU::test_token_skipped);
+        } else {
+          XBU::logger(ptree, "Error", ex.what());
+          ptree.put("status", XBU::test_token_failed);
+        }
         return ptree;
       }
 
@@ -157,8 +162,13 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
         noop_preempt_exec_time = run_preempt_test(dev, ptree, ncol, level);
       } 
       catch (const std::exception& ex) {
-        XBU::logger(ptree, "Error", ex.what());
-        ptree.put("status", XBU::test_token_failed);
+        if (boost::icontains(ex.what(), "not supported")) {
+          XBU::logger(ptree, "Details", "The test is not supported on this device.");
+          ptree.put("status", XBU::test_token_skipped);
+        } else {
+          XBU::logger(ptree, "Error", ex.what());
+          ptree.put("status", XBU::test_token_failed);
+        }
         return ptree;
       }
 
