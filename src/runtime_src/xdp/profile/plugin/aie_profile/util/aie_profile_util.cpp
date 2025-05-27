@@ -337,6 +337,11 @@ namespace xdp::aie::profile {
       eventSets["conflict_stats4"] = {
         XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
         XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+//#ifdef XDP_NPU3_BUILD
+      eventSets["throughputs"] = {
+        
+      };
+//#endif
     } 
     else {
       eventSets["conflict_stats1"] = {
@@ -358,6 +363,7 @@ namespace xdp::aie::profile {
 #endif
       eventSets["conflict_stats3"] = {};
       eventSets["conflict_stats4"] = {};
+      eventSets["throughputs"] = {};
     }
 
     eventSets["s2mm_channels"]         = eventSets["input_channels"];

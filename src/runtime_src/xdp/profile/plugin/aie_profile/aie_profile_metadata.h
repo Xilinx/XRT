@@ -68,7 +68,8 @@ class AieProfileMetadata {
           "s2mm_throughputs", "mm2s_throughputs",
           "input_stalls", "output_stalls", "s2mm_stalls", 
           "mm2s_stalls", "packets", METRIC_BYTE_COUNT,
-          "uc_dma_activity", "uc_axis_throughputs", "uc_core"}
+          "uc_dma_activity", "uc_axis_throughputs", "uc_core",
+          "throughputs", "dma_throughputs", "trace_dma"}
       },
       {
         module_type::mem_tile, {
@@ -77,7 +78,7 @@ class AieProfileMetadata {
           "output_channels", "output_channels_details", "output_throughputs",
           "mm2s_channels", "mm2s_channels_details", "mm2s_throughputs",
           "memory_stats", "mem_trace", "conflict_stats1", "conflict_stats2", 
-          "conflict_stats3", "conflict_stats4"}
+          "conflict_stats3", "conflict_stats4", "throughputs"}
       },
       {
         module_type::uc, {
