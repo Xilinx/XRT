@@ -151,6 +151,8 @@ public:
 
 class config_generator {
 public:
+  virtual ~config_generator() = default;
+
   XRT_CORE_COMMON_EXPORT
   virtual subcommand 
   create_validate_subcommand() = 0;
