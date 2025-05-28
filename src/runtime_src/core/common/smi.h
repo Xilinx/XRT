@@ -4,6 +4,7 @@
 #pragma once
 // Local include files
 #include "config.h"
+#include "device.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -136,7 +137,7 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   std::string
-  build_smi_config() const;
+  build_json() const;
 
   XRT_CORE_COMMON_EXPORT
   tuple_vector
@@ -146,6 +147,48 @@ public:
   tuple_vector
   get_option_options(const std::string& subcommand) const;
 
+};
+
+class config_generator {
+public:
+  XRT_CORE_COMMON_EXPORT
+  virtual subcommand 
+  create_validate_subcommand() = 0;
+
+  XRT_CORE_COMMON_EXPORT
+  virtual subcommand 
+  create_examine_subcommand() = 0;
+
+  XRT_CORE_COMMON_EXPORT
+  virtual subcommand 
+  create_configure_subcommand() = 0; 
+};
+
+/* This class includes all the hardware specific logic. 
+   Each shim should inherit from this if they are to define
+   shim specific hardware specific behavior*/
+class smi_hardware_config {
+public:
+  enum class hardware_type {
+    PHX, // Phoenix
+    STX, // Strix
+    STXH, // Strix Halo
+    KRK1, // Krackan
+    MDS, // Medusa
+    MDS_PF, // Medusa PF
+    MDS_VF, // Medusa VF
+    UNKNOWN // Unknown hardware type
+  };
+
+  XRT_CORE_COMMON_EXPORT
+  smi_hardware_config();
+
+  XRT_CORE_COMMON_EXPORT
+  hardware_type 
+  get_hardware_type(const std::string&) const;
+
+private:
+  std::map<std::string, hardware_type> hardware_map;
 };
 
 XRT_CORE_COMMON_EXPORT
