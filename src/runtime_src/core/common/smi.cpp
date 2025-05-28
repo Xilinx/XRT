@@ -91,7 +91,7 @@ get_option_options() const
 
 std::string 
 smi::
-build_smi_config() const 
+build_json() const 
 {
   ptree config;
   ptree subcommands;
@@ -103,7 +103,7 @@ build_smi_config() const
   config.add_child("subcommands", subcommands);
 
   std::ostringstream oss;
-  boost::property_tree::write_json(oss, config, true); // Pretty print with true
+  boost::property_tree::write_json(oss, config, true); 
   return oss.str();
 }
 
@@ -146,6 +146,29 @@ instance()
 {
   static smi instance;
   return &instance;
+}
+
+smi_hardware_config::
+smi_hardware_config()
+{
+  // Initialize the hardware map
+  hardware_map = {
+    {"NPU Phoenix", hardware_type::PHX},
+    {"NPU Strix", hardware_type::STX},
+    {"NPU Strix Halo", hardware_type::STXH},
+    {"NPU Krackan", hardware_type::KRK1},
+    {"NPU Medusa", hardware_type::MDS},
+    {"NPU Medusa PF", hardware_type::MDS_PF},
+    {"NPU Medusa VF", hardware_type::MDS_VF}
+  };
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const std::string& device_name) const 
+{
+  auto it = hardware_map.find(device_name);
+  return (it != hardware_map.end()) ? it->second : hardware_type::UNKNOWN;
 }
 
 tuple_vector
