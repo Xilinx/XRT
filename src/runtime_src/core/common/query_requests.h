@@ -145,6 +145,7 @@ enum class key_type
 
 
   firmware_version,
+  uc_firmware_version,
 
   idcode,
   data_retention,
@@ -2097,6 +2098,24 @@ struct firmware_version : request
 
   virtual std::any
   get(const device* device) const override = 0;
+};
+
+// Retrieves the git hash and firmware version of the device.
+struct uc_firmware_version : request
+{
+  struct data
+  {
+    uint32_t major;
+    uint32_t minor;
+    std::string git_hash;
+    std::string date;
+  };
+
+  using result_type = struct data;
+  static const key_type key = key_type::uc_firmware_version;
+
+  virtual std::any
+  get(const device* device) const = 0;
 };
 
 struct clock_freqs_mhz : request

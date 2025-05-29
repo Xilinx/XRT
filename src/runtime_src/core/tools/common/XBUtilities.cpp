@@ -146,6 +146,27 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The firmware wasn't added
       }
 
+
+      try {
+        const auto uc_fw_ver = xrt_core::device_query_default<xq::uc_firmware_version>(device, {0, 0, "NA", "NA"});
+        std::string version = "N/A";
+        std::string build_date = "N/A";
+
+        if (uc_fw_ver.major != 0 || uc_fw_ver.minor != 0 || uc_fw_ver.git_hash != "NA") {
+          version = boost::str(boost::format("%u.%u, %s")
+            % uc_fw_ver.major
+            % uc_fw_ver.minor
+            % uc_fw_ver.git_hash);
+          build_date = uc_fw_ver.date;
+        }
+
+        pt_dev.put("uc_firmware.version", version);
+        pt_dev.put("uc_firmware.build_date", build_date);
+      }
+      catch (...) {
+        // Handle error
+      }
+
       try {
         auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
         std::string pf = device->is_userpf() ? "user" : "mgmt";
@@ -770,7 +791,17 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     if (!available_devices.empty()) {
        const boost::property_tree::ptree& dev = available_devices.begin()->second;
        if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+       {
          output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+        
+	std::string uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
+ 	std::string build_date = dev.get<std::string>("uc_firmware.build_date", "N/A");
+
+        if (uc_fw_version != "N/A")
+            output << boost::format("  %-20s : %s\n") % "UC Firmware Version" % uc_fw_version;
+        if (build_date != "N/A")
+            output << boost::format("  %-20s : %s\n") % "UC Build Date" % build_date;
+       }
        else
          output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
     }
