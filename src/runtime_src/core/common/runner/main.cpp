@@ -18,12 +18,17 @@
 //
 // ./xrt-runner.exe --recipe ... --profile ... [--dir ...]
 #include "xrt/xrt_device.h"
+#include "core/common/time.h"
 #include "core/common/runner/runner.h"
+
+#include "core/common/json/nlohmann/json.hpp"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+using json = nlohmann::json;
 
 static void
 usage()
@@ -42,12 +47,24 @@ run(const std::string& recipe,
     const std::string& dir,
     bool report)
 {
+  xrt_core::systime st;
+
   xrt::device device{0};
   xrt_core::runner runner {device, recipe, profile, dir};
   runner.execute();
   runner.wait();
-  if (report)
-    std::cout << runner.get_report() << "\n";
+  if (report) {
+    auto [real, user, system] = st.get_rusage();
+    auto jrpt = json::parse(runner.get_report());
+    jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+    std::cout << jrpt.dump(4) << "\n";
+  }
+  
+  auto [real, user, system] = st.get_rusage();
+
+  std::cout << "real: " <<  std::fixed << std::setprecision(4) << real.to_sec() << '\n';
+  std::cout << "user: " <<  std::fixed << std::setprecision(4) << user.to_sec() << '\n';
+  std::cout << "system: " <<  std::fixed << std::setprecision(4) << system.to_sec() << '\n';
 }
 
 static void
