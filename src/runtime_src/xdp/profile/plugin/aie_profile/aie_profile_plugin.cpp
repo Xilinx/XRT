@@ -118,46 +118,16 @@ namespace xdp {
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
-      xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_config mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
+      xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
       return;
     }
-    //TODO: Stop using hw_gen for below check once XRT provides and API to get device type across all hw_gen.
-    //      Also remove the relevant header files for both edge and VE2 (query_requests.h, xclbin_int.h). CR-1240834
     else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
-      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
-      try {
-        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
-      }
-      catch (const std::exception& e) {
-        std::stringstream msg;
-        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-      }
-
-      if (xclbin_slot_info.empty())
-        return;
-
-      auto new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
-      xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
-      auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-
-      std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
-      boost::property_tree::ptree aieMetadata;
-      if (data.first && data.second) {
-        metadataReader =
-          aie::readAIEMetadata(data.first, data.second, aieMetadata);
-      }
-      if (!metadataReader)
-      {
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-                              "AIE metadata read failed. Hence, Profiling will not be available.");
-        return;
-      }
-      if(metadataReader->getHardwareGeneration() == 5)
-      {
-        xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_config mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
-        return;
-      }
+  #ifdef XDP_VE2_ZOCL_BUILD
+      xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
+      return;
+  #else
+      xrt_core::message::send(severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. AIE Profiling should be available.");
+  #endif
     }
 #endif
 
