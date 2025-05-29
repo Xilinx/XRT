@@ -13,7 +13,10 @@ target_include_directories(core_common_runner_objects
 add_executable(xrt-runner main.cpp)
 target_link_libraries(xrt-runner PRIVATE xrt_coreutil)
 
-install(TARGETS xrt-runner
+add_executable(xrt-runner-mt main-mt.cpp)
+target_link_libraries(xrt-runner-mt PRIVATE xrt_coreutil)
+
+install(TARGETS xrt-runner xrt-runner-mt
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
 
