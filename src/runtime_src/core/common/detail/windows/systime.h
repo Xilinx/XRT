@@ -44,9 +44,9 @@ public:
     FILETIME kernel_time, user_time;
     GetProcessTimes(GetCurrentProcess(), &dummy1, &dummy2, &kernel_time, &user_time);
     return {
-      xrt_core::time_ns() - m_start_time,
-      to_uint64(user_time) - to_uint64(m_user_time),
-      to_uint64(kernel_time) - to_uint64(m_kernel_time)
+      timepoint{xrt_core::time_ns() - m_start_time},
+      timepoint{to_uint64(user_time) - to_uint64(m_user_time)},
+      timepoint{to_uint64(kernel_time) - to_uint64(m_kernel_time)}
     };
   }
 };
