@@ -15,6 +15,9 @@ target_link_libraries(xrt-runner PRIVATE xrt_coreutil)
 
 add_executable(xrt-runner-mt main-mt.cpp)
 target_link_libraries(xrt-runner-mt PRIVATE xrt_coreutil)
+if (NOT WIN32)
+  target_link_libraries(xrt-runner-mt PRIVATE pthread)
+endif()
 
 install(TARGETS xrt-runner xrt-runner-mt
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})

@@ -118,7 +118,7 @@ struct job_queue
 
   // Initialize the queue with number of workers which act as the
   // latch count down.
-  job_queue(uint32_t workers)
+  explicit job_queue(uint32_t workers)
     : m_latch{workers}
   {}
 
@@ -212,7 +212,7 @@ run_script(const std::string& file)
   // Create workers, each worker signals the queue when ready 
   std::vector<std::thread> threads;
   for (; workers; --workers)
-    threads.push_back(std::thread{worker, std::ref(jobs)});
+    threads.emplace_back(worker, std::ref(jobs));
 
   for (auto& t : threads)
     t.join();

@@ -94,10 +94,10 @@ public:
   XRT_CORE_COMMON_EXPORT
   ~systime();
 
-  systime(const systime&) = default;
-  systime(systime&&) = default;
-  systime& operator= (const systime&) = default;
-  systime& operator= (systime&&) = default;
+  systime(const systime&) = delete;
+  systime(systime&&) = delete;
+  systime& operator= (const systime&) = delete;
+  systime& operator= (systime&&) = delete;
 
   XRT_CORE_COMMON_EXPORT
   void
