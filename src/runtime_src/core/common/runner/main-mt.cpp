@@ -30,7 +30,9 @@
 
 #include "core/common/json/nlohmann/json.hpp"
 
+#include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -253,6 +255,8 @@ run(int argc, char* argv[])
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
+
+  if (report) {}
 
   if (!script.empty())
     run_script(script);
