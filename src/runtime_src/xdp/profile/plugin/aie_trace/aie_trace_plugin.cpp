@@ -85,18 +85,20 @@ AieTracePluginUnified::~AieTracePluginUnified() {
   AieTracePluginUnified::live = false;
 }
 
-uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
+uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_context_flow) {
   auto itr = handleToAIEData.find(handle);
 
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
 #ifdef XDP_CLIENT_BUILD
+  (void)(hw_context_flow);
   return db->addDevice("win_sysfspath");
-#elif XDP_VE2_BUILD
-  return db->addDevice("ve2_device");
 #else
-  return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
+  if(hw_context_flow)
+    return db->addDevice("ve2_device");
+  else
+    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
 }
 
@@ -108,12 +110,25 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     return;
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
-
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+  if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
+    xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Event Trace is not yet supported for this combination.");
+    return;
+  }
+  else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+  #ifdef XDP_VE2_ZOCL_BUILD
+    xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. AIE Event Trace is not yet supported for this combination.");
+    return;
+  #else
+    xrt_core::message::send(severity_level::warning, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. AIE Event Trace should be available.");
+  #endif
+    }
+#endif
   // Clean out old data every time xclbin gets updated
   if (handleToAIEData.find(handle) != handleToAIEData.end())
     handleToAIEData.erase(handle);
 
-  auto deviceID = getDeviceIDFromHandle(handle);
+  auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
 
   // Setting up struct
   auto &AIEData = handleToAIEData[handle];
@@ -123,11 +138,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   // Update the static database with information from xclbin
 #ifdef XDP_CLIENT_BUILD
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
-  (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
-#elif defined(XDP_VE2_BUILD)
-  (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
+  (db->getStaticInfo()).setDeviceName(deviceID, "win_device");  
 #else
-  (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
+    if(hw_context_flow)
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
+    else
+      (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
 #endif
 
   // Metadata depends on static information from the database
