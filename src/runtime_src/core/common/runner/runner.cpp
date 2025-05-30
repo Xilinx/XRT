@@ -191,9 +191,24 @@ class repo
 protected:
   using repo_error = xrt_core::runner::repo_error;
   mutable std::map<std::string, std::vector<char>> m_data;
+  std::string m_id;
+
+  static std::string
+  init_id()
+  {
+    static uint64_t count = 0;
+    return std::to_string(count++);
+  }
 
 public:
+  repo() : m_id(init_id()) {}
   virtual ~repo() = default;
+
+  std::string
+  get_id() const
+  {
+    return m_id;
+  }
 
   // Should be std::span, but not until c++20
   virtual const std::string_view
@@ -299,14 +314,15 @@ get(const xrt::elf& elf)
 static xrt::module
 get(const std::string& path, const artifacts::repo* repo)
 {
-  if (auto it = s_path2elf.find(path); it != s_path2elf.end())
+  auto key = repo->get_id() + path; // must be unique to repo
+  if (auto it = s_path2elf.find(key); it != s_path2elf.end())
     return get((*it).second);
 
   auto data = repo->get(path);
   streambuf buf{data.data(), data.data() + data.size()};
   std::istream is{&buf};
   xrt::elf elf{is};
-  s_path2elf.emplace(path, elf);
+  s_path2elf.emplace(key, elf);
 
   return get(elf);
 }
