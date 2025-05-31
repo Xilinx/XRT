@@ -293,8 +293,8 @@ namespace xdp {
 
     boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
     // Currently, assuming only one Hw Context is alive at a time
-    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("start_col"));
-    uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.front().second.get<uint64_t>("num_cols"));
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.back().second.get<uint64_t>("start_col"));
+    uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.back().second.get<uint64_t>("num_cols"));
     
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
