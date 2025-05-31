@@ -41,12 +41,8 @@
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
 #include "ve2/aie_profile.h"
 #else
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
 #include "core/edge/user/shim.h"
 #include "edge/aie_profile.h"
 #endif
