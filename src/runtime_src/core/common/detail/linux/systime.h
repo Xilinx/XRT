@@ -45,9 +45,9 @@ public:
     struct rusage usage {};
     getrusage(RUSAGE_SELF, &usage);
     return {
-      xrt_core::time_ns() - m_start_time,
-      to_nsec(usage.ru_utime) - to_nsec(m_user_time),
-      to_nsec(usage.ru_stime) - to_nsec(m_kernel_time)
+      timepoint{xrt_core::time_ns() - m_start_time},
+      timepoint{to_nsec(usage.ru_utime) - to_nsec(m_user_time)},
+      timepoint{to_nsec(usage.ru_stime) - to_nsec(m_kernel_time)}
     };
   }
 };

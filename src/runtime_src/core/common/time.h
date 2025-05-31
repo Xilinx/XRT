@@ -64,7 +64,7 @@ public:
     uint64_t m_nanoseconds;
 
   public:
-    timepoint(uint64_t nsec)
+    explicit timepoint(uint64_t nsec)
       : m_nanoseconds{nsec}
     {}
 
@@ -88,8 +88,16 @@ public:
   XRT_CORE_COMMON_EXPORT
   systime();
 
+  // Destructor must in .cpp since impl is not known in header
+  // Even as dtor is default, it is declared here, and we must
+  // also define copy/move/assign
   XRT_CORE_COMMON_EXPORT
   ~systime();
+
+  systime(const systime&) = delete;
+  systime(systime&&) = delete;
+  systime& operator= (const systime&) = delete;
+  systime& operator= (systime&&) = delete;
 
   XRT_CORE_COMMON_EXPORT
   void

@@ -82,6 +82,8 @@ public:
    */
   using artifacts_repository = std::map<std::string, std::vector<char>>;
 
+  runner() = default;
+
   // ctor - Create runner from a recipe json.
   // Any artifacts referenced by the recipe are looked up in the
   // current directory.
@@ -119,6 +121,12 @@ public:
   XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const artifacts_repository&);
+
+  explicit
+  operator bool() const
+  {
+    return handle != nullptr;
+  }
 
   // bind_input() - Bind a buffer object to an input tensor
   XRT_API_EXPORT
