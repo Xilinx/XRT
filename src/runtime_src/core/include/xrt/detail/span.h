@@ -47,12 +47,12 @@ public:
   {}
 
   template< class U, std::size_t N >
-  constexpr span(std::array<U, N>& arr ) noexcept
+  constexpr explicit span(std::array<U, N>& arr ) noexcept
     : span(arr.data(), N)
   {}
 
   template< class U, std::size_t N >
-  constexpr span(const std::array<U, N>& arr ) noexcept
+  constexpr explicit span(const std::array<U, N>& arr ) noexcept
     : span(arr.data(), N)
   {}
 
