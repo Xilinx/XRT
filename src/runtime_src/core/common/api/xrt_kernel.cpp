@@ -238,31 +238,31 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   begin() const
   {
     return uval;
   }
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   end() const
   {
     return uval + words;
   }
 
-  [[nodiscard]] size_t
+  size_t
   size() const
   {
     return words;
   }
 
-  [[nodiscard]] size_t
+  size_t
   bytes() const
   {
     return words * sizeof(ValueType);
   }
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   data() const
   {
     return uval;
@@ -399,13 +399,13 @@ struct device_type
     return exec_buffer_cache.alloc<CommandType>();
   }
 
-  [[nodiscard]] xrt_core::device*
+  xrt_core::device*
   get_core_device() const
   {
     return core_device.get();
   }
 
-  [[nodiscard]] xrt::device
+  xrt::device
   get_xrt_device() const
   {
     return xrt::device{core_device};
@@ -441,7 +441,7 @@ public:
     m_bitset.set(m_encoding ? m_encoding->at(idx) : idx);
   }
 
-  [[nodiscard]] bool
+  bool
   test(size_t idx) const
   {
     return m_bitset.test(m_encoding ? m_encoding->at(idx) : idx);
@@ -524,7 +524,7 @@ class ip_context
 
     // Get default memory index of an argument.  The default index is
     // the the largest memory index of a connection for specified argument.
-    [[nodiscard]] int32_t
+    int32_t
     get_arg_memidx(size_t argidx) const
     {
       return default_connection.at(argidx);
@@ -532,7 +532,7 @@ class ip_context
 
     // Validate that specified memory index is a valid connection for
     // argument identified by 'argidx'
-    [[nodiscard]] bool
+    bool
     valid_arg_connection(size_t argidx, size_t memidx) const
     {
       return connections[argidx].test(memidx);
@@ -1204,7 +1204,7 @@ public:
   argument& operator=(argument&) = delete;
   argument& operator=(argument&&) = delete;
 
-  [[nodiscard]] const xarg&
+  const xarg&
   get_xarg() const
   {
     return arg;
@@ -1241,39 +1241,39 @@ public:
   set_fa_desc_offset(size_t offset)
   { arg.fa_desc_offset = offset; }
 
-  [[nodiscard]] size_t
+  size_t
   fa_desc_offset() const
   { return arg.fa_desc_offset; }
 
-  [[nodiscard]] size_t
+  size_t
   index() const
   { return arg.index; }
 
-  [[nodiscard]] size_t
+  size_t
   offset() const
   { return arg.offset; }
 
-  [[nodiscard]] size_t
+  size_t
   size() const
   { return arg.size; }
 
-  [[nodiscard]] const std::string&
+  const std::string&
   name() const
   { return arg.name; }
 
-  [[nodiscard]] direction
+  direction
   dir() const
   { return arg.dir; }
 
-  [[nodiscard]] bool
+  bool
   is_input() const
   { return arg.dir == direction::input; }
 
-  [[nodiscard]] bool
+  bool
   is_output() const
   { return arg.dir == direction::output; }
 
-  [[nodiscard]] xarg::argtype
+  xarg::argtype
   type() const
   { return arg.type; }
 };
@@ -2146,7 +2146,7 @@ class run_impl
   std::mutex m_mutex;                     // mutex synchronization
 
 public:
-  [[nodiscard]] uint32_t
+  uint32_t
   get_uid() const
   {
     return uid;
@@ -2222,13 +2222,13 @@ public:
   run_impl& operator=(run_impl&) = delete;
   run_impl& operator=(run_impl&&) = delete;
 
-  [[nodiscard]] kernel_impl*
+  kernel_impl*
   get_kernel() const
   {
     return kernel.get();
   }
 
-  [[nodiscard]] kernel_command*
+  kernel_command*
   get_cmd() const
   {
     return cmd.get();
@@ -2283,7 +2283,7 @@ public:
     encode_cumasks = true;
   }
 
-  [[nodiscard]] const std::bitset<max_cus>&
+  const std::bitset<max_cus>&
   get_cumask() const
   {
     return cumask;
@@ -2379,7 +2379,7 @@ public:
     }
   }
 
-  [[nodiscard]] int
+  int
   get_arg_index(const std::string& argnm) const
   {
     for (const auto& arg : kernel->get_args())
@@ -2486,7 +2486,7 @@ public:
     cmd->wait();
   }
 
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   abort() const
   {
     // don't bother if command is done by the time abort is called
@@ -2516,7 +2516,7 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     // dump dtrace buffer if ini option is enabled
@@ -2554,7 +2554,7 @@ public:
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  [[nodiscard]] std::cv_status
+  std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -2578,7 +2578,7 @@ public:
     if (state == ERT_CMD_STATE_COMPLETED) {
       m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
       static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-      if (dump)
+      if (dump && m_module)
         xrt_core::module_int::dump_scratchpad_mem(m_module);
 
       return std::cv_status::no_timeout;
@@ -2589,14 +2589,14 @@ public:
   }
 
   // state() - get current execution state
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   state() const
   {
     return cmd->get_state();
   }
 
   // return_code() - get kernel execution return code
-  [[nodiscard]] uint32_t
+  uint32_t
   return_code() const
   {
     auto ktype = kernel->get_kernel_type();
@@ -2605,7 +2605,7 @@ public:
     return 0;
   }
 
-  [[nodiscard]] ert_packet*
+  ert_packet*
   get_ert_packet() const
   {
     return cmd->get_ert_packet();
@@ -2978,11 +2978,18 @@ public:
 class run::command_error_impl
 {
 public:
+  xrt::run m_run;
   ert_cmd_state m_state;
   std::string m_message;
 
   command_error_impl(ert_cmd_state state, std::string msg)
     : m_state(state), m_message(std::move(msg))
+  {}
+
+  command_error_impl(xrt::run run, std::string msg)
+    : m_run(std::move(run))
+    , m_state(m_run.state())
+    , m_message(std::move(msg))
   {}
 };
 
@@ -4190,6 +4197,12 @@ command_error(ert_cmd_state state, const std::string& msg)
   : detail::pimpl<run::command_error_impl>(std::make_shared<run::command_error_impl>(state, msg))
 {}
 
+run::command_error::
+command_error(const xrt::run& run, const std::string& msg)
+  : detail::pimpl<run::command_error_impl>(std::make_shared<run::command_error_impl>(run, msg))
+{}
+
+
 ert_cmd_state
 run::command_error::
 get_command_state() const
@@ -4202,6 +4215,21 @@ run::command_error::
 what() const noexcept
 {
   return handle->m_message.c_str();
+}
+
+xrt::run::aie_error::span<const uint32_t>  
+run::aie_error::
+data() const
+{
+  // placeholder
+  struct ert_packet_ctx_health { uint32_t aie_data_size = 0; uint32_t* aie_data = nullptr;};
+
+  auto run_impl = handle->m_run.get_handle();
+  auto epkt = run_impl->get_ert_packet();
+  auto ctx_health = reinterpret_cast<const ert_packet_ctx_health*>(epkt->data);
+
+  // implement sanity checks before returning
+  return {ctx_health->aie_data, ctx_health->aie_data_size};
 }
 
 } // xrt
