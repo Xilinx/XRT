@@ -5,6 +5,7 @@
 // Local include files
 #include "config.h"
 #include "device.h"
+#include "query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -14,6 +15,8 @@
 #include <vector>
 #include <memory>
 #include <map>
+
+namespace xq = xrt_core::query;
 
 namespace xrt_core::smi {
 
@@ -176,9 +179,9 @@ public:
     STX, // Strix
     STXH, // Strix Halo
     KRK1, // Krackan
-    MDS, // Medusa
-    MDS_PF, // Medusa PF
-    MDS_VF, // Medusa VF
+    NPU3_F1, // XXXXX
+    NPU3_F2, // XXXXX
+    NPU3_F3, // XXXXX
     UNKNOWN // Unknown hardware type
   };
 
@@ -187,10 +190,10 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   hardware_type 
-  get_hardware_type(const std::string&) const;
+  get_hardware_type(const xq::pcie_id::data&) const;
 
 private:
-  std::map<std::string, hardware_type> hardware_map;
+  std::map<xq::pcie_id::data, hardware_type> hardware_map;
 };
 
 XRT_CORE_COMMON_EXPORT

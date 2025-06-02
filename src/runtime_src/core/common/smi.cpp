@@ -153,21 +153,21 @@ smi_hardware_config()
 {
   // Initialize the hardware map
   hardware_map = {
-    {"NPU Phoenix", hardware_type::PHX},
-    {"NPU Strix", hardware_type::STX},
-    {"NPU Strix Halo", hardware_type::STXH},
-    {"NPU Krackan", hardware_type::KRK1},
-    {"NPU Medusa", hardware_type::MDS},
-    {"NPU Medusa PF", hardware_type::MDS_PF},
-    {"NPU Medusa VF", hardware_type::MDS_VF}
+    {{0x1502, 0x00}, hardware_type::PHX},
+    {{0x17f0, 0x00}, hardware_type::STX},
+    {{0x17f0, 0x11}, hardware_type::STXH},
+    {{0x17f0, 0x20}, hardware_type::KRK1},
+    {{0x17f1, 0x00}, hardware_type::NPU3_F1}, 
+    {{0x17f1, 0x01}, hardware_type::NPU3_F2},
+    {{0x17f1, 0x10}, hardware_type::NPU3_F3}
   };
 }
 
 smi_hardware_config::hardware_type
 smi_hardware_config::
-get_hardware_type(const std::string& device_name) const 
+get_hardware_type(const xq::pcie_id::data& dev) const 
 {
-  auto it = hardware_map.find(device_name);
+  auto it = hardware_map.find(dev);
   return (it != hardware_map.end()) ? it->second : hardware_type::UNKNOWN;
 }
 
