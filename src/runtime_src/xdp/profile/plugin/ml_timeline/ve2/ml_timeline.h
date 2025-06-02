@@ -25,6 +25,7 @@ namespace xdp {
   class ResultBOContainer;
   class MLTimelineVE2Impl : public MLTimelineImpl
   {
+    uint32_t mNumBufSegments;
     std::unique_ptr<ResultBOContainer> mResultBOHolder;
     public :
       MLTimelineVE2Impl(VPDatabase* dB, uint32_t sz);
