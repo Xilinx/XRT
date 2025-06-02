@@ -152,31 +152,47 @@ public:
 
 };
 
+// class config_generator
+// This class is used to generate configuration objects for xrt-smi.
+// It provides methods to create subcommands for validating, examining, and configuring devices.
+// Derived classes should implement these methods to provide platform-specific and hardware-specific options.
+// It is designed to be extended for different hardware configurations, such as NPU1, NPU2 and NPU3 and
+// different platforms like linux, windows, etc.
+
 class config_generator {
 public:
   virtual ~config_generator() = default;
 
-  XRT_CORE_COMMON_EXPORT
+  // Creates the "validate" subcommand.
+  // This subcommand is used to validate the given device by executing the platform's validate executable.
+  // Derived classes must implement this method to define hardware-specific validation logic.
   virtual subcommand 
   create_validate_subcommand() = 0;
 
-  XRT_CORE_COMMON_EXPORT
+  // Creates the "examine" subcommand.
+  // This subcommand generates a report of interest in a text or JSON format.
+  // Derived classes must implement this method to define hardware-specific examination logic.
   virtual subcommand 
   create_examine_subcommand() = 0;
 
-  XRT_CORE_COMMON_EXPORT
+  // Creates the "configure" subcommand.
+  // This subcommand is used for device and host configuration.
+  // Derived classes must implement this method to define hardware-specific configuration logic.
   virtual subcommand 
   create_configure_subcommand() = 0; 
 };
 
-/* This class includes all the hardware specific logic. 
-   Each shim should inherit from this if they are to define
-   shim specific hardware specific behavior*/
+// class smi_hardware_config
+// This class is used to determine the hardware type based on the PCIe ID, Rev ID of the device.
+// It provides a mapping of known hardware types to their corresponding PCIe IDs.
+// This is required since xrt-smi needs to know the hardware type to provide appropriate runnable 
+// tests and reports for the combination of plarform and hardware. 
 class smi_hardware_config {
 public:
   enum class hardware_type {
     PHX, // Phoenix
-    STX, // Strix
+    STXA0, // StrixA0
+    STXB0, // Strix B0
     STXH, // Strix Halo
     KRK1, // Krackan
     NPU3_F1, // XXXXX
@@ -188,6 +204,7 @@ public:
   XRT_CORE_COMMON_EXPORT
   smi_hardware_config();
 
+  // Returns the hardware type based on the PCIe ID and Revision ID.
   XRT_CORE_COMMON_EXPORT
   hardware_type 
   get_hardware_type(const xq::pcie_id::data&) const;
@@ -196,14 +213,25 @@ private:
   std::map<xq::pcie_id::data, hardware_type> hardware_map;
 };
 
+// Function to get the singleton instance of type smi
+// This is to ensure that the smi instance is created only once
+// per xrt-smi execution. 
 XRT_CORE_COMMON_EXPORT
 smi*
 instance();
 
+// Function to get the list of applicable options for a given subcommand and suboption.
+// Example : xrt-smi validate --run=[test1, test2, test3]
+// This function returns a vector of tuples containing the name, description, and type 
+// of each option test1, test2 and test3.
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_list(const std::string& subcommand, const std::string& suboption);
 
+// Function to get the options for a given subcommand.
+// Example : xrt-smi configure --pmode --device 1 
+// This function returns a vector of tuples containing the name, description, and type
+// of each option option once example of which is --pmode
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_option_options(const std::string& subcommand);

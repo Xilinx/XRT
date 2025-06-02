@@ -154,7 +154,8 @@ smi_hardware_config()
   // Initialize the hardware map
   hardware_map = {
     {{0x1502, 0x00}, hardware_type::PHX},
-    {{0x17f0, 0x00}, hardware_type::STX},
+    {{0x17f0, 0x00}, hardware_type::STXA0},
+    {{0x17f0, 0x10}, hardware_type::STXB0},
     {{0x17f0, 0x11}, hardware_type::STXH},
     {{0x17f0, 0x20}, hardware_type::KRK1},
     {{0x17f1, 0x00}, hardware_type::NPU3_F1}, 
