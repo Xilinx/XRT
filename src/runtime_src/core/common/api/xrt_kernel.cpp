@@ -2978,9 +2978,9 @@ public:
 class run::command_error_impl
 {
 public:
-  const xrt::run m_run;
-  const ert_cmd_state m_state;
-  const std::string m_message;
+  xrt::run m_run;
+  ert_cmd_state m_state;
+  std::string m_message;
 
   command_error_impl(ert_cmd_state state, std::string msg)
     : m_state(state), m_message(std::move(msg))
