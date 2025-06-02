@@ -3,7 +3,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestTCTOneColumn.h"
+#include "TestTCTAllColumn.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
@@ -17,16 +17,16 @@ namespace XBU = XBUtilities;
 
 static constexpr size_t buffer_size = 4;
 static constexpr size_t word_count = buffer_size/4;
-static constexpr int itr_count = 10000;
+static constexpr int itr_count = 20000;
 static constexpr int run_count = 100;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-TestTCTOneColumn::TestTCTOneColumn()
-  : TestRunner("tct-one-col", "Measure average TCT processing time for one column")
+TestTCTAllColumn::TestTCTAllColumn()
+  : TestRunner("tct-all-col", "Measure average TCT processing time for all columns")
 {}
 
 boost::property_tree::ptree
-TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
+TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
@@ -70,7 +70,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 
   xrt::hw_context hwctx;
   xrt::kernel kernel;
-  
+
   if (!elf) { // DPU
     try {
       hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
@@ -82,6 +82,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
+
     const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::tct_one_column);
     dpu_instr = XBValidateUtils::findPlatformFile(seq_name, ptree);
     if (!std::filesystem::exists(dpu_instr))
@@ -97,7 +98,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   else { // ELF
-    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::tct_one_column);
+    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::tct_all_column);
     auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
     
     if (!std::filesystem::exists(elf_path))
@@ -127,7 +128,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     bo_ifm = xrt::ext::bo{working_dev, buffer_size};
     bo_ofm = xrt::ext::bo{working_dev, buffer_size};
   }
-  
+
   // map input buffer
   auto ifm_mapped = bo_ifm.map<int*>();
 	for (size_t i = 0; i < word_count; i++)
@@ -138,11 +139,13 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   if (!elf) { 
     bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE); 
   }
+
   //Log
   if(XBU::getVerbose()) {
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
+
   double avg_latency = 0.0;
   double avg_throughput = 0.0;
   for (int run_num = 0; run_num < run_count; run_num++) {
