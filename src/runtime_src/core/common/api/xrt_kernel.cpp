@@ -2978,12 +2978,18 @@ public:
 class run::command_error_impl
 {
 public:
-  xrt::run m_run;
-  ert_cmd_state m_state;
-  std::string m_message;
+  const xrt::run m_run;
+  const ert_cmd_state m_state;
+  const std::string m_message;
 
   command_error_impl(ert_cmd_state state, std::string msg)
     : m_state(state), m_message(std::move(msg))
+  {}
+
+  command_error_impl(xrt::run run, ert_cmd_state state, std::string msg)
+    : m_run(std::move(run))
+    , m_state(state)
+    , m_message(std::move(msg))
   {}
 
   command_error_impl(xrt::run run, std::string msg)
@@ -2991,6 +2997,20 @@ public:
     , m_state(m_run.state())
     , m_message(std::move(msg))
   {}
+
+  xrt::detail::span<const uint32_t>  
+  get_aie_data() const
+  {
+    // placeholder
+    struct ert_packet_ctx_health { uint32_t aie_data_size = 0; uint32_t* aie_data = nullptr;};
+    
+    auto run_impl = m_run.get_handle();
+    auto epkt = run_impl->get_ert_packet();
+    auto ctx_health = reinterpret_cast<const ert_packet_ctx_health*>(epkt->data);
+    
+    // implement sanity checks before returning
+    return {ctx_health->aie_data, ctx_health->aie_data_size};
+  }
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3392,18 +3412,13 @@ public:
   }
 };
 
-class runlist::command_error_impl
+// runlist::command_error_impl is in anticipation of additional
+// implementation data over that of run::command_error_impl
+class runlist::command_error_impl : public run::command_error_impl
 {
 public:
-  const xrt::run m_run;
-  const ert_cmd_state m_state;
-  const std::string m_message;
-
-  command_error_impl(xrt::run run, ert_cmd_state state, std::string msg)
-    : m_run{std::move(run)}
-    , m_state{state}
-    , m_message{std::move(msg)}
-  {}
+  using run::command_error_impl::command_error_impl;
+  using run::command_error_impl::get_aie_data;
 };
 
 } // namespace xrt
@@ -4221,15 +4236,7 @@ xrt::run::aie_error::span<const uint32_t>
 run::aie_error::
 data() const
 {
-  // placeholder
-  struct ert_packet_ctx_health { uint32_t aie_data_size = 0; uint32_t* aie_data = nullptr;};
-
-  auto run_impl = handle->m_run.get_handle();
-  auto epkt = run_impl->get_ert_packet();
-  auto ctx_health = reinterpret_cast<const ert_packet_ctx_health*>(epkt->data);
-
-  // implement sanity checks before returning
-  return {ctx_health->aie_data, ctx_health->aie_data_size};
+  return handle->get_aie_data();
 }
 
 } // xrt
@@ -4243,6 +4250,13 @@ runlist::command_error::
 command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
   : detail::pimpl<runlist::command_error_impl>(std::make_shared<runlist::command_error_impl>(run, state, msg))
 {}
+
+runlist::aie_error::span<const uint32_t>  
+runlist::aie_error::
+data() const
+{
+  return handle->get_aie_data();
+}
 
 xrt::run
 runlist::command_error::
