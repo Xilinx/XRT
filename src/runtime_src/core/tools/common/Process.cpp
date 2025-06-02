@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 /**
  * Boost processes were released with Boost 1.64. If the OS doesn't support 
@@ -41,14 +28,19 @@
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#ifndef NO_BOOST_PROCESS
-# ifdef __GNUC__
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wunused-result"
-# endif
-# include <boost/process.hpp>
-# ifdef __GNUC__
-#  pragma GCC diagnostic pop
+
+#if (BOOST_VERSION >= 106400)
+# if (BOOST_VERSION < 108600)
+#  include <boost/process.hpp>
+#  include <boost/process/search_path.hpp>
+# else
+#  include <boost/process/v1/async.hpp>
+#  include <boost/process/v1/child.hpp>
+#  include <boost/process/v1/env.hpp>
+#  include <boost/process/v1/environment.hpp>
+#  include <boost/process/v1/io.hpp>
+#  include <boost/process/v1/pipe.hpp>
+#  include <boost/process/v1/search_path.hpp>
 # endif
 #endif
 
@@ -185,11 +177,20 @@ findEnvPath(const std::string & env)
   std::filesystem::path absPath;
   if (env.compare("python") == 0) {
     // Find the python executable
+#if (BOOST_VERSION < 108600)
     auto path = boost::process::search_path("py");
+#else
+    auto path = boost::process::v1::search_path("py");
+#endif
     absPath = path.string();
     // Find python3 path on linux
-    if (absPath.string().empty()) 
+    if (absPath.string().empty()) {
+#if (BOOST_VERSION < 108600)
       absPath = boost::process::search_path("python3").string();   
+#else
+      absPath = boost::process::v1::search_path("python3").string();
+#endif
+    }
 
     if (absPath.string().empty()) 
       throw std::runtime_error("Error: Python executable not found in search path.");
@@ -221,10 +222,15 @@ XBUtilities::runScript( const std::string & env,
 
   // Build the environment variables
   // Copy the existing environment
+#if (BOOST_VERSION < 108600)
   boost::process::environment _env = boost::this_process::environment();
+#else
+  boost::process::v1::environment _env = boost::this_process::environment();
+#endif
   _env.erase("XCL_EMULATION_MODE");
 
   // Execute the python script and capture the outputs
+#if (BOOST_VERSION < 108600)
   boost::process::ipstream ip_stdout;
   boost::process::ipstream ip_stderr;
   boost::process::child runningProcess( envPath.string(), 
@@ -232,7 +238,15 @@ XBUtilities::runScript( const std::string & env,
                                         boost::process::std_out > ip_stdout,
                                         boost::process::std_err > ip_stderr,
                                         _env);
-
+#else
+  boost::process::v1::ipstream ip_stdout;
+  boost::process::v1::ipstream ip_stderr;
+  boost::process::v1::child runningProcess( envPath.string(), 
+                                            cmdArgs, 
+                                            boost::process::v1::std_out > ip_stdout,
+                                            boost::process::v1::std_err > ip_stderr,
+                                            _env);
+#endif
   // Wait for the process to finish
   while (runningProcess.running()) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
