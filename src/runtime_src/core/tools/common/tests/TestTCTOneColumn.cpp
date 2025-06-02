@@ -18,6 +18,7 @@ namespace XBU = XBUtilities;
 static constexpr size_t buffer_size = 4;
 static constexpr size_t word_count = buffer_size/4;
 static constexpr int itr_count = 10000;
+static constexpr int run_count = 100;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTOneColumn::TestTCTOneColumn()
@@ -142,44 +143,52 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
-  auto start = std::chrono::high_resolution_clock::now();
-  try {
-    xrt::run run;
-    if (!elf) {
-      run = kernel(XBValidateUtils::get_opcode(), bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
-    } else {
-      run = kernel(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, bo_ofm, 0, 0);
+  double avg_latency = 0.0;
+  double avg_throughput = 0.0;
+  for (int run_num = 0; run_num < run_count; run_num++) {
+    auto start = std::chrono::high_resolution_clock::now();
+    try {
+      xrt::run run;
+      if (!elf) {
+        run = kernel(XBValidateUtils::get_opcode(), bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
+      } else {
+        run = kernel(XBValidateUtils::get_opcode(), 0, 0, bo_ifm, 0, bo_ofm, 0, 0);
+      }
+      
+      // Wait for kernel to be done
+      run.wait2();
     }
-    
-    // Wait for kernel to be done
-    run.wait2();
-  }
-  catch (const std::exception& ex) {
-    XBValidateUtils::logger(ptree, "Error", ex.what());
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-  auto end = std::chrono::high_resolution_clock::now();
-
-  //map ouput buffer
-  bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-  auto ofm_mapped = bo_ofm.map<int*>();
-  for (size_t i = 0; i < word_count; i++) {
-    if (ofm_mapped[i] != ifm_mapped[i]) {
-      auto msg = boost::str(boost::format("Data mismatch at out buffer[%d]") % i);
-      XBValidateUtils::logger(ptree, "Error", msg);
+    catch (const std::exception& ex) {
+      XBValidateUtils::logger(ptree, "Error", ex.what());
+      ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
+    auto end = std::chrono::high_resolution_clock::now();
+
+    //map ouput buffer
+    bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    auto ofm_mapped = bo_ofm.map<int*>();
+    for (size_t i = 0; i < word_count; i++) {
+      if (ofm_mapped[i] != ifm_mapped[i]) {
+        auto msg = boost::str(boost::format("Data mismatch at out buffer[%d]") % i);
+        XBValidateUtils::logger(ptree, "Error", msg);
+        return ptree;
+      }
+    }
+
+    //Calculate throughput
+    auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
+    double throughput = itr_count / elapsedSecs;
+    double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
+    avg_latency += latency;
+    avg_throughput += throughput;
   }
 
-  //Calculate throughput
-  auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
-  double throughput = itr_count / elapsedSecs;
-  double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
-
+  avg_latency = avg_latency / run_count;
+  avg_throughput = avg_throughput / run_count;
   if(XBU::getVerbose())
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));
-  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % avg_latency));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % avg_throughput));
   ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
