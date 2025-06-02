@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "ElfUtilities.h"
 
 #include "XclBinUtilities.h"
@@ -27,9 +14,12 @@
 #include <cstdlib>
 
 #if (BOOST_VERSION >= 106400)
-  #include <boost/process/search_path.hpp>
+# if (BOOST_VERSION < 108600)
+#  include <boost/process/search_path.hpp>
+# else
+#  include <boost/process/v1/search_path.hpp>
+# endif
 #endif
-
 
 namespace XUtil = XclBinUtilities;
 namespace fs = std::filesystem;
@@ -58,7 +48,11 @@ auto findExecutablePath(const std::string& executable)
   // -- Check the path
   if (executablePath.string().empty()) {
     XUtil::TRACE("Step 2: Looking for executable path");
+#if (BOOST_VERSION < 108600)
     auto path = boost::process::search_path(executable);
+#else
+    auto path = boost::process::v1::search_path(executable);
+#endif
     executablePath = path.string();
     if (!fs::exists(executablePath))
       XUtil::TRACE("Not found");

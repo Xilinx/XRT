@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "XclBinUtilities.h"
 
@@ -24,22 +12,31 @@
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/version.hpp>
+#include <future>
 #include <set>
 
 #if (BOOST_VERSION >= 106400)
 
-#ifdef _WIN32
-#define _WIN32_WINNT 0x0501
-#pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
-#endif
+# ifdef _WIN32
+#  define _WIN32_WINNT 0x0501
+#  pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
+# endif
 
-#include <boost/asio/io_context.hpp>
-#include <boost/process.hpp>
-#include <boost/process/child.hpp>
-#include <boost/process/env.hpp>
-#include <boost/process/search_path.hpp>
+# include <boost/asio/io_context.hpp>
+# if (BOOST_VERSION < 108600)
+#  include <boost/process.hpp>
+#  include <boost/process/child.hpp>
+#  include <boost/process/env.hpp>
+#  include <boost/process/search_path.hpp>
+# else
+#  include <boost/process/v1/args.hpp>
+#  include <boost/process/v1/async.hpp>
+#  include <boost/process/v1/child.hpp>
+#  include <boost/process/v1/env.hpp>
+#  include <boost/process/v1/io.hpp>
+#  include <boost/process/v1/search_path.hpp>
+# endif
 #endif
-
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -1190,18 +1187,25 @@ XclBinUtilities::exec(const fs::path &cmd,
                       std::ostringstream & os_stdout,
                       std::ostringstream & os_stderr)
 {
-  //boost::process::ipstream ip_stdout;
-  //boost::process::ipstream ip_stderr;
   std::future<std::string> data_stdout;
   std::future<std::string> data_stderr;
 
   boost::asio::io_context svc;
+#if (BOOST_VERSION < 108600)
   boost::process::child runningProcess( cmd.string(),
                                         args,
                                         boost::process::std_out > data_stdout,
                                         boost::process::std_err > data_stderr,
                                         boost::this_process::environment(),
                                         svc);
+#else
+  boost::process::v1::child runningProcess( cmd.string(),
+                                            args,
+                                            boost::process::v1::std_out > data_stdout,
+                                            boost::process::v1::std_err > data_stderr,
+                                            boost::this_process::environment(),
+                                            svc);
+#endif
   svc.run();
   runningProcess.wait();
 
