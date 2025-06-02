@@ -1,16 +1,17 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
-
+#include "xrt/detail/config.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
 #include "xrt/detail/ert.h"
+#include "xrt/detail/span.h"
 #include "xrt/deprecated/xrt.h"
 
 #ifdef __cplusplus
@@ -103,23 +104,53 @@ public:
   class command_error : public detail::pimpl<command_error_impl>, public std::exception
   {
   public:
-    XCL_DRIVER_DLLESPEC
+    XRT_API_EXPORT
     command_error(ert_cmd_state state, const std::string& what);
+
+    XRT_API_EXPORT
+    command_error(const xrt::run& run, const std::string& what);
 
     /**
      * get_command_state() - command state upon completion
      */
-    XCL_DRIVER_DLLESPEC
+    XRT_API_EXPORT
     ert_cmd_state
     get_command_state() const;
 
-    XCL_DRIVER_DLLESPEC
+    XRT_API_EXPORT
     const char*
     what() const noexcept override;
 
   private:
     // This member is a mistake, but cannot remove it without breaking ABI
     std::shared_ptr<command_error_impl> m_impl;
+  };
+
+  /**
+   * aie_error - exception for AIE abnormal command execution
+   *
+   * This exception provides access to context health information.
+   */
+  class aie_error : public command_error
+  {
+  public:
+    template <typename T> using span = xrt::detail::span<T>;
+  public:
+    /**
+     * aie_error() - Constructor must hold on to run object
+     */
+    aie_error(const xrt::run& run, const std::string& what)
+      : command_error(run, what)
+    {}
+    
+    /**
+     * Get the raw context health data
+     * The data format is not necessarily ABI compatible so should
+     * not be used in deployed applications.
+     */
+    XRT_API_EXPORT
+    span<const uint32_t>
+    data() const;
   };
 
 public:
@@ -138,7 +169,7 @@ public:
    *
    * @param krnl: Kernel object representing the kernel to execute
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   explicit
   run(const kernel& krnl);
 
@@ -157,7 +188,7 @@ public:
   /**
    * ~run() - Destruct run object
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ~run();
 
   /**
@@ -180,7 +211,7 @@ public:
    * This function is asynchronous, run status must be expclicit checked
    * or ``wait()`` must be used to wait for the run to complete.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   start();
 
@@ -207,7 +238,7 @@ public:
    * Currently autostart is only supported for kernels with one
    * compute unit which must be opened in exclusive mode.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   start(const autostart& iterations);
 
@@ -224,7 +255,7 @@ public:
    * If the kernel is not iterating, then calling this funciton
    * is the same as calling ``wait()``.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   stop();
 
@@ -240,7 +271,7 @@ public:
    * The function is synchronous and will wait for abort to complete.
    * The return value is the state of the aborted command.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ert_cmd_state
   abort();
 
@@ -271,7 +302,7 @@ public:
    * time between run completion exceeds the specified timeout, then
    * this function will identify the timeout.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
 
@@ -341,7 +372,7 @@ public:
    * time between run completion exceeds the specified timeout, then
    * this function will identify the timeout.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   std::cv_status
   wait2(const std::chrono::milliseconds& timeout) const;
 
@@ -369,7 +400,7 @@ public:
    *
    * The state values are defined in ``include/ert.h``
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ert_cmd_state
   state() const;
 
@@ -379,7 +410,7 @@ public:
    * @return
    *  Return code from PS kernel run
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   uint32_t
   return_code() const;
 
@@ -408,7 +439,7 @@ public:
    * managed execution, then an exception is thrown when the run
    * object is submitted for execution.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   add_callback(ert_cmd_state state,
                std::function<void(const void*, ert_cmd_state, void*)> callback,
@@ -501,11 +532,11 @@ public:
 
   ///@cond
   /// Experimental in 2023.2
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   submit_wait(const xrt::fence& fence);
   
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   submit_signal(const xrt::fence& fence);
   ///@endcond
@@ -626,7 +657,7 @@ public:
    * Throws if control scratchpad section is not absent in ELF or
    * if any error occurs while retrieving the bo
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   xrt::bo
   get_ctrl_scratchpad_bo() const;
 
@@ -645,7 +676,7 @@ public:
   {}
 
   // backdoor access to command packet
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ert_packet*
   get_ert_packet() const;
   /// @endcond
@@ -668,23 +699,23 @@ public:
 private:
   std::shared_ptr<run_impl> handle;
 
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   int
   get_arg_index(const std::string& argnm) const;
 
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   set_arg_at_index(int index, const void* value, size_t bytes);
 
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   set_arg_at_index(int index, const xrt::bo&);
 
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   update_arg_at_index(int index, const void* value, size_t bytes);
 
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   update_arg_at_index(int index, const xrt::bo&);
 
@@ -750,14 +781,14 @@ public:
    * other kernels and other process will have shared access to same
    * compute units.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
 
 
   /// @cond
   /// Experimental in 2022.2, 2023.1, 2023.3
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   kernel(const xrt::hw_context& ctx, const std::string& name);
   /// @endcond
 
@@ -770,7 +801,7 @@ public:
   /**
    * Obsoleted construction from xclDeviceHandle
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
   /// @endcond
@@ -790,7 +821,7 @@ public:
   /**
    * Destructor for kernel - needed for tracing
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ~kernel();
 
   /**
@@ -834,7 +865,7 @@ public:
    *
    * The function throws if the group id is ambigious.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   int
   group_id(int argno) const;
 
@@ -849,34 +880,34 @@ public:
    * Use with ``read_register()`` and ``write_register()`` if manually
    * reading or writing kernel registers for explicit arguments.
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   uint32_t
   offset(int argno) const;
 
   [[deprecated("Please use user-managed xrt::ip "
                "for read and write register functionality")]]
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   void
   write_register(uint32_t offset, uint32_t data);
 
   [[deprecated("It is not recommended to use read_register() with XRT "
                "managed kernels.  Please use user-managed xrt::ip for read and "
                "write register functionality")]]
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   uint32_t
   read_register(uint32_t offset) const;
 
   /**
    * get_name() - Return the name of the kernel
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   std::string
   get_name() const;
 
   /**
    * get_xclbin() - Return the xclbin containing the kernel
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   xrt::xclbin
   get_xclbin() const;
 
@@ -899,7 +930,7 @@ private:
 
 /// @cond
 // Undocumented experimental API subject to be replaced
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 void
 set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 /// @endcond
@@ -933,7 +964,7 @@ extern "C" {
  *
  * A kernel handle is thread safe and can be shared between threads.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
@@ -949,7 +980,7 @@ xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char 
  * access.  Fails if any compute unit is already opened with either
  * exclusive or shared access.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
@@ -959,7 +990,7 @@ xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, co
  * @kernelHandle: Handle to kernel previously opened with xrtKernelOpen
  * Return:        0 on success, -1 on error
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtKernelClose(xrtKernelHandle kernelHandle);
 
@@ -977,7 +1008,7 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
  * with different connectivity for specified argument.  In this case the
  * API returns error.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
 
@@ -991,7 +1022,7 @@ xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
  * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()``
  * if manually reading or writing kernel registers for explicit arguments.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 uint32_t
 xrtKernelArgOffset(xrtKernelHandle khdl, int argno);
 
@@ -1006,7 +1037,7 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno);
  * The kernel must be associated with exactly one kernel instance
  * (compute unit), which must be opened for exclusive access.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtKernelReadRegister(xrtKernelHandle kernelHandle, uint32_t offset, uint32_t* datap);
 
@@ -1021,7 +1052,7 @@ xrtKernelReadRegister(xrtKernelHandle kernelHandle, uint32_t offset, uint32_t* d
  * The kernel must be associated with exactly one kernel instance
  * (compute unit), which must be opened for exclusive access.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtKernelWriteRegister(xrtKernelHandle kernelHandle, uint32_t offset, uint32_t data);
 
@@ -1037,7 +1068,7 @@ xrtKernelWriteRegister(xrtKernelHandle kernelHandle, uint32_t offset, uint32_t d
  * same kernel again.  When no longer needed, then run handle must be
  * closed with xrtRunClose().
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 xrtRunHandle
 xrtKernelRun(xrtKernelHandle kernelHandle, ...);
 
@@ -1051,7 +1082,7 @@ xrtKernelRun(xrtKernelHandle kernelHandle, ...);
  * associated kernel.  This API allows application to manage run
  * handles without maintaining corresponding kernel handle.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle kernelHandle);
 
@@ -1067,7 +1098,7 @@ xrtRunOpen(xrtKernelHandle kernelHandle);
  * to starting kernel execution.  After setting all arguments, the
  * kernel execution can be start with xrtRunStart()
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtRunSetArg(xrtRunHandle rhdl, int index, ...);
 
@@ -1084,7 +1115,7 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...);
  *
  * This API is only supported on Edge.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...);
 
@@ -1097,7 +1128,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...);
  * Use this API when re-using a run handle for more than one execution
  * of the kernel associated with the run handle.
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtRunStart(xrtRunHandle rhdl);
 
@@ -1110,7 +1141,7 @@ xrtRunStart(xrtRunHandle rhdl);
  *
  * Blocks current thread until job has completed
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 enum ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl);
 
@@ -1124,7 +1155,7 @@ xrtRunWait(xrtRunHandle rhdl);
  *
  * Blocks current thread until job has completed
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 enum ert_cmd_state
 xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms);
 
@@ -1134,7 +1165,7 @@ xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms);
  * @rhdl:       Handle to check
  * Return:      The underlying command execution state per ert.h
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 enum ert_cmd_state
 xrtRunState(xrtRunHandle rhdl);
 
@@ -1150,7 +1181,7 @@ xrtRunState(xrtRunHandle rhdl);
  * run changes underlying execution state to specified state.
  * Support states are: ERT_CMD_STATE_COMPLETED (to be extended)
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtRunSetCallback(xrtRunHandle rhdl, enum ert_cmd_state state,
                   void (* callback)(xrtRunHandle, enum ert_cmd_state, void*),
@@ -1162,7 +1193,7 @@ xrtRunSetCallback(xrtRunHandle rhdl, enum ert_cmd_state state,
  * @rhdl:  Handle to close
  * Return:      0 on success, -1 on error
  */
-XCL_DRIVER_DLLESPEC
+XRT_API_EXPORT
 int
 xrtRunClose(xrtRunHandle rhdl);
 
