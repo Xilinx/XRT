@@ -58,6 +58,7 @@ enum class key_type
   xrt_smi_config,
   xrt_smi_lists,
   xclbin_name,
+  runner,
   sequence_name,
   elf_name,
   mobilenet,
@@ -591,6 +592,26 @@ struct xrt_smi_lists : request
   // formatting of individual items for the vector
   static std::string
   to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct runner : request
+{
+  enum class type {
+    throughput,
+  };
+
+  using result_type = std::string;
+  static const key_type key = key_type::runner;
+  static const char* name() { return "runner"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
+
+  static std::string
+  to_string(const result_type& value)
   {
     return value;
   }

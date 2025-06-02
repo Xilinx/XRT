@@ -138,11 +138,11 @@ platform_repo_path(const std::string& file)
 {
   for (const auto& path : platform_repo_paths()) {
     auto xpath = path / file;
-    if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
+    if (sfs::exists(xpath))
       return xpath;
   }
 
-  throw std::runtime_error("No such file '" + file + "'");
+  throw std::runtime_error("No such file or directory '" + file + "'");
 }
 
 /**
