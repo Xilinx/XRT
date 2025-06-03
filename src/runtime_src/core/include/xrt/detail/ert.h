@@ -1201,15 +1201,14 @@ get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
 static inline struct ert_ctx_health_data*
 get_ert_ctx_health_data(struct ert_packet* pkt)
 {
-  struct ert_ctx_health_data* ctxHealthData = NULL;
   switch (pkt->opcode) {
   case ERT_START_NPU:
   case ERT_START_NPU_PREEMPT:
   case ERT_START_NPU_PREEMPT_ELF:
     if (pkt->state == ERT_CMD_STATE_TIMEOUT)
-      ctxHealthData = (struct ert_ctx_health_data*) pkt->data;
+      return (struct ert_ctx_health_data*) pkt->data;
   }
-  return ctxHealthData;
+  return NULL;
 }
 
 #ifdef __linux__
