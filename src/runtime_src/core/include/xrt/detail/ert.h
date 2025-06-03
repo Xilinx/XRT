@@ -1197,6 +1197,20 @@ get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
 {
   return (get_ert_regmap_end(pkt) - get_ert_regmap_begin(pkt)) * sizeof(uint32_t);
 }
+/* ert_ctx_health_data structure is valid only if the ert opcode is START_NPU_* and cmd state is ERT_CMD_STATE_TIMEOUT*/
+static inline struct ert_ctx_health_data*
+get_ert_ctx_health_data(struct ert_packet* pkt)
+{
+  struct ert_ctx_health_data* ctxHealthData = NULL;
+  switch (pkt->opcode) {
+  case ERT_START_NPU:
+  case ERT_START_NPU_PREEMPT:
+  case ERT_START_NPU_PREEMPT_ELF:
+    if (pkt->state == ERT_CMD_STATE_TIMEOUT)
+      ctxHealthData = (struct ert_ctx_health_data*) pkt->data;
+  }
+  return ctxHealthData;
+}
 
 #ifdef __linux__
 #define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
