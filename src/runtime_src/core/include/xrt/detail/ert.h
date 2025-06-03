@@ -590,6 +590,36 @@ struct ert_access_valid_cmd {
 };
 
 /**
+ * struct ert_ctx_health_data: interpretation of payload for an ert packet
+ *                             which has context health data
+ *
+ * @version:          context health data version (current 0.0)
+ * @txn_op_idx:       index of last TXN control code executed
+ * @ctx_pc:           program counter for that context
+ * @fatal_error_type: the fatal error type if context crashes
+ * @aie_data_size:    size in bytes of the aie_data
+ * @aie_data:         binary blob dumpped from aie partition
+ *
+ * Field              Default value  Comment
+ * txn_op_idx:        0xFFFFFFFF     there is no txn control code is running or the
+ *                                   last txn control code op idx is not captured
+ * ctx_pc:            0              context .text program counter is not captured
+ * fatal_error_type:  0              no fatal error or fatal error is not captured
+ * aie_data_size:     0              aie register data is not captured
+ *
+ * Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
+ * packet starting from payload will have the following information.
+ */
+struct ert_ctx_health_data {
+  uint32_t version;
+  uint32_t txn_op_idx;
+  uint32_t ctx_pc;
+  uint32_t fatal_error_type;
+  uint32_t aie_data_size;
+  uint32_t aie_data[];
+};
+
+/**
  * ERT command state
  *
  * @ERT_CMD_STATE_NEW:         Set by host before submitting a command to
@@ -1166,6 +1196,19 @@ static inline uint64_t
 get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
 {
   return (get_ert_regmap_end(pkt) - get_ert_regmap_begin(pkt)) * sizeof(uint32_t);
+}
+/* ert_ctx_health_data structure is valid only if the ert opcode is START_NPU_* and cmd state is ERT_CMD_STATE_TIMEOUT*/
+static inline struct ert_ctx_health_data*
+get_ert_ctx_health_data(struct ert_packet* pkt)
+{
+  switch (pkt->opcode) {
+  case ERT_START_NPU:
+  case ERT_START_NPU_PREEMPT:
+  case ERT_START_NPU_PREEMPT_ELF:
+    if (pkt->state == ERT_CMD_STATE_TIMEOUT)
+      return (struct ert_ctx_health_data*) pkt->data;
+  }
+  return NULL;
 }
 
 #ifdef __linux__
