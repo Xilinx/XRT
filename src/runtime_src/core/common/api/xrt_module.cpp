@@ -735,13 +735,15 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
+  // ELF can have  multiple ctrl codes
+  // when user doesn't provide sub kernel name while running the kernel
+  // then by default 1st ctrl code is run.
+  std::string m_default_id;
+
 protected:
   xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
   uint8_t m_os_abi = Elf_Amd_Aie2p;
-  // when ELF has multiple ctrl codes and user doesn't provide
-  // id while running the kernel then by default 1st ctrl code is run
-  std::string m_default_id;
   std::map<std::string, patcher> m_arg2patcher;
 
   // rela->addend have offset to base-bo-addr info along with schema
@@ -818,6 +820,17 @@ public:
   number_of_arg_patchers() const override
   {
     return m_arg2patcher.size();
+  }
+
+  void set_default_id(const std::string& id)
+  {
+    m_default_id = id;
+  }
+
+  std::string
+  get_default_ctrl_id() const override
+  {
+    return m_default_id;
   }
 };
 
@@ -999,14 +1012,18 @@ class module_elf_aie2p : public module_elf
     }
   }
 
-  std::string
+  void
   initialize_default_id()
   {
-    if (!m_instr_buf_map.empty())
-      return m_instr_buf_map.begin()->first;
+    if (!m_instr_buf_map.empty()) {
+      set_default_id(m_instr_buf_map.begin()->first);
+      return;
+    }
 
-    if (!m_ctrl_packet_map.empty())
-      return m_ctrl_packet_map.begin()->first;
+    if (!m_ctrl_packet_map.empty()) {
+      set_default_id(m_ctrl_packet_map.begin()->first);
+      return;
+    }
 
     throw std::runtime_error("default id can't be found\n");
   }
@@ -1184,7 +1201,7 @@ public:
     initialize_kernel_info();
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
-    m_default_id = initialize_default_id();
+    initialize_default_id();
 
     m_save_buf_exist = initialize_save_restore_buf(m_save_buf,
                                                    m_save_buf_sec_idx, 
@@ -1294,12 +1311,6 @@ public:
     if (m_kernel_info.props.name.empty())
       throw std::runtime_error("No kernel info available, wrong ELF passed\n");
     return m_kernel_info;
-  }
-
-  std::string
-  get_default_ctrl_id() const override
-  {
-    return m_default_id;
   }
 };
 

@@ -1323,7 +1323,7 @@ private:
   size_t num_cumasks = 1;              // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
-  std::string m_ctrl_code_id = "";     // ID to identify which ctrl code to load from elf
+  std::string m_ctrl_code_id;          // ID to identify which ctrl code to load from elf
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1513,11 +1513,11 @@ private:
   }
 
   std::string
-  get_ctrlcode_id(const std::string& name)
+  get_ctrlcode_id(const std::string& id)
   {
     // kernel name will be of format - <kernel_name>:<ctrl code index>
-    if (auto i = name.find(":"); i != std::string::npos)
-      return name.substr(i + 1);
+    if (auto i = id.find(":"); i != std::string::npos)
+      return id.substr(i + 1);
 
     return xrt_core::module_int::get_default_ctrl_id(m_module);
   }
