@@ -22,15 +22,16 @@ file(GLOB AIE_TRACE_CONFIG_FILES
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_config.h"
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_config.cpp"
 )
-file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
-  "${PROFILE_DIR}/device/common/*.h"
-  "${PROFILE_DIR}/device/common/*.cpp"
-)
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/client")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
+
+  file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
+    "${PROFILE_DIR}/device/common/*.h"
+    "${PROFILE_DIR}/device/common/*.cpp"
+  )
 
   file(GLOB AIE_TRACE_COMPONENT_FILES
     "${OFFLOAD_DIR}/*.h"

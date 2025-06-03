@@ -120,7 +120,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. AIE Event Trace is not yet supported for this combination.");
     return;
   #else
-    xrt_core::message::send(severity_level::warning, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. AIE Event Trace should be available.");
+    xrt_core::message::send(severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. AIE Event Trace should be available.");
   #endif
     }
 #endif
