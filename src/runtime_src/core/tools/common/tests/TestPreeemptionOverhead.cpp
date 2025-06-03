@@ -131,6 +131,8 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   
+  const auto layer_boundary = xrt_core::device_query_default<xq::preemption>(dev.get(), 0);
+
   if(XBUtilities::getVerbose())
     XBU::logger(ptree, "Details", "Using ELF");
 
@@ -177,5 +179,7 @@ TestPreemptionOverhead::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", XBU::test_token_passed);
     }
   }
+  // Restore the original preemption state
+  xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
   return ptree;
 }
