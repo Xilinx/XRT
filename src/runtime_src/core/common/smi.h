@@ -4,7 +4,6 @@
 #pragma once
 // Local include files
 #include "config.h"
-#include "device.h"
 #include "query_requests.h"
 
 // 3rd Party Library - Include Files
@@ -190,15 +189,15 @@ public:
 class smi_hardware_config {
 public:
   enum class hardware_type {
-    PHX, // Phoenix
-    STXA0, // StrixA0
-    STXB0, // Strix B0
-    STXH, // Strix Halo
-    KRK1, // Krackan
-    NPU3_F1, // XXXXX
-    NPU3_F2, // XXXXX
-    NPU3_F3, // XXXXX
-    UNKNOWN // Unknown hardware type
+    phx, // Phoenix
+    stxA0, // StrixA0
+    stxB0, // Strix B0
+    stxH, // Strix Halo
+    krk1, // Krackan
+    npu3_f1, // XXXXX
+    npu3_f2, // XXXXX
+    npu3_f3, // XXXXX
+    unknown // Unknown hardware type
   };
 
   XRT_CORE_COMMON_EXPORT

@@ -153,14 +153,14 @@ smi_hardware_config()
 {
   // Initialize the hardware map
   hardware_map = {
-    {{0x1502, 0x00}, hardware_type::PHX},
-    {{0x17f0, 0x00}, hardware_type::STXA0},
-    {{0x17f0, 0x10}, hardware_type::STXB0},
-    {{0x17f0, 0x11}, hardware_type::STXH},
-    {{0x17f0, 0x20}, hardware_type::KRK1},
-    {{0x17f1, 0x00}, hardware_type::NPU3_F1}, 
-    {{0x17f1, 0x01}, hardware_type::NPU3_F2},
-    {{0x17f1, 0x10}, hardware_type::NPU3_F3}
+    {{0x1502, 0x00}, hardware_type::phx},
+    {{0x17f0, 0x00}, hardware_type::stxA0},
+    {{0x17f0, 0x10}, hardware_type::stxB0},
+    {{0x17f0, 0x11}, hardware_type::stxH},
+    {{0x17f0, 0x20}, hardware_type::krk1},
+    {{0x17f1, 0x00}, hardware_type::npu3_f1}, 
+    {{0x17f1, 0x01}, hardware_type::npu3_f2},
+    {{0x17f1, 0x10}, hardware_type::npu3_f3}
   };
 }
 
@@ -169,7 +169,9 @@ smi_hardware_config::
 get_hardware_type(const xq::pcie_id::data& dev) const 
 {
   auto it = hardware_map.find(dev);
-  return (it != hardware_map.end()) ? it->second : hardware_type::UNKNOWN;
+  return (it != hardware_map.end()) 
+      ? it->second 
+      : hardware_type::unknown;
 }
 
 tuple_vector
