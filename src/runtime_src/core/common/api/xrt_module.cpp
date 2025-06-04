@@ -666,6 +666,12 @@ public:
   {
     throw std::runtime_error("Not supported");
   }
+
+  virtual std::string
+  get_default_ctrl_id() const
+  {
+    throw std::runtime_error("Not supported");
+  }
 };
 
 // class module_userptr - Opaque userptr provided by application
@@ -982,7 +988,7 @@ class module_elf_aie2p : public module_elf
       // Instruction, control pkt buffers are in section of type .ctrltext.* .ctrldata.*.
       if (name.find(patcher::to_string(type)) == std::string::npos)
         continue;
-      
+
       auto id = get_section_name_id(name);
       buf.append_section_data(sec.get());
       map.emplace(id, std::pair{sec_index, buf});
@@ -1264,13 +1270,28 @@ public:
     return {m_restore_buf_sec_idx, m_restore_buf};
   }
 
-  virtual const xrt_core::module_int::kernel_info&
+  const xrt_core::module_int::kernel_info&
   get_kernel_info() const override
   {
     // sanity to check if kernel info is available by checking kernel name is empty
     if (m_kernel_info.props.name.empty())
       throw std::runtime_error("No kernel info available, wrong ELF passed\n");
     return m_kernel_info;
+  }
+
+  std::string
+  get_default_ctrl_id() const override
+  {
+    // If user doesn't provide ctrl code id or sub kernel
+    // we default to first entry if its the only availble sub kernel
+    // otherwise an exception is thrown
+    if (m_instr_buf_map.size() == 1)
+      return m_instr_buf_map.begin()->first;
+
+    if (m_ctrl_packet_map.size() == 1)
+      return m_ctrl_packet_map.begin()->first;
+
+    throw std::runtime_error("Can not get default kernel\n");
   }
 };
 
@@ -2371,6 +2392,12 @@ xrt::module
 create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id)
 {
   return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id)};
+}
+
+std::string
+get_default_ctrl_id(const xrt::module& module)
+{
+  return module.get_handle()->get_default_ctrl_id();
 }
 
 uint32_t*

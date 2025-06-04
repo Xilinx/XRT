@@ -1512,14 +1512,14 @@ private:
     return data;  // no skipping
   }
 
-  static std::string
-  get_ctrlcode_id(const std::string& name)
+  std::string
+  get_ctrlcode_id(const std::string& id)
   {
     // kernel name will be of format - <kernel_name>:<ctrl code index>
-    if (auto i = name.find(":"); i != std::string::npos)
-      return name.substr(i + 1);
+    if (auto i = id.find(":"); i != std::string::npos)
+      return id.substr(i + 1);
 
-    return ""; // default case
+    return xrt_core::module_int::get_default_ctrl_id(m_module);
   }
 
   static uint32_t

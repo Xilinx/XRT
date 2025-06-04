@@ -47,6 +47,12 @@ struct kernel_info {
 xrt::module
 create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id);
 
+// If the user does not specify a sub-kernel ID,
+// select it automatically only if exactly one sub-kernel exists.
+// Otherwise, throw an exception
+std::string
+get_default_ctrl_id(const xrt::module& module);
+
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
 uint32_t*
