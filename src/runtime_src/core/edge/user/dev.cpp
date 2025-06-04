@@ -1,31 +1,10 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights
 
-#include <iostream>
-#include <sstream>
-#include <cstring>
-#include <filesystem>
-#include <regex>
-#include "zynq_dev.h"
-
-#include "plugin/xdp/aie_status.h"
+#include "dev.h"
 
 static std::fstream sysfs_open_path(const std::string& path, std::string& err,
-    bool write, bool binary)
+    		                                  bool write, bool binary)
 {
   std::fstream fs;
   std::ios::openmode mode = write ? std::ios::out : std::ios::in;
@@ -46,15 +25,17 @@ static std::fstream sysfs_open_path(const std::string& path, std::string& err,
   return fs;
 }
 
+namespace xrt_core::edge {
+
 std::string
-zynq_device::
+dev::
 get_sysfs_path(const std::string& entry)
 {
   return sysfs_root + entry;
 }
 
 std::fstream
-zynq_device::
+dev::
 sysfs_open(const std::string& entry,
     std::string& err, bool write, bool binary)
 {
@@ -62,7 +43,7 @@ sysfs_open(const std::string& entry,
 }
 
 void
-zynq_device::
+dev::
 sysfs_put(const std::string& entry, std::string& err_msg,
     const std::string& input)
 {
@@ -73,7 +54,7 @@ sysfs_put(const std::string& entry, std::string& err_msg,
 }
 
 void
-zynq_device::
+dev::
 sysfs_put(const std::string& entry, std::string& err_msg,
     const std::vector<char>& buf)
 {
@@ -84,7 +65,7 @@ sysfs_put(const std::string& entry, std::string& err_msg,
 }
 
 void
-zynq_device::
+dev::
 sysfs_get(const std::string& entry, std::string& err_msg,
     std::vector<char>& buf)
 {
@@ -96,7 +77,7 @@ sysfs_get(const std::string& entry, std::string& err_msg,
 }
 
 void
-zynq_device::
+dev::
 sysfs_get(const std::string& entry, std::string& err_msg,
     std::vector<std::string>& sv)
 {
@@ -111,7 +92,7 @@ sysfs_get(const std::string& entry, std::string& err_msg,
 }
 
 void
-zynq_device::
+dev::
 sysfs_get(const std::string& entry, std::string& err_msg,
     std::vector<uint64_t>& iv)
 {
@@ -146,7 +127,7 @@ sysfs_get(const std::string& entry, std::string& err_msg,
 }
 
 void
-zynq_device::
+dev::
 sysfs_get(const std::string& entry, std::string& err_msg,
     std::string& s)
 {
@@ -158,26 +139,7 @@ sysfs_get(const std::string& entry, std::string& err_msg,
   else
     s = ""; // default value
 }
-
-zynq_device*
-zynq_device::
-get_dev()
-{
-  // This is based on the fact that on edge devices, we only have one DRM
-  // device, which is named as renderD* (eg: renderD128).
-  // This path is reliable. It is the same for ARM32 and ARM64.
-  static zynq_device dev("/sys/class/drm/" + get_render_devname() + "/device/");
-  return &dev;
-}
-
-zynq_device::zynq_device(const std::string& root) : sysfs_root(root)
-{
-}
-
-zynq_device::~zynq_device()
-{
-  xdp::aie::sts::end_poll(nullptr);
-}
+}//namespace xrt_core::edge
 
 std::string
 get_render_devname()
@@ -196,7 +158,7 @@ get_render_devname()
         continue;
 
       if (std::filesystem::is_symlink(itr->path()))
-	render_devname = std::filesystem::read_symlink(itr->path()).filename().string();
+        render_devname = std::filesystem::read_symlink(itr->path()).filename().string();
 
        break;
      }

@@ -29,14 +29,12 @@ set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
 set(AIE_BUILD_DEFINED "$<BOOL:DEFINED XRT_AIE_BUILD>")
 set(VE2_DEFINED "$<BOOL:DEFINED EDGE_VE2>")
 set(AIE_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_user_aie_object>")
-set(VE2_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_ve2_objects>")
 
 add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object>>
-  $<$<AND:${VE2_DEFINED},${VE2_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_ve2_objects>>
   )
 
 add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
@@ -44,7 +42,6 @@ add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object>>
-  $<$<AND:${VE2_DEFINED},${VE2_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_ve2_objects>>
   )
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
