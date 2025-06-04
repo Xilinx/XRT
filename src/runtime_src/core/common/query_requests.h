@@ -493,6 +493,11 @@ struct pcie_id : request
   struct data {
     uint16_t device_id;
     uint8_t revision_id;
+
+    // Define the < operator for comparison
+    bool operator<(const data& other) const {
+      return std::tie(device_id, revision_id) < std::tie(other.device_id, other.revision_id);
+    }
   };
 
   using result_type = data;

@@ -91,7 +91,7 @@ get_option_options() const
 
 std::string 
 smi::
-build_smi_config() const 
+build_json() const 
 {
   ptree config;
   ptree subcommands;
@@ -103,7 +103,7 @@ build_smi_config() const
   config.add_child("subcommands", subcommands);
 
   std::ostringstream oss;
-  boost::property_tree::write_json(oss, config, true); // Pretty print with true
+  boost::property_tree::write_json(oss, config, true); 
   return oss.str();
 }
 
@@ -146,6 +146,32 @@ instance()
 {
   static smi instance;
   return &instance;
+}
+
+smi_hardware_config::
+smi_hardware_config()
+{
+  // Initialize the hardware map
+  hardware_map = {
+    {{0x1502, 0x00}, hardware_type::phx},
+    {{0x17f0, 0x00}, hardware_type::stxA0},
+    {{0x17f0, 0x10}, hardware_type::stxB0},
+    {{0x17f0, 0x11}, hardware_type::stxH},
+    {{0x17f0, 0x20}, hardware_type::krk1},
+    {{0x17f1, 0x00}, hardware_type::npu3_f1}, 
+    {{0x17f1, 0x01}, hardware_type::npu3_f2},
+    {{0x17f1, 0x10}, hardware_type::npu3_f3}
+  };
+}
+
+smi_hardware_config::hardware_type
+smi_hardware_config::
+get_hardware_type(const xq::pcie_id::data& dev) const 
+{
+  auto it = hardware_map.find(dev);
+  return (it != hardware_map.end()) 
+      ? it->second 
+      : hardware_type::unknown;
 }
 
 tuple_vector
