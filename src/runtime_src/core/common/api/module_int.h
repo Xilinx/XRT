@@ -47,9 +47,9 @@ struct kernel_info {
 xrt::module
 create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id);
 
-// ELF can have multiple ctrl codes and when user doesn't provide
-// id while running the kernel then by default 1st ctrl code is run
-// This function returns the 1st available ctrl code id
+// If the user does not specify a sub-kernel ID,
+// select it automatically only if exactly one sub-kernel exists.
+// Otherwise, throw an exception
 std::string
 get_default_ctrl_id(const xrt::module& module);
 

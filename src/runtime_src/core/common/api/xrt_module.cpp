@@ -670,7 +670,7 @@ public:
   virtual std::string
   get_default_ctrl_id() const
   {
-    return {};
+    throw std::runtime_error("Not supported");
   }
 };
 
@@ -735,11 +735,6 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
-  // ELF can have  multiple ctrl codes
-  // when user doesn't provide sub kernel name while running the kernel
-  // then by default 1st ctrl code is run.
-  std::string m_default_id;
-
 protected:
   xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
@@ -821,17 +816,6 @@ public:
   {
     return m_arg2patcher.size();
   }
-
-  void set_default_id(const std::string& id)
-  {
-    m_default_id = id;
-  }
-
-  std::string
-  get_default_ctrl_id() const override
-  {
-    return m_default_id;
-  }
 };
 
 // module class for ELFs with os_abi - Elf_Amd_Aie2p & ELF_Amd_Aie2p_config
@@ -841,14 +825,14 @@ class module_elf_aie2p : public module_elf
   // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
   // sections will be of format .ctrltext.* where .* has id of that section type
   // Below maps has this id as key and value is pair of <section index, data buffer>
-  std::unordered_map<std::string, std::pair<uint32_t, instr_buf>> m_instr_buf_map;
-  std::unordered_map<std::string, std::pair<uint32_t, control_packet>> m_ctrl_packet_map;
+  std::map<std::string, std::pair<uint32_t, instr_buf>> m_instr_buf_map;
+  std::map<std::string, std::pair<uint32_t, control_packet>> m_ctrl_packet_map;
 
   // Also these new Elfs have multiple PDI sections of format .pdi.*
   // Below map has pdi section symbol name as key and section data as value
   std::map<std::string, buf> m_pdi_buf_map;
   // map storing pdi symbols that needs patching in ctrl codes
-  std::unordered_map<std::string, std::unordered_set<std::string>> m_ctrl_pdi_map;
+  std::map<std::string, std::unordered_set<std::string>> m_ctrl_pdi_map;
 
   buf m_save_buf;
   uint32_t m_save_buf_sec_idx = UINT32_MAX;
@@ -995,8 +979,7 @@ class module_elf_aie2p : public module_elf
   // about order of sections in the ELF file.
   template<typename buf_type>
   void
-  initialize_buf(xrt_core::patcher::buf_type type,
-                 std::unordered_map<std::string, std::pair<uint32_t, buf_type>>& map)
+  initialize_buf(xrt_core::patcher::buf_type type, std::map<std::string, std::pair<uint32_t, buf_type>>& map)
   {
     for (const auto& sec : m_elfio.sections) {
       auto name = sec->get_name();
@@ -1010,22 +993,6 @@ class module_elf_aie2p : public module_elf
       buf.append_section_data(sec.get());
       map.emplace(id, std::pair{sec_index, buf});
     }
-  }
-
-  void
-  initialize_default_id()
-  {
-    if (!m_instr_buf_map.empty()) {
-      set_default_id(m_instr_buf_map.begin()->first);
-      return;
-    }
-
-    if (!m_ctrl_packet_map.empty()) {
-      set_default_id(m_ctrl_packet_map.begin()->first);
-      return;
-    }
-
-    throw std::runtime_error("default id can't be found\n");
   }
 
   void
@@ -1201,7 +1168,6 @@ public:
     initialize_kernel_info();
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
-    initialize_default_id();
 
     m_save_buf_exist = initialize_save_restore_buf(m_save_buf,
                                                    m_save_buf_sec_idx, 
@@ -1311,6 +1277,21 @@ public:
     if (m_kernel_info.props.name.empty())
       throw std::runtime_error("No kernel info available, wrong ELF passed\n");
     return m_kernel_info;
+  }
+
+  std::string
+  get_default_ctrl_id() const override
+  {
+    // If user doesn't provide ctrl code id or sub kernel
+    // we default to first entry if its the only availble sub kernel
+    // otherwise an exception is thrown
+    if (m_instr_buf_map.size() == 1)
+      return m_instr_buf_map.begin()->first;
+
+    if (m_ctrl_packet_map.size() == 1)
+      return m_ctrl_packet_map.begin()->first;
+
+    throw std::runtime_error("Can not get default kernel\n");
   }
 };
 
