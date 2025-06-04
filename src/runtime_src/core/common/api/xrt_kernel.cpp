@@ -1848,7 +1848,7 @@ public:
 // Multiple run objects against the same kernel object can be created
 // and submitted for execution concurrently.  Each run object manages
 // its own execution buffer (ert command object)
-class run_impl
+class run_impl : public std::enable_shared_from_this<run_impl>
 {
   friend class mailbox_impl;
   using ipctx = std::shared_ptr<ip_context>;
@@ -2222,6 +2222,18 @@ public:
   run_impl& operator=(run_impl&) = delete;
   run_impl& operator=(run_impl&&) = delete;
 
+  std::shared_ptr<run_impl>
+  get_shared_ptr()
+  {
+    return shared_from_this();
+  }
+
+  std::shared_ptr<run_impl>
+  get_mutable_shared_ptr() const
+  {
+    return std::const_pointer_cast<run_impl>(shared_from_this());
+  }
+
   kernel_impl*
   get_kernel() const
   {
@@ -2491,8 +2503,8 @@ public:
   {
     // don't bother if command is done by the time abort is called
     if (cmd->is_done()) {
-      if (cmd->get_state() == ERT_CMD_STATE_NEW)
-        throw xrt_core::error("Cannot abort command that wasn't started");
+      if (cmd->get_state() == ERT_CMD_STATE_NEW) 
+       throw xrt_core::error("Cannot abort command that wasn't started");
       return cmd->get_state();
     }
 
@@ -2549,6 +2561,21 @@ public:
     return state;
   }
 
+  void
+  throw_command_error(ert_cmd_state state) const
+  {
+    auto epkt = get_ert_packet();
+    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+    
+    switch (epkt->opcode) {
+    case ERT_START_NPU:
+    case ERT_START_NPU_PREEMPT:
+    case ERT_START_NPU_PREEMPT_ELF:
+      throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
+    default:
+      throw xrt::run::command_error(state, msg);
+    }
+  }
 
   // wait() - wait for execution to complete
   // Return std::cv_status::timeout on timeout
@@ -2571,21 +2598,20 @@ public:
 
     // dump dtrace buffer if ini option is enabled
     // here dtrace is dumped in both passing and timeout cases
-    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
-    if (!dtrace_lib_path.empty())
+    static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
+    if (dtrace_enabled && m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
 
-    if (state == ERT_CMD_STATE_COMPLETED) {
-      m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-      static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-      if (dump && m_module)
-        xrt_core::module_int::dump_scratchpad_mem(m_module);
+    if (state != ERT_CMD_STATE_COMPLETED)
+      throw_command_error(state);
 
-      return std::cv_status::no_timeout;
-    }
+    // COMPLETED
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump && m_module)
+      xrt_core::module_int::dump_scratchpad_mem(m_module);
 
-    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
-    throw xrt::run::command_error(state, msg);
+    return std::cv_status::no_timeout;
   }
 
   // state() - get current execution state
@@ -3001,14 +3027,8 @@ public:
   xrt::detail::span<const uint32_t>  
   get_aie_data() const
   {
-    // placeholder
-    struct ert_packet_ctx_health { uint32_t aie_data_size = 0; uint32_t* aie_data = nullptr;};
-    
     auto run_impl = m_run.get_handle();
-    auto epkt = run_impl->get_ert_packet();
-    auto ctx_health = reinterpret_cast<const ert_packet_ctx_health*>(epkt->data);
-    
-    // implement sanity checks before returning
+    auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
     return {ctx_health->aie_data, ctx_health->aie_data_size};
   }
 };
@@ -3169,6 +3189,20 @@ class runlist_impl
     return static_cast<ert_cmd_state>(pkt->state);
   }
 
+  void
+  throw_command_error(const xrt::run& run, ert_cmd_state state) const
+  {
+    auto epkt = run.get_ert_packet();
+    switch (epkt->opcode) {
+    case ERT_START_NPU:
+    case ERT_START_NPU_PREEMPT:
+    case ERT_START_NPU_PREEMPT_ELF:
+      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
+    default:
+      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+    }
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3213,7 +3247,8 @@ class runlist_impl
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
       set_run_state(run, state);
-      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+
+      throw_command_error(run, state);
     }
 
     return std::cv_status::no_timeout;
