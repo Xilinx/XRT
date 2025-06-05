@@ -57,8 +57,8 @@ using json = nlohmann::json;
 namespace sfs = std::filesystem;
 
 namespace {
-static bool g_progress = false;
-static uint32_t g_iterations = 0;
+static bool g_progress = false;   // NOLINT
+static uint32_t g_iterations = 0; // NOLINT
 
 // Touch up recipe(s)
 // Return parsed / modified json as a json string
