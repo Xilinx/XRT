@@ -481,8 +481,8 @@ public:
   // Get raw instruction buffer data for all columns or for
   // single partition.  The returned vector has the control
   // code as extracted from ELF or userptr.
-  virtual const std::vector<ctrlcode>&
-  get_data() const
+  virtual std::pair<uint32_t, const std::vector<ctrlcode>&>
+  get_data(const std::string& /*id*/ = "") const
   {
     throw std::runtime_error("Not supported");
   }
@@ -554,7 +554,7 @@ public:
   }
 
   virtual const buf&
-  get_dump_buf() const
+  get_dump_buf(const std::string& /*id*/ = "") const
   {
     throw std::runtime_error("Not supported");
   }
@@ -701,10 +701,10 @@ public:
     : module_userptr(static_cast<const char*>(userptr), sz, uuid)
   {}
 
-  const std::vector<ctrlcode>&
-  get_data() const override
+  std::pair<uint32_t, const std::vector<ctrlcode>&>
+  get_data(const std::string& /*id*/) const override
   {
-    return m_ctrlcode;
+    return {0, m_ctrlcode};
   }
 
   std::pair<uint32_t, const instr_buf&>
@@ -735,6 +735,10 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
+  // Elf contains kernel signature in .symtab section
+  // kernel_info contains kernel name, args constructed from signature
+  xrt_core::module_int::kernel_info m_kernel_info;
+
 protected:
   xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
@@ -753,6 +757,102 @@ protected:
     , m_elfio(xrt_core::elf_int::get_elfio(m_elf))
     , m_os_abi(m_elfio.get_os_abi())
   {}
+
+  std::string
+  get_kernel_signature()
+  {
+    static constexpr const char* symtab_section_name {".symtab"};
+    std::string kernel_signature = "";
+
+    ELFIO::section* symtab = m_elfio.sections[symtab_section_name];
+    if (!symtab)
+      return kernel_signature; // elf doesn't have .symtab section, kernel_signature will be empty string
+
+    // Get the symbol table
+    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
+    // Iterate over all symbols
+    for (ELFIO::Elf_Xword i = 0; i < symbols.get_symbols_num(); ++i) {
+      std::string name;
+      ELFIO::Elf64_Addr value;
+      ELFIO::Elf_Xword size;
+      unsigned char bind;
+      unsigned char type;
+      ELFIO::Elf_Half section_index;
+      unsigned char other;
+
+      // Read symbol data
+      if (symbols.get_symbol(i, name, value, size, bind, type, section_index, other)) {
+        // there will be only 1 kernel signature symbol entry in .symtab section whose
+        // type is FUNC
+        if (type == ELFIO::STT_FUNC) {
+          kernel_signature = demangle(name);
+          break;
+        }
+      }
+    }
+    return kernel_signature;
+  }
+
+  std::vector<std::string>
+  split(const std::string& s, char delimiter)
+  {
+    std::vector<std::string> tokens;
+    std::stringstream ss(s);
+    std::string item;
+
+    while (getline(ss, item, delimiter))
+      tokens.push_back(item);
+
+    return tokens;
+  }
+
+  std::vector<xrt_core::xclbin::kernel_argument>
+  construct_kernel_args(const std::string& signature)
+  {
+    std::vector<xrt_core::xclbin::kernel_argument> args;
+
+    // kernel signature - name(argtype, argtype ...)
+    size_t start_pos = signature.find('(');
+    size_t end_pos = signature.find(')', start_pos);
+
+    if (start_pos == std::string::npos || end_pos == std::string::npos || start_pos > end_pos)
+      throw std::runtime_error("Failed to construct kernel args");
+
+    std::string argstring = signature.substr(start_pos + 1, end_pos - start_pos - 1);
+    std::vector<std::string> argstrings = split(argstring, ',');
+
+    size_t count = 0;
+    size_t offset = 0;
+    for (const std::string& str : argstrings) {
+      xrt_core::xclbin::kernel_argument arg;
+      arg.name = "argv" + std::to_string(count);
+      arg.hosttype = "no-type";
+      arg.port = "no-port";
+      arg.index = count;
+      arg.offset = offset;
+      arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
+      // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
+      arg.type = (str.find('*') != std::string::npos)
+        ? xrt_core::xclbin::kernel_argument::argtype::global
+        : xrt_core::xclbin::kernel_argument::argtype::scalar;
+
+      // At present only global args are supported
+      // TODO : Add support for scalar args in ELF flow
+      if (arg.type == xrt_core::xclbin::kernel_argument::argtype::scalar)
+        throw std::runtime_error("scalar args are not yet supported for this kind of kernel");
+      else {
+        // global arg
+        static constexpr size_t global_arg_size = 0x8;
+        arg.size = global_arg_size;
+
+        offset += global_arg_size;
+      }
+
+      args.emplace_back(arg);
+      count++;
+    }
+    return args;
+  }
 
   template <typename T>
   bool
@@ -791,6 +891,34 @@ protected:
   }
 
 public:
+  void
+  initialize_kernel_info()
+  {
+    auto kernel_signature = get_kernel_signature();
+    // extract kernel name
+    size_t pos = kernel_signature.find('(');
+    if (pos == std::string::npos)
+      return; // Elf doesn't contain kernel info
+
+    std::string kernel_name = kernel_signature.substr(0, pos);
+    // construct kernel args and properties and cache them
+    // this info is used at the time of xrt::kernel object creation
+    m_kernel_info.args = construct_kernel_args(kernel_signature);
+
+    // fill kernel properties
+    m_kernel_info.props.name = kernel_name;
+    m_kernel_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+  }
+
+  const xrt_core::module_int::kernel_info&
+  get_kernel_info() const override
+  {
+    // sanity to check if kernel info is available by checking kernel name is empty
+    if (m_kernel_info.props.name.empty())
+      throw std::runtime_error("No kernel info available, wrong ELF passed\n");
+    return m_kernel_info;
+  }
+
   bool
   patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch,
            xrt_core::patcher::buf_type type, uint32_t sec_index, bool first) override
@@ -849,8 +977,6 @@ class module_elf_aie2p : public module_elf
   std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
   std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
 
-  xrt_core::module_int::kernel_info m_kernel_info;
-
   static std::string
   get_section_name_id(const std::string& name)
   {
@@ -858,121 +984,6 @@ class module_elf_aie2p : public module_elf
     // Elf_Amd_Aie2p_config has sections .sec_name.*
     auto pos = name.find_last_of(".");
     return (pos == 0) ? "" : name.substr(pos + 1);
-  }
-
-  std::string
-  get_kernel_signature()
-  {
-    static constexpr const char* symtab_section_name {".symtab"};
-    std::string kernel_signature = "";
-
-    ELFIO::section* symtab = m_elfio.sections[symtab_section_name];
-    if (!symtab)
-      return kernel_signature; // elf doesn't have .symtab section, kernel_signature will be empty string
-
-    // Get the symbol table
-    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
-    // Iterate over all symbols
-    for (ELFIO::Elf_Xword i = 0; i < symbols.get_symbols_num(); ++i) {
-      std::string name;
-      ELFIO::Elf64_Addr value;
-      ELFIO::Elf_Xword size;
-      unsigned char bind;
-      unsigned char type;
-      ELFIO::Elf_Half section_index;
-      unsigned char other;
-
-      // Read symbol data
-      if (symbols.get_symbol(i, name, value, size, bind, type, section_index, other)) {
-        // there will be only 1 kernel signature symbol entry in .symtab section whose
-        // type is FUNC
-        if (type == ELFIO::STT_FUNC) {
-          kernel_signature = demangle(name);
-          break;
-        }
-      }
-    }
-    return kernel_signature;
-  }
-
-  static std::vector<std::string>
-  split(const std::string& s, char delimiter)
-  {
-    std::vector<std::string> tokens;
-    std::stringstream ss(s);
-    std::string item;
-
-    while (getline(ss, item, delimiter))
-      tokens.push_back(item);
-
-    return tokens;
-  }
-
-  static std::vector<xrt_core::xclbin::kernel_argument>
-  construct_kernel_args(const std::string& signature)
-  {
-    std::vector<xrt_core::xclbin::kernel_argument> args;
-
-    // kernel signature - name(argtype, argtype ...)
-    size_t start_pos = signature.find('(');
-    size_t end_pos = signature.find(')', start_pos);
-
-    if (start_pos == std::string::npos || end_pos == std::string::npos || start_pos > end_pos)
-      throw std::runtime_error("Failed to construct kernel args");
-
-    std::string argstring = signature.substr(start_pos + 1, end_pos - start_pos - 1);
-    std::vector<std::string> argstrings = split(argstring, ',');
-
-    size_t count = 0;
-    size_t offset = 0;
-    for (const std::string& str : argstrings) {
-      xrt_core::xclbin::kernel_argument arg;
-      arg.name = "argv" + std::to_string(count);
-      arg.hosttype = "no-type";
-      arg.port = "no-port";
-      arg.index = count;
-      arg.offset = offset;
-      arg.dir = xrt_core::xclbin::kernel_argument::direction::input;
-      // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
-      arg.type = (str.find('*') != std::string::npos)
-        ? xrt_core::xclbin::kernel_argument::argtype::global
-        : xrt_core::xclbin::kernel_argument::argtype::scalar;
-
-      // At present only global args are supported
-      // TODO : Add support for scalar args in ELF flow
-      if (arg.type == xrt_core::xclbin::kernel_argument::argtype::scalar)
-        throw std::runtime_error("scalar args are not yet supported for this kind of kernel");
-      else {
-        // global arg
-        static constexpr size_t global_arg_size = 0x8;
-        arg.size = global_arg_size;
-
-        offset += global_arg_size;
-      }
-
-      args.emplace_back(arg);
-      count++;
-    }
-    return args;
-  }
-
-  void
-  initialize_kernel_info()
-  {
-    auto kernel_signature = get_kernel_signature();
-    // extract kernel name
-    size_t pos = kernel_signature.find('(');
-    if (pos == std::string::npos)
-      return; // Elf doesn't contain kernel info aie2p type
-    std::string kernel_name = kernel_signature.substr(0, pos);
-
-    // construct kernel args and properties and cache them
-    // this info is used at the time of xrt::kernel object creation
-    m_kernel_info.args = construct_kernel_args(kernel_signature);
-
-    // fill kernel properties
-    m_kernel_info.props.name = kernel_name;
-    m_kernel_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
   }
 
   // Extract buffer from ELF sections without assuming anything
@@ -1270,15 +1281,6 @@ public:
     return {m_restore_buf_sec_idx, m_restore_buf};
   }
 
-  const xrt_core::module_int::kernel_info&
-  get_kernel_info() const override
-  {
-    // sanity to check if kernel info is available by checking kernel name is empty
-    if (m_kernel_info.props.name.empty())
-      throw std::runtime_error("No kernel info available, wrong ELF passed\n");
-    return m_kernel_info;
-  }
-
   std::string
   get_default_ctrl_id() const override
   {
@@ -1299,8 +1301,17 @@ public:
 class module_elf_aie2ps : public module_elf
 {
   xrt::aie::program m_program;
-  std::vector<ctrlcode> m_ctrlcodes;
-  buf m_dump_buf; // buffer to hold .dump section used for debug/trace
+
+  // lookup map for section index to group index
+  std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
+  // lookup map for group index to sub kernel or control code id
+  std::unordered_map<uint32_t, std::string> m_grp_to_id_map;
+  // map for holding control code data for each sub kernel
+  // key : control code id, value : pair of group section index, vector of column ctrlcodes
+  std::unordered_map<std::string, std::pair<uint32_t, std::vector<ctrlcode>>> m_ctrlcodes_map;
+
+  // map to hold .dump section of different sub kernels used for debug/trace
+  std::unordered_map<std::string, buf> m_dump_buf_map;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -1311,16 +1322,138 @@ class module_elf_aie2ps : public module_elf
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name)
   {
-    constexpr size_t first_dot = 9;  // .ctrltext.<col>.<page>
-    auto dot1 = name.find_first_of(".", first_dot);
-    auto dot2 = name.find_first_of(".", first_dot + 1);
-    auto col = dot1 != std::string::npos
-      ? std::stoi(name.substr(dot1 + 1, dot2))
-      : 0;
-    auto page = dot2 != std::string::npos
-      ? std::stoi(name.substr(dot2 + 1))
-      : 0;
-    return { col, page };
+    // section name can be
+    // .ctrltext.<col>.<page> or .ctrldata.<col>.<page>
+    // .ctrltext.<col>.<page>.<id> or .ctrldata.<col>.<page>.<id> - newer Elfs
+
+    // Max expected tokens: prefix, col, page, id
+    constexpr size_t col_token_id  = 1;
+    constexpr size_t page_token_id = 2;
+
+    std::vector<std::string> tokens;
+    std::stringstream ss(name);
+    std::string token;
+    while (std::getline(ss, token, '.')) {
+      if (!token.empty())
+        tokens.emplace_back(std::move(token));
+    }
+
+    try {
+      if (tokens.size() <= col_token_id)
+        return {0, 0}; // Only prefix present
+
+      if (tokens.size() == (col_token_id + 1))
+        return {std::stoul(tokens[col_token_id]), 0}; // Only col present
+
+      return {std::stoul(tokens[col_token_id]), std::stoul(tokens[page_token_id])};
+    }
+    catch (const std::exception&) {
+      throw std::runtime_error("Invalid section name passed to parse col or page index\n");
+    }
+  }
+
+  std::string
+  get_subkernel_from_symtab(uint32_t sym_index)
+  {
+    // Iterate over .symtab section and fill the map with
+    ELFIO::section* symtab = m_elfio.sections[".symtab"];
+    if (!symtab)
+      throw std::runtime_error("No .symtab section found\n");
+
+    // Get the symbol table
+    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
+    // Get the symbol at sym_index
+    std::string name;
+    ELFIO::Elf64_Addr value;
+    ELFIO::Elf_Xword size;
+    unsigned char bind;
+    unsigned char type;
+    ELFIO::Elf_Half section_index;
+    unsigned char other;
+
+    // Read symbol data
+    if (symbols.get_symbol(sym_index, name, value, size, bind, type, section_index, other)) {
+      // sub kernel entries will be of type OBJECT
+      if (type != ELFIO::STT_OBJECT)
+        throw std::runtime_error("symbol index doesn't point to sub kernel entry type in .symtab\n");
+
+      return name;
+    }
+
+    throw std::runtime_error(std::string{"Unable to find symbol in .symtab section with index : "}
+        + std::to_string(sym_index));
+  }
+
+  // Function that parses the .group sections in the ELF file
+  // and returns a map with sub kernel id as key and pair of 
+  // this grp section id, vector of section ids that belong to
+  // this group as value
+  std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>>
+  parse_group_sections()
+  {
+    constexpr uint8_t minor_ver_mask = 0xF;
+    constexpr uint8_t group_elf_minor_version = 3;
+
+    std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>> id_sections_map;
+    if ((m_elfio.get_abi_version() & minor_ver_mask) < group_elf_minor_version) {
+      // Older version ELf (< 3) doesn't have .group sections
+      // so using empty string "" as sub kernel id
+      constexpr const char* id = "";
+      std::vector<uint32_t> sec_ids;
+      for (const auto& sec : m_elfio.sections) {
+        auto name = sec->get_name();
+        if ((name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::dump)) == std::string::npos))
+          continue;
+
+        sec_ids.push_back(sec->get_index());
+        // fill the sec_to_grp_map for lookup later
+        // for this kind of ELF we fill UINT32_MAX as there is no group section
+        m_sec_to_grp_map[sec->get_index()] = UINT32_MAX;
+      }
+
+      // fill group index to id map with id as empty string
+      // UINT32_MAX is used for group section index
+      m_grp_to_id_map[UINT32_MAX] = id;
+      id_sections_map.emplace("", std::make_pair(UINT32_MAX, sec_ids));
+    }
+    else {
+      for (const auto& section : m_elfio.sections) {
+        if (section == nullptr || section->get_type() != ELFIO::SHT_GROUP)
+          continue; // not a .group section
+
+        const auto* data = section->get_data();
+        const auto size = section->get_size();
+        auto sec_idx = section->get_index();
+
+        // .group section data will be flags followed by section indices
+        // in this group
+        if (data == nullptr || size < sizeof(ELFIO::Elf_Word))
+          continue;
+
+        // In .group section will point to sub kernel entry in .symtab section
+        auto sec_info = section->get_info();
+        m_grp_to_id_map[sec_idx] = get_subkernel_from_symtab(sec_info);
+
+        const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
+        const auto word_count = size / sizeof(ELFIO::Elf_Word);
+
+        std::vector<uint32_t> members;
+        // skip flags at index 0
+        for (std::size_t i = 1; i < word_count; ++i) {
+          members.push_back(word_data[i]);
+          // fill section index to group index map
+          m_sec_to_grp_map[word_data[i]] = sec_idx;
+        }
+
+        auto sub_kernel_id = m_grp_to_id_map[sec_idx];
+        id_sections_map.emplace(sub_kernel_id, std::make_pair(sec_idx, std::move(members)));
+      }
+    }
+
+    return id_sections_map;
   }
 
   // Extract control code from ELF sections without assuming anything
@@ -1329,7 +1462,7 @@ class module_elf_aie2ps : public module_elf
   // microblaze controller (uC), then create ctrlcode objects from the
   // data.
   void
-  initialize_column_ctrlcode(std::vector<size_t>& pad_offsets)
+  initialize_column_ctrlcode(std::map<std::string, std::vector<size_t>>& pad_offsets)
   {
     // Elf sections for a single page
     struct elf_page
@@ -1338,33 +1471,36 @@ class module_elf_aie2ps : public module_elf
       ELFIO::section* ctrldata = nullptr;
     };
 
-    // Elf sections for a single column, the column control code is
-    // divided into pages of some architecture defined size.
-    struct elf_sections
-    {
-      using page_index = uint32_t;
-      std::map<page_index, elf_page> pages;
-    };
-
     // Elf ctrl code for a partition spanning multiple uC, where each
     // uC has its own control code.  For architectures where a
     // partition is not divided into multiple controllers, there will
     // be just one entry in the associative map.
     // ucidx -> [page -> [ctrltext, ctrldata]]
+    using page_index = uint32_t;
     using uc_index = uint32_t;
-    std::map<uc_index, elf_sections> uc_sections;
+    using uc_sections = std::map<uc_index, std::map<page_index, elf_page>>;
 
-    // Iterate sections in elf, collect ctrltext and ctrldata
-    // per column and page
-    for (const auto& sec : m_elfio.sections) {
-      auto name = sec->get_name();
-      if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos) {
-        auto [ucidx, page] = get_column_and_page(sec->get_name());
-        uc_sections[ucidx].pages[page].ctrltext = sec.get();
-      }
-      else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos) {
-        auto [ucidx, page] = get_column_and_page(sec->get_name());
-        uc_sections[ucidx].pages[page].ctrldata = sec.get();
+    // Elf can have multiple kernel instances
+    // Each instance has its own uc_sections map
+    // key - instance id : value - {grp section id, uc sections}
+    using ctrlcode_map = std::map<std::string, std::pair<uint32_t, uc_sections>>;
+    ctrlcode_map ctrl_map;
+
+    auto id_secs_map = parse_group_sections();
+    // Iterate sections for each sub kernel
+    // collect ctrltext and ctrldata per column and page
+    for (const auto& [id, pair_val] : id_secs_map) {
+      const auto& [grp_id, sec_ids] = pair_val;
+      for (auto sec_idx : sec_ids) {
+        const auto& sec = m_elfio.sections[sec_idx];
+        auto name = sec->get_name();
+        auto [col, page] = get_column_and_page(name);
+        ctrl_map[id].first = grp_id;
+
+        if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos)
+          ctrl_map[id].second[col][page].ctrltext = sec;
+        else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos)
+          ctrl_map[id].second[col][page].ctrldata = sec;
       }
     }
 
@@ -1373,49 +1509,44 @@ class module_elf_aie2ps : public module_elf
     // embedded processor can load a page at a time.  Note, that not
     // all column uC need be used, so account for holes in
     // uc_sections.  Leverage that uc_sections is a std::map and that
-    // std::map stores its elements in ascending order of keys (this
-    // is asserted)
-    static_assert(std::is_same_v<decltype(uc_sections), std::map<uc_index, elf_sections>>, "fix std::map assumption");
-    m_ctrlcodes.resize(uc_sections.empty() ? 0 : uc_sections.rbegin()->first + 1);
-    pad_offsets.resize(m_ctrlcodes.size());
-    for (auto& [ucidx, elf_sects] : uc_sections) {
-      for (auto& [page, page_sec] : elf_sects.pages) {
-        if (page_sec.ctrltext)
-          m_ctrlcodes[ucidx].append_section_data(page_sec.ctrltext);
+    // std::map stores its elements in ascending order of keys
+    for (const auto& [id, pair_val] : ctrl_map) {
+      const auto& [grp_id, uc_sec] = pair_val;
+      m_ctrlcodes_map[id].first = grp_id; // store group section id
+      auto size = uc_sec.empty() ? 0 : uc_sec.rbegin()->first + 1;
+      m_ctrlcodes_map[id].second.resize(size);
+      pad_offsets[id].resize(size);
+      for (auto& [ucidx, elf_sects] : uc_sec) {
+        for (auto& [page, page_sec] : elf_sects) {
+          if (page_sec.ctrltext)
+            m_ctrlcodes_map[id].second[ucidx].append_section_data(page_sec.ctrltext);
 
-        if (page_sec.ctrldata)
-          m_ctrlcodes[ucidx].append_section_data(page_sec.ctrldata);
-
-        m_ctrlcodes[ucidx].pad_to_page(page);
+          if (page_sec.ctrldata)
+            m_ctrlcodes_map[id].second[ucidx].append_section_data(page_sec.ctrldata);
+    
+          m_ctrlcodes_map[id].second[ucidx].pad_to_page(page);
+        }
+        pad_offsets[id][ucidx] = m_ctrlcodes_map[id].second[ucidx].size();
       }
-      pad_offsets[ucidx] = m_ctrlcodes[ucidx].size();
     }
 
     // Append pad section to the control code.
     // This section may contain scratchpad/control-packet etc
-    for (const auto& sec : m_elfio.sections) {
-      auto name = sec->get_name();
-      if (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
-        continue;
-      auto ucidx = get_col_idx(name);
-      m_ctrlcodes[ucidx].append_section_data(sec.get());
+    for (const auto& [id, pair_val] : id_secs_map) {
+      const auto& [grp_id, sec_ids] = pair_val;
+      for (auto sec_idx : sec_ids) {
+        const auto& sec = m_elfio.sections[sec_idx];
+        const auto& name = sec->get_name();
+        if (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
+          continue;
+        auto [col, page] = get_column_and_page(name);
+        m_ctrlcodes_map[id].second[col].append_section_data(sec);
+      }
     }
   }
 
-  // This function returns the column number for which this arg belongs to
-  static int
-  get_col_idx(const std::string& name)
-  {
-    // arg name will be of format - .control_code-.*
-    std::regex expr("\\d+"); // Regular expression to match one or more digits
-    std::smatch match;
-    if (!(std::regex_search(name, match, expr)))
-      throw std::runtime_error("incorrect section name found when parsing ctrlpkt");
-    return std::stoi(match.str());
-  }
-
   void
-  initialize_arg_patchers(const std::vector<ctrlcode>& ctrlcodes, const std::vector<size_t>& pad_offsets)
+  initialize_arg_patchers(const std::map<std::string, std::vector<size_t>>& pad_offsets)
   {
     auto dynsym = m_elfio.sections[".dynsym"];
     auto dynstr = m_elfio.sections[".dynstr"];
@@ -1449,20 +1580,25 @@ class module_elf_aie2ps : public module_elf
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
         auto patch_sec_name = patch_sec->get_name();
+        auto [col, page] = get_column_and_page(patch_sec_name);
+        auto sec_idx = patch_sec->get_index();
+        auto grp_idx = m_sec_to_grp_map[sec_idx];
+        auto ctrl_id = m_grp_to_id_map[grp_idx];
+        auto ctrlcodes = m_ctrlcodes_map[ctrl_id].second;
+
         size_t abs_offset = 0;
         xrt_core::patcher::buf_type buf_type = xrt_core::patcher::buf_type::buf_type_count;
         if (patch_sec_name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) != std::string::npos) {
-          auto col = get_col_idx(patch_sec_name);
-          for (int i = 0; i < col; ++i)
-            abs_offset += ctrlcodes.at(i).size();
-          abs_offset += pad_offsets.at(col);
+          auto pad_off_vec = pad_offsets.at(ctrl_id);
+          for (uint32_t i = 0; i < col; ++i)
+            abs_offset += ctrlcodes[i].size();
+          abs_offset += pad_off_vec[col];
           abs_offset += rela->r_offset;
           buf_type = xrt_core::patcher::buf_type::pad;
         }
         else {
           // section to patch is ctrlcode
           // Get control code section referenced by the symbol, col, and page
-          auto [col, page] = get_column_and_page(patch_sec_name);
           auto column_ctrlcode_size = ctrlcodes.at(col).size();
           auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16??
           if (sec_offset >= column_ctrlcode_size)
@@ -1494,7 +1630,10 @@ class module_elf_aie2ps : public module_elf
           add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
           patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
         }
-        auto key_string = generate_key_string(argnm, buf_type, UINT32_MAX);
+
+        // using grp_idx in identifying key string for patching as there can be
+        // multiple sub kernels and each group can hold one sub kernel
+        auto key_string = generate_key_string(argnm, buf_type, grp_idx);
         // One arg may need to be patched at multiple offsets of control code
         // arg2patcher map contains a key & value pair of arg & patcher object
         // patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
@@ -1511,19 +1650,18 @@ class module_elf_aie2ps : public module_elf
   }
 
   // Extract .dump section from ELF sections
-  // return true if section exist
-  bool
-  initialize_dump_buf(buf& dump_buf)
+  void
+  initialize_dump_buf()
   {
     for (const auto& sec : m_elfio.sections) {
       auto name = sec->get_name();
       if (name.find(patcher::to_string(xrt_core::patcher::buf_type::dump)) == std::string::npos)
         continue;
 
-      dump_buf.append_section_data(sec.get());
-      return true;
+      // get ctrl code id from group index
+      auto ctrl_id = m_grp_to_id_map[m_sec_to_grp_map[sec->get_index()]];
+      m_dump_buf_map[ctrl_id].append_section_data(sec.get());
     }
-    return false;
   }
 
 public:
@@ -1531,10 +1669,11 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    std::vector<size_t> pad_offsets;
+    initialize_kernel_info();
+    std::map<std::string, std::vector<uint64_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
-    initialize_arg_patchers(m_ctrlcodes, pad_offsets);
-    initialize_dump_buf(m_dump_buf);
+    initialize_arg_patchers(pad_offsets);
+    initialize_dump_buf();
   }
 
   ert_cmd_opcode
@@ -1543,16 +1682,37 @@ public:
     return ERT_START_DPU;
   }
 
-  const std::vector<ctrlcode>&
-  get_data() const override
+  std::pair<uint32_t, const std::vector<ctrlcode>&>
+  get_data(const std::string& id) const override
   {
-    return m_ctrlcodes;
+    auto it = m_ctrlcodes_map.find(id);
+    if (it != m_ctrlcodes_map.end())
+      return it->second;
+
+    static const std::vector<ctrlcode> empty_vec;
+    return {UINT32_MAX, empty_vec};
   }
 
   const buf&
-  get_dump_buf() const
+  get_dump_buf(const std::string& id) const
   {
-    return m_dump_buf;
+    auto it = m_dump_buf_map.find(id);
+    if (it != m_dump_buf_map.end())
+      return it->second;
+
+    return buf::get_empty_buf();
+  }
+
+  std::string
+  get_default_ctrl_id() const override
+  {
+    // If user doesn't provide ctrl code id or sub kernel
+    // we default to first entry if its the only availble sub kernel
+    // otherwise an exception is thrown
+    if (m_ctrlcodes_map.size() == 1)
+      return m_ctrlcodes_map.begin()->first;
+
+    throw std::runtime_error("Can not get default kernel\n");
   }
 };
 
@@ -1594,6 +1754,7 @@ class module_sram : public module_impl
 
   uint32_t m_instr_sec_idx = UINT32_MAX;
   uint32_t m_ctrlpkt_sec_idx = UINT32_MAX;
+  uint32_t m_grp_sec_idx = UINT32_MAX;
 
   // Arguments patched in the ctrlcode buffer object
   // Must match number of argument patchers in parent module
@@ -1693,7 +1854,9 @@ class module_sram : public module_impl
 
     // Iterate over control packets of all columns & patch it in instruction
     // buffer
-    auto col_data = m_parent->get_data();
+    auto ctrl_code_info = m_parent->get_data(m_ctrl_code_id);
+    m_grp_sec_idx = ctrl_code_info.first;
+    auto col_data = ctrl_code_info.second;
     size_t offset = 0;
     for (size_t i = 0; i < col_data.size(); ++i) {
       // find the control-code-* sym-name and patch it in instruction buffer
@@ -1704,7 +1867,7 @@ class module_sram : public module_impl
                             std::numeric_limits<size_t>::max(),
                             m_buffer.address() + offset,
                             xrt_core::patcher::buf_type::ctrltext,
-                            UINT32_MAX /*section index is not considered in aie2ps*/))
+                            m_grp_sec_idx))
         m_patched_args.insert(sym_name);
       offset += col_data[i].size();
     }
@@ -1880,7 +2043,7 @@ class module_sram : public module_impl
   void
   create_instruction_buffer(const module_impl* parent)
   {
-    const auto& data = parent->get_data();
+    const auto& data = parent->get_data(m_ctrl_code_id).second;
 
     // create bo combined size of all ctrlcodes
     size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0), [](auto acc, const auto& ctrlcode) {
@@ -1923,11 +2086,11 @@ class module_sram : public module_impl
     }
     else {
       if (m_parent->patch_it(m_buffer, argnm, index, value, xrt_core::patcher::buf_type::ctrltext,
-                             UINT32_MAX, m_first_patch))
+                             m_grp_sec_idx, m_first_patch))
         patched = true;
 
       if (m_parent->patch_it(m_buffer, argnm, index, value, xrt_core::patcher::buf_type::pad,
-                             UINT32_MAX, m_first_patch))
+                             m_grp_sec_idx, m_first_patch))
           patched = true;
     }
 
@@ -2111,7 +2274,7 @@ class module_sram : public module_impl
   // Ideally exceptions should have been used but return status is used as ths
   // exception alternative is not good because in cases of failure dtrace
   // functionality is just a no-op.
-  static bool
+  bool
   init_dtrace_helper(const module_impl* parent, dtrace_util& dtrace_obj)
   {
     // The APIs used for dynamic tracing in future will be checked into
@@ -2142,7 +2305,7 @@ class module_sram : public module_impl
     }
     dtrace_obj.ctrl_file_path = path;
 
-    static const auto& data = parent->get_dump_buf();
+    static const auto& data = parent->get_dump_buf(m_ctrl_code_id);
     if (data.size() == 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "Dump section is empty in ELF");
@@ -2269,7 +2432,7 @@ public:
     else if (os_abi == Elf_Amd_Aie2ps) {
       initialize_dtrace_buf(m_parent.get());
       create_instruction_buffer(m_parent.get());
-      fill_column_bo_address(m_parent->get_data());
+      fill_column_bo_address(m_parent->get_data(m_ctrl_code_id).second);
     }
   }
 
@@ -2441,7 +2604,10 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
     if (type != xrt_core::patcher::buf_type::ctrltext)
       throw std::runtime_error("Info of given buffer type not available");
 
-    const auto& instr_buf = handle->get_data();
+    const auto& instr_buf = handle->get_data(id).second;
+    if (instr_buf.empty())
+      throw std::runtime_error{"No control code found for given id"};
+
     if (instr_buf.size() != 1)
       throw std::runtime_error{"multiple column ctrlcode is not supported in this flow"};
 
@@ -2494,9 +2660,15 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
     }
   }
   else if(os_abi == Elf_Amd_Aie2ps) {
-    const auto& instr_buf = hdl->get_data();
+    auto ctrl_code_info = hdl->get_data(id);
+    patch_index = ctrl_code_info.first;
+    const auto& instr_buf = ctrl_code_info.second;
+
+    if (instr_buf.empty())
+      throw std::runtime_error{"No control code found for given id"};
     if (instr_buf.size() != 1)
       throw std::runtime_error{"Patch failed: only support patching single column"};
+
     inst = &instr_buf[0];
   }
   else {
