@@ -31,6 +31,10 @@
 //    All runner.json specified paths are prefixed with value of --dir option
 
 #include "xrt/xrt_device.h"
+#include "xrt/experimental/xrt_ini.h"
+#include "xrt/experimental/xrt_message.h"
+
+#include "core/common/config_reader.h"
 #include "core/common/time.h"
 #include "core/common/runner/runner.h"
 
@@ -43,6 +47,7 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -50,6 +55,51 @@
 
 using json = nlohmann::json;
 namespace sfs = std::filesystem;
+
+namespace {
+static bool g_progress = false;
+static uint32_t g_iterations = 0;
+
+// Touch up recipe(s)
+// Return parsed / modified json as a json string
+static std::string
+touchup_recipe(const std::string& recipe)
+{
+  std::ifstream istr(recipe);
+  auto json = json::parse(istr);
+  return json.dump();
+}
+
+// Touch up profiles(s)
+// Return parsed / modified json as a json string
+static std::string
+touchup_profile_mt(const std::string& profile, uint32_t iterations)
+{
+  // disable xrt::runner profile verbosity which is unsynchronized
+  // with threaded execution
+  std::ifstream istr(profile);
+  auto json = json::parse(istr);
+  json["execution"]["verbose"] = false;
+  
+  // maybe override this profile iterations
+  if (iterations)
+    json["execution"]["iterations"] = iterations;
+  
+  return json.dump();
+}
+
+static std::string
+touchup_profile(const std::string& profile, uint32_t iterations)
+{
+  std::ifstream istr(profile);
+  auto json = json::parse(istr);
+  if (iterations)
+    json["execution"]["iterations"] = iterations;
+
+  return json.dump();
+}
+
+} // namespace
 
 // A job is an xrt::runner associated with specified "id".
 // Constructor throws if recipe/profile are invalid.
@@ -78,6 +128,14 @@ struct job_type
   job_type(job_type&&) = default;
   job_type& operator= (job_type&&) = default;
 
+  static std::string
+  get_tid()
+  {
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    return ss.str();
+  }
+
   std::string
   get_id() const
   {
@@ -92,6 +150,10 @@ struct job_type
   void
   run()
   {
+    if (g_progress)
+      xrt::message::logf(xrt::message::level::info, "runner",
+                         "(tid:%s) executing xrt::runner for %s", get_tid().c_str(), m_id.c_str());
+
     m_runner.execute();
   }
 
@@ -99,6 +161,16 @@ struct job_type
   wait()
   {
     m_runner.wait();
+
+    if (g_progress) {
+      auto jrpt = json::parse(get_report());
+      std::stringstream ss;
+      ss << " Elapsed time (us): " << jrpt["cpu"]["elapsed"] << "\n";
+      ss << " Average Latency (us): " << jrpt["cpu"]["latency"] << "\n";
+      ss << " Average Throughput (op/s): " << jrpt["cpu"]["throughput"] << "\n";
+      xrt::message::logf(xrt::message::level::info, "runner",
+                         "(tid:%s) finished xrt::runner for %s:\n%s", get_tid().c_str(), m_id.c_str(), ss.str().c_str());
+    }
   }
 
   std::string
@@ -232,11 +304,14 @@ struct script_runner
   {
     job_queue queue;
     for (const auto& [k, node] : j.items()) {
-      auto id = node["id"];
+      std::string id = node["id"];
+      xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
       sfs::path recipe = root / node["recipe"];
+      auto recipe_json_string = touchup_recipe(recipe.string());
       sfs::path profile = root / node["profile"];
+      auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
       sfs::path dir = root / node["dir"];
-      queue.add(job_type{device, id, recipe.string(), profile.string(), dir.string()});
+      queue.add(job_type{device, id, recipe_json_string, profile_json_string, dir.string()});
     }
     return queue;
   }
@@ -246,9 +321,9 @@ struct script_runner
   std::vector<worker> m_workers;
 
 public:
-  explicit script_runner(const xrt::device& device, const json& script, const std::string& dir)
+  explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
     : m_job_queue{init_jobs(device, script.value("jobs", json::object()), dir)}
-    , m_workers{init_workers(script.value<uint32_t>("threads", 1), m_job_queue)}
+    , m_workers{init_workers(threads ? threads : script.value<uint32_t>("threads", 1), m_job_queue)}
   {
     // Not perfect as threads can still be in the process of initializing
     m_job_queue.enable();
@@ -279,30 +354,38 @@ usage()
   std::cout << "usage: xrt-runner.exe [options]\n";
   std::cout << " [--recipe <recipe.json>] recipe file to run\n";
   std::cout << " [--profile <profile.json>] execution profile\n";
+  std::cout << " [--iterations <number>] override all profile iterations\n";
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
+  std::cout << " [--threads <number>] number of threads to use when running script\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
-  
-  std::cout << "\n\n";
-  std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--dir <path>]\n";
-  std::cout << "% xrt-runner.exe --script runner.json [--dir <path>]\n";
+  std::cout << " [--progress] show progress\n";
+  std::cout << " [--report] print runner metrics\n";
+  std::cout << "\n";
+  std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
+  std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
+  std::cout << "\n";
+  std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
+  std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
+  std::cout << "sticky for that recipe/profile pair.\n";
 }
 
 // Entry for parsing the runner script file
 static void
-run_script(const std::string& file, const std::string& dir, bool report)
+run_script(const std::string& file, const std::string& dir, uint32_t threads, bool report)
 {
   std::ifstream istr(file);
   auto script = json::parse(istr);
 
   xrt_core::systime st;
   xrt::device device{0};
-  script_runner runner{device, script, dir};
+  script_runner runner{device, script, threads, dir};
   runner.wait();
 
   if (report) {
     auto [real, user, system] = st.get_rusage();
     auto jrpt = runner.get_report();
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+
     std::cout << jrpt.dump(2) << '\n';
   }
 }
@@ -312,7 +395,9 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
 {
   xrt_core::systime st;
   xrt::device device{0};
-  xrt_core::runner runner {device, recipe, profile, dir};
+  auto recipe_json_string = touchup_recipe(recipe);
+  auto profile_json_string = touchup_profile(profile, g_iterations);
+  xrt_core::runner runner {device, recipe_json_string, profile_json_string, dir};
   runner.execute();
   runner.wait();
 
@@ -328,12 +413,16 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
 static void
 run(int argc, char* argv[])
 {
+  // set verbosity level off
+  xrt::ini::set("Runtime.verbosity", 0);
+  
   std::vector<std::string> args(argv + 1, argv + argc);
   std::string cur;
   std::string recipe;
   std::string profile;
   std::string dir = ".";
   std::string script;
+  uint32_t threads = 0;
   bool report = false;
   for (auto& arg : args) {
     if (arg == "--help" || arg == "-h") {
@@ -343,6 +432,12 @@ run(int argc, char* argv[])
 
     if (arg == "--report") {
       report = true;
+      continue;
+    }
+
+    if (arg == "--progress") {
+      xrt::ini::set("Runtime.verbosity", static_cast<int>(xrt::message::level::info));
+      g_progress = true;
       continue;
     }
 
@@ -359,6 +454,10 @@ run(int argc, char* argv[])
       dir = arg;
     else if (cur == "-f" || cur == "--script")
       script = arg;
+    else if (cur == "-t" || cur == "--threads")
+      threads = std::stoi(arg);
+    else if (cur == "-i" || cur == "--iterations")
+      g_iterations = std::stoi(arg);
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
@@ -366,8 +465,14 @@ run(int argc, char* argv[])
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");
 
+  if (script.empty() && (recipe.empty() || profile.empty()))
+    throw std::runtime_error("both recipe and profile are required without a script");
+
+  if (threads && script.empty())
+    throw std::runtime_error("threads can only be used with script");
+
   if (!script.empty())
-    run_script(script, dir, report);
+    run_script(script, dir, threads, report);
   else
     run_single(recipe, profile, dir, report);
 }

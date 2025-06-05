@@ -1393,6 +1393,7 @@ class recipe
       report rpt;
       rpt.add(report::section_type::resources, {{"runs", num_runs()}});
       rpt.add(report::section_type::resources, {{"runlist_threshold", m_runlist_threshold}});
+      rpt.add(report::section_type::resources, {{"runlist", num_runs() >= m_runlist_threshold}});
       return rpt;
     }
   }; // class recipe::execution
