@@ -124,36 +124,31 @@ fi
 
 if [ -d "yocto/edf" ]; then
     cd yocto/edf
-    source basecamp-init-build-env
+    source internal-edf-init-build-env
 else
     git submodule update --init --recursive --force
     mkdir -p yocto/edf
     cd yocto/edf
 
     echo "repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE"
-    repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
+    yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-
-    export TEMPLATECONF=$yocto_path/sources/meta-basecamp/conf/templates/default
-
-    source basecamp-init-build-env
-
-    CONF_FILE=$yocto_path/build/conf/local.conf
-
-    sed -i '/^# Source and Sstate mirror settings/a\
-# Use optional internal AMD Xilinx gitenterprise support\
-include conf/distro/include/xilinx-mirrors.conf' "$CONF_FILE"
-
-    sed -i "s|^SOURCE_MIRROR_URL = .*|SOURCE_MIRROR_URL = \"file://$MANIFEST_PATH/downloads\"|" "$CONF_FILE"
-    sed -i "/^SSTATE_MIRRORS = \" \\\.*$/,/^$/c\
-SSTATE_MIRRORS = \"file://.* file://$MANIFEST_PATH/sstate-cache/PATH\"" "$CONF_FILE"
-
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-internal
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-internal/meta-xilinx-restricted-vek280-poc/
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-restricted/meta-xilinx-restricted-ea/meta-xilinx-restricted-vek385/
-
+    source internal-edf-init-build-env
     install_recipes
 fi
 
-MACHINE=versal2-common bitbake xrt
+if MACHINE=amd-cortexa78-mali-common bitbake xrt; then
+    echo "bitbake xrt succeeded."
+
+    mkdir -p "$yocto_path/rpms"
+
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/cortexa72_cortexa53/xrt-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/zocl-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/kernel-"* "$yocto_path/rpms/"
+
+    echo "RPMs copied to $yocto_path/rpms"
+else
+    echo "bitbake xrt failed"
+fi
+
