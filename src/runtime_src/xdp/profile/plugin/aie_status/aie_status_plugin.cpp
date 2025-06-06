@@ -223,9 +223,12 @@ namespace xdp {
       return;
 
     // AIE core register offsets
-    constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = metadataReader->getAIETileRowOffset();
     auto hwGen = metadataReader->getHardwareGeneration();
+    uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
+    if (hwGen == 5)
+      AIE_OFFSET_CORE_STATUS = 0x38004; // AIE2PS
+
+    auto offset = metadataReader->getAIETileRowOffset();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
