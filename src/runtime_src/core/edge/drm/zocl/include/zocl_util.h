@@ -37,7 +37,7 @@
 ({ \
 	size_t ret; \
 	size_t data_size; \
-	data_size = sect->m_count * sizeof(typeof(sect->data)); \
+	data_size = sect->m_count * sizeof(*(sect->data)); \
 	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
 	(ret); \
 })
