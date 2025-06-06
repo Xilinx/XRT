@@ -521,7 +521,7 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
 
 
 #define PL_RESET_ADDRESS                0x00F1260330
-#define PL_HOLD_VAL                     0xF
+#define PL_HOLD_VAL                     0x1
 #define PL_RELEASE_VAL                  0x0
 #define PL_RESET_ALLIGN_SIZE            _4KB
         map = ioremap(PL_RESET_ADDRESS, PL_RESET_ALLIGN_SIZE);
