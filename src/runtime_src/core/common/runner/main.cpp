@@ -12,7 +12,6 @@
 //     where the application is controlled by runner.json:
 //
 //     {
-//       "threads": <number>
 //       jobs: [
 //         {
 //           "id": "custom string"
@@ -26,7 +25,7 @@
 //
 //    In this mode, the  application
 //     (1) creates an xrt::runner per specified job
-//     (2) creates <number> worker threads
+//     (2) creates worker threads, default to number of jobs
 //     (3) executes the specified jobs on first available worker
 //    All runner.json specified paths are prefixed with value of --dir option
 
@@ -245,6 +244,12 @@ public:
   {
     return m_jobs;
   }
+
+  uint32_t
+  num_jobs() const
+  {
+    return static_cast<uint32_t>(m_jobs.size());
+  }
 };
 
 // struct script_runner - execute multi-threaded per runner script
@@ -323,7 +328,7 @@ struct script_runner
 public:
   explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
     : m_job_queue{init_jobs(device, script.value("jobs", json::object()), dir)}
-    , m_workers{init_workers(threads ? threads : script.value<uint32_t>("threads", 1), m_job_queue)}
+    , m_workers{init_workers(threads ? threads : m_job_queue.num_jobs(), m_job_queue)}
   {
     // Not perfect as threads can still be in the process of initializing
     m_job_queue.enable();
@@ -356,7 +361,7 @@ usage()
   std::cout << " [--profile <profile.json>] execution profile\n";
   std::cout << " [--iterations <number>] override all profile iterations\n";
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
-  std::cout << " [--threads <number>] number of threads to use when running script\n";
+  std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--progress] show progress\n";
   std::cout << " [--report] print runner metrics\n";
@@ -364,6 +369,8 @@ usage()
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
   std::cout << "\n";
+  std::cout << "Note, [--threads <number>] overrides the default number, where default is the number of\n";
+  std::cout << "jobs in the runner script.\n\n";
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
   std::cout << "sticky for that recipe/profile pair.\n";
@@ -425,7 +432,7 @@ run(int argc, char* argv[])
   uint32_t threads = 0;
   bool report = false;
   for (auto& arg : args) {
-    if (arg == "--help" || arg == "-h") {
+    if (arg == "--help" || arg == "-h" || arg == "-help") {
       usage();
       return;
     }
