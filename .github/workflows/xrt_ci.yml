@@ -15,7 +15,7 @@ concurrency:
   
 jobs:
   authorize:
-    runs-on: Ubuntu-22.04
+    runs-on: [self-hosted, Ubuntu-22.04]
     steps:
       - name: Checkout private repository      
         uses: actions/checkout@v4   
