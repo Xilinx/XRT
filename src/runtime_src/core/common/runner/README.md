@@ -68,25 +68,40 @@ pairs.
 To use locally built xrt-runner.exe, it is important that KMD and UMD
 is in sync with what xrt-runner.exe is built from.
 ```
-xrt-runner.exe --help
+% xrt-runner.exe --help
 usage: xrt-runner.exe [options]
  [--recipe <recipe.json>] recipe file to run
  [--profile <profile.json>] execution profile
+ [--iterations <number>] override all profile iterations
  [--script <script>] runner script, enables multi-threaded execution
+ [--threads <number>] number of threads to use when running script (default: #jobs)
  [--dir <path>] directory containing artifacts (default: current dir)
- [--report] print metrics
+ [--progress] show progress
+ [--report] print runner metrics
 
-% xrt-runner.exe --recipe recipe.json --profile profile.json [--dir <path>] [--report]
-% xrt-runner.exe --script runner.json [--dir <path>] [--report]
+% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]
+% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]
+
+Note, [--threads <number>] overrides the default number, where default is the number of
+jobs in the runner script.
+
+Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.
+If the runner script specifies iterations for a recipe/profile pair, then this value is
+sticky for that recipe/profile pair.
 ```
 
 ### runner.json
-Multi-threaded execution of the applcation is controlled by a separate json file that lists 
-what recipe and profile pairs to execute and on how many threads.
+Multi-threaded execution of the application is controlled by a
+separate json file (a script) that lists what recipe and profile pairs
+to execute by worker threads.
+
+A script is an array of jobs.
+The number of worker threads defaults to the number of jobs in the jobs
+array, but can be overwritten by an xrt-runner.exe command
+line switch `[--threads <num>]`.
 
 ```
 {
-  "threads": <number>
   jobs: [
     {
       "id": "custom string",
@@ -99,8 +114,19 @@ what recipe and profile pairs to execute and on how many threads.
 }
 ```
 
+Here `id` identifies the job in reporting, `recipe` and `profile` are
+paths to the recipe/profile pair used with this job, and `dir` is the
+path to the directory with artifacts referenced by the recipe and
+profile.
+
+The `iterations` key is optional, but allows overriding `iterations`
+as specified in the profile itself.  Another way to override profile
+`iterations` is through xrt-runner.exe `[--iterations <num>]` command
+line switch.  If `iterations` is specified in the script for a
+recipe/profile pair, then the script value takes precedence over the
+command line switch.
+
 Each recipe/profile pair results in the creation of an xrt::runner
 object.  All xrt::runner objects are created and inserted into a work
 queue before execution starts.  Each thread executes work items
 (xrt::runner) from the work queue until the queue is empty.
-
