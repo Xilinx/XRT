@@ -56,3 +56,51 @@ The schema will change before it is finalized and versioned.
   }
 }
 ```
+
+## xrt_runner.exe
+As part of building XRT, the runner infrastructure builds a runner executable that
+can be used to execute recipe and profile pairs.
+
+The executable has two modes, (1) execution of a single recipe/profile
+pair, (2) multi-threaded execution of multiple recipe and profile
+pairs.
+
+To use locally built xrt-runner.exe, it is important that KMD and UMD
+is in sync with what xrt-runner.exe is built from.
+```
+xrt-runner.exe --help
+usage: xrt-runner.exe [options]
+ [--recipe <recipe.json>] recipe file to run
+ [--profile <profile.json>] execution profile
+ [--script <script>] runner script, enables multi-threaded execution
+ [--dir <path>] directory containing artifacts (default: current dir)
+ [--report] print metrics
+
+% xrt-runner.exe --recipe recipe.json --profile profile.json [--dir <path>] [--report]
+% xrt-runner.exe --script runner.json [--dir <path>] [--report]
+```
+
+### runner.json
+Multi-threaded execution of the applcation is controlled by a separate json file that lists 
+what recipe and profile pairs to execute and on how many threads.
+
+```
+{
+  "threads": <number>
+  jobs: [
+    {
+      "id": "custom string",
+      "recipe": "<path>/recipe.json",
+      "profile": "<path>/profile.json",
+      "dir": "<path> artifacts referenced by recipe and profile"
+    },
+    ...
+  ]
+}
+```
+
+Each recipe/profile pair results in the creation of an xrt::runner
+object.  All xrt::runner objects are created and inserted into a work
+queue before execution starts.  Each thread executes work items
+(xrt::runner) from the work queue until the queue is empty.
+
