@@ -546,10 +546,12 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     fpga_mgmt_describe_local_image(mBoardNumber, &imageInfoOld, 0);
 
     int retVal = 0;
-    union fpga_mgmt_load_local_image_options opt;
+    union fpga_mgmt_load_local_image_options opt = {0};
     // force data retention option
     fpga_mgmt_init_load_local_image_options(&opt);
-    opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
+    /* Set the data retention mode only for AWS F1, this is not supported for AWS F2 */
+    if (imageInfoOld.spec.map[FPGA_APP_PF].device_id == 0x1042)
+        opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
     opt.afi_id = afi_id;
     opt.slot_id = mBoardNumber;
     retVal = fpga_mgmt_load_local_image_with_options(&opt);
