@@ -151,6 +151,10 @@ public:
     XRT_API_EXPORT
     span<const uint32_t>
     data() const;
+
+    XRT_API_EXPORT
+    const char*
+    what() const noexcept override;
   };
 
 public:

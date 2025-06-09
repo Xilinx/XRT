@@ -196,6 +196,19 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
+std::string
+fatal_err_type_to_string(uint32_t fatal_error_type)
+{
+  static const std::map<uint32_t, const char*> fatal_error_string {
+   {0, "N/A"}
+  };
+
+  auto itr = fatal_error_string.find(fatal_error_type);
+  return itr == fatal_error_string.end()
+    ? "out of range"
+    : itr->second;
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -2566,7 +2579,6 @@ public:
   {
     auto epkt = get_ert_packet();
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
-    
     switch (epkt->opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
@@ -2601,7 +2613,6 @@ public:
     static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
     if (dtrace_enabled && m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
-
     if (state != ERT_CMD_STATE_COMPLETED)
       throw_command_error(state);
 
@@ -3031,6 +3042,28 @@ public:
     auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
     return {ctx_health->aie_data, ctx_health->aie_data_size};
   }
+
+  std::string
+  get_exception_message() const
+  {
+    switch(m_state) {
+    case ERT_CMD_STATE_TIMEOUT: {
+      auto run_impl = m_run.get_handle();
+      auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
+      ctx_health->txn_op_idx = 0xFFFFFFFF;
+      ctx_health->ctx_pc = 4567;
+      ctx_health->fatal_error_type = 0;
+      std::stringstream ss;
+      ss << std::hex<<std::uppercase << ctx_health->txn_op_idx;
+      return ("\ntxn_op_idx = 0x" + ss.str() +
+              "\nctx_pc = " + std::to_string(ctx_health->ctx_pc) +
+              "\nfatal_error_type " +  fatal_err_type_to_string(ctx_health->fatal_error_type)+"\n");
+    }
+    default:
+      break;
+    }
+    return "";
+ }
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3196,8 +3229,10 @@ class runlist_impl
     switch (epkt->opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
-    case ERT_START_NPU_PREEMPT_ELF:
-      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
+    case ERT_START_NPU_PREEMPT_ELF: {
+      std::string msg = "runlist failed execution"  + cmd_state_to_string(state);
+      throw xrt::runlist::aie_error(run, state, msg);
+    }
     default:
       throw xrt::runlist::command_error(run, state, "runlist failed execution");
     }
@@ -3226,7 +3261,6 @@ class runlist_impl
         runidx += submit_size;
         continue;
       }
-
       // The runlist is idle now but an exception will be thrown
       // with the first run object that failed.  The application
       // must handle the exception and decide what to do next.
@@ -3247,7 +3281,6 @@ class runlist_impl
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
       set_run_state(run, state);
-
       throw_command_error(run, state);
     }
 
@@ -3454,6 +3487,7 @@ class runlist::command_error_impl : public run::command_error_impl
 public:
   using run::command_error_impl::command_error_impl;
   using run::command_error_impl::get_aie_data;
+  using run::command_error_impl::get_exception_message;
 };
 
 } // namespace xrt
@@ -4267,6 +4301,13 @@ what() const noexcept
   return handle->m_message.c_str();
 }
 
+const char*
+run::aie_error::
+what() const noexcept
+{
+  std::string msg = handle->m_message + handle->get_exception_message();
+  return msg.c_str();
+}
 xrt::run::aie_error::span<const uint32_t>  
 run::aie_error::
 data() const
