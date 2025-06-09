@@ -39,7 +39,7 @@
 #include "ve2/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/common/shim/hwctx_handle.h"
-#include "shim/xdna_hwctx.h"
+#include "shim_ve2/xdna_hwctx.h"
 #else
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
