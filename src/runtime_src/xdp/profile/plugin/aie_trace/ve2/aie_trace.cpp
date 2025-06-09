@@ -33,7 +33,7 @@
 #include "core/include/xrt/xrt_kernel.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
-#include "shim/xdna_hwctx.h"
+#include "shim_ve2/xdna_hwctx.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
