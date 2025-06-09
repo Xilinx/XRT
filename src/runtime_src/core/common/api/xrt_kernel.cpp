@@ -3050,9 +3050,6 @@ public:
     case ERT_CMD_STATE_TIMEOUT: {
       auto run_impl = m_run.get_handle();
       auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
-      ctx_health->txn_op_idx = 0xFFFFFFFF;
-      ctx_health->ctx_pc = 4567;
-      ctx_health->fatal_error_type = 0;
       std::stringstream ss;
       ss << std::hex<<std::uppercase << ctx_health->txn_op_idx;
       return ("\ntxn_op_idx = 0x" + ss.str() +
