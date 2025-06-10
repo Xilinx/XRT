@@ -31,7 +31,6 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   try
   {
     xrt_core::runner runner(xrt::device(dev), recipe, profile, std::filesystem::path(repo_path));
-    auto start = std::chrono::high_resolution_clock::now();
     runner.execute();
     runner.wait();
 

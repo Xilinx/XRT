@@ -76,8 +76,6 @@ load_json(const std::string& input)
   try {
     if (std::ifstream f{input})
       return json::parse(f);
-    else
-      throw json_error("Failed to open file: " + input);
   }
   catch (const std::exception& ex) {
     throw json_error(ex.what());
