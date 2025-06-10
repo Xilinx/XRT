@@ -172,13 +172,19 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_packet {
   union {unnamed_union};
+#if defined(__linux__
   uint32_t data;
+#else
+  uint32_t data;
+#endif
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count number of words representing packet payload</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count number of words representing packet payload</p>
 </dd>
@@ -192,7 +198,11 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_start_kernel_cmd {
   union {unnamed_union};
   uint32_t cu_mask;
+#if defined(__linux__
   uint32_t data;
+#else
+  uint32_t data;
+#endif
 };
 </pre></div>
 </div>
@@ -201,6 +211,8 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt><dd><p>first mandatory CU mask</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-1 number of words representing interpreted payload</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-1 number of words representing interpreted payload</p>
 </dd>
@@ -219,7 +231,8 @@ and extra_cu_masks per header field, followed by a CU register map of size
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_dpu_data {
   uint64_t instruction_buffer;
   uint32_t instruction_buffer_size;
-  uint32_t chained;
+  uint16_t uc_index;
+  uint16_t chained;
 };
 </pre></div>
 </div>
@@ -228,6 +241,8 @@ and extra_cu_masks per header field, followed by a CU register map of size
 <dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer</span></code></dt><dd><p>address of instruction buffer</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">instruction_buffer_size</span></code></dt><dd><p>size of instruction buffer in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uc_index</span></code></dt><dd><p>microblaze controller index</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">chained</span></code></dt><dd><p>number of following ert_dpu_data elements</p>
 </dd>
@@ -357,7 +372,11 @@ propertiy is the number of actual columns this instruction used.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_init_kernel_cmd {
   union {unnamed_union};
   uint32_t cu_mask;
+#if defined(__linux__
   uint32_t data;
+#else
+  uint32_t data;
+#endif
 };
 </pre></div>
 </div>
@@ -366,6 +385,8 @@ propertiy is the number of actual columns this instruction used.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt><dd><p>first mandatory CU mask</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-9 number of words representing interpreted payload</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-9 number of words representing interpreted payload</p>
 </dd>
@@ -403,7 +424,11 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
   uint32_t cq_int:1;
   uint32_t cdma:1;
   uint32_t dsa52:1;
+#if defined(__linux__
   uint32_t data;
+#else
+  uint32_t data;
+#endif
 };
 </pre></div>
 </div>
@@ -432,6 +457,8 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">cdma</span></code></dt><dd><p>1           enable CDMA kernel</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">dsa52</span></code></dt><dd><p>1          reserved for internal use</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>addresses of <strong>num_cus</strong> CUs</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>addresses of <strong>num_cus</strong> CUs</p>
 </dd>
@@ -528,6 +555,51 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
 </dd>
 </dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_ctx_health_data</span></span></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_ctx_health_data {
+  uint32_t version;
+  uint32_t txn_op_idx;
+  uint32_t ctx_pc;
+  uint32_t fatal_error_type;
+  uint32_t aie_data_size;
+  uint32_t aie_data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt><dd><p>context health data version (current 0.0)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">txn_op_idx</span></code></dt><dd><p>index of last TXN control code executed</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_pc</span></code></dt><dd><p>program counter for that context</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">fatal_error_type</span></code></dt><dd><p>the fatal error type if context crashes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">aie_data_size</span></code></dt><dd><p>size in bytes of the aie_data</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">aie_data</span></code></dt><dd><p>binary blob dumpped from aie partition</p>
+</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div><p>which has context health data</p>
+</div></blockquote>
+<p>Field              Default value  Comment
+txn_op_idx:        0xFFFFFFFF     there is no txn control code is running or the</p>
+<blockquote>
+<div><p>last txn control code op idx is not captured</p>
+</div></blockquote>
+<p>ctx_pc:            0              context .text program counter is not captured
+fatal_error_type:  0              no fatal error or fatal error is not captured
+aie_data_size:     0              aie register data is not captured</p>
+<p>Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
+packet starting from payload will have the following information.</p>
 <dl class="c function">
 <dt class="sig sig-object c">
 <span class="sig-name descname"><span class="pre">ERT_WORD_SIZE</span> <span class="pre">()</span></span></dt>
