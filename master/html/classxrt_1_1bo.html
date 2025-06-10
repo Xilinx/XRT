@@ -75,6 +75,9 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p><a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> represents a buffer object that can be used as kernel argument  
+ <a href="classxrt_1_1bo.html#details">More...</a></p>
+
 <p><code>#include &lt;<a class="el" href="xrt__bo_8h_source.html">xrt_bo.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
@@ -93,6 +96,7 @@ Public Types</h2></td></tr>
 , <br />
 &#160;&#160;<a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c">p2p</a> = XRT_BO_FLAGS_P2P
 , <a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703">svm</a> = XRT_BO_FLAGS_SVM
+, <a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda0e94485671ffa8b04b3f5eeb9b8436e5">carveout</a> = XRT_BO_FLAGS_CARVEOUT
 <br />
  }</td></tr>
 <tr class="separator:ad6a4bb086ce3b1023df8671c29a1d1dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -175,7 +179,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ace557ba711faf3962a16f25b6761d56c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#ace557ba711faf3962a16f25b6761d56c">~bo</a> ()</td></tr>
 <tr class="separator:ace557ba711faf3962a16f25b6761d56c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Typedef Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p><a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> represents a buffer object that can be used as kernel argument </p>
+</div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a3dd2f51560ba83e0a8794cdde49e3d21"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3dd2f51560ba83e0a8794cdde49e3d21">&#9670;&nbsp;</a></span>export_handle</h2>
 
@@ -224,8 +230,10 @@ Public Member Functions</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c"></a>p2p&#160;</td><td class="fielddoc"><p>Create a BO for peer-to-peer use </p>
 </td></tr>
-<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703"></a>svm&#160;</td><td class="fielddoc"><p>Create a BO for SVM (supported on specific platforms only)</p>
-<p>The flags used by <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> are compatible with XCL style flags as define in <code>xrt_mem.h</code> </p>
+<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703"></a>svm&#160;</td><td class="fielddoc"><p>Create a BO for SVM (supported on specific platforms only) </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda0e94485671ffa8b04b3f5eeb9b8436e5"></a>carveout&#160;</td><td class="fielddoc"><p>Create a BO from a reserved memory pool. Supported for specific platforms only. For AMD Ryzen NPU this memory is allocated from a host memory carveout pool.</p>
+<p>The flags used by <a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> are compatible with XCL style flags as define in <code>xrt_mem.h</code> </p>
 </td></tr>
 </table>
 
@@ -254,7 +262,10 @@ Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo()</a> - Constructor for empty bo </p>
+<p><a class="el" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo()</a> - Constructor for empty bo</p>
+<p>A default constructed bo can be assigned to and can be used in a Boolean check along with comparison. <br  />
+</p>
+<p>Unless otherwise noted, it is undefined behavior to use <a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a> APIs on a default constructed object. </p>
 
 </div>
 </div>
@@ -815,7 +826,8 @@ Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo()</a> - Copy ctor </p>
+<p><a class="el" href="classxrt_1_1bo.html#aa462c683d1d24a4b7bf53ad307f66e8d">bo()</a> - Copy ctor</p>
+<p>Performs shallow copy, sharing data with the source </p>
 
 </div>
 </div>
@@ -1086,7 +1098,7 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1bo.html#a57adfdd61a2c128b354d049eb2fa42c8">get_flags()</a> - Get the flags with which this buffer was constructed</p>
-<dl class="section return"><dt>Returns</dt><dd>The xrt::bo::Flgas used when the buffer was contructed </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>The <a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dd">xrt::bo::flags</a> used when the buffer was contructed </dd></dl>
 
 </div>
 </div>
@@ -1240,7 +1252,8 @@ template&lt;typename MapType &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>operator= () - Copy assignment </p>
+<p>operator= () - Copy assignment</p>
+<p>Performs shallow copy, sharing data with the source </p>
 
 </div>
 </div>
@@ -1366,7 +1379,8 @@ template&lt;typename MapType &gt; </div>
       </table>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975">size()</a> - Get the size of this buffer</p>
-<dl class="section return"><dt>Returns</dt><dd>Size of buffer in bytes </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Size of buffer in bytes</dd></dl>
+<p>Returns 0 for a default constructed <a class="el" href="classxrt_1_1bo.html" title="xrt::bo represents a buffer object that can be used as kernel argument">xrt::bo</a>. </p>
 
 </div>
 </div>
@@ -1529,7 +1543,7 @@ template&lt;typename MapType &gt; </div>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/home/manoj/test_build_doc/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__bo_8h_source.html">xrt_bo.h</a></li>
+<li>/home/manoj/doc_update/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__bo_8h_source.html">xrt_bo.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['difference_5ftype_337',['difference_type',['../classxrt_1_1xclbin__repository_1_1iterator.html#ab7753a7cca4ef0ba199579e6c261687c',1,'xrt::xclbin_repository::iterator']]]
+  ['export_5fhandle_205',['export_handle',['../classxrt_1_1bo.html#a3dd2f51560ba83e0a8794cdde49e3d21',1,'xrt::bo']]]
 ];

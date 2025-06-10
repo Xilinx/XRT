@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['export_5fhandle_338',['export_handle',['../classxrt_1_1bo.html#a3dd2f51560ba83e0a8794cdde49e3d21',1,'xrt::bo']]]
+  ['memory_5fgroup_206',['memory_group',['../namespacexrt.html#a0b5c34a203355370d2901d9e6100f287',1,'xrt']]]
 ];
