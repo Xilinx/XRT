@@ -108,7 +108,11 @@ struct ert_packet {
     };
     uint32_t header;
   };
+#if defined(__linux__) && defined(__KERNEL__)
+  uint32_t data[];   /* count number of words */
+#else
   uint32_t data[1];   /* count number of words */
+#endif
 };
 
 /**
@@ -144,10 +148,13 @@ struct ert_start_kernel_cmd {
     };
     uint32_t header;
   };
-
   /* payload */
   uint32_t cu_mask;              /* mandatory cu mask */
-  uint32_t data[1];              /* count-1 number of words */
+  #if defined(__linux__) && defined(__KERNEL__)
+  uint32_t data[];   /* flexible array member*/
+#else
+  uint32_t data[1];   /* count -1 number of words */
+#endif
 };
 
 /**
@@ -327,7 +334,11 @@ struct ert_init_kernel_cmd {
 
   /* payload */
   uint32_t cu_mask;          /* mandatory cu mask */
+ #if defined(__linux__) && defined(__KERNEL__)
+  uint32_t data[];   /* Flexible array member */
+#else
   uint32_t data[1];          /* count-9 number of words */
+#endif
 };
 
 #define KDMA_BLOCK_SIZE 64   /* Limited by KDMA CU */
@@ -411,7 +422,11 @@ struct ert_configure_cmd {
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
+#if defined(__linux__) && defined(__KERNEL__)
+  uint32_t data[];  /* Flexible array member */
+#else
   uint32_t data[1];
+#endif
 };
 
 /*
