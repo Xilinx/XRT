@@ -43,6 +43,24 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
+  void
+  create_module_map(const xrt::elf& elf)
+  {
+    xrt::module module{elf};
+
+    // Store the module in the map against all available kernels in the ELF
+    // This will be useful for module lookup when creating xrt::kernel object
+    // using kernel name    
+    auto kernels_info = xrt_core::module_int::get_kernels_info(module);
+    for (const auto& k_info : kernels_info) {
+      auto kernel_name = k_info.props.name;
+      if (m_module_map.find(kernel_name) != m_module_map.end())
+        throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
+
+      m_module_map.emplace(std::move(kernel_name), std::move(module));
+    }
+  }
+
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
     : m_core_device(std::move(device))
@@ -74,10 +92,7 @@ public:
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
   {
-    // creation successful, store the module in the map
-    xrt::module module{elf};
-    auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
-    m_module_map.emplace(std::move(kernel_name), std::move(module));
+    create_module_map(elf);
   }
 
   std::shared_ptr<hw_context_impl>
@@ -116,15 +131,13 @@ public:
   void
   add_config(const xrt::elf& elf)
   {
-    auto module = xrt::module(elf);
-    auto kernel_name = xrt_core::module_int::get_kernel_info(module).props.name;
     auto part_size = xrt_core::elf_int::get_partition_size(elf);
 
     // create hw ctx handle if not already created
     if (!m_hdl) {
-      m_module_map.emplace(std::move(kernel_name), std::move(module));
-      m_partition_size = part_size;
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
+      m_partition_size = part_size;
+      create_module_map(elf);
       return;
     }
 
@@ -132,11 +145,9 @@ public:
     if (m_partition_size != part_size)
       throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-    // add module to map if kernel name is different, else throw
-    if (m_module_map.find(kernel_name) != m_module_map.end())
-      throw std::runtime_error("config with kernel already exists, cannot add this config\n");
-
-    m_module_map.emplace(std::move(kernel_name), std::move(module));
+    // Add kernels available in ELF to module map
+    // This function throws if kernel with same name is already present
+    create_module_map(elf);
   }
 
   void
