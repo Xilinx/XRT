@@ -196,37 +196,6 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
-std::string
-fatal_err_type_to_string(uint32_t fatal_error_type)
-{
-  static const std::map<uint32_t, const char*> fatal_error_string {
-   {0, "N/A"}
-  };
-
-  auto itr = fatal_error_string.find(fatal_error_type);
-  return itr == fatal_error_string.end()
-    ? "out of range"
-    : itr->second;
-}
-
-std::string
-get_exception_message(const std::string& msg, const ert_packet* epkt)
-{
-  std::ostringstream oss;
-  oss << msg << "\n";
-  switch(epkt->state) {
-  case ERT_CMD_STATE_TIMEOUT: {
-    auto ctx_health = get_ert_ctx_health_data(const_cast<ert_packet*>(epkt));
-    oss<<"txn_op_idx = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
-      <<"\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
-      <<"\nfatal_error_type "<<fatal_err_type_to_string(ctx_health->fatal_error_type)+"\n";
-    break;
-  }
-  default: break;
-  }
-  return oss.str();
-}
-
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -2602,7 +2571,7 @@ public:
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
-      throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), get_exception_message(msg, epkt));
+      throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
     default:
       throw xrt::run::command_error(state, msg);
     }
@@ -3223,13 +3192,12 @@ class runlist_impl
   void
   throw_command_error(const xrt::run& run, ert_cmd_state state) const
   {
-    std::string msg = "runlist failed execution (" + cmd_state_to_string(state) + ")";
     auto epkt = run.get_ert_packet();
     switch (epkt->opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
-      throw xrt::runlist::aie_error(run, state, get_exception_message(msg, epkt));
+      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
     default:
       throw xrt::runlist::command_error(run, state, "runlist failed execution");
     }
