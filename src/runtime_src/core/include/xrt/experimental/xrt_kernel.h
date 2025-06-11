@@ -92,9 +92,6 @@ public:
     XRT_API_EXPORT
     span<const uint32_t>
     data() const;
-  private:
-    void
-    construct_exception_message(const xrt::run& run, ert_cmd_state state, const std::string& msg);
   };
 
 public:

@@ -3032,19 +3032,6 @@ public:
     return {ctx_health->aie_data, ctx_health->aie_data_size};
   }
 
-  std::string
-  fatal_err_type_to_string(uint32_t fatal_error_type)
-  {
-    static const std::map<uint32_t, const char*> fatal_error_string {
-     {0, "N/A"}
-    };
-
-    auto itr = fatal_error_string.find(fatal_error_type);
-    return itr == fatal_error_string.end()
-      ? "out of range"
-      : itr->second;
-  }
-
 };
 
 // class runlist_impl - The internals of a runlist
@@ -4281,32 +4268,34 @@ what() const noexcept
   return handle->m_message.c_str();
 }
 
-run::aie_error::
-aie_error(const xrt::run& run, const std::string& what)
-  : command_error(run, what)
-{
-  construct_exception_message(run,what);
-}
-
-void
-run::aie_error::
-construct_exception_message(const xrt::run& run, const std::string& msg)
+static std::string
+amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
 {
   std::ostringstream oss;
+  const std::map<uint32_t, const char*> fatal_error_string {
+    {0, "N/A"}
+  };
+
   oss << msg << "\n";
-  switch(run.state()) {
+  switch(epkt->state) {
   case ERT_CMD_STATE_TIMEOUT: {
-    auto ctx_health = get_ert_ctx_health_data(run.get_ert_packet());
+    auto ctx_health = get_ert_ctx_health_data(const_cast<ert_packet*>(epkt));
+    auto itr = fatal_error_string.find(ctx_health->fatal_error_type);
+    auto fatal_error_type = (itr == fatal_error_string.end() ? "out of range": itr->second);
     oss<<"txn_op_idx = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
         <<"\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
-        <<"\nfatal_error_type "<<handle->fatal_err_type_to_string(ctx_health->fatal_error_type)+"\n";
+        <<"\nfatal_error_type "<<fatal_error_type<<"\n";
     break;
   }
-  default:
-    break;
+  default: break;
   }
-  handle->m_message = oss.str();
+  return oss.str();
 }
+
+run::aie_error::
+aie_error(const xrt::run& run, const std::string& what)
+  : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
+{}
 
 xrt::run::aie_error::span<const uint32_t>  
 run::aie_error::
@@ -4329,30 +4318,8 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
-  : command_error(run, state, what)
-{
-  construct_exception_message(run, state, what);
-}
-
-void
-runlist::aie_error::
-construct_exception_message(const xrt::run& run, ert_cmd_state state, const std::string& msg)
-{
-  std::ostringstream oss;
-  oss << msg << "\n";
-  switch(state) {
-  case ERT_CMD_STATE_TIMEOUT: {
-    auto ctx_health = get_ert_ctx_health_data(run.get_ert_packet());
-    oss<<"txn_op_idx = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
-        <<"\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
-        <<"\nfatal_error_type "<<handle->fatal_err_type_to_string(ctx_health->fatal_error_type)+"\n";
-    break;
-  }
-  default:
-    break;
-  }
-  handle->m_message = oss.str();
-}
+  : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
+{}
 
 runlist::aie_error::span<const uint32_t>  
 runlist::aie_error::
