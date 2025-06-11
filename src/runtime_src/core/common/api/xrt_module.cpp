@@ -661,8 +661,8 @@ public:
   }
 
   // get kernel info (name, properties and args) if elf has the info
-  virtual const xrt_core::module_int::kernel_info&
-  get_kernel_info() const
+  virtual const std::vector<xrt_core::module_int::kernel_info>&
+  get_kernels_info() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -735,9 +735,10 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
-  // Elf contains kernel signature in .symtab section
+  // Elf can have multiple kernels
+  // Each kernel will have a kernel signature entry in .symtab section
   // kernel_info contains kernel name, args constructed from signature
-  xrt_core::module_int::kernel_info m_kernel_info;
+  std::vector<xrt_core::module_int::kernel_info> m_kernels_info;
 
 protected:
   xrt::elf m_elf;
@@ -758,15 +759,15 @@ protected:
     , m_os_abi(m_elfio.get_os_abi())
   {}
 
-  std::string
-  get_kernel_signature()
+  std::vector<std::string>
+  get_kernel_signatures()
   {
     static constexpr const char* symtab_section_name {".symtab"};
-    std::string kernel_signature = "";
+    std::vector<std::string> kernel_signatures;
 
     ELFIO::section* symtab = m_elfio.sections[symtab_section_name];
     if (!symtab)
-      return kernel_signature; // elf doesn't have .symtab section, kernel_signature will be empty string
+      return kernel_signatures; // elf doesn't have .symtab section, kernel_signatures will be empty string
 
     // Get the symbol table
     const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
@@ -782,15 +783,13 @@ protected:
 
       // Read symbol data
       if (symbols.get_symbol(i, name, value, size, bind, type, section_index, other)) {
-        // there will be only 1 kernel signature symbol entry in .symtab section whose
-        // type is FUNC
+        // kernel signature symbol entry has type FUNC in .symtab section
         if (type == ELFIO::STT_FUNC) {
-          kernel_signature = demangle(name);
-          break;
+          kernel_signatures.emplace_back(demangle(name));
         }
       }
     }
-    return kernel_signature;
+    return kernel_signatures;
   }
 
   std::vector<std::string>
@@ -892,31 +891,33 @@ protected:
 
 public:
   void
-  initialize_kernel_info()
+  initialize_kernels_info()
   {
-    auto kernel_signature = get_kernel_signature();
-    // extract kernel name
-    size_t pos = kernel_signature.find('(');
-    if (pos == std::string::npos)
-      return; // Elf doesn't contain kernel info
+    auto kernel_signatures = get_kernel_signatures();
+    for (const auto& sign : kernel_signatures) {
+      // extract kernel name
+      size_t pos = sign.find('(');
+      if (pos == std::string::npos)
+        continue; // Invalid entry
 
-    std::string kernel_name = kernel_signature.substr(0, pos);
-    // construct kernel args and properties and cache them
-    // this info is used at the time of xrt::kernel object creation
-    m_kernel_info.args = construct_kernel_args(kernel_signature);
+      xrt_core::module_int::kernel_info k_info;
+      std::string kernel_name = sign.substr(0, pos);
+      // construct kernel args and properties and cache them
+      // this info is used at the time of xrt::kernel object creation
+      k_info.args = construct_kernel_args(sign);
 
-    // fill kernel properties
-    m_kernel_info.props.name = kernel_name;
-    m_kernel_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+      // fill kernel properties
+      k_info.props.name = kernel_name;
+      k_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+
+      m_kernels_info.push_back(std::move(k_info));
+    }
   }
 
-  const xrt_core::module_int::kernel_info&
-  get_kernel_info() const override
+  const std::vector<xrt_core::module_int::kernel_info>&
+  get_kernels_info() const override
   {
-    // sanity to check if kernel info is available by checking kernel name is empty
-    if (m_kernel_info.props.name.empty())
-      throw std::runtime_error("No kernel info available, wrong ELF passed\n");
-    return m_kernel_info;
+    return m_kernels_info;
   }
 
   bool
@@ -1176,7 +1177,7 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    initialize_kernel_info();
+    initialize_kernels_info();
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
 
@@ -1352,8 +1353,8 @@ class module_elf_aie2ps : public module_elf
     }
   }
 
-  std::string
-  get_subkernel_from_symtab(uint32_t sym_index)
+  std::pair<std::string, std::string>
+  get_kernel_subkernel_from_symtab(uint32_t sym_index)
   {
     // Iterate over .symtab section and fill the map with
     ELFIO::section* symtab = m_elfio.sections[".symtab"];
@@ -1368,16 +1369,34 @@ class module_elf_aie2ps : public module_elf
     ELFIO::Elf_Xword size;
     unsigned char bind;
     unsigned char type;
-    ELFIO::Elf_Half section_index;
+    ELFIO::Elf_Half index;
     unsigned char other;
 
     // Read symbol data
-    if (symbols.get_symbol(sym_index, name, value, size, bind, type, section_index, other)) {
+    if (symbols.get_symbol(sym_index, name, value, size, bind, type, index, other)) {
       // sub kernel entries will be of type OBJECT
       if (type != ELFIO::STT_OBJECT)
         throw std::runtime_error("symbol index doesn't point to sub kernel entry type in .symtab\n");
 
-      return name;
+      // Here name will be sub kernel name and index will point to symtab index which
+      // contains entry of kernel it belongs
+      auto subkernel_name = name;
+      std::string kname;
+      ELFIO::Elf_Half idx;
+
+      if (!symbols.get_symbol(index, kname, value, size, bind, type, idx, other))
+        throw std::runtime_error("Unable to get symbol pointed by sub kernel entry in .symtab\n");
+
+      if (type != ELFIO::STT_FUNC)
+        throw std::runtime_error("index pointed by sub kernel doesn't have kernel entry\n");
+
+      // demangle the string and extract kernel name from it
+      kname = demangle(kname);
+      size_t pos = kname.find('(');
+      if (pos == std::string::npos)
+        throw std::runtime_error("Invalid kernel entry in .symtab pointed by sub kerenl\n");
+
+      return {kname.substr(0, pos), subkernel_name};
     }
 
     throw std::runtime_error(std::string{"Unable to find symbol in .symtab section with index : "}
@@ -1433,9 +1452,12 @@ class module_elf_aie2ps : public module_elf
         if (data == nullptr || size < sizeof(ELFIO::Elf_Word))
           continue;
 
-        // In .group section will point to sub kernel entry in .symtab section
+        // In .group section info field data
+        // is index of sub kernel entry in .symtab section
         auto sec_info = section->get_info();
-        m_grp_to_id_map[sec_idx] = get_subkernel_from_symtab(sec_info);
+        auto [kname, sub_kname] = get_kernel_subkernel_from_symtab(sec_info);
+        // store ctrl code id as kernel + subkernel name
+        m_grp_to_id_map[sec_idx] = kname + sub_kname;
 
         const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
         const auto word_count = size / sizeof(ELFIO::Elf_Word);
@@ -1669,7 +1691,7 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    initialize_kernel_info();
+    initialize_kernels_info();
     std::map<std::string, std::vector<uint64_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
     initialize_arg_patchers(pad_offsets);
@@ -2718,10 +2740,10 @@ dump_scratchpad_mem(const xrt::module& module)
   module_sram->dump_scratchpad_mem();
 }
 
-const xrt_core::module_int::kernel_info&
-get_kernel_info(const xrt::module& module)
+const std::vector<xrt_core::module_int::kernel_info>&
+get_kernels_info(const xrt::module& module)
 {
-  return module.get_handle()->get_kernel_info();
+  return module.get_handle()->get_kernels_info();
 }
 
 void
