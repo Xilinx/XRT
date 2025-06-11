@@ -148,8 +148,8 @@ namespace xdp {
     void initializeFIFO(DeviceInfo* devInfo) ;
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
-    void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
-    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    void setAIEGeneration(uint64_t deviceId);
+    void setAIEClockRateMHz(uint64_t deviceId);
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin);

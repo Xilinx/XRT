@@ -2397,7 +2397,7 @@ namespace xdp {
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     if (readAIEdata) {
       readAIEMetadata(xrtXclbin, clientBuild);
-      setAIEGeneration(deviceId, xrtXclbin);
+      setAIEGeneration(deviceId);
     }
 
     /* Configure AMs if context monitoring is supported
@@ -2416,7 +2416,7 @@ namespace xdp {
 
     // Following functions require configInfo to be created first.
     if (readAIEdata)
-      setAIEClockRateMHz(deviceId, xrtXclbin);
+      setAIEClockRateMHz(deviceId);
     initializeProfileMonitors(devInfo, std::move(xrtXclbin));
 
     devInfo->isReady = true;
@@ -2503,7 +2503,7 @@ namespace xdp {
     return metadataReader.get();
   }
 
-  void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
+  void VPStaticDatabase::setAIEGeneration(uint64_t deviceId) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
@@ -2519,7 +2519,7 @@ namespace xdp {
     }
   }
 
-  void VPStaticDatabase::setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) {
+  void VPStaticDatabase::setAIEClockRateMHz(uint64_t deviceId) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
