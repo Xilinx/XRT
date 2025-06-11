@@ -1512,17 +1512,6 @@ private:
     return data;  // no skipping
   }
 
-  std::string
-  get_ctrlcode_id(const std::string& id)
-  {
-    // kernel name will be of format - <kernel_name>:<ctrl code index>
-    if (auto i = id.find(":"); i != std::string::npos)
-      return id.substr(0, i) + id.substr(i + 1);
-
-    //return xrt_core::module_int::get_default_ctrl_id(m_module);
-    return "";
-  }
-
   const xrt_core::module_int::kernel_info&
   get_kernel_info()
   {
@@ -1618,13 +1607,13 @@ public:
     , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
     , properties(get_kernel_info().props)
     , uid(create_uid())
-    , m_ctrl_code_id(get_ctrlcode_id(nm))                               // control code index
+    , m_ctrl_code_id(xrt_core::module_int::get_ctrlcode_id(m_module, nm)) // control code index
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
     // get kernel info from module and initialize kernel args
-    for (auto& arg : get_kernel_info().args)
-      args.emplace_back(arg);
+    for (const auto& arg : get_kernel_info().args)
+      args.push_back(arg);
 
     // amend args with computed data based on kernel protocol
     amend_args();
