@@ -139,10 +139,8 @@ public:
     /**
      * aie_error() - Constructor must hold on to run object
      */
-    aie_error(const xrt::run& run, const std::string& what)
-      : command_error(run, what)
-    {}
-    
+    XRT_API_EXPORT
+    aie_error(const xrt::run& run, const std::string& what);
     /**
      * Get the raw context health data
      * The data format is not necessarily ABI compatible so should
@@ -151,6 +149,9 @@ public:
     XRT_API_EXPORT
     span<const uint32_t>
     data() const;
+  private:
+    void
+    construct_exception_message(const xrt::run& run, const std::string& what);
   };
 
 public:
