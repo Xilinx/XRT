@@ -668,7 +668,7 @@ public:
   }
 
   virtual std::string
-  get_default_ctrl_id() const
+  get_ctrlcode_id(const std::string& kname) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -1283,18 +1283,21 @@ public:
   }
 
   std::string
-  get_default_ctrl_id() const override
+  get_ctrlcode_id(const std::string& name) const override
   {
-    // If user doesn't provide ctrl code id or sub kernel
+    if (auto pos = name.find(":"); pos != std::string::npos)
+      return name.substr(pos + 1);
+
+    // If user doesn't provide sub kernel
     // we default to first entry if its the only availble sub kernel
-    // otherwise an exception is thrown
+    // of given kernel otherwise an exception is thrown
     if (m_instr_buf_map.size() == 1)
       return m_instr_buf_map.begin()->first;
 
     if (m_ctrl_packet_map.size() == 1)
       return m_ctrl_packet_map.begin()->first;
 
-    throw std::runtime_error("Can not get default kernel\n");
+    throw std::runtime_error(std::string{"cannot get ctrlcode id from given kernel name: "} + name);
   }
 };
 
@@ -1305,6 +1308,8 @@ class module_elf_aie2ps : public module_elf
 
   // lookup map for section index to group index
   std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
+  // map that stores available subkernels of a kernel
+  std::unordered_map<std::string, std::vector<std::string>> m_kernels_map;
   // lookup map for group index to sub kernel or control code id
   std::unordered_map<uint32_t, std::string> m_grp_to_id_map;
   // map for holding control code data for each sub kernel
@@ -1456,6 +1461,7 @@ class module_elf_aie2ps : public module_elf
         // is index of sub kernel entry in .symtab section
         auto sec_info = section->get_info();
         auto [kname, sub_kname] = get_kernel_subkernel_from_symtab(sec_info);
+        m_kernels_map[kname].push_back(sub_kname);
         // store ctrl code id as kernel + subkernel name
         m_grp_to_id_map[sec_idx] = kname + sub_kname;
 
@@ -1726,15 +1732,31 @@ public:
   }
 
   std::string
-  get_default_ctrl_id() const override
+  get_ctrlcode_id(const std::string& name) const override
   {
-    // If user doesn't provide ctrl code id or sub kernel
-    // we default to first entry if its the only availble sub kernel
-    // otherwise an exception is thrown
-    if (m_ctrlcodes_map.size() == 1)
-      return m_ctrlcodes_map.begin()->first;
+    if (auto pos = name.find(":"); pos != std::string::npos) {
+      auto kernel = name.substr(0, pos);
+      auto sub_kernel = name.substr(pos + 1);
+      auto id = kernel + sub_kernel;
 
-    throw std::runtime_error("Can not get default kernel\n");
+      if (m_ctrlcodes_map.find(id) == m_ctrlcodes_map.end())
+        throw std::runtime_error(std::string{"Unable to find given kernel: "} + name);
+
+      return id;
+    }
+
+    // If user doesn't provide sub kernel
+    // we default to first entry if its the only availble sub kernel
+    // of given kernel otherwise an exception is thrown
+    // check if given kernel is present
+    if (auto entry = m_kernels_map.find(name); entry != m_kernels_map.end()) {
+      if (entry->second.size() == 1)
+        return name + *(entry->second.begin());
+      else
+        throw std::runtime_error("Multiple sub kernels present for given kernel, cannot choose sub kernel\n");
+    }
+
+    throw std::runtime_error(std::string{"cannot get ctrlcode id from given kernel name: "} + name);
   }
 };
 
@@ -2580,9 +2602,9 @@ create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const
 }
 
 std::string
-get_default_ctrl_id(const xrt::module& module)
+get_ctrlcode_id(const xrt::module& module, const std::string& kname)
 {
-  return module.get_handle()->get_default_ctrl_id();
+  return module.get_handle()->get_ctrlcode_id(kname);
 }
 
 uint32_t*
