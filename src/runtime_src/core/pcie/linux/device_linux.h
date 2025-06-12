@@ -23,17 +23,14 @@ public:
   device_linux(handle_type device_handle, id_type device_id, bool user);
   ~device_linux();
 
-  // query functions
-  virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
-
-  virtual void read(uint64_t addr, void* buf, uint64_t len) const override;
-  virtual void write(uint64_t addr, const void* buf, uint64_t len) const override;
-  virtual int  open(const std::string& subdev, int flag) const override;
-  virtual void close(int dev_handle) const override;
-  virtual void reset(query::reset_type&) const override;
-  virtual void xclmgmt_load_xclbin(span<char> buffer) const override;
-  virtual void device_shutdown() const override;
-  virtual void device_online() const override;
+  void read(uint64_t addr, void* buf, uint64_t len) const override;
+  void write(uint64_t addr, const void* buf, uint64_t len) const override;
+  int  open(const std::string& subdev, int flag) const override;
+  void close(int dev_handle) const override;
+  void reset(query::reset_type&) const override;
+  void xclmgmt_load_xclbin(span<char> buffer) const override;
+  void device_shutdown() const override;
+  void device_online() const override;
 
 public:
   ////////////////////////////////////////////////////////////////
@@ -107,7 +104,7 @@ protected:
 private:
   std::shared_ptr<pci::dev> m_pcidev;
   // Private look up function for concrete query::request
-  virtual const query::request&
+  const query::request&
   lookup_query(query::key_type query_key) const override;
 };
 

@@ -1586,29 +1586,6 @@ device_linux::
 
 void
 device_linux::
-read_dma_stats(boost::property_tree::ptree& pt) const
-{
-  auto handle = get_device_handle();
-
-  xclDeviceUsage devstat = { 0 };
-  xclGetUsageInfo(handle, &devstat);
-
-  boost::property_tree::ptree pt_channels;
-  for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
-    boost::property_tree::ptree pt_dma;
-    pt_dma.put( "id", std::to_string(get_device_id()));
-    pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[idx]) );
-    pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[idx]) );
-
-    // Create our array of data
-    pt_channels.push_back(std::make_pair("", pt_dma));
-  }
-
-  pt.add_child( "transfer_metrics.channels", pt_channels);
-}
-
-void
-device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
   if (auto err = get_dev()->pcieBarRead(offset, buf, len))
