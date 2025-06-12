@@ -14,6 +14,7 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/span.h"
 #include "core/common/usage_metrics.h"
 #include "core/include/xrt.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
@@ -42,6 +43,9 @@ using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
  */
 class device : public ishim
 {
+public:
+  template <typename T> using span = xrt_core::span<T>;
+private:
   // class xclbin_map - container for loaded xclbins
   //
   // Manages xclbins loaded into specific slots
@@ -437,7 +441,7 @@ public:
   /**
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
    */
-  virtual void xclmgmt_load_xclbin(const char*) const{}
+  virtual void xclmgmt_load_xclbin(span<char>) const{}
 
   /**
    * shutdown_device() - hot reset the device, stop ongoing transactions

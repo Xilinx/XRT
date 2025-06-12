@@ -41,7 +41,7 @@ public:
   virtual int  open(const std::string& subdev, int flag) const;
   virtual void close(int dev_handle) const;
   virtual void reset(const char*, const char*, const char*) const;
-  virtual void xclmgmt_load_xclbin(const char* buffer) const;
+  void xclmgmt_load_xclbin(span<char> buffer) const override;
 
   virtual std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,

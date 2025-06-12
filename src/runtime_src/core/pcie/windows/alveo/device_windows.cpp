@@ -1699,6 +1699,6 @@ close(int dev_handle) const
 
 void
 device_windows::
-xclmgmt_load_xclbin(const char* buffer) const {}
+xclmgmt_load_xclbin(span<char> buffer) const {}
 
 } // xrt_core
