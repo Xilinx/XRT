@@ -316,7 +316,7 @@ struct script_runner
       sfs::path profile = root / node["profile"];
       auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
       sfs::path dir = root / node["dir"];
-      queue.add(job_type{device, id, recipe_json_string, profile_json_string, dir.string()});
+      queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
     }
     return queue;
   }
