@@ -668,7 +668,7 @@ public:
   }
 
   virtual std::string
-  get_ctrlcode_id(const std::string& kname) const
+  get_ctrlcode_id(const std::string& /*kname*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -735,63 +735,6 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
-  // Elf can have multiple kernels
-  // Each kernel will have a kernel signature entry in .symtab section
-  // kernel_info contains kernel name, args constructed from signature
-  std::vector<xrt_core::module_int::kernel_info> m_kernels_info;
-
-protected:
-  xrt::elf m_elf;
-  const ELFIO::elfio& m_elfio; // we should not modify underlying elf
-  uint8_t m_os_abi = Elf_Amd_Aie2p;
-  std::map<std::string, patcher> m_arg2patcher;
-
-  // rela->addend have offset to base-bo-addr info along with schema
-  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
-  constexpr static uint32_t addend_shift = 4;
-  constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
-  constexpr static uint32_t schema_mask = ~addend_mask;
-
-  explicit module_elf(xrt::elf elf)
-    : module_impl{ elf.get_cfg_uuid() }
-    , m_elf{std::move(elf)}
-    , m_elfio(xrt_core::elf_int::get_elfio(m_elf))
-    , m_os_abi(m_elfio.get_os_abi())
-  {}
-
-  std::vector<std::string>
-  get_kernel_signatures()
-  {
-    static constexpr const char* symtab_section_name {".symtab"};
-    std::vector<std::string> kernel_signatures;
-
-    ELFIO::section* symtab = m_elfio.sections[symtab_section_name];
-    if (!symtab)
-      return kernel_signatures; // elf doesn't have .symtab section, kernel_signatures will be empty string
-
-    // Get the symbol table
-    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
-    // Iterate over all symbols
-    for (ELFIO::Elf_Xword i = 0; i < symbols.get_symbols_num(); ++i) {
-      std::string name;
-      ELFIO::Elf64_Addr value;
-      ELFIO::Elf_Xword size;
-      unsigned char bind;
-      unsigned char type;
-      ELFIO::Elf_Half section_index;
-      unsigned char other;
-
-      // Read symbol data
-      if (symbols.get_symbol(i, name, value, size, bind, type, section_index, other)) {
-        // kernel signature symbol entry has type FUNC in .symtab section
-        if (type == ELFIO::STT_FUNC) {
-          kernel_signatures.emplace_back(demangle(name));
-        }
-      }
-    }
-    return kernel_signatures;
-  }
-
   std::vector<std::string>
   split(const std::string& s, char delimiter)
   {
@@ -853,6 +796,75 @@ protected:
     return args;
   }
 
+  // Function that parses .symtab section
+  // checks sub kernel entry at given symbol index and
+  // gets corresponding kernel, parses it to create kernel info
+  // Each group corresponds to a kernel, sub kernel combination
+  // This function returns kernel, sub kernel name pair
+  std::pair<std::string, std::string>
+  get_kernel_subkernel_from_symtab(uint32_t sym_index)
+  {
+    ELFIO::section* symtab = m_elfio.sections[".symtab"];
+    if (!symtab)
+      throw std::runtime_error("No .symtab section found\n");
+
+    // Get the symbol table
+    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
+    // Get the symbol at sym_index
+    std::string name;
+    ELFIO::Elf64_Addr value;
+    ELFIO::Elf_Xword size;
+    unsigned char bind;
+    unsigned char type;
+    ELFIO::Elf_Half index;
+    unsigned char other;
+
+    // Read symbol data
+    if (symbols.get_symbol(sym_index, name, value, size, bind, type, index, other)) {
+      // sub kernel entries will be of type OBJECT
+      // sanity check for corrupt Elf
+      if (type != ELFIO::STT_OBJECT)
+        throw std::runtime_error("symbol index doesn't point to sub kernel entry type in .symtab\n");
+
+      // Here name will be sub kernel name and index will point to symtab index which
+      // contains entry of kernel it belongs
+      // Fetch kernel entry, parse it to fill kernel info
+      auto subkernel_name = name;
+      std::string kname;
+      ELFIO::Elf_Half idx;
+
+      // sanity checks
+      if (!symbols.get_symbol(index, kname, value, size, bind, type, idx, other))
+        throw std::runtime_error("Unable to get symbol pointed by sub kernel entry in .symtab\n");
+
+      if (type != ELFIO::STT_FUNC)
+        throw std::runtime_error("index pointed by sub kernel doesn't have kernel entry\n");
+
+      // demangle the string and extract kernel name, args from it
+      kname = demangle(kname);
+      size_t pos = kname.find('(');
+      if (pos == std::string::npos)
+        throw std::runtime_error("Invalid kernel entry in .symtab pointed by sub kerenl\n");
+
+      xrt_core::module_int::kernel_info k_info;
+      std::string kernel_name = kname.substr(0, pos);
+      // construct kernel args and properties and cache them
+      // this info is used at the time of xrt::kernel object creation
+      k_info.args = construct_kernel_args(kname);
+
+      // fill kernel properties
+      k_info.props.name = kernel_name;
+      k_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+
+      m_kernels_info.push_back(std::move(k_info));
+
+      return {kernel_name, subkernel_name};
+    }
+
+    throw std::runtime_error(std::string{"Unable to find symbol in .symtab section with index : "}
+        + std::to_string(sym_index));
+  }
+
   template <typename T>
   bool
   patch_it_impl(T base, const std::string& argnm, size_t index, uint64_t patch,
@@ -889,29 +901,119 @@ protected:
     return true;
   }
 
+protected:
+  // Below members are made protected to allow direct access in derived
+  // classes for simplicity and avoids unnecessary boilerplate setters,
+  // getters code
+  // NOLINTBEGIN
+  xrt::elf m_elf;
+  const ELFIO::elfio& m_elfio; // we should not modify underlying elf
+  uint8_t m_os_abi = Elf_Amd_Aie2p;
+  std::map<std::string, patcher> m_arg2patcher;
+
+  // Elf can have multiple group sections
+  // sections belongs to a particular kernel, sub kernel combination
+  // are grouped under a group section
+  // lookup map for section index to group index
+  std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
+  // lookup map for group index to control code id (kernel + sub kernel)
+  std::unordered_map<uint32_t, std::string> m_grp_to_id_map;
+
+  // Elf can have multiple kernels
+  // Each kernel will have a kernel signature entry in .symtab section
+  // kernel_info contains kernel name, args constructed from signature
+  std::vector<xrt_core::module_int::kernel_info> m_kernels_info;
+  // map that stores available subkernels of a kernel
+  std::unordered_map<std::string, std::vector<std::string>> m_kernels_map;
+
+  // rela->addend have offset to base-bo-addr info along with schema
+  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
+  constexpr static uint32_t addend_shift = 4;
+  constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
+  constexpr static uint32_t schema_mask = ~addend_mask;
+  // NOLINTEND
+
+  explicit module_elf(xrt::elf elf)
+    : module_impl{ elf.get_cfg_uuid() }
+    , m_elf{std::move(elf)}
+    , m_elfio(xrt_core::elf_int::get_elfio(m_elf))
+    , m_os_abi(m_elfio.get_os_abi())
+  {}
+
 public:
-  void
-  initialize_kernels_info()
+  // Function that parses the .group sections in the ELF file
+  // and returns a map with ctrl code id as key and pair of 
+  // this grp section id, vector of section ids that belong to
+  // this group as value
+  std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>>
+  parse_group_sections(bool is_grp_elf)
   {
-    auto kernel_signatures = get_kernel_signatures();
-    for (const auto& sign : kernel_signatures) {
-      // extract kernel name
-      size_t pos = sign.find('(');
-      if (pos == std::string::npos)
-        continue; // Invalid entry
+    std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>> id_sections_map;
+    if (!is_grp_elf) {
+      // Older version ELf, so doesn't have .group sections
+      // This Elf doesnt have multiple ctrlcodes
+      // So using empty string as ctrl code id
+      constexpr const char* id = "";
+      std::vector<uint32_t> sec_ids;
+      for (const auto& sec : m_elfio.sections) {
+        auto name = sec->get_name();
+        // insert only the sections that can be grouped
+        if ((name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
+            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::dump)) == std::string::npos))
+          continue;
 
-      xrt_core::module_int::kernel_info k_info;
-      std::string kernel_name = sign.substr(0, pos);
-      // construct kernel args and properties and cache them
-      // this info is used at the time of xrt::kernel object creation
-      k_info.args = construct_kernel_args(sign);
+        sec_ids.push_back(sec->get_index());
+        // fill the sec_to_grp_map for lookup later
+        // for this kind of ELF we fill UINT32_MAX as there is no group section
+        m_sec_to_grp_map[sec->get_index()] = UINT32_MAX;
+      }
 
-      // fill kernel properties
-      k_info.props.name = kernel_name;
-      k_info.props.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
-
-      m_kernels_info.push_back(std::move(k_info));
+      // fill group index to id map with id as empty string
+      // UINT32_MAX is used for group section index
+      m_grp_to_id_map[UINT32_MAX] = id;
+      id_sections_map.emplace("", std::make_pair(UINT32_MAX, sec_ids));
     }
+    else {
+      for (const auto& section : m_elfio.sections) {
+        if (section == nullptr || section->get_type() != ELFIO::SHT_GROUP)
+          continue; // not a .group section
+
+        const auto* data = section->get_data();
+        const auto size = section->get_size();
+        auto sec_idx = section->get_index();
+
+        // .group section's data will be flags followed by section indices
+        // that belong to this group
+        if (data == nullptr || size < sizeof(ELFIO::Elf_Word))
+          continue;
+
+        // .group section's info field data is index of sub kernel entry
+        // in .symtab section
+        auto sec_info = section->get_info();
+        auto [kname, sub_kname] = get_kernel_subkernel_from_symtab(sec_info);
+        m_kernels_map[kname].push_back(sub_kname);
+        // store ctrl code id as kernel + subkernel name
+        m_grp_to_id_map[sec_idx] = kname + sub_kname;
+
+        const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
+        const auto word_count = size / sizeof(ELFIO::Elf_Word);
+
+        std::vector<uint32_t> members;
+        // skip flags at index 0
+        for (std::size_t i = 1; i < word_count; ++i) {
+          members.push_back(word_data[i]);
+          // fill section index to group index map
+          m_sec_to_grp_map[word_data[i]] = sec_idx;
+        }
+
+        auto id = m_grp_to_id_map[sec_idx];
+        id_sections_map.emplace(std::move(id), std::make_pair(sec_idx, std::move(members)));
+      }
+    }
+
+    return id_sections_map;
   }
 
   const std::vector<xrt_core::module_int::kernel_info>&
@@ -1177,7 +1279,6 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    initialize_kernels_info();
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
 
@@ -1306,12 +1407,6 @@ class module_elf_aie2ps : public module_elf
 {
   xrt::aie::program m_program;
 
-  // lookup map for section index to group index
-  std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
-  // map that stores available subkernels of a kernel
-  std::unordered_map<std::string, std::vector<std::string>> m_kernels_map;
-  // lookup map for group index to sub kernel or control code id
-  std::unordered_map<uint32_t, std::string> m_grp_to_id_map;
   // map for holding control code data for each sub kernel
   // key : control code id, value : pair of group section index, vector of column ctrlcodes
   std::unordered_map<std::string, std::pair<uint32_t, std::vector<ctrlcode>>> m_ctrlcodes_map;
@@ -1358,132 +1453,6 @@ class module_elf_aie2ps : public module_elf
     }
   }
 
-  std::pair<std::string, std::string>
-  get_kernel_subkernel_from_symtab(uint32_t sym_index)
-  {
-    // Iterate over .symtab section and fill the map with
-    ELFIO::section* symtab = m_elfio.sections[".symtab"];
-    if (!symtab)
-      throw std::runtime_error("No .symtab section found\n");
-
-    // Get the symbol table
-    const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
-    // Get the symbol at sym_index
-    std::string name;
-    ELFIO::Elf64_Addr value;
-    ELFIO::Elf_Xword size;
-    unsigned char bind;
-    unsigned char type;
-    ELFIO::Elf_Half index;
-    unsigned char other;
-
-    // Read symbol data
-    if (symbols.get_symbol(sym_index, name, value, size, bind, type, index, other)) {
-      // sub kernel entries will be of type OBJECT
-      if (type != ELFIO::STT_OBJECT)
-        throw std::runtime_error("symbol index doesn't point to sub kernel entry type in .symtab\n");
-
-      // Here name will be sub kernel name and index will point to symtab index which
-      // contains entry of kernel it belongs
-      auto subkernel_name = name;
-      std::string kname;
-      ELFIO::Elf_Half idx;
-
-      if (!symbols.get_symbol(index, kname, value, size, bind, type, idx, other))
-        throw std::runtime_error("Unable to get symbol pointed by sub kernel entry in .symtab\n");
-
-      if (type != ELFIO::STT_FUNC)
-        throw std::runtime_error("index pointed by sub kernel doesn't have kernel entry\n");
-
-      // demangle the string and extract kernel name from it
-      kname = demangle(kname);
-      size_t pos = kname.find('(');
-      if (pos == std::string::npos)
-        throw std::runtime_error("Invalid kernel entry in .symtab pointed by sub kerenl\n");
-
-      return {kname.substr(0, pos), subkernel_name};
-    }
-
-    throw std::runtime_error(std::string{"Unable to find symbol in .symtab section with index : "}
-        + std::to_string(sym_index));
-  }
-
-  // Function that parses the .group sections in the ELF file
-  // and returns a map with sub kernel id as key and pair of 
-  // this grp section id, vector of section ids that belong to
-  // this group as value
-  std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>>
-  parse_group_sections()
-  {
-    constexpr uint8_t minor_ver_mask = 0xF;
-    constexpr uint8_t group_elf_minor_version = 3;
-
-    std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>> id_sections_map;
-    if ((m_elfio.get_abi_version() & minor_ver_mask) < group_elf_minor_version) {
-      // Older version ELf (< 3) doesn't have .group sections
-      // so using empty string "" as sub kernel id
-      constexpr const char* id = "";
-      std::vector<uint32_t> sec_ids;
-      for (const auto& sec : m_elfio.sections) {
-        auto name = sec->get_name();
-        if ((name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::dump)) == std::string::npos))
-          continue;
-
-        sec_ids.push_back(sec->get_index());
-        // fill the sec_to_grp_map for lookup later
-        // for this kind of ELF we fill UINT32_MAX as there is no group section
-        m_sec_to_grp_map[sec->get_index()] = UINT32_MAX;
-      }
-
-      // fill group index to id map with id as empty string
-      // UINT32_MAX is used for group section index
-      m_grp_to_id_map[UINT32_MAX] = id;
-      id_sections_map.emplace("", std::make_pair(UINT32_MAX, sec_ids));
-    }
-    else {
-      for (const auto& section : m_elfio.sections) {
-        if (section == nullptr || section->get_type() != ELFIO::SHT_GROUP)
-          continue; // not a .group section
-
-        const auto* data = section->get_data();
-        const auto size = section->get_size();
-        auto sec_idx = section->get_index();
-
-        // .group section data will be flags followed by section indices
-        // in this group
-        if (data == nullptr || size < sizeof(ELFIO::Elf_Word))
-          continue;
-
-        // In .group section info field data
-        // is index of sub kernel entry in .symtab section
-        auto sec_info = section->get_info();
-        auto [kname, sub_kname] = get_kernel_subkernel_from_symtab(sec_info);
-        m_kernels_map[kname].push_back(sub_kname);
-        // store ctrl code id as kernel + subkernel name
-        m_grp_to_id_map[sec_idx] = kname + sub_kname;
-
-        const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
-        const auto word_count = size / sizeof(ELFIO::Elf_Word);
-
-        std::vector<uint32_t> members;
-        // skip flags at index 0
-        for (std::size_t i = 1; i < word_count; ++i) {
-          members.push_back(word_data[i]);
-          // fill section index to group index map
-          m_sec_to_grp_map[word_data[i]] = sec_idx;
-        }
-
-        auto sub_kernel_id = m_grp_to_id_map[sec_idx];
-        id_sections_map.emplace(sub_kernel_id, std::make_pair(sec_idx, std::move(members)));
-      }
-    }
-
-    return id_sections_map;
-  }
-
   // Extract control code from ELF sections without assuming anything
   // about order of sections in the ELF file.  Build helper data
   // structures that manages the control code data per page for each
@@ -1514,7 +1483,14 @@ class module_elf_aie2ps : public module_elf
     using ctrlcode_map = std::map<std::string, std::pair<uint32_t, uc_sections>>;
     ctrlcode_map ctrl_map;
 
-    auto id_secs_map = parse_group_sections();
+    // ELF with version >= 0.3 uses group sections
+    constexpr uint8_t minor_ver_mask = 0x0F;
+    constexpr uint8_t group_elf_minor_version = 3;
+    bool is_grp_elf = false;
+    if ((m_elfio.get_abi_version() & minor_ver_mask) >= group_elf_minor_version)
+      is_grp_elf = true;
+
+    auto id_secs_map = parse_group_sections(is_grp_elf);
     // Iterate sections for each sub kernel
     // collect ctrltext and ctrldata per column and page
     for (const auto& [id, pair_val] : id_secs_map) {
@@ -1697,7 +1673,6 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    initialize_kernels_info();
     std::map<std::string, std::vector<uint64_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
     initialize_arg_patchers(pad_offsets);
