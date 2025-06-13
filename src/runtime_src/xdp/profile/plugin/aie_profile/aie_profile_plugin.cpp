@@ -113,16 +113,16 @@ namespace xdp {
       return;
 
     if (hw_context_flow) {
-      if(AppFlowType::FLOW_TYPE_NOT_SET == db->getAppFlowType()) {
-        db->setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
-      } else if(AppFlowType::LOAD_XCLBIN_FLOW == db->getAppFlowType()) {
+      if(AppFlowType::FLOW_TYPE_NOT_SET == (db->getStaticInfo()).getAppFlowType()) {
+        (db->getStaticInfo()).setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
+      } else if(AppFlowType::LOAD_XCLBIN_FLOW == (db->getStaticInfo()).getAppFlowType()) {
         xrt_core::message::send(severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP flow here...");
         return;
       }
     } else {
-      if(AppFlowType::FLOW_TYPE_NOT_SET == db->getAppFlowType()) {
-        db->setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
-      } else if(AppFlowType::REGISTER_XCLBIN_FLOW == db->getAppFlowType()) {
+      if(AppFlowType::FLOW_TYPE_NOT_SET == (db->getStaticInfo()).getAppFlowType()) {
+        (db->getStaticInfo()).setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
+      } else if(AppFlowType::REGISTER_XCLBIN_FLOW == (db->getStaticInfo()).getAppFlowType()) {
         xrt_core::message::send(severity_level::warning, "XRT", "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. AIE Profiling is not yet supported for this combination.");
         return;
       }
