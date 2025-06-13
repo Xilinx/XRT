@@ -4272,19 +4272,20 @@ static std::string
 amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
 {
   std::ostringstream oss;
-  const std::map<uint32_t, const char*> fatal_error_string {
+  static const std::map<uint32_t, const char*> fatal_error_string {
     {0, "N/A"}
   };
 
+  if (epkt->state != ERT_CMD_STATE_TIMEOUT)
+    return msg;
+
   oss << msg << "\n";
-  if (epkt->state == ERT_CMD_STATE_TIMEOUT) {
-    auto ctx_health = get_ert_ctx_health_data(const_cast<ert_packet*>(epkt));
-    auto itr = fatal_error_string.find(ctx_health->fatal_error_type);
-    auto fatal_error_type = (itr == fatal_error_string.end() ? "out of range": itr->second);
-    oss<<"txn_op_idx = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
-        <<"\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
-        <<"\nfatal_error_type "<<fatal_error_type<<"\n";
-  }
+  auto ctx_health = get_ert_ctx_health_data(const_cast<ert_packet*>(epkt));
+  auto itr = fatal_error_string.find(ctx_health->fatal_error_type);
+  auto fatal_error_type = (itr == fatal_error_string.end() ? "out of range": itr->second);
+  oss << "txn_op_idx = 0x" << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
+    << "\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
+    << "\nfatal_error_type " << fatal_error_type << "\n";
   return oss.str();
 }
 
