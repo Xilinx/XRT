@@ -7,15 +7,12 @@
 # the start. It is currently built on Client and VE2
 # =========================================================================
 
-if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/npu3")
+elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/clientDev")
-
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/ve2")
-
-elseif (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/npu3")
-
 endif()
 
 file(GLOB XDP_AIE_HALT_PLUGIN_FILES
