@@ -1613,7 +1613,7 @@ public:
 
     // get kernel info from module and initialize kernel args
     for (const auto& arg : get_kernel_info().args)
-      args.push_back(arg);
+      args.emplace_back(arg);
 
     // amend args with computed data based on kernel protocol
     amend_args();
