@@ -30,6 +30,8 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
 )
 
 if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+  message("AIEBU_SOURCE_DIR = ${AIEBU_SOURCE_DIR}")
+
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/npu3")
   file(GLOB AIE_PROFILE_IMPL_FILES
     "${IMPL_DIR}/*.h"
@@ -39,7 +41,10 @@ if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_NPU3_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_profile_plugin PRIVATE ${AIERT_DIR}/include)
+  target_include_directories(xdp_aie_profile_plugin PRIVATE
+                             ${AIERT_DIR}/include
+                             ${AIEBU_SOURCE_DIR}/include
+                             ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_profile_plugin
@@ -82,9 +87,7 @@ elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
-else()
-
-  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/ve2")
 
     file(GLOB AIE_PROFILE_IMPL_FILES
@@ -101,9 +104,8 @@ else()
     install (TARGETS xdp_aie_profile_plugin_xdna
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
-  endif()
 
-  if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
+elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/edge")
 
     file(GLOB AIE_PROFILE_IMPL_FILES
@@ -123,7 +125,8 @@ else()
     install (TARGETS xdp_aie_profile_plugin
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
-  endif()
+
+else()
 
 # Else, on edge-aarch64 don't build at all
 

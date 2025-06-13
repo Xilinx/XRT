@@ -28,12 +28,14 @@ if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
-  elseif (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_NPU3_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_trace_plugin PRIVATE ${AIERT_DIR}/include)
+  target_include_directories(xdp_aie_profile_plugin PRIVATE
+                             ${AIERT_DIR}/include
+                             ${AIEBU_SOURCE_DIR}/include
+                             ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
@@ -94,8 +96,7 @@ elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )  
 
-else()
-  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/ve2")
     set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/ve2")
     set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
@@ -119,36 +120,8 @@ else()
     install (TARGETS xdp_aie_trace_plugin_xdna
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
-  endif()
     
-  if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
-    set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/edge")
-    set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace")
-    set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
-
-    file(GLOB AIE_TRACE_COMPONENT_FILES
-      "${OFFLOAD_DIR}/*.h"
-      "${OFFLOAD_DIR}/*.cpp"
-      "${DEVICE_DIR}/*.h"
-      "${DEVICE_DIR}/*.cpp"
-      "${IMPL_DIR}/*.h"
-      "${IMPL_DIR}/*.cpp"
-    )
-
-    add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_TRACE_CONFIG_FILES})
-    add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
-    target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
-    if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-      target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_VE2_ZOCL_BUILD=1 FAL_LINUX="on")
-    else()
-      target_compile_definitions(xdp_aie_trace_plugin PRIVATE FAL_LINUX="on")
-    endif()
-    set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-
-    install (TARGETS xdp_aie_trace_plugin
-      LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
-    )
-  endif()
+else()
 
 # Else, on edge-aarch64 don't build at all
 
