@@ -48,15 +48,15 @@ std::function<void (void*)> end_poll_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+  //#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
     using utype = void (*)(void*, bool);
 
     update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-  #else 
-    (void)handle;
-  #endif
+  //#else 
+  //  (void)handle;
+  //#endif
 
 }
 
@@ -725,8 +725,25 @@ update_device(void* handle, bool hw_context_flow)
     }
   }
 
-  // Avoid warning until we've added support in all plugins
-  (void)(hw_context_flow);
+  if (xrt_core::config::get_aie_profile()) {
+    try {
+      xrt_core::xdp::aie::profile::load();
+    }
+    catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to load AIE Profile library for Edge. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+    try {
+      xrt_core::xdp::aie::profile::update_device(handle, hw_context_flow);
+    }
+    catch (const std::exception &e) {
+      std::stringstream msg;
+      msg << "Failed to setup for AIE Profile Edge. Caught exception " << e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+  }
+
 #endif
 }
 

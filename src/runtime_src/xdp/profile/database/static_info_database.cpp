@@ -115,6 +115,17 @@ namespace xdp {
     aieApplication = true;
   }
 
+  AppFlowType VPStaticDatabase::getAppFlowType() const
+  {
+    return appFlowType;
+  }
+
+  void VPStaticDatabase::setAppFlowType(AppFlowType flowType)
+  {
+    std::lock_guard<std::mutex> lock(appFlowTypeLock);
+    appFlowType = flowType;
+  }
+
   // ***************************************************
   // ***** Functions related to OpenCL information *****
 

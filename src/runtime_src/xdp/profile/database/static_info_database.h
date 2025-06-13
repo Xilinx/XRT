@@ -31,6 +31,7 @@
 #include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/flow_type.h"
 #include "xdp/profile/database/static_info/xclbin_types.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
@@ -85,6 +86,8 @@ namespace xdp {
     uint64_t applicationStartTime = 0 ;
     bool aieApplication = false;
 
+    xdp::AppFlowType appFlowType = FLOW_TYPE_NOT_SET;
+
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
     std::vector<std::pair<std::string, std::string> > openedFiles ;
@@ -113,6 +116,7 @@ namespace xdp {
     std::mutex openCLLock ;
     std::mutex deviceLock ;
     std::mutex aieLock ;
+    std::mutex appFlowTypeLock;
 
     // AIE device (Supported devices only)
     void* aieDevInst = nullptr ; // XAie_DevInst

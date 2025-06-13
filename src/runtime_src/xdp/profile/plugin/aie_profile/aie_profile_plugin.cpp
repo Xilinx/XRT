@@ -104,12 +104,29 @@ namespace xdp {
   void AieProfilePlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
+
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
 
     if (!handle)
       return;
+
+    if (hw_context_flow) {
+      if(AppFlowType::FLOW_TYPE_NOT_SET == db->getAppFlowType()) {
+        db->setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
+      } else if(AppFlowType::LOAD_XCLBIN_FLOW == db->getAppFlowType()) {
+        xrt_core::message::send(severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP flow here...");
+        return;
+      }
+    } else {
+      if(AppFlowType::FLOW_TYPE_NOT_SET == db->getAppFlowType()) {
+        db->setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
+      } else if(AppFlowType::REGISTER_XCLBIN_FLOW == db->getAppFlowType()) {
+        xrt_core::message::send(severity_level::warning, "XRT", "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. AIE Profiling is not yet supported for this combination.");
+        return;
+      }
+    }
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
