@@ -33,6 +33,7 @@
 #include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
 #include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
+#include "xdp/profile/plugin/aie_debug/generations/npu3_registers.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 extern "C" {
@@ -8331,6 +8332,24 @@ public:
       {0x000c0104, "uc_dma_dm2mm_control"}
     };
   }
+};
+
+/*************************************************************************************
+ NPU3 Registers
+ *************************************************************************************/
+class NPU3UsedRegisters : public UsedRegisters {
+  public:
+  NPU3UsedRegisters() {
+      populateRegNameToValueMap();
+      populateRegValueToNameMap();
+    }
+    ~NPU3UsedRegisters() = default;
+
+    void populateProfileRegisters();
+    void populateTraceRegisters();
+    void populateRegNameToValueMap();
+    void populateRegValueToNameMap();
+    void populateRegAddrToSizeMap();
 };
 
 } // end XDP namespace

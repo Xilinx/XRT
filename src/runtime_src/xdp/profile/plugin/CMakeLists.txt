@@ -6,24 +6,27 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_status)
   add_subdirectory(aie_profile)  
   add_subdirectory(aie_trace)
-  add_subdirectory(aie_debug)
   add_subdirectory(ml_timeline)
   add_subdirectory(aie_halt)
   add_subdirectory(native)
   add_subdirectory(user)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-
   add_subdirectory(native)
   add_subdirectory(user)
   add_subdirectory(ml_timeline)
+  add_subdirectory(aie_halt)
+  add_subdirectory(aie_profile)
+  add_subdirectory(aie_trace)
+  #add_subdirectory(aie_debug)
 
   if (WIN32)
-    add_subdirectory(aie_profile)
-    add_subdirectory(aie_trace)
-    add_subdirectory(aie_debug)
-    add_subdirectory(aie_halt)
     add_subdirectory(aie_pc)
+  endif()
+
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    add_custom_target(xdp_npu3_target ALL DEPENDS xdp_ml_timeline_plugin xdp_aie_halt_plugin 
+                      xdp_aie_profile_plugin xdp_aie_trace_plugin)
   endif()
    
 else()

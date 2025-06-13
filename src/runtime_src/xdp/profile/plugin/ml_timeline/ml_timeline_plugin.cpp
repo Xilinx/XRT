@@ -29,11 +29,14 @@
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
-#ifdef XDP_CLIENT_BUILD
-#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
-#elif defined (XDP_VE2_BUILD)
+
+#ifdef XDP_VE2_BUILD
 #include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #include "xdp/profile/device/xdp_base_device.h"
+#elif XDP_NPU3_BUILD
+#include "xdp/profile/plugin/ml_timeline/npu3/ml_timeline.h"
+#elif XDP_CLIENT_BUILD
+#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #endif
 
 namespace xdp {
@@ -140,8 +143,10 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(winDeviceName);
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
-
-    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
+    #ifdef XDP_NPU3_BUILD
+      mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineNPU3Impl>(db, mBufSz));
+    #else
+      mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl);
 
@@ -184,7 +189,7 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
           "In ML Timeline Plugin : finish flush Device.");
 
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD) || defined(XDP_NPU3_BUILD)
     if (mMultiImpl.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
           "In ML Timeline Plugin : No active HW Context found. So no data flush done.");
@@ -208,7 +213,7 @@ namespace xdp {
 
   void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD) || defined(XDP_NPU3_BUILD)
     for (auto &e : mMultiImpl) {
       if (nullptr == e.second.second)
         continue;

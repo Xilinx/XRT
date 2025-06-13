@@ -35,7 +35,9 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
-#ifdef XDP_CLIENT_BUILD
+#ifdef XDP_NPU3_BUILD
+#include "npu3/aie_debug.h"
+#elif XDP_CLIENT_BUILD
 #include "client/aie_debug.h"
 #elif XDP_VE2_BUILD
 #include "ve2/aie_debug.h"
@@ -102,7 +104,7 @@ namespace xdp {
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
     return db->addDevice("win_device");
 #elif XDP_VE2_BUILD
     return db->addDevice("ve2_device");
@@ -121,7 +123,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE DEBUG update AIE device.");
 
     // Handle relates to HW context in case of Client XRT
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD) || defined(XDP_NPU3_BUILD)
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
@@ -133,7 +135,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
     // Update the static database with information from xclbin
     {
-#if defined(XDP_CLIENT_BUILD)
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #elif defined(XDP_VE2_BUILD)
@@ -151,7 +153,7 @@ namespace xdp {
 
     // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
-#ifdef XDP_CLIENT_BUILD
+##if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       return;
 #else
       handleToAIEData.erase(handle);
@@ -172,7 +174,10 @@ namespace xdp {
     // Parse user settings
     AIEData.metadata->parseMetrics();
 
-#ifdef XDP_CLIENT_BUILD
+#ifdef XDP_NPU3_BUILD
+    AIEData.metadata->setHwContext(context);
+    AIEData.implementation = std::make_unique<AieDebug_NPU3Impl>(db, AIEData.metadata);
+#elif XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
