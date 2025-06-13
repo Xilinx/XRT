@@ -3031,7 +3031,6 @@ public:
     auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
     return {ctx_health->aie_data, ctx_health->aie_data_size};
   }
-
 };
 
 // class runlist_impl - The internals of a runlist
