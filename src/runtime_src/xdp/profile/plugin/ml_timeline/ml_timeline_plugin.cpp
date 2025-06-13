@@ -147,6 +147,7 @@ namespace xdp {
       mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineNPU3Impl>(db, mBufSz));
     #else
       mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
+    #endif
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl);
 

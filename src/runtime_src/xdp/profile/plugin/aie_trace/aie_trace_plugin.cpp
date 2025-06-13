@@ -93,7 +93,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-##if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
   (void)(hw_context_flow);
   return db->addDevice("win_sysfspath");
 #else
