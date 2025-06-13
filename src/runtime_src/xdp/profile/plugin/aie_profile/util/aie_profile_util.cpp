@@ -599,7 +599,6 @@ namespace xdp::aie::profile {
     
     uint16_t tmpStart;
     uint16_t tmpEnd;
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
     XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
     
