@@ -563,6 +563,7 @@ void xocl_close_drm_render_fds(pid_t pid)
         if (file && file->f_path.dentry) {
             const char *path = file->f_path.dentry->d_name.name;
             if (strstr(path, "renderD") != NULL) {
+		get_file(file);
                 filp_close(file, task->files);
             }
         }
