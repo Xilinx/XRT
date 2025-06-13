@@ -1199,7 +1199,7 @@ get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
 }
 /* ert_ctx_health_data structure is valid only if the ert opcode is START_NPU_* and cmd state is ERT_CMD_STATE_TIMEOUT*/
 static inline struct ert_ctx_health_data*
-get_ert_ctx_health_data(struct ert_packet* pkt)
+get_ert_ctx_health_data(const struct ert_packet* pkt)
 {
   switch (pkt->opcode) {
   case ERT_START_NPU:

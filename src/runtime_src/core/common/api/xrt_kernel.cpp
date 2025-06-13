@@ -4267,6 +4267,32 @@ what() const noexcept
   return handle->m_message.c_str();
 }
 
+static std::string
+amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
+{
+  static const std::map<uint32_t, const char*> fatal_error_string {
+    {0, "N/A"}
+  };
+
+  if (epkt->state != ERT_CMD_STATE_TIMEOUT)
+    return msg;
+
+  std::ostringstream oss;
+  oss << msg << "\n";
+  auto ctx_health = get_ert_ctx_health_data(epkt);
+  auto itr = fatal_error_string.find(ctx_health->fatal_error_type);
+  auto fatal_error_type = (itr == fatal_error_string.end() ? "out of range": itr->second);
+  oss << "txn_op_idx = 0x" << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->txn_op_idx
+    << "\nctx_pc = 0x"<< std::uppercase << std::hex << std::setfill('0') << std::setw(8) << ctx_health->ctx_pc
+    << "\nfatal_error_type " << fatal_error_type << "\n";
+  return oss.str();
+}
+
+run::aie_error::
+aie_error(const xrt::run& run, const std::string& what)
+  : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
+{}
+
 xrt::run::aie_error::span<const uint32_t>  
 run::aie_error::
 data() const
@@ -4284,6 +4310,11 @@ namespace xrt {
 runlist::command_error::
 command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
   : detail::pimpl<runlist::command_error_impl>(std::make_shared<runlist::command_error_impl>(run, state, msg))
+{}
+
+runlist::aie_error::
+aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
+  : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
 {}
 
 runlist::aie_error::span<const uint32_t>  
