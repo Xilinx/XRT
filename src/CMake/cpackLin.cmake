@@ -166,7 +166,7 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinux)")
+elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinux|rocky)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
