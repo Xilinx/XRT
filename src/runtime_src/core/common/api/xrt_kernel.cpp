@@ -1303,27 +1303,27 @@ public:
   using ctxmgr_type = xrt_core::context_mgr::device_context_mgr;
 
 private:
-  std::string name;                    // kernel name
-  std::shared_ptr<device_type> device; // shared ownership
-  std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
-  xrt::hw_context hwctx;               // context for hw resources if any (can be null)
-  xrt_core::hw_queue hwqueue;          // hwqueue for command submission (shared by all runs)
-  xrt::module m_module;                // module with instructions for function
-  xrt::xclbin xclbin;                  // xclbin with this kernel
-  xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
-  std::vector<argument> args;          // kernel args sorted by argument index
-  std::vector<ipctx> ipctxs;           // CU context locks
-  const property_type& properties;     // Kernel properties from XML meta
-  std::bitset<max_cus> cumask;         // cumask for command execution
-  size_t regmap_size = 0;              // CU register map size
-  size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
-  size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
-  size_t fa_input_entry_bytes = 0;     // Fast adapter input desc bytes
-  size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
-  size_t num_cumasks = 1;              // Required number of command cu masks
+  std::string name;                           // kernel name
+  std::shared_ptr<device_type> device;        // shared ownership
+  std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
+  xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
+  xrt_core::hw_queue hwqueue;                 // hwqueue for command submission (shared by all runs)
+  xrt::module m_module;                       // module with instructions for function
+  xrt::xclbin xclbin;                         // xclbin with this kernel
+  xrt::xclbin::kernel xkernel;                // kernel xclbin metadata
+  std::vector<argument> args;                 // kernel args sorted by argument index
+  std::vector<ipctx> ipctxs;                  // CU context locks
+  const property_type& properties;            // Kernel properties from XML meta
+  std::bitset<max_cus> cumask;                // cumask for command execution
+  size_t regmap_size = 0;                     // CU register map size
+  size_t fa_num_inputs = 0;                   // Fast adapter number of inputs per meta data
+  size_t fa_num_outputs = 0;                  // Fast adapter number of outputs per meta data
+  size_t fa_input_entry_bytes = 0;            // Fast adapter input desc bytes
+  size_t fa_output_entry_bytes = 0;           // Fast adapter output desc bytes
+  size_t num_cumasks = 1;                     // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
-  uint32_t uid;                        // Internal unique id for debug
-  std::string m_ctrl_code_id;          // ID to identify which ctrl code to load from elf
+  uint32_t uid;                               // Internal unique id for debug
+  uint32_t m_ctrl_code_id = UINT32_MAX;       // ID to identify which ctrl code to load from elf
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1682,7 +1682,7 @@ public:
     return name;
   }
 
-  std::string
+  uint32_t
   get_ctrl_code_id() const
   {
     return m_ctrl_code_id;
@@ -1988,7 +1988,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // the control code that needs to be run.
   // By default first control code that is available is picked
   static xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, const std::string& ctrl_code_id)
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
   {
     if (!module)
       return {};

@@ -419,10 +419,10 @@ dump_bo(xrt::bo& bo, const std::string& filename)
 }
 
 XRT_CORE_UNUSED std::string
-generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_type type, uint32_t index)
+generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_type type)
 {
   std::string buf_string = std::to_string(static_cast<int>(type));
-  return argument_name + buf_string + std::to_string(index);
+  return argument_name + buf_string;
 }
 
 static std::string
@@ -481,25 +481,25 @@ public:
   // Get raw instruction buffer data for all columns or for
   // single partition.  The returned vector has the control
   // code as extracted from ELF or userptr.
-  virtual std::pair<uint32_t, const std::vector<ctrlcode>&>
-  get_data(const std::string& /*id*/ = "") const
+  virtual const std::vector<ctrlcode>&
+  get_data(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual std::pair<uint32_t, const instr_buf&>
-  get_instr(const std::string& /*id*/ = "") const
+  virtual const instr_buf&
+  get_instr(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual std::pair<uint32_t, const buf&>
+  virtual const buf&
   get_preempt_save() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual std::pair<uint32_t, const buf&>
+  virtual const buf&
   get_preempt_restore() const
   {
     throw std::runtime_error("Not supported");
@@ -512,7 +512,7 @@ public:
   }
 
   virtual const std::unordered_set<std::string>&
-  get_patch_pdis(const std::string& /*id*/ = "") const
+  get_patch_pdis(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -529,8 +529,8 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  virtual std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(const std::string& /*id*/ = "") const
+  virtual const control_packet&
+  get_ctrlpkt(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -554,7 +554,7 @@ public:
   }
 
   virtual const buf&
-  get_dump_buf(const std::string& /*id*/ = "") const
+  get_dump_buf(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -609,7 +609,7 @@ public:
   // @param index - argument index
   // @param patch - patch value
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
-  // @param sec_index - index of section to be patched
+  // @param grp_index - grp index to identify the ctrlcode that is being patched
   // @param first - boolean indicating if its first time patching
   // @Return true if symbol was patched, false otherwise
   virtual bool
@@ -626,7 +626,7 @@ public:
   // @param index - argument index
   // @param patch - patch value
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
-  // @param sec_index - index of section to be patched
+  // @param grp_index - grp index to identify the ctrlcode that is being patched
   // @param first - boolean indicating if its first time patching
   // @Return true if symbol was patched, false otherwise
   virtual bool
@@ -640,7 +640,7 @@ public:
   // value is the number of arguments that must be patched before
   // the control code can be executed.
   virtual size_t
-  number_of_arg_patchers() const
+  number_of_arg_patchers(uint32_t /*id*/) const
   {
     return 0;
   }
@@ -667,7 +667,7 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  virtual std::string
+  virtual uint32_t
   get_ctrlcode_id(const std::string& /*kname*/) const
   {
     throw std::runtime_error("Not supported");
@@ -701,22 +701,22 @@ public:
     : module_userptr(static_cast<const char*>(userptr), sz, uuid)
   {}
 
-  std::pair<uint32_t, const std::vector<ctrlcode>&>
-  get_data(const std::string& /*id*/) const override
+  const std::vector<ctrlcode>&
+  get_data(uint32_t /*id*/) const override
   {
-    return {0, m_ctrlcode};
+    return m_ctrlcode;
   }
 
-  std::pair<uint32_t, const instr_buf&>
-  get_instr(const std::string& /*id*/) const override
+  const instr_buf&
+  get_instr(uint32_t /*id*/) const override
   {
-    return {0, m_instr_buf};
+    return m_instr_buf;
   }
 
-  std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(const std::string& /*id*/) const override
+  const control_packet&
+  get_ctrlpkt(uint32_t /*id*/) const override
   {
-    return {0, m_ctrl_pkt};
+    return m_ctrl_pkt;
   }
 };
 
@@ -748,12 +748,14 @@ class module_elf : public module_impl
     return tokens;
   }
 
+  // kernel signature has name followed by args
+  // kernel signature - name(argtype, argtype ...)
+  // eg : DPU(char*, char*, char*)
   std::vector<xrt_core::xclbin::kernel_argument>
   construct_kernel_args(const std::string& signature)
   {
     std::vector<xrt_core::xclbin::kernel_argument> args;
 
-    // kernel signature - name(argtype, argtype ...)
     size_t start_pos = signature.find('(');
     size_t end_pos = signature.find(')', start_pos);
 
@@ -868,16 +870,19 @@ class module_elf : public module_impl
   template <typename T>
   bool
   patch_it_impl(T base, const std::string& argnm, size_t index, uint64_t patch,
-                xrt_core::patcher::buf_type type, uint32_t sec_index, bool first)
+                xrt_core::patcher::buf_type type, uint32_t grp_index, bool first)
   {
-    const auto key_string = generate_key_string(argnm, type, sec_index);
-    auto it = m_arg2patcher.find(key_string);
-    auto not_found_use_argument_name = (it == m_arg2patcher.end());
+    const auto key_string = generate_key_string(argnm, type);
+    // check if arg patcher exists for this ctrl code 
+    if (m_arg2patcher.find(grp_index) == m_arg2patcher.end())
+      return false; // no patch entries for given 
+
+    auto it = m_arg2patcher[grp_index].find(key_string);
+    auto not_found_use_argument_name = (it == m_arg2patcher[grp_index].end());
     if (not_found_use_argument_name) {// Search using index
       auto index_string = std::to_string(index);
-      const auto key_index_string = generate_key_string(index_string, type, sec_index);
-      it = m_arg2patcher.find(key_index_string);
-      if (it == m_arg2patcher.end())
+      const auto key_index_string = generate_key_string(index_string, type);
+      if (m_arg2patcher[grp_index].find(key_index_string) == m_arg2patcher[grp_index].end())
         return false;
     }
 
@@ -909,21 +914,25 @@ protected:
   xrt::elf m_elf;
   const ELFIO::elfio& m_elfio; // we should not modify underlying elf
   uint8_t m_os_abi = Elf_Amd_Aie2p;
-  std::map<std::string, patcher> m_arg2patcher;
+  // store arg and its corresponding patcher information for each
+  // kernel + subkernel combination
+  // key - ctrlcode id(grp idx), value - map of key string and patcher info
+  std::unordered_map<uint32_t, std::map<std::string, patcher>> m_arg2patcher;
 
   // Elf can have multiple group sections
   // sections belongs to a particular kernel, sub kernel combination
   // are grouped under a group section
   // lookup map for section index to group index
   std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
-  // lookup map for group index to control code id (kernel + sub kernel)
-  std::unordered_map<uint32_t, std::string> m_grp_to_id_map;
+  // lookup map for kernel + sub kernel to grp idx(ctrl code id)
+  std::unordered_map<std::string, uint32_t> m_kname_to_id_map;
 
   // Elf can have multiple kernels
   // Each kernel will have a kernel signature entry in .symtab section
   // kernel_info contains kernel name, args constructed from signature
   std::vector<xrt_core::module_int::kernel_info> m_kernels_info;
   // map that stores available subkernels of a kernel
+  // key - kernel name, value - vector of sub kernel names
   std::unordered_map<std::string, std::vector<std::string>> m_kernels_map;
 
   // rela->addend have offset to base-bo-addr info along with schema
@@ -942,18 +951,18 @@ protected:
 
 public:
   // Function that parses the .group sections in the ELF file
-  // and returns a map with ctrl code id as key and pair of 
-  // this grp section id, vector of section ids that belong to
-  // this group as value
-  std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>>
+  // and returns a map with ctrl code id which is grp idx and
+  // vector of section ids that belong to this group as value
+  std::unordered_map<uint32_t, std::vector<uint32_t>>
   parse_group_sections(bool is_grp_elf)
   {
-    std::unordered_map<std::string, std::pair<uint32_t, std::vector<uint32_t>>> id_sections_map;
+    std::unordered_map<uint32_t, std::vector<uint32_t>> id_sections_map;
     if (!is_grp_elf) {
       // Older version ELf, so doesn't have .group sections
       // This Elf doesnt have multiple ctrlcodes
-      // So using empty string as ctrl code id
-      constexpr const char* id = "";
+      // Using empty string as kernel + subkernel combination
+      // and using UINT32_MAX as grp idx
+      constexpr const char* kname = "";
       std::vector<uint32_t> sec_ids;
       for (const auto& sec : m_elfio.sections) {
         auto name = sec->get_name();
@@ -970,10 +979,9 @@ public:
         m_sec_to_grp_map[sec->get_index()] = UINT32_MAX;
       }
 
-      // fill group index to id map with id as empty string
-      // UINT32_MAX is used for group section index
-      m_grp_to_id_map[UINT32_MAX] = id;
-      id_sections_map.emplace("", std::make_pair(UINT32_MAX, sec_ids));
+      // fill kenerl name to id map with id as grp idx
+      m_kname_to_id_map[kname] = UINT32_MAX;
+      id_sections_map.emplace(UINT32_MAX, sec_ids);
     }
     else {
       for (const auto& section : m_elfio.sections) {
@@ -994,8 +1002,8 @@ public:
         auto sec_info = section->get_info();
         auto [kname, sub_kname] = get_kernel_subkernel_from_symtab(sec_info);
         m_kernels_map[kname].push_back(sub_kname);
-        // store ctrl code id as kernel + subkernel name
-        m_grp_to_id_map[sec_idx] = kname + sub_kname;
+        // store ctrl code id against kernel + subkernel name
+        m_kname_to_id_map[kname + sub_kname] = sec_idx;
 
         const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
         const auto word_count = size / sizeof(ELFIO::Elf_Word);
@@ -1008,8 +1016,7 @@ public:
           m_sec_to_grp_map[word_data[i]] = sec_idx;
         }
 
-        auto id = m_grp_to_id_map[sec_idx];
-        id_sections_map.emplace(std::move(id), std::make_pair(sec_idx, std::move(members)));
+        id_sections_map.emplace(sec_idx, std::move(members));
       }
     }
 
@@ -1024,16 +1031,16 @@ public:
 
   bool
   patch_it(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch,
-           xrt_core::patcher::buf_type type, uint32_t sec_index, bool first) override
+           xrt_core::patcher::buf_type type, uint32_t grp_index, bool first) override
   {
-    return patch_it_impl(base, argnm, index, patch, type, sec_index, first);
+    return patch_it_impl(base, argnm, index, patch, type, grp_index, first);
   }
 
   bool
   patch_it(xrt::bo bo, const std::string& argnm, size_t index, uint64_t patch,
-           xrt_core::patcher::buf_type type, uint32_t sec_index, bool first) override
+           xrt_core::patcher::buf_type type, uint32_t grp_index, bool first) override
   {
-    return patch_it_impl(bo, argnm, index, patch, type, sec_index, first);
+    return patch_it_impl(bo, argnm, index, patch, type, grp_index, first);
   }
 
   uint8_t
@@ -1043,9 +1050,13 @@ public:
   }
 
   size_t
-  number_of_arg_patchers() const override
+  number_of_arg_patchers(uint32_t id) const override
   {
-    return m_arg2patcher.size();
+    if (auto it = m_arg2patcher.find(id); it != m_arg2patcher.end())
+      return it->second.size();
+
+    throw std::runtime_error(
+        std::string{"Unable to get arg patcher for index: " + std::to_string(id)});
   }
 };
 
@@ -1053,24 +1064,22 @@ public:
 class module_elf_aie2p : public module_elf
 {
   xrt::aie::program m_program;
-  // New Elf of Aie2p contain multiple ctrltext, ctrldata sections
-  // sections will be of format .ctrltext.* where .* has id of that section type
-  // Below maps has this id as key and value is pair of <section index, data buffer>
-  std::map<std::string, std::pair<uint32_t, instr_buf>> m_instr_buf_map;
-  std::map<std::string, std::pair<uint32_t, control_packet>> m_ctrl_packet_map;
+  // New Elfs of Aie2p contain multiple kernels and corresponding sub kernels
+  // We use ctrl code id or grp idx to represent kernel + sub kernel combination
+  // Below maps store data for each ctrl code id
+  std::map<uint32_t, instr_buf> m_instr_buf_map;
+  std::map<uint32_t, control_packet> m_ctrl_packet_map;
 
-  // Also these new Elfs have multiple PDI sections of format .pdi.*
+  // New Elfs have multiple PDI sections of format .pdi.*
   // Below map has pdi section symbol name as key and section data as value
   std::map<std::string, buf> m_pdi_buf_map;
   // map storing pdi symbols that needs patching in ctrl codes
-  std::map<std::string, std::unordered_set<std::string>> m_ctrl_pdi_map;
+  std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
 
   buf m_save_buf;
-  uint32_t m_save_buf_sec_idx = UINT32_MAX;
   bool m_save_buf_exist = false;
 
   buf m_restore_buf;
-  uint32_t m_restore_buf_sec_idx = UINT32_MAX;
   bool m_restore_buf_exist = false;
   
   size_t m_scratch_pad_mem_size = 0;
@@ -1080,20 +1089,26 @@ class module_elf_aie2p : public module_elf
   std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
   std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
 
-  static std::string
-  get_section_name_id(const std::string& name)
+  void
+  initialize_group_sections()
   {
-    // Elf_Amd_Aie2p has sections .sec_name
-    // Elf_Amd_Aie2p_config has sections .sec_name.*
-    auto pos = name.find_last_of(".");
-    return (pos == 0) ? "" : name.substr(pos + 1);
+    // ELF with version >= 1.0 uses group sections
+    constexpr uint8_t major_ver_mask = 0xF0;
+    constexpr uint8_t shift = 4;
+    constexpr uint8_t group_elf_major_version = 1;
+    bool is_grp_elf = false;
+
+    if (((m_elfio.get_abi_version() & major_ver_mask) >> shift) >= group_elf_major_version)
+      is_grp_elf = true;
+
+    parse_group_sections(is_grp_elf);
   }
 
   // Extract buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
   template<typename buf_type>
   void
-  initialize_buf(xrt_core::patcher::buf_type type, std::map<std::string, std::pair<uint32_t, buf_type>>& map)
+  initialize_buf(xrt_core::patcher::buf_type type, std::map<uint32_t, buf_type>& map)
   {
     for (const auto& sec : m_elfio.sections) {
       auto name = sec->get_name();
@@ -1103,9 +1118,9 @@ class module_elf_aie2p : public module_elf
       if (name.find(patcher::to_string(type)) == std::string::npos)
         continue;
 
-      auto id = get_section_name_id(name);
+      auto grp_idx = m_sec_to_grp_map[sec_index];
       buf.append_section_data(sec.get());
-      map.emplace(id, std::pair{sec_index, buf});
+      map.emplace(grp_idx, buf);
     }
   }
 
@@ -1126,7 +1141,7 @@ class module_elf_aie2p : public module_elf
   // Extract preempt_save/preempt_restore buffer from ELF sections
   // return true if section exist
   bool
-  initialize_save_restore_buf(buf& buf, uint32_t& index, xrt_core::patcher::buf_type type)
+  initialize_save_restore_buf(buf& buf, xrt_core::patcher::buf_type type)
   {
     for (const auto& sec : m_elfio.sections) {
       auto name = sec->get_name();
@@ -1134,7 +1149,6 @@ class module_elf_aie2p : public module_elf
         continue;
 
       buf.append_section_data(sec.get());
-      index = sec->get_index();
       return true;
     }
     return false;
@@ -1155,20 +1169,18 @@ class module_elf_aie2p : public module_elf
   }
 
   std::pair<size_t, xrt_core::patcher::buf_type>
-  determine_section_type(const std::string& section_name)
+  determine_section_type(const std::string& section_name, uint32_t id)
   {
     if (section_name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos) {
-      auto id = get_section_name_id(section_name);
       if (m_instr_buf_map.find(id) == m_instr_buf_map.end())
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
-      return { m_instr_buf_map[id].second.size(), xrt_core::patcher::buf_type::ctrltext};
+      return { m_instr_buf_map[id].size(), xrt_core::patcher::buf_type::ctrltext};
     }
     else if (!m_ctrl_packet_map.empty() &&
              section_name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos) {
-      auto id = get_section_name_id(section_name);
       if (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end())
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
-      return { m_ctrl_packet_map[id].second.size(), xrt_core::patcher::buf_type::ctrldata};
+      return { m_ctrl_packet_map[id].size(), xrt_core::patcher::buf_type::ctrldata};
     }
     else if (m_save_buf_exist && (section_name == patcher::to_string(xrt_core::patcher::buf_type::preempt_save)))
       return { m_save_buf.size(), xrt_core::patcher::buf_type::preempt_save };
@@ -1233,16 +1245,16 @@ class module_elf_aie2p : public module_elf
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
       auto offset = rela->r_offset;
-      auto [sec_size, buf_type] = determine_section_type(section->get_name());
       auto sec_index = section->get_index();
+      auto grp_idx = m_sec_to_grp_map[sec_index];
+      auto [sec_size, buf_type] = determine_section_type(section->get_name(), grp_idx);
 
       if (offset >= sec_size)
         throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
       if (std::string(symname).find("pdi") != std::string::npos) {
         // pdi symbol, add to map of which ctrl code needs it
-        auto id = get_section_name_id(section->get_name());
-        m_ctrl_pdi_map[id].insert(symname);
+        m_ctrl_pdi_map[grp_idx].insert(symname);
       }
 
       patcher::symbol_type patch_scheme;
@@ -1265,12 +1277,12 @@ class module_elf_aie2p : public module_elf
         ? patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
         : patcher::patch_info{ offset, add_end_addr, 0 };
 
-      auto key_string = generate_key_string(argnm, buf_type, sec_index);
+      auto key_string = generate_key_string(argnm, buf_type);
 
-      if (auto search = m_arg2patcher.find(key_string); search != m_arg2patcher.end())
+      if (auto search = m_arg2patcher[grp_idx].find(key_string); search != m_arg2patcher[grp_idx].end())
         search->second.m_ctrlcode_patchinfo.emplace_back(pi);
       else
-        m_arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
+        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
     }
   }
 
@@ -1279,14 +1291,13 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
+    initialize_group_sections();
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
 
     m_save_buf_exist = initialize_save_restore_buf(m_save_buf,
-                                                   m_save_buf_sec_idx, 
                                                    xrt_core::patcher::buf_type::preempt_save);
     m_restore_buf_exist = initialize_save_restore_buf(m_restore_buf,
-                                                      m_restore_buf_sec_idx,
                                                       xrt_core::patcher::buf_type::preempt_restore);
     if (m_save_buf_exist != m_restore_buf_exist)
       throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
@@ -1309,7 +1320,7 @@ public:
   }
 
   const std::unordered_set<std::string>&
-  get_patch_pdis(const std::string& id = "") const override
+  get_patch_pdis(uint32_t id) const override
   {
     static const std::unordered_set<std::string> empty_set = {};
     auto it = m_ctrl_pdi_map.find(id);
@@ -1329,22 +1340,22 @@ public:
     return buf::get_empty_buf();
   }
 
-  std::pair<uint32_t, const instr_buf&>
-  get_instr(const std::string& id) const override
+  const instr_buf&
+  get_instr(uint32_t id) const override
   {
     auto it = m_instr_buf_map.find(id);
     if (it != m_instr_buf_map.end())
       return it->second;
-    return {UINT32_MAX, instr_buf::get_empty_buf()};
+    return instr_buf::get_empty_buf();
   }
 
-  std::pair<uint32_t, const control_packet&>
-  get_ctrlpkt(const std::string& id) const override
+  const control_packet&
+  get_ctrlpkt(uint32_t id) const override
   {
     auto it = m_ctrl_packet_map.find(id);
     if (it != m_ctrl_packet_map.end())
       return it->second;
-    return {UINT32_MAX, control_packet::get_empty_buf()};
+    return control_packet::get_empty_buf();
   }
 
   const std::set<std::string>&
@@ -1371,32 +1382,57 @@ public:
     return m_ctrl_scratch_pad_mem_size;
   }
 
-  std::pair<uint32_t, const buf&>
+  const buf&
   get_preempt_save() const override
   {
-    return {m_save_buf_sec_idx, m_save_buf};
+    return m_save_buf;
   }
 
-  std::pair<uint32_t, const buf&>
+  const buf&
   get_preempt_restore() const override
   {
-    return {m_restore_buf_sec_idx, m_restore_buf};
+    return m_restore_buf;
   }
 
-  std::string
+  uint32_t
   get_ctrlcode_id(const std::string& name) const override
   {
-    if (auto pos = name.find(":"); pos != std::string::npos)
-      return name.substr(pos + 1);
+    if (auto pos = name.find(":"); pos != std::string::npos) {
+      // name passed is kernel name + sub kernel name
+      auto key = name.substr(0, pos) + name.substr(pos + 1);
+      auto it = m_kname_to_id_map.find(key);
+      if (it == m_kname_to_id_map.end())
+        throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + name);
 
-    // If user doesn't provide sub kernel
-    // we default to first entry if its the only availble sub kernel
-    // of given kernel otherwise an exception is thrown
-    if (m_instr_buf_map.size() == 1)
-      return m_instr_buf_map.begin()->first;
+      auto id = it->second;
+      if ((m_instr_buf_map.find(id) == m_instr_buf_map.end()) &&
+          (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end()))
+        throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
 
-    if (m_ctrl_packet_map.size() == 1)
-      return m_ctrl_packet_map.begin()->first;
+      return id;
+    }
+
+    // If user doesn't provide sub kernel we default to first entry
+    // if its the only availble sub kernel of given kernel
+    // otherwise an exception is thrown
+    // check if given kernel is present
+    if (auto entry = m_kernels_map.find(name); entry != m_kernels_map.end()) {
+      if (entry->second.size() == 1) {
+        auto key = name + *(entry->second.begin());
+        auto it = m_kname_to_id_map.find(key);
+        if (it == m_kname_to_id_map.end())
+          throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
+
+        auto id = it->second;
+        if ((m_instr_buf_map.find(id) == m_instr_buf_map.end()) &&
+            (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end()))
+          throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+    
+        return id;
+      }
+      else
+        throw std::runtime_error("Multiple sub kernels present for given kernel, cannot choose sub kernel\n");
+    }
 
     throw std::runtime_error(std::string{"cannot get ctrlcode id from given kernel name: "} + name);
   }
@@ -1408,11 +1444,11 @@ class module_elf_aie2ps : public module_elf
   xrt::aie::program m_program;
 
   // map for holding control code data for each sub kernel
-  // key : control code id, value : pair of group section index, vector of column ctrlcodes
-  std::unordered_map<std::string, std::pair<uint32_t, std::vector<ctrlcode>>> m_ctrlcodes_map;
+  // key : control code id (grp sec idx), value : vector of column ctrlcodes
+  std::unordered_map<uint32_t, std::vector<ctrlcode>> m_ctrlcodes_map;
 
   // map to hold .dump section of different sub kernels used for debug/trace
-  std::unordered_map<std::string, buf> m_dump_buf_map;
+  std::unordered_map<uint32_t, buf> m_dump_buf_map;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -1459,7 +1495,7 @@ class module_elf_aie2ps : public module_elf
   // microblaze controller (uC), then create ctrlcode objects from the
   // data.
   void
-  initialize_column_ctrlcode(std::map<std::string, std::vector<size_t>>& pad_offsets)
+  initialize_column_ctrlcode(std::map<uint32_t, std::vector<size_t>>& pad_offsets)
   {
     // Elf sections for a single page
     struct elf_page
@@ -1479,8 +1515,8 @@ class module_elf_aie2ps : public module_elf
 
     // Elf can have multiple kernel instances
     // Each instance has its own uc_sections map
-    // key - instance id : value - {grp section id, uc sections}
-    using ctrlcode_map = std::map<std::string, std::pair<uint32_t, uc_sections>>;
+    // key - instance id(grp idx) : value - uc sections
+    using ctrlcode_map = std::map<uint32_t, uc_sections>;
     ctrlcode_map ctrl_map;
 
     // ELF with version >= 0.3 uses group sections
@@ -1493,18 +1529,16 @@ class module_elf_aie2ps : public module_elf
     auto id_secs_map = parse_group_sections(is_grp_elf);
     // Iterate sections for each sub kernel
     // collect ctrltext and ctrldata per column and page
-    for (const auto& [id, pair_val] : id_secs_map) {
-      const auto& [grp_id, sec_ids] = pair_val;
+    for (const auto& [id, sec_ids] : id_secs_map) {
       for (auto sec_idx : sec_ids) {
         const auto& sec = m_elfio.sections[sec_idx];
         auto name = sec->get_name();
         auto [col, page] = get_column_and_page(name);
-        ctrl_map[id].first = grp_id;
 
         if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos)
-          ctrl_map[id].second[col][page].ctrltext = sec;
+          ctrl_map[id][col][page].ctrltext = sec;
         else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos)
-          ctrl_map[id].second[col][page].ctrldata = sec;
+          ctrl_map[id][col][page].ctrldata = sec;
       }
     }
 
@@ -1514,43 +1548,40 @@ class module_elf_aie2ps : public module_elf
     // all column uC need be used, so account for holes in
     // uc_sections.  Leverage that uc_sections is a std::map and that
     // std::map stores its elements in ascending order of keys
-    for (const auto& [id, pair_val] : ctrl_map) {
-      const auto& [grp_id, uc_sec] = pair_val;
-      m_ctrlcodes_map[id].first = grp_id; // store group section id
+    for (const auto& [id, uc_sec] : ctrl_map) {
       auto size = uc_sec.empty() ? 0 : uc_sec.rbegin()->first + 1;
-      m_ctrlcodes_map[id].second.resize(size);
+      m_ctrlcodes_map[id].resize(size);
       pad_offsets[id].resize(size);
       for (auto& [ucidx, elf_sects] : uc_sec) {
         for (auto& [page, page_sec] : elf_sects) {
           if (page_sec.ctrltext)
-            m_ctrlcodes_map[id].second[ucidx].append_section_data(page_sec.ctrltext);
+            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
 
           if (page_sec.ctrldata)
-            m_ctrlcodes_map[id].second[ucidx].append_section_data(page_sec.ctrldata);
+            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
     
-          m_ctrlcodes_map[id].second[ucidx].pad_to_page(page);
+          m_ctrlcodes_map[id][ucidx].pad_to_page(page);
         }
-        pad_offsets[id][ucidx] = m_ctrlcodes_map[id].second[ucidx].size();
+        pad_offsets[id][ucidx] = m_ctrlcodes_map[id][ucidx].size();
       }
     }
 
     // Append pad section to the control code.
     // This section may contain scratchpad/control-packet etc
-    for (const auto& [id, pair_val] : id_secs_map) {
-      const auto& [grp_id, sec_ids] = pair_val;
+    for (const auto& [id, sec_ids] : id_secs_map) {
       for (auto sec_idx : sec_ids) {
         const auto& sec = m_elfio.sections[sec_idx];
         const auto& name = sec->get_name();
         if (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
           continue;
         auto [col, page] = get_column_and_page(name);
-        m_ctrlcodes_map[id].second[col].append_section_data(sec);
+        m_ctrlcodes_map[id][col].append_section_data(sec);
       }
     }
   }
 
   void
-  initialize_arg_patchers(const std::map<std::string, std::vector<size_t>>& pad_offsets)
+  initialize_arg_patchers(const std::map<uint32_t, std::vector<size_t>>& pad_offsets)
   {
     auto dynsym = m_elfio.sections[".dynsym"];
     auto dynstr = m_elfio.sections[".dynstr"];
@@ -1577,6 +1608,7 @@ class module_elf_aie2ps : public module_elf
         if (dynstr_offset >= dynstr->get_size())
           throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
         auto symname = dynstr->get_data() + dynstr_offset;
+        std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
         // patching can be done to ctrlcode or ctrlpkt section
         auto patch_sec = m_elfio.sections[sym->st_shndx];
@@ -1587,13 +1619,14 @@ class module_elf_aie2ps : public module_elf
         auto [col, page] = get_column_and_page(patch_sec_name);
         auto sec_idx = patch_sec->get_index();
         auto grp_idx = m_sec_to_grp_map[sec_idx];
-        auto ctrl_id = m_grp_to_id_map[grp_idx];
-        auto ctrlcodes = m_ctrlcodes_map[ctrl_id].second;
+        if (m_ctrlcodes_map.find(grp_idx) == m_ctrlcodes_map.end())
+          throw std::runtime_error(std::string{"Unable to fetch ctrlcode to patch for given symbol: "} + argnm);
+        auto ctrlcodes = m_ctrlcodes_map[grp_idx];
 
         size_t abs_offset = 0;
         xrt_core::patcher::buf_type buf_type = xrt_core::patcher::buf_type::buf_type_count;
         if (patch_sec_name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) != std::string::npos) {
-          auto pad_off_vec = pad_offsets.at(ctrl_id);
+          auto pad_off_vec = pad_offsets.at(grp_idx);
           for (uint32_t i = 0; i < col; ++i)
             abs_offset += ctrlcodes[i].size();
           abs_offset += pad_off_vec[col];
@@ -1620,8 +1653,6 @@ class module_elf_aie2ps : public module_elf
         }
 
         // Construct the patcher for the argument with the symbol name
-        std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-
         patcher::symbol_type patch_scheme;
         uint32_t add_end_addr;
         auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
@@ -1637,7 +1668,7 @@ class module_elf_aie2ps : public module_elf
 
         // using grp_idx in identifying key string for patching as there can be
         // multiple sub kernels and each group can hold one sub kernel
-        auto key_string = generate_key_string(argnm, buf_type, grp_idx);
+        auto key_string = generate_key_string(argnm, buf_type);
         // One arg may need to be patched at multiple offsets of control code
         // arg2patcher map contains a key & value pair of arg & patcher object
         // patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
@@ -1645,10 +1676,10 @@ class module_elf_aie2ps : public module_elf
         // On first occurrence of arg, Create a new patcher object and
         // Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
         // On all further occurences of arg, add patch_info structure to existing vector
-        if (auto search = m_arg2patcher.find(key_string); search != m_arg2patcher.end())
+        if (auto search = m_arg2patcher[grp_idx].find(key_string); search != m_arg2patcher[grp_idx].end())
           search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
         else
-          m_arg2patcher.emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
+          m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
     }
   }
@@ -1663,7 +1694,7 @@ class module_elf_aie2ps : public module_elf
         continue;
 
       // get ctrl code id from group index
-      auto ctrl_id = m_grp_to_id_map[m_sec_to_grp_map[sec->get_index()]];
+      auto ctrl_id = m_sec_to_grp_map[sec->get_index()];
       m_dump_buf_map[ctrl_id].append_section_data(sec.get());
     }
   }
@@ -1673,7 +1704,7 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    std::map<std::string, std::vector<uint64_t>> pad_offsets;
+    std::map<uint32_t, std::vector<uint64_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
     initialize_arg_patchers(pad_offsets);
     initialize_dump_buf();
@@ -1685,48 +1716,59 @@ public:
     return ERT_START_DPU;
   }
 
-  std::pair<uint32_t, const std::vector<ctrlcode>&>
-  get_data(const std::string& id) const override
+  const std::vector<ctrlcode>&
+  get_data(uint32_t id) const override
   {
-    auto it = m_ctrlcodes_map.find(id);
-    if (it != m_ctrlcodes_map.end())
+    if (auto it = m_ctrlcodes_map.find(id); it != m_ctrlcodes_map.end())
       return it->second;
 
     static const std::vector<ctrlcode> empty_vec;
-    return {UINT32_MAX, empty_vec};
+    return empty_vec;
   }
 
   const buf&
-  get_dump_buf(const std::string& id) const
+  get_dump_buf(uint32_t id) const
   {
-    auto it = m_dump_buf_map.find(id);
-    if (it != m_dump_buf_map.end())
+    if (auto it = m_dump_buf_map.find(id); it != m_dump_buf_map.end())
       return it->second;
 
     return buf::get_empty_buf();
   }
 
-  std::string
+  uint32_t
   get_ctrlcode_id(const std::string& name) const override
   {
     if (auto pos = name.find(":"); pos != std::string::npos) {
-      auto kernel = name.substr(0, pos);
-      auto sub_kernel = name.substr(pos + 1);
-      auto id = kernel + sub_kernel;
+      // name passed is kernel name + sub kernel name
+      auto key = name.substr(0, pos) + name.substr(pos + 1);
+      auto it = m_kname_to_id_map.find(key);
+      if (it == m_kname_to_id_map.end())
+        throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + name);
 
+      auto id = it->second;
       if (m_ctrlcodes_map.find(id) == m_ctrlcodes_map.end())
-        throw std::runtime_error(std::string{"Unable to find given kernel: "} + name);
+        throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
 
       return id;
     }
 
-    // If user doesn't provide sub kernel
-    // we default to first entry if its the only availble sub kernel
-    // of given kernel otherwise an exception is thrown
+    // If user doesn't provide sub kernel we default to first entry
+    // if its the only availble sub kernel of given kernel
+    // otherwise an exception is thrown
     // check if given kernel is present
     if (auto entry = m_kernels_map.find(name); entry != m_kernels_map.end()) {
-      if (entry->second.size() == 1)
-        return name + *(entry->second.begin());
+      if (entry->second.size() == 1) {
+        auto key = name + *(entry->second.begin());
+        auto it = m_kname_to_id_map.find(key);
+        if (it == m_kname_to_id_map.end())
+          throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
+
+        auto id = it->second;
+        if (m_ctrlcodes_map.find(id) == m_ctrlcodes_map.end())
+          throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+    
+        return id;
+      }
       else
         throw std::runtime_error("Multiple sub kernels present for given kernel, cannot choose sub kernel\n");
     }
@@ -1744,9 +1786,10 @@ class module_sram : public module_impl
 {
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
-  // New ELFs have multiple ctrl sections
-  // we need id to identify which ctrl section to pick from parent module
-  std::string m_ctrl_code_id;
+  // New ELFs can have multiple kernels and each kernel can have multiple
+  // sub kernels. We need id to identify which ctrlcode corresponds to
+  // kernel + sub kernel combination.
+  uint32_t m_ctrl_code_id;
 
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
@@ -1770,10 +1813,6 @@ class module_sram : public module_impl
   // the buffer object.  The addresses are used in ert_dpu_data
   // payload to identify the ctrlcode for each column processor.
   std::vector<std::tuple<uint16_t, uint64_t, uint64_t>> m_column_bo_address;
-
-  uint32_t m_instr_sec_idx = UINT32_MAX;
-  uint32_t m_ctrlpkt_sec_idx = UINT32_MAX;
-  uint32_t m_grp_sec_idx = UINT32_MAX;
 
   // Arguments patched in the ctrlcode buffer object
   // Must match number of argument patchers in parent module
@@ -1873,9 +1912,7 @@ class module_sram : public module_impl
 
     // Iterate over control packets of all columns & patch it in instruction
     // buffer
-    auto ctrl_code_info = m_parent->get_data(m_ctrl_code_id);
-    m_grp_sec_idx = ctrl_code_info.first;
-    auto col_data = ctrl_code_info.second;
+    const auto& col_data = m_parent->get_data(m_ctrl_code_id);
     size_t offset = 0;
     for (size_t i = 0; i < col_data.size(); ++i) {
       // find the control-code-* sym-name and patch it in instruction buffer
@@ -1886,7 +1923,7 @@ class module_sram : public module_impl
                             std::numeric_limits<size_t>::max(),
                             m_buffer.address() + offset,
                             xrt_core::patcher::buf_type::ctrltext,
-                            m_grp_sec_idx))
+                            m_ctrl_code_id))
         m_patched_args.insert(sym_name);
       offset += col_data[i].size();
     }
@@ -1914,10 +1951,8 @@ class module_sram : public module_impl
   create_instr_buf(const module_impl* parent)
   {
     XRT_DEBUGF("-> module_sram::create_instr_buf()\n");
-    auto instr_buf_info = parent->get_instr(m_ctrl_code_id);
-    m_instr_sec_idx = instr_buf_info.first;
-    const instr_buf& data = instr_buf_info.second;
-    size_t sz = data.size();
+    const auto& instr_buf = parent->get_instr(m_ctrl_code_id);
+    size_t sz = instr_buf.size();
     if (sz == 0)
       throw std::runtime_error("Invalid instruction buffer size");
 
@@ -1925,7 +1960,7 @@ class module_sram : public module_impl
     m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
     // copy instruction into bo
-    fill_bo_with_data(m_instr_bo, data, false /*don't sync*/);
+    fill_bo_with_data(m_instr_bo, instr_buf, false /*don't sync*/);
 
     if (is_dump_control_codes()) {
       std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
@@ -1936,10 +1971,10 @@ class module_sram : public module_impl
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
-    auto [save_sec_idx, preempt_save_data] = parent->get_preempt_save();
+    auto preempt_save_data = parent->get_preempt_save();
     auto preempt_save_data_size = preempt_save_data.size();
 
-    auto [restore_sec_idx, preempt_restore_data] = parent->get_preempt_restore();
+    auto preempt_restore_data = parent->get_preempt_restore();
     auto preempt_restore_data_size = preempt_restore_data.size();
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
@@ -1969,9 +2004,9 @@ class module_sram : public module_impl
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
       m_scratch_pad_mem = xrt::ext::bo{ m_hwctx, m_parent->get_scratch_pad_mem_size() };
       patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem,
-                  xrt_core::patcher::buf_type::preempt_save, save_sec_idx);
+                  xrt_core::patcher::buf_type::preempt_save, m_ctrl_code_id);
       patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem,
-                  xrt_core::patcher::buf_type::preempt_restore, restore_sec_idx);
+                  xrt_core::patcher::buf_type::preempt_restore, m_ctrl_code_id);
 
       if (is_dump_preemption_codes()) {
         std::stringstream ss;
@@ -1986,7 +2021,7 @@ class module_sram : public module_impl
       if (size > 0) {
         m_ctrl_scratch_pad_mem = xrt::bo{ m_hwctx, size, xrt::bo::flags::cacheable, 1 /* fix me */ };
         patch_instr(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem,
-                    xrt_core::patcher::buf_type::ctrltext, m_instr_sec_idx);
+                    xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
       }
     }
     catch (...) { /*Do Nothing*/ };
@@ -1998,11 +2033,11 @@ class module_sram : public module_impl
       auto pdi_bo = xrt::bo{ m_hwctx, pdi_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
       fill_bo_with_data(pdi_bo, pdi_data);
       // patch instr buffer with pdi address
-      patch_instr(m_instr_bo, symbol, 0, pdi_bo, xrt_core::patcher::buf_type::ctrltext, m_instr_sec_idx);
+      patch_instr(m_instr_bo, symbol, 0, pdi_bo, xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
     }
 
     if (m_ctrlpkt_bo) {
-      patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, xrt_core::patcher::buf_type::ctrltext, m_instr_sec_idx);
+      patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
     }
 
     // patch ctrlpkt pm buffers
@@ -2014,7 +2049,7 @@ class module_sram : public module_impl
       auto bo_itr = m_ctrlpkt_pm_bos.find(sec_name);
       if (bo_itr == m_ctrlpkt_pm_bos.end())
         throw std::runtime_error("Unable to find ctrlpkt pm buffer for symbol " + dynsym);
-      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, xrt_core::patcher::buf_type::ctrltext, m_instr_sec_idx);
+      patch_instr(m_instr_bo, dynsym, 0, bo_itr->second, xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
     }
 
     XRT_DEBUGF("<- module_sram::create_instr_buf()\n");
@@ -2023,19 +2058,15 @@ class module_sram : public module_impl
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
-    auto ctrl_pkt_info = parent->get_ctrlpkt(m_ctrl_code_id);
-    m_ctrlpkt_sec_idx = ctrl_pkt_info.first;
-    const control_packet& data = ctrl_pkt_info.second;
-    size_t sz = data.size();
-
+    const auto& ctrl_pkt_buf = parent->get_ctrlpkt(m_ctrl_code_id);
+    size_t sz = ctrl_pkt_buf.size();
     if (sz == 0) {
       XRT_DEBUGF("ctrpkt buf is empty\n");
       return;
     }
 
     m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
-
-    fill_ctrlpkt_buf(m_ctrlpkt_bo, data, false /*don't sync*/);
+    fill_ctrlpkt_buf(m_ctrlpkt_bo, ctrl_pkt_buf, false /*don't sync*/);
 
     if (is_dump_control_packet()) {
       std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
@@ -2062,7 +2093,7 @@ class module_sram : public module_impl
   void
   create_instruction_buffer(const module_impl* parent)
   {
-    const auto& data = parent->get_data(m_ctrl_code_id).second;
+    const auto& data = parent->get_data(m_ctrl_code_id);
 
     // create bo combined size of all ctrlcodes
     size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0), [](auto acc, const auto& ctrlcode) {
@@ -2082,9 +2113,9 @@ class module_sram : public module_impl
   // The symbol to be patched is identified using argnm/index
   void
   patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo,
-              xrt_core::patcher::buf_type type, uint32_t sec_idx)
+              xrt_core::patcher::buf_type type, uint32_t grp_idx)
   {
-    patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type, sec_idx);
+    patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type, grp_idx);
   }
 
   void
@@ -2095,21 +2126,21 @@ class module_sram : public module_impl
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
         if (m_parent->patch_it(m_ctrlpkt_bo, argnm, index, value, xrt_core::patcher::buf_type::ctrldata,
-                               m_ctrlpkt_sec_idx, m_first_patch))
+                               m_ctrl_code_id, m_first_patch))
           patched = true;
       }
       // patch instruction buffer
       if (m_parent->patch_it(m_instr_bo, argnm, index, value, xrt_core::patcher::buf_type::ctrltext,
-                             m_instr_sec_idx, m_first_patch))
+                             m_ctrl_code_id, m_first_patch))
           patched = true;
     }
     else {
       if (m_parent->patch_it(m_buffer, argnm, index, value, xrt_core::patcher::buf_type::ctrltext,
-                             m_grp_sec_idx, m_first_patch))
+                             m_ctrl_code_id, m_first_patch))
         patched = true;
 
       if (m_parent->patch_it(m_buffer, argnm, index, value, xrt_core::patcher::buf_type::pad,
-                             m_grp_sec_idx, m_first_patch))
+                             m_ctrl_code_id, m_first_patch))
           patched = true;
     }
 
@@ -2121,9 +2152,9 @@ class module_sram : public module_impl
 
   bool
   patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value,
-                    xrt_core::patcher::buf_type type, uint32_t sec_index)
+                    xrt_core::patcher::buf_type type, uint32_t grp_idx)
   {
-    if (!m_parent->patch_it(bo, argnm, index, value, type, sec_index, m_first_patch))
+    if (!m_parent->patch_it(bo, argnm, index, value, type, grp_idx, m_first_patch))
       return false;
 
     m_dirty = true;
@@ -2157,9 +2188,9 @@ class module_sram : public module_impl
     }
 
     if (os_abi == Elf_Amd_Aie2ps) {
-      if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
+      if (m_patched_args.size() != m_parent->number_of_arg_patchers(m_ctrl_code_id)) {
         auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
-            % m_parent->number_of_arg_patchers() % m_patched_args.size();
+            % m_parent->number_of_arg_patchers(m_ctrl_code_id) % m_patched_args.size();
         throw std::runtime_error{ fmt.str() };
       }
       // sync full buffer only if its first time
@@ -2324,7 +2355,7 @@ class module_sram : public module_impl
     }
     dtrace_obj.ctrl_file_path = path;
 
-    static const auto& data = parent->get_dump_buf(m_ctrl_code_id);
+    const auto& data = parent->get_dump_buf(m_ctrl_code_id);
     if (data.size() == 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "Dump section is empty in ELF");
@@ -2424,7 +2455,7 @@ class module_sram : public module_impl
   }
 
 public:
-  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, std::string id = "")
+  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id = UINT32_MAX)
     : module_impl{ parent->get_cfg_uuid() }
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
@@ -2451,7 +2482,7 @@ public:
     else if (os_abi == Elf_Amd_Aie2ps) {
       initialize_dtrace_buf(m_parent.get());
       create_instruction_buffer(m_parent.get());
-      fill_column_bo_address(m_parent->get_data(m_ctrl_code_id).second);
+      fill_column_bo_address(m_parent->get_data(m_ctrl_code_id));
     }
   }
 
@@ -2571,12 +2602,12 @@ public:
 namespace xrt_core::module_int {
 
 xrt::module
-create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, const std::string& ctrl_code_id)
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
 {
   return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id)};
 }
 
-std::string
+uint32_t
 get_ctrlcode_id(const xrt::module& module, const std::string& kname)
 {
   return module.get_handle()->get_ctrlcode_id(kname);
@@ -2600,7 +2631,7 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
 // This function is used to get patch buffer size based on buf type passed.
 // It is used with internal test cases that verifies shim functionality.
 size_t
-get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, const std::string& id)
+get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, uint32_t id)
 {
   auto handle = module.get_handle();
   auto os_abi = handle->get_os_abi();
@@ -2608,13 +2639,13 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
   if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
     switch (type) {
       case xrt_core::patcher::buf_type::ctrltext :
-        return handle->get_instr(id).second.size();
+        return handle->get_instr(id).size();
       case xrt_core::patcher::buf_type::ctrldata :
-        return handle->get_ctrlpkt(id).second.size();
+        return handle->get_ctrlpkt(id).size();
       case xrt_core::patcher::buf_type::preempt_save :
-        return handle->get_preempt_save().second.size();
+        return handle->get_preempt_save().size();
       case xrt_core::patcher::buf_type::preempt_restore :
-        return handle->get_preempt_restore().second.size();
+        return handle->get_preempt_restore().size();
       default :
         throw std::runtime_error("Unknown buffer type passed");
     }
@@ -2623,7 +2654,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
     if (type != xrt_core::patcher::buf_type::ctrltext)
       throw std::runtime_error("Info of given buffer type not available");
 
-    const auto& instr_buf = handle->get_data(id).second;
+    const auto& instr_buf = handle->get_data(id);
     if (instr_buf.empty())
       throw std::runtime_error{"No control code found for given id"};
 
@@ -2640,37 +2671,29 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
 // It is used with internal test cases that verifies shim functionality.
 void
 patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
-      xrt_core::patcher::buf_type type, const std::string& id)
+      xrt_core::patcher::buf_type type, uint32_t id)
 {
   auto hdl = module.get_handle();
   const buf* inst = nullptr;
-  uint32_t patch_index = UINT32_MAX;
+  uint32_t patch_index = id;
   auto os_abi = hdl->get_os_abi();
 
   if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
     switch (type) {
     case xrt_core::patcher::buf_type::ctrltext : {
-      auto buf_info = hdl->get_instr(id);
-      patch_index = buf_info.first;
-      inst = &(buf_info.second);
+      inst = &(hdl->get_instr(id));
       break;
     }
     case xrt_core::patcher::buf_type::ctrldata : {
-      auto buf_info = hdl->get_ctrlpkt(id);
-      patch_index = buf_info.first;
-      inst = &(buf_info.second);
+      inst = &(hdl->get_ctrlpkt(id));
       break;
     }
     case xrt_core::patcher::buf_type::preempt_save : {
-      auto buf_info = hdl->get_preempt_save();
-      patch_index = buf_info.first;
-      inst = &(buf_info.second);
+      inst = &(hdl->get_preempt_save());
       break;
     }
     case xrt_core::patcher::buf_type::preempt_restore : {
-      auto buf_info = hdl->get_preempt_restore();
-      patch_index = buf_info.first;
-      inst = &(buf_info.second);
+      inst = &(hdl->get_preempt_restore());
       break;
     }
     default :
@@ -2679,9 +2702,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
     }
   }
   else if(os_abi == Elf_Amd_Aie2ps) {
-    auto ctrl_code_info = hdl->get_data(id);
-    patch_index = ctrl_code_info.first;
-    const auto& instr_buf = ctrl_code_info.second;
+    const auto& instr_buf = hdl->get_data(id);
 
     if (instr_buf.empty())
       throw std::runtime_error{"No control code found for given id"};
