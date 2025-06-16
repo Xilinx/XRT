@@ -875,14 +875,15 @@ class module_elf : public module_impl
     const auto key_string = generate_key_string(argnm, type);
     // check if arg patcher exists for this ctrl code 
     if (m_arg2patcher.find(grp_index) == m_arg2patcher.end())
-      return false; // no patch entries for given 
+      return false; // no patch entries for given grp idx
 
     auto it = m_arg2patcher[grp_index].find(key_string);
     auto not_found_use_argument_name = (it == m_arg2patcher[grp_index].end());
     if (not_found_use_argument_name) {// Search using index
       auto index_string = std::to_string(index);
       const auto key_index_string = generate_key_string(index_string, type);
-      if (m_arg2patcher[grp_index].find(key_index_string) == m_arg2patcher[grp_index].end())
+      it = m_arg2patcher[grp_index].find(key_index_string);
+      if (it == m_arg2patcher[grp_index].end())
         return false;
     }
 
@@ -1279,8 +1280,11 @@ class module_elf_aie2p : public module_elf
 
       auto key_string = generate_key_string(argnm, buf_type);
 
-      if (auto search = m_arg2patcher[grp_idx].find(key_string); search != m_arg2patcher[grp_idx].end())
-        search->second.m_ctrlcode_patchinfo.emplace_back(pi);
+      auto search = m_arg2patcher[grp_idx].find(key_string);
+      if (search != m_arg2patcher[grp_idx].end()) {
+        auto& patcher = search->second;
+        patcher.m_ctrlcode_patchinfo.emplace_back(pi);
+      }
       else
         m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
     }
@@ -1676,8 +1680,11 @@ class module_elf_aie2ps : public module_elf
         // On first occurrence of arg, Create a new patcher object and
         // Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
         // On all further occurences of arg, add patch_info structure to existing vector
-        if (auto search = m_arg2patcher[grp_idx].find(key_string); search != m_arg2patcher[grp_idx].end())
-          search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
+        auto search = m_arg2patcher[grp_idx].find(key_string);
+        if (search != m_arg2patcher[grp_idx].end()) {
+          auto& patcher = search->second;
+          patcher.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
+        }
         else
           m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
       }
