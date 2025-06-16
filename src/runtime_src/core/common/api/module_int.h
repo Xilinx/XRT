@@ -104,9 +104,9 @@ get_ert_opcode(const xrt::module& module);
 void
 dump_scratchpad_mem(const xrt::module& module);
 
-// Returns kernel info extracted from demangled kernel signatures
-// eg : DPU(void*, void*, void*)
-// returns kernel name (DPU), kernel args and kernel properties
+// Returns vector of kernel info extracted from demangled kernel signatures
+// kernel signature eg : DPU(void*, void*, void*)
+// Each kernel info object holds kernel name (DPU), kernel args and kernel properties
 // returns empty vector if ELF doesnt have kernel signatures
 const std::vector<kernel_info>&
 get_kernels_info(const xrt::module& module);
