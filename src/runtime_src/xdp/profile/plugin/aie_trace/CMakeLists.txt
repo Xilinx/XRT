@@ -28,7 +28,22 @@ if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+  file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
+    "${PROFILE_DIR}/device/common/*.h"
+    "${PROFILE_DIR}/device/common/*.cpp"
+  )
+
+  file(GLOB AIE_TRACE_COMPONENT_FILES
+    "${OFFLOAD_DIR}/*.h"
+    "${OFFLOAD_DIR}/*.cpp"
+    "${DEVICE_DIR}/*.h"
+    "${DEVICE_DIR}/*.cpp"
+    "${IMPL_DIR}/*.h"
+    "${IMPL_DIR}/*.cpp"
+  )
+
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES}
+              ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_NPU3_BUILD=1 -DXAIE_FEATURE_MSVC)
@@ -61,7 +76,8 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     "${IMPL_DIR}/*.cpp"
   )
 
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} 
+              ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
@@ -110,7 +126,8 @@ elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
       "${IMPL_DIR}/*.cpp"
     )
 
-    add_library(xdp_aie_trace_plugin_xdna MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_TRACE_CONFIG_FILES})
+    add_library(xdp_aie_trace_plugin_xdna MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} 
+                ${AIE_TRACE_UTIL_FILES} ${AIE_TRACE_CONFIG_FILES})
     add_dependencies(xdp_aie_trace_plugin_xdna xdp_core xrt_coreutil)
     target_link_libraries(xdp_aie_trace_plugin_xdna PRIVATE xdp_core xrt_coreutil xaiengine)
     target_compile_definitions(xdp_aie_trace_plugin_xdna PRIVATE XDP_VE2_BUILD=1 FAL_LINUX="on")
