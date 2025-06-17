@@ -143,7 +143,7 @@ namespace xdp {
       case AppFlowType::LOAD_XCLBIN_FLOW:
       {
         if (hw_context_flow) {
-          xrt_core::message::send(severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP configuration.");
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP configuration.");
           return false;
         }
         return true;
@@ -154,7 +154,7 @@ namespace xdp {
         if (hw_context_flow) {
           return true;
         }
-        xrt_core::message::send(severity_level::warning, "XRT", 
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
             "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. Skip XDP configuration.");
         return false;
       }
