@@ -48,9 +48,7 @@ if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_NPU3_BUILD=1 -DXAIE_FEATURE_MSVC)
   target_include_directories(xdp_aie_trace_plugin PRIVATE
-                             ${AIERT_DIR}/include
-                             ${AIEBU_SOURCE_DIR}/include
-                             ${AIEBU_SOURCE_DIR}/src/cpp/include)
+                             ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
