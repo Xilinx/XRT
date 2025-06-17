@@ -197,12 +197,11 @@ namespace xdp {
     return mode ;
   }
 
-  std::string getGraphUniqueId(const std::string& graphName, uint8_t col,
-                               uint8_t channelNum, uint8_t streamId)
+  std::string getGraphUniqueId(uint8_t col, uint8_t channelNum, uint8_t streamId)
   {
     std::ostringstream uniqueId;
-    uniqueId << graphName << "_" << static_cast<int>(col) << "_"
-             << static_cast<int>(channelNum) << "_" << static_cast<int>(streamId);
+    uniqueId << static_cast<int>(col) << "_" << static_cast<int>(channelNum)
+             << "_" << static_cast<int>(streamId);
     return uniqueId.str();
   }
 
