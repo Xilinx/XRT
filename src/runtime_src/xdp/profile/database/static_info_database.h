@@ -183,6 +183,9 @@ namespace xdp {
     XDP_CORE_EXPORT bool getAieApplication() const ;
     XDP_CORE_EXPORT void setAieApplication() ;
 
+    XDP_CORE_EXPORT AppFlowType getAppFlowType() const;
+    XDP_CORE_EXPORT void setAppFlowType(AppFlowType flowType);
+
     XDP_CORE_EXPORT 
     std::unique_ptr<IpMetadata> populateIpMetadata(uint64_t deviceId, 
                                   const std::shared_ptr<xrt_core::device>&);
