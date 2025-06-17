@@ -100,7 +100,8 @@ AIETraceConfigFiletype::getExternalBuffers() const
         gmio.streamId = buf_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = 8;
 
-        gmios[gmio.name] = gmio;
+        std::string gmioKey = xdp::getGraphUniqueId(gmio.name, gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        gmios[gmioKey] = gmio;
     }
 
     return gmios;
