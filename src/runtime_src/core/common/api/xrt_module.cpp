@@ -814,12 +814,12 @@ class module_elf : public module_impl
     const ELFIO::symbol_section_accessor symbols(m_elfio, symtab);
     // Get the symbol at sym_index
     std::string name;
-    ELFIO::Elf64_Addr value;
-    ELFIO::Elf_Xword size;
-    unsigned char bind;
-    unsigned char type;
-    ELFIO::Elf_Half index;
-    unsigned char other;
+    ELFIO::Elf64_Addr value{};
+    ELFIO::Elf_Xword size{};
+    unsigned char bind{};
+    unsigned char type{};
+    ELFIO::Elf_Half index = UINT16_MAX; // as 0 is a valid index
+    unsigned char other{};
 
     // Read symbol data
     if (symbols.get_symbol(sym_index, name, value, size, bind, type, index, other)) {
@@ -1734,7 +1734,7 @@ public:
   }
 
   const buf&
-  get_dump_buf(uint32_t id) const
+  get_dump_buf(uint32_t id) const override
   {
     if (auto it = m_dump_buf_map.find(id); it != m_dump_buf_map.end())
       return it->second;
