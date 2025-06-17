@@ -112,6 +112,10 @@ namespace xdp {
     if (!handle)
       return;
 
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+      return;
+    }
+
     if (hw_context_flow) {
       if(AppFlowType::FLOW_TYPE_NOT_SET == (db->getStaticInfo()).getAppFlowType()) {
         (db->getStaticInfo()).setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);

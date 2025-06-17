@@ -126,6 +126,45 @@ namespace xdp {
     appFlowType = flowType;
   }
 
+  bool VPStaticDatabase::continueXDPConfig(bool hw_context_flow)
+  {
+    auto flowType = getAppFlowType();
+    switch(flowType) {
+      case AppFlowType::FLOW_TYPE_NOT_SET:
+      {
+        if (hw_context_flow) {
+          setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
+        } else {
+          setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
+        }
+        return true;
+      }
+      break;
+      case AppFlowType::LOAD_XCLBIN_FLOW:
+      {
+        if (hw_context_flow) {
+          xrt_core::message::send(severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP configuration.");
+          return false;
+        }
+        return true;
+      }
+      break;
+      case AppFlowType::REGISTER_XCLBIN_FLOW:
+      {
+        if (hw_context_flow) {
+          return true;
+        }
+        xrt_core::message::send(severity_level::warning, "XRT", 
+            "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. Skip XDP configuration.");
+        return false;
+      }
+      break;
+      default:
+        break;
+    }
+    return false;
+  }
+
   // ***************************************************
   // ***** Functions related to OpenCL information *****
 
