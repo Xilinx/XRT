@@ -22,6 +22,7 @@
 
 #include "aie_control_config_filetype.h"
 #include "core/common/message.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
@@ -191,7 +192,8 @@ AIEControlConfigFiletype::getPLIOs() const
         plio.channelNum = 0;
         plio.burstLength = 0;
 
-        plios[plio.name] = plio;
+        std::string plioKey = xdp::getGraphUniqueId(plio.shimColumn, plio.channelNum, plio.streamId);
+        plios[plioKey] = plio;
     }
 
     return plios;
@@ -244,7 +246,8 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
-        gmios[gmio.name] = gmio;
+        std::string gmioKey = xdp::getGraphUniqueId(gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        gmios[gmioKey] = gmio;
     }
 
     return gmios;
