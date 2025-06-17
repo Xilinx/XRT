@@ -725,6 +725,8 @@ update_device(void* handle, bool hw_context_flow)
     }
   }
 
+  // Avoid warning until we've added support in all plugins
+  (void)(hw_context_flow);
 #endif
 }
 
