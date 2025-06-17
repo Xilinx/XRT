@@ -116,22 +116,6 @@ namespace xdp {
       return;
     }
 
-    if (hw_context_flow) {
-      if(AppFlowType::FLOW_TYPE_NOT_SET == (db->getStaticInfo()).getAppFlowType()) {
-        (db->getStaticInfo()).setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
-      } else if(AppFlowType::LOAD_XCLBIN_FLOW == (db->getStaticInfo()).getAppFlowType()) {
-        xrt_core::message::send(severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP flow here...");
-        return;
-      }
-    } else {
-      if(AppFlowType::FLOW_TYPE_NOT_SET == (db->getStaticInfo()).getAppFlowType()) {
-        (db->getStaticInfo()).setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
-      } else if(AppFlowType::REGISTER_XCLBIN_FLOW == (db->getStaticInfo()).getAppFlowType()) {
-        xrt_core::message::send(severity_level::warning, "XRT", "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. AIE Profiling is not yet supported for this combination.");
-        return;
-      }
-    }
-
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
