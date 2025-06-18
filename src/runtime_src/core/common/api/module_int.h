@@ -39,6 +39,10 @@ struct kernel_info {
   xrt_core::xclbin::kernel_properties props;
 };
 
+// Elfs with no multi control code support use below id as
+// grp index or control code id
+static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
+
 // create module object that will be used with run object
 // The object created holds buffers for instruction/control-pkt
 // These buffers are patched and sent to driver/firmware for execution
