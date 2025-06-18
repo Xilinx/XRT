@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #include <iostream>
 #include <sstream>
@@ -115,47 +102,47 @@ namespace xdp {
     aieApplication = true;
   }
 
-  AppFlowType VPStaticDatabase::getAppFlowType() const
+  void VPStaticDatabase::setAppStyle(AppStyle style)
   {
-    return appFlowType;
+    std::lock_guard<std::mutex> lock(appStyleLock);
+    appStyle = style;
   }
 
-  void VPStaticDatabase::setAppFlowType(AppFlowType flowType)
+  AppStyle VPStaticDatabase::getAppStyle() const
   {
-    std::lock_guard<std::mutex> lock(appFlowTypeLock);
-    appFlowType = flowType;
+    return appStyle;
   }
 
   bool VPStaticDatabase::continueXDPConfig(bool hw_context_flow)
   {
-    auto flowType = getAppFlowType();
-    switch(flowType) {
-      case AppFlowType::FLOW_TYPE_NOT_SET:
+    auto style = getAppStyle();
+    switch (style) {
+      case AppStyle::APP_STYLE_NOT_SET:
       {
-        if (hw_context_flow) {
-          setAppFlowType(AppFlowType::REGISTER_XCLBIN_FLOW);
-        } else {
-          setAppFlowType(AppFlowType::LOAD_XCLBIN_FLOW);
-        }
+        if (hw_context_flow)
+          setAppStyle(AppStyle::REGISTER_XCLBIN_STYLE);
+        else
+          setAppStyle(AppStyle::LOAD_XCLBIN_STYLE);
+
         return true;
       }
       break;
-      case AppFlowType::LOAD_XCLBIN_FLOW:
+      case AppStyle::LOAD_XCLBIN_STYLE:
       {
         if (hw_context_flow) {
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Hit HW Ctx XDP invocation for LOAD_XCLBIN flow. Skip XDP configuration.");
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Hit HW Context XDP invocation for LOAD_XCLBIN style application. Skip XDP configuration.");
           return false;
         }
         return true;
       }
       break;
-      case AppFlowType::REGISTER_XCLBIN_FLOW:
+      case AppStyle::REGISTER_XCLBIN_STYLE:
       {
-        if (hw_context_flow) {
+        if (hw_context_flow)
           return true;
-        }
+
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-            "Got XDP callback in LOAD_XCLBIN when REGISTER_XCLBIN has already been identified. Skip XDP configuration.");
+            "Got XDP callback in LOAD_XCLBIN when application style has already been identified as REGISTER_XCLBIN. Skip XDP configuration.");
         return false;
       }
       break;
