@@ -4,7 +4,7 @@
 
 # ====================================================================
 # This builds the AIE Profile plugin. It is currently built on Edge,
-# x86, Client, Medusa/Soundwave, and VE2 platforms that support AIE.
+# x86, Client, NPU3, and VE2 platforms that support AIE.
 # ====================================================================
 
 file(GLOB AIE_PROFILE_PLUGIN_FILES

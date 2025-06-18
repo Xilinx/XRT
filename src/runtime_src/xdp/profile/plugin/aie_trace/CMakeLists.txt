@@ -4,11 +4,13 @@
 
 # ====================================================================
 # This builds the AIE Trace plugin.  It is currently built on x86,
-# Edge-Versal systems, client and ve2 but not Edge-aarch64.  It also has a dependency
-# on the hardware shim
+# Edge, Client, NPU3, and VE2 platforms that support AIE.  It also
+# has a dependency on the hardware shim.
 # ====================================================================
 
 file(GLOB AIE_TRACE_PLUGIN_FILES
+  "${PROFILE_DIR}/plugin/aie_base/*.h"
+  "${PROFILE_DIR}/plugin/aie_base/*.cpp"
   "${PROFILE_DIR}/plugin/aie_trace/*.h"
   "${PROFILE_DIR}/plugin/aie_trace/*.cpp"
   "${PROFILE_DIR}/writer/aie_trace/*.h"
