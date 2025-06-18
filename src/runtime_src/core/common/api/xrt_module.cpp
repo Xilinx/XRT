@@ -918,15 +918,15 @@ protected:
   // store arg and its corresponding patcher information for each
   // kernel + subkernel combination
   // key - ctrlcode id(grp idx), value - map of key string and patcher info
-  std::unordered_map<uint32_t, std::map<std::string, patcher>> m_arg2patcher;
+  std::map<uint32_t, std::map<std::string, patcher>> m_arg2patcher;
 
   // Elf can have multiple group sections
   // sections belongs to a particular kernel, sub kernel combination
   // are grouped under a group section
   // lookup map for section index to group index
-  std::unordered_map<uint32_t, uint32_t> m_sec_to_grp_map;
+  std::map<uint32_t, uint32_t> m_sec_to_grp_map;
   // lookup map for kernel + sub kernel to grp idx(ctrl code id)
-  std::unordered_map<std::string, uint32_t> m_kname_to_id_map;
+  std::map<std::string, uint32_t> m_kname_to_id_map;
 
   // Elf can have multiple kernels
   // Each kernel will have a kernel signature entry in .symtab section
@@ -934,7 +934,7 @@ protected:
   std::vector<xrt_core::module_int::kernel_info> m_kernels_info;
   // map that stores available subkernels of a kernel
   // key - kernel name, value - vector of sub kernel names
-  std::unordered_map<std::string, std::vector<std::string>> m_kernels_map;
+  std::map<std::string, std::vector<std::string>> m_kernels_map;
 
   // rela->addend have offset to base-bo-addr info along with schema
   // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
@@ -954,15 +954,15 @@ public:
   // Function that parses the .group sections in the ELF file
   // and returns a map with ctrl code id which is grp idx and
   // vector of section ids that belong to this group as value
-  std::unordered_map<uint32_t, std::vector<uint32_t>>
+  std::map<uint32_t, std::vector<uint32_t>>
   parse_group_sections(bool is_grp_elf)
   {
-    std::unordered_map<uint32_t, std::vector<uint32_t>> id_sections_map;
+    std::map<uint32_t, std::vector<uint32_t>> id_sections_map;
     if (!is_grp_elf) {
       // Older version ELf, so doesn't have .group sections
       // This Elf doesnt have multiple ctrlcodes
       // Using empty string as kernel + subkernel combination
-      // and using UINT32_MAX as grp idx
+      // and using no_ctrl_code_id(UINT32_MAX) as grp idx
       constexpr const char* kname = "";
       std::vector<uint32_t> sec_ids;
       for (const auto& sec : m_elfio.sections) {
@@ -977,12 +977,12 @@ public:
         sec_ids.push_back(sec->get_index());
         // fill the sec_to_grp_map for lookup later
         // for this kind of ELF we fill UINT32_MAX as there is no group section
-        m_sec_to_grp_map[sec->get_index()] = UINT32_MAX;
+        m_sec_to_grp_map[sec->get_index()] = xrt_core::module_int::no_ctrl_code_id;
       }
 
       // fill kenerl name to id map with id as grp idx
-      m_kname_to_id_map[kname] = UINT32_MAX;
-      id_sections_map.emplace(UINT32_MAX, sec_ids);
+      m_kname_to_id_map[kname] = xrt_core::module_int::no_ctrl_code_id;
+      id_sections_map.emplace(xrt_core::module_int::no_ctrl_code_id, std::move(sec_ids));
     }
     else {
       for (const auto& section : m_elfio.sections) {
@@ -1449,10 +1449,10 @@ class module_elf_aie2ps : public module_elf
 
   // map for holding control code data for each sub kernel
   // key : control code id (grp sec idx), value : vector of column ctrlcodes
-  std::unordered_map<uint32_t, std::vector<ctrlcode>> m_ctrlcodes_map;
+  std::map<uint32_t, std::vector<ctrlcode>> m_ctrlcodes_map;
 
   // map to hold .dump section of different sub kernels used for debug/trace
-  std::unordered_map<uint32_t, buf> m_dump_buf_map;
+  std::map<uint32_t, buf> m_dump_buf_map;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -2462,7 +2462,7 @@ class module_sram : public module_impl
   }
 
 public:
-  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id = UINT32_MAX)
+  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id = xrt_core::module_int::no_ctrl_code_id)
     : module_impl{ parent->get_cfg_uuid() }
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }

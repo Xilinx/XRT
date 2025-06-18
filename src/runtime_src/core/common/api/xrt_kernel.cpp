@@ -1323,7 +1323,8 @@ private:
   size_t num_cumasks = 1;                     // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                               // Internal unique id for debug
-  uint32_t m_ctrl_code_id = UINT32_MAX;       // ID to identify which ctrl code to load from elf
+  uint32_t m_ctrl_code_id = xrt_core::module_int::no_ctrl_code_id;
+                                              // ID to identify which ctrl code to load from elf
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
