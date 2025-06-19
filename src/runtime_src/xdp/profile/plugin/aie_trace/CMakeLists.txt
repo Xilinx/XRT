@@ -27,8 +27,8 @@ file(GLOB AIE_TRACE_CONFIG_FILES
 
 if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/npu3")
-  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
-  set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
+  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/npu3")
+  #set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
   file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
     "${PROFILE_DIR}/device/common/*.h"
