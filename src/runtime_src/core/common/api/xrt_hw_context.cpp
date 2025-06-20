@@ -46,18 +46,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   void
   create_module_map(const xrt::elf& elf)
   {
-    xrt::module module{elf};
+    xrt::module module_obj{elf};
 
     // Store the module in the map against all available kernels in the ELF
     // This will be useful for module lookup when creating xrt::kernel object
-    // using kernel name    
-    const auto& kernels_info = xrt_core::module_int::get_kernels_info(module);
+    // using kernel name
+    const auto& kernels_info = xrt_core::module_int::get_kernels_info(module_obj);
     for (const auto& k_info : kernels_info) {
       auto kernel_name = k_info.props.name;
       if (m_module_map.find(kernel_name) != m_module_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
-      m_module_map.emplace(std::move(kernel_name), module);
+      m_module_map.emplace(std::move(kernel_name), module_obj);
     }
   }
 

@@ -63,7 +63,7 @@ namespace
 static constexpr size_t elf_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p        = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps       = 64;
-static constexpr uint8_t Elf_Amd_Aie2p_config = 70;
+static constexpr uint8_t Elf_Amd_Aie2ps_group = 70;
 
 // In aie2p max bd data words is 8 and in aie4/aie2ps its 9
 // using max bd words as 9 to cover all cases
@@ -446,6 +446,34 @@ demangle(const std::string& mangled_name)
 #endif
 }
 
+// checks if ELF has .group sections
+static bool
+is_group_elf(const ELFIO::elfio& elfio)
+{
+  constexpr uint8_t major_ver_mask = 0xF0;
+  constexpr uint8_t minor_ver_mask = 0x0F;
+  constexpr uint8_t shift = 4;
+
+  auto abi_version = elfio.get_abi_version();
+  auto os_abi = elfio.get_os_abi();
+
+  if (os_abi == Elf_Amd_Aie2p) {
+    // ELF of aie2p with version >= 1.0 uses group sections
+    constexpr uint8_t group_elf_major_version = 1;
+    if (((abi_version & major_ver_mask) >> shift) >= group_elf_major_version)
+      return true;
+
+    return false;
+  }
+  else {
+    // ELF of aie2ps/aie4 with version >= 0.3 uses group sections
+    constexpr uint8_t group_elf_minor_version = 3;
+    if ((abi_version & minor_ver_mask) >= group_elf_minor_version)
+      return true;
+      
+    return false;
+  }
+}
 } // namespace
 
 namespace xrt
@@ -507,6 +535,12 @@ public:
 
   virtual const buf&
   get_pdi(const std::string& /*pdi_name*/) const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  virtual xrt::bo&
+  get_pdi_bo(const std::string& /*pdi_name*/)
   {
     throw std::runtime_error("Not supported");
   }
@@ -576,6 +610,13 @@ public:
 
   virtual uint8_t
   get_os_abi() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Returns underlying elfio object held by this module
+  virtual const ELFIO::elfio&
+  get_elfio_object() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -735,7 +776,7 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
-  std::vector<std::string>
+  static std::vector<std::string>
   split(const std::string& s, char delimiter)
   {
     std::vector<std::string> tokens;
@@ -751,7 +792,7 @@ class module_elf : public module_impl
   // kernel signature has name followed by args
   // kernel signature - name(argtype, argtype ...)
   // eg : DPU(char*, char*, char*)
-  std::vector<xrt_core::xclbin::kernel_argument>
+  static std::vector<xrt_core::xclbin::kernel_argument>
   construct_kernel_args(const std::string& signature)
   {
     std::vector<xrt_core::xclbin::kernel_argument> args;
@@ -759,7 +800,10 @@ class module_elf : public module_impl
     size_t start_pos = signature.find('(');
     size_t end_pos = signature.find(')', start_pos);
 
-    if (start_pos == std::string::npos || end_pos == std::string::npos || start_pos > end_pos)
+    if (start_pos == std::string::npos)
+      return args; // kernel with no args
+
+    if ((start_pos != std::string::npos) && (end_pos == std::string::npos || start_pos > end_pos))
       throw std::runtime_error("Failed to construct kernel args");
 
     std::string argstring = signature.substr(start_pos + 1, end_pos - start_pos - 1);
@@ -844,12 +888,15 @@ class module_elf : public module_impl
 
       // demangle the string and extract kernel name, args from it
       kname = demangle(kname);
+
+      std::string kernel_name;
       size_t pos = kname.find('(');
       if (pos == std::string::npos)
-        throw std::runtime_error("Invalid kernel entry in .symtab pointed by sub kerenl\n");
+        kernel_name = kname; // function with no args
+      else
+        kernel_name = kname.substr(0, pos);
 
       xrt_core::module_int::kernel_info k_info;
-      std::string kernel_name = kname.substr(0, pos);
       // construct kernel args and properties and cache them
       // this info is used at the time of xrt::kernel object creation
       k_info.args = construct_kernel_args(kname);
@@ -951,6 +998,12 @@ protected:
   {}
 
 public:
+  const ELFIO::elfio&
+  get_elfio_object() const override
+  {
+    return m_elfio;
+  }
+
   // Function that parses the .group sections in the ELF file
   // and returns a map with ctrl code id which is grp idx and
   // vector of section ids that belong to this group as value
@@ -1061,7 +1114,7 @@ public:
   }
 };
 
-// module class for ELFs with os_abi - Elf_Amd_Aie2p & ELF_Amd_Aie2p_config
+// module class for ELFs with os_abi - Elf_Amd_Aie2p
 class module_elf_aie2p : public module_elf
 {
   xrt::aie::program m_program;
@@ -1076,6 +1129,8 @@ class module_elf_aie2p : public module_elf
   std::map<std::string, buf> m_pdi_buf_map;
   // map storing pdi symbols that needs patching in ctrl codes
   std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
+  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
+  std::map<std::string, xrt::bo> m_pdi_bo_map;
 
   buf m_save_buf;
   bool m_save_buf_exist = false;
@@ -1089,21 +1144,6 @@ class module_elf_aie2p : public module_elf
 
   std::set<std::string> m_ctrlpkt_pm_dynsyms; // preemption dynsyms in elf
   std::map<std::string, buf> m_ctrlpkt_pm_bufs; // preemption buffers map
-
-  void
-  initialize_group_sections()
-  {
-    // ELF with version >= 1.0 uses group sections
-    constexpr uint8_t major_ver_mask = 0xF0;
-    constexpr uint8_t shift = 4;
-    constexpr uint8_t group_elf_major_version = 1;
-    bool is_grp_elf = false;
-
-    if (((m_elfio.get_abi_version() & major_ver_mask) >> shift) >= group_elf_major_version)
-      is_grp_elf = true;
-
-    parse_group_sections(is_grp_elf);
-  }
 
   // Extract buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
@@ -1295,7 +1335,7 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    initialize_group_sections();
+    parse_group_sections(::is_group_elf(xrt_core::elf_int::get_elfio(elf)));
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
 
@@ -1342,6 +1382,12 @@ public:
       return it->second;
 
     return buf::get_empty_buf();
+  }
+
+  xrt::bo&
+  get_pdi_bo(const std::string& pdi_name) override
+  {
+    return m_pdi_bo_map[pdi_name];
   }
 
   const instr_buf&
@@ -1442,7 +1488,7 @@ public:
   }
 };
 
-// module class for ELFs with os_abi - Elf_Amd_Aie2ps
+// module class for ELFs with os_abi - Elf_Amd_Aie2ps, Elf_Amd_Aie2ps_group
 class module_elf_aie2ps : public module_elf
 {
   xrt::aie::program m_program;
@@ -1499,7 +1545,7 @@ class module_elf_aie2ps : public module_elf
   // microblaze controller (uC), then create ctrlcode objects from the
   // data.
   void
-  initialize_column_ctrlcode(std::map<uint32_t, std::vector<size_t>>& pad_offsets)
+  initialize_column_ctrlcode(std::map<uint32_t, std::vector<size_t>>& pad_offsets, bool is_grp_elf)
   {
     // Elf sections for a single page
     struct elf_page
@@ -1522,13 +1568,6 @@ class module_elf_aie2ps : public module_elf
     // key - instance id(grp idx) : value - uc sections
     using ctrlcode_map = std::map<uint32_t, uc_sections>;
     ctrlcode_map ctrl_map;
-
-    // ELF with version >= 0.3 uses group sections
-    constexpr uint8_t minor_ver_mask = 0x0F;
-    constexpr uint8_t group_elf_minor_version = 3;
-    bool is_grp_elf = false;
-    if ((m_elfio.get_abi_version() & minor_ver_mask) >= group_elf_minor_version)
-      is_grp_elf = true;
 
     auto id_secs_map = parse_group_sections(is_grp_elf);
     // Iterate sections for each sub kernel
@@ -1712,7 +1751,7 @@ public:
     , m_program{elf}
   {
     std::map<uint32_t, std::vector<uint64_t>> pad_offsets;
-    initialize_column_ctrlcode(pad_offsets);
+    initialize_column_ctrlcode(pad_offsets, ::is_group_elf(xrt_core::elf_int::get_elfio(elf)));
     initialize_arg_patchers(pad_offsets);
     initialize_dump_buf();
   }
@@ -2036,9 +2075,13 @@ class module_sram : public module_impl
     // patch all pdi addresses
     auto pdi_symbols = parent->get_patch_pdis(m_ctrl_code_id);
     for (const auto& symbol : pdi_symbols) {
-      const auto& pdi_data = parent->get_pdi(symbol);
-      auto pdi_bo = xrt::bo{ m_hwctx, pdi_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
-      fill_bo_with_data(pdi_bo, pdi_data);
+      auto& pdi_bo = m_parent->get_pdi_bo(symbol);
+      if (!pdi_bo) {
+        // pdi_bo doesn't exist create it
+        const auto& pdi_data = parent->get_pdi(symbol);
+        pdi_bo = xrt::bo{ m_hwctx, pdi_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
+        fill_bo_with_data(pdi_bo, pdi_data);
+      }
       // patch instr buffer with pdi address
       patch_instr(m_instr_bo, symbol, 0, pdi_bo, xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
     }
@@ -2129,7 +2172,7 @@ class module_sram : public module_impl
   patch_value(const std::string& argnm, size_t index, uint64_t value)
   {
     bool patched = false;
-    if (m_parent->get_os_abi() == Elf_Amd_Aie2p || m_parent->get_os_abi() == Elf_Amd_Aie2p_config) {
+    if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
         if (m_parent->patch_it(m_ctrlpkt_bo, argnm, index, value, xrt_core::patcher::buf_type::ctrldata,
@@ -2180,9 +2223,9 @@ class module_sram : public module_impl
         return;
 
       // its first run sync entire buffers
-      if (os_abi == Elf_Amd_Aie2ps)
+      if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group)
         m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      else if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+      else if (os_abi == Elf_Amd_Aie2p) {
         m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
         if (m_ctrlpkt_bo)
           m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -2194,7 +2237,7 @@ class module_sram : public module_impl
       return;
     }
 
-    if (os_abi == Elf_Amd_Aie2ps) {
+    if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers(m_ctrl_code_id)) {
         auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers(m_ctrl_code_id) % m_patched_args.size();
@@ -2214,7 +2257,7 @@ class module_sram : public module_impl
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
-    else if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+    else if (os_abi == Elf_Amd_Aie2p) {
       if (m_first_patch)
         m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
@@ -2478,7 +2521,7 @@ public:
 
     auto os_abi = m_parent.get()->get_os_abi();
 
-    if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+    if (os_abi == Elf_Amd_Aie2p) {
       // make sure to create control-packet buffer first because we may
       // need to patch control-packet address to instruction buffer
       create_ctrlpkt_buf(m_parent.get());
@@ -2486,7 +2529,7 @@ public:
       create_instr_buf(m_parent.get());
       fill_bo_addresses();
     }
-    else if (os_abi == Elf_Amd_Aie2ps) {
+    else if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group) {
       initialize_dtrace_buf(m_parent.get());
       create_instruction_buffer(m_parent.get());
       fill_column_bo_address(m_parent->get_data(m_ctrl_code_id));
@@ -2500,13 +2543,12 @@ public:
 
     switch (os_abi) {
     case Elf_Amd_Aie2p :
-      if (m_preempt_save_bo && m_preempt_restore_bo)
+      if ((m_preempt_save_bo && m_preempt_restore_bo) || ::is_group_elf(m_parent->get_elfio_object()))
         return fill_ert_aie2p_preempt_data(payload);
       else
         return fill_ert_aie2p_non_preempt_data(payload);
-    case Elf_Amd_Aie2p_config :
-      return fill_ert_aie2p_preempt_data(payload);
     case Elf_Amd_Aie2ps :
+    case Elf_Amd_Aie2ps_group :
       return fill_ert_aie2ps(payload);
     default :
       throw std::runtime_error("unknown ELF type passed\n");
@@ -2643,7 +2685,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
   auto handle = module.get_handle();
   auto os_abi = handle->get_os_abi();
 
-  if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+  if (os_abi == Elf_Amd_Aie2p) {
     switch (type) {
       case xrt_core::patcher::buf_type::ctrltext :
         return handle->get_instr(id).size();
@@ -2657,7 +2699,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if(os_abi == Elf_Amd_Aie2ps) {
+  else if(os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group) {
     if (type != xrt_core::patcher::buf_type::ctrltext)
       throw std::runtime_error("Info of given buffer type not available");
 
@@ -2685,7 +2727,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
   uint32_t patch_index = id;
   auto os_abi = hdl->get_os_abi();
 
-  if (os_abi == Elf_Amd_Aie2p || os_abi == Elf_Amd_Aie2p_config) {
+  if (os_abi == Elf_Amd_Aie2p) {
     switch (type) {
     case xrt_core::patcher::buf_type::ctrltext : {
       inst = &(hdl->get_instr(id));
@@ -2708,7 +2750,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
       break;
     }
   }
-  else if(os_abi == Elf_Amd_Aie2ps) {
+  else if(os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group) {
     const auto& instr_buf = hdl->get_data(id);
 
     if (instr_buf.empty())
@@ -2800,9 +2842,9 @@ construct_module_elf(const xrt::elf& elf)
   auto os_abi = xrt_core::elf_int::get_elfio(elf).get_os_abi();
   switch (os_abi) {
   case Elf_Amd_Aie2p :
-  case Elf_Amd_Aie2p_config :
     return std::make_shared<xrt::module_elf_aie2p>(elf);
   case Elf_Amd_Aie2ps :
+  case Elf_Amd_Aie2ps_group :
     return std::make_shared<xrt::module_elf_aie2ps>(elf);
   default :
     throw std::runtime_error("unknown ELF type passed\n");
