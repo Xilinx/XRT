@@ -349,15 +349,11 @@ std::function<void (void*)> end_trace_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_VE2_BUILD)
     using ftype = void (*)(void*);
     using utype = void (*)(void*, bool);
 
     end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
     update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDevice"));
-  #else 
-    (void)handle;
-  #endif
 }
 
 void 
@@ -595,7 +591,15 @@ update_device(void* handle, bool hw_context_flow)
            "Failed to load AIE Profile library. Caught exception ",  
            "Failed to setup for AIE Profile. Caught exception ",
            handle,
-	 	      hw_context_flow);
+	 	       hw_context_flow);
+
+  load_once_and_update(xrt_core::config::get_aie_trace,  
+           xrt_core::xdp::aie::trace::load,
+           xrt_core::xdp::aie::trace::update_device,
+           "Failed to load AIE Trace library. Caught exception ",  
+           "Failed to setup for AIE Trace. Caught exception ",
+           handle,
+           hw_context_flow);
 
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);
@@ -638,6 +642,8 @@ finish_flush_device(void* handle)
 
 #else
 
+  if (xrt_core::config::get_aie_trace())
+    xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_pl_deadlock_detection()
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
     xrt_core::xdp::pl_deadlock::finish_flush_device(handle);

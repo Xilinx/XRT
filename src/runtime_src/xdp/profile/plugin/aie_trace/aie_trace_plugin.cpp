@@ -42,6 +42,9 @@
 #include "shim_ve2/xdna_hwctx.h"
 #else
 #include "edge/aie_trace.h"
+#include "core/edge/user/shim.h"
+#include "core/edge/user/hwctx_object.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #endif
 
@@ -108,6 +111,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
   if (!handle)
     return;
+  
+  if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+    return;
+  }
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
@@ -307,12 +314,31 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       ,
       AIEData.metadata->getNumStreams(), devInst);
 #else
+  XAie_DevInst* devInst = nullptr;
+  if(hw_context_flow) {
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+    auto aieArray = hwctx_obj->get_aie_array_shared();
+    devInst = aieArray->get_dev();
+  }
+  else {
+    auto drv = ZYNQ::shim::handleCheck(handle);
+    if (!drv) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "Unable to get AIE device. AIE event trace will not be available.");
+      return;
+    }
+    auto aieArray = drv->getAieArray();
+    devInst = aieArray->get_dev();
+  }
+
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
       ,
       aieTraceBufSize // total trace buffer size
       ,
-      AIEData.metadata->getNumStreams());
+      AIEData.metadata->getNumStreams(), devInst);
 #endif
 
   auto &offloader = AIEData.offloader;
