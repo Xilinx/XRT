@@ -13,11 +13,14 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_message.h"
 #include "xrt/experimental/xrt_system.h"
 #include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/experimental/xrt_elf.h"
 #include "xrt/experimental/xrt_aie.h"
+#include "xrt/experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_kernel.h"
 
 // Pybind11 includes
 #include <pybind11/pybind11.h>
@@ -44,7 +47,7 @@ PYBIND11_MODULE(pyxrt, m) {
     m.attr("XCL_BO_FLAGS_NONE") = py::int_(XCL_BO_FLAGS_NONE);
 
     py::enum_<xclBOSyncDirection>(m, "xclBOSyncDirection", "DMA flags used with DMA API")
-    .value("XCL_BO_SYNC_BO_TO_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE)
+        .value("XCL_BO_SYNC_BO_TO_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE)
         .value("XCL_BO_SYNC_BO_FROM_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_FROM_DEVICE)
         .value("XCL_BO_SYNC_BO_GMIO_TO_AIE", xclBOSyncDirection::XCL_BO_SYNC_BO_GMIO_TO_AIE)
         .value("XCL_BO_SYNC_BO_AIE_TO_GMIO", xclBOSyncDirection::XCL_BO_SYNC_BO_AIE_TO_GMIO);
@@ -358,4 +361,131 @@ PYBIND11_MODULE(pyxrt, m) {
             return new xrt::aie::program(xe); }))
         .def("get_partition_size", &xrt::aie::program::get_partition_size,
              "Required partition size to run the program");
+    
+
+
+
+    /*
+    *
+    * xrt::module
+    * 
+    */
+
+    py::class_<xrt::module> pymodule(m, "module", "Functions an application will execute in hardware");
+
+    pymodule
+        .def(py::init([](xrt::elf& xe) {
+                return new xrt::module(xe);
+        }))
+        .def(py::init([](void* userptr, size_t sz, const xrt::uuid& uuid) {
+            return new xrt::module(userptr, sz, uuid);
+        }))
+        .def(py::init([](const xrt::module& parent, const xrt::hw_context& hwctx) {
+            return new xrt::module(parent, hwctx);
+        }))
+        // constructor with impl, not sure check xrt_module.h
+        .def("get_cfg_uuid", &xrt::module::get_cfg_uuid, "Get the CFG's uuid for the module")
+        .def("get_hw_context", &xrt::module::get_hw_context, "Get hw context of module");
+
+    /*
+    *
+    * xrt::ext
+    * 
+    */
+    py::module_ ext = m.def_submodule("ext", "Submodule for external");
+
+    py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Represents an external buffer object");
+
+    py::enum_<xrt::ext::bo::access_mode>(pyextbo, "access_mode", "External buffer access mode")
+        .value("none", xrt::ext::bo::access_mode::none)
+        .value("read", xrt::ext::bo::access_mode::read)
+        .value("write", xrt::ext::bo::access_mode::write)
+        .value("read_write", xrt::ext::bo::access_mode::read_write)
+        .value("local", xrt::ext::bo::access_mode::local)
+        .value("shared", xrt::ext::bo::access_mode::shared)
+        .value("process", xrt::ext::bo::access_mode::process)
+        .value("hybrid", xrt::ext::bo::access_mode::hybrid)
+        .export_values()
+        .def("__or__", [](xrt::ext::bo::access_mode a, xrt::ext::bo::access_mode b) {
+            return a | b;
+        })
+        .def("__and__", [](xrt::ext::bo::access_mode a, xrt::ext::bo::access_mode b) {
+            return a & b;
+        })
+        .def("__ior__", [](xrt::ext::bo::access_mode &a, xrt::ext::bo::access_mode b) {
+            a = a | b;
+            return a;
+        })
+        .def("__iand__", [](xrt::ext::bo::access_mode &a, xrt::ext::bo::access_mode b) {
+            a = a & b;
+            return a;
+        })
+        ;
+    
+    pyextbo
+        .def(py::init([](const xrt::device& device, void* userptr, size_t sz, xrt::ext::bo::access_mode access) {
+            return new xrt::ext::bo(device, userptr, sz, access);
+        }))
+        .def(py::init([](const xrt::device& device, void* userptr, size_t sz){
+            return new xrt::ext::bo(device, userptr, sz);
+        }))
+        .def(py::init([](const xrt::device& device, size_t sz, xrt::ext::bo::access_mode access) {
+            return new xrt::ext::bo(device, sz, access);
+        }))
+        .def(py::init([](const xrt::device& device, size_t sz) {
+            return new xrt::ext::bo(device, sz);
+        }))
+        .def(py::init([](const xrt::device& device, xrt::pid_type pid, xrt::bo::export_handle ehdl) {
+            return new xrt::ext::bo(device, pid, ehdl);
+        }))
+        .def(py::init([](const xrt::hw_context& hwctx, size_t sz, xrt::ext::bo::access_mode access) {
+            return new xrt::ext::bo(hwctx, sz, access);
+        }))
+        .def(py::init([](const xrt::hw_context& hwctx, size_t sz) {
+            return new xrt::ext::bo(hwctx, sz);
+        }))
+        .def(py::init([](const xrt::hw_context& hwctx, xrt::pid_type pid, xrt::bo::export_handle ehdl) {
+            return new xrt::ext::bo(hwctx, pid, ehdl);
+        }))
+        ;
+    
+    py::class_<xrt::ext::kernel, xrt::kernel> pyextkernel(ext, "kernel", "Represents an external kernel object");
+
+    pyextkernel
+        .def(py::init([](const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name) {
+            return new xrt::ext::kernel(ctx, mod, name);
+        }))
+        .def(py::init([](const xrt::hw_context& ctx, const std::string& name) {
+            return new xrt::ext::kernel(ctx, name);
+        }))
+        ;
+
+    /*
+    *
+    * xrt::runlist
+    * 
+    */
+
+    py::class_<xrt::runlist> pyrunlist(m, "runlist", "Represents a list of runs to be executed");
+    
+    pyrunlist
+        .def(py::init([](){
+            return new xrt::runlist();
+        }))
+        .def(py::init([](const xrt::hw_context& hwctx) {
+            return new xrt::runlist(hwctx);
+        }))
+        .def("add", ([](xrt::runlist &r, const xrt::run& run) {
+            r.add(run);
+        }), "Add a run to the runlist")
+        .def("execute", ([](xrt::runlist &r) {
+            r.execute();
+        }), "Execute all runs in the runlist")
+        .def("wait", ([](xrt::runlist &r) {
+            r.wait();
+        }), "Wait for all runs in the runlist to complete")
+        .def("wait", ([](xrt::runlist &r, const std::chrono::milliseconds& timeout) {
+            return r.wait(timeout);
+        }), "Another way to wait for all runs in hte runlist to complete");
+        
 }
