@@ -18,9 +18,7 @@
 
 #include "DTC.h"
 #include "XclBinUtilities.h"
-#include <algorithm>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 

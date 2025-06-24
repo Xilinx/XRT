@@ -23,8 +23,6 @@
 // Include files
 #include <rapidjson/document.h>
 #include <vector>
-#include <utility>
-#include <sstream>
 
 namespace XclBinUtilities {
 

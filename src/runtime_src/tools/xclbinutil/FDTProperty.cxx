@@ -18,11 +18,6 @@
 
 #include "DTCStringsBlock.h"
 #include "XclBinUtilities.h"
-#include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/tuple/tuple.hpp>
-#include <limits.h>
-#include <stdint.h>
 
 namespace XUtil = XclBinUtilities;
 

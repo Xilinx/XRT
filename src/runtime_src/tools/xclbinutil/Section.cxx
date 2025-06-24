@@ -17,12 +17,12 @@
 #include "Section.h"
 
 #include "XclBinUtilities.h"
-#include <algorithm>
+// #include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
+// #include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <iostream>
-#include <sstream>
+// #include <iostream>
+// #include <sstream>
 
 namespace XUtil = XclBinUtilities;
 

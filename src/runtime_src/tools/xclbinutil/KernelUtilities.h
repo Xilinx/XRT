@@ -20,8 +20,6 @@
 
 // Please keep the include files to a minimum
 #include <boost/property_tree/ptree.hpp>
-#include <string>
-#include <vector>
 
 namespace XclBinUtilities {
 void addKernel(const boost::property_tree::ptree& ptKernel, bool isFixedPS, boost::property_tree::ptree& ptEmbeddedData);

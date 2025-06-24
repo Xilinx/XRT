@@ -19,8 +19,6 @@
 #define __FormattedOutput_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-#include <string>
-#include <vector>
 #include <boost/property_tree/ptree.hpp>
 #include "xrt/detail/xclbin.h"
 

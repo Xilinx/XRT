@@ -19,7 +19,6 @@
 
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 
 // Disable windows compiler warnings

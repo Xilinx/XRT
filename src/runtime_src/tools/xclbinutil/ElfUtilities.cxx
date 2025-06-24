@@ -5,13 +5,7 @@
 
 #include "XclBinUtilities.h"
 
-#include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/format.hpp>
-#include <boost/version.hpp>
-#include <cstdlib>
 
 #if (BOOST_VERSION >= 106400)
 # if (BOOST_VERSION < 108600)
@@ -420,7 +414,7 @@ add_DWTAG_base_type(size_t& index,
                     AbbrevCollection& argTags)
 // <1><592>: Abbrev Number: 36 (DW_TAG_base_type)
 //    <593>   DW_AT_byte_size   : 4
-//    <594>   DW_AT_encoding    : 5	(signed)
+//    <594>   DW_AT_encoding    : 5 (signed)
 //    <595>   DW_AT_name        : int
 {
   auto offset = get_tag_offset(dwarfEntries[index]);
@@ -658,7 +652,7 @@ add_DWTAG_subprogram(size_t& index,
 //    <c99>   DW_AT_type        : <0x592>
 //    <c9d>   DW_AT_low_pc      : 0x7b0
 //    <ca5>   DW_AT_high_pc     : 0x8
-//    <cad>   DW_AT_frame_base  : 1 byte block: 9c 	(DW_OP_call_frame_cfa)
+//    <cad>   DW_AT_frame_base  : 1 byte block: 9c (DW_OP_call_frame_cfa)
 //    <caf>   DW_AT_GNU_all_call_sites: 1
 //    <caf>   DW_AT_sibling     : <0xcc3>
 // <2><cb3>: Abbrev Number: 65 (DW_TAG_formal_parameter)
@@ -676,7 +670,7 @@ add_DWTAG_subprogram(size_t& index,
 //    <cca>   DW_AT_type        : (ref4) <0x592>, int
 //    <cce>   DW_AT_low_pc      : (addr) 0x788
 //    <cd6>   DW_AT_high_pc     : (data8) 0x8
-//    <cde>   DW_AT_frame_base  : (exprloc) 1 byte block: 9c 	(DW_OP_call_frame_cfa)
+//    <cde>   DW_AT_frame_base  : (exprloc) 1 byte block: 9c (DW_OP_call_frame_cfa)
 //    <ce0>   DW_AT_GNU_all_call_sites: (flag_present) 1
 //    <ce0>   DW_AT_sibling     : (ref4) <0xd50>
 // <2><ce4>: Abbrev Number: 66 (DW_TAG_formal_parameter)

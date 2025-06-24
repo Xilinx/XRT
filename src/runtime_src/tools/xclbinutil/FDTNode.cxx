@@ -19,7 +19,6 @@
 #include "DTCStringsBlock.h"
 #include "FDTProperty.h"
 #include "XclBinUtilities.h"
-#include <boost/format.hpp>
 
 namespace XUtil = XclBinUtilities;
 

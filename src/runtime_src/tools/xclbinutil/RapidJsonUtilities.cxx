@@ -23,11 +23,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/format.hpp>
 #include <boost/algorithm/hex.hpp>
 
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 
 namespace XUtil = XclBinUtilities;

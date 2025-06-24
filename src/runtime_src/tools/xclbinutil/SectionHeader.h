@@ -21,7 +21,6 @@
 
 // #includes here - please keep these to a bare minimum!
 
-#include <string>
 #include <fstream>
 #include "xrt/detail/xclbin.h"
 

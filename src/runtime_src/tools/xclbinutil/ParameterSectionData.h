@@ -19,8 +19,6 @@
 
 // ----------------------- I N C L U D E S -----------------------------------
 #include "Section.h"
-#include "xrt/detail/xclbin.h"
-#include <string>
 
 // ---------- C L A S S :   P a r a m e t e r S e c t i o n D a t a ---------
 

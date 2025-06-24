@@ -20,7 +20,6 @@
 // ----------------------- I N C L U D E S -----------------------------------
 #include <boost/property_tree/ptree.hpp>
 #include <map>
-#include <string>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 class DTCStringsBlock;

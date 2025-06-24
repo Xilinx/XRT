@@ -19,9 +19,6 @@
 
 // ----------------------- I N C L U D E S -----------------------------------
 #include "FDTProperty.h"
-#include <boost/property_tree/ptree.hpp>
-#include <string>
-#include <vector>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 class DTCStringsBlock;

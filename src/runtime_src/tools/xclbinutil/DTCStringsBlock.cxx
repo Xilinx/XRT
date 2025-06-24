@@ -17,7 +17,6 @@
 #include "DTCStringsBlock.h"
 
 #include "XclBinUtilities.h"
-#include <boost/format.hpp>
 
 namespace XUtil = XclBinUtilities;
 

@@ -16,11 +16,6 @@
 
 #include "CBOR.h"
 
-#include <stdexcept>
-#include <vector>
-#include <boost/format.hpp>
-
-
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 

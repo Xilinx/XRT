@@ -17,10 +17,10 @@
 #include "XclBinUtilMain.h"
 #include "XclBinUtilities.h"
 
-#include <string>
-#include <iostream>
-#include <exception>
-#include <vector>
+// #include <string>
+// #include <iostream>
+// #include <exception>
+// #include <vector>
 
 int main( int argc, char** argv )
 {

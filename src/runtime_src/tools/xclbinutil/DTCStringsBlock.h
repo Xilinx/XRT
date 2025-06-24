@@ -18,9 +18,7 @@
 #define __DTCStringsBlock_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-#include <cstdint>
 #include <sstream>
-#include <string>
 
 // ----------- C L A S S :   D T C S t r i n g s B l o c k -------------------
 

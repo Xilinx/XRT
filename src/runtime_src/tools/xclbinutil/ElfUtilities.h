@@ -20,8 +20,6 @@
 
 // Please keep this list to a minimum
 #include <boost/property_tree/ptree.hpp>
-#include <string>
-#include <vector>
 
 namespace XclBinUtilities {
 

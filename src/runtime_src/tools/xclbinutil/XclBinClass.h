@@ -18,12 +18,6 @@
 #ifndef __XclBin_h_
 #define __XclBin_h_
 
-#include <string>
-#include <fstream>
-#include <vector>
-#include <boost/property_tree/ptree.hpp>
-
-#include "xrt/detail/xclbin.h"
 #include "ParameterSectionData.h"
 
 class Section;

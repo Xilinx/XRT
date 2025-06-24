@@ -23,12 +23,6 @@
 #include "xrt/detail/xclbin.h"
 
 #include <boost/property_tree/ptree.hpp>
-#include <fstream>
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
 // ------------------- C L A S S :   S e c t i o n ---------------------------
 
 class Section {

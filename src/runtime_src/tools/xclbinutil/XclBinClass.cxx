@@ -27,7 +27,7 @@
 #include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
 #include <random>                                // randomGen 
-#include <stdlib.h>
+// #include <stdlib.h>
 
 // Constant data
 static const std::string mirroDataStart("XCLBIN_MIRROR_DATA_START");
