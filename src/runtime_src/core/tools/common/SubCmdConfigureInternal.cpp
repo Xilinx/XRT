@@ -135,6 +135,9 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
+  for (const auto& option : optionOptionsCollection)
+    addSubOption(option);
+
   m_commandConfig = configurations;
 }
 

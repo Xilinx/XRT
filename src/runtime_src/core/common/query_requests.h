@@ -601,6 +601,7 @@ struct runner : request
 {
   enum class type {
     throughput,
+    latency,
   };
 
   using result_type = std::string;
