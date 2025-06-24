@@ -17,11 +17,6 @@
 #include "XclBinUtilMain.h"
 #include "XclBinUtilities.h"
 
-// #include <string>
-// #include <iostream>
-// #include <exception>
-// #include <vector>
-
 int main( int argc, char** argv )
 {
   // Check to see if the user doesn't wish for "known" exceptions to be reported

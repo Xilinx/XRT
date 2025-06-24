@@ -17,9 +17,7 @@
 #include "SectionMemTopology.h"
 
 #include "XclBinUtilities.h"
-// #include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
-// #include <iostream>
 
 namespace XUtil = XclBinUtilities;
 

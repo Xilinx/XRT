@@ -17,9 +17,6 @@
 #include "XclBinSignature.h"
 
 #include "XclBinUtilities.h"
-// #include <boost/format.hpp>
-// #include <iostream>
-// #include <vector>
 
 namespace XUtil = XclBinUtilities;
 
