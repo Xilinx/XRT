@@ -82,9 +82,9 @@ namespace xdp {
     return db->addDevice("win_device");
 #else
     if (hw_context_flow)
-      return db->addDevice("ve2_device");
+      return db->addDevice("versal_device"); // Both Telluride and Edge will reach here
     else
-      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id. Edge load_xclbin flow 
 #endif
   }
 

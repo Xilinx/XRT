@@ -32,6 +32,7 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -43,13 +44,29 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr ;
-    auto aieArray = drv->getAieArray() ;
-    if (!aieArray)
-      return nullptr ;
-    return aieArray->get_dev() ;
+    if (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      // old style
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr ;
+      auto aieArray = drv->getAieArray() ;
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    } else {
+      // new style (hw context flow)
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      if (!hwctx_hdl)
+        return nullptr ;
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if (!hwctx_obj)
+        return nullptr ;
+      auto aieArray = hwctx_obj->get_aie_array_shared().get();
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    }
   }
 
   static void* allocateAieDevice(void* devHandle)
