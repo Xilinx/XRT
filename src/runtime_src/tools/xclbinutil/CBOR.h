@@ -20,6 +20,7 @@
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
+#include <cstdint>  // uint64_t
 #include <sstream>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------

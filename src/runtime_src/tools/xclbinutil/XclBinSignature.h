@@ -17,6 +17,7 @@
 #ifndef __XclBinSignature_h_
 #define __XclBinSignature_h_
 
+#include <cstdint>  // uint64_t
 #include <string>
 
 // ----------------------- I N C L U D E S -----------------------------------
