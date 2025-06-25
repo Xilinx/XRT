@@ -97,6 +97,9 @@ namespace xdp {
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
+    // Map of hwCtxImpl Handle to unique ID to form device UID.
+    std::map<void*, uint64_t> hwCtxImplUIDMap;
+
     // Static info can be accessed via any host thread, so we have
     //  fine grained locks on each of the types of data.
     std::mutex summaryLock ;
@@ -104,6 +107,7 @@ namespace xdp {
     std::mutex deviceLock ;
     std::mutex aieLock ;
     std::mutex appStyleLock;
+    std::mutex hwCtxImplUIDMapLock;
 
     // AIE device (Supported devices only)
     void* aieDevInst = nullptr ; // XAie_DevInst
@@ -306,6 +310,9 @@ namespace xdp {
                                     std::shared_ptr<xrt_core::device> device,
                                     bool readAIEMetadata = true,
                                     std::unique_ptr<xdp::Device> xdpDevice = nullptr);
+
+    XDP_CORE_EXPORT
+    uint64_t getHwCtxImplUid(void* hwCtxImpl);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
