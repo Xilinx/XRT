@@ -1599,6 +1599,22 @@ namespace xdp {
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
 
+  uint64_t VPStaticDatabase::getHwCtxImplUid(void* hwCtxImpl)
+  {
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+    // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
+    // before calling this function. So, we don't need to check for validity here.
+
+    auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
+    if (it == hwCtxImplUIDMap.end()) {
+      // Assign a new UID
+      uint64_t uid = static_cast<uint64_t>(hwCtxImplUIDMap.size());
+      hwCtxImplUIDMap[hwCtxImpl] = uid;
+      return uid;
+    }
+    return it->second;
+  }
+
   // Return true if we should reset the device information.
   // Return false if we should not reset device information
   bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, xdp::Device* xdpDevice, xrt_core::uuid new_xclbin_uuid)
