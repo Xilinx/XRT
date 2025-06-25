@@ -2111,19 +2111,25 @@ struct stream_buffer_telemetry : request
 // Retrieves the firmware version of the device.
 struct firmware_version : request
 {
+  enum class firmware_type {
+    npu_firmware,
+    uc_firmware
+  };
   struct data
   {
     uint32_t major;
     uint32_t minor;
     uint32_t patch;
     uint32_t build;
+    std::string git_hash;
+    std::string date;
   };
 
   using result_type = data;
   static const key_type key = key_type::firmware_version;
 
-  virtual std::any
-  get(const device* device) const override = 0;
+  std::any
+  get(const device* device, const std::any& req_type) const override = 0;
 };
 
 struct clock_freqs_mhz : request
