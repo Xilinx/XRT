@@ -532,7 +532,17 @@ update_device(void* handle, bool hw_context_flow)
 		       handle);
 
   load_once_and_update(xrt_core::config::get_aie_trace,
-		       xrt_core::xdp::aie::trace::load,
+           []() {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
+              xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "xdp_mode config is set to XDNA. Hence, profiling will be available only for XDNA device.");
+              xrt_core::xdp::aie::profile::load_xdna();
+            } else {
+              xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "xdp_mode config is set to ZOCL. Hence, profiling will be available only for ZOCL device.");
+              xrt_core::xdp::aie::profile::load();
+            }
+           },  
 		       xrt_core::xdp::aie::trace::update_device,
 		       "Failed to load AIE Trace library. Caught exception ",
 		       "Faile to setup for AIE Trace. Caught exception ",
