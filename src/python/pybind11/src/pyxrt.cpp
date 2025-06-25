@@ -394,7 +394,7 @@ PYBIND11_MODULE(pyxrt, m) {
     */
     py::module_ ext = m.def_submodule("ext", "Submodule for external");
 
-    py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Represents an external buffer object");
+    py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Represents an enhanced version of xrt::bo with support for access mode");
 
     py::enum_<xrt::ext::bo::access_mode>(pyextbo, "access_mode", "External buffer access mode")
         .value("none", xrt::ext::bo::access_mode::none)
@@ -486,6 +486,6 @@ PYBIND11_MODULE(pyxrt, m) {
         }), "Wait for all runs in the runlist to complete")
         .def("wait", ([](xrt::runlist &r, const std::chrono::milliseconds& timeout) {
             return r.wait(timeout);
-        }), "Another way to wait for all runs in hte runlist to complete");
+        }), "Wait for the specified timeout for the runlist to complete");
         
 }
