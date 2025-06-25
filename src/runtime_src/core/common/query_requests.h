@@ -2106,7 +2106,7 @@ struct firmware_version : request
   using result_type = data;
   static const key_type key = key_type::firmware_version;
 
-  virtual std::any
+  std::any
   get(const device* device, const std::any& req_type) const override = 0;
 };
 
