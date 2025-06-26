@@ -314,6 +314,16 @@ namespace xdp {
     XDP_CORE_EXPORT
     uint64_t getHwCtxImplUid(void* hwCtxImpl);
 
+    /* API to assign unique id for HW Context/Device abstraction in XDP
+     * For traditional App style using Load Xclbin, this API receives 
+     * Device Handle and uses corresponding sysfs path to identify and
+     * assign unique identifier.
+     * For new App style using register xclbin and HW Ctx invocation, this
+     * API receieves HW Ctx Impl as argument and assigns unique identifier.
+     */
+    XDP_CORE_EXPORT
+    uint64_t getXDPUniqueId(void*);
+
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
     // ***** which creates events from raw PL trace    *****
