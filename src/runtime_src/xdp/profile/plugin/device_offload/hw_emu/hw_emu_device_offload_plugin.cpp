@@ -52,6 +52,14 @@ namespace xdp {
       readTrace() ;
       readCounters() ;
       XDPPlugin::endWrite() ;
+
+      // On Alveo hardware emulation (where there is only one device)
+      // we have to remove the device interface at this point
+      if (!isEdge()) {
+	for (auto deviceId : devicesSeen) {
+	  db->getStaticInfo().removeDeviceIntf(deviceId);
+	}
+      }
       db->unregisterPlugin(this) ;
     }
 
