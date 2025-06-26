@@ -1622,7 +1622,7 @@ namespace xdp {
     if (AppStyle::LOAD_XCLBIN_STYLE == style) {
       // handle is an xclDeviceHandle in this style
       // Use sysfs path based unique device identifier in XDP
-      return addDevice(util::getDebugIpLayoutPath(handle));
+      return db->addDevice(util::getDebugIpLayoutPath(handle));
     }
     // For REGISTER_XCLBIN_STYLE and APP_STYLE_NOT_SET
     // handle is an HW Ctx Impl pointer
