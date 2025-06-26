@@ -133,7 +133,7 @@ namespace xdp {
 #endif
     }
 
-    // delete old data
+    // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
 #ifdef XDP_CLIENT_BUILD
       return;
