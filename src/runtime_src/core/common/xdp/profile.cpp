@@ -26,36 +26,30 @@ namespace {
   {
   }
 
-  template <typename Callable1,
-	          typename Callable2,
-            typename Callable3,
-            typename ...Args>
-  static inline void load_once_and_update(
-          Callable1&& ini_check,
-			    Callable2&& load_function,
-			    Callable3&& update_function,
-			    const std::string& load_fail_msg,
-			    const std::string& update_fail_msg,
-			    Args&&...update_args)
-  {
+  template <typename Callable1, typename Callable2, typename Callable3,
+            typename... Args>
+  static inline void load_once_and_update(Callable1 &&ini_check,
+                                          Callable2 &&load_function,
+                                          Callable3 &&update_function,
+                                          const std::string &load_fail_msg,
+                                          const std::string &update_fail_msg,
+                                          Args &&...update_args) {
     if (ini_check()) {
       try {
-	      load_function();
-      }
-      catch (const std::exception& e) {
+        load_function();
+      } catch (const std::exception &e) {
         std::stringstream msg;
         msg << load_fail_msg << e.what();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-              msg.str());
+                                msg.str());
       }
       try {
-	      update_function(update_args...);
-      }
-      catch (const std::exception& e) {
+        update_function(update_args...);
+      } catch (const std::exception &e) {
         std::stringstream msg;
         msg << update_fail_msg << e.what();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-              msg.str());
+                                msg.str());
       }
     }
   }
@@ -497,7 +491,7 @@ update_device(void* handle, bool hw_context_flow)
 		       xrt_core::xdp::aie::trace::load,
 		       xrt_core::xdp::aie::trace::update_device,
 		       "Failed to load AIE Trace library. Caught exception ",
-		       "Faile to setup for AIE Trace. Caught exception ",
+		       "Failed to setup for AIE Trace. Caught exception ",
 		       handle,
 		       hw_context_flow);
 
@@ -545,7 +539,7 @@ update_device(void* handle, bool hw_context_flow)
            },  
 		       xrt_core::xdp::aie::trace::update_device,
 		       "Failed to load AIE Trace library. Caught exception ",
-		       "Faile to setup for AIE Trace. Caught exception ",
+		       "Failed to setup for AIE Trace. Caught exception ",
 		       handle,
 		       hw_context_flow);
 
@@ -580,7 +574,7 @@ update_device(void* handle, bool hw_context_flow)
            "Failed to load AIE Profile library. Caught exception ",  
            "Failed to setup for AIE Profile. Caught exception ",
            handle,
-	 	       hw_context_flow);
+	 	      hw_context_flow);
 
 #else
 
@@ -601,7 +595,7 @@ update_device(void* handle, bool hw_context_flow)
            "Failed to load AIE Profile library. Caught exception ",  
            "Failed to setup for AIE Profile. Caught exception ",
            handle,
-	 	       hw_context_flow);
+	 	      hw_context_flow);
 
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);
