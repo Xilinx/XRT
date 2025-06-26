@@ -206,6 +206,12 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("wait", ([](xrt::run& r, unsigned int timeout_ms)  {
                           return r.wait(timeout_ms);
                       }), "Wait for the specified milliseconds for the run to complete")
+        .def("wait2", [](xrt::run&r) { 
+                            return r.wait2();
+                    }, "Wait for the run to complete")
+        .def("wait2", [](xrt::run&r, const std::chrono::milliseconds& timeout) {
+                            return r.wait2(timeout);
+                    }, "Wait for the specified milliseconds for the run to complete")
         .def("state", &xrt::run::state, "Check the current state of a run object")
         .def("add_callback", &xrt::run::add_callback, "Add a callback function for run state");
 
