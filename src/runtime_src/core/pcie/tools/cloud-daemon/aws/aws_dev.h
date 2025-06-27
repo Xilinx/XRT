@@ -27,6 +27,7 @@
 #ifndef INTERNAL_TESTING_FOR_AWS
 #include "fpga_pci.h"
 #include "fpga_mgmt.h"
+#include "fpga_clkgen.h"
 #include "hal/fpga_common.h"
 #endif
 
@@ -115,6 +116,7 @@ private:
 #else
     int sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info* new_afi );
     char* get_afi_from_axlf(const axlf * buffer);
+    const clock_freq_topology* get_clock_freq_from_axlf(const axlf *buffer);
     int index;
 #endif
 };

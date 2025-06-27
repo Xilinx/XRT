@@ -888,6 +888,10 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		if (ret)
 			goto failed;
 
+        /* Update AWS shell version (vbnv name of rom subdev) as peer communication is established */
+        if (xocl_is_aws(xdev))
+            xocl_rom_set_vbnv_name(xdev);
+
 		if (!offset)
 			checksum = resp->checksum;
 

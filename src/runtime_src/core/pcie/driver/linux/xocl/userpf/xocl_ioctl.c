@@ -20,6 +20,9 @@
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
 #include <linux/delay.h>
+#include <linux/fdtable.h>
+#include <linux/fs.h>
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
@@ -530,30 +533,42 @@ done:
 	return ret;
 }
 
-/* This is a Workaround function for AWS F2 to reset the clock registers.
- * This function also incurs a delay of 10seconds to work around AWS ocl timeout issue.
- * These changes will be removed once the issue is addressed in AWS F2 instance.
- */
-static void aws_reset_clock_registers(xdev_handle_t xdev)
+/* This function closes all the FDs associated with DRM */
+void xocl_close_drm_render_fds(pid_t pid)
 {
-	struct xocl_dev_core *core = XDEV(xdev);
-	resource_size_t bar0_clk1, bar0_clk2;
-	void __iomem *vbar0_clk1, *vbar0_clk2;
+    struct fdtable *fdt;
+    struct file *file;
+    int fd;
+    struct pid *client_pid = find_get_pid(pid);
+    struct task_struct *task = pid_task(client_pid, PIDTYPE_PID);
 
-	userpf_info(xdev, "AWS F2 WA, waiting to reset clock registers after Load ");
-	msleep(10000);
+    if (!task || !task->files)
+    {
+        return;
+    }
 
-	bar0_clk1 = pci_resource_start(core->pdev, 0) + 0x4058014;
-	bar0_clk2 = pci_resource_start(core->pdev, 0) + 0x4058010;
-	vbar0_clk1 = ioremap_nocache(bar0_clk1, 32);
-	vbar0_clk2 = ioremap_nocache(bar0_clk2, 32);
+    spin_lock(&task->files->file_lock);
+    fdt = files_fdtable(task->files);
 
-	iowrite32(0, vbar0_clk1);
-	iowrite32(0, vbar0_clk2);
-
-	iounmap(vbar0_clk1);
-	iounmap(vbar0_clk2);
-	return;
+    for (fd = 0; fd < fdt->max_fds; fd++) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+		rcu_read_lock();
+		file = files_lookup_fd_raw(current->files, fd);
+		rcu_read_unlock();
+#else
+		rcu_read_lock();
+		file = fcheck(fd);
+		rcu_read_unlock();
+#endif
+        if (file && file->f_path.dentry) {
+            const char *path = file->f_path.dentry->d_name.name;
+            if (strstr(path, "renderD") != NULL) {
+		get_file(file);
+                filp_close(file, task->files);
+            }
+        }
+    }
+    spin_unlock(&task->files->file_lock);
 }
 
 int
@@ -664,6 +679,20 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		err = xocl_cleanup_mem(drm_p, slot_id);
 		if (err)
 			goto out_done;
+	}
+	/* For a preload AWS device id, PCI rescan is performed post axlf load,
+	 * so, close all the DRM Render FDs opened during the context 
+	 * */
+	if((core->pdev->device == 0x1042/*AWS F1*/) || (core->pdev->device == 0x9048/*AWS F2*/))
+	{
+		pid_t *plist = NULL;
+		u32 i=0, clients =xocl_kds_get_open_clients(xdev, &plist);
+		for (i = 0; i < clients; i++)
+		{
+			xocl_close_drm_render_fds(plist[i]);
+		}
+		/* Free the pid list allocated by kds core. */
+		vfree(plist);
 	}
 
 	/* All contexts are closed. No outstanding commands */
@@ -793,11 +822,12 @@ done:
 	}
 	else {
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
-		/* Work around added for AWS F2 Instance to perform delay and reset clock registers */
-		if(core->pdev->device == 0xf010)
-		{
-			aws_reset_clock_registers(xdev);
-		}
+		/* Work around added for AWS F2 Instance to perform delay */
+                if(core->pdev->device == 0xf010)
+                {
+                       userpf_info(xdev, "AWS F2 WA, waiting after AFI Load ");
+                       msleep(10000);
+                }
 	}
 
 out_done:

@@ -488,8 +488,28 @@ static void awsPciRescan(int index)
     //tell the user xclbin load ioctl can be re-issued now
     xrt_core::pci::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
 }
-#endif
 
+/*
+This thread sets the clock frequencies dynamically using aws_clkgen_set_dynamic() API.
+The intention to set these frequencies after image load is to perform clock module reset
+in the back ground which is a work around required to overcome the double image load Hang issue
+observed on the AWS F2 Instance.
+
+NOTE: This Thread has to run Asynchronously in order to avoid the double load Instance Hang issue that
+is seen on F2 instance. The delay 10 secs can be removed once the double load issue on AWS instance is
+addressed by AWS team.
+*/
+static void aws_clkgen_set_dynamic_thread(int slot_id, uint32_t clk_b_freq, uint32_t clk_c_freq, uint32_t clk_hbm_freq)
+{
+    int ret = 0;
+
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 10 seconds
+    ret = aws_clkgen_set_dynamic(slot_id, 125 /*default max */, clk_b_freq,
+                            clk_c_freq, clk_hbm_freq, 0);
+    if (ret != 0)
+        std::cerr << "aws_clkgen_set_dynamic_freq failed" << std::endl;
+}
+#endif
 /*
  * On AWS F1, fpga user PF without xclbin being loaded (cleared) has different
  * device id (0x1042) than that of the user PF with xclbin being loaded (0xf010)
@@ -535,6 +555,25 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     opt.afi_id = afi_id;
     opt.slot_id = mBoardNumber;
     retVal = fpga_mgmt_load_local_image_with_options(&opt);
+
+    if(imageInfoOld.spec.map[FPGA_APP_PF].device_id == 0xf010)
+    {
+	const clock_freq_topology* clockSection = get_clock_freq_from_axlf(axlfbuffer);
+	uint32_t clock_mains[4];
+
+        if(clockSection) {
+		for(int32_t i = 0; i < clockSection->m_count; i++) {
+                        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+                        clock_mains[i] = clk->m_freq_Mhz;
+                }
+        }
+        syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
+#ifndef INTERNAL_TESTING_FOR_AWS
+        auto future = std::async(std::launch::async, aws_clkgen_set_dynamic_thread, mBoardNumber, clock_mains[2]/*clk_extra_b0*/, clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/);
+#endif
+        return 0;
+     }
+
     if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
         retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
         retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
@@ -597,13 +636,14 @@ int AwsDev::awsGetIcap(xcl_pr_region *data)
 #else
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    FIELD(data, freq, 0) = imageInfo.metrics.clocks[0].frequency[0] / 1000000;
-    FIELD(data, freq, 1) = imageInfo.metrics.clocks[1].frequency[0] / 1000000;
-    FIELD(data, freq, 2) = imageInfo.metrics.clocks[2].frequency[0] / 1000000;
-    FIELD(data, freq_cntr, 0) = imageInfo.metrics.clocks[0].frequency[0] / 1000;
-    FIELD(data, freq_cntr, 1) = imageInfo.metrics.clocks[1].frequency[0] / 1000;
-    FIELD(data, freq_cntr, 2) = imageInfo.metrics.clocks[2].frequency[0] / 1000;
+    FIELD(data, freq, 0) = imageInfo.metrics.f2_metrics.clocks[0].frequency[0] / 1000000;
+    FIELD(data, freq, 1) = imageInfo.metrics.f2_metrics.clocks[1].frequency[0] / 1000000;
+    FIELD(data, freq, 2) = imageInfo.metrics.f2_metrics.clocks[2].frequency[0] / 1000000;
+    FIELD(data, freq_cntr, 0) = imageInfo.metrics.f2_metrics.clocks[0].frequency[0] / 1000;
+    FIELD(data, freq_cntr, 1) = imageInfo.metrics.f2_metrics.clocks[1].frequency[0] / 1000;
+    FIELD(data, freq_cntr, 2) = imageInfo.metrics.f2_metrics.clocks[2].frequency[0] / 1000;
     data->data_retention = 1;
+    data->idcode = imageInfo.sh_version;
 #endif
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
     //seems not. we check afi before load new xclbin.
@@ -780,4 +820,14 @@ char *AwsDev::get_afi_from_axlf(const axlf *buffer)
         return nullptr;
     return afid;
 }
+
+const clock_freq_topology* AwsDev::get_clock_freq_from_axlf(const axlf *buffer)
+{
+    const axlf_section_header *clk_header = xclbin::get_axlf_section(buffer, CLOCK_FREQ_TOPOLOGY);
+    char *clk_topo = const_cast<char *>(reinterpret_cast<const char *>(buffer));
+    clk_topo += clk_header->m_sectionOffset;
+
+    return (reinterpret_cast<const clock_freq_topology*>(clk_topo));
+}
+
 #endif
