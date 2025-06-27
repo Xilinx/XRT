@@ -30,8 +30,9 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef XDP_CLIENT_BUILD
-#include "xdp/profile/plugin/aie_halt/clientDev/aie_halt.h"
-#elif defined (XDP_VE2_BUILD)
+#include "xdp/profile/plugin/aie_halt/client/aie_halt.h"
+#include "xdp/profile/plugin/aie_halt/client/aie_halt_npu3.h"
+#elif XDP_VE2_BUILD
 #include "xdp/profile/plugin/aie_halt/ve2/aie_halt.h"
 #include "xdp/profile/device/xdp_base_device.h"
 #endif

@@ -35,10 +35,9 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
-#ifdef XDP_NPU3_BUILD
-#include "npu3/aie_debug.h"
-#elif XDP_CLIENT_BUILD
+#ifdef XDP_CLIENT_BUILD
 #include "client/aie_debug.h"
+#include "client/aie_debug_npu3.h"
 #elif XDP_VE2_BUILD
 #include "ve2/aie_debug.h"
 #else
@@ -174,12 +173,12 @@ namespace xdp {
     // Parse user settings
     AIEData.metadata->parseMetrics();
 
-#ifdef XDP_NPU3_BUILD
+#ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieDebug_NPU3Impl>(db, AIEData.metadata);
-#elif XDP_CLIENT_BUILD
-    AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);
+    if (AIEData.metadata->getHardwareGen() >= 40)
+      AIEData.implementation = std::make_unique<AieDebug_NPU3Impl>(db, AIEData.metadata);
+    else
+      AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
     AIEData.implementation = std::make_unique<AieDebug_VE2Impl>(db, AIEData.metadata);
 #else

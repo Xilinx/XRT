@@ -7,10 +7,8 @@
 # the start. It is currently built on Client and VE2
 # =========================================================================
 
-if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/npu3")
-elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/clientDev")
+if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/client")
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_halt/ve2")
 endif()
@@ -27,30 +25,13 @@ file(GLOB XDP_DEVICE_COMMON_FILES
   "${PROFILE_DIR}/device/common/*.cpp"
 )
 
-
-if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_halt_plugin MODULE ${XDP_AIE_HALT_PLUGIN_FILES})
-  add_dependencies(xdp_aie_halt_plugin xdp_core xrt_coreutil)
-
-  target_include_directories(xdp_aie_halt_plugin PRIVATE
-                             ${AIERT_DIR}/include
-                             ${AIEBU_SOURCE_DIR}/include
-                             ${AIEBU_SOURCE_DIR}/src/cpp/include)
-  #target_link_libraries(xdp_aie_halt_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
-  target_link_libraries(xdp_aie_halt_plugin PRIVATE xdp_core xrt_coreutil)
-  target_compile_definitions(xdp_aie_halt_plugin PRIVATE XDP_NPU3_BUILD=1)
-  set_target_properties(xdp_aie_halt_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-
-  install (TARGETS xdp_aie_halt_plugin
-    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
-  )
-
-elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_library(xdp_aie_halt_plugin MODULE ${XDP_AIE_HALT_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
   add_dependencies(xdp_aie_halt_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_halt_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_halt_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_halt_plugin PRIVATE ${AIERT_DIR}/include)
+  target_include_directories(xdp_aie_halt_plugin PRIVATE 
+                             ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_halt_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_halt_plugin

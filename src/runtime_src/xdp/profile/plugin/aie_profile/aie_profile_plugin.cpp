@@ -36,11 +36,10 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
-#ifdef XDP_NPU3_BUILD
-#include "npu3/aie_profile.h"
-#elif XDP_CLIENT_BUILD
+#ifdef XDP_CLIENT_BUILD
 #include "client/aie_profile.h"
-#elif defined(XRT_X86_BUILD)
+#include "client/aie_profile_npu3.h"
+#elif XRT_X86_BUILD
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
 #include "ve2/aie_profile.h"
@@ -162,15 +161,14 @@ namespace xdp {
     }
     AIEData.valid = true;
 
-#ifdef XDP_NPU3_BUILD
+#ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_NPU3Impl>(db, AIEData.metadata);
-#elif XDP_CLIENT_BUILD
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
-#elif defined(XRT_X86_BUILD)
+    if (AIEData.metadata->getHardwareGen() >= 40)
+      AIEData.implementation = std::make_unique<AieProfile_NPU3Impl>(db, AIEData.metadata);
+    else
+      AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+#elif XRT_X86_BUILD
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
     AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata);
