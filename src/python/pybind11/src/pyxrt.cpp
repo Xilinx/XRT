@@ -14,9 +14,11 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/experimental/xrt_message.h"
+#include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_system.h"
 #include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_ext.h"
 #include "xrt/experimental/xrt_aie.h"
 
 // Pybind11 includes
@@ -225,6 +227,10 @@ PYBIND11_MODULE(pyxrt, m) {
         .def(py::init([](const xrt::hw_context& ctx, const std::string& n) {
                                return new xrt::kernel(ctx, n);
                        }))
+        .def(py::init([](const xrt::hw_context& ctx, const xrt::module& m,
+                         const std::string& n) {
+                               return new xrt::ext::kernel(ctx, m, n);
+                       }))
         .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
                              int i = 0;
                              xrt::run r(k);
@@ -267,6 +273,9 @@ PYBIND11_MODULE(pyxrt, m) {
 
     pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>(), "Create a buffer object with specified properties")
         .def(py::init<xrt::bo, size_t, size_t>(), "Create a sub-buffer of an existing buffer object of specifed size and offset in the existing buffer")
+        .def(py::init([](const xrt::device &d, size_t size) {
+                           return new xrt::ext::bo(d, size);
+                      }), "Create extended buffer object")
         .def("write", ([](xrt::bo &b, py::buffer pyb, size_t seek)  {
                            py::buffer_info info = pyb.request();
                            b.write(info.ptr, info.itemsize * info.size , seek);
@@ -334,6 +343,21 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("get_uuid", &xrt::xclbin::get_uuid, "Get the uuid of the xclbin")
         .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects")
         .def("get_axlf", &xrt::xclbin::get_axlf, "Get the axlf data of the xclbin");
+
+/*
+ *
+ *  xrt::module
+ *
+ */
+
+    py::class_<xrt::module> pymodule(m, "module", "XRT module");
+
+    pymodule
+        .def(py::init([](xrt::elf& elf) {
+                          return new xrt::module(elf);
+                      }), "Create a module from an ELF object")
+        .def("get_cfg_uuid", &xrt::module::get_cfg_uuid, "Get the UUID associated with the module")
+        .def("get_hw_context", &xrt::module::get_hw_context, "Get the hardware context of the module");
 
 /*
  *
