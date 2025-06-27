@@ -4,7 +4,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 
-
 #include "TestDF_bandwidth.h"
 #include "TestValidateUtilities.h"
 #include "core/common/runner/runner.h"
@@ -14,7 +13,6 @@
 
 using json = nlohmann::json;
 #include <filesystem>
-
 
 static constexpr std::string_view recipe_file = "recipe_df_bandwidth.json";
 static constexpr std::string_view profile_file = "profile_df_bandwidth.json";
@@ -42,9 +40,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     auto elapsed_us = report["cpu"]["elapsed"].get<double>();
     auto iterations = report["cpu"]["iterations"].get<int>();
 
-    // NOLINTBEGIN
-    double bandwidth = (2 * iterations ) / (elapsed_us / 1000000);
-    // NOLINTEND
+    // Used buffer in runner is 1GB in size, thus reporting in GB/s
+    double bandwidth = (2 * iterations ) / (elapsed_us / 1000000); // NOLINT: Runner reports in microseconds, so conversion is required until request supports timescales
 
     if(XBUtilities::getVerbose())
       XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % (elapsed_us / 1000000)));
