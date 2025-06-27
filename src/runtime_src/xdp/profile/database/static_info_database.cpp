@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -396,6 +396,23 @@ namespace xdp {
       return nullptr ;
 
     return config->plDeviceIntf ;
+  }
+
+  // Should only be called from Alveo hardware emulation
+  // because the device interface must be destroyed while the
+  // simulation is still open and we cannot wait until the end of execution
+  void VPStaticDatabase::removeDeviceIntf(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+    ConfigInfo* config = deviceInfo[deviceId]->currentConfig();
+    if (!config)
+      return;
+
+    delete config->plDeviceIntf;
+    config->plDeviceIntf = nullptr;
   }
 
   // This function will create a PL Device Interface if an xdp::Device is
