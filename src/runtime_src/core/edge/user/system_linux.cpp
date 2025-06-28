@@ -92,15 +92,20 @@ driver_version(const std::string& driver)
   boost::property_tree::ptree _pt;
   std::string ver("unknown");
   std::string hash("unknown");
+  std::string path("/sys/module/");
+  path += driver;
+  path += "/version";
   //dkms flow is not available for zocl
   //so version.h file is not available at zocl build time
 #if defined(XRT_DRIVER_VERSION)
   std::string zocl_driver_ver = XRT_DRIVER_VERSION;
   std::stringstream ss(zocl_driver_ver);
   getline(ss, ver, ',');
-  getline(ss, hash, ',');
 #endif
-
+  std::ifstream stream(path);
+  if (stream.is_open())
+     getline(stream, hash);
+  
   _pt.put("name", driver);
   _pt.put("version", ver);
   _pt.put("hash", hash);
@@ -148,7 +153,12 @@ system_linux::
 get_driver_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
-  _ptDriverInfo.push_back( std::make_pair("", driver_version("zocl") ));
+
+  for (const auto& drv : driver_list::get()) {
+    boost::property_tree::ptree _drv = driver_version(drv->name());
+    if (!_drv.empty())
+      _ptDriverInfo.push_back( {"", _drv} );
+  }
   pt.put_child("drivers", _ptDriverInfo);
 }
 
