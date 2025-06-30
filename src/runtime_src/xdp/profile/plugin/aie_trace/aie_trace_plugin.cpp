@@ -402,7 +402,7 @@ void AieTracePluginUnified::pollAIETimers(uint64_t index, void *handle) {
 }
 
 void AieTracePluginUnified::flushOffloader(
-    const std::unique_ptr<AIETraceOffload> &offloader, bool warn) {
+    const std::unique_ptr<AIETraceOffloadBase> &offloader, bool warn) {
   if (offloader->continuousTrace()) {
     offloader->stopOffload();
 
