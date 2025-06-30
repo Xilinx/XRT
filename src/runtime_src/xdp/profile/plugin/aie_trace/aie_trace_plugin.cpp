@@ -31,7 +31,7 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
-#elif XDP_CLIENT_BUILD
+#ifdef XDP_CLIENT_BUILD
 #include "client/aie_trace.h"
 #include "client/aie_trace_npu3.h"
 #elif XRT_X86_BUILD
