@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -31,6 +18,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/ml_timeline/ve2/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -96,21 +84,41 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Allocated buffer In MLTimelineVE2Impl::updateDevice");
 
-    mNumBufSegments = xrt_core::config::get_ml_timeline_settings_num_buffer_segments();
-    if (0 == mNumBufSegments) {
-      /* User has not specified "ML_timeline_settings.num_buffer_segments".
-       * By default set it to number of cols in the current partition.
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (metadataReader) {
+      auto activeUCs = metadataReader->getActiveMicroControllers();
+      mNumBufSegments = activeUCs.size();
+      /*
+      * For now, each buffer segment is equal sized.
+      */
+      uint32_t segmentSzInBytes = mBufSz / mNumBufSegments;
+
+      std::map<uint32_t, size_t> activeUCsegmentMap;
+      for (auto const &e : activeUCs) {
+        // For VE2, index for buffer segment is same as the SHIM Col number
+        activeUCsegmentMap[e.col] = segmentSzInBytes;
+      }
+      xrt_core::bo_int::config_bo(mResultBOHolder->mBO, activeUCsegmentMap);
+
+      std::stringstream numSegmentMsg;
+      numSegmentMsg << "ML Timeline buffer is configured to have " 
+          << mNumBufSegments << " segments, each " 
+          << segmentSzInBytes << " bytes in size." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
+    } else {
+      /* If AIE_TRACE_METADATA and/or MicroController information is not available, 
+       * set number of buffer segments as number of columns in the current partition.
+       * For now, each buffer segment is equal sized.
        * For now, assume last entry in aie_partition_info corresponds to current HW Context.
        */
       boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(hwCtxImpl);
       mNumBufSegments = static_cast<uint32_t>(aiePartitionPt.back().second.get<uint64_t>("num_cols"));
       std::stringstream numSegmentMsg;
-      numSegmentMsg << "\"ML_timeline_settings.num_buffer_segments\" not specified."
+      numSegmentMsg << "AIE_TRACE_METADATA and/or MicroController information is not available. "
           << " By default, assuming " << mNumBufSegments << " segments in buffer."
           << " Please check the number of columns used by the design." << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
     }
-
   }
 
   void MLTimelineVE2Impl::finishflushDevice(void* hwCtxImpl, uint64_t implId)
