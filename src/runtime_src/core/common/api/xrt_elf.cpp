@@ -99,10 +99,14 @@ public:
   get_partition_size() const
   {
     // Partition size is stored in as note 0 in .note.xrt.configuration section
-    if (auto section = m_elf.sections[".note.xrt.configuration"])
-      return std::stoul(get_note(section, 0));
+    auto section = m_elf.sections[".note.xrt.configuration"];
+    if (!section)
+      throw std::runtime_error("ELF is missing xrt configuration info\n");
 
-    throw std::runtime_error("ELF is missing xrt configuration info");
+    uint32_t value = 0;
+    auto data = get_note(section, 0); // this is binary data
+    std::memcpy(&value, data.data(), std::min(data.size(), sizeof(uint32_t)));
+    return value;
   }
 };
 
