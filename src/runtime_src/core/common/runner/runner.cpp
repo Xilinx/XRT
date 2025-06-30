@@ -716,11 +716,11 @@ class recipe
     }
 
     static xrt::hw_context
-    create_hwctx(const xrt::device& device, const xrt::uuid& uuid,
+    create_hwctx(xrt::device device, const xrt::xclbin& xclbin,
                  const xrt::hw_context::qos_type& qos)
     {
       try {
-        return {device, uuid, qos};
+        return {device, device.register_xclbin(xclbin), qos};
       }
       catch (const std::exception& ex) {
         throw xrt_core::runner::hwctx_error{ex.what()};
@@ -744,7 +744,7 @@ class recipe
                  const xrt::hw_context::qos_type& qos)
     {
       if (auto xclbin = header.get_xclbin())
-        return create_hwctx(device, xclbin.get_uuid(), qos);
+        return create_hwctx(device, xclbin, qos);
 
       if (auto program = header.get_program())
         return create_hwctx(device, program, qos);
