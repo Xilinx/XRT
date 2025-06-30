@@ -49,7 +49,7 @@ public:
 private:
   uint64_t getDeviceIDFromHandle(void *handle, bool hw_context_flow);
   void pollAIETimers(uint64_t index, void *handle);
-  void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
+  void flushOffloader(const std::unique_ptr<AIETraceOffloadBase> &offloader,
                       bool warn);
   void endPoll();
 
