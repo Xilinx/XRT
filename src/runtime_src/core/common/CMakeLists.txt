@@ -11,6 +11,8 @@ add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
+elseif (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
+  message(WARNING "Compiling for ARM64, build of submodule aiebu disabled")
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   set(AIEBU_FULL OFF)
   set(AIEBU_SUBMODULE ON)
