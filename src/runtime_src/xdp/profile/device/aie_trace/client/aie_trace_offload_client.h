@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,8 @@
 
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
+
+#include "aie_trace_offload_util.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -36,39 +38,6 @@ namespace xdp {
 
 class PLDeviceIntf;
 class AIETraceLogger;
-
-#define S2MM_TRACE   2
-#define MM2S_CONTROL 3
-
-#define debug_stream \
-if(!m_debug); else std::cout
-
-struct AIETraceBufferInfo
-{
-  size_t   bufId;
-//  uint64_t allocSz;	// currently all the buffers are equal size
-  uint64_t usedSz;
-  uint64_t offset;
-  uint32_t rollover_count;
-  bool     isFull;
-  bool     offloadDone;
-
-  AIETraceBufferInfo()
-    : bufId(0),
-      usedSz(0),
-      offset(0),
-      rollover_count(0),
-      isFull(false),
-      offloadDone(false)
-  {}
-};
-
-enum class AIEOffloadThreadStatus {
-  IDLE,
-  RUNNING,
-  STOPPING,
-  STOPPED
-};
 
 class AIETraceOffload 
 {
