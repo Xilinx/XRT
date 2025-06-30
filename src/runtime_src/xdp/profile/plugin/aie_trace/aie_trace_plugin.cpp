@@ -298,7 +298,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
   }
   else {
-    AIEData.offloader = std::make_unique<AIETraceOffload>(
+    AIEData.offloader = std::make_unique<AIETraceOffloadClient>(
         handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
         AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
   }

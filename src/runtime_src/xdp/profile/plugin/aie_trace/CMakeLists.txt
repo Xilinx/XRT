@@ -27,6 +27,7 @@ file(GLOB AIE_TRACE_CONFIG_FILES
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/client")
+  set(BASE_DIR "${PROFILE_DIR}/device/aie_trace")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
@@ -36,6 +37,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   )
 
   file(GLOB AIE_TRACE_COMPONENT_FILES
+    "${BASE_DIR}/aie_trace_offload_base.h"
     "${OFFLOAD_DIR}/*.h"
     "${OFFLOAD_DIR}/*.cpp"
     "${DEVICE_DIR}/*.h"

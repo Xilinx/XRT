@@ -18,7 +18,7 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
 
-#include "aie_trace_offload_util.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload_base.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -27,7 +27,6 @@
 #include "xdp/profile/device/common/client_transaction.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
-
 
 extern "C" {
   #include <xaiengine.h>
@@ -39,37 +38,25 @@ namespace xdp {
 class PLDeviceIntf;
 class AIETraceLogger;
 
-class AIETraceOffload 
-{
+class AIETraceOffloadClient : public AIETraceOffloadBase {
   public:
-    AIETraceOffload(void* handle, uint64_t id,
-                    PLDeviceIntf*, AIETraceLogger*,
-                    bool     isPlio,
-                    uint64_t totalSize,
-                    uint64_t numStrm,
-                    xrt::hw_context context,
-                    std::shared_ptr<AieTraceMetadata> metadata
-                   );
-    virtual ~AIETraceOffload();
+    AIETraceOffloadClient(void* handle, uint64_t id,
+                          PLDeviceIntf*, AIETraceLogger*,
+                          bool     isPlio,
+                          uint64_t totalSize,
+                          uint64_t numStrm,
+                          xrt::hw_context context,
+                          std::shared_ptr<AieTraceMetadata> metadata
+                         );
+    virtual ~AIETraceOffloadClient();
 
   public:
-    bool initReadTrace();
-    void endReadTrace();
-    void startOffload();
-    void stopOffload();
+    virtual bool initReadTrace();
+    virtual void endReadTrace();
+    virtual void startOffload();
+    virtual void stopOffload();
 
-    inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
-    inline void setContinuousTrace() { traceContinuous = true; }
-    inline bool continuousTrace()    { return traceContinuous; }
-    inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
-
-    inline AIEOffloadThreadStatus getOffloadStatus() {
-      std::lock_guard<std::mutex> lock(statusLock);
-      return offloadStatus;
-    };
-
-    void readTrace(bool final) {mReadTrace(final);};
-    bool isTraceBufferFull() {return false;};
+    virtual bool isTraceBufferFull() {return false;};
 
   private:
     void*           deviceHandle;

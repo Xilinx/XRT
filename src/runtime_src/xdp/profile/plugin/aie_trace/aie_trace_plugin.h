@@ -59,7 +59,7 @@ private:
     uint64_t deviceID;
     bool valid;
 
-    std::unique_ptr<AIETraceOffload> offloader;
+    std::unique_ptr<AIETraceOffloadBase> offloader;
     std::unique_ptr<AIETraceLogger> logger;
     std::unique_ptr<AieTraceImpl> implementation;
     std::shared_ptr<AieTraceMetadata> metadata;
