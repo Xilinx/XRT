@@ -118,7 +118,7 @@ public:
 
     void readTrace(bool final) {mReadTrace(final);};
 
-private:
+protected:
     void*           deviceHandle;
     uint64_t        deviceId;
     PLDeviceIntf*   deviceIntf;
