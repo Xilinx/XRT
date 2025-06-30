@@ -45,7 +45,7 @@ namespace xdp::aie {
 
   bool isNPU3(const int hwGen)
   {
-    // TODO: replace with enum once available 
+    //return (hwGen >= XAIE_DEV_GEN_AIE4_A);
     return (hwGen >= 40);
   }
 

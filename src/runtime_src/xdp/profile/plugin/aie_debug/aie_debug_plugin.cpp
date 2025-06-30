@@ -175,7 +175,7 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
-    if (AIEData.metadata->getHardwareGen() >= 40)
+    if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
       AIEData.implementation = std::make_unique<AieDebug_NPU3Impl>(db, AIEData.metadata);
     else
       AIEData.implementation = std::make_unique<AieDebug_WinImpl>(db, AIEData.metadata);

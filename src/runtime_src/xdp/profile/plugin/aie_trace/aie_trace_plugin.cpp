@@ -26,6 +26,7 @@
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
@@ -166,7 +167,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 #ifdef XDP_CLIENT_BUILD
   xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   AIEData.metadata->setHwContext(context);
-  if (AIEData.metadata->getHardwareGen() >= 40)
+  if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
     AIEData.implementation = std::make_unique<AieTrace_NPU3Impl>(db, AIEData.metadata);
   else  
     AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
