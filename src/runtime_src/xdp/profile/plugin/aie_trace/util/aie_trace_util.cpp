@@ -812,7 +812,15 @@ namespace xdp::aie::trace {
     if(!aieArray)
       return nullptr;
     return aieArray->get_dev();
-#elif ! defined (XDP_CLIENT_BUILD) && ! defined (XRT_X86_BUILD)
+#elif XDP_CLIENT_BUILD
+    (void) (devHandle);
+    (void) (hw_context_flow);
+    return nullptr;
+#elif XRT_X86_BUILD
+    (void) (devHandle);
+    (void) (hw_context_flow);
+    return nullptr;
+#else
     //For Edge Flow
     if(!hw_context_flow) {
       auto drv = ZYNQ::shim::handleCheck(devHandle);
