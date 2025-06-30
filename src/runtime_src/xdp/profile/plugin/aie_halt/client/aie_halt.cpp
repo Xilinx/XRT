@@ -27,7 +27,7 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/common/client_transaction.h"
-#include "xdp/profile/plugin/aie_halt/clientDev/aie_halt.h"
+#include "xdp/profile/plugin/aie_halt/client/aie_halt.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/common/api/xclbin_int.h"
