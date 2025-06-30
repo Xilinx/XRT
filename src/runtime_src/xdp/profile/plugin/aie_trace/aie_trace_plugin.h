@@ -23,6 +23,7 @@
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"

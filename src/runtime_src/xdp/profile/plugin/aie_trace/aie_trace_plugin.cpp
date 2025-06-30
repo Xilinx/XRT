@@ -38,13 +38,8 @@
 #elif XDP_VE2_BUILD
 #include "ve2/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "core/common/shim/hwctx_handle.h"
-#include "shim_ve2/xdna_hwctx.h"
 #else
 #include "edge/aie_trace.h"
-#include "core/edge/user/shim.h"
-#include "core/edge/user/hwctx_object.h"
-#include "core/common/shim/hwctx_handle.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #endif
 
@@ -99,9 +94,10 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   return db->addDevice("win_sysfspath");
 #else
   if(hw_context_flow)
-    return db->addDevice("ve2_device");
+    return db->addDevice("ve2_device");  //TODO: Both VE2 and Edge hw_context flow will reach here,
+                                         //      so we need to differentiate them later.
   else
-    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
+    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id. Edge load device flow.
 #endif
 }
 
@@ -301,11 +297,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
       AIEData.metadata);
 #elif XDP_VE2_BUILD
-  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-  auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-  auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-  auto aieObj = hwctx_obj->get_aie_array();
-  XAie_DevInst* devInst = aieObj->get_dev();
+  XAie_DevInst* devInst = aie::trace::getAieDevInst(handle, hw_context_flow);
+  if(!devInst) {
+    xrt_core::message::send(severity_level::warning, "XRT",
+      "Unable to get AIE device instance. AIE event trace will not be available.");
+    return;
+  }
 
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
@@ -314,23 +311,11 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       ,
       AIEData.metadata->getNumStreams(), devInst);
 #else
-  XAie_DevInst* devInst = nullptr;
-  if(hw_context_flow) {
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-    auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
-    auto aieArray = hwctx_obj->get_aie_array_shared();
-    devInst = aieArray->get_dev();
-  }
-  else {
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-        "Unable to get AIE device. AIE event trace will not be available.");
-      return;
-    }
-    auto aieArray = drv->getAieArray();
-    devInst = aieArray->get_dev();
+  XAie_DevInst* devInst = aie::trace::getAieDevInst(handle, hw_context_flow);
+  if(!devInst) {
+    xrt_core::message::send(severity_level::warning, "XRT",
+      "Unable to get AIE device instance. AIE event trace will not be available.");
+    return;
   }
 
   AIEData.offloader = std::make_unique<AIETraceOffload>(

@@ -204,6 +204,14 @@ namespace xdp::aie::trace {
   void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
                                     uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol,
                                     uint8_t numCols, uint8_t numRows);
+
+   /**
+   * @brief Get AIE device instance from device handle
+   * @param devHandle       Device handle
+   * @param hw_context_flow True if using hw_context flow, false if using loadxclbin flow
+   */
+  XAie_DevInst* getAieDevInst(void* devHandle, bool hw_context_flow);
+  
 }  // namespace xdp::aie::trace
 
 #endif
