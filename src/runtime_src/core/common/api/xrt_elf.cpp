@@ -16,6 +16,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -47,7 +48,8 @@ public:
       throw std::runtime_error("not a valid ELF stream");
   }
 
-  explicit elf_impl(const void *data, size_t size)
+  explicit
+  elf_impl(const void *data, size_t size)
   {
     // Uses the same approach as in aiebu reporter.cpp
     // ibufferstream allows reading from data without first copying over
@@ -151,7 +153,12 @@ elf(std::istream& stream)
 
 elf::
 elf(const void *data, size_t size)
-    : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data, size)}
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data, size)}
+{}
+
+elf::
+elf(const std::string_view& sv)
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(sv.data(), sv.size())}
 {}
 
 xrt::uuid
