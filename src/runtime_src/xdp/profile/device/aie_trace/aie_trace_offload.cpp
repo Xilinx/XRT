@@ -41,27 +41,9 @@
 namespace xdp {
 
 
-AIETraceOffload::AIETraceOffload
-  ( void* handle, uint64_t id
-  , PLDeviceIntf* dInt
-  , AIETraceLogger* logger
-  , bool isPlio
-  , uint64_t totalSize
-  , uint64_t numStrm
-  )
-  : deviceHandle(handle)
-  , deviceId(id)
-  , deviceIntf(dInt)
-  , traceLogger(logger)
-  , isPLIO(isPlio)
-  , totalSz(totalSize)
-  , numStream(numStrm)
-  , traceContinuous(false)
-  , offloadIntervalUs(0)
-  , bufferInitialized(false)
-  , offloadStatus(AIEOffloadThreadStatus::IDLE)
-  , mEnCircularBuf(false)
-  , mCircularBufOverwrite(false)
+AIETraceOffload::AIETraceOffload( void* handle, uint64_t id, PLDeviceIntf* dInt, 
+  AIETraceLogger* logger, bool isPlio, uint64_t totalSize, uint64_t numStrm)
+  : AIETraceOffloadBase(handle, id, dInt, logger, isPlio, totalSize, numStrm)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 

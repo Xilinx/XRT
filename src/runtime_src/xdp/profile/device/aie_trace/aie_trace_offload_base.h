@@ -92,12 +92,14 @@ enum class AIEOffloadThreadStatus {
 class AIETraceOffloadBase
 {
   public:
-    AIETraceOffloadBase(void* handle, uint64_t id,
-                        PLDeviceIntf*, AIETraceLogger*,
-                        bool     isPlio,
-                        uint64_t totalSize,
-                        uint64_t numStrm
-                       ) {}
+    AIETraceOffloadBase(void* handle, uint64_t id, PLDeviceIntf* dInt, 
+                        AIETraceLogger* logger, bool isPlio,
+                        uint64_t totalSize, uint64_t numStrm)
+      : deviceHandle(handle), deviceId(id), deviceIntf(dInt), 
+        traceLogger(logger), isPLIO(isPlio), totalSz(totalSize), 
+        numStream(numStrm), traceContinuous(false), offloadIntervalUs(0), 
+        bufferInitialized(false), offloadStatus(AIEOffloadThreadStatus::IDLE), 
+        mEnCircularBuf(false), mCircularBufOverwrite(false) {}
     AIETraceOffloadBase() = delete;
     virtual ~AIETraceOffloadBase() {}
 
@@ -120,7 +122,7 @@ public:
 
     void readTrace(bool final) {mReadTrace(final);};
 
-public:
+protected:
     void*           deviceHandle;
     uint64_t        deviceId;
     PLDeviceIntf*   deviceIntf;
@@ -132,7 +134,7 @@ public:
     uint64_t bufAllocSz;
     std::vector<AIETraceBufferInfo>  buffers;
 
-    //Internal use only
+    // Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
 
@@ -144,7 +146,7 @@ public:
     AIEOffloadThreadStatus offloadStatus;
     std::thread offloadThread;
 
-    //Circular Buffer Tracking
+    // Circular Buffer Tracking
     bool mEnCircularBuf;
     bool mCircularBufOverwrite;
 

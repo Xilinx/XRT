@@ -36,11 +36,8 @@ namespace xdp {
                                                uint64_t totalSize, uint64_t numStrm,
                                                xrt::hw_context context,
                                                std::shared_ptr<AieTraceMetadata>(metadata))
-    : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
-      isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
-      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
-      offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
-      mCircularBufOverwrite(false), context(context), metadata(metadata)
+    : AIETraceOffloadBase(handle, id, dInt, logger, isPlio, totalSize, numStrm),
+      context(context), metadata(metadata)
   {
     bufAllocSz = getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
     mReadTrace = std::bind(&AIETraceOffloadClient::readTraceGMIO, this, std::placeholders::_1);
