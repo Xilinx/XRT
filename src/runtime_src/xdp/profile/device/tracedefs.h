@@ -18,6 +18,8 @@
 #ifndef _XDP_DEVICE_TRACEDEFS_H_
 #define _XDP_DEVICE_TRACEDEFS_H_
 
+#include <cstdint>
+
 #define TRACE_PACKET_SIZE        8
 // Device timestamp is 45 bits so it can never be this value
 #define INVALID_DEVICE_TIMESTAMP 0xffffffffffffffff

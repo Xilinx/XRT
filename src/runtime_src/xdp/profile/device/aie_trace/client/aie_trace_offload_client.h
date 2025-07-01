@@ -59,34 +59,8 @@ class AIETraceOffloadClient : public AIETraceOffloadBase {
     virtual bool isTraceBufferFull() {return false;};
 
   private:
-    void*           deviceHandle;
-    uint64_t        deviceId;
-    PLDeviceIntf*   plDeviceIntf;
-    AIETraceLogger* traceLogger;
-
-    bool isPLIO;
-    uint64_t totalSz;
-    uint64_t numStream;
-    uint64_t bufAllocSz;
-    std::vector<AIETraceBufferInfo> buffers;
-
-    //Internal use only
-    // Set this for verbose trace offload
-    bool m_debug = false;
     XAie_DevInst aieDevInst = {0};
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
-
-    // Continuous Trace Offload (For PLIO)
-    bool traceContinuous;
-    uint64_t offloadIntervalUs;
-    bool bufferInitialized;
-    std::mutex statusLock;
-    AIEOffloadThreadStatus offloadStatus;
-    std::thread offloadThread;
-
-    //Circular Buffer Tracking
-    bool mEnCircularBuf;
-    bool mCircularBufOverwrite;
 
     xrt::hw_context context;
     std::shared_ptr<AieTraceMetadata> metadata;
