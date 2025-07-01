@@ -205,43 +205,67 @@ namespace xdp::aie::profile {
 
     // Stall events are generation-specific
     if (xdp::aie::isAIE1(hwGen)) {
-      eventSets["input_stalls"]       = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                         XAIE_EVENT_PORT_IDLE_0_PL};
-      eventSets["output_stalls"]      = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                         XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["input_stalls"]        = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                          XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"]       = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                          XAIE_EVENT_PORT_IDLE_0_PL};
     }
     else if (xdp::aie::isAIE2(hwGen)) {
-      eventSets["input_stalls"]       = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      eventSets["output_stalls"]      = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
+      eventSets["input_stalls"]        = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"]       = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
     else if (xdp::aie::isAIE2ps(hwGen)) {
 #ifdef XDP_VE2_BUILD
-      eventSets["input_stalls"]       = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,
-                                         XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
-                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL,
-                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STALLED_LOCK_PL};
-      eventSets["output_stalls"]      = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,
-                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL, 
-                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
-                                         XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL,
-                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STREAM_STARVATION_PL,
-                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL};
-      eventSets["input_throughputs"]  = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL, 
-                                         XAIE_EVENT_PORT_RUNNING_0_PL,
-                                         XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL, 
-                                         XAIE_EVENT_PORT_RUNNING_1_PL};
-      eventSets["output_throughputs"] = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
-                                         XAIE_EVENT_PORT_RUNNING_0_PL,
-                                         XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
-                                         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL,
-                                         XAIE_EVENT_PORT_RUNNING_1_PL};
+      eventSets["input_stalls"]        = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
+                                          XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_NOC0_DMA_MM2S_1_STALLED_LOCK_PL};
+      eventSets["output_stalls"]       = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,
+                                          XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL, 
+                                          XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
+                                          XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL,
+                                          XAIE_EVENT_NOC0_DMA_S2MM_1_STREAM_STARVATION_PL,
+                                          XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL};
+      eventSets["input_throughputs"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL, 
+                                          XAIE_EVENT_PORT_RUNNING_0_PL,
+                                          XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL, 
+                                          XAIE_EVENT_PORT_RUNNING_1_PL};
+      eventSets["output_throughputs"]  = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
+                                          XAIE_EVENT_PORT_RUNNING_0_PL,
+                                          XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
+                                          XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL,
+                                          XAIE_EVENT_PORT_RUNNING_1_PL};
+#endif
+    }
+    else {
+#ifdef XDP_NPU3_BUILD
+      eventSets["output_throughputs"]  = {XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL0_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL1_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL1_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL1_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL2_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL2_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL2_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL3_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL3_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_SEL3_RUNNING_PL};
+      eventSets["trace_dma"]           = {XAIE_EVENT_DMA_TRACE_S2MM_MEMORY_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_STREAM_STARVATION_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_STALLED_LOCK_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_RUNNING_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_START_BD_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_FINISHED_BD_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_START_TASK_PL,
+                                          XAIE_EVENT_DMA_TRACE_S2MM_FINISHED_TASK_PL};
 #endif
     }
 
@@ -288,95 +312,131 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets(const int hwGen)
   {
-    std::map<std::string, std::vector<XAie_Events>> eventSets;
-    eventSets = {
-      {"input_channels",          {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                   XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-                                   XAIE_EVENT_PORT_TLAST_0_MEM_TILE,   
-                                   XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE}},
-      {"input_channels_details",  {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,  
-                                   XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE}},
-      {"output_channels",         {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                   XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-                                   XAIE_EVENT_PORT_TLAST_0_MEM_TILE,   
-                                   XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE}},
-      {"output_channels_details", {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
-      {"memory_stats",            {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE,
-                                   XAIE_EVENT_GROUP_ERRORS_MEM_TILE,
-                                   XAIE_EVENT_GROUP_LOCK_MEM_TILE,
-                                   XAIE_EVENT_GROUP_WATCHPOINT_MEM_TILE}},
-      {"mem_trace",               {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                   XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-                                   XAIE_EVENT_PORT_IDLE_0_MEM_TILE,
-                                   XAIE_EVENT_PORT_TLAST_0_MEM_TILE}},
-      {"input_throughputs",       {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
-      {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
-    };
+    // Number of memory tile counters is generation-specific
+    int numCounters = xdp::aie::getNumCounters(hwGen, xdp::module_type::mem_tile);
 
-    if (!xdp::aie::isNPU3(hwGen)) {
-      eventSets["conflict_stats1"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
-      eventSets["conflict_stats2"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
-      eventSets["conflict_stats3"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
-      eventSets["conflict_stats4"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
-//#ifdef XDP_NPU3_BUILD
-      eventSets["throughputs"] = {
-        
-      };
-//#endif
+    std::map<std::string, std::vector<XAie_Events>> eventSets;
+
+    if (numCounters == 4) {
+      eventSets["input_channels"]          = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_TLAST_0_MEM_TILE,   
+                                              XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE};
+      eventSets["input_channels_details"]  = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE};
+      eventSets["output_channels"]         = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_TLAST_0_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE};
+      eventSets["output_channels_details"] = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
+      eventSets["memory_stats"]            = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE,
+                                              XAIE_EVENT_GROUP_ERRORS_MEM_TILE,
+                                              XAIE_EVENT_GROUP_LOCK_MEM_TILE,
+                                              XAIE_EVENT_GROUP_WATCHPOINT_MEM_TILE};
+      eventSets["mem_trace"]               = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_IDLE_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_TLAST_0_MEM_TILE};
+      eventSets["input_throughputs"]       = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
+      eventSets["output_throughputs"]      = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                              XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
+      eventSets["conflict_stats1"]         = {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            
+                                              XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
+      eventSets["conflict_stats2"]         = {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
+      eventSets["conflict_stats3"]         = {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
+      eventSets["conflict_stats4"]         = {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+      eventSets["throughputs"]             = {};
     } 
-    else {
-      eventSets["conflict_stats1"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,            XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
-      // Banks 16-23 are not defined for all generations
+    else if (numCounters == 12) {
+      eventSets["input_channels"]          = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_1_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_1_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_2_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_3_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_3_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_4_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_5_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_5_MEM_TILE};
+      eventSets["memory_stats"]            = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE,
+                                              XAIE_EVENT_GROUP_ERRORS_MEM_TILE,
+                                              XAIE_EVENT_GROUP_LOCK_MEM_TILE,
+                                              XAIE_EVENT_GROUP_WATCHPOINT_MEM_TILE};
+      eventSets["mem_trace"]               = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_IDLE_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_TLAST_0_MEM_TILE};
+      eventSets["conflict_stats1"]         = {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE};
 #ifdef XDP_NPU3_BUILD
-      eventSets["conflict_stats2"] = {
-        XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
-        XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,           XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+      // Banks 16-23 are not defined for all generations
+      eventSets["conflict_stats2"]         = {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_18_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_19_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_20_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_21_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_22_MEM_TILE,
+                                              XAIE_EVENT_CONFLICT_DM_BANK_23_MEM_TILE};
+      eventSets["throughputs"]             = {XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL0_RUNNING_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL1_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL1_MEMORY_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_S2MM_SEL1_RUNNING_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL0_RUNNING_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL1_STREAM_BACKPRESSURE_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL1_MEMORY_STARVATION_MEM_TILE,
+                                              XAIE_EVENT_DMA_MM2S_SEL1_RUNNING_MEM_TILE,};
 #endif
+
+      eventSets["output_channels"] = eventSets["input_channels"];
+      eventSets["input_channels_details"] = {};
+      eventSets["output_channels_details"] = {};
+      eventSets["mem_trace"] = {};
+      eventSets["input_throughputs"] = {};
+      eventSets["output_throughputs"] = {};
       eventSets["conflict_stats3"] = {};
       eventSets["conflict_stats4"] = {};
-      eventSets["throughputs"] = {
-        XAIE_EVENT_DMA_S2MM_SEL0_RUNNING_MEM_TILE,
-        XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
-        XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
-        XAIE_EVENT_DMA_S2MM_SEL1_RUNNING_MEM_TILE,
-        XAIE_EVENT_DMA_S2MM_SEL1_STALLED_LOCK_ACQUIRE_MEM_TILE,
-        XAIE_EVENT_DMA_S2MM_SEL1_MEMORY_BACKPRESSURE_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL0_RUNNING_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL1_RUNNING_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL1_STREAM_BACKPRESSURE_MEM_TILE,
-        XAIE_EVENT_DMA_MM2S_SEL1_MEMORY_STARVATION_MEM_TILE
-      };
     }
 
     eventSets["s2mm_channels"]         = eventSets["input_channels"];
