@@ -35,6 +35,7 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
@@ -1613,6 +1614,19 @@ namespace xdp {
       return uid;
     }
     return it->second;
+  }
+
+  uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
+  {
+    auto style = getAppStyle();
+    if (AppStyle::LOAD_XCLBIN_STYLE == style) {
+      // handle is an xclDeviceHandle in this style
+      // Use sysfs path based unique device identifier in XDP
+      return db->addDevice(util::getDebugIpLayoutPath(handle));
+    }
+    // For REGISTER_XCLBIN_STYLE and APP_STYLE_NOT_SET
+    // handle is an HW Ctx Impl pointer
+    return getHwCtxImplUid(handle);
   }
 
   // Return true if we should reset the device information.
