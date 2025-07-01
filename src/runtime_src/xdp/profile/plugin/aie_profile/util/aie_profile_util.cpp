@@ -369,18 +369,18 @@ namespace xdp::aie::profile {
       eventSets["throughputs"]             = {};
     } 
     else if (numCounters == 12) {
-      eventSets["input_channels"]          = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                              XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-                                              XAIE_EVENT_PORT_RUNNING_1_MEM_TILE, 
+      eventSets["input_channels"]          = {XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
                                               XAIE_EVENT_PORT_STALLED_1_MEM_TILE,
-                                              XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, 
+                                              XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
                                               XAIE_EVENT_PORT_STALLED_2_MEM_TILE,
-                                              XAIE_EVENT_PORT_RUNNING_3_MEM_TILE, 
+                                              XAIE_EVENT_PORT_RUNNING_2_MEM_TILE,
                                               XAIE_EVENT_PORT_STALLED_3_MEM_TILE,
-                                              XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, 
+                                              XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
                                               XAIE_EVENT_PORT_STALLED_4_MEM_TILE,
-                                              XAIE_EVENT_PORT_RUNNING_5_MEM_TILE, 
-                                              XAIE_EVENT_PORT_STALLED_5_MEM_TILE};
+                                              XAIE_EVENT_PORT_RUNNING_4_MEM_TILE,
+                                              XAIE_EVENT_PORT_STALLED_5_MEM_TILE,
+                                              XAIE_EVENT_PORT_RUNNING_5_MEM_TILE};
       eventSets["memory_stats"]            = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE,
                                               XAIE_EVENT_GROUP_ERRORS_MEM_TILE,
                                               XAIE_EVENT_GROUP_LOCK_MEM_TILE,
