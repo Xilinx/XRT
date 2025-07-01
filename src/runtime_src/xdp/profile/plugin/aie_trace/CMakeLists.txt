@@ -49,7 +49,8 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} 
               ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
-  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE 
+                        xdp_core xrt_coreutil xaiengine aiebu_library_objects)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
   target_include_directories(xdp_aie_trace_plugin PRIVATE 
                              ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
