@@ -1418,7 +1418,7 @@ static void __exit zocl_exit(void)
 }
 module_exit(zocl_exit);
 
-MODULE_VERSION(XRT_DRIVER_VERSION);
+MODULE_VERSION(XRT_HASH);
 
 MODULE_DESCRIPTION(ZOCL_DRIVER_DESC);
 MODULE_AUTHOR("Sonal Santan <sonal.santan@xilinx.com>");

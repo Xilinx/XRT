@@ -22,6 +22,7 @@
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/xrt/experimental/xrt_aie.h"
 #include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_kernel.h"
@@ -408,18 +409,34 @@ class recipe
   class header
   {
     xrt::xclbin m_xclbin;
+    xrt::aie::program m_program;
 
     static xrt::xclbin
     read_xclbin(const json& j, const artifacts::repo* repo)
     {
+      if (!j.contains("xclbin"))
+        return {};
+        
       auto path = j.at("xclbin").get<std::string>();
       auto data = repo->get(path);
       return xrt::xclbin{data};
     }
 
+    static xrt::aie::program
+    read_program(const json& j, const artifacts::repo* repo)
+    {
+      if (!j.contains("program"))
+        return {};
+
+      auto path = j.at("program").get<std::string>();
+      auto data = repo->get(path);
+      return xrt::aie::program{data};
+    }
+
   public:
     header(const json& j, const artifacts::repo* repo)
       : m_xclbin{read_xclbin(j, repo)}
+      , m_program{read_program(j, repo)}
     {
       XRT_DEBUGF("Loaded xclbin: %s\n", m_xclbin.get_uuid().to_string().c_str());
     }
@@ -430,6 +447,12 @@ class recipe
     get_xclbin() const
     {
       return m_xclbin;
+    }
+
+    xrt::aie::program
+    get_program() const
+    {
+      return m_program;
     }
 
     report
@@ -693,23 +716,48 @@ class recipe
     }
 
     static xrt::hw_context
-    create_hwctx(const xrt::device& device, const xrt::uuid& uuid,
+    create_hwctx(xrt::device device, const xrt::xclbin& xclbin,
                  const xrt::hw_context::qos_type& qos)
     {
       try {
-        return {device, uuid, qos};
+        return {device, device.register_xclbin(xclbin), qos};
       }
       catch (const std::exception& ex) {
         throw xrt_core::runner::hwctx_error{ex.what()};
       }
     }
 
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device, const xrt::aie::program& program,
+                 const xrt::hw_context::qos_type& qos)
+    {
+      try {
+        return {device, program, qos, xrt::hw_context::access_mode::shared};
+      }
+      catch (const std::exception& ex) {
+        throw xrt_core::runner::hwctx_error{ex.what()};
+      }
+    }
+
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device, const header& header, 
+                 const xrt::hw_context::qos_type& qos)
+    {
+      if (auto xclbin = header.get_xclbin())
+        return create_hwctx(device, xclbin, qos);
+
+      if (auto program = header.get_program())
+        return create_hwctx(device, program, qos);
+
+      throw recipe_error("No program or xclbin specified");
+    }
+
   public:
-    resources(xrt::device device, const xrt::xclbin& xclbin,
+    resources(xrt::device device, const header& header,
               const xrt::hw_context::qos_type& qos,
               const json& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
-      , m_hwctx{create_hwctx(m_device, m_device.register_xclbin(xclbin), qos)}
+      , m_hwctx{create_hwctx(m_device, header, qos)}
       , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
       , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
       , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
@@ -1412,7 +1460,7 @@ public:
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
     , m_header{m_recipe_json.at("header"), repo}
-    , m_resources{m_device, m_header.get_xclbin(), qos, m_recipe_json.at("resources"), repo}
+    , m_resources{m_device, m_header, qos, m_recipe_json.at("resources"), repo}
     , m_execution{m_resources, m_recipe_json.at("execution"), runlist_threshold }
   {}
 

@@ -14,6 +14,8 @@ namespace xrt_core::edge {
 class drv_zocl : public drv
 {
 public:
+   std::string
+   name() const override { return "zocl"; }
    void
    scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) override;
 

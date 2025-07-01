@@ -43,26 +43,32 @@ kernel arguments.
 
 ## Header
 
-For the time being, the header stores nothing but the path to the
-xclbin.  The xclbin contains the kernel meta data used by XRT when
-xrt::kernel objects are created.  The xclbin contains PDIs for each
-kernel, the PDIs are loaded by firmware prior to running a kernel.
+The header section identifies programs with PDIs and meta data used by
+XRT when xrt::kernel objects are created.
+
+The run recipe supports legacy xclbin and new program configuration
+ELF files.
 
 The header section can be amended with other meta data as needed.
+
+If both "xclbin" and "program" are specified, the behavior is
+undefined, one takes precedence over the other, but which one is
+undefined.
 
 ```
 {
   "header": {
-    "xclbin": "design.xclbin",
+    "xclbin": "design.xclbin"
+    "program": "config.elf"
   },
   
   ...
 }
 ```
 
-The runner will use the xclbin from the `header` section to create an
-xrt::hw_context, which is subsequently used to create xrt::kernel
-objects.
+The runner will use the xclbin or program from the `header` section to
+create an xrt::hw_context, which is subsequently used to create
+xrt::kernel objects.
 
 ## Resources
 
@@ -77,14 +83,14 @@ be listed in the resources section.
 
 Kernels listed in the resources section result in runner creating
 `xrt::kernel` objects.  In XRT, the kernel objects are identified by
-name, which must match a kernel instance name in the xclbin.
+name, which must match a kernel instance name in the xclbin or program.
 
 Kernels are constructed from the instance name and what control code
 the kernel should execute.  The hardware context associated with the
-kernel is created by the runner from the xclbin specified in the
-recipe `header` section, so kernels in the resources section must
-contain just the kernel instance name and the full path to an ELF with
-the control code.
+kernel is created by the runner from the xclbin or program specified
+in the recipe `header` section, so kernels in the resources section
+must contain just the kernel instance name and the full path to an ELF
+with the control code.
 
 ```
   "resources": {
@@ -105,7 +111,7 @@ to which instance should be executed.
 If a kernel is instantiated from the same instance kernel name and same
 control code, then only one such kernel instance needs to be listed in
 the resources section.  Listing multiple kernel instances referring to
-the same xclbin kernel and using the same control code is not error,
+the same kernel and using the same control code is not error,
 but is not necessary.
 
 ### CPU functions
@@ -357,7 +363,7 @@ each individual runlist will be executed in sequence, when the
 framework calls the runner API execute method.
 
 In addition to the buffer arguments referring to resource buffers, the
-xclbin kernels and cpu functions may have additional arguments that
+kernels and cpu functions may have additional arguments that
 need to be set. For example the current DPU kernel have 8 arguments
 and some of these must be set to some sentinel value.  Here the
 argument with index 0, represents the kernel opcode which specifies

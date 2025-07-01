@@ -38,6 +38,19 @@ public:
   elf(const std::string& fnm);
 
   /**
+   * elf() - Constructor from raw data
+   *
+   * @param data
+   *  Raw data of elf
+   *
+   * The raw data of the elfcan be deleted after calling the
+   * constructor.
+   */
+  XRT_API_EXPORT
+  explicit
+  elf(const std::string_view& data);
+
+  /**
    * elf() - Constructor from raw ELF data stream
    *
    * @param stream
