@@ -30,14 +30,14 @@ namespace xdp {
     AieTrace_VE2Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
     ~AieTrace_VE2Impl() = default;
 
-    virtual void updateDevice();
-    virtual void flushTraceModules();
-    virtual void pollTimers(uint64_t index, void* handle);
-    virtual void freeResources();
-    virtual void* setAieDeviceInst(void* handle);
+    void updateDevice() override;
+    void flushTraceModules() override;
+    void pollTimers(uint64_t index, void* handle) override;
+    void freeResources() override;
+    void* setAieDeviceInst(void* handle) override;
 
   private:
-    virtual uint64_t checkTraceBufSize(uint64_t size);
+    uint64_t checkTraceBufSize(uint64_t size) override;
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                         const module_type type, const std::string& metricSet);
     bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);

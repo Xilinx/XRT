@@ -1063,7 +1063,7 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Set AIE device instance from Plugin (Currently used for Trace plugin only)
+   * Set AIE device instance
    ***************************************************************************/
   void* AieTrace_VE2Impl::setAieDeviceInst(void* handle) 
   {

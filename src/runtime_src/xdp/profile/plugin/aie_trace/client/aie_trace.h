@@ -34,12 +34,12 @@ namespace xdp {
     public:
       AieTrace_WinImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
       ~AieTrace_WinImpl() = default;
-      virtual void updateDevice();
-      virtual void flushTraceModules();
-      virtual void freeResources();
-      virtual void pollTimers(uint64_t index, void* handle);
-      virtual uint64_t checkTraceBufSize(uint64_t size);
-      virtual void* setAieDeviceInst(void* handle) { return nullptr; };
+      void updateDevice() override;
+      void flushTraceModules() override;
+      void freeResources() override;
+      void pollTimers(uint64_t index, void* handle) override;
+      uint64_t checkTraceBufSize(uint64_t size) override;
+      void* setAieDeviceInst(void* handle) override;
 
       void modifyEvents(module_type type, io_type subtype, 
                         const std::string metricSet, uint8_t channel, 
