@@ -32,11 +32,12 @@ namespace xdp {
 
     virtual void updateDevice();
     virtual void flushTraceModules();
-    void pollTimers(uint64_t index, void* handle);
-    void freeResources();
-    
+    virtual void pollTimers(uint64_t index, void* handle);
+    virtual void freeResources();
+    virtual void* setAieDeviceInst(void* handle);
+
   private:
-    uint64_t checkTraceBufSize(uint64_t size);
+    virtual uint64_t checkTraceBufSize(uint64_t size);
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                         const module_type type, const std::string& metricSet);
     bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);

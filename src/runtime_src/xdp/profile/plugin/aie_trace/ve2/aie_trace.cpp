@@ -1061,4 +1061,13 @@ namespace xdp {
 
     db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
   }
+
+  /****************************************************************************
+   * Set AIE device instance from Plugin (Currently used for Trace plugin only)
+   ***************************************************************************/
+  void* AieTrace_VE2Impl::setAieDeviceInst(void* handle) 
+  {
+    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    return aieDevInst;
+  }
 }  // namespace xdp

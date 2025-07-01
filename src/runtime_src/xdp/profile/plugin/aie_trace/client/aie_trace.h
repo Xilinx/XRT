@@ -39,6 +39,7 @@ namespace xdp {
       virtual void freeResources();
       virtual void pollTimers(uint64_t index, void* handle);
       virtual uint64_t checkTraceBufSize(uint64_t size);
+      virtual void* setAieDeviceInst(void* handle) { return nullptr; };
 
       void modifyEvents(module_type type, io_type subtype, 
                         const std::string metricSet, uint8_t channel, 
