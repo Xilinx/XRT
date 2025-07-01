@@ -93,7 +93,8 @@ class AIETraceOffload
                     PLDeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm
+                    uint64_t numStrm,
+                    XAie_DevInst* devInstance
                    );
 
     virtual ~AIETraceOffload();
@@ -123,6 +124,7 @@ private:
     uint64_t        deviceId;
     PLDeviceIntf*     deviceIntf;
     AIETraceLogger* traceLogger;
+    XAie_DevInst*   devInst;
 
     bool isPLIO;
     uint64_t totalSz;

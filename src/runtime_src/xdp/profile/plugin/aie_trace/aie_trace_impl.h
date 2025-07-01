@@ -81,6 +81,13 @@ namespace xdp {
      *          passive tiles like memory and interface.
      */
     virtual void flushTraceModules() = 0;
+
+    /**
+     * @brief Set AIE device instance
+     * @param handle Pointer to device handle
+     * @return Pointer to AIE device instance
+     */
+    virtual void* setAieDeviceInst(void* handle) = 0;
   };
 
 } // namespace xdp

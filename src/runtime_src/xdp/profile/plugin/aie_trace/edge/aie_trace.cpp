@@ -31,6 +31,7 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/edge/user/shim.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -44,13 +45,27 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return nullptr;
-    return aieArray->get_dev();
+    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == 
+       xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr;
+      auto aieArray = drv->getAieArray();
+      if (!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
+    else {  // For Hw_context flow
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if(!hwctx_obj)
+        return nullptr;
+      auto aieArray = hwctx_obj->get_aie_array_shared();
+      if(!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
   }
 
   static void* allocateAieDevice(void* devHandle)
@@ -1010,5 +1025,14 @@ namespace xdp {
     values.push_back(timerValue);
 
     db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
+  }
+
+  /****************************************************************************
+   * Set AIE device instance
+   ***************************************************************************/
+  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle) 
+  {
+    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    return aieDevInst;
   }
 }  // namespace xdp

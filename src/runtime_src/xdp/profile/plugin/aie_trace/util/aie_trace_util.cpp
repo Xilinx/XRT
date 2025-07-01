@@ -791,4 +791,5 @@ namespace xdp::aie::trace {
       }
     }
   }
-} // namespace xdp::aie
+
+} // namespace xdp::aie::trace

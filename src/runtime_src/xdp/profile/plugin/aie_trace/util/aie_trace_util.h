@@ -204,6 +204,7 @@ namespace xdp::aie::trace {
   void reset2ChannelBroadcastNetwork(XAie_DevInst* aieDevInst, std::shared_ptr<AieTraceMetadata> metadata,
                                     uint8_t broadcastId1, uint8_t broadcastId2, uint8_t startCol,
                                     uint8_t numCols, uint8_t numRows);
+  
 }  // namespace xdp::aie::trace
 
 #endif
