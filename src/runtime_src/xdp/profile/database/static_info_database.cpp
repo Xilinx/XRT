@@ -1616,7 +1616,7 @@ namespace xdp {
     return it->second;
   }
 
-  uint64_t VPStaticDatabase::getXDPUniqueId(void* handle)
+  uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
   {
     auto style = getAppStyle();
     if (AppStyle::LOAD_XCLBIN_STYLE == style) {
