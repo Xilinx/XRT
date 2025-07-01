@@ -20,6 +20,12 @@
 
 #include "xdp/profile/device/tracedefs.h"
 
+#include <cstddef>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <functional>
+
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
  * We can only include/compile aie specific headers, when compiling for edge+versal.
