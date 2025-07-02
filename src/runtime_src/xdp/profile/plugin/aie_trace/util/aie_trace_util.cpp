@@ -134,7 +134,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM,           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
           XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
     }
-    else if (xdp::aie::NPU3(hwGen)) {
+    else if (xdp::aie::isNPU3(hwGen)) {
       eventSets["all_stalls_s2mm"].push_back(XAIE_EVENT_CASCADE_STALL_CORE);
 
       eventSets["s2mm_channels_stalls"] =
@@ -195,7 +195,7 @@ namespace xdp::aie::trace {
     };
 
     // Banks 16-23 are not defined for all generations
-    if (aie::isAIE4(hwGen)) {
+    if (aie::isNPU3(hwGen)) {
 #ifdef XDP_NPU3_BUILD
       eventSets["memory_conflicts3"] = {
           XAIE_EVENT_CONFLICT_DM_BANK_16_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_17_MEM_TILE,
