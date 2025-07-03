@@ -554,6 +554,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_zocl_bo *zocl_obj;
 	struct drm_zocl_dev *zdev;
+#if 0
+        struct drm_gem_dma_object* cma_obj;
+        dma_addr_t dma_handle;
+        void* vaddr;
+#endif
 	int npages;
 
 	if (IS_ERR(obj) || !obj)
@@ -579,7 +584,15 @@ void zocl_free_bo(struct drm_gem_object *obj)
 #else
 			drm_gem_cma_free_object(obj);
 #endif
-
+#if 0
+                        // Need to verify and cleanup below code 
+	                cma_obj = to_drm_gem_dma_obj(obj);
+                        if(cma_obj){
+	                        dma_handle = cma_obj->dma_addr;
+                                vaddr = cma_obj->vaddr;
+                                dma_free_coherent(obj->dev->dev, obj->size, vaddr, dma_handle);
+                        }
+#endif
 		} else {
 			if (zocl_obj->mm_node) {
 				mutex_lock(&zdev->mm_lock);

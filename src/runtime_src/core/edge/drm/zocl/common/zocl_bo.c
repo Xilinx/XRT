@@ -16,6 +16,7 @@
 
 #include <linux/pagemap.h>
 #include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/dma-buf.h>
 #include <linux/iommu.h>
 #include <linux/version.h>
@@ -171,6 +172,57 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static struct drm_gem_dma_object *
+#else
+static struct drm_gem_cma_object *
+#endif
+zocl_cma_create(struct drm_device *dev, size_t size)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *cma_obj;
+#else
+	struct drm_gem_cma_object *cma_obj;
+#endif
+	struct drm_gem_object *gem_obj;
+	int ret;
+
+	gem_obj = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+	if (!gem_obj) {
+		DRM_ERROR("cma_create: alloc failed\n");
+		return ERR_PTR(-ENOMEM);
+	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj = container_of(gem_obj, struct drm_gem_dma_object, base);
+#else
+	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	gem_obj->funcs = &zocl_cma_default_funcs;
+#endif
+
+	ret = drm_gem_object_init(dev, gem_obj, size);
+	if (ret) {
+		DRM_ERROR("cma_create: gem_obj_init failed\n");
+		goto error;
+	}
+
+	ret = drm_gem_create_mmap_offset(gem_obj);
+	if (ret) {
+		DRM_ERROR("cma_create: gem_mmap_offset failed\n");
+		drm_gem_object_release(gem_obj);
+		goto error;
+	}
+
+	return cma_obj;
+
+error:
+	kfree(cma_obj);
+	return ERR_PTR(ret);
+}
+
+
 static struct drm_zocl_bo *
 zocl_create_cma_mem(struct drm_device *dev, size_t size)
 {
@@ -180,16 +232,44 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	struct drm_gem_cma_object *cma_obj;
 #endif
 	struct drm_zocl_bo *bo;
+        dma_addr_t phys = 0;
+        void* vaddr = NULL;
+        int num_regions = of_count_phandle_with_args(dev->dev->of_node, "memory-region", NULL);
+        int mem_region = 0;
+        int ret;
 
-	/* Allocate from CMA buffer */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	cma_obj = drm_gem_dma_create(dev, size);
-#else
-	cma_obj = drm_gem_cma_create(dev, size);
-#endif
+	cma_obj = zocl_cma_create(dev, size);
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
+        while ((!vaddr || !phys) && mem_region < num_regions) {
+                ret = of_reserved_mem_device_init_by_idx(dev->dev, dev->dev->of_node, mem_region);
+                if (ret) {
+                        DRM_ERROR("Failed to init memory-region %d \n", mem_region);
+                }
+                vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL);
+                if(vaddr)
+                        DRM_DEBUG("able to allocate from zocl attached memory region %d \n", mem_region);
+                mem_region++;
+        }
+
+        //allocate from default cma if we are not able to allocate from attached memory regions
+        if(!phys || !vaddr) {
+                DRM_ERROR("Not able to allocate from zocl attached memory regions \n");
+                vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL);
+        }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj->dma_addr = phys;
+#else
+	cma_obj->paddr = phys;
+#endif
+	cma_obj->vaddr = vaddr;
+	if (!cma_obj->vaddr) {
+		DRM_ERROR("Failed to allocate buffer with size %zu\n",
+			  size);
+		return ERR_PTR(-ENOMEM);
+	}
 	bo = to_zocl_bo(&cma_obj->base);
 
 	return bo;
@@ -380,6 +460,8 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 
 		bo = zocl_create_range_mem(dev, size, mem);
 	}
+	if (IS_ERR(bo))
+		return ERR_PTR(-ENOMEM);
 
 	if (user_flags & ZOCL_BO_FLAGS_EXECBUF) {
 		bo->flags = ZOCL_BO_FLAGS_EXECBUF;
@@ -1034,55 +1116,6 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	return (zocl_bo_rdwr_ioctl(dev, data, filp, true));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-static struct drm_gem_dma_object *
-#else
-static struct drm_gem_cma_object *
-#endif
-zocl_cma_create(struct drm_device *dev, size_t size)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	struct drm_gem_dma_object *cma_obj;
-#else
-	struct drm_gem_cma_object *cma_obj;
-#endif
-	struct drm_gem_object *gem_obj;
-	int ret;
-
-	gem_obj = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-	if (!gem_obj) {
-		DRM_ERROR("cma_create: alloc failed\n");
-		return ERR_PTR(-ENOMEM);
-	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	cma_obj = container_of(gem_obj, struct drm_gem_dma_object, base);
-#else
-	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-	gem_obj->funcs = &zocl_cma_default_funcs;
-#endif
-
-	ret = drm_gem_object_init(dev, gem_obj, size);
-	if (ret) {
-		DRM_ERROR("cma_create: gem_obj_init failed\n");
-		goto error;
-	}
-
-	ret = drm_gem_create_mmap_offset(gem_obj);
-	if (ret) {
-		DRM_ERROR("cma_create: gem_mmap_offset failed\n");
-		drm_gem_object_release(gem_obj);
-		goto error;
-	}
-
-	return cma_obj;
-
-error:
-	kfree(cma_obj);
-	return ERR_PTR(ret);
-}
 
 int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *filp)
