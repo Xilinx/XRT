@@ -73,7 +73,7 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 size_t
-get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t id = UINT32_MAX);
+get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t id = no_ctrl_code_id);
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
@@ -87,7 +87,7 @@ XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 void
 patch(const xrt::module&, uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
-      xrt_core::patcher::buf_type, uint32_t id = UINT32_MAX);
+      xrt_core::patcher::buf_type, uint32_t id = no_ctrl_code_id);
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT

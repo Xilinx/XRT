@@ -1019,14 +1019,7 @@ public:
       constexpr const char* kname = "";
       std::vector<uint32_t> sec_ids;
       for (const auto& sec : m_elfio.sections) {
-        auto name = sec->get_name();
-        // insert only the sections that can be grouped
-        if ((name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) == std::string::npos)
-            && (name.find(patcher::to_string(xrt_core::patcher::buf_type::dump)) == std::string::npos))
-          continue;
-
+        // insert all the sections into a common group
         sec_ids.push_back(sec->get_index());
         // fill the sec_to_grp_map for lookup later
         // for this kind of ELF we fill UINT32_MAX as there is no group section
