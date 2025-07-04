@@ -584,6 +584,14 @@ update_device(void* handle, bool hw_context_flow)
            "Failed to load PL Deadlock Detection library. Caught exception ",  
            "Failed to setup for PL Deadlock Detection library. Caught exception ",  
            handle);  
+  
+  load_once_and_update(xrt_core::config::get_aie_profile,
+           xrt_core::xdp::aie::profile::load,
+           xrt_core::xdp::aie::profile::update_device,
+           "Failed to load AIE Profile library. Caught exception ",
+           "Failed to setup for AIE Profile. Caught exception ",
+           handle,
+           hw_context_flow);
 
   load_once_and_update(xrt_core::config::get_aie_trace,  
            xrt_core::xdp::aie::trace::load,
@@ -593,13 +601,6 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
-  load_once_and_update(xrt_core::config::get_aie_profile,
-           xrt_core::xdp::aie::profile::load,
-           xrt_core::xdp::aie::profile::update_device,
-           "Failed to load AIE Profile library. Caught exception ",
-           "Failed to setup for AIE Profile. Caught exception ",
-           handle,
-           hw_context_flow);
 
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);

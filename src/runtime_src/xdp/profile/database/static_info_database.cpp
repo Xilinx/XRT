@@ -1550,13 +1550,25 @@ namespace xdp {
       new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
     }
 
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
      */
-    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid)) {
+      // Device info doesn't need reset, but check if we need to create PLDeviceIntf
+      std::lock_guard<std::mutex> lock(deviceLock);
+      auto itr = deviceInfo.find(deviceId);
+      if (itr != deviceInfo.end()) {
+        DeviceInfo *devInfo = itr->second.get();
+        ConfigInfo* config = devInfo->currentConfig();
+        if (config && config->plDeviceIntf == nullptr && xdpDevice != nullptr) {
+          XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
+          createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
+        }
+      }
       return;
+    }
 
-    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
@@ -1590,12 +1602,24 @@ namespace xdp {
       new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
     }
 
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
      */
-    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid)) {
+      // Device info doesn't need reset, but check if we need to create PLDeviceIntf
+      auto itr = deviceInfo.find(deviceId);
+      if (itr != deviceInfo.end()) {
+        DeviceInfo *devInfo = itr->second.get();
+        ConfigInfo* config = devInfo->currentConfig();
+        if (config && config->plDeviceIntf == nullptr && xdpDevice != nullptr) {
+          XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
+          createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
+        }
+      }
       return;
-    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+    }
+    
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
 
@@ -1627,11 +1651,6 @@ namespace xdp {
       ConfigInfo* config = devInfo->currentConfig() ;
 
       if (config->containsXclbin(new_xclbin_uuid)) {
-        // Even if we're attempting to load the same xclbin, if we need to
-        // add a PL Device Interface, then we should reset the device info
-        if (config->plDeviceIntf == nullptr && xdpDevice != nullptr)
-          return true;
-
         return false;
       }
     }
