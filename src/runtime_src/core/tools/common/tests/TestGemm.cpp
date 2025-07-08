@@ -53,9 +53,9 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
-    double npu_hclck_period = 1000000000.0 / (npu_hclock * 1000000); // MHz to ns
+    double npu_hclck_period = 1000000000.0 / (npu_hclock * 1000000); // NOLINT MHz to ns
 
-    const uint32_t* core_ptr = reinterpret_cast<const uint32_t*>(bo_result_map.data());
+    const auto* core_ptr = reinterpret_cast<const uint32_t*>(bo_result_map.data());
     double TOPS = 0.0;
     double total_cycle_count = 0.0;
 
@@ -66,7 +66,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
         ptree.put("status", XBValidateUtils::test_token_failed);
         return ptree;
       }
-      auto temp_TOPS_per_core = total_ops/(npu_hclck_period * cycle_count * 1000);
+      auto temp_TOPS_per_core = total_ops/(npu_hclck_period * cycle_count * 1000); // NOLINT 
       total_cycle_count = total_cycle_count + cycle_count;
       TOPS = TOPS + temp_TOPS_per_core;
       core_ptr++;
