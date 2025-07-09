@@ -170,6 +170,18 @@ get_total_devices(bool is_user) const
   return std::make_pair(num, num);
 }
 
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+system_linux::
+get_bdf_info(device::id_type id, bool is_user) const
+{
+    if (id < dev_list.size()) {
+      auto device = get_userpf_device(id);
+      return std::make_tuple(0, 0, 0, device->get_device_id());
+    }
+
+    throw std::runtime_error(" No such device with index '"+ std::to_string(id) + "'");
+}
+
 void
 system_linux::
 scan_devices(bool /*verbose*/, bool /*json*/) const

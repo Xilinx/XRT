@@ -181,15 +181,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
   return pt;
 }
 
-/*
- * currently edge supports only one device
- */
-static uint16_t
-deviceId2index()
-{
-  return 0;
-}
-
 std::string
 XBUtilities::str_available_devs(bool _inUserDomain)
 {
@@ -318,9 +309,8 @@ str2index(const std::string& str, bool _inUserDomain)
     auto device = get_device_internal(idx, _inUserDomain);
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    // if the bdf is zero, we are dealing with an edge device
-    if (std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0 && std::get<3>(bdf) == 0)
-      return deviceId2index();
+    if (std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0)
+      return std::get<3>(bdf);
   } catch (...) {
     /* not an edge device so safe to ignore this error */
   }
