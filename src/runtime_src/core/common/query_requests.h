@@ -603,6 +603,7 @@ struct runner : request
     throughput,
     latency,
     df_bandwidth,
+    gemm
   };
 
   using result_type = std::string;
