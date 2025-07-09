@@ -402,7 +402,7 @@ PYBIND11_MODULE(pyxrt, m) {
 
     py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Represents an enhanced version of xrt::bo with support for access mode");
 
-    py::enum_<xrt::ext::bo::access_mode>(pyextbo, "access_mode", "External buffer access mode")
+    py::enum_<xrt::ext::bo::access_mode>(ext, "access_mode", "External buffer access mode")
         .value("none", xrt::ext::bo::access_mode::none)
         .value("read", xrt::ext::bo::access_mode::read)
         .value("write", xrt::ext::bo::access_mode::write)
@@ -495,3 +495,4 @@ PYBIND11_MODULE(pyxrt, m) {
         }), "Wait for the specified timeout for the runlist to complete");
         
 }
+
