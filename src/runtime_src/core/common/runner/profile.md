@@ -235,6 +235,8 @@ then the recipe will execute one iteration.
     "verbose": false,      // disable reporting of cpu time
     "validate": true,      // validate after all iterations
     "runlist_threshold": 1 // when to use xrt::runlist
+    "latency": depth       // run the recipe in latency mode
+    "throughput": depth    // run the recipe in throughput mode
     "iteration" : {
     }
   }
@@ -245,20 +247,42 @@ one iteration.
 - `iterations` (default: `1`) specifies how many times the recipe
   should execute.
 - `verbose` (default: `true`) controls printing of metrics post all
-iterations. By default the profile execution will display to stdout
-elapsed, throughput, and latency computed from running the recipe
-specified number of iterations.
+  iterations. By default the profile execution will display to stdout
+  elapsed, throughput, and latency computed from running the recipe
+  specified number of iterations.
 - `validate` (default: `false`) enables validation per binding
   elements upon completion of all iterations.
 - `runlist_threshold` (default: `6`) specifies when to
-xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
-list of separate xrt::run objects. A value of `0` disables
-xrt::runlist completely, any other value is used to trigger when to
-use xrt::runlist based on corresponding number of recipe run
-objects.
+  xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
+  list of separate xrt::run objects. A value of `0` disables
+  xrt::runlist completely, any other value is used to trigger when to
+  use xrt::runlist based on corresponding number of recipe run objects.
+- `latency` (default: `1`) runs the recipe in latency mode. In latency
+  mode, the runner treats the runs specified in the recipe execution
+  section [recipe](recipe.md#execution) as a single runlist. This
+  runlist is executed `iterations` number of times, waiting for each
+  iteration to complete before starting the next.  The latency is
+  measured as as the average time it takes for a single iteration of
+  the runlist. If `depth` is greater than `1` then the runlist is
+  instantiated `depth` number of times but each list still executed one
+  at a time waiting for completion in between each execution.  The
+  `depth` should not affect latency, but is supported for consistency.
+- `throughput` (default: `1`) runs the recipe in throughput mode. In
+  throughput mode, the runner attempts to keep the hardware busy. It
+  treats the runs specified in the recipe execution section
+  [recipe](recipe.md#execution) as a single runlist. This runlist is
+  instantiated `depth` number of times and each runlist is submitted for
+  execution immediately without waiting for completion.  When a
+  runlist completes, it is immediately resubmitted.  The throughput is
+  measured as the number of runlists completed in a second.  The
+  `depth` is significant to ensure that the hardware is kept busy, a
+  `depth` of `1` is really measuring latency but still reported as 
+  throughput.
 
 The `iteration` sub-element is optional, but if present specifies what
-should happen before after each iteration of the run recipe.
+should happen before after each iteration of the run recipe.  Note,
+that the iteration sub-element is ignored if `latency` or `throughput`
+is specified.
 
 ```
   "execution" : {
