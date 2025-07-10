@@ -179,7 +179,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     //Calculate throughput
     auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
     throughput = itr_count / elapsedSecs;
-    latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
+    latency = (elapsedSecs / itr_count) * 1000000; // NOLINT convert s to us
   }
 
   if(XBU::getVerbose())
