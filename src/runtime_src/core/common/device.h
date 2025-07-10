@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
@@ -45,6 +46,12 @@ class device : public ishim
 {
 public:
   template <typename T> using span = xrt_core::span<T>;
+
+  class context_mgr {
+  public:
+    virtual ~context_mgr() = default;
+  };
+
 private:
   // class xclbin_map - container for loaded xclbins
   //
@@ -488,6 +495,12 @@ public:
     return m_usage_logger.get();
   }
 
+  /**
+   * get_context_manager() - get context manager, create one it is not there yet
+   */
+  std::shared_ptr<context_mgr>
+  get_context_mgr();
+
  private:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
@@ -501,6 +514,7 @@ public:
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
   mutable std::mutex m_mutex;
   std::shared_ptr<usage_metrics::base_logger> m_usage_logger = usage_metrics::get_usage_metrics_logger();
+  std::shared_ptr<context_mgr> m_ctx_mgr; // per device context manager
 };
 
 /**
