@@ -143,8 +143,8 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Buffer size: %f bytes") % buffer_size));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("No. of iterations: %f") % itr_count));
   }
-  double avg_latency = 0.0;
-  double avg_throughput = 0.0;
+  double latency = 0.0;
+  double throughput = 0.0;
   for (int run_num = 0; run_num < run_count; run_num++) {
     auto start = std::chrono::high_resolution_clock::now();
     try {
@@ -178,17 +178,13 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 
     //Calculate throughput
     auto elapsedSecs = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
-    double throughput = itr_count / elapsedSecs;
-    double latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
-    avg_latency += latency;
-    avg_throughput += throughput;
+    throughput = itr_count / elapsedSecs;
+    latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
   }
 
-  avg_latency = avg_latency / run_count;
-  avg_throughput = avg_throughput / run_count;
   if(XBU::getVerbose())
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % avg_latency));
-  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % avg_throughput));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT: %.1f us") % latency));
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % throughput));
   ptree.put("status", XBValidateUtils::test_token_passed);
 
   return ptree;
