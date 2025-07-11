@@ -1,0 +1,29 @@
+syntax = "proto2";
+import "google/protobuf/timestamp.proto"; // Import the Timestamp definitio
+
+package xbtracer_proto;
+
+message Arg {
+  required string name = 1;
+  required uint32 index = 2;
+  required string type = 3;
+  required uint32 size = 4;
+  required bytes value= 5;
+}
+
+message Func {
+  required string name = 1;
+  required google.protobuf.Timestamp timestamp = 2;
+  enum FuncStatus {
+    FUNC_ENTRY = 0;
+    FUNC_EXIT = 1;
+    FUNC_INJECT = 2;
+  }
+  required FuncStatus status = 3;
+  required uint32 pid = 4;
+  repeated Arg arg = 5;
+}
+
+message XrtExportApiCapture {
+  required string version = 1;
+}
