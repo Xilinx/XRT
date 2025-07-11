@@ -89,16 +89,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-#ifdef XDP_CLIENT_BUILD
-  (void)(hw_context_flow);
-  return db->addDevice("win_sysfspath");
-#else
-  if(hw_context_flow)
-    return db->addDevice("ve2_device");  //TODO: Both VE2 and Edge hw_context flow will reach here,
-                                         //      so we need to differentiate them later.
-  else
-    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id. Edge load device flow.
-#endif
+  return (db->getStaticInfo()).getDeviceContextUniqueId(handle);
 }
 
 void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) {
@@ -178,7 +169,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 #endif
 
   // Check for device interface
-  PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
+  PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(0);
 
   // Create gmio metadata
   if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
@@ -192,8 +183,14 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         // NOTE: If partition is not used, this value is zero.
         // This is later required for GMIO trace offload.
         uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
-        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
-                                           gmio.channelNum, gmio.streamId, gmio.burstLength);
+        // Get the column relative to partition.
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis (CR-1244525).
+        uint8_t relCol = (! hw_context_flow) ? gmio.shimColumn + startColShift : gmio.shimColumn;
+        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, relCol, gmio.channelNum,
+                                            gmio.streamId, gmio.burstLength);
       }
     }
 

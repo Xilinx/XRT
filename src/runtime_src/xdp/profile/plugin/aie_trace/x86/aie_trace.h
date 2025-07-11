@@ -35,7 +35,7 @@ namespace xdp {
       uint64_t checkTraceBufSize(uint64_t size) override;
       void pollTimers(uint64_t index, void* handle) override;
       void freeResources() override;
-      void* setAieDeviceInst(void* handle) override;
+      void* setAieDeviceInst(void* /*handle*/) override;
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       void parseMessages(uint8_t* messages);

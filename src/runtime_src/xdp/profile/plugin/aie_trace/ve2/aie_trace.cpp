@@ -32,31 +32,6 @@
 #include "core/common/api/hw_context_int.h"
 #include "shim_ve2/xdna_hwctx.h"
 
-namespace {
-  static void* fetchAieDevInst(void* devHandle)
-  {
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
-    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-    auto aieArray = hwctx_obj->get_aie_array();
-    return aieArray->get_dev();
-  }
-
-  static void* allocateAieDevice(void* devHandle)
-  {
-    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle));
-    if (!aieDevInst)
-      return nullptr;
-    return new xaiefal::XAieDev(aieDevInst, false);
-  }
-
-  static void deallocateAieDevice(void* aieDevice)
-  {
-    auto object = static_cast<xaiefal::XAieDev*>(aieDevice);
-    if (object != nullptr)
-      delete object;
-  }
-}  // end anonymous namespace
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -233,18 +208,10 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Validitate AIE device and runtime metrics
+   * Validate AIE device and runtime metrics
    ***************************************************************************/
   bool AieTrace_VE2Impl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
   {
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-          "Unable to get AIE device. AIE event trace will not be available.");
-      return false;
-    }
-
     // Make sure compiler trace option is available as runtime
     if (!metadata->getRuntimeMetrics()) {
       return false;
@@ -988,8 +955,14 @@ namespace xdp {
         && interfaceTileTraceFlushLocs.empty())
       return;
 
-    auto handle = metadata->getHandle();
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    if(aieDevInst == nullptr)
+    {
+      std::stringstream msg;
+      msg << "AIE device instance is not available. AIE Trace might be empty/incomplete as "
+          << "flushing won't be performed.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return;
+    }
 
     if (aie::isDebugVerbosity()) {
       std::stringstream msg;
@@ -1020,10 +993,6 @@ namespace xdp {
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
-      return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    if (!aieDevInst)
       return;
 
     // Only read first timer and assume common time domain across all tiles
@@ -1056,7 +1025,22 @@ namespace xdp {
    ***************************************************************************/
   void* AieTrace_VE2Impl::setAieDeviceInst(void* handle) 
   {
-    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    if(!hwctx_obj)
+      return nullptr;
+    auto aieArray = hwctx_obj->get_aie_array();
+    if(!aieArray)
+      return nullptr;
+    aieDevInst = aieArray->get_dev();
+
+    if(!aieDevInst) return nullptr;
+
+    // Allocate AIE device
+    aieDevice = new xaiefal::XAieDev(aieDevInst, false);
+
     return aieDevInst;
   }
+
 }  // namespace xdp

@@ -1286,10 +1286,6 @@ namespace xdp {
    /****************************************************************************
    * Set AIE Device Instance (Currently unused in Windows implementation)
    ***************************************************************************/
-  void* AieTrace_WinImpl::setAieDeviceInst(void* handle)
-  {
-    (void)handle;
-    return nullptr;
-  }
+  void* AieTrace_WinImpl::setAieDeviceInst(void* /*handle*/) {  return nullptr;}
 
 }  // namespace xdp
