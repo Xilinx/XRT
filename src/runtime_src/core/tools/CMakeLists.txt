@@ -16,6 +16,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     xrt_add_subdirectory(nagios)
   endif()
 endif()
+xrt_add_subdirectory(xbtracer)
 
 install (PROGRAMS "./common/xball"
   DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
