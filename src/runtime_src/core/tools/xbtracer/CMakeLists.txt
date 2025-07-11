@@ -40,3 +40,67 @@ add_dependencies(xbtracer_protobuf xbtracer_generated_code)
 if (MSVC)
   target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267)
 endif(MSVC)
+
+include_directories(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  ${XRT_BINARY_DIR}/gen
+)
+
+file(GLOB XBTRACER_COMMON_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/common/*.cpp"
+)
+
+add_library(xbtracer_common STATIC ${XBTRACER_COMMON_SRC_FILES})
+if (NOT WIN32)
+  target_link_libraries(xbtracer_common PRIVATE dl)
+endif (NOT WIN32)
+
+file(GLOB XBTRACER_WRAPPER_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/*.cpp"
+)
+
+add_library(xrt_wrapper SHARED ${XBTRACER_WRAPPER_SRC_FILES} ${ProtoHeaders})
+
+target_link_libraries(xrt_wrapper PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+add_dependencies(xrt_wrapper xbtracer_common xbtracer_protobuf xrt_coreutil)
+
+file(GLOB XBTRACER_CAPTURE_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/capture/*.cpp"
+)
+
+add_executable(xbtracer ${XBTRACER_CAPTURE_SRC_FILES})
+target_link_libraries(xbtracer PRIVATE xbtracer_common)
+add_dependencies(xbtracer xbtracer_common)
+
+file(GLOB XBREPLAY_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/replay/*.cpp"
+)
+add_executable(xbreplay ${XBREPLAY_SRC_FILES})
+target_link_libraries(xbreplay PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+if (NOT WIN32)
+  target_link_libraries(xbreplay PRIVATE pthread)
+endif (NOT WIN32)
+add_dependencies(xbreplay xbtracer_common xbtracer_protobuf xrt_coreutil)
+
+if (WIN32)
+include (detoursUtil.cmake)
+
+target_include_directories(xrt_wrapper PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xrt_wrapper PRIVATE ms_detours)
+add_dependencies(xrt_wrapper ms_detours)
+target_include_directories(xbtracer PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xbtracer PRIVATE ms_detours)
+add_dependencies(xbtracer ms_detours)
+endif(WIN32)
+
+# Install our built executable
+set(XBTRACER_TARGETS xbtracer xbreplay)
+install (TARGETS ${XBTRACER_TARGETS}
+  RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+set (XBTRACER_HELPER_SCRIPTS xbtracer.bat xbreplay.bat)
+install (PROGRAMS ${XBTRACER_HELPER_SCRIPTS}
+  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+install(TARGETS xrt_wrapper
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+)
