@@ -187,6 +187,7 @@ device(unsigned int didx)
   bool need_trace = false;
 
   xbtracer_init_constructor_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  xbtracer_trace_arg("didx", didx, func_entry);
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -260,6 +261,9 @@ operator xclDeviceHandle() const
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    xbtracer_trace_arg("dev_handle", ret_o, func_exit);
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 
   return ret_o;
@@ -378,6 +382,9 @@ register_xclbin(const xrt::xclbin& xclbin)
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_class_pimpl_with_arg(xclbin.get_handle(), func_entry, "xclbin_impl", 1);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -385,6 +392,10 @@ register_xclbin(const xrt::xclbin& xclbin)
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    std::string uuid_str = ret_o.to_string();
+    xbtracer_trace_arg_string("uuid", uuid_str, func_exit);
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 
   return ret_o;
