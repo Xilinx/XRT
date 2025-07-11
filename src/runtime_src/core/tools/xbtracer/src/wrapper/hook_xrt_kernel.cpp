@@ -16,6 +16,9 @@ group_id(int argno) const
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_arg("argno", argno, func_entry);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -23,6 +26,9 @@ group_id(int argno) const
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    xbtracer_trace_arg("group_id", ret_o, func_exit);
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 
   return ret_o;
@@ -160,6 +166,11 @@ kernel(const xrt::hw_context& ctx, const std::string& name)
   bool need_trace = false;
 
   xbtracer_init_constructor_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_class_pimpl_with_arg(ctx.get_handle(), func_entry, "ctx_impl", 1);
+
+    xbtracer_trace_arg_string("name", name, func_entry);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 

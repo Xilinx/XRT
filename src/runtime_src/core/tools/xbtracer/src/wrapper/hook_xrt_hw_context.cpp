@@ -199,6 +199,24 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_contex
   bool need_trace = false;
 
   xbtracer_init_constructor_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_class_pimpl_with_arg(device.get_handle(), func_entry, "dev_impl", 1);
+
+    xbtracer_proto::Arg* arg = func_entry.add_arg();
+    arg->set_name("uuid");
+    arg->set_index(2);
+    arg->set_type("std::string");
+    std::string uuid_str = xclbin_id.to_string();
+    arg->set_size(static_cast<uint32_t>(uuid_str.length()));
+    arg->set_value(uuid_str);
+
+    arg = func_entry.add_arg();
+    arg->set_name("mode");
+    arg->set_index(3);
+    arg->set_type("xrt::hw_context::access_mode");
+    arg->set_size(static_cast<uint32_t>(sizeof(mode)));
+    arg->set_value(std::string(reinterpret_cast<const char*>(&mode), sizeof(mode)));
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 

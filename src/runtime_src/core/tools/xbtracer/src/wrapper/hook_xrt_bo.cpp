@@ -23,6 +23,9 @@ size() const
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    xbtracer_trace_arg("size", ret_o, func_exit);
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 
   return ret_o;
@@ -135,13 +138,48 @@ sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  const char* ptr = nullptr;
+  if (need_trace) {
+    xbtracer_trace_arg("dir", static_cast<uint32_t>(dir), func_entry);
+    xbtracer_trace_arg("size", sz, func_entry);
+    xbtracer_trace_arg("offset", offset, func_entry);
+    // TODO: we always include content from the buffer for now
+    // We will need to add an option to allow user to specify if user wants
+    // to capture data or not.
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE || dir == XCL_BO_SYNC_BO_GMIO_TO_AIE) {
+      ptr = reinterpret_cast<const char*>(map());
+      if (!ptr) {
+        xbtracer_pcritical(std::string(func_s), ", failed to get mapped buffer.");
+      }
+      ptr += offset;
+      xbtracer_trace_mem_dump(ptr, sz, 1, "data", func_entry);
+    }
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
   (this->*ofunc)(dir, sz, offset);
 
+  if (need_trace) {
+    // TODO: we always include content from the buffer for now
+    // get output data here as xbtracer_init_member_func_exit_handle() will untrace
+    // this thread.
+    if (dir == XCL_BO_SYNC_BO_FROM_DEVICE || dir == XCL_BO_SYNC_BO_AIE_TO_GMIO) {
+      ptr = reinterpret_cast<const char*>(map());
+      if (!ptr) {
+        xbtracer_pcritical(std::string(func_s), ", failed to get mapped buffer.");
+      }
+      ptr += offset;
+    }
+  }
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    // TODO: we always include content from the buffer for now
+    if (dir == XCL_BO_SYNC_BO_FROM_DEVICE || dir == XCL_BO_SYNC_BO_AIE_TO_GMIO) {
+      xbtracer_trace_mem_dump(ptr, sz, 1, "data", func_exit);
+    }
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
 
@@ -472,6 +510,12 @@ bo(xclDeviceHandle dhdl, size_t size, xrt::bo::flags flags, xrt::memory_group gr
   bool need_trace = false;
 
   xbtracer_init_constructor_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_arg("dev_handle", "void*", dhdl, func_entry);
+    xbtracer_trace_arg("size", size, func_entry);
+    xbtracer_trace_arg("flags", flags, func_entry);
+    xbtracer_trace_arg("grp", grp, func_entry);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 

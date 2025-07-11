@@ -191,6 +191,10 @@ wait2(const std::chrono::milliseconds& timeout) const
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    uint64_t ms = timeout.count();
+    xbtracer_trace_arg("timeout", ms, func_entry);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -198,6 +202,10 @@ wait2(const std::chrono::milliseconds& timeout) const
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
+  if (need_trace) {
+    auto status32 = static_cast<uint32_t>(ret_o);
+    xbtracer_trace_arg("status", status32, func_exit);
+  }
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 
   return ret_o;
@@ -264,6 +272,10 @@ set_arg_at_index(int index, const void* value, size_t bytes)
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_arg("index", index, func_entry);
+    xbtracer_trace_mem_dump(value, bytes, 1, "value", func_entry);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -287,6 +299,10 @@ set_arg_at_index(int index, const xrt::bo& arg2)
   bool need_trace = false;
 
   xbtracer_init_member_func_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_arg("index", index, func_entry);
+    xbtracer_trace_class_pimpl_with_arg(arg2.get_handle(), func_entry, "bo_impl", 1);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
@@ -588,6 +604,9 @@ run(const xrt::kernel& krnl)
   bool need_trace = false;
 
   xbtracer_init_constructor_entry_handle(func_entry, need_trace, func_s, paddr_ptr);
+  if (need_trace) {
+    xbtracer_trace_class_pimpl_with_arg(krnl.get_handle(), func_entry, "kernel_impl", 1);
+  }
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
