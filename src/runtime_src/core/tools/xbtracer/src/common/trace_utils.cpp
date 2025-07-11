@@ -10,6 +10,17 @@
 #include <string>
 #include <common/trace_utils.h>
 
+const char*
+get_func_mname_from_signature(const char* s)
+{
+  for (uint32_t i = 0; i < get_size_of_func_mangled_map(); i += 2)
+  {
+    if (!strcmp(s, func_mangled_map[i]))
+      return func_mangled_map[++i];
+  }
+  return nullptr;
+}
+
 std::string
 xbtracer_get_timestamp_str()
 {

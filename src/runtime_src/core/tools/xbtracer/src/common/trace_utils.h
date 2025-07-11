@@ -39,6 +39,12 @@ close_library_os(lib_handle_type handle);
 proc_addr_type
 get_proc_addr_os(lib_handle_type handle, const char* symbol);
 
+size_t
+get_size_of_func_mangled_map();
+
+const char*
+get_func_mname_from_signature(const char* s);
+
 std::string
 xbtracer_get_timestamp_str();
 
