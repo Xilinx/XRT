@@ -15,7 +15,11 @@
 #include "func.pb.h"
 
 #include <wrapper/tracer.h>
+#ifdef _WIN32
+#include <core/common/windows/win_utils.h>
+#else
 #include <core/common/linux/linux_utils.h>
+#endif
 #include <common/trace_utils.h>
 
 namespace xrt::tools::xbtracer
