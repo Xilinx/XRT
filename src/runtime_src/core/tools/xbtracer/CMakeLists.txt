@@ -64,6 +64,12 @@ add_executable(xbreplay ${XBREPLAY_SRC_FILES})
 target_link_libraries(xbreplay PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
 add_dependencies(xbreplay xbtracer_common xbtracer_protobuf xrt_coreutil)
 
+add_executable(xbtracer_dump
+  src/misc/xbtracer_dump.cpp
+)
+target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES})
+add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
+
 if (WIN32)
 include (detoursUtil.cmake)
 
