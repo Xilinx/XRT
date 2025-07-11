@@ -11,10 +11,19 @@
 #include <string>
 #include <typeinfo>
 #include "common/trace_logger.h"
+#ifdef _WIN32
+#include "common/trace_utils_win.h"
+#endif
 
+#ifdef _WIN32
+inline constexpr const char* XBRACER_XRT_COREUTIL_LIB = "xrt_coreutil.dll";
+using lib_handle_type = HMODULE;
+using proc_addr_type = FARPROC;
+#else
 inline constexpr const char* XBRACER_XRT_COREUTIL_LIB = "libxrt_coreutil.so.2";
 using lib_handle_type = void*;
 using proc_addr_type = void*;
+#endif
 
 extern "C" const char* func_mangled_map[];
 
