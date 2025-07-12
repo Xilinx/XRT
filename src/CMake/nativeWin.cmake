@@ -31,6 +31,11 @@ include_directories(${Boost_INCLUDE_DIRS})
 add_compile_definitions("BOOST_LOCALE_HIDE_AUTO_PTR")
 add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 
+# Protobuf Libraries
+# Don't include finding protobuf module here as Windows build doesn't specify
+# where to the path to where the prebuilt protobuf is installed yet
+set(ENV{XRT_PROTOBUF_INSTALL} "${PROTOBUF_ROOT}")
+
 # warning C4996: 'std::allocator<void>': warning STL4009:
 # std::allocator<void> is deprecated in C++17. You can define
 # _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING or

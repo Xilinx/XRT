@@ -1,49 +1,94 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved
-# -----------------------------------------------------------------------------
-# Include the generated header files (e.g., version.h)
-include_directories(${XRT_BINARY_DIR}/gen)
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-set(XBTRACER_NAME "xbtracer")
+include (${XRT_SOURCE_DIR}/CMake/protobufUtil.cmake)
+if (NOT Protobuf_INCLUDE_DIR)
+  message("Protobuf is not found, skipping xbtracer")
+  return()
+else (NOT Protobuf_INCLUDE_DIR)
+  message("Protobuf is found, will build xbtracer")
+endif (NOT Protobuf_INCLUDE_DIR)
 
-if(WIN32)
-  set(XRT_HELPER_SCRIPTS "xbtracer" "xbtracer.bat")
-else()
-  set(XRT_HELPER_SCRIPTS "xbtracer")
-endif()
+include_directories (
+${Protobuf_INCLUDE_DIR}
+${CMAKE_CURRENT_BINARY_DIR}
+)
+# Generate Cpp files from Proto file
+file(GLOB PROTO_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.proto"
+)
 
-set(SRCS src/app/launcher.cpp)
+PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${PROTO_SRC_FILES})
+
+add_custom_target(xbtracer_generated_code DEPENDS ${ProtoSources} ${ProtoHeaders})
+
+add_library(xbtracer_protobuf STATIC ${ProtoSources} ${ProtoHeaders})
+add_dependencies(xbtracer_protobuf xbtracer_generated_code)
+if (MSVC)
+  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267)
+endif(MSVC)
+
+include_directories(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  ${XRT_BINARY_DIR}/gen
+)
+
+file(GLOB XBTRACER_COMMON_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/common/*.cpp"
+)
+
+add_library(xbtracer_common STATIC ${XBTRACER_COMMON_SRC_FILES})
+
+file(GLOB XBTRACER_WRAPPER_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/*.cpp"
+)
+
+add_library(xrt_wrapper SHARED ${XBTRACER_WRAPPER_SRC_FILES} ${ProtoHeaders})
+
+target_link_libraries(xrt_wrapper PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+add_dependencies(xrt_wrapper xbtracer_common xbtracer_protobuf xrt_coreutil)
+
+file(GLOB XBTRACER_CAPTURE_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/capture/*.cpp"
+)
+
+add_executable(xbtracer ${XBTRACER_CAPTURE_SRC_FILES})
+
+target_link_libraries(xbtracer PRIVATE xbtracer_common)
+add_dependencies(xbtracer xbtracer_common)
+
+file(GLOB XBREPLAY_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/replay/*.cpp"
+)
+add_executable(xbreplay ${XBREPLAY_SRC_FILES})
+target_link_libraries(xbreplay PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+add_dependencies(xbreplay xbtracer_common xbtracer_protobuf xrt_coreutil)
+
+add_executable(xbtracer_dump
+  src/misc/xbtracer_dump.cpp
+)
+target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES})
+add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
+
 if (WIN32)
-  list(APPEND SRCS src/app/getopt.c)
-endif()
+include (detoursUtil.cmake)
 
-add_executable(${XBTRACER_NAME} ${SRCS})
+target_include_directories(xrt_wrapper PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xrt_wrapper PRIVATE ms_detours)
+add_dependencies(xrt_wrapper ms_detours)
+target_include_directories(xbtracer PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xbtracer PRIVATE ms_detours)
+add_dependencies(xbtracer ms_detours)
+endif(WIN32)
 
-# Static build is a Linux / Ubuntu option only
-if (XRT_STATIC_BUILD)
-  add_executable(${XBTRACER_NAME}_static ${SRCS})
-  target_link_options(${XBTRACER_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
-  # Bypass FindBoost versions and just link explicitly with boost libraries
-  # The -static link option will pick the static libraries.
-  target_link_libraries(${XBTRACER_NAME}_static
-    PRIVATE
-    xrt_coreutil_static
-    boost_system
-    boost_program_options
-    -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
-    uuid
-    dl
-    )
-  set_target_properties(${XBTRACER_NAME}_static PROPERTIES INSTALL_RPATH "")
-  install(TARGETS ${XBTRACER_NAME}_static
-    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-endif()
-
-install(TARGETS ${XBTRACER_NAME}
+# Install our built executable
+set(XBTRACER_TARGETS xbtracer xbreplay)
+install (TARGETS ${XBTRACER_TARGETS}
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-
-install(PROGRAMS ${XRT_HELPER_SCRIPTS}
-  DESTINATION ${XRT_INSTALL_BIN_DIR}
-  COMPONENT ${XRT_BASE_COMPONENT})
-
-add_subdirectory(src/lib)
+set (XBTRACER_HELPER_SCRIPTS xbtracer.bat xbreplay.bat)
+install (PROGRAMS ${XBTRACER_HELPER_SCRIPTS}
+  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+install(TARGETS xrt_wrapper
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+)

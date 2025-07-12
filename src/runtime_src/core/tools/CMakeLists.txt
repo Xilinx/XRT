@@ -6,14 +6,6 @@ if (${XRT_BOOST_VERSION} VERSION_LESS 1.64.0)
 endif()
 
 xrt_add_subdirectory(xbutil2)
-if(CMAKE_VERSION VERSION_LESS "3.18.0")
-  # CPackDeb.cmake does not support -l{dir} which is required
-  # when packaging plugin library libxrt_capture.so 
-  message(WARNING "CMake version is less than 3.18.0, build of xbtracer/xbreplay disabled")
-else()
-  xrt_add_subdirectory(xbtracer)
-  xrt_add_subdirectory(xbreplay)
-endif()
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   xrt_add_subdirectory(xbmgmt2)
   if(NOT WIN32)
@@ -24,6 +16,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     xrt_add_subdirectory(nagios)
   endif()
 endif()
+xrt_add_subdirectory(xbtracer)
 
 install (PROGRAMS "./common/xball"
   DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
