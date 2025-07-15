@@ -21,6 +21,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/vp_base/info.h"

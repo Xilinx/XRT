@@ -18,11 +18,15 @@
 
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -35,11 +39,6 @@
 #include "core/common/api/hw_context_int.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)

@@ -312,7 +312,7 @@ namespace xdp {
       return;
 
     // Check type to minimize replacements
-    if (isInputSet(type, metricSet)) {
+    if (aie::isInputSet(type, metricSet)) {
       // Input or MM2S
       std::replace(events.begin(), events.end(), 
           XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
@@ -423,85 +423,6 @@ namespace xdp {
   inline uint32_t AieTrace_WinImpl::bcIdToEvent(int bcId)
   {
     return bcId + CORE_BROADCAST_EVENT_BASE;
-  }
-
-  bool AieTrace_WinImpl::isInputSet(const module_type type, const std::string metricSet)
-  {
-    // Catch memory tile sets
-    if (type == module_type::mem_tile) {
-      if ((metricSet.find("input") != std::string::npos)
-          || (metricSet.find("s2mm") != std::string::npos))
-        return true;
-      else
-        return false;
-    }
-
-    // Remaining covers interface tiles
-    if ((metricSet.find("input") != std::string::npos)
-        || (metricSet.find("mm2s") != std::string::npos))
-      return true;
-    else
-      return false;
-  }
-
-  /****************************************************************************
-   * Get port number based on event
-   ***************************************************************************/
-  uint8_t AieTrace_WinImpl::getPortNumberFromEvent(XAie_Events event)
-  {
-    switch (event) {
-    case XAIE_EVENT_PORT_RUNNING_7_CORE:
-    case XAIE_EVENT_PORT_STALLED_7_CORE:
-    case XAIE_EVENT_PORT_IDLE_7_CORE:
-    case XAIE_EVENT_PORT_RUNNING_7_PL:
-    case XAIE_EVENT_PORT_STALLED_7_PL:
-    case XAIE_EVENT_PORT_IDLE_7_PL:
-      return 7;
-    case XAIE_EVENT_PORT_RUNNING_6_CORE:
-    case XAIE_EVENT_PORT_STALLED_6_CORE:
-    case XAIE_EVENT_PORT_IDLE_6_CORE:
-    case XAIE_EVENT_PORT_RUNNING_6_PL:
-    case XAIE_EVENT_PORT_STALLED_6_PL:
-    case XAIE_EVENT_PORT_IDLE_6_PL:
-      return 6;
-    case XAIE_EVENT_PORT_RUNNING_5_CORE:
-    case XAIE_EVENT_PORT_STALLED_5_CORE:
-    case XAIE_EVENT_PORT_IDLE_5_CORE:
-    case XAIE_EVENT_PORT_RUNNING_5_PL:
-    case XAIE_EVENT_PORT_STALLED_5_PL:
-    case XAIE_EVENT_PORT_IDLE_5_PL:
-      return 5;
-    case XAIE_EVENT_PORT_RUNNING_4_CORE:
-    case XAIE_EVENT_PORT_STALLED_4_CORE:
-    case XAIE_EVENT_PORT_IDLE_4_CORE:
-    case XAIE_EVENT_PORT_RUNNING_4_PL:
-    case XAIE_EVENT_PORT_STALLED_4_PL:
-    case XAIE_EVENT_PORT_IDLE_4_PL:
-      return 4;
-    case XAIE_EVENT_PORT_RUNNING_3_CORE:
-    case XAIE_EVENT_PORT_STALLED_3_CORE:
-    case XAIE_EVENT_PORT_IDLE_3_CORE:
-    case XAIE_EVENT_PORT_RUNNING_3_PL:
-    case XAIE_EVENT_PORT_STALLED_3_PL:
-    case XAIE_EVENT_PORT_IDLE_3_PL:
-      return 3;
-    case XAIE_EVENT_PORT_RUNNING_2_CORE:
-    case XAIE_EVENT_PORT_STALLED_2_CORE:
-    case XAIE_EVENT_PORT_IDLE_2_CORE:
-    case XAIE_EVENT_PORT_RUNNING_2_PL:
-    case XAIE_EVENT_PORT_STALLED_2_PL:
-    case XAIE_EVENT_PORT_IDLE_2_PL:
-      return 2;
-    case XAIE_EVENT_PORT_RUNNING_1_CORE:
-    case XAIE_EVENT_PORT_STALLED_1_CORE:
-    case XAIE_EVENT_PORT_IDLE_1_CORE:
-    case XAIE_EVENT_PORT_RUNNING_1_PL:
-    case XAIE_EVENT_PORT_STALLED_1_PL:
-    case XAIE_EVENT_PORT_IDLE_1_PL:
-      return 1;
-    default:
-      return 0;
-    }
   }
 
   /****************************************************************************
@@ -736,7 +657,7 @@ namespace xdp {
     // Catch memory tiles
     if (type == module_type::mem_tile) {
       // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-      uint16_t eventNum = isInputSet(type, metricSet)
+      uint16_t eventNum = aie::isInputSet(type, metricSet)
           ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
           : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
 
@@ -763,7 +684,7 @@ namespace xdp {
     
     // Event is DMA_MM2S_stalled_lock or DMA_S2MM_stream_starvation
     // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-    uint16_t eventNum = isInputSet(type, metricSet)
+    uint16_t eventNum = aie::isInputSet(type, metricSet)
         ? ((channel == 0) ? EVENT_MEM_DMA_MM2S_0_STALLED_LOCK
                           : EVENT_MEM_DMA_MM2S_1_STALLED_LOCK)
         : ((channel == 0) ? EVENT_MEM_DMA_S2MM_0_STREAM_STARVATION

@@ -21,6 +21,16 @@
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+
 #include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <cstring>
@@ -34,15 +44,6 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
 #include "shim_ve2/xdna_hwctx.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/pl_device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
-#include "xdp/profile/plugin/aie_base/aie_base_util.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)

@@ -104,7 +104,7 @@ namespace xdp::aie::trace {
         continue;
 
       bool newPort = false;
-      auto portnum = getPortNumberFromEvent(event);
+      auto portnum = xdp::aie::getPortNumberFromEvent(event);
       uint8_t channelNum = portnum % 2;
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 

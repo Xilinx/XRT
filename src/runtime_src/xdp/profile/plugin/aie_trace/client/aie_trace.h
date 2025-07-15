@@ -52,8 +52,6 @@ namespace xdp {
       uint16_t getRelativeRow(uint16_t absRow);
       uint32_t bcIdToEvent(int bcId);
       
-      bool isInputSet(const module_type type, const std::string metricSet);
-
       void configStreamSwitchPorts(const tile_type& tile, const XAie_LocType loc,
                                    const module_type type, const std::string metricSet, 
                                    const uint8_t channel0, const uint8_t channel1,
