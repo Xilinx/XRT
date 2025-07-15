@@ -896,9 +896,20 @@ class module_elf : public module_impl
       else
         kernel_name = kname.substr(0, pos);
 
-      xrt_core::module_int::kernel_info k_info;
+      // Each kernel can have multiple sub kernels
+      // So kernel info might have already been fetched and inserted from previous
+      // sub kernel entry
+      for (const auto& kinfo : m_kernels_info) {
+        if (kinfo.props.name == kernel_name) {
+          // kernel already exists
+          return {kernel_name, subkernel_name};
+        }
+      }
+
+      // kernel entry is not found
       // construct kernel args and properties and cache them
       // this info is used at the time of xrt::kernel object creation
+      xrt_core::module_int::kernel_info k_info;
       k_info.args = construct_kernel_args(kname);
 
       // fill kernel properties
@@ -1216,9 +1227,11 @@ class module_elf_aie2p : public module_elf
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
       return { m_ctrl_packet_map[id].size(), xrt_core::patcher::buf_type::ctrldata};
     }
-    else if (m_save_buf_exist && (section_name == patcher::to_string(xrt_core::patcher::buf_type::preempt_save)))
+    else if (m_save_buf_exist &&
+             section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_save)) != std::string::npos)
       return { m_save_buf.size(), xrt_core::patcher::buf_type::preempt_save };
-    else if (m_restore_buf_exist && (section_name == patcher::to_string(xrt_core::patcher::buf_type::preempt_restore)))
+    else if (m_restore_buf_exist &&
+             section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_restore)) != std::string::npos)
       return { m_restore_buf.size(), xrt_core::patcher::buf_type::preempt_restore };
     else if (!m_pdi_buf_map.empty() &&
              section_name.find(patcher::to_string(xrt_core::patcher::buf_type::pdi)) != std::string::npos) {
