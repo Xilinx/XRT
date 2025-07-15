@@ -1569,12 +1569,15 @@ class module_elf_aie2ps : public module_elf
       for (auto sec_idx : sec_ids) {
         const auto& sec = m_elfio.sections[sec_idx];
         auto name = sec->get_name();
-        auto [col, page] = get_column_and_page(name);
 
-        if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos)
+        if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrltext)) != std::string::npos) {
+          auto [col, page] = get_column_and_page(name);
           ctrl_map[id][col][page].ctrltext = sec;
-        else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos)
+        }
+        else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrldata)) != std::string::npos) {
+          auto [col, page] = get_column_and_page(name);
           ctrl_map[id][col][page].ctrldata = sec;
+        }
       }
     }
 
