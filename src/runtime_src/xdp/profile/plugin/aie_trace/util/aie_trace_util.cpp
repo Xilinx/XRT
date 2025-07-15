@@ -17,7 +17,13 @@
 #define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
+
+#include "core/common/message.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -26,12 +32,6 @@
 #include <memory>
 #include <regex>
 #include <set>
-
-#include "core/common/message.h"
-#include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/device/pl_device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
