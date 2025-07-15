@@ -53,6 +53,7 @@ write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
   return ret_o;
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 std::vector<char>
 xrt::aie::device::
 read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
@@ -77,6 +78,7 @@ read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
 
   return ret_o;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 uint32_t
 xrt::aie::device::

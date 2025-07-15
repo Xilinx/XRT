@@ -3,6 +3,7 @@
 
 #include <wrapper/hook_xrt.h>
 
+// NOLINTBEGIN(cppcoreguidelines-rvalue-reference-param-not-moved)
 void
 xrt::queue::
 add_task(xrt::queue::task&& ev)
@@ -25,6 +26,7 @@ add_task(xrt::queue::task&& ev)
   xbtracer_init_member_func_exit(this->m_impl, func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(cppcoreguidelines-rvalue-reference-param-not-moved)
 
 xrt::queue::
 queue()

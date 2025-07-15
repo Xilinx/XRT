@@ -151,6 +151,7 @@ add(const xrt::run& run)
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
 
+// NOLINTBEGIN(cppcoreguidelines-rvalue-reference-param-not-moved)
 void
 xrt::runlist::
 add(xrt::run&& run)
@@ -173,6 +174,7 @@ add(xrt::run&& run)
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(cppcoreguidelines-rvalue-reference-param-not-moved)
 
 void
 xrt::runlist::

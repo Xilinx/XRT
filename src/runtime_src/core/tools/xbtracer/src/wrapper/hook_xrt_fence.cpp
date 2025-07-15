@@ -147,6 +147,7 @@ fence(const xrt::device& device, xrt::pid_type pid, xrt::fence::export_handle eh
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
 
+// NOLINTBEGIN(bugprone-copy-constructor-init)
 xrt::fence::
 fence(const xrt::fence& other)
 {
@@ -168,6 +169,7 @@ fence(const xrt::fence& other)
   xbtracer_init_constructor_exit_handle(func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(bugprone-copy-constructor-init)
 
 xrt::fence::
 fence(std::unique_ptr<xrt_core::fence_handle> handle)
