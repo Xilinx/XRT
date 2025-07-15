@@ -117,6 +117,7 @@ user_event()
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
 
+// NOLINTBEGIN(*-member-init)
 xrt::profile::user_range::
 user_range()
 {
@@ -138,7 +139,9 @@ user_range()
   xbtracer_init_func_exit(func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(*-member-init)
 
+// NOLINTBEGIN(*-member-init)
 xrt::profile::user_range::
 user_range(const char* label, const char* tooltip)
 {
@@ -160,3 +163,4 @@ user_range(const char* label, const char* tooltip)
   xbtracer_init_func_exit(func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(*-member-init)

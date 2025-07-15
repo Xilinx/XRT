@@ -1416,6 +1416,8 @@ operator++()
   return ret_o;
 }
 
+// NOLINTBEGIN(bugprone-copy-constructor-init)
+// This is wrapper function
 xrt::xclbin_repository::iterator::
 iterator(const xrt::xclbin_repository::iterator& arg1)
 {
@@ -1437,6 +1439,7 @@ iterator(const xrt::xclbin_repository::iterator& arg1)
   xbtracer_init_constructor_exit_handle(func_exit, need_trace, func_s);
   xbtracer_write_protobuf_msg(func_exit, need_trace);
 }
+// NOLINTEND(bugprone-copy-constructor-init)
 
 xrt::xclbin_repository::iterator::value_type
 xrt::xclbin_repository::iterator::
