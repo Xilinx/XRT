@@ -41,6 +41,7 @@
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace {
@@ -363,7 +364,7 @@ namespace xdp {
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
 
-      if ((type == module_type::core) && !aie::trace::isDmaSet(metricSet)) {
+      if ((type == module_type::core) && !aie::isDmaSet(metricSet)) {
         // If we're not looking at DMA events, then don't display the DMA
         // If core is not active (i.e., DMA-only tile), then ignore this tile
         if (tile.active_core)
@@ -736,7 +737,7 @@ namespace xdp {
         else {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
-          auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
+          auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
             if (aie::isInputSet(type, metricSet))
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
@@ -747,7 +748,7 @@ namespace xdp {
 
         // Configure memory trace events
         for (int i = 0; i < memoryEvents.size(); i++) {
-          bool isCoreEvent = aie::trace::isCoreModuleEvent(memoryEvents[i]);
+          bool isCoreEvent = aie::isCoreModuleEvent(memoryEvents[i]);
           XAie_ModuleType mod = isCoreEvent ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
           auto TraceE = memory.traceEvent();
@@ -790,7 +791,7 @@ namespace xdp {
           uint16_t phyEvent = 0;
 
           // Start
-          if (aie::trace::isCoreModuleEvent(traceStartEvent)) {
+          if (aie::isCoreModuleEvent(traceStartEvent)) {
             auto bcId = memoryTrace->getStartBc();
             coreToMemBcMask |= (1 << bcId);
 
@@ -807,7 +808,7 @@ namespace xdp {
           }
 
           // Stop
-          if (aie::trace::isCoreModuleEvent(traceEndEvent)) {
+          if (aie::isCoreModuleEvent(traceEndEvent)) {
             auto bcId = memoryTrace->getStopBc();
             coreToMemBcMask |= (1 << bcId);
           
@@ -949,7 +950,7 @@ namespace xdp {
         if (shimTrace->start() != XAIE_OK)
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
-        auto channelNum = aie::trace::getChannelNumberFromEvent(interfaceEvents.at(0));
+        auto channelNum = aie::getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet))
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;

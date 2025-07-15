@@ -18,12 +18,7 @@
 
 #include "xdp/profile/plugin/aie_debug/edge/aie_debug.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
+#include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>

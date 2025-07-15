@@ -31,6 +31,7 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -443,66 +444,6 @@ namespace xdp {
       return false;
   }
 
-  bool AieTrace_WinImpl::isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    // AIE tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
-      return true;
-    // Interface tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
-      return true;
-    // Memory tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
-        && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
-      return true;
-
-    return false;
-  }
-
-  bool AieTrace_WinImpl::isPortRunningEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> runningEvents = {
-      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
-      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
-      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
-      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
-      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
-      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
-      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
-      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
-      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
-    };
-
-    return (runningEvents.find(event) != runningEvents.end());
-  }
-
-  /****************************************************************************
-   * Check if core module event
-   ***************************************************************************/
-  bool AieTrace_WinImpl::isCoreModuleEvent(const XAie_Events event)
-  {
-    return ((event >= XAIE_EVENT_NONE_CORE) 
-            && (event <= XAIE_EVENT_INSTR_ERROR_CORE));
-  }
-
-  /****************************************************************************
-   * Check if metric set contains DMA events
-   * TODO: Traverse events vector instead of based on name
-   ***************************************************************************/
-  bool AieTrace_WinImpl::isDmaSet(const std::string metricSet)
-  {
-    if ((metricSet.find("dma") != std::string::npos)
-        || (metricSet.find("s2mm") != std::string::npos)
-        || (metricSet.find("mm2s") != std::string::npos))
-      return true;
-    return false;
-  }
-  
   /****************************************************************************
    * Get port number based on event
    ***************************************************************************/
@@ -564,68 +505,6 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Get channel number based on event
-   * NOTE: This only covers AIE Tiles and Interface Tiles
-   ***************************************************************************/
-  int8_t AieTrace_WinImpl::getChannelNumberFromEvent(XAie_Events event)
-  {
-    switch (event) {
-    case XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_START_TASK_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM:
-    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM:
-    case XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL:
-    case XAIE_EVENT_DMA_S2MM_0_START_TASK_PL:
-    case XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL:
-    case XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL:
-    case XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL:
-    case XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL:
-    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL:
-    case XAIE_EVENT_DMA_MM2S_0_START_TASK_PL:
-    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL:
-    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL:
-    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL:
-    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL:
-      return 0;
-    case XAIE_EVENT_DMA_S2MM_1_START_TASK_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_START_TASK_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM:
-    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM:
-    case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL:
-    case XAIE_EVENT_DMA_S2MM_1_START_TASK_PL:
-    case XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL:
-    case XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL:
-    case XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL:
-    case XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL:
-    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL:
-    case XAIE_EVENT_DMA_MM2S_1_START_TASK_PL:
-    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL:
-    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL:
-    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL:
-    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL:
-      return 1;
-    default:
-      return -1;
-    }
-  }
-
-  /****************************************************************************
    * Configure stream switch event ports for monitoring purposes
    ***************************************************************************/
   void
@@ -644,11 +523,11 @@ namespace xdp {
     for (size_t i=0; i < events.size(); ++i) {
       // Ensure applicable event
       auto event = events.at(i);
-      if (!isStreamSwitchPortEvent(event))
+      if (!xdp::aie::isStreamSwitchPortEvent(event))
         continue;
 
       //bool newPort = false;
-      auto portnum = getPortNumberFromEvent(event);
+      auto portnum = xdp::aie::getPortNumberFromEvent(event);
       uint8_t channelNum = portnum % 2;
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
@@ -722,22 +601,6 @@ namespace xdp {
           config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);            
         }
       }
-
-      //auto switchPortRsc = switchPortMap[portnum];
-
-      // Event options:
-      //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
-      // XAie_Events ssEvent;
-      // if (isPortRunningEvent(event))
-      //  switchPortRsc->getSSRunningEvent(ssEvent);
-      // else
-      //  switchPortRsc->getSSStalledEvent(ssEvent);
-      // events.at(i) = ssEvent;
-
-      // if (newPort) {
-      //  switchPortRsc->start();
-      //  streamPorts.push_back(switchPortRsc);
-      // }
     }
 
     //switchPortMap.clear();
@@ -753,7 +616,7 @@ namespace xdp {
                                       aie_cfg_base& config)
   {
     // Only needed for core/memory modules and metric sets that include DMA events
-    if (!isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
+    if (!aie::isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
       return {};
 
     std::vector<XAie_Events> comboEvents;
@@ -803,7 +666,7 @@ namespace xdp {
                                            const module_type type, const std::string metricSet)
   {
     // Only needed for core module and metric sets that include DMA events
-    if (!isDmaSet(metricSet) || (type != module_type::core))
+    if (!aie::isDmaSet(metricSet) || (type != module_type::core))
       return;
 
     // Set masks for group events
@@ -1262,7 +1125,7 @@ namespace xdp {
         else {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
-          auto channelNum = getChannelNumberFromEvent(memoryEvents.at(0));
+          auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
             if (aie::isInputSet(type, metricSet))
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
@@ -1287,7 +1150,7 @@ namespace xdp {
 
         // Configure memory trace events
         for (uint8_t i = 0; i < memoryEvents.size(); i++) {
-          bool isCoreEvent = isCoreModuleEvent(memoryEvents[i]);
+          bool isCoreEvent = xdp::aie::isCoreModuleEvent(memoryEvents[i]);
 
           if (isCoreEvent) {
             if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, bcId, memoryEvents[i]) != XAIE_OK)
@@ -1444,7 +1307,7 @@ namespace xdp {
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, interfaceTileTraceEndEvent) != XAIE_OK)
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
-        auto channelNum = getChannelNumberFromEvent(interfaceEvents.at(0));
+        auto channelNum = aie::getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet))
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;

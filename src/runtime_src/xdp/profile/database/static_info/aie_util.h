@@ -89,6 +89,9 @@ namespace xdp::aie {
   bool isInputSet(const module_type type, const std::string metricSet);
   
   XDP_CORE_EXPORT
+  bool isDmaSet(const std::string metricSet);
+
+  XDP_CORE_EXPORT
   uint8_t getRelativeRow(uint8_t absRow, uint8_t rowOffset);
 
   XDP_CORE_EXPORT

@@ -330,6 +330,19 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
+   * Check if metric set contains DMA events
+   * TODO: Traverse events vector instead of based on name
+   ***************************************************************************/
+  bool isDmaSet(const std::string metricSet)
+  {
+    if ((metricSet.find("dma") != std::string::npos)
+        || (metricSet.find("s2mm") != std::string::npos)
+        || (metricSet.find("mm2s") != std::string::npos))
+      return true;
+    return false;
+  }
+ 
+  /****************************************************************************
    * Get relative row of given tile
    ***************************************************************************/
   uint8_t 

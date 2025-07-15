@@ -47,11 +47,11 @@ namespace xdp::aie::profile {
       // Ensure applicable event
       auto startEvent = startEvents.at(i);
       auto endEvent = endEvents.at(i);
-      if (!aie::profile::isStreamSwitchPortEvent(startEvent))
+      if (!aie::isStreamSwitchPortEvent(startEvent))
         continue;
 
       bool newPort = false;
-      auto portnum = getPortNumberFromEvent(startEvent);
+      auto portnum = xdp::aie::getPortNumberFromEvent(startEvent);
       uint8_t channel = (portnum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store
@@ -137,11 +137,11 @@ namespace xdp::aie::profile {
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
       XAie_Events ssEvent;
-      if (aie::profile::isPortRunningEvent(startEvent))
+      if (aie::isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
-      else if (aie::profile::isPortTlastEvent(startEvent))
+      else if (aie::isPortTlastEvent(startEvent))
         switchPortRsc->getSSTlastEvent(ssEvent);
-      else if (aie::profile::isPortStalledEvent(startEvent))
+      else if (aie::isPortStalledEvent(startEvent))
         switchPortRsc->getSSStalledEvent(ssEvent);
       else
         switchPortRsc->getSSIdleEvent(ssEvent);
