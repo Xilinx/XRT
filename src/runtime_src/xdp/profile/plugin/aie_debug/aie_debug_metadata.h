@@ -31,6 +31,9 @@
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
+#include "xdp/profile/plugin/aie_base/generations/aie1_registers.h"
+#include "xdp/profile/plugin/aie_base/generations/aie2_registers.h"
+#include "xdp/profile/plugin/aie_base/generations/aie2ps_registers.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 extern "C" {
