@@ -522,13 +522,13 @@ public:
   }
 
   virtual const buf&
-  get_preempt_save() const
+  get_preempt_save(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
 
   virtual const buf&
-  get_preempt_restore() const
+  get_preempt_restore(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -1127,6 +1127,12 @@ class module_elf_aie2p : public module_elf
   // Below maps store data for each ctrl code id
   std::map<uint32_t, instr_buf> m_instr_buf_map;
   std::map<uint32_t, control_packet> m_ctrl_packet_map;
+  std::map<uint32_t, buf> m_save_buf_map;
+  std::map<uint32_t, buf> m_restore_buf_map;
+
+  // Elf with save/restore sections uses different opcode
+  // Below variable is set to true if these sections exist
+  bool m_preemption_exist = false;
 
   // New Elfs have multiple PDI sections of format .pdi.*
   // Below map has pdi section symbol name as key and section data as value
@@ -1135,12 +1141,6 @@ class module_elf_aie2p : public module_elf
   std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
   // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
   std::map<std::string, xrt::bo> m_pdi_bo_map;
-
-  buf m_save_buf;
-  bool m_save_buf_exist = false;
-
-  buf m_restore_buf;
-  bool m_restore_buf_exist = false;
   
   size_t m_scratch_pad_mem_size = 0;
   size_t m_ctrl_scratch_pad_mem_size = 0;
@@ -1184,19 +1184,40 @@ class module_elf_aie2p : public module_elf
   }
 
   // Extract preempt_save/preempt_restore buffer from ELF sections
-  // return true if section exist
-  bool
-  initialize_save_restore_buf(buf& buf, xrt_core::patcher::buf_type type)
+  void
+  initialize_save_restore_buf(const std::map<uint32_t, std::vector<uint32_t>>& id_secs_map)
   {
-    for (const auto& sec : m_elfio.sections) {
-      auto name = sec->get_name();
-      if (name.find(patcher::to_string(type)) == std::string::npos)
-        continue;
+    // iterate over all secs in each grp/id and collect save/restore section
+    for (const auto& [id, sec_ids] : id_secs_map) {
+      bool save = false;
+      bool restore = false;
+      for (auto sec_idx : sec_ids) {
+        const auto& sec = m_elfio.sections[sec_idx];
+        auto name = sec->get_name();
+        if (name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_save)) != std::string::npos) {
+          buf save_buf;
+          save_buf.append_section_data(sec);
+          m_save_buf_map.emplace(id, save_buf);
+          save = true;
+        }
+        else if (name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_restore)) != std::string::npos) {
+          buf restore_buf;
+          restore_buf.append_section_data(sec);
+          m_restore_buf_map.emplace(id, restore_buf);
+          restore = true;
+        }
+      }
 
-      buf.append_section_data(sec.get());
-      return true;
+      if (save != restore)
+        throw std::runtime_error("Invalid elf because preempt save and restore is not paired");
+
+      // If both save and restore buffers are found, set preemption exist flag
+      // At present this flag is set at Elf level assuming if one kernel + sub kernel has these
+      // sections, all others will have these sections
+      // TODO : Move this logic to group or kernel + sub kernel level
+      if (save && restore)
+        m_preemption_exist = true;
     }
-    return false;
   }
 
   // Extract ctrlpkt preemption buffers from ELF sections
@@ -1227,12 +1248,16 @@ class module_elf_aie2p : public module_elf
         throw std::runtime_error("Invalid section passed, section info is not cached\n");
       return { m_ctrl_packet_map[id].size(), xrt_core::patcher::buf_type::ctrldata};
     }
-    else if (m_save_buf_exist &&
-             section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_save)) != std::string::npos)
-      return { m_save_buf.size(), xrt_core::patcher::buf_type::preempt_save };
-    else if (m_restore_buf_exist &&
-             section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_restore)) != std::string::npos)
-      return { m_restore_buf.size(), xrt_core::patcher::buf_type::preempt_restore };
+    else if (section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_save)) != std::string::npos) {
+      if (m_save_buf_map.find(id) == m_save_buf_map.end())
+        throw std::runtime_error("Invalid section passed, section info is not cached\n");
+      return { m_save_buf_map[id].size(), xrt_core::patcher::buf_type::preempt_save };
+    }
+    else if (section_name.find(patcher::to_string(xrt_core::patcher::buf_type::preempt_restore)) != std::string::npos) {
+      if (m_restore_buf_map.find(id) == m_restore_buf_map.end())
+        throw std::runtime_error("Invalid section passed, section info is not cached\n");
+      return { m_restore_buf_map[id].size(), xrt_core::patcher::buf_type::preempt_restore };
+    }
     else if (!m_pdi_buf_map.empty() &&
              section_name.find(patcher::to_string(xrt_core::patcher::buf_type::pdi)) != std::string::npos) {
       if (m_pdi_buf_map.find(section_name) == m_pdi_buf_map.end())
@@ -1341,17 +1366,10 @@ public:
     : module_elf{elf}
     , m_program{elf}
   {
-    parse_group_sections(::is_group_elf(xrt_core::elf_int::get_elfio(elf)));
+    auto id_secs_map = parse_group_sections(::is_group_elf(xrt_core::elf_int::get_elfio(elf)));
     initialize_buf(xrt_core::patcher::buf_type::ctrltext, m_instr_buf_map);
     initialize_buf(xrt_core::patcher::buf_type::ctrldata, m_ctrl_packet_map);
-
-    m_save_buf_exist = initialize_save_restore_buf(m_save_buf,
-                                                   xrt_core::patcher::buf_type::preempt_save);
-    m_restore_buf_exist = initialize_save_restore_buf(m_restore_buf,
-                                                      xrt_core::patcher::buf_type::preempt_restore);
-    if (m_save_buf_exist != m_restore_buf_exist)
-      throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
-
+    initialize_save_restore_buf(id_secs_map);
     initialize_pdi_buf();
     initialize_ctrlpkt_pm_bufs();
     initialize_arg_patchers();
@@ -1363,7 +1381,7 @@ public:
     if (!m_pdi_buf_map.empty())
       return ERT_START_NPU_PREEMPT_ELF;
 
-    if (m_save_buf_exist && m_restore_buf_exist)
+    if (m_preemption_exist)
       return ERT_START_NPU_PREEMPT;
 
     return ERT_START_NPU;
@@ -1439,15 +1457,21 @@ public:
   }
 
   const buf&
-  get_preempt_save() const override
+  get_preempt_save(uint32_t id) const override
   {
-    return m_save_buf;
+    auto it = m_save_buf_map.find(id);
+    if (it != m_save_buf_map.end())
+      return it->second;
+    return buf::get_empty_buf();
   }
 
   const buf&
-  get_preempt_restore() const override
+  get_preempt_restore(uint32_t id) const override
   {
-    return m_restore_buf;
+    auto it = m_restore_buf_map.find(id);
+    if (it != m_restore_buf_map.end())
+      return it->second;
+    return buf::get_empty_buf();
   }
 
   uint32_t
@@ -2026,10 +2050,10 @@ class module_sram : public module_impl
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
-    auto preempt_save_data = parent->get_preempt_save();
+    auto preempt_save_data = parent->get_preempt_save(m_ctrl_code_id);
     auto preempt_save_data_size = preempt_save_data.size();
 
-    auto preempt_restore_data = parent->get_preempt_restore();
+    auto preempt_restore_data = parent->get_preempt_restore(m_ctrl_code_id);
     auto preempt_restore_data_size = preempt_restore_data.size();
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
@@ -2701,9 +2725,9 @@ get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, 
       case xrt_core::patcher::buf_type::ctrldata :
         return handle->get_ctrlpkt(id).size();
       case xrt_core::patcher::buf_type::preempt_save :
-        return handle->get_preempt_save().size();
+        return handle->get_preempt_save(id).size();
       case xrt_core::patcher::buf_type::preempt_restore :
-        return handle->get_preempt_restore().size();
+        return handle->get_preempt_restore(id).size();
       default :
         throw std::runtime_error("Unknown buffer type passed");
     }
@@ -2747,11 +2771,11 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz, const std::vector<std
       break;
     }
     case xrt_core::patcher::buf_type::preempt_save : {
-      inst = &(hdl->get_preempt_save());
+      inst = &(hdl->get_preempt_save(id));
       break;
     }
     case xrt_core::patcher::buf_type::preempt_restore : {
-      inst = &(hdl->get_preempt_restore());
+      inst = &(hdl->get_preempt_restore(id));
       break;
     }
     default :
