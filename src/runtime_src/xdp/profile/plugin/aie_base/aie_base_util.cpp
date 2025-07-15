@@ -60,23 +60,19 @@ namespace xdp::aie {
   {
     if (mod == xdp::module_type::core) {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::cm_num_counters
-                : (xdp::aie::isNPU3(hwGen) ? npu3::cm_num_counters
-                : aie2::cm_num_counters));
+                : aie2::cm_num_counters);
     }
     if (mod == xdp::module_type::dma) {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_counters
-                : (xdp::aie::isNPU3(hwGen) ? npu3::mm_num_counters
-                : aie2::mm_num_counters));
+                : aie2::mm_num_counters);
     }
     if (mod == xdp::module_type::shim) {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_counters
-                : (xdp::aie::isNPU3(hwGen) ? npu3::shim_num_counters
-                : aie2::shim_num_counters));
+                : aie2::shim_num_counters);
     }
     if (mod == xdp::module_type::mem_tile) {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_counters
-                : (xdp::aie::isNPU3(hwGen) ? npu3::mem_num_counters
-                : aie2::mem_num_counters));
+                : aie2::mem_num_counters);
     }
     return 0;
   }
