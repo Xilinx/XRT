@@ -14,6 +14,7 @@ static
 bool
 xbreplay_func_proto_to_json(const xbtracer_proto::Func& func_msg, std::string& json_str)
 {
+#ifdef XRT_XBTRACER_ENABLE_JSON
   google::protobuf::util::JsonPrintOptions json_options;
   json_options.add_whitespace = true;
   json_options.always_print_primitive_fields = true;
@@ -25,6 +26,11 @@ xbreplay_func_proto_to_json(const xbtracer_proto::Func& func_msg, std::string& j
     return false;
   }
   return true;
+#else
+  (void)func_msg;
+  (void)json_str;
+  return false;
+#endif
 }
 
 void
