@@ -81,12 +81,20 @@ if (NOT WIN32)
   target_link_libraries(xbreplay PRIVATE pthread)
 endif (NOT WIN32)
 add_dependencies(xbreplay xbtracer_common xbtracer_protobuf xrt_coreutil)
+# TODO: when buiding with yocto for APU in CI, the status return from message to jason convertion function
+# provided from protobuf built from yocto doesn't match the one in the absl library, which results in
+# build failure. After fixing this issue in yocto APU build, we can always print message as JSON.
+# for now, we by default disable it, as it is not the key feature in the tracer/replay prototype, and replay
+# only tries to dump JSON message when it fails to replay a function.
+if (XRT_XBTRACER_ENABLE_JSON)
+  target_compile_options(xbreplay PRIVATE XBTRACER_PROTOBUF_HAS_JASON)
 
-add_executable(xbtracer_dump
-  src/misc/xbtracer_dump.cpp
-)
-target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES})
-add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
+  add_executable(xbtracer_dump
+    src/misc/xbtracer_dump.cpp
+  )
+  target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES})
+  add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
+endif (XRT_XBTRACER_ENABLE_JSON)
 
 if (WIN32)
 include (detoursUtil.cmake)
