@@ -155,6 +155,12 @@ namespace xdp {
     double findClockRate(xrt::xclbin);
 
     XclbinInfoType getXclbinType(xrt::xclbin& xclbin);
+    // API to get the unique device id of stored PL Device Intf
+    // NOTE: In register xclbin flow, this API returns 0 as device Id to refer
+    // to PL Device Intf for aie only partitions.
+    // Otherwise, it returns same plDeviceId to find PL Device Intf
+    PLDeviceIntf* getPlDeviceIntf(const ConfigInfo* curConfig);
+
     // This common private updateDevice functionality takes an xdp::Device
     // pointer to handle any connection to the PL side as necessary.
     // Some plugins do not require any PL control and will pass in nullptr

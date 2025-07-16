@@ -433,7 +433,7 @@ namespace xdp {
     if (!config)
       return nullptr ;
 
-    return config->plDeviceIntf ;
+    return getPlDeviceIntf(config) ;
   }
 
   // Should only be called from Alveo hardware emulation
@@ -1627,6 +1627,24 @@ namespace xdp {
     // For REGISTER_XCLBIN_STYLE and APP_STYLE_NOT_SET
     // handle is an HW Ctx Impl pointer
     return getHwCtxImplUid(handle);
+  }
+
+  PLDeviceIntf* VPStaticDatabase::getPlDeviceIntf(const ConfigInfo* curConfig)
+  {
+    // In LOAD_XCLBIN_STYLE, the deviceId is the same as the plDeviceId
+    if (AppStyle::REGISTER_XCLBIN_STYLE != getAppStyle())
+      return curConfig->plDeviceIntf;
+
+    // In REGISTER_XCLBIN_STYLE, the PL Device Interface is always deviceId 0.
+    // This API is used to query the PL Device Interface by AIE_ONLY partitions's hw contexts.
+    uint64_t plDeviceId = 0;
+    if (deviceInfo.find(plDeviceId) == deviceInfo.end())
+      return nullptr;
+    ConfigInfo* config = deviceInfo[plDeviceId]->currentConfig() ;
+    if (!config)
+      return nullptr;
+
+    return config->plDeviceIntf;
   }
 
   // Return true if we should reset the device information.
