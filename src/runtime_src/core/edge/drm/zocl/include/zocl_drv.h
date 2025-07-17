@@ -24,6 +24,7 @@
 #include <drm/drm_mm.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+#include <linux/of_reserved_mem.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 #include <drm/drm_gem_dma_helper.h>
 #else
@@ -149,6 +150,11 @@ struct drm_zocl_bo {
 	unsigned int                   mem_index;
 	uint32_t                       flags;
 	unsigned int                   user_flags;
+	// new members to track the memory region
+	void				*vaddr;
+	dma_addr_t			phys;
+	size_t				size;
+	int				mem_region;
 };
 
 struct drm_zocl_copy_bo {
