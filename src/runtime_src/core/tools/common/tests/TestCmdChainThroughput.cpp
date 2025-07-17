@@ -33,13 +33,9 @@ TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
     runner.wait();
 
     auto report = nlohmann::json::parse(runner.get_report());
-    auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-    auto iterations = report["cpu"]["iterations"].get<int>();
-    auto runs = report["resources"]["runs"].get<int>();
+    auto throughput = report["cpu"]["throughput"].get<double>();
 
-    const double throughput = ((iterations * runs) / elapsed_us) * 1e6;
-
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % throughput));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops/s") % throughput));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch (const std::exception& ex)

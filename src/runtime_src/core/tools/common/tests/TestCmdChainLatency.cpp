@@ -33,13 +33,7 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
     runner.wait();
 
     auto report = nlohmann::json::parse(runner.get_report());
-    auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-    auto iterations = report["cpu"]["iterations"].get<int>();
-    auto runs = report["resources"]["runs"].get<int>();
-
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total runs: %d") % runs));
-
-    const double latency = (elapsed_us / (iterations * runs)); //convert s to us
+    auto latency = report["cpu"]["latency"].get<double>();
 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
     ptree.put("status", XBValidateUtils::test_token_passed);
