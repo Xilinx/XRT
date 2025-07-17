@@ -26,7 +26,7 @@ namespace xdp {
       void freeResources() override;
       void pollTimers(uint64_t index, void* handle) override;
       uint64_t checkTraceBufSize(uint64_t size) override;
-      void* setAieDeviceInst(void* /*handle*/) override;
+      void* setAieDeviceInst(void*, uint64_t) override;
 
       void modifyEvents(module_type type, io_type subtype, 
                         const std::string metricSet, uint8_t channel, 

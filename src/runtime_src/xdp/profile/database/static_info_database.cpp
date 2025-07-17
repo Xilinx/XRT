@@ -53,8 +53,6 @@ namespace xdp {
     , runSummary(nullptr)
     , systemDiagram("")
     , softwareEmulationDeviceName("default_sw_emu_device")
-    , aieDevInst(nullptr)
-    , aieDevice(nullptr)
     , deallocateAieDevice(nullptr)
   {
 #ifdef _WIN32
@@ -69,9 +67,10 @@ namespace xdp {
     if (runSummary != nullptr)
       runSummary->write(false);
 
-    // AIE specific functions
-    if (aieDevice != nullptr && deallocateAieDevice != nullptr)
-      deallocateAieDevice(aieDevice);
+    for(auto& aieDevice : aieDevices) {
+      if (aieDevice.second != nullptr && deallocateAieDevice != nullptr)
+        deallocateAieDevice(aieDevice.second);
+    }
   }
 
   // ***********************************************************************
@@ -1283,23 +1282,31 @@ namespace xdp {
   }
 
   void* VPStaticDatabase::getAieDevInst(std::function<void* (void*)> fetch,
-                                        void* devHandle)
+                                        void* devHandle, uint64_t deviceID)
   {
     std::lock_guard<std::mutex> lock(aieLock) ;
+    if(aieDeviceInstances.find(deviceID) != aieDeviceInstances.end())
+      return aieDeviceInstances[deviceID] ;
 
-    aieDevInst = fetch(devHandle) ;
-    return aieDevInst ;
+    auto aieDevInst = fetch(devHandle) ;
+    return aieDeviceInstances[deviceID] = aieDevInst;
   }
 
   void* VPStaticDatabase::getAieDevice(std::function<void* (void*)> allocate,
                                        std::function<void (void*)> deallocate,
-                                       void* devHandle)
+                                       void* devHandle, uint64_t deviceID)
   {
     std::lock_guard<std::mutex> lock(aieLock) ;
+    if(aieDevices.find(deviceID) != aieDevices.end())
+      return aieDevices[deviceID];
+
+    if(aieDeviceInstances[deviceID] == nullptr)
+      return nullptr;
 
     deallocateAieDevice = deallocate ;
-    aieDevice = allocate(devHandle) ;
-    return aieDevice ;
+    auto aieDevice = allocate(devHandle) ;
+    return aieDevices[deviceID] = aieDevice;
+
   }
 
   // ************************************************************************

@@ -30,6 +30,47 @@
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() ==
+       xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr;
+      auto aieArray = drv->getAieArray();
+      if (!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
+    else {  // For Hw_context flow
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if(!hwctx_obj)
+        return nullptr;
+      auto aieArray = hwctx_obj->get_aie_array_shared();
+      if(!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle));
+    if (!aieDevInst)
+      return nullptr;
+    return new xaiefal::XAieDev(aieDevInst, false);
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    auto object = static_cast<xaiefal::XAieDev*>(aieDevice);
+    if (object != nullptr)
+      delete object;
+  }
+}  // end anonymous namespace
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -980,36 +1021,10 @@ namespace xdp {
   /****************************************************************************
    * Set AIE device instance
    ***************************************************************************/
-  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle) 
+  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle, uint64_t deviceID)
   {
-    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == 
-       xdp::AppStyle::LOAD_XCLBIN_STYLE) {
-      auto drv = ZYNQ::shim::handleCheck(handle);
-      if (!drv)
-        return nullptr;
-      auto aieArray = drv->getAieArray();
-      if (!aieArray)
-        return nullptr;
-      aieDevInst = aieArray->get_dev();
-    }
-    else {  // For Hw_context flow
-      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
-      if(!hwctx_obj)
-        return nullptr;
-      auto aieArray = hwctx_obj->get_aie_array_shared();
-      if(!aieArray)
-        return nullptr;
-      aieDevInst = aieArray->get_dev();
-    }
-
-    if(!aieDevInst) return nullptr;
-
-    //Allocate AIE device
-    aieDevice =  new xaiefal::XAieDev(aieDevInst, false);
-
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceID));
+    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceID));
     return aieDevInst;
   }
-
 }  // namespace xdp

@@ -86,7 +86,7 @@ void AieTrace_x86Impl::updateDevice() {
 // No CMA checks on x86
 uint64_t AieTrace_x86Impl::checkTraceBufSize(uint64_t size) { return size; }
 
-void* AieTrace_x86Impl::setAieDeviceInst(void* /*handle*/) { return nullptr; }
+void* AieTrace_x86Impl::setAieDeviceInst(void*, uint64_t) { return nullptr; }
 
 module_type AieTrace_x86Impl::getTileType(uint16_t absRow) {
   if (absRow == 0)

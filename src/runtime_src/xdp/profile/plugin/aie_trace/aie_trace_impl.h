@@ -87,7 +87,7 @@ namespace xdp {
      * @param handle Pointer to device handle
      * @return Pointer to AIE device instance
      */
-    virtual void* setAieDeviceInst(void* handle) = 0;
+    virtual void* setAieDeviceInst(void* handle, uint64_t deviceID) = 0;
   };
 
 } // namespace xdp

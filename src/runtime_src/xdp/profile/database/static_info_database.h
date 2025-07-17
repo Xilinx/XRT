@@ -112,9 +112,10 @@ namespace xdp {
     std::mutex hwCtxImplUIDMapLock;
 
     // AIE device (Supported devices only)
-    void* aieDevInst = nullptr ; // XAie_DevInst
-    void* aieDevice = nullptr ; // xaiefal::XAieDev
     std::function<void (void*)> deallocateAieDevice = nullptr ;
+    // AIE device instances mapped to unique device id.
+    std::map<uint64_t, void*> aieDeviceInstances;
+    std::map<uint64_t, void*> aieDevices; // xaiefal::XAieDev
     boost::property_tree::ptree aieMetadata;
     std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
@@ -396,10 +397,10 @@ namespace xdp {
     XDP_CORE_EXPORT uint64_t getNumTracePLIO(uint64_t deviceId) ;
     XDP_CORE_EXPORT uint64_t getNumAIETraceStream(uint64_t deviceId) ;
     XDP_CORE_EXPORT void* getAieDevInst(std::function<void* (void*)> fetch,
-                                   void* devHandle) ;
+                                   void* devHandle, uint64_t deviceID=0) ;
     XDP_CORE_EXPORT void* getAieDevice(std::function<void* (void*)> allocate,
                                   std::function<void (void*)> deallocate,
-                                  void* devHandle) ;
+                                  void* devHandle, uint64_t deviceID=0) ;
 
     XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool checkDisk);
     XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;

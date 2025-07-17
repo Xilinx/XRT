@@ -209,7 +209,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
 
   if (AIEData.metadata->getRuntimeMetrics()) {
-    std::string configFile = "aie_event_runtime_config.json";
+    std::string configFile = "aie_event_runtime_config_" + std::to_string(deviceID) + ".json";
     VPWriter *writer = new AieTraceConfigWriter(configFile.c_str(), deviceID);
     writers.push_back(writer);
     (db->getStaticInfo())
@@ -294,7 +294,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
       AIEData.metadata);
 #elif XDP_VE2_BUILD
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
   if(!devInst) {
     xrt_core::message::send(severity_level::warning, "XRT",
       "Unable to get AIE device instance. AIE event trace will not be available.");
@@ -308,7 +308,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       ,
       AIEData.metadata->getNumStreams(), devInst);
 #else
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
   if(!devInst) {
     xrt_core::message::send(severity_level::warning, "XRT",
       "Unable to get AIE device instance. AIE event trace will not be available.");

@@ -21,7 +21,7 @@ namespace xdp {
     void flushTraceModules() override;
     void pollTimers(uint64_t index, void* handle) override;
     void freeResources() override;
-    void* setAieDeviceInst(void* handle) override;
+    void* setAieDeviceInst(void* handle, uint64_t deviceID) override;
 
   private:
     uint64_t checkTraceBufSize(uint64_t size) override;

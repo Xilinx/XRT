@@ -32,6 +32,31 @@
 #include "core/common/api/hw_context_int.h"
 #include "shim_ve2/xdna_hwctx.h"
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
+    auto aieArray = hwctx_obj->get_aie_array();
+    return aieArray->get_dev();
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle));
+    if (!aieDevInst)
+      return nullptr;
+    return new xaiefal::XAieDev(aieDevInst, false);
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    auto object = static_cast<xaiefal::XAieDev*>(aieDevice);
+    if (object != nullptr)
+      delete object;
+  }
+}  // end anonymous namespace
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -1023,24 +1048,11 @@ namespace xdp {
   /****************************************************************************
    * Set AIE device instance
    ***************************************************************************/
-  void* AieTrace_VE2Impl::setAieDeviceInst(void* handle) 
+  void* AieTrace_VE2Impl::setAieDeviceInst(void* handle, uint64_t deviceID)
   {
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-    auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-    if(!hwctx_obj)
-      return nullptr;
-    auto aieArray = hwctx_obj->get_aie_array();
-    if(!aieArray)
-      return nullptr;
-    aieDevInst = aieArray->get_dev();
-
-    if(!aieDevInst) return nullptr;
-
-    // Allocate AIE device
-    aieDevice = new xaiefal::XAieDev(aieDevInst, false);
-
-    return aieDevInst;
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceID));
+    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceID));
+    return aieDevInst
   }
 
 }  // namespace xdp
