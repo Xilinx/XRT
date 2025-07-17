@@ -593,30 +593,42 @@ struct ert_access_valid_cmd {
  * struct ert_ctx_health_data: interpretation of payload for an ert packet
  *                             which has context health data
  *
- * @version:          context health data version (current 0.0)
- * @txn_op_idx:       index of last TXN control code executed
- * @ctx_pc:           program counter for that context
- * @fatal_error_type: the fatal error type if context crashes
- * @aie_data_size:    size in bytes of the aie_data
- * @aie_data:         binary blob dumpped from aie partition
+ * @version:                    context health data version (current 0.0)
+ * @txn_op_idx:                 index of last TXN control code executed
+ * @ctx_pc:                     program counter for that context
+ * @fatal_error_type:           the fatal error type if context crashes
+ * @fatal_error_exception_type: LX7 exception type
+ * @fatal_error_exception_pc:   LX7 program counter at the time of the exception
+ * @fatal_error_app_module:     module name where the exception occurred
+ * @app_health_report_size:     size in bytes of the entire app health report
+ * @app_health_report:          binary blob of the entire app health report (contains aie states)
  *
- * Field              Default value  Comment
- * txn_op_idx:        0xFFFFFFFF     there is no txn control code is running or the
- *                                   last txn control code op idx is not captured
- * ctx_pc:            0              context .text program counter is not captured
- * fatal_error_type:  0              no fatal error or fatal error is not captured
- * aie_data_size:     0              aie register data is not captured
+ * Field                       Default value  Comment
+ * txn_op_idx:                 0xFFFFFFFF     there is no txn control code is running or the
+ *                                            last txn control code op idx is not captured
+ * ctx_pc:                     0              context .text program counter is not captured
+ * fatal_error_type:           0              no fatal error or fatal error is not captured
+ * fatal_error_exception_type: 0
+ * fatal_error_exception_pc:   0
+ * fatal_error_app_module:     0
+ *
+ * app_health_report_size:     0              The entire app health report size
  *
  * Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
  * packet starting from payload will have the following information.
  */
 struct ert_ctx_health_data {
+  // platform agnositic fields
   uint32_t version;
   uint32_t txn_op_idx;
   uint32_t ctx_pc;
   uint32_t fatal_error_type;
-  uint32_t aie_data_size;
-  uint32_t aie_data[];
+  uint32_t fatal_error_exception_type;
+  uint32_t fatal_error_exception_pc;
+  uint32_t fatal_error_app_module;
+  // platform dependent
+  uint32_t app_health_report_size;
+  uint32_t app_health_report[];
 };
 
 /**
