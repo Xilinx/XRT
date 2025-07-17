@@ -1382,9 +1382,14 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
 
   if (ret == 0) //Timeout occured
     return std::cv_status::timeout;
+  //Interrupt received
+  if (pfd.revents & POLLIN) {
+    int pending = 0;
+    if (::read(handle, &pending, sizeof(pending)) == -1)
+      throw error(errno, "Interrupt received but read failed");
 
-  if (pfd.revents & POLLIN) //Interrupt received
     return std::cv_status::no_timeout;
+  }
 
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
