@@ -1052,7 +1052,7 @@ namespace xdp {
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceID));
     aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceID));
-    return aieDevInst
+    return aieDevInst;
   }
 
 }  // namespace xdp
