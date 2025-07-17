@@ -9,6 +9,7 @@
 # This module sets the following variables in your project::
 #
 #   @PROJECT_NAME@_FOUND              - true if @PROJECT_NAME@ and all required components found on the system
+#   @PROJECT_NAME@_HIP_FOUND          - true if @PROJECT_NAME@ was compiled with HIP support
 #   @PROJECT_NAME@_VERSION            - VERSION of this package in x.y.z format
 #   @PROJECT_NAME@_CMAKE_DIR          - Directory where this cmake module was found
 #   @PROJECT_NAME@_INCLUDE_DIRS       - Directory where @PROJECT_NAME@ headers are located.
@@ -16,6 +17,7 @@
 #   @PROJECT_NAME@_CORE_LIBRARIES     - libraries to link against.
 #   @PROJECT_NAME@_COREUTIL_LIBRARIES - libraries to link against.
 #   @PROJECT_NAME@_OPENCL_LIBRARIES   - libraries to link against.
+#   @PROJECT_NAME@_HIP_LIBRARIES      - libraries to link against.
 #   @PROJECT_NAME@_SWEMU_LIBRARIES    - libraries to link against.
 #   @PROJECT_NAME@_HWEMU_LIBRARIES    - libraries to link against.
 @PACKAGE_INIT@
@@ -40,6 +42,11 @@ set(@PROJECT_NAME@_COREUTIL_LIBRARIES @PROJECT_NAME@::xrt_coreutil)
 set(@PROJECT_NAME@_OPENCL_LIBRARIES @PROJECT_NAME@::xilinxopencl @PROJECT_NAME@::xrt++)
 set(@PROJECT_NAME@_SWEMU_LIBRARIES @PROJECT_NAME@::xrt_swemu)
 set(@PROJECT_NAME@_HWEMU_LIBRARIES @PROJECT_NAME@::xrt_hwemu)
+
+if (XRT_ENABLE_HIP)
+ set(@PROJECT_NAME@_HIP_LIBRARIES @PROJECT_NAME@::xrt_hip)
+ set(@PROJECT_NAME@_HIP_FOUND True)
+endif()
 
 set(@PROJECT_NAME@_FOUND True)
 
