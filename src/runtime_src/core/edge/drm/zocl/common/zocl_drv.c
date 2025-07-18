@@ -96,6 +96,12 @@ static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_d
 	int ret = 0;
 	int i;
 
+	if (num_regions <= 0) {
+		DRM_DEBUG("Invalid or no zocl attached memory regions\n");
+		return -EINVAL;
+	}
+	zdev->num_regions = num_regions;
+
 	for (i = 0; i < num_regions && i < ZOCL_MAX_MEM_REGIONS; i++) {
 		struct device *child_dev;
 		child_dev = devm_kzalloc(&pdev->dev, sizeof(struct device), GFP_KERNEL);
@@ -613,11 +619,6 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	struct drm_zocl_dev *zdev;
 	struct drm_device *dev;
 	struct device *mem_dev;
-#if 0
-        struct drm_gem_dma_object* cma_obj;
-        dma_addr_t dma_handle;
-        void* vaddr;
-#endif
 	int npages;
 	if (IS_ERR(obj) || !obj)
 		return;
@@ -639,9 +640,8 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			    zocl_obj->mem_index);
 			/* free resources associated with a CMA GEM object */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			if (zocl_obj->mem_region >= 0) {
+			if (zocl_obj->mem_region >= 0)
 				mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
-			}
 			else
 				mem_dev = dev->dev;
 			if (zocl_obj->vaddr && mem_dev) {
@@ -654,15 +654,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 #else
 			drm_gem_cma_free_object(obj);
 #endif
-#if 0
-                        // Need to verify and cleanup below code 
-	                cma_obj = to_drm_gem_dma_obj(obj);
-                        if(cma_obj){
-	                        dma_handle = cma_obj->dma_addr;
-                                vaddr = cma_obj->vaddr;
-                                dma_free_coherent(obj->dev->dev, obj->size, vaddr, dma_handle);
-                        }
-#endif
+
 		} else {
 			if (zocl_obj->mm_node) {
 				mutex_lock(&zdev->mm_lock);
@@ -1308,7 +1300,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Initialize the cma mem reserved nodes */
+	/* Initialize the zocl attached cma memory regions */
 	ret = zocl_cma_mem_region_init(zdev, pdev);
 	if (ret)
 		DRM_WARN("Failed to initialize the cma mem reserved nodes\n");

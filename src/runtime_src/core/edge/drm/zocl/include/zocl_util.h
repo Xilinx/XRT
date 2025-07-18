@@ -206,6 +206,7 @@ struct drm_zocl_dev {
 	int			 full_overlay_id;
 	struct drm_zocl_slot	*pr_slot[MAX_PR_SLOT_NUM];
 	u32                     slot_mask;
+	int						num_regions;
 	struct zocl_mem_region	mem_regions[ZOCL_MAX_MEM_REGIONS];
 };
 

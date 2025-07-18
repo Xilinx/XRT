@@ -150,7 +150,6 @@ struct drm_zocl_bo {
 	unsigned int                   mem_index;
 	uint32_t                       flags;
 	unsigned int                   user_flags;
-	// new members to track the memory region
 	void				*vaddr;
 	dma_addr_t			phys;
 	size_t				size;
