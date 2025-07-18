@@ -49,8 +49,8 @@ namespace xdp {
 class PLDeviceIntf;
 class AIETraceLogger;
 
-#define S2MM_TRACE   2
-#define MM2S_CONTROL 3
+#define MM2S_CONTROL 2
+#define S2MM_TRACE   3
 
 #define debug_stream if(!m_debug); else std::cout
 
