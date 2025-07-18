@@ -41,6 +41,9 @@ endif(GIT_FOUND)
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
+message("-- LINUX_FLAVOR = ${LINUX_FLAVOR}")
+message("-- LINUX_KERNEL_VERSION = ${LINUX_KERNEL_VERSION}")
+
 # Set up what components of XRT to build
 # Indicate that we are building for edge
 include(CMake/components.cmake)
@@ -98,8 +101,9 @@ include (CMake/findpackage.cmake)
 if (DEFINED CROSS_COMPILE)
   set (LINUX_FLAVOR ${flavor})
   set (LINUX_VERSION ${version})
-  include (CMake/cpackLin.cmake)
 endif()
+
+include (CMake/cpackLin.cmake)
 
 if (DEFINED ENV{DKMS_FLOW})
   set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")

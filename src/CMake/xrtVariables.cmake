@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   if (WIN32)
     set (XRT_INSTALL_DIR "xrt")
     set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}")

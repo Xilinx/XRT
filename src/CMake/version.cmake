@@ -98,14 +98,14 @@ install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   install(FILES ${PROJECT_BINARY_DIR}/gen/version.json
     DESTINATION ${XRT_INSTALL_DIR}
     COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall
-if (XRT_ALVEO AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (NOT WIN32))
+if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32))
   # Copied over from dkms.cmake. TODO: cleanup
   set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
   install(FILES ${PROJECT_BINARY_DIR}/gen/version.h

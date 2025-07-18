@@ -10,7 +10,7 @@ string(TOLOWER ${PROJECT_NAME} LOWER_NAME)
 
 # Generate xrt-config.cmake
 # For use by xrt consumers (using cmake) to import xrt libraries
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   configure_package_config_file (
     ${XRT_SOURCE_DIR}/CMake/config/xrt.fp.in
     ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake

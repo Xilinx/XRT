@@ -53,7 +53,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
-elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
+elseif (DEFINED XRT_AIE_BUILD AND (NOT XRT_EDGE))
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/x86")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace")
   set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
@@ -104,7 +104,7 @@ else()
     )
   endif()
     
-  if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
+  if (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/edge")
     set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace")
     set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")

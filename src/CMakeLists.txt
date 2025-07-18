@@ -27,7 +27,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${XRT_SOURCE_DIR}/CMake/")
 # This makes aiebu submodule use ELFIO from XRT
 set(AIEBU_ELFIO_SRC_DIR "${XRT_SOURCE_DIR}/runtime_src/core/common/elf")
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   # Enable testing for this directory and below.  This command should be
   # in the source directory root because ctest expects to find a test
   # file in the build directory root.

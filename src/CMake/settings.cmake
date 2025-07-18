@@ -11,11 +11,6 @@ message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")
 
-set(XRT_NATIVE_BUILD "yes")
-if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
-  set(XRT_NATIVE_BUILD "no")
-endif()
-
 if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   set(XRT_WARN_OPTS
   -Wall
@@ -33,10 +28,6 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
    )
 else()
   set(XRT_WARN_OPTS -Wall)
-endif()
-
-if (DEFINED ENV{XRT_NATIVE_BUILD})
-  set(XRT_NATIVE_BUILD $ENV{XRT_NATIVE_BUILD})
 endif()
 
 if (DISABLE_ABI_CHECK)

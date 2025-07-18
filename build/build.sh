@@ -6,6 +6,9 @@ OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+ROOTDIR=$(dirname ${BUILDDIR})
+SRCDIR=${ROOTDIR}/src
+
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
@@ -132,7 +135,7 @@ while [ $# -gt 0 ]; do
             noert=1
             shift
             ;;
-        -dbg)
+        -dbg|-debug)
             dbg=1
             opt=0
             shift
@@ -149,9 +152,8 @@ while [ $# -gt 0 ]; do
             ;;
         -edge)
             shift
-            edge=1
-            opt=0
-            dbg=0
+            cmake_flags+=" -DXRT_EDGE=1"
+            BUILDDIR=${BUILDDIR}/edge
             ;;
         -hip)
             shift
@@ -174,7 +176,7 @@ while [ $# -gt 0 ]; do
 	    noert=1
 	    cmake_flags+=" -DXRT_NPU=1"
             ;;
-        -opt)
+        -opt|-release)
             dbg=0
             opt=1
             shift
@@ -243,7 +245,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -verbose)
-            verbose="VERBOSE=1"
+            verbose="--verbose"
             shift
             ;;
         -install_prefix)
@@ -268,25 +270,26 @@ if [[ $((npu_build + alveo_build + base_build)) > 1 ]]; then
     exit 1
 fi
 
-debug_dir=${DEBUG_DIR:-Debug}
-release_dir=${REL_DIR:-Release}
-edge_dir=${EDGE_DIR:-Edge}
+# The CMake configuration and build directories are under ${BUILDDIR}
+# For edge builds the BUILDDIR is location of this script appended
+# with '/edge'.  For pcie builds, the BUILDDIR is same location as
+# this script.
+debug_dir=${BUILDDIR}/${DEBUG_DIR:-Debug}
+release_dir=${BUILDDIR}/${REL_DIR:-Release}
 
 # By default compile with warnings as errors.
 # Update every time CMake is generating makefiles.
 # Disable with '-disable-werror' option.
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
-# set CMAKE_INSTALL_PREFIX
+# Set CMAKE_INSTALL_PREFIX.  The XRT_INSTALL_PREFIX should be removed
+# and replaced with CMAKE_INSTALL_PREFIX in the few files where it is
+# used.
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
-here=$PWD
-cd $BUILDDIR
-
 if [[ $clean == 1 ]]; then
-    echo $PWD
-    echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
-    /bin/rm -rf $debug_dir $release_dir $edge_dir
+    echo "/bin/rm -rf $debug_dir $release_dir"
+    /bin/rm -rf $debug_dir $release_dir
     exit 0
 fi
 
@@ -332,70 +335,72 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
 fi
 
 #If git modules config file exist then try to clone them
-GIT_MODULES=$BUILDDIR/../.gitmodules
+GIT_MODULES=${SRCDIR}/.gitmodules
 if [[ -f "$GIT_MODULES" && $init_submodule == 1 ]]; then
-    cd $BUILDDIR/../
     echo "Updating Git XRT submodule, use -noinit option to avoid updating"
     git submodule update --init --recursive
-    cd $BUILDDIR
 fi
 
 if [[ $dbg == 1 ]]; then
-  mkdir -p $debug_dir
-  cd $debug_dir
-
   cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
 
   if [[ $nocmake == 0 ]]; then
     if [[ $xclbinutil == 1 ]]; then
       # xclbinutil only build
-      cmake_flags+=" -DXRT_SOURCE_DIR=$BUILDDIR/../src"
-      echo "$CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil"
-      time $CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil
+      cmake_flags+=" -DXRT_SOURCE_DIR=${SRCDIR}"
+      echo "$CMAKE -B $debug_dir $cmake_flags ${SRCDIR}/runtime_src/tools/xclbinutil"
+      $CMAKE -B $debug_dir $cmake_flags ${SRCDIR}/runtime_src/tools/xclbinutil
     else
       # Full build
-      echo "$CMAKE $cmake_flags ../../src"
-      time $CMAKE $cmake_flags ../../src
+      echo "$CMAKE -B $debug_dir $cmake_flags ${SRCDIR}"
+      $CMAKE -B $debug_dir $cmake_flags ${SRCDIR}
     fi
   fi
 
-  echo "make -j $jcore $verbose DESTDIR=$PWD install"
-  time make -j $jcore $verbose DESTDIR=$PWD install
+  # build
+  echo "cmake --build $debug_dir --config Debug -j $jcore $verbose"
+  cmake --build $debug_dir --config Debug -j $jcore $verbose
 
+  # install to staging area
+  echo "DESTDIR=$debug_dir cmake --install $debug_dir --config Debug $verbose"
+  DESTDIR=$debug_dir cmake --install $debug_dir --config Debug $verbose
+  
   if [[ $noctest == 0 ]]; then
-      time ctest --output-on-failure
+      ctest --test-dir $debug_dir --output-on-failure
   fi
-  cd $BUILDDIR
 fi
 
 if [[ $opt == 1 ]]; then
-  mkdir -p $release_dir
-  cd $release_dir
-
   cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
 
   if [[ $nocmake == 0 ]]; then
     if [[ $xclbinutil == 1 ]]; then
       # xclbinutil only build
-      cmake_flags+=" -DXRT_SOURCE_DIR=$BUILDDIR/../src"
-      echo "$CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil"
-      time $CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil
+      cmake_flags+=" -DXRT_SOURCE_DIR=${SRCDIR}"
+      echo "$CMAKE -B $release_dir $cmake_flags ${SRCDIR}/runtime_src/tools/xclbinutil"
+      $CMAKE -B $release_dir $cmake_flags ${SRCDIR}/runtime_src/tools/xclbinutil
     else
       # Full build
-      echo "$CMAKE $cmake_flags ../../src"
-      time $CMAKE $cmake_flags ../../src
+      echo "$CMAKE -B $release_dir $cmake_flags ${SRCDIR}"
+      $CMAKE -B $release_dir $cmake_flags ${SRCDIR}
     fi
   fi
 
   if [[ $nobuild == 0 ]]; then
-      echo "make -j $jcore $verbose DESTDIR=$PWD install"
-      time make -j $jcore $verbose DESTDIR=$PWD install
+      # build
+      echo "cmake --build $release_dir --config Release -j $jcore $verbose"
+      cmake --build $release_dir --config Release -j $jcore $verbose
+
+      # install to staging area
+      echo "DESTDIR=$release_dir cmake --install $release_dir --config Release $verbose"
+      DESTDIR=$release_dir cmake --install $release_dir --config Release $verbose
 
       if [[ $noctest == 0 ]]; then
-          time ctest --output-on-failure
+          time ctest --test-dir $release_dir --output-on-failure
       fi
 
-      time make package
+      echo "cmake --build $release_dir --config Release --target package"
+      cmake --build $release_dir --config Release --target package
   fi
 
   if [[ $docs == 1 ]]; then
@@ -415,42 +420,22 @@ if [[ $opt == 1 ]]; then
 	make -C $ZOCL_SRC EXTRA_CFLAGS=-D__NONE_PETALINUX__
     fi
   fi
-  cd $BUILDDIR
 fi
-
-# Verify compilation on edge
-if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
-  mkdir -p $edge_dir
-  cd $edge_dir
-
-  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
-
-  if [[ $nocmake == 0 ]]; then
-    echo "env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src"
-    time env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src
-  fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD"
-  time make -j $jcore $verbose DESTDIR=$PWD
-  cd $BUILDDIR
-fi
-
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.20.0/driver`
+    DRIVERROOT=`readlink -f $release_dir/usr/src/xrt-2.20.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
-    XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`
+    XOCLROOT=`readlink -f ${SRCDIR}/runtime_src/core/pcie/driver`
     echo $XOCLROOT
     for f in $(find $DRIVERROOT -type f -name *.c -o -name *.h); do
         fsum=$(md5sum $f | cut -d ' ' -f 1)
         for src in $(find $XOCLROOT -type f -name $(basename $f)); do
             ssum=$(md5sum $src | cut -d ' ' -f 1)
             if [[ "$fsum" == "$ssum" ]]; then
-                $BUILDDIR/checkpatch.sh $src | grep -v WARNING
+                ${ROOTDIR}/build/checkpatch.sh $src | grep -v WARNING
             fi
         done
     done
 fi
-
-cd $here

@@ -267,6 +267,15 @@ elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinu
 
 else ()
   SET (CPACK_GENERATOR "TGZ")
+
+  if ("${CPACK_ARCH}" STREQUAL "")
+    execute_process(
+      COMMAND arch
+      OUTPUT_VARIABLE CPACK_ARCH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+  endif()
+  
 endif()
 
 # On Amazon Linux CPACK_REL_VER is just '2' and it is hard to
