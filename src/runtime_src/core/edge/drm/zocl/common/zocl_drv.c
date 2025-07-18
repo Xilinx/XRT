@@ -15,7 +15,7 @@
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
  */
-#include <linux/kernel.h>
+
 #include <linux/delay.h>
 #include <linux/dma-buf.h>
 #include <linux/module.h>
@@ -82,15 +82,20 @@ match_name(struct device *dev, void *data)
 	return strstr(dev_name(dev), name) != NULL;
 }
 
-// put description
+/**
+ * zocl_cma_mem_region_init : zocl attached cma mem regions initialization
+ *
+ * @zdev: zocl device struct
+ * @pdev: platform device struct
+ *
+ * Returns 0 if successfully initialized
+ */
 static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_device *pdev)
 {
 	int num_regions = of_count_phandle_with_args(pdev->dev.of_node, "memory-region", NULL);
 	int ret = 0;
 	int i;
 
-	//remove this print later
-	printk("[bs]: probing the cma mem regions\n");
 	for (i = 0; i < num_regions && i < ZOCL_MAX_MEM_REGIONS; i++) {
 		struct device *child_dev;
 		child_dev = devm_kzalloc(&pdev->dev, sizeof(struct device), GFP_KERNEL);
@@ -120,11 +125,14 @@ static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_d
 	return ret;
 }
 
-// put description
+/**
+ * zocl_cma_mem_region_remove : mem_device zocl attached cma regions cleanup
+ *
+ * @zdev: zocl device struct
+ */
 static void zocl_cma_mem_region_remove(struct drm_zocl_dev *zdev)
 {
 	int i;
-	printk("[bs]: removing the cma mem regions\n");
 	for (i = 0; i < ZOCL_MAX_MEM_REGIONS; i++) {
 		if (zdev->mem_regions[i].initialized)
 			of_reserved_mem_device_release(zdev->mem_regions[i].dev);
@@ -611,7 +619,6 @@ void zocl_free_bo(struct drm_gem_object *obj)
         void* vaddr;
 #endif
 	int npages;
-	printk("[bs]: %s: freeing the bo\n", __func__);
 	if (IS_ERR(obj) || !obj)
 		return;
 
@@ -633,13 +640,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			/* free resources associated with a CMA GEM object */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 			if (zocl_obj->mem_region >= 0) {
-				// have a check before assigning dev to mem_dev;
 				mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
 			}
 			else
 				mem_dev = dev->dev;
-			if (zocl_obj->vaddr) {
-				printk("[bs]: %s: calling dma_free_coherent()\n", __func__);
+			if (zocl_obj->vaddr && mem_dev) {
 				dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
 				zocl_obj->vaddr = NULL;
 			}

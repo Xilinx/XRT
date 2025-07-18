@@ -13,7 +13,7 @@
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
  */
-#include <linux/kernel.h>
+
 #include <linux/pagemap.h>
 #include <linux/of_address.h>
 #include <linux/of_reserved_mem.h>
@@ -246,22 +246,23 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
-	//allocate from default cma if and only if there are no zocl attached memory regions
-	if(num_regions <= 0) {
-		vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
-		goto done;
-	}
-
 	while ((!vaddr || !phys) && ++mem_region < num_regions) {
-		//check dev before assigning it to mem_dev
 		mem_dev = zdev->mem_regions[mem_region].dev;
+		if (!mem_dev)
+			continue;
 		vaddr = dma_alloc_coherent(mem_dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
 		if (!vaddr)
 			DRM_DEBUG("Failed to allocate from zocl attached memory region %d \n",
 				mem_region);
 	}
 
-done:
+	//allocate from default cma if we failed to allocate from zocl attached memory regions
+	if(!phys || !vaddr) {
+		DRM_WARN("Allocating BO from default CMA for invalid or no zocl attached memory regions");
+		mem_region = -1;
+		vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+	}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	cma_obj->dma_addr = phys;
 #else
