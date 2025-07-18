@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 include_directories(
   ${Boost_INCLUDE_DIRS}
   ${XRT_SOURCE_DIR}/include/1_2
@@ -100,8 +100,18 @@ install(TARGETS xilinxopencl xilinxopencl_static
 # Release OpenCL extension headers
 install (FILES
   ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext_xilinx.h
-  ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext.h
-  ${XRT_SOURCE_DIR}/include/1_2/CL/cl2xrt.hpp
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
   COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+# Preserve legacy behavior in legacy XRT package. The component
+# setup will have defined XRT_BASE_DEV_COMPONENT to XRT
+if (XRT_XRT)
+  install (FILES
+    ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext.h
+    ${XRT_SOURCE_DIR}/include/1_2/CL/cl2xrt.hpp
+    DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
+    COMPONENT ${XRT_BASE_DEV_COMPONENT}
+    )
+endif (XRT_XRT)
+  
