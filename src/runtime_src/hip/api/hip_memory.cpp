@@ -133,7 +133,10 @@ namespace xrt::core::hip
     throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle.");
     throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst out of bound.");
 
-    hip_mem_dev->write(src, size, 0, offset);
+    if (src && src != dst)
+        hip_mem_dev->write(src, size, 0, offset);
+    else
+        hip_mem_dev->sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
   static void
@@ -153,7 +156,10 @@ namespace xrt::core::hip
     throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "source out of bound.");
 
     // src is device address. Get device address
-    hip_mem_dev->read(dst, size, 0, offset);
+    if (dst && dst != src)
+        hip_mem_dev->read(dst, size, 0, offset);
+    else
+        hip_mem_dev->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   }
 
   static void
