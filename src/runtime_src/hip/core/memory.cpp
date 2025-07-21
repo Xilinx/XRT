@@ -130,6 +130,13 @@ namespace xrt::core::hip
   }
 
   void
+  memory::sync(xclBOSyncDirection direction, size_t sz, size_t offset)
+  {
+    throw_invalid_value_if(!m_bo, "memory sync, empty bo.");
+    m_bo.sync(direction, sz, offset);
+  }
+
+  void
   memory::copy(const memory& src, size_t sz, size_t src_offset, size_t dst_offset)
   {
     m_bo.copy(src.get_xrt_bo(), sz, src_offset, dst_offset);

@@ -66,6 +66,9 @@ namespace xrt::core::hip
     sync(xclBOSyncDirection);
 
     void
+    sync(xclBOSyncDirection dir, size_t sz, size_t offset);
+
+    void
     copy(const memory& src, size_t sz, size_t src_offset = 0, size_t dst_offset = 0);
 
     const xrt::bo&

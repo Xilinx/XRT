@@ -435,6 +435,19 @@ namespace xrt::core::hip
       std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, pool, *dev_ptr, size));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
+
+  static void
+  hip_mem_prefetch_async(const void* dev_ptr, size_t count, int device, hipStream_t stream)
+  {
+    // device is not required for xrt::bo lookup, only buffer device address is required.
+    (void)device;
+    auto hip_stream = get_stream(stream);
+    throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
+    auto s_hdl = hip_stream.get();
+    auto cmd_hdl = insert_in_map(command_cache,
+                                 std::make_shared<mem_prefetch_command>(hip_stream, dev_ptr, count));
+    s_hdl->enqueue(command_cache.get(cmd_hdl));
+  }
 } // xrt::core::hip
 
 template<typename F> hipError_t
@@ -621,8 +634,7 @@ hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold)
 hipError_t
 hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t stream)
 {
-  // TODO: implement this once the linux driver implements HMM
-  return hipSuccess;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_prefetch_async(dev_ptr, count, device, stream); });
 }
 
 // Allocates memory from a specified pool with stream ordered semantics.
