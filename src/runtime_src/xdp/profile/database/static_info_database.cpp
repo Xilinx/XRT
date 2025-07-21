@@ -1620,7 +1620,7 @@ namespace xdp {
   // Return false if we should not reset device information
   bool VPStaticDatabase::resetDeviceInfoAndCreatePlDeviceIfRequired(uint64_t deviceId, std::unique_ptr<xdp::Device>& xdpDevice, xrt_core::uuid new_xclbin_uuid, std::shared_ptr<xrt_core::device> device)
   {
-    std::lock_guard<std::mutex> lock(deviceLock);
+    std::unique_lock<std::mutex> lock(deviceLock);
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
@@ -1633,6 +1633,10 @@ namespace xdp {
         if (config->plDeviceIntf == nullptr && xdpDevice != nullptr) {
           xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
           XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
+
+          // Release lock before calling createPLDeviceIntf to avoid deadlock as
+          // createPLDeviceIntf acquires the same lock
+          lock.unlock();
           createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
         }
         return false;
