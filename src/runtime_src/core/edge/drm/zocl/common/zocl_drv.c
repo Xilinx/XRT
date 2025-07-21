@@ -83,6 +83,69 @@ match_name(struct device *dev, void *data)
 }
 
 /**
+ * zocl_cma_mem_region_init : zocl attached cma mem regions initialization
+ *
+ * @zdev: zocl device struct
+ * @pdev: platform device struct
+ *
+ * Returns 0 if successfully initialized
+ */
+static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_device *pdev)
+{
+	int num_regions = of_count_phandle_with_args(pdev->dev.of_node, "memory-region", NULL);
+	int ret = 0;
+	int i;
+
+	if (num_regions <= 0) {
+		DRM_DEBUG("Invalid or no zocl attached memory regions\n");
+		return -EINVAL;
+	}
+	zdev->num_regions = num_regions;
+
+	for (i = 0; i < num_regions && i < ZOCL_MAX_MEM_REGIONS; i++) {
+		struct device *child_dev;
+		child_dev = devm_kzalloc(&pdev->dev, sizeof(struct device), GFP_KERNEL);
+		if (!child_dev)
+			return -ENOMEM;
+
+		child_dev->parent = &pdev->dev;
+		child_dev->of_node = pdev->dev.of_node;
+		child_dev->coherent_dma_mask = DMA_BIT_MASK(64);
+
+		ret = dev_set_name(child_dev, "zocl-mem%d", i);
+		if (ret) {
+			DRM_WARN("Failed to set name for mem region %d\n", i);
+			continue;
+		}
+
+		ret = of_reserved_mem_device_init_by_idx(child_dev, pdev->dev.of_node, i);
+		if (ret) {
+			DRM_WARN("Failed to init reserved mem region %d\n", i);
+			continue;
+		}
+
+		zdev->mem_regions[i].dev = child_dev;
+		zdev->mem_regions[i].initialized = true;
+	}
+	platform_set_drvdata(pdev, zdev);
+	return ret;
+}
+
+/**
+ * zocl_cma_mem_region_remove : mem_device zocl attached cma regions cleanup
+ *
+ * @zdev: zocl device struct
+ */
+static void zocl_cma_mem_region_remove(struct drm_zocl_dev *zdev)
+{
+	int i;
+	for (i = 0; i < ZOCL_MAX_MEM_REGIONS; i++) {
+		if (zdev->mem_regions[i].initialized)
+			of_reserved_mem_device_release(zdev->mem_regions[i].dev);
+	}
+}
+
+/**
  * zocl_pr_slot_init : PR Slot specific initialization
  *
  * @zdev: zocl device struct
@@ -554,14 +617,16 @@ void zocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_zocl_bo *zocl_obj;
 	struct drm_zocl_dev *zdev;
+	struct drm_device *dev;
+	struct device *mem_dev;
 	int npages;
-
 	if (IS_ERR(obj) || !obj)
 		return;
 
 	DRM_DEBUG("Freeing BO\n");
 	zocl_obj = to_zocl_bo(obj);
 	zdev = obj->dev->dev_private;
+	dev = obj->dev;
 
 	if (!zdev->domain) {
 		zocl_describe(zocl_obj);
@@ -575,7 +640,17 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			    zocl_obj->mem_index);
 			/* free resources associated with a CMA GEM object */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			drm_gem_dma_object_free(obj);
+			if (zocl_obj->mem_region >= 0)
+				mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
+			else
+				mem_dev = dev->dev;
+			if (zocl_obj->vaddr && mem_dev) {
+				dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
+				zocl_obj->vaddr = NULL;
+			}
+
+			drm_gem_object_release(obj);
+			kfree(zocl_obj);
 #else
 			drm_gem_cma_free_object(obj);
 #endif
@@ -1225,6 +1300,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Initialize the zocl attached cma memory regions */
+	ret = zocl_cma_mem_region_init(zdev, pdev);
+	if (ret)
+		DRM_WARN("Failed to initialize the cma mem reserved nodes\n");
+
 	/* Initialize Aperture */
 	ret = zocl_aperture_init(zdev);
 	if (ret)
@@ -1342,6 +1422,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
+	zocl_cma_mem_region_remove(zdev);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
