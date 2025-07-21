@@ -10,6 +10,7 @@ ROOTDIR=$(dirname ${BUILDDIR})
 SRCDIR=${ROOTDIR}/src
 
 CORE=`grep -c ^processor /proc/cpuinfo`
+#CMAKE=/usr/local/bin/cmake-4.0.3-linux-x86_64/bin/cmake
 CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
@@ -246,6 +247,7 @@ while [ $# -gt 0 ]; do
             ;;
         -verbose)
             verbose="--verbose"
+            verbose_make="VERBOSE=1"
             shift
             ;;
         -install_prefix)
@@ -359,7 +361,9 @@ if [[ $dbg == 1 ]]; then
 
   # build
   echo "cmake --build $debug_dir --config Debug -j $jcore $verbose"
-  cmake --build $debug_dir --config Debug -j $jcore $verbose
+  # CentOS7.9 cmake chokes on "-j <n>"
+  #cmake --build $debug_dir --config Debug -j $jcore $verbose
+  make -C $debug_dir -j $jcore $verbose_make
 
   # install to staging area
   echo "DESTDIR=$debug_dir cmake --install $debug_dir --config Debug $verbose"
@@ -389,7 +393,9 @@ if [[ $opt == 1 ]]; then
   if [[ $nobuild == 0 ]]; then
       # build
       echo "cmake --build $release_dir --config Release -j $jcore $verbose"
-      cmake --build $release_dir --config Release -j $jcore $verbose
+      # CentOS7.9 cmake chokes on "-j <n>"
+      #cmake --build $release_dir --config Release -j $jcore $verbose
+      make -C $release_dir -j $jcore $verbose_make
 
       # install to staging area
       echo "DESTDIR=$release_dir cmake --install $release_dir --config Release $verbose"
