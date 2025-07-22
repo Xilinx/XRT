@@ -38,7 +38,7 @@ install (TARGETS xdp_appdebug_plugin
 
 # We also need to copy the python scripts that contain the gdb connection.
 # Only install these files for PCIe device for now, which is native build
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
 
 if (DEFINED XRT_INSTALL_PREFIX)
     set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_PREFIX}/xrt/share/appdebug")

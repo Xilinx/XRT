@@ -26,7 +26,7 @@ endif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
 
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
-  if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  if (NOT XRT_EDGE)
     # Cannot use find_package(PythonInterp REQUIRED) as it pollutes the
     # global space and later causes failure with find_package(pybind11 ...)
     # in src/python/pybind11/CMakeLists.txt
@@ -66,7 +66,7 @@ include_directories(
   ${PROJECT_BINARY_DIR}/gen
   )
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes") 
+if (NOT XRT_EDGE)
   add_subdirectory(
     ${XRT_SOURCE_DIR}/runtime_src/tools/scripts 
     ${PROJECT_BINARY_DIR}/runtime_src/tools/scripts

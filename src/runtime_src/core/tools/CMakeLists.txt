@@ -14,7 +14,7 @@ else()
   xrt_add_subdirectory(xbtracer)
   xrt_add_subdirectory(xbreplay)
 endif()
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   xrt_add_subdirectory(xbmgmt2)
   if(NOT WIN32)
     xrt_add_subdirectory(xbtop)
@@ -27,7 +27,8 @@ endif()
 
 install (PROGRAMS "./common/xball"
   DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+
+if (NOT XRT_EDGE)
   if (NOT WIN32)
     # Use PROGRAMS to allow for execution. This is recommended in the CMake documentation
     # https://cmake.org/cmake/help/latest/command/install.html#files

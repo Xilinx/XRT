@@ -102,6 +102,17 @@ if (XRT_ALVEO)
   set (XRT_BASE_DEV_COMPONENT ${XRT_DEV_COMPONENT})
 endif(XRT_ALVEO)
 
+# Edge (embedded) builds, build base package and build
+if (XRT_EDGE)
+  set (XRT_BASE 1)
+
+  set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
+  set (XRT_COMPONENT "xrt")
+  set (XRT_DEV_COMPONENT "xrt")
+  set (XRT_BASE_COMPONENT "xrt")
+  set (XRT_BASE_DEV_COMPONENT "xrt")
+endif(XRT_EDGE)
+
 # Legacy, build one XRT package for both deployment and development
 # Include everything enabled by XRT_BASE and XRT_ALVEO
 if (XRT_XRT)
