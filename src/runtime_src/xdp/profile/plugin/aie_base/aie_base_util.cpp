@@ -179,6 +179,7 @@ namespace xdp::aie {
 
   /****************************************************************************
    * Get port number based on event
+   * NOTE: This covers AIE Tiles and Interface Tiles
    ***************************************************************************/
   uint8_t getPortNumberFromEvent(const XAie_Events event)
   {
@@ -239,7 +240,7 @@ namespace xdp::aie {
 
   /****************************************************************************
    * Get channel number based on event
-   * NOTE: This only covers AIE Tiles and Interface Tiles
+   * NOTE: This covers AIE Tiles and Interface Tiles
    ***************************************************************************/
    int8_t getChannelNumberFromEvent(XAie_Events event)
    {
