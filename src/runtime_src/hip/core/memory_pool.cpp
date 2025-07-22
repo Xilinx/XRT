@@ -237,7 +237,7 @@ namespace xrt::core::hip
     if (m_list.size() == 0)
       init();
 
-    assert(ptr);
+    throw_invalid_value_if(!ptr, "empty sub memory handle for pool malloc.");
     auto sub_mem = memory_database::instance().get_sub_mem_from_handle(reinterpret_cast<memory_handle>(ptr));
     if (!sub_mem) {
       throw std::runtime_error("Invlid sub_memory handle");
