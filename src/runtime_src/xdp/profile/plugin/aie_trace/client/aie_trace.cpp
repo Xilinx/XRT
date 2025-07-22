@@ -496,7 +496,7 @@ namespace xdp {
         }
         else {
           // Memory tiles
-          auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+          auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
           std::string msg = "Configuring memory tile stream switch to monitor "
                           + typeName + " stream port " + std::to_string(channel);
@@ -596,7 +596,7 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
 
     if (aie::isDebugVerbosity()) {
       std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
