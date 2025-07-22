@@ -83,7 +83,7 @@ AieTracePluginUnified::~AieTracePluginUnified() {
   AieTracePluginUnified::live = false;
 }
 
-uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_context_flow) {
+uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
   auto itr = handleToAIEData.find(handle);
 
   if (itr != handleToAIEData.end())
@@ -122,7 +122,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   if (handleToAIEData.find(handle) != handleToAIEData.end())
     handleToAIEData.erase(handle);
 
-  auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
+  auto deviceID = getDeviceIDFromHandle(handle);
 
   // Setting up struct
   auto &AIEData = handleToAIEData[handle];
@@ -134,7 +134,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");  
 #else
-    if(hw_context_flow)
+    if((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
     else
       (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
@@ -188,7 +188,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         // Hence absolute and relative columns are same.
         // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
         //       hence we should stop adding partition shift to col for passing to XAIE Apis (CR-1244525).
-        uint8_t relCol = (! hw_context_flow) ? gmio.shimColumn + startColShift : gmio.shimColumn;
+        uint8_t relCol = ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? gmio.shimColumn + startColShift : gmio.shimColumn;
         (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, relCol, gmio.channelNum,
                                             gmio.streamId, gmio.burstLength);
       }

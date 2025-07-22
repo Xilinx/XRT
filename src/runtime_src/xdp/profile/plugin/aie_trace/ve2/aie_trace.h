@@ -27,7 +27,6 @@ namespace xdp {
     uint64_t checkTraceBufSize(uint64_t size) override;
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                         const module_type type, const std::string& metricSet);
-    bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
 
   private:

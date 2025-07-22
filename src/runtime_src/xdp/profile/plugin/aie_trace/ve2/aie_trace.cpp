@@ -233,24 +233,12 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Validate AIE device and runtime metrics
-   ***************************************************************************/
-  bool AieTrace_VE2Impl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
-  {
-    // Make sure compiler trace option is available as runtime
-    if (!metadata->getRuntimeMetrics()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /****************************************************************************
    * Update device (e.g., after loading xclbin)
    ***************************************************************************/
   void AieTrace_VE2Impl::updateDevice()
   {
-    if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
+    // If runtime metrics are not enabled, do not configure trace
+    if(!metadata->getRuntimeMetrics())
       return;
 
     // Set metrics for counters and trace events
@@ -985,7 +973,7 @@ namespace xdp {
       std::stringstream msg;
       msg << "AIE device instance is not available. AIE Trace might be empty/incomplete as "
           << "flushing won't be performed.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
 

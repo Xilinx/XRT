@@ -46,7 +46,7 @@ public:
   static bool alive();
 
 private:
-  uint64_t getDeviceIDFromHandle(void *handle, bool hw_context_flow);
+  uint64_t getDeviceIDFromHandle(void *handle);
   void pollAIETimers(uint64_t index, void *handle);
   void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
                       bool warn);

@@ -247,24 +247,12 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Validate AIE device and runtime metrics
-   ***************************************************************************/
-  bool AieTrace_EdgeImpl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
-  {
-    // Make sure compiler trace option is available as runtime
-    if (!metadata->getRuntimeMetrics()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /****************************************************************************
    * Update device (e.g., after loading xclbin)
    ***************************************************************************/
   void AieTrace_EdgeImpl::updateDevice()
   {
-    if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
+    // If runtime metrics are not enabled, do not configure trace
+    if(!metadata->getRuntimeMetrics())
       return;
 
     // Set metrics for counters and trace events
@@ -314,7 +302,7 @@ namespace xdp {
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
-      auto col        = tile.col ;
+      auto col        = tile.col + startColShift;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
       auto type       = aie::getModuleType(row, metadata->getRowOffset());
@@ -326,7 +314,7 @@ namespace xdp {
       // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
       //       hence we should stop adding partition shift to col for passing to XAIE Apis (CR-1244525).
       auto relCol     = (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() ==
-                                xdp::AppStyle::LOAD_XCLBIN_STYLE) ? col + startColShift : col;
+                                xdp::AppStyle::LOAD_XCLBIN_STYLE) ? col /* startColShift already added */ : tile.col;
       auto& xaieTile  = aieDevice->tile(relCol, row);
       auto loc        = XAie_TileLoc(relCol, row);
 
@@ -342,7 +330,7 @@ namespace xdp {
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
       // Add partition shift to the column to display absolute column on the terminal.
-      tileName.append(" tile (" + std::to_string(col+startColShift) + "," + std::to_string(row) + ")");
+      tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");
 
       if (aie::isInfoVerbosity()) {
         std::stringstream infoMsg;
@@ -373,7 +361,7 @@ namespace xdp {
 
       // AIE config object for this tile
       // Add partition shift to the column to report absolute column.
-      auto cfgTile = std::make_unique<aie_cfg_tile>(col+startColShift, row, type);
+      auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
       cfgTile->active_core = tile.active_core;
@@ -959,7 +947,7 @@ namespace xdp {
       std::stringstream msg;
       msg << "AIE device instance is not available. AIE Trace might be empty/incomplete as "
           << "flushing won't be performed.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
     if (aie::isDebugVerbosity()) {
