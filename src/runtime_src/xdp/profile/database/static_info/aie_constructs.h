@@ -288,8 +288,8 @@ namespace xdp {
       
       bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
       int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
-      int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-      int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+      int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1, -1, -1};
+      int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1, -1, -1};
       std::vector<aie_cfg_counter> pc;
 
       aie_cfg_base(uint32_t count) : pc(count) {

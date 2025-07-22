@@ -578,9 +578,8 @@ namespace xdp::aie::trace {
 
     if (aie::isDebugVerbosity()) {
       std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
-      std::string msg = "Configuring memory tile event selections to DMA " 
-                      + typeName + " channels " + std::to_string(channel0) 
-                      + " and " + std::to_string(channel1);
+      std::string msg = "Configuring event selections for DMA " + typeName + " channels "
+                      + std::to_string(channel0) + " and " + std::to_string(channel1);
       xrt_core::message::send(severity_level::debug, "XRT", msg);
     }
 

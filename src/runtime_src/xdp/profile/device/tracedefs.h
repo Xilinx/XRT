@@ -126,7 +126,8 @@ constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
 constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
-constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
+// NOTE: This is 2 for memory tiles and 4 for interface tiles (NPU3 only)
+constexpr uint32_t NUM_CHANNEL_SELECTS = 4;
 
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t CORE_BROADCAST_EVENT_BASE = 107;

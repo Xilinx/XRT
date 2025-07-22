@@ -508,10 +508,12 @@ namespace xdp::aie::profile {
     XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel);
 
-    std::stringstream msg;
-    msg << "Configured mem tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") 
-    << "DMA  for metricset " << metricSet << ", channel " << (int)channel << ".";
-    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    if (aie::isDebugVerbosity()) {
+      std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
+      std::string msg = "Configured event selections for DMA " + typeName + ", metric set "
+                      + metricSet + ", channel " + std::to_string(channel);
+      xrt_core::message::send(severity_level::debug, "XRT", msg);
+    }
   } 
 
   /****************************************************************************
