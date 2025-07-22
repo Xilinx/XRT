@@ -23,7 +23,7 @@ namespace xrt::core::hip
 	m_type(memory_type::device),
 	m_flags(0)
   {
-    assert(m_device);
+    throw_invalid_device_if(!m_device, "failed to create hip memory, empty device.");
 
     // TODO: support non-npu device that may require delayed xrt::bo allocation until xrt kernel is created
     init_xrt_bo();
@@ -32,7 +32,7 @@ namespace xrt::core::hip
   memory::memory(device* dev, size_t sz, void *host_mem, unsigned int flags)
       : m_device(dev), m_size(sz), m_type(memory_type::registered), m_flags(flags)
   {
-    assert(m_device);
+    throw_invalid_device_if(!m_device, "failed to create hip memory, empty device.");
 
     // TODO: useptr is not supported in NPU.
     auto xrt_device = m_device->get_xrt_device();
@@ -45,7 +45,7 @@ namespace xrt::core::hip
 	m_type(memory_type::host),
 	m_flags(flags)
   {
-    assert(m_device);
+    throw_invalid_device_if(!m_device, "failed to create hip memory, empty device.");
 
     switch (m_flags) {
       // TODO Need to create locked memory for Default and Portable flags. Creating a regular BO for now
@@ -97,7 +97,9 @@ namespace xrt::core::hip
     auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src).first;
     if (src_hip_mem && src_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
-        assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
+        throw_invalid_value_if((src_hip_mem->get_flags() != hipHostMallocDefault) &&
+                               (src_hip_mem->get_flags() != hipHostMallocPortable),
+                               "invalid src memory flag to write from host source memory.");
     }
     // host memory
     auto src_ptr = reinterpret_cast<const unsigned char*>(src);
@@ -112,7 +114,9 @@ namespace xrt::core::hip
     auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst).first;
     if (dst_hip_mem != nullptr && dst_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
-        assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
+        throw_invalid_value_if((dst_hip_mem->get_flags() != hipHostMallocDefault) &&
+                               (dst_hip_mem->get_flags() != hipHostMallocPortable),
+                               "invalid dst memory flag to read to host source memory.");
     }
     auto dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
@@ -125,7 +129,7 @@ namespace xrt::core::hip
   void
   memory::sync(xclBOSyncDirection direction)
   {
-    assert(m_bo);
+    throw_invalid_value_if(!m_bo, "empty bo to sync.");
     m_bo.sync(direction);
   }
 

@@ -21,11 +21,11 @@ namespace xrt::core::hip
   static void
   hip_malloc(void** ptr, size_t size)
   {
-    assert(ptr);
-    assert(size > 0);
+    throw_invalid_value_if(!ptr, "empty ptr for hip malloc.");
+    throw_invalid_value_if(size <= 0, "invalid size for hip malloc.");
 
     auto dev = get_current_device();
-    assert(dev);
+    throw_invalid_device_if(!dev, "empty device for hip malloc.");
 
     *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size);
@@ -40,11 +40,11 @@ namespace xrt::core::hip
   static void
   hip_host_malloc(void** ptr, size_t size, unsigned int flags)
   {
-    assert(ptr);
-    assert(size > 0);
+    throw_invalid_value_if(!ptr, "empty ptr for hip malloc.");
+    throw_invalid_value_if(size <= 0, "invalid size for hip malloc.");
 
     auto dev = get_current_device();
-    assert(dev);
+    throw_invalid_device_if(!dev, "empty device for hip malloc.");
 
     *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, flags);
@@ -60,8 +60,8 @@ namespace xrt::core::hip
   hip_host_register(void* host_ptr, size_t size, unsigned int flags)
   {
     auto dev = get_current_device();
-    assert(dev);
-    assert(host_ptr);
+    throw_invalid_device_if(!dev, "empty device for hip malloc.");
+    throw_invalid_value_if(!host_ptr, "empty host memory pointer for host memory registration.");
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
     auto host_addr = hip_mem->get_address();
@@ -74,7 +74,7 @@ namespace xrt::core::hip
   static void
   hip_host_get_device_pointer(void** device_ptr, void* host_ptr, unsigned int flags)
   {
-    assert(device_ptr);
+    throw_invalid_value_if(!device_ptr, "empty device memory pointer handle to get device pointer.");
 
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
     throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer.");
@@ -224,7 +224,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
+    throw_invalid_value_if(hip_mem_dst->get_type() == xrt::core::hip::memory_type::invalid,
+                           "memory type is invalid for memset.");
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
 
     auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
@@ -285,8 +286,8 @@ namespace xrt::core::hip
   hip_mem_pool_create(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_props)
   {
     auto dev = get_current_device();
-    assert(dev);
-    assert(mem_pool);
+    throw_invalid_device_if(!dev, "empty device for memory pool creation.");
+    throw_invalid_device_if(!mem_pool, "empty mem pool handle  for memory pool creation.");
 
     auto pool = std::make_shared<memory_pool>(dev, MAX_MEMORY_POOL_SIZE_NPU, MEMORY_POOL_BLOCK_SIZE_NPU);
     auto pool_hdl = insert_in_map(mem_pool_cache, pool);
