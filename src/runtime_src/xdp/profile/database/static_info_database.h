@@ -122,7 +122,7 @@ namespace xdp {
     void setAppStyle(AppStyle style);
 
     // When loading a new xclbin, should we reset our internal data structures?
-    bool resetDeviceInfo(uint64_t deviceId, xdp::Device* xdpDevice, xrt_core::uuid new_xclbin_uuid);
+    bool resetDeviceInfoAndCreatePlDeviceIfRequired(uint64_t deviceId, std::unique_ptr<xdp::Device>& xdpDevice, xrt_core::uuid new_xclbin_uuid, std::shared_ptr<xrt_core::device> device);
 
     // Functions that create the overall structure of the Xclbin's PL region
     void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);
