@@ -65,6 +65,10 @@ namespace xdp {
     auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
     for (pt::ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
       if (pos->first == "periodic_offload") {
+        std::stringstream msg;
+        msg << "Periodic offload on Client Devices is supported only for hanging design."
+            << " Periodic offload shouldn't be used for non hanging design.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         isPeriodicOffloadPresent = true;
         break;
       }
