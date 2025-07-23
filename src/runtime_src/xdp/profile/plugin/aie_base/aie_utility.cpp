@@ -34,7 +34,7 @@ namespace xdp::aie {
   {
     //return ((hwGen > XAIE_DEV_GEN_AIE) && (hwGen <= XAIE_DEV_GEN_AIE2P_STRIX_B0)
     //        && (hwGen != XAIE_DEV_GEN_AIE2PS));
-    return ((hwGen > XAIE_DEV_GEN_AIE) && (hwGen <= 9) && (hwGen != 5));
+    return ((hwGen > 1) && (hwGen <= 9) && (hwGen != 5));
   }
 
   bool isAIE2ps(const int hwGen)
