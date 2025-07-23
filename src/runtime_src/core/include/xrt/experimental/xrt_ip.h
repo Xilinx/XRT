@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_IP_H_
 #define XRT_IP_H_
 
-#include "xrt.h"
+#include "xrt/deprecated/xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"

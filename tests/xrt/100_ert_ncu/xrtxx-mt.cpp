@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 ////////////////////////////////////////////////////////////////
 // This test uses push scheduling on multiple threads threads that
@@ -9,8 +9,8 @@
 // xrt::run::wait()) is thread safe without missing kernel completions
 ////////////////////////////////////////////////////////////////
 
-#include "xrt.h"
-#include "xclbin.h"
+#include "xrt/deprecated/xrt.h"
+#include "xrt/detail/xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
