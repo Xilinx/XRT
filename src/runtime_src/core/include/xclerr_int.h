@@ -41,7 +41,12 @@
 #ifndef XCLERR_INT_H_
 #define XCLERR_INT_H_
 
-#include "xrt/detail/xrt_error_code.h"
+// The kernel DKMS release copies headers flat to driver/include
+#if defined(__linux__) && defined(__KERNEL__)
+# include "xrt_error_code.h"
+#else
+# include "xrt/detail/xrt_error_code.h"
+#endif
 
 #define	XCL_ERROR_CAPACITY	32
 
