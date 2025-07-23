@@ -60,7 +60,7 @@ namespace xdp {
     continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
     // AIE trace is now supported for HW only
 #ifdef XDP_CLIENT_BUILD
-    // Default periodic offload is flipped on client to off. But if user passes it explicity in xrt.ini,
+    // Default periodic offload is flipped on client to off. But if user passes it explicitly in xrt.ini,
     // we read that and turn on periodic offload as user might be passing to get trace for hung design.
     bool isPeriodicOffloadPresent = false;
     auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
