@@ -4,7 +4,7 @@
 #ifndef SHIM_INT_H_
 #define SHIM_INT_H_
 
-#include "core/include/xrt.h"
+#include "core/include/xrt/deprecated/xrt.h"
 #include "core/include/xrt_hwqueue.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
