@@ -11,6 +11,21 @@ message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")
 
+# Note if we are building for upstream packaging
+if (XRT_UPSTREAM_DEBIAN)
+  set (XRT_UPSTREAM 1)
+endif()
+
+find_package(Git)
+
+if (GIT_FOUND)
+  message(STATUS "-- GIT found: ${GIT_EXECUTABLE}")
+elseif (XRT_UPSTREAM)
+  message(STATUS "-- GIT not found, ignored for upstream build")
+else()
+  message(FATAL_ERROR "-- GIT not found, required for internal build")
+endif()
+
 if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   set(XRT_WARN_OPTS
   -Wall
