@@ -292,14 +292,16 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
     return;
   }
   // printf("start to transform !");
-  XCdo_Print("start to transform !");
+  XCdo_Print("\n\nStart to transform the pdi !\n");
   XCdoLoad CdoLoad;
   XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
   ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
+
   //Prepare the new PDI memory
   char* pdi_buf = (char *)malloc((size_t)BufLen * 2 * 4);
   uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
         sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
+
   //copy the PDI header
   XPdiLoad newPdiLoad;
   newPdiLoad.PdiPtr = pdi_buf;
@@ -312,22 +314,31 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   memcpy(cdo_buf, ((char *)PdiLoad->PdiPtr + HdrLen),
              XCDO_CDO_HDR_LEN * sizeof(uint32_t));
   XPdi_CdoHeader_String((uint32_t*)cdo_buf);
+
   //Parse and generate the command zone
   uint32_t Cmd_len = XPdi_Cmd_Parse(cdo_buf +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), BufLen, Buf);
   //Change the pdi header to mark that this is a tranform/compress pdi
-  XPdi_Header_Set_Transfrom_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
+  XPdi_Header_Set_Transform_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
   //Parse and generate the data zone
   uint32_t TotalCdoLen = XPdi_Buf_Parse(cdo_buf  +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), Cmd_len, BufLen, (const char*)Buf);
+
   //Update the pdi length.
-  newPdiLoad.PdiLen = TotalCdoLen + HdrLen;
+  // newPdiLoad.PdiLen = TotalCdoLen + HdrLen;
+  newPdiLoad.PdiLen = TotalCdoLen + (XCDO_CDO_HDR_LEN * sizeof(uint32_t)) + HdrLen;
   // printf("new cdo len is %d\n", TotalCdoLen);
   XCdo_Print("new cdo len is %d\n", TotalCdoLen);
-  //test load new pdi
+  XCdo_Print("Transform the pdi done !\n");
+
+  //Test load new pdi
+  XCdo_Print("\n\nTest load the new pdi\n");
   XPdi_Load(&newPdiLoad);
+  XCdo_Print("Test load the new pdi done\n");
+
   //Export the tranform pdi into a file (generate the new pdi file)
   XPdi_Export(&newPdiLoad, pdi_file_out);
+
   //Release the PDI memory
   free(pdi_buf);
   return;
