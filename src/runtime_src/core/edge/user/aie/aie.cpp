@@ -310,7 +310,7 @@ sync_bo(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirectio
 
   submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
   gmio_itr->second->wait();
-  bo.sync(dir);
+  bo.sync(dir == XCL_BO_SYNC_BO_GMIO_TO_AIE ? XCL_BO_SYNC_BO_TO_DEVICE : XCL_BO_SYNC_BO_FROM_DEVICE);
 }
 
 std::pair<size_t, size_t>
