@@ -32,6 +32,7 @@ populate_aie_partition(const xrt_core::device* device)
 
     boost::property_tree::ptree pt_entry;
     pt_entry.put("pid", entry.pid);
+    pt_entry.put("process_name", entry.process_name);
     pt_entry.put("context_id", entry.metadata.id);
     pt_entry.put("status", entry.is_suspended ? "Idle" : "Active");
     pt_entry.put("instr_bo_mem", entry.instruction_mem ? xrt_core::utils::unit_convert(entry.instruction_mem) : "N/A");
@@ -40,6 +41,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("migrations", entry.migrations);
     pt_entry.put("errors", entry.errors);
     pt_entry.put("suspensions", entry.suspensions);
+    pt_entry.put("memory_usage", xrt_core::utils::unit_convert(entry.memory_usage));
 
     xrt_core::query::aie_partition_info::qos_info qos = entry.qos;
     pt_entry.put("gops", qos.gops ? std::to_string(qos.gops) : "N/A");
@@ -100,6 +102,8 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
+  _output << boost::str(boost::format("  Total Memory Usage: %s\n") % "20 MB"); // Placeholder for total memory usage
+
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
 
@@ -112,51 +116,56 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         column_string += ", ";
     }
 
-    const std::vector<Table2D::HeaderData> table_headers = {
-      {"PID", Table2D::Justification::left},
-      {"Ctx ID", Table2D::Justification::left},
-      {"Status", Table2D::Justification::left},
-      {"Instr BO", Table2D::Justification::left},
-      {"Sub", Table2D::Justification::left},
-      {"Compl", Table2D::Justification::left},
-      {"Migr", Table2D::Justification::left},
-      {"Err", Table2D::Justification::left},
-      {"Suspensions", Table2D::Justification::left},
-      {"Prio", Table2D::Justification::left},
-      {"GOPS", Table2D::Justification::left},
-      {"EGOPS", Table2D::Justification::left},
-      {"FPS", Table2D::Justification::left},
-      {"Latency", Table2D::Justification::left}
+    _output << boost::str(boost::format("  Partition Index   : %d\n") % partition.get<uint64_t>("partition_index"));
+    _output << boost::str(boost::format("    Columns: [%s]\n") % column_string);
+    _output << "    HW Contexts:\n";
+
+    const std::vector<std::string> headers = {
+      "      |PID            |Ctx ID   |Submissions |Migrations  |Err  |Priority |",
+      "      |Process Name   |Status   |Completions |Suspensions |     |GOPS     |",
+      "      |Memory Usage   |Instr BO |            |            |     |FPS      |",
+      "      |               |         |            |            |     |Latency  |",
+      "      |===============|=========|============|============|=====|=========|"
     };
-    Table2D context_table(table_headers);
+
+    for (const auto& header : headers) {
+      _output << header << "\n";
+    }
 
     std::vector<uint64_t> errors;
     for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
       const auto& hw_context = pt_hw_context.second;
 
-      const std::vector<std::string> entry_data = {
-        hw_context.get<std::string>("pid"),
-        hw_context.get<std::string>("context_id"),
-        hw_context.get<std::string>("status"),
-        hw_context.get<std::string>("instr_bo_mem"),
-        hw_context.get<std::string>("command_submissions"),
-        hw_context.get<std::string>("command_completions"),
-        hw_context.get<std::string>("migrations"),
-        std::to_string(hw_context.get<uint64_t>("errors")),
-        hw_context.get<std::string>("suspensions"),
-        hw_context.get<std::string>("priority"),
-        hw_context.get<std::string>("gops"),
-        hw_context.get<std::string>("egops"),
-        hw_context.get<std::string>("fps"),
-        hw_context.get<std::string>("latency")
-      };
-      context_table.addEntry(entry_data);
-    }
+      std::vector<boost::format> row_data;
+      row_data.push_back(boost::format("      |%-15s|%-9s|%-12s|%-12s|%-5s|%-9s|")
+                   % hw_context.get<int>("pid")
+                   % hw_context.get<std::string>("context_id")
+                   % hw_context.get<uint64_t>("command_submissions")
+                   % hw_context.get<uint64_t>("migrations")
+                   % hw_context.get<uint64_t>("errors")
+                   % hw_context.get<std::string>("priority"));
 
-    _output << boost::str(boost::format("  Partition Index: %d\n") % partition.get<uint64_t>("partition_index"));
-    _output << boost::str(boost::format("    Columns: [%s]\n") % column_string);
-    _output << "    HW Contexts:\n";
-    _output << boost::str(boost::format("%s\n") % context_table.toString("      "));
+      row_data.push_back(boost::format("      |%-15s|%-9s|%-12s|%-12s|     |%-9s|")
+                   % hw_context.get<std::string>("process_name")
+                   % hw_context.get<std::string>("status")
+                   % hw_context.get<uint64_t>("command_completions")
+                   % hw_context.get<uint64_t>("suspensions")
+                   % hw_context.get<std::string>("gops"));
+
+      row_data.push_back(boost::format("      |%-15s|%-9s|            |            |     |%-9s|")
+                   % hw_context.get<std::string>("memory_usage")
+                   % hw_context.get<std::string>("instr_bo_mem")
+                   % hw_context.get<std::string>("fps"));
+
+      row_data.push_back(boost::format("      |               |         |            |            |     |%-9s|")
+                   % hw_context.get<std::string>("latency"));
+
+      row_data.push_back(boost::format("      |---------------|---------|------------|------------|-----|---------|"));
+
+      for (const auto& row : row_data) {
+        _output << row << "\n";
+      }
+    }
   }
 
   if (XBUtilities::getVerbose()) {

@@ -1981,6 +1981,8 @@ struct aie_partition_info : request
     uint64_t    pasid = 0;
     qos_info    qos {};
     uint64_t    suspensions;    // Suspensions by context switching and idle detection
+    std::string process_name;
+    size_t      memory_usage;   //bytes
   };
 
   using result_type = std::vector<struct data>;
