@@ -56,12 +56,7 @@ namespace xrt::core::hip
         break;
       }
       case hipHostMallocWriteCombined: {
-        // This is a workaround to create a buffer with cacheable flag if WriteComined flag is provided.
-        // This gets used to create instruction buffer on NPU
-        // TODO This would go away once xrt::elf flow is enabled
-        auto xrt_device = m_device->get_xrt_device();
-        m_bo = xrt::bo(xrt_device, m_size, xrt::bo::flags::cacheable, 1);
-        break;
+        throw xrt_core::system_error(hipErrorInvalidValue, "XRT bo creation doesn't support WriteCombined flag.");
       }
       default:
         break;
