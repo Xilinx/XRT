@@ -19,6 +19,7 @@
 #include "adf_api_config.h"
 #include "adf_api_message.h"
 #include "adf_aie_control_api.h"
+#include "xrt/xrt_bo.h"
 
 #include <queue>
 #include <vector>
@@ -78,6 +79,11 @@ public:
   {
     return config;
   }
+  void set_bo_dir(uint16_t bdNum, xrt::bo& bo, xclBOSyncDirection dir)
+  {
+    dir = dir == XCL_BO_SYNC_BO_GMIO_TO_AIE ? XCL_BO_SYNC_BO_TO_DEVICE : XCL_BO_SYNC_BO_FROM_DEVICE;
+    BOs[bdNum] = {bo, dir};
+  }
 private:
   // GMIO shim DMA physical configuration compiled by the AIE compiler
   const gmio_config* pGMIOConfig;
@@ -91,6 +97,7 @@ private:
   std::queue<size_t> enqueuedBDs;
   std::queue<size_t> availableBDs;
   std::unordered_map<size_t, size_t> statusBDs;
+  std::unordered_map<size_t, std::pair<xrt::bo, xclBOSyncDirection>> BOs;
   std::shared_ptr<config_manager> config;
 };
 

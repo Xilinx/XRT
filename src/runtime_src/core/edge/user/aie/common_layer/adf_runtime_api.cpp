@@ -685,6 +685,10 @@ void gmio_api::getAvailableBDs()
         uint16_t bdNumber = frontAndPop(enqueuedBDs);
         statusBDs[bdNumber]++;
         availableBDs.push(bdNumber);
+        if (BOs.find(bdNumber) != BOs.end()) {
+            BOs[bdNumber].first.sync(BOs[bdNumber].second);
+            BOs.erase(bdNumber);
+        }
     }
 }
 
@@ -764,6 +768,10 @@ err_code gmio_api::wait()
         size_t bdNumber = frontAndPop(enqueuedBDs);
         statusBDs[bdNumber]++;
         availableBDs.push(bdNumber);
+        if (BOs.find(bdNumber) != BOs.end()) {
+            BOs[bdNumber].first.sync(BOs[bdNumber].second);
+            BOs.erase(bdNumber);
+        }
     }
 
     return err_code::ok;
