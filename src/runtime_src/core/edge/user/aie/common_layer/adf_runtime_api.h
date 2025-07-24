@@ -81,6 +81,7 @@ public:
   }
   void set_bo_dir(uint16_t bdNum, xrt::bo& bo, xclBOSyncDirection dir)
   {
+    dir = dir == XCL_BO_SYNC_BO_GMIO_TO_AIE ? XCL_BO_SYNC_BO_TO_DEVICE : XCL_BO_SYNC_BO_FROM_DEVICE;
     BOs[bdNum] = {bo, dir};
   }
 private:
