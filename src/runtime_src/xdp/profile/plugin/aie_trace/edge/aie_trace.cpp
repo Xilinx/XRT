@@ -313,8 +313,8 @@ namespace xdp {
       // Hence absolute and relative columns are same.
       // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
       //       hence we should stop adding partition shift to col for passing to XAIE Apis (CR-1244525).
-      auto relCol     = (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() ==
-                                xdp::AppStyle::LOAD_XCLBIN_STYLE) ? col /* startColShift already added */ : tile.col;
+      auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                        ? col /* startColShift already added */ : tile.col;
       auto& xaieTile  = aieDevice->tile(relCol, row);
       auto loc        = XAie_TileLoc(relCol, row);
 
