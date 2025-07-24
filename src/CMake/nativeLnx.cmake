@@ -31,15 +31,6 @@ else (OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 endif (OPENCL_FOUND)
 
-# --- Git ---
-find_package(Git)
-
-if (GIT_FOUND)
-  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
-else (GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif (GIT_FOUND)
-
 # --- LSB Release ---
 find_program(UNAME uname)
 

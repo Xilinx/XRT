@@ -12,15 +12,6 @@
 # pdb install dir
 set (CMAKE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/symbols")
 
-# --- Git ---
-find_package(Git)
-
-IF(GIT_FOUND)
-  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
-
 include(CMake/components.cmake)
 
 # Boost Libraries

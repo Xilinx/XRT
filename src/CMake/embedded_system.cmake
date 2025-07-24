@@ -30,19 +30,8 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
-find_package(Git)
-
-IF(GIT_FOUND)
-  message("git found: ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
-
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
-
-message("-- LINUX_FLAVOR = ${LINUX_FLAVOR}")
-message("-- LINUX_KERNEL_VERSION = ${LINUX_KERNEL_VERSION}")
 
 # Set up what components of XRT to build
 # Indicate that we are building for edge
