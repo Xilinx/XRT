@@ -60,7 +60,7 @@ parse_args(struct tracer_arg &args, int argc, const char* argv[])
       got_app = true;
     }
     else {
-      args.target_app.push_back(arg_str);
+      args.target_app.push_back(std::move(arg_str));
     }
   }
 

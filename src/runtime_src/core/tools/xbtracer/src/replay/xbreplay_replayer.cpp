@@ -292,7 +292,7 @@ add_xclbin_kernel(uint64_t impl, std::string name, const xrt::xclbin::kernel& ke
     }
   }
   std::tuple<uint64_t, std::string, xrt::xclbin::kernel> t(impl, name, kernel);
-  xclbin_kernels.push_back(t);
+  xclbin_kernels.push_back(std::move(t));
   return;
 }
 
