@@ -151,7 +151,7 @@ int XPdi_Load(XPdiLoad *PdiLoad);
 void XPdi_GetFirstPrtn(XPdiLoad* PdiLoad, XCdoLoad* CdoLoad);
 //void XPdi_Compress_Transform(const XPdiLoad* PdiLoad);
 int XPdi_Header_Transform_Type(const XPdiLoad *PdiLoad, uint32_t* cmdLen);
-void XPdi_Header_Set_Transfrom_Type(XPdiLoad *PdiLoad, int type, uint32_t cdoCmdLen);
+void XPdi_Header_Set_Transform_Type(XPdiLoad *PdiLoad, int type, uint32_t cdoCmdLen);
 #ifdef __cplusplus
 }
 #endif

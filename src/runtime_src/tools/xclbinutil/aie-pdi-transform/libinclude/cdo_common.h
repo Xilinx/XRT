@@ -29,7 +29,7 @@ extern "C" {
 extern FILE* file_pointer;
 // #define XCdo_Print(format, ...) printf("CDO: " format, ##__VA_ARGS__)
 #define XCdo_Print(format, ...) \
-    fprintf(file_pointer, "CDO: " format, ##__VA_ARGS__)
+    (void)fprintf(file_pointer, "CDO: " format, ##__VA_ARGS__)
 
 #ifdef DEBUG
 //Enable firware PDI header check when DEBUG enabled.

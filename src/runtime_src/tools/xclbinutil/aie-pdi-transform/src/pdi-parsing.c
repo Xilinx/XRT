@@ -154,8 +154,9 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
   memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
-  // printf("Original ");
+  XCdo_Print("\n\nLoad original pdi\n");
   XPdi_Load(&PdiLoad);
+  XCdo_Print("Load original pdi done\n");
   SetDebugPdi((uint32_t *)DebugTransformPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
   XPdi_Compress_Transform(&PdiLoad, pdi_file_out);
 
