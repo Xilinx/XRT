@@ -92,8 +92,6 @@ public:
       print_all(ofile, std::forward<Args>(args)...);
       ofile << std::endl;
     }
-    if (l == level::CRITICAL)
-      throw std::runtime_error(lname + "hit critical error.");
   }
 
 private:
@@ -112,6 +110,7 @@ xbtracer_pcritical(const Args&... args)
 {
   xrt::tools::xbtracer::logger::get_instance().print(xrt::tools::xbtracer::logger::level::CRITICAL,
                                                      args...);
+  throw std::runtime_error("Critical error.");
 }
 
 template<typename... Args>
