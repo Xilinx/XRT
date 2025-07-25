@@ -112,7 +112,7 @@ alveo_build=0
 npu_build=0
 base_build=0
 xclbinutil=0
-xrt_install_prefix="/opt/xilinx"
+xrt_install_prefix="/opt/xilinx/xrt"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
