@@ -71,19 +71,19 @@ public:
     if (l > plevel)
       return;
 
-    std::string level_str;
+    std::string prefix;
     if (l == level::CRITICAL)
-      level_str = "CRITICAL";
+      prefix = "CRITICAL";
     else if (l == level::ERR)
-      level_str = "ERROR";
+      prefix = "ERROR";
     else if (l == level::WARNING)
-      level_str = "WARNING";
+      prefix = "WARNING";
     else if (l == level::INFO)
-      level_str = "INFO";
+      prefix = "INFO";
     else
-      level_str = "DEBUG";
+      prefix = "DEBUG";
 
-    std::string prefix = std::string(level_str) + ": [" + lname + "]: ";
+    prefix.append(": [" + lname + "]: ");
     print_one(std::cout, prefix);
     print_all(std::cout, std::forward<Args>(args)...);
     std::cout << std::endl;
