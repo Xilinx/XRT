@@ -66,6 +66,7 @@ private:
     std::atomic<bool> threadCtrlBool;
     std::thread thread;
   };
+  VPWriter *configWriter;
   std::map<void *, AIEData> handleToAIEData;
 };
 

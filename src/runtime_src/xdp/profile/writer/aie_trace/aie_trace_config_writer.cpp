@@ -31,11 +31,17 @@ namespace xdp {
   }
 
   AieTraceConfigWriter::~AieTraceConfigWriter()
-  {    
+  {
+    if (!isWritten)
+      write(false);
   }
 
   bool AieTraceConfigWriter::write(bool)
   {
+    if (isWritten)
+      return;
+    isWritten = true;
+
     bpt::ptree pt;
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 

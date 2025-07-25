@@ -60,6 +60,7 @@ bool AieTracePluginUnified::live = false;
 
 AieTracePluginUnified::AieTracePluginUnified() : XDPPlugin() {
   AieTracePluginUnified::live = true;
+  configWriter = nullptr;
 
   db->registerPlugin(this);
   db->registerInfo(info::aie_trace);
@@ -216,11 +217,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
   if (AIEData.metadata->getRuntimeMetrics()) {
     std::string configFile = "aie_event_runtime_config.json";
-    VPWriter *writer = new AieTraceConfigWriter(configFile.c_str(), deviceID);
-    writers.push_back(writer);
-    (db->getStaticInfo())
-        .addOpenedFile(writer->getcurrentFileName(),
-                       "AIE_EVENT_RUNTIME_CONFIG");
+    configWriter = new AieTraceConfigWriter(configFile.c_str(), deviceID);
+    writers.push_back(configWriter);
+    (db->getStaticInfo()).addOpenedFile(configWriter->getcurrentFileName(),
+                                        "AIE_EVENT_RUNTIME_CONFIG");
   }
 
   // Add writer for every stream
@@ -378,6 +378,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
                           "Calling AIE Trace updateDevice.");
 
   AIEData.implementation->updateDevice();
+  if (configWriter)
+    configWriter->write(false);
 
   // Continuous Trace Offload is supported only for PLIO flow
   if (AIEData.metadata->getContinuousTrace())
