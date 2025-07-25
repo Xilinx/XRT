@@ -252,7 +252,7 @@ add_callback(ert_cmd_state state, std::function<void(const void*, ert_cmd_state,
   xbtracer_write_protobuf_msg(func_entry, need_trace);
   *ofunc_ptr = (void*)paddr_ptr;
 
-  (this->*ofunc)(state, callback, data);
+  (this->*ofunc)(state, std::move(callback), data);
 
   xbtracer_proto::Func func_exit;
   xbtracer_init_member_func_exit_handle(func_exit, need_trace, func_s);
