@@ -2516,7 +2516,7 @@ namespace xdp {
     //  create a new PL interface if necessary
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
       ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
-      if (config) {
+      if (config && (config->type != CONFIG_PL_DEVICE_INTF_ONLY)) {
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Marking the end of last config xclbin");
         db->getDynamicInfo().markXclbinEnd(deviceId) ;
 
