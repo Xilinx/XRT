@@ -83,6 +83,7 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
 {
   boost::property_tree::ptree pt;
   pt.put("description", "AIE Partition Information");
+  pt.put("total_memory_usage", xrt_core::utils::unit_convert(xrt_core::device_query_default<xrt_core::query::total_mem_usage>(_pDevice, 0)));
   pt.add_child("partitions", populate_aie_partition(_pDevice));
   _pt.add_child("aie_partitions", pt);
 }
@@ -102,7 +103,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << boost::str(boost::format("  Total Memory Usage: %s\n") % "20 MB"); // Placeholder for total memory usage
+  _output << boost::str(boost::format("  Total Memory Usage: %s\n") % _pt.get<std::string>("aie_partitions.total_memory_usage"));
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
@@ -121,11 +122,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << "    HW Contexts:\n";
 
     const std::vector<std::string> headers = {
-      "      |PID            |Ctx ID   |Submissions |Migrations  |Err  |Priority |",
-      "      |Process Name   |Status   |Completions |Suspensions |     |GOPS     |",
-      "      |Memory Usage   |Instr BO |            |            |     |FPS      |",
-      "      |               |         |            |            |     |Latency  |",
-      "      |===============|=========|============|============|=====|=========|"
+      "      |PID                 |Ctx ID   |Submissions |Migrations  |Err  |Priority |",
+      "      |Process Name        |Status   |Completions |Suspensions |     |GOPS     |",
+      "      |Memory Usage        |Instr BO |            |            |     |FPS      |",
+      "      |                    |         |            |            |     |Latency  |",
+      "      |====================|=========|============|============|=====|=========|"
     };
 
     for (const auto& header : headers) {
@@ -137,7 +138,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       const auto& hw_context = pt_hw_context.second;
 
       std::vector<boost::format> row_data;
-      row_data.push_back(boost::format("      |%-15s|%-9s|%-12s|%-12s|%-5s|%-9s|")
+      row_data.push_back(boost::format("      |%-20s|%-9s|%-12s|%-12s|%-5s|%-9s|")
                    % hw_context.get<int>("pid")
                    % hw_context.get<std::string>("context_id")
                    % hw_context.get<uint64_t>("command_submissions")
@@ -145,14 +146,14 @@ writeReport(const xrt_core::device* /*_pDevice*/,
                    % hw_context.get<uint64_t>("errors")
                    % hw_context.get<std::string>("priority"));
 
-      row_data.push_back(boost::format("      |%-15s|%-9s|%-12s|%-12s|     |%-9s|")
+      row_data.push_back(boost::format("      |%-20s|%-9s|%-12s|%-12s|     |%-9s|")
                    % hw_context.get<std::string>("process_name")
                    % hw_context.get<std::string>("status")
                    % hw_context.get<uint64_t>("command_completions")
                    % hw_context.get<uint64_t>("suspensions")
                    % hw_context.get<std::string>("gops"));
 
-      row_data.push_back(boost::format("      |%-15s|%-9s|            |            |     |%-9s|")
+      row_data.push_back(boost::format("      |%-20s|%-9s|            |            |     |%-9s|")
                    % hw_context.get<std::string>("memory_usage")
                    % hw_context.get<std::string>("instr_bo_mem")
                    % hw_context.get<std::string>("fps"));
@@ -160,7 +161,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       row_data.push_back(boost::format("      |               |         |            |            |     |%-9s|")
                    % hw_context.get<std::string>("latency"));
 
-      row_data.push_back(boost::format("      |---------------|---------|------------|------------|-----|---------|"));
+      row_data.push_back(boost::format("      |--------------------|---------|------------|------------|-----|---------|"));
 
       for (const auto& row : row_data) {
         _output << row << "\n";
