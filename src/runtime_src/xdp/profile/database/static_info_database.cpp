@@ -433,7 +433,19 @@ namespace xdp {
     if (!config)
       return nullptr ;
 
-    return config->plDeviceIntf ;
+    // In LOAD_XCLBIN_STYLE, PL Device Interface is stored in current config
+    if (getAppStyle() != AppStyle::REGISTER_XCLBIN_STYLE)
+      return config->plDeviceIntf;
+
+    // In REGISTER_XCLBIN_STYLE, the PL Device Interface is always deviceId 0.
+    if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end())
+      return nullptr;
+    config = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig() ;
+    if (!config)
+      return nullptr;
+
+    return config->plDeviceIntf;
+
   }
 
   // Should only be called from Alveo hardware emulation
@@ -469,10 +481,11 @@ namespace xdp {
       return;
 
     // Check if new xclbin has new PL metadata
-    if (newXclbinType == XCLBIN_AIE_PL || newXclbinType == XCLBIN_PL_ONLY)
+    if ((newXclbinType == XCLBIN_AIE_PL) || (newXclbinType == XCLBIN_PL_ONLY))
     {
-      if (config->plDeviceIntf != nullptr)
-          delete config->plDeviceIntf; // It shouldn't be...
+      // Delete previous dummy plDeviceIntf if available and re-create using xclbin with PL
+      if ((config->plDeviceIntf != nullptr) && (config->type == CONFIG_PL_DEVICE_INTF_ONLY))
+        delete config->plDeviceIntf;
 
       config->plDeviceIntf = new PLDeviceIntf();
       config->plDeviceIntf->setDevice(std::move(dev));
@@ -499,6 +512,20 @@ namespace xdp {
         deviceInfo[deviceId]->loadedConfigInfos[totalConfigs-2]->plDeviceIntf = nullptr;
       }else {
         // No previous PL device interface available
+      }
+
+      if ((!config->plDeviceIntf) && (getAppStyle() == AppStyle::REGISTER_XCLBIN_STYLE)) {
+          // If AIE_ONLY xclbin loaded first, dummy PLDeviceIntf is created
+          // NOTE: PLDeviceIntf will be overwritten with a new PLDevice Intf if xclbin
+          //       with PL is loaded on to the device later.
+          if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end()) {
+            deviceInfo[DEFAULT_PL_DEVICE_ID] = std::make_unique<DeviceInfo>();
+            deviceInfo[DEFAULT_PL_DEVICE_ID]->createEmptyConfig();
+            ConfigInfo* plConfig = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig();
+            plConfig->type = CONFIG_PL_DEVICE_INTF_ONLY;
+            plConfig->plDeviceIntf = new PLDeviceIntf();
+            plConfig->plDeviceIntf->setDevice(std::move(dev));
+          }
       }
     }
   }
@@ -752,13 +779,16 @@ namespace xdp {
   void VPStaticDatabase::getFaConfiguration(uint64_t deviceId, bool* config,
                                             size_t size)
   {
+    if (!config)
+      return;
+
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
 
     ConfigInfo* currentConfig = deviceInfo[deviceId]->currentConfig() ;
-    if (!config)
+    if (!currentConfig)
       return ;
 
     // User space AM in sorted order of their slotIds.  Matches with
@@ -1601,20 +1631,70 @@ namespace xdp {
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
 
+  xrt::uuid VPStaticDatabase::getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device)
+  {
+    if (!device) {
+      throw std::runtime_error("Invalid device handle - device is null");
+    }
+    if(isClient()) {
+      return device->get_xclbin_uuid();
+    }
+    else if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
+      // This has to be Alveo hardware emulation, which doesn't support
+      // the xclbin_slots query.
+      return device->get_xclbin_uuid();
+    }
+    else {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Failed to retrieve xclbin slot information: " << e.what();
+        throw std::runtime_error(msg.str());
+      }
+
+      if (xclbin_slot_info.empty())
+        throw std::runtime_error("No xclbin found - device may not have loaded xclbin");
+
+      return xrt::uuid(xclbin_slot_info.back().uuid);
+    }
+  }
+
   uint64_t VPStaticDatabase::getHwCtxImplUid(void* hwCtxImpl)
   {
-    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
     // before calling this function. So, we don't need to check for validity here.
+    static uint64_t nextAvailableUID = 1;
+    static bool isDefaultPlDeviceIdUsed = false;
+    {
+      std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
 
-    auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
-    if (it == hwCtxImplUIDMap.end()) {
-      // Assign a new UID
-      uint64_t uid = static_cast<uint64_t>(hwCtxImplUIDMap.size());
-      hwCtxImplUIDMap[hwCtxImpl] = uid;
-      return uid;
+      auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
+      if (it != hwCtxImplUIDMap.end())
+        return it->second;
+
+      if (isDefaultPlDeviceIdUsed) {
+        hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
+        return hwCtxImplUIDMap[hwCtxImpl];
+      }
     }
-    return it->second;
+
+    auto device = util::convertToCoreDevice(hwCtxImpl, true);
+    xrt::uuid loadedXclbinUuid   = getXclbinUuidOnDevice(device);
+    xrt::xclbin loadedXclbin     = device->get_xclbin(loadedXclbinUuid);
+    XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
+
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+    if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
+        (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
+      hwCtxImplUIDMap[hwCtxImpl] = DEFAULT_PL_DEVICE_ID; // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
+      isDefaultPlDeviceIdUsed = true;
+    } else {
+       hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
+    }
+    return hwCtxImplUIDMap[hwCtxImpl];
   }
 
   uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
@@ -2497,7 +2577,7 @@ namespace xdp {
 
     if (xdpDevice != nullptr)
       createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
-    
+
     return devInfo;
   }
 

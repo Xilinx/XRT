@@ -138,6 +138,13 @@ namespace xdp {
     loadedConfigInfos.push_back(std::move(config));
   }
 
+  void DeviceInfo::createEmptyConfig()
+  {
+    // Create a new empty config
+    std::unique_ptr<ConfigInfo> config = std::make_unique<ConfigInfo>();
+    loadedConfigInfos.push_back(std::move(config));
+  }
+
   bool DeviceInfo::hasFloatingAIMWithTrace(XclbinInfo* xclbin) const
   {
     for (const auto& cfg : getLoadedConfigs()) {
