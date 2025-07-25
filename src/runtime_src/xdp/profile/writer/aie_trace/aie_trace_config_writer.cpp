@@ -39,7 +39,7 @@ namespace xdp {
   bool AieTraceConfigWriter::write(bool)
   {
     if (isWritten)
-      return;
+      return true;
     isWritten = true;
 
     bpt::ptree pt;
