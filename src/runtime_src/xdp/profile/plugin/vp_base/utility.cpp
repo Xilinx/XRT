@@ -60,7 +60,7 @@ namespace xdp {
 
   const char* getToolVersion()
   {
-    return "2024.2";
+    return "2025.2";
   }
 
   std::string getXRTVersion()

@@ -1,23 +1,11 @@
-/**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <cmath>
@@ -47,11 +35,11 @@ namespace xdp::aie::profile {
       // Ensure applicable event
       auto startEvent = startEvents.at(i);
       auto endEvent = endEvents.at(i);
-      if (!aie::profile::isStreamSwitchPortEvent(startEvent))
+      if (!aie::isStreamSwitchPortEvent(startEvent))
         continue;
 
       bool newPort = false;
-      auto portnum = getPortNumberFromEvent(startEvent);
+      auto portnum = xdp::aie::getPortNumberFromEvent(startEvent);
       uint8_t channel = (portnum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store
@@ -137,11 +125,11 @@ namespace xdp::aie::profile {
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
       XAie_Events ssEvent;
-      if (aie::profile::isPortRunningEvent(startEvent))
+      if (aie::isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
-      else if (aie::profile::isPortTlastEvent(startEvent))
+      else if (aie::isPortTlastEvent(startEvent))
         switchPortRsc->getSSTlastEvent(ssEvent);
-      else if (aie::profile::isPortStalledEvent(startEvent))
+      else if (aie::isPortStalledEvent(startEvent))
         switchPortRsc->getSSStalledEvent(ssEvent);
       else
         switchPortRsc->getSSIdleEvent(ssEvent);

@@ -1,29 +1,11 @@
-/**
- * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_debug/edge/aie_debug.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_metadata.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie1_registers.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2_registers.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2ps_registers.h"
+#include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
