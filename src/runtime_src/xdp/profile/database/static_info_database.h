@@ -25,6 +25,8 @@
 #include "xdp/config.h"
 
 namespace xdp {
+  // Device ID for PL-only and AIE+PL xclbins in Register Xclbin style.
+  constexpr uint64_t DEFAULT_PL_DEVICE_ID = 0;
 
   // Forward declarations of general XDP constructs
   class VPDatabase;
@@ -155,6 +157,8 @@ namespace xdp {
     double findClockRate(xrt::xclbin);
 
     XclbinInfoType getXclbinType(xrt::xclbin& xclbin);
+    xrt::uuid getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device);
+
     // This common private updateDevice functionality takes an xdp::Device
     // pointer to handle any connection to the PL side as necessary.
     // Some plugins do not require any PL control and will pass in nullptr
