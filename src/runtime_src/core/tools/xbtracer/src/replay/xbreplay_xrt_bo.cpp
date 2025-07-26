@@ -62,9 +62,6 @@ register_bo_func()
                    ", group: ", (uint32_t)grp, ".");
     std::shared_ptr<xrt::bo> bo_sh = std::make_shared<xrt::bo>((xclDeviceHandle)(*dev_sh), size,
                                                                flags, grp);
-    if (!bo_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create bo with id.");
-    }
     track(bo_sh, impl);
     return 0;
   };

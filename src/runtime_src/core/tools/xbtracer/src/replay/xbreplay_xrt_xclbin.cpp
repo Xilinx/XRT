@@ -52,9 +52,6 @@ register_xclbin_func()
 
     xbtracer_pinfo("Replaying: ", entry_msg->name(), ", ", reinterpret_cast<void*>(impl), ".");
     std::shared_ptr<xrt::xclbin> xclbin_sh = std::make_shared<xrt::xclbin>(xclbin_file);
-    if (!xclbin_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create xclbin with: ", xclbin_file, ".");
-    }
     track(xclbin_sh, impl);
     return 0;
   };
