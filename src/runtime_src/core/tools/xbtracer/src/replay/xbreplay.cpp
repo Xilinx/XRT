@@ -74,12 +74,16 @@ xbreplay_coded_get_sequence_from_file(std::ifstream& input)
   google::protobuf::io::IstreamInputStream raw_input(&input);
   google::protobuf::io::CodedInputStream coded_input(&raw_input);
   uint32_t size = 0;
-  if (!coded_input.ReadVarint32(&size))
-    xbtracer_pcritical("failed to read header protobuf message length.");
+  if (!coded_input.ReadVarint32(&size)) {
+    xbtracer_perror("failed to read header protobuf message length.");
+    return false;
+  }
   google::protobuf::io::CodedInputStream::Limit limit = coded_input.PushLimit(static_cast<int>(size));
   xbtracer_proto::XrtExportApiCapture header_msg;
-  if (!header_msg.ParseFromCodedStream(&coded_input))
-      xbtracer_pcritical("failed to parse header from coded protobuf input.");
+  if (!header_msg.ParseFromCodedStream(&coded_input)) {
+    xbtracer_perror("failed to parse header from coded protobuf input.");
+    return false;
+  }
   coded_input.PopLimit(limit);
   xbtracer_pinfo("APIs sequence captured for XRT version: ", header_msg.version(), ".");
 
@@ -95,8 +99,10 @@ xbreplay_coded_get_sequence_from_file(std::ifstream& input)
   while (coded_input.ReadVarint32(&size)) {
     limit = coded_input.PushLimit(static_cast<int>(size));
     std::shared_ptr<xbtracer_proto::Func> sh_func_msg = std::make_shared<xbtracer_proto::Func>();
-    if (!sh_func_msg->ParseFromCodedStream(&coded_input))
-        xbtracer_pcritical("failed to parse header from coded protobuf input.");
+    if (!sh_func_msg->ParseFromCodedStream(&coded_input)) {
+      xbtracer_perror("failed to parse header from coded protobuf input.");
+      return false;
+    }
     coded_input.PopLimit(limit);
     queue_sh->push(sh_func_msg);
   }
