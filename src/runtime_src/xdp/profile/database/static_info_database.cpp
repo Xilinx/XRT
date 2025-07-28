@@ -2541,7 +2541,10 @@ namespace xdp {
       if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) != deviceInfo.end()) {
         ConfigInfo* defaultConfig = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig();
         if (defaultConfig && (defaultConfig->type == CONFIG_PL_DEVICE_INTF_ONLY)) {
-          xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", XDP_ERROR_PL_XCLBIN_AFTER_AIE_ONLY_XCLBIN);
+          std::stringstream errMsg;
+          errMsg << "Debug and Profiling features are not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
+          errMsg << "Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context.";
+          xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", errMsg.str());
           std::abort();
         }
       }
