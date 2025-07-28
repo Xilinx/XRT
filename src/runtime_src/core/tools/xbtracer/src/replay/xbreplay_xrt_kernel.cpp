@@ -53,9 +53,6 @@ register_kernel_func()
                    name_str, ".");
     std::shared_ptr<xrt::kernel> kernel_sh = std::make_shared<xrt::kernel>(*hw_context_sh,
                                                                            name_str);
-    if (!hw_context_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create hw_context.");
-    }
     track(kernel_sh, impl);
     return 0;
   };

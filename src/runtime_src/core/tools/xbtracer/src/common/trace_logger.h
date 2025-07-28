@@ -22,19 +22,21 @@ namespace xrt::tools::xbtracer
 // Helper to print a single argument
 template<typename T>
 void
-print_one(std::ostream& os, T& arg)
+print_one(std::ostream& os, const T& arg)
 {
-  os << std::forward<T>(arg);
+  std::cout << arg;
+  if (&os != &std::cout)
+    os << arg;
 }
 
 // Recursive variadic template to print all arguments
 template<typename T, typename... Args>
 void
-print_all(std::ostream& os, T& first, Args&... args)
+print_all(std::ostream& os, T& first, const Args&... args)
 {
-  print_one(os, std::forward<T>(first));
+  print_one(os, first);
   if constexpr (sizeof...(args) > 0)
-    print_all(os, std::forward<Args>(args)...);
+    print_all(os, args...);
 }
 
 class logger
@@ -66,34 +68,34 @@ public:
 
   template<typename... Args>
   void
-  print(level l, Args&... args)
+  print(level l, const Args&... args)
   {
     if (l > plevel)
       return;
 
-    std::string level_str;
+    std::string prefix;
     if (l == level::CRITICAL)
-      level_str = "CRITICAL";
+      prefix = "CRITICAL";
     else if (l == level::ERR)
-      level_str = "ERROR";
+      prefix = "ERROR";
     else if (l == level::WARNING)
-      level_str = "WARNING";
+      prefix = "WARNING";
     else if (l == level::INFO)
-      level_str = "INFO";
+      prefix = "INFO";
     else
-      level_str = "DEBUG";
+      prefix = "DEBUG";
 
-    std::string prefix = std::string(level_str) + ": [" + lname + "]: ";
-    print_one(std::cout, prefix);
-    print_all(std::cout, std::forward<Args>(args)...);
-    std::cout << std::endl;
+    prefix.append(": [" + lname + "]: ");
     if (ofile.is_open()) {
       print_one(ofile, prefix);
-      print_all(ofile, std::forward<Args>(args)...);
-      ofile << std::endl;
+      print_all(ofile, args...);
+      print_one(ofile, "\n");
     }
-    if (l == level::CRITICAL)
-      throw std::runtime_error(lname + "hit critical error.");
+    else {
+      print_one(std::cout, prefix);
+      print_all(std::cout, args...);
+      print_one(std::cout, "\n");
+    }
   }
 
 private:
@@ -112,6 +114,7 @@ xbtracer_pcritical(const Args&... args)
 {
   xrt::tools::xbtracer::logger::get_instance().print(xrt::tools::xbtracer::logger::level::CRITICAL,
                                                      args...);
+  throw std::runtime_error("Critical error.");
 }
 
 template<typename... Args>

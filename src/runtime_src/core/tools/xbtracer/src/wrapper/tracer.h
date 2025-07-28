@@ -380,11 +380,15 @@ xbtracer_init_func_entry(PFUNC& func_msg, bool& need_trace, const char* func_s,
                          proc_addr_type& paddr_ptr)
 {
   const char* func_mname = get_func_mname_from_signature(func_s);
-  if (!func_mname)
-    xbtracer_pcritical("failed to get mangled name for function\"", std::string(func_s), "\".");
+  if (!func_mname) {
+    xbtracer_perror("failed to get mangled name for function\"", std::string(func_s), "\".");
+    return false;
+  }
   paddr_ptr = xbtracer_get_original_func_addr(func_mname);
-  if (!paddr_ptr)
-    xbtracer_pcritical("failed to get function\"", std::string(func_s), "\", \"", std::string(func_s), "\".");
+  if (!paddr_ptr) {
+    xbtracer_perror("failed to get function\"", std::string(func_s), "\", \"", std::string(func_s), "\".");
+    return false;
+  }
 
   if (!xbtracer_needs_trace_func()) {
     // if function doesn't need to be traced, do not initialize protobuf message

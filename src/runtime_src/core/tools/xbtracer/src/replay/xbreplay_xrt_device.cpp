@@ -43,9 +43,6 @@ register_device_func()
     xbtracer_pinfo("Replaying: ", entry_msg->name(), ", ", reinterpret_cast<void*>(impl),
                    ", id: ", id, ".");
     std::shared_ptr<xrt::device> dev_sh = std::make_shared<xrt::device>(id);
-    if (!dev_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create device with id: ", id, ".");
-    }
     track(dev_sh, impl);
     return 0;
   };

@@ -59,9 +59,6 @@ register_hw_context_func()
     xbtracer_pinfo("Replaying: ", entry_msg->name(), ", ", std::hex, impl, ", dev: ", std::hex, dev_impl,
                    ", uuid: ", uuid_str, ", access_mode: ", std::hex, (uint32_t)mode, ".");
     std::shared_ptr<xrt::hw_context> hw_context_sh = std::make_shared<xrt::hw_context>(*dev_sh, xclbin_uuid, mode);
-    if (!hw_context_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create hw_context.");
-    }
     track(hw_context_sh, impl);
     return 0;
   };

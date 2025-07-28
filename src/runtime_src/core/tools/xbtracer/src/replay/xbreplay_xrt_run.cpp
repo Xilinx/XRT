@@ -49,9 +49,6 @@ register_run_func()
     xbtracer_pinfo("Replaying: ", entry_msg->name(), ", ", reinterpret_cast<const void*>(impl),
                    ", with kernel: ", reinterpret_cast<const void*>(kernel_impl), ".");
     std::shared_ptr<xrt::run> run_sh = std::make_shared<xrt::run>(*kernel_sh);
-    if (!run_sh) {
-      xbtracer_pcritical(entry_msg->name(), "failed to create run with kernel.");
-    }
     track(run_sh, impl);
     return 0;
   };
