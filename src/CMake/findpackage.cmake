@@ -4,6 +4,12 @@
 
 message("-- Preparing XRT find_package")
 
+if (CMAKE_VERSION VERSION_LESS "3.20.0")
+  # cmake_path(...) function was introduced in 3.20.0
+  message(WARNING "CMake version is less than 3.20.0, find_package is disabled")
+  return()
+endif()
+
 # Provides write_basic_package_version_file
 include(CMakePackageConfigHelpers)
 
