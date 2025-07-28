@@ -87,6 +87,8 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 #define AIE_TS2MM_WARN_MSG_BUF_FULL           "AIE Trace Buffer is full. Device trace could be incomplete."
 #define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
 #define AIE_TRACE_TILES_UNAVAILABLE           "No valid tiles found for the provided configuration and design. So, AIE event trace will not be available."
+#define XDP_ERROR_PL_XCLBIN_AFTER_AIE_ONLY_XCLBIN "Debug and Profiling features not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. \
+Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context."
 
 #define AIE_TRACE_BUF_REUSE_WARN              "AIE reuse_buffer may cause overrun. \
 Recommended settings: \

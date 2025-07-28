@@ -1667,18 +1667,11 @@ namespace xdp {
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
     // before calling this function. So, we don't need to check for validity here.
     static uint64_t nextAvailableUID = 1;
-    static bool isDefaultPlDeviceIdUsed = false;
     {
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
-
       auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
       if (it != hwCtxImplUIDMap.end())
         return it->second;
-
-      if (isDefaultPlDeviceIdUsed) {
-        hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
-        return hwCtxImplUIDMap[hwCtxImpl];
-      }
     }
 
     auto device = util::convertToCoreDevice(hwCtxImpl, true);
@@ -1690,7 +1683,6 @@ namespace xdp {
     if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
         (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
       hwCtxImplUIDMap[hwCtxImpl] = DEFAULT_PL_DEVICE_ID; // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
-      isDefaultPlDeviceIdUsed = true;
     } else {
        hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
     }
@@ -2542,6 +2534,17 @@ namespace xdp {
       // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
       // It is expected to have AIE type xclbin loaded after PL type.
       devInfo->cleanCurrentConfig(xclbinType);
+    }
+
+    if ((getAppStyle() == AppStyle::REGISTER_XCLBIN_STYLE) && ((xclbinType == XCLBIN_PL_ONLY) || (xclbinType == XCLBIN_AIE_PL)))
+    {
+      if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) != deviceInfo.end()) {
+        ConfigInfo* defaultConfig = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig();
+        if (defaultConfig && (defaultConfig->type == CONFIG_PL_DEVICE_INTF_ONLY)) {
+          xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", XDP_ERROR_PL_XCLBIN_AFTER_AIE_ONLY_XCLBIN);
+          std::abort();
+        }
+      }
     }
 
     XclbinInfo* currentXclbin = new XclbinInfo(xclbinType) ;
