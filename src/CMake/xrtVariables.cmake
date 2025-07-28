@@ -2,12 +2,13 @@
 # Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 if (WIN32)
-  set (XRT_INSTALL_DIR "xrt")
+  set (XRT_INSTALL_DIR ".")
   set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}")
   set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
   set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
   set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib")
   set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
+  set (XRT_INSTALL_CMAKE_DIR     "${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}")
 else()
   set (XRT_INSTALL_DIR           ".")
   set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")

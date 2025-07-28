@@ -2,10 +2,8 @@
 # Copyright (C) 2019-2024, Advanced Micro Devices, Inc. All rights Reserved.
 #
 # Signing xclbin images are currently only support on Linux
-
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.5...4.0)
 project(XCLBINUTIL)
-
 
 # This cmake project depends on some other cmake util files
 # which can be found in folder ${XRT_SOURCE_DIR}/CMake.

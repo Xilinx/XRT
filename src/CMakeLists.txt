@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2018-2022 Xilinx, Inc. All rights reserved.
 # Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.5...4.0)
 project(XRT)
 set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 

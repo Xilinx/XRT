@@ -1,8 +1,11 @@
 @ECHO OFF
 
-REM Copyright (C) 2022 Xilinx, Inc
 REM SPDX-License-Identifier: Apache-2.0
+REM Copyright (C) 2022 Xilinx, Inc.  All rights reserved.
+REM Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+setlocal enabledelayedexpansion
 set SCRIPTDIR=%~dp0
+set SCRIPTDIR=%SCRIPTDIR:~0,-1%
 set BUILDDIR=%SCRIPTDIR%
 
 set DEBUG=1
@@ -13,10 +16,7 @@ set CREATE_SDK=0
 set CMAKEFLAGS=
 set NOCMAKE=0
 set NOCTEST=0
-set XCLMGMT_DRIVER=
-set XCLMGMT2_DRIVER=
-set XOCLUSER_DRIVER=
-set XOCLUSER2_DRIVER=
+set PLATFORM=WBuild
 
 IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS%) ELSE ( SET LOCAL_MSVC_PARALLEL_JOBS=3 )
 
@@ -53,22 +53,6 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   if [%1] == [-pkg] (
     set CREATE_PACKAGE=1
   ) else (
-  if [%1] == [-xclmgmt] (
-    set XCLMGMT_DRIVER=%2
-    shift
-  ) else (
-  if [%1] == [-xocluser] (
-    set XOCLUSER_DRIVER=%2
-    shift
-  ) else (
-  if [%1] == [-xclmgmt2] (
-    set XOCLMGMT2_DRIVER=%2
-    shift
-  ) else (
-  if [%1] == [-xocluser2] (
-    set XOCLUSER2_DRIVER=%2
-    shift
-  ) else (
   if [%1] == [-nocmake] (
     set NOCMAKE=1
   ) else (
@@ -77,23 +61,57 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   ) else (
     echo Unknown option: %1
     goto Help
-  ))))))))))))))))
+  ))))))))))))
   shift
   goto parseArgs
 
 :argsParsed
 
-set CMAKEFLAGS=%CMAKEFLAGS% -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%EXT_DIR% -DBOOST_ROOT=%EXT_DIR% -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-ECHO CMAKEFLAGS=%CMAKEFLAGS%
+REM Configure CMake
+if [%NOCMAKE%] == [0] (
+   echo Configuring CMake project
+
+   set CMAKEFLAGS=%CMAKEFLAGS%^
+   -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS%^
+   -DKHRONOS=%EXT_DIR%^
+   -DBOOST_ROOT=%EXT_DIR%^
+   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+   echo cmake -B %BUILDDIR%\%PLATFORM% -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+   cmake -B %BUILDDIR%\%PLATFORM% -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+   IF errorlevel 1 (exit /B %errorlevel%)
+)
 
 if [%DEBUG%] == [1] (
-   call :DebugBuild
+   echo cmake --build %BUILDDIR%\%PLATFORM% --config Debug --verbose
+   cmake --build %BUILDDIR%\%PLATFORM% --config Debug --verbose
+   if errorlevel 1 (exit /B %errorlevel%)
+
+   echo cmake --install %BUILDDIR%\%PLATFORM% --config Debug --prefix %BUILDDIR%\%PLATFORM%\Debug\xilinx\xrt --verbose
+   cmake --install %BUILDDIR%\%PLATFORM% --config Debug --prefix %BUILDDIR%\%PLATFORM%\Debug\xilinx\xrt
    if errorlevel 1 (exit /B %errorlevel%)
 )
 
 if [%RELEASE%] == [1] (
-   call :ReleaseBuild
+   echo cmake --build %BUILDDIR%\%PLATFORM% --config Release --verbose
+   cmake --build %BUILDDIR%\%PLATFORM% --config Release --verbose
    if errorlevel 1 (exit /B %errorlevel%)
+
+   echo cmake --install %BUILDDIR%\%PLATFORM% --config Release --prefix %BUILDDIR%\%PLATFORM%\Release\xilinx\xrt --verbose
+   cmake --install %BUILDDIR%\%PLATFORM% --config Release --prefix %BUILDDIR%\%PLATFORM%\Release\xilinx\xrt
+   if errorlevel 1 (exit /B %errorlevel%)
+
+   ECHO ====================== Create SDK ZIP archive ============================
+   echo cpack -G ZIP -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+   cpack -G ZIP -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+   if errorlevel 1 (exit /B %errorlevel%)
+
+   if [%CREATE_PACKAGE%]  == [1] (
+      ECHO ====================== Creating MSI Archive ============================
+      echo cpack -G WIX -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+      cpack -G WIX -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+      if errorlevel 1 (exit /B %errorlevel%)
+   )
 )
 
 goto :EOF
@@ -110,94 +128,12 @@ ECHO [-noabi]                   - Do not compile with ABI version check (make in
 ECHO [-opt]                     - Creates a release build
 ECHO [-sdk]                     - Create NSIS XRT SDK Installer for NPU (requires NSIS installed).
 echo [-package]                 - Packages the release build to a MSI archive.
-ECHO                              Note: Depends on the WIX application. 
-ECHO [-xclmgmt arg]             - The directory to the xclmgmt drivers (used with [-package])
-ECHO [-xocluser arg]            - The directory to the xocluser drivers (used with [-package])
-ECHO [-xclmgmt2 arg]            - The directory to the xclmgmt2 drivers (used with [-package])
-ECHO [-xocluser2 arg]           - The directory to the xocluser2 drivers (used with [-package])
 ECHO [-npu]                     - Build NPU component of XRT (deployment and development)
 ECHO [-hip]                     - Enable hip library build
 GOTO:EOF
 
-REM --------------------------------------------------------------------------
 :Clean
-PUSHD %BUILDDIR%
-IF EXIST WDebug (
-  ECHO Removing 'WDebug' directory...
-  rmdir /S /Q WDebug
+IF EXIST %BUILDDIR%\%PLATFORM% (
+  ECHO Removing '%BUILDDIR%\%PLATFORM%' directory...
+  rmdir /S /Q %BUILDDIR%\%PLATFORM%
 )
-IF EXIST WRelease (
-  ECHO Removing 'WRelease' directory...
-  rmdir /S /Q WRelease
-)
-POPD
-GOTO:EOF
-
-REM --------------------------------------------------------------------------
-:DebugBuild
-echo ====================== Windows Debug Build ============================
-set CMAKEFLAGS=%CMAKEFLAGS% -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=%BUILDDIR%/WDebug/xilinx
-ECHO CMAKEFLAGS=%CMAKEFLAGS%
-
-MKDIR %BUILDDIR%\WDebug
-PUSHD %BUILDDIR%\WDebug
-
-if [%NOCMAKE%] == [0] (
-   cmake -G "Visual Studio 17 2022" %CMAKEFLAGS% ../../src
-   IF errorlevel 1 (POPD & exit /B %errorlevel%)
-)
-
-cmake --build . --verbose --config Debug --target install
-IF errorlevel 1 (POPD & exit /B %errorlevel%)
-
-POPD
-GOTO:EOF
-
-REM --------------------------------------------------------------------------
-:ReleaseBuild
-ECHO ====================== Windows Release Build ============================
-set CMAKEFLAGS=%CMAKEFLAGS% -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%BUILDDIR%/WRelease/xilinx
-
-MKDIR %BUILDDIR%\WRelease
-PUSHD %BUILDDIR%\WRelease
-
-IF NOT [%XCLMGMT_DRIVER%] == [] (
-  ECHO Packaging xclbmgmt driver directory: %XCLMGMT_DRIVER%
-  set CMAKEFLAGS=%CMAKEFLAGS% -DXCL_MGMT=%XCLMGMT_DRIVER%
-)
-
-IF NOT [%XCLMGMT2_DRIVER%] == [] (
-  ECHO Packaging xclbmgmt2 driver directory: %XCLMGMT2_DRIVER%
-  set CMAKEFLAGS=%CMAKEFLAGS% -DXCL_MGMT2=%XCLMGMT2_DRIVER%
-)
-
-IF NOT [%XOCLUSER_DRIVER%] == [] (
-  ECHO Packaging xocluser directory: %XOCLUSER_DRIVER%
-  set CMAKEFLAGS=%CMAKEFLAGS% -DXOCL_USER=%XOCLUSER_DRIVER%
-)
-
-IF NOT [%XOCLUSER2_DRIVER%] == [] (
-  ECHO Packaging xocluser2 directory: %XOCLUSER2_DRIVER%
-  set CMAKEFLAGS=%CMAKEFLAGS% -DXOCL_USER2=%XOCLUSER2_DRIVER%
-)
-
-ECHO CMAKEFLAGS=%CMAKEFLAGS%
-
-if [%NOCMAKE%] == [0] (
-   cmake -G "Visual Studio 17 2022" %CMAKEFLAGS% ../../src
-   IF errorlevel 1 (POPD & exit /B %errorlevel%)
-)
-
-cmake --build . --verbose --config Release --target install
-IF errorlevel 1 (POPD & exit /B %errorlevel%)
-
-ECHO ====================== Zipping up Installation Build ============================
-cpack -G ZIP -C Release
-
-if [%CREATE_SDK%] == [1] (
-  ECHO ====================== Creating SDK Installer ============================
-  cpack -G NSIS -C Release
-)
-
-popd
-GOTO:EOF
