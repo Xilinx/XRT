@@ -59,5 +59,4 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
   }
-  return ptree;
 }
