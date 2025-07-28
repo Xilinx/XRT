@@ -276,7 +276,7 @@ release_dir=${REL_DIR:-Release}
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
-cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR
