@@ -15,6 +15,8 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${PROFILE_DIR}/writer/aie_trace/*.cpp"
 )
 file(GLOB AIE_TRACE_UTIL_FILES
+  "${PROFILE_DIR}/plugin/aie_base/*"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*"
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.h"
   "${PROFILE_DIR}/plugin/aie_trace/util/aie_trace_util.cpp"
 )

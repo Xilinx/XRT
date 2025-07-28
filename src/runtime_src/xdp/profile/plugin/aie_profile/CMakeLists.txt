@@ -14,6 +14,8 @@ file(GLOB AIE_PROFILE_PLUGIN_FILES
   "${PROFILE_DIR}/writer/aie_profile/*.cpp"
 )
 file(GLOB AIE_PROFILE_UTIL_FILES
+  "${PROFILE_DIR}/plugin/aie_base/*"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.cpp"
 )
