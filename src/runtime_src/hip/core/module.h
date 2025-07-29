@@ -9,6 +9,10 @@
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 
+#include <mutex>
+#include <vector>
+#include <thread>
+
 namespace xrt::core::hip {
 
 // module_handle - opaque module handle
@@ -103,6 +107,8 @@ public:
 class function
 {
   module_xclbin* m_xclbin_module = nullptr;
+  std::vector<xrt::run> m_runs_cache; // cache for the runs to this function
+  std::mutex m_runs_mutex; // lock to m_runs_cache
   std::string m_func_name;
   xrt::kernel m_xrt_kernel;
 
@@ -120,6 +126,27 @@ public:
   get_kernel() const
   {
     return m_xrt_kernel;
+  }
+
+  xrt::run
+  get_run()
+  {
+    {
+      std::scoped_lock lock(m_runs_mutex);
+      if (!m_runs_cache.empty()) {
+        auto run = std::move(m_runs_cache.back());
+        m_runs_cache.pop_back();
+        return run;
+      }
+    }
+    return xrt::run(m_xrt_kernel);
+  }
+
+  void
+  release_run(xrt::run&& run)
+  {
+    std::scoped_lock lock(m_runs_mutex);
+    m_runs_cache.push_back(std::move(run));
   }
 };
 
