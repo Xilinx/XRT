@@ -17,7 +17,6 @@ set CMAKEFLAGS=
 set NOCMAKE=0
 set NOCTEST=0
 set GENERATOR="Visual Studio 17 2022"
-set PLATFORM=WBuild
 
 IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS%) ELSE ( SET LOCAL_MSVC_PARALLEL_JOBS=3 )
 
@@ -68,49 +67,62 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
 
 :argsParsed
 
-REM Configure CMake
-if [%NOCMAKE%] == [0] (
-   echo Configuring CMake project
-
-   set CMAKEFLAGS=%CMAKEFLAGS%^
-   -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS%^
-   -DKHRONOS=%EXT_DIR%^
-   -DBOOST_ROOT=%EXT_DIR%^
-   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-   echo cmake -B %BUILDDIR%\%PLATFORM% -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
-   cmake -B %BUILDDIR%\%PLATFORM% -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
-   IF errorlevel 1 (exit /B %errorlevel%)
-)
-
 if [%DEBUG%] == [1] (
-   echo cmake --build %BUILDDIR%\%PLATFORM% --config Debug --verbose
-   cmake --build %BUILDDIR%\%PLATFORM% --config Debug --verbose
+   if [%NOCMAKE%] == [0] (
+      echo Configuring CMake project
+      
+      set CMAKEFLAGS=%CMAKEFLAGS%^
+      -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS%^
+      -DKHRONOS=%EXT_DIR%^
+      -DBOOST_ROOT=%EXT_DIR%^
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      echo cmake -B %BUILDDIR%\WDebug -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+      cmake -B %BUILDDIR%\WDebug -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+      IF errorlevel 1 (exit /B %errorlevel%)
+   )
+
+   echo cmake --build %BUILDDIR%\WDebug --config Debug --verbose
+   cmake --build %BUILDDIR%\WDebug --config Debug --verbose
    if errorlevel 1 (exit /B %errorlevel%)
 
-   echo cmake --install %BUILDDIR%\%PLATFORM% --config Debug --prefix %BUILDDIR%\%PLATFORM%\Debug\xilinx\xrt --verbose
-   cmake --install %BUILDDIR%\%PLATFORM% --config Debug --prefix %BUILDDIR%\%PLATFORM%\Debug\xilinx\xrt
+   echo cmake --install %BUILDDIR%\WDebug --config Debug --prefix %BUILDDIR%\WDebug\xilinx\xrt --verbose
+   cmake --install %BUILDDIR%\WDebug --config Debug --prefix %BUILDDIR%\WDebug\xilinx\xrt
    if errorlevel 1 (exit /B %errorlevel%)
 )
 
 if [%RELEASE%] == [1] (
-   echo cmake --build %BUILDDIR%\%PLATFORM% --config Release --verbose
-   cmake --build %BUILDDIR%\%PLATFORM% --config Release --verbose
+   if [%NOCMAKE%] == [0] (
+      echo Configuring CMake project
+      
+      set CMAKEFLAGS=%CMAKEFLAGS%^
+      -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS%^
+      -DKHRONOS=%EXT_DIR%^
+      -DBOOST_ROOT=%EXT_DIR%^
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      echo cmake -B %BUILDDIR%\WRelease -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+      cmake -B %BUILDDIR%\WRelease -G %GENERATOR% !CMAKEFLAGS! %BUILDDIR%\..\src
+      IF errorlevel 1 (exit /B %errorlevel%)
+   )
+
+   echo cmake --build %BUILDDIR%\WRelease --config Release --verbose
+   cmake --build %BUILDDIR%\WRelease --config Release --verbose
    if errorlevel 1 (exit /B %errorlevel%)
 
-   echo cmake --install %BUILDDIR%\%PLATFORM% --config Release --prefix %BUILDDIR%\%PLATFORM%\Release\xilinx\xrt --verbose
-   cmake --install %BUILDDIR%\%PLATFORM% --config Release --prefix %BUILDDIR%\%PLATFORM%\Release\xilinx\xrt
+   echo cmake --install %BUILDDIR%\WRelease --config Release --prefix %BUILDDIR%\WRelease\xilinx\xrt --verbose
+   cmake --install %BUILDDIR%\WRelease --config Release --prefix %BUILDDIR%\WRelease\xilinx\xrt
    if errorlevel 1 (exit /B %errorlevel%)
 
    ECHO ====================== Create SDK ZIP archive ============================
-   echo cpack -G ZIP -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
-   cpack -G ZIP -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+   echo cpack -G ZIP -B %BUILDDIR%\WRelease -C Release --config %BUILDDIR%\WRelease\CPackConfig.cmake
+   cpack -G ZIP -B %BUILDDIR%\WRelease -C Release --config %BUILDDIR%\WRelease\CPackConfig.cmake
    if errorlevel 1 (exit /B %errorlevel%)
 
    if [%CREATE_PACKAGE%]  == [1] (
       ECHO ====================== Creating MSI Archive ============================
-      echo cpack -G WIX -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
-      cpack -G WIX -B %BUILDDIR%\%PLATFORM% -C Release --config %BUILDDIR%\%PLATFORM%\CPackConfig.cmake
+      echo cpack -G WIX -B %BUILDDIR%\WRelease -C Release --config %BUILDDIR%\WRelease\CPackConfig.cmake
+      cpack -G WIX -B %BUILDDIR%\WRelease -C Release --config %BUILDDIR%\WRelease\CPackConfig.cmake
       if errorlevel 1 (exit /B %errorlevel%)
    )
 )
@@ -134,7 +146,11 @@ ECHO [-hip]                     - Enable hip library build
 GOTO:EOF
 
 :Clean
-IF EXIST %BUILDDIR%\%PLATFORM% (
-  ECHO Removing '%BUILDDIR%\%PLATFORM%' directory...
-  rmdir /S /Q %BUILDDIR%\%PLATFORM%
+IF EXIST %BUILDDIR%\WRelease (
+  ECHO Removing '%BUILDDIR%\WRelease' directory...
+  rmdir /S /Q %BUILDDIR%\WRelease
+)
+IF EXIST %BUILDDIR%\WDebug (
+  ECHO Removing '%BUILDDIR%\WDebug' directory...
+  rmdir /S /Q %BUILDDIR%\WDebug
 )
