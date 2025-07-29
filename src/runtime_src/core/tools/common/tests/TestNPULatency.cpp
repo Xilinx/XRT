@@ -31,7 +31,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
   try
   {
-    xrt_core::runner runner(xrt::device(dev), recipe_path, recipe_path, std::filesystem::path(test_path));
+    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
     runner.execute();
     runner.wait();
 
