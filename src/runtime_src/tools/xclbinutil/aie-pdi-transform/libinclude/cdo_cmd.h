@@ -113,8 +113,10 @@ typedef struct {
 /****************************************************************************/
 static inline void ParseBufFromCDO(uint32_t** pBuf, uint32_t* pBufLen, const XCdoLoad* CdoLoad) {
 	uint32_t* Buf = (uint32_t *)CdoLoad->CdoPtr;
+	// see cdo header structure, cdoHeader[] in pdi-transform.c
 	uint32_t BufLen = Buf[3U];
 	Buf = &Buf[XCDO_CDO_HDR_LEN];
+	// Buf now points to the beginning of the cdo image
 	*pBuf = Buf;
 	*pBufLen = BufLen;
 	return;
@@ -132,9 +134,9 @@ static inline void ParseBufFromCDO(uint32_t** pBuf, uint32_t* pBufLen, const XCd
  *****************************************************************************/
 static inline void XCdo_CmdSize(uint32_t *Buf, XCdoCmd *Cmd)
 {
-	uint32_t CmdId = Buf[0U];
+	// uint32_t CmdId = Buf[0U];
 	uint32_t Size = XCDO_SHORT_CMD_HDR_LEN;
-	uint32_t PayloadLen = (CmdId & XCDO_CMD_LEN_MASK) >> 16U;
+	uint32_t PayloadLen = (Buf[0U] & XCDO_CMD_LEN_MASK) >> 16U;
 
 	if (PayloadLen == XCDO_MAX_SHORT_CMD_LEN) {
 		Size = XCDO_LONG_CMD_HDR_LEN;
