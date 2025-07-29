@@ -22,12 +22,14 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_recipe);
   std::string recipe_noop = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_nop_recipe);
   std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_profile);
+  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_path); 
   auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
   auto recipe_noop_path = XBValidateUtils::findPlatformFile(recipe_noop, ptree);
   auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
+  auto test_path =  XBValidateUtils::findPlatformFile(test, ptree); 
   try
   {
-    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path);
+    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
 
     //Run 1
     runner.execute();
