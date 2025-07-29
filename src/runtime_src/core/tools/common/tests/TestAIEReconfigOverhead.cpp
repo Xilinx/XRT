@@ -10,10 +10,6 @@
 namespace XBU = XBUtilities;
 using json = nlohmann::json;
 
-static constexpr std::string_view recipe_file = "recipe_aie_reconfig.json";
-static constexpr std::string_view recipe_nop_file = "recipe_nop.json";
-static constexpr std::string_view profile_file = "profile.json";
-
 TestAIEReconfigOverhead::TestAIEReconfigOverhead()
   : TestRunner("aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA")
 {}
@@ -23,14 +19,15 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
 
   boost::property_tree::ptree ptree = get_test_header();
-  std::string repo_path = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead);
-  repo_path = XBValidateUtils::findPlatformFile(repo_path, ptree);
-  std::string recipe = repo_path + std::string(recipe_file);
-  std::string recipe_noop = repo_path + std::string(recipe_nop_file);
-  std::string profile = repo_path + std::string(profile_file);
+  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_recipe);
+  std::string recipe_noop = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_nop_recipe);
+  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_profile);
+  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
+  auto recipe_noop_path = XBValidateUtils::findPlatformFile(recipe_noop, ptree);
+  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
   try
   {
-    xrt_core::runner runner(xrt::device(dev), recipe, profile, std::filesystem::path(repo_path));
+    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path);
 
     //Run 1
     runner.execute();
@@ -38,7 +35,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     auto report = json::parse(runner.get_report());
     auto elapsed = report["cpu"]["elapsed"].get<double>();
 
-    runner = xrt_core::runner(xrt::device(dev), recipe_noop, profile, std::filesystem::path(repo_path));
+    runner = xrt_core::runner(xrt::device(dev), recipe_noop_path, profile_path);
 
     //Run 2
     runner.execute();
@@ -51,7 +48,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
     ptree.put("status", XBValidateUtils::test_token_passed);
-    return ptree;
   }
   catch(const std::exception& e)
   {

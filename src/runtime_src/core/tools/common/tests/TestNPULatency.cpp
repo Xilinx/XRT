@@ -13,10 +13,8 @@ using json = nlohmann::json;
 // System - Include Files
 #include <filesystem>
 
-static constexpr std::string_view recipe_file = "recipe_latency.json";
-static constexpr std::string_view profile_file = "profile_latency.json";
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
+
 TestNPULatency::TestNPULatency()
    : TestRunner("latency", "Run end-to-end latency test")
 {}
@@ -25,13 +23,15 @@ boost::property_tree::ptree
 TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string repo_path = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency);
-  repo_path = XBValidateUtils::findPlatformFile(repo_path, ptree);
-  std::string recipe = repo_path + std::string(recipe_file);
-  std::string profile = repo_path + std::string(profile_file);
+  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_recipe);
+  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_profile);
+  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_path); 
+  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
+  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
+  auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
   try
   {
-    xrt_core::runner runner(xrt::device(dev), recipe, profile, std::filesystem::path(repo_path));
+    xrt_core::runner runner(xrt::device(dev), recipe_path, recipe_path, std::filesystem::path(test_path));
     runner.execute();
     runner.wait();
 
