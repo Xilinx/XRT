@@ -68,6 +68,7 @@ extern "C" {
 #define XCDO_CMD_API_ID_MASK			(0xFFU)
 #define XCDO_CMD_MODULE_ID_MASK		(0xFF00U)
 #define XCDO_CMD_LEN_MASK			(0xFF0000U)
+#define XCDO_CMD_LEN_SHIFT			(16U)
 #define XCDO_CMD_RESP_SIZE			(8U)
 #define XCDO_CMD_RESUME_DATALEN		(8U)
 #define XCDO_CMD_HNDLR_MASK			(0xFF00U)
@@ -136,7 +137,7 @@ static inline void XCdo_CmdSize(uint32_t *Buf, XCdoCmd *Cmd)
 {
 	// uint32_t CmdId = Buf[0U];
 	uint32_t Size = XCDO_SHORT_CMD_HDR_LEN;
-	uint32_t PayloadLen = (Buf[0U] & XCDO_CMD_LEN_MASK) >> 16U;
+	uint32_t PayloadLen = (Buf[0U] & XCDO_CMD_LEN_MASK) >> XCDO_CMD_LEN_SHIFT;
 
 	if (PayloadLen == XCDO_MAX_SHORT_CMD_LEN) {
 		Size = XCDO_LONG_CMD_HDR_LEN;
