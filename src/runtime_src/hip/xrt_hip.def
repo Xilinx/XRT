@@ -16,6 +16,7 @@ EXPORTS
   hipGetDevicePropertiesR0600
   hipDeviceGetUuid
   hipDeviceGetAttribute
+  hipSetDevice
   hipDrvGetErrorName
   hipDrvGetErrorString
   hipGetErrorString
