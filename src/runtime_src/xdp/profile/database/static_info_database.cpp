@@ -2530,24 +2530,19 @@ namespace xdp {
     } else {
       // This is a previously used device being reloaded with a new xclbin
       devInfo = itr->second.get();
-
-      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
-      // It is expected to have AIE type xclbin loaded after PL type.
-      devInfo->cleanCurrentConfig(xclbinType);
-    }
-
-    if ((getAppStyle() == AppStyle::REGISTER_XCLBIN_STYLE) && ((xclbinType == XCLBIN_PL_ONLY) || (xclbinType == XCLBIN_AIE_PL)))
-    {
-      if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) != deviceInfo.end()) {
-        ConfigInfo* defaultConfig = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig();
-        if (defaultConfig && (defaultConfig->type == CONFIG_PL_DEVICE_INTF_ONLY)) {
+      ConfigInfo *config = devInfo->currentConfig();
+      if (config && (config->type == CONFIG_PL_DEVICE_INTF_ONLY) &&
+          (xclbinType == XCLBIN_PL_ONLY || xclbinType == XCLBIN_AIE_PL)) {
           std::stringstream errMsg;
           errMsg << "Debug and Profiling features are not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
           errMsg << "Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context.";
           xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", errMsg.str());
           std::abort();
-        }
       }
+
+      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
+      // It is expected to have AIE type xclbin loaded after PL type.
+      devInfo->cleanCurrentConfig(xclbinType);
     }
 
     XclbinInfo* currentXclbin = new XclbinInfo(xclbinType) ;
