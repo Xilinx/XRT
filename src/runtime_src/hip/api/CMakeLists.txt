@@ -14,4 +14,5 @@ target_include_directories(hip_api_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
   ${HIP_INCLUDE_DIRS}
+  ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
