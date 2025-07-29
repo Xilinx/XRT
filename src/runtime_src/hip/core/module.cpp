@@ -55,11 +55,32 @@ module_elf(module_xclbin* xclbin_module, void* data, size_t size)
   , m_xrt_module{m_xrt_elf}
 {}
 
+module_full_elf::
+module_full_elf(std::shared_ptr<context> ctx, const std::string& file_name)
+  : module{std::move(ctx), false, true}
+  , m_xrt_elf{file_name}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), m_xrt_elf}
+{}
+
+module_full_elf::
+module_full_elf(std::shared_ptr<context> ctx, const void* data, size_t size)
+  : module{std::move(ctx), false, true}
+  , m_xrt_elf{data, size}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), m_xrt_elf}
+{}
+
 function::
 function(module_xclbin* xclbin_mod_hdl, const xrt::module& xrt_module, const std::string& name)
   : m_xclbin_module{xclbin_mod_hdl}
   , m_func_name{name}
   , m_xrt_kernel{xrt::ext::kernel{m_xclbin_module->get_hw_context(), xrt_module, name}}
+{}
+
+function::
+function(module_full_elf* full_elf_mod_hdl, const std::string& name)
+  : m_full_elf_module{full_elf_mod_hdl}
+  , m_func_name{name}
+  , m_xrt_kernel{xrt::ext::kernel{m_full_elf_module->get_hw_context(), name}}
 {}
 
 // Global map of modules
