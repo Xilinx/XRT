@@ -158,9 +158,6 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         if (!hip_mem)
           throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
 
-        // NPU device is not coherent. We need to sync the buffer objects before launching kernel
-        if (hip_mem->get_type() != memory_type::device)
-          hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
         r.set_arg(arg->index, hip_mem->get_xrt_bo());
         break;
       }
@@ -239,6 +236,28 @@ bool memory_pool_command::submit()
 bool memory_pool_command::wait()
 {
   // no-op
+  return true;
+}
+
+bool mem_prefetch_command::submit()
+{
+  auto hip_mem_and_off = memory_database::instance().get_hip_mem_from_addr(m_dev_ptr);
+  auto hip_mem = hip_mem_and_off.first;
+  size_t hip_mem_off = hip_mem_and_off.second;
+  throw_invalid_value_if(!hip_mem, "Invalid prefetch buf address.");
+  throw_invalid_value_if((hip_mem->get_size() < (hip_mem_off + m_size)),
+                         "Invalid prefetch buf address or size.");
+
+  // The under xrt::bo::sync() behaves the same for both TO_DEVICE or FROM_DEVICE direction.
+  // we pick xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE as input argument here.
+  hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE, m_size, hip_mem_off);
+  set_state(state::completed);
+  return true;
+}
+
+bool mem_prefetch_command::wait()
+{
+  // completed in submit()
   return true;
 }
 

@@ -4,7 +4,7 @@
 #ifndef XRT_BO_H_
 #define XRT_BO_H_
 
-#include "xrt.h"
+#include "xrt/deprecated/xrt.h"
 #include "xrt/detail/xrt_mem.h"
 #include "xrt/detail/pimpl.h"
 

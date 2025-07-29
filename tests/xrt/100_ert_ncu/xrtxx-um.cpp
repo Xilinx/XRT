@@ -1,7 +1,6 @@
-/**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // This test uses unmanaged execution of kernel, where each run object
 // is reused after it completes.  The test is internal and uses a non
@@ -18,13 +17,15 @@
 //
 // % g++ -g -std=c++17 -I${XILINX_XRT}/include -L${XILINX_XRT}/lib -o xrtxx-um.exe xrtxx-um.cpp -lxrt_coreutil -pthread -luuid
 
+#include <future>
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <chrono>
+#include <thread>
 #include <tuple>
 
-#include "ert.h"
+#include "xrt/detail/ert.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_kernel.h"

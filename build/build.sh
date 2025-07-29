@@ -149,9 +149,8 @@ while [ $# -gt 0 ]; do
             ;;
         -edge)
             shift
+            cmake_flags+=" -DXRT_EDGE=1"
             edge=1
-            opt=0
-            dbg=0
             ;;
         -hip)
             shift
@@ -270,7 +269,6 @@ fi
 
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
-edge_dir=${EDGE_DIR:-Edge}
 
 # By default compile with warnings as errors.
 # Update every time CMake is generating makefiles.
@@ -417,23 +415,6 @@ if [[ $opt == 1 ]]; then
   fi
   cd $BUILDDIR
 fi
-
-# Verify compilation on edge
-if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
-  mkdir -p $edge_dir
-  cd $edge_dir
-
-  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
-
-  if [[ $nocmake == 0 ]]; then
-    echo "env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src"
-    time env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src
-  fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD"
-  time make -j $jcore $verbose DESTDIR=$PWD
-  cd $BUILDDIR
-fi
-
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files

@@ -310,6 +310,7 @@ sync_bo(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirectio
 
   submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
   gmio_itr->second->wait();
+  bo.sync(dir == XCL_BO_SYNC_BO_GMIO_TO_AIE ? XCL_BO_SYNC_BO_TO_DEVICE : XCL_BO_SYNC_BO_FROM_DEVICE);
 }
 
 std::pair<size_t, size_t>
@@ -342,7 +343,10 @@ sync_bo_nb(std::vector<xrt::bo>& bos, const char *port_name, enum xclBOSyncDirec
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  return submit_sync_bo(bos[0], gmio_itr->second, gmio_config_itr->second, dir, size, offset);
+  std::pair<size_t, size_t> bd_info = submit_sync_bo(bos[0], gmio_itr->second, gmio_config_itr->second, dir, size, offset);
+  gmio_itr->second->set_bo_dir(bd_info.first, bos[0], dir);
+
+  return bd_info;
 }
 
 bool

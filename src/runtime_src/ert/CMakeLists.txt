@@ -7,7 +7,7 @@ if (DEFINED XRT_INSTALL_PREFIX)
 endif()
 set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
 
-if ((EXISTS $ENV{XILINX_VITIS}/gnu/microblaze) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
+if ((EXISTS $ENV{XILINX_VITIS}/gnu/microblaze) AND (NOT XRT_EDGE) AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
 
 message("-- MicroBlaze toolchain found, preparing ERT build")
 set(ERT_BUILD_ALL "yes")

@@ -24,21 +24,12 @@ ENDIF(DRM_FOUND)
 
 # --- OpenCL header files ---
 find_package(OpenCL)
-IF(OPENCL_FOUND)
+if (OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
   INCLUDE_DIRECTORIES(${OPENCL_INCLUDEDIR})
-ELSE(OPENCL_FOUND)
+else (OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
-ENDIF(OPENCL_FOUND)
-
-# --- Git ---
-find_package(Git)
-
-IF(GIT_FOUND)
-  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
+endif (OPENCL_FOUND)
 
 # --- LSB Release ---
 find_program(UNAME uname)
@@ -78,7 +69,7 @@ execute_process(COMMAND ${UNAME} -r
 # will be statically linked.  Enabled only for ubuntu.
 option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
 if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
-    AND (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    AND (NOT XRT_EDGE)
     AND (${LINUX_FLAVOR} MATCHES "^(Ubuntu)")
     )
   message("-- Enabling static artifacts of XRT")
