@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc.  All rights reserved.
-#
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc.  All rights reserved.
 
 # =======================================================
 # Application Debug Plugin Build
@@ -40,11 +39,7 @@ install (TARGETS xdp_appdebug_plugin
 # Only install these files for PCIe device for now, which is native build
 if (NOT XRT_EDGE)
 
-if (DEFINED XRT_INSTALL_PREFIX)
-    set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_PREFIX}/xrt/share/appdebug")
-else()
-    set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
-endif()
+set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_DIR}/share/appdebug")
 
 install (FILES
     ${APPDEBUG_DIR}/appdebug.py

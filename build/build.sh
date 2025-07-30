@@ -112,7 +112,7 @@ alveo_build=0
 npu_build=0
 base_build=0
 xclbinutil=0
-xrt_install_prefix="/opt/xilinx"
+xrt_install_prefix="/opt/xilinx/xrt"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -276,7 +276,7 @@ release_dir=${REL_DIR:-Release}
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
-cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR

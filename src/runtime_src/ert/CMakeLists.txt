@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
-set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
-if (DEFINED XRT_INSTALL_PREFIX)
-  set(ERT_INSTALL_PREFIX "${XRT_INSTALL_PREFIX}/xrt/share/fw")
-endif()
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+
+set(ERT_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/share/fw")
 set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
 
 if ((EXISTS $ENV{XILINX_VITIS}/gnu/microblaze) AND (NOT XRT_EDGE) AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
