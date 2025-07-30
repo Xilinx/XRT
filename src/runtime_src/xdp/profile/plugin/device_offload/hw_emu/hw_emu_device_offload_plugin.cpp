@@ -90,7 +90,20 @@ namespace xdp {
     }
     readCounters();
 
-    clearOffloader(deviceId) ;
+    clearOffloader(deviceId);
+
+    // On Alveo hardware emulation (where there is only one device)
+    // we have to remove the device interface at this point.  This
+    // is because of the use case where xclbins get swapped out and
+    // replaced with a different xclbin.  Additionally, Alveo hardware
+    // emulation only calls flush device when the object is being closed.
+    if (!isEdge() &&
+	db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      for (auto deviceId : devicesSeen) {
+	db->getStaticInfo().removeDeviceIntf(deviceId);
+      }
+      devicesSeen.clear();
+    }
   }
 
   void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle)

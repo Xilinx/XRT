@@ -75,6 +75,7 @@ namespace xclhwemhal2 {
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
   bool HwEmShim::mFirstBinary = true;
+  unsigned int HwEmShim::binaryCounter = 0;
   unsigned int HwEmShim::mBufferCount = 0;
   const int xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_PRIVATE   = 0;
   const int xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_GLOBAL    = 1;
@@ -2241,7 +2242,6 @@ namespace xclhwemhal2 {
 
     buf = nullptr;
     buf_size = 0;
-    binaryCounter = 0;
     host_sptag_idx = -1;
     sock = nullptr;
     mCURangeMap.clear();
