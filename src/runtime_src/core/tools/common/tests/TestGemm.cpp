@@ -12,8 +12,6 @@
 namespace XBU = XBUtilities;
 
 static constexpr uint32_t num_of_cores = 32;
-static constexpr std::string_view recipe_file = "recipe_gemm.json";
-static constexpr std::string_view profile_file = "profile_gemm.json";
 /*
 * Total OPs= = 196K OPs.
 */
@@ -28,13 +26,15 @@ boost::property_tree::ptree
 TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string repo_path = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm);
-  repo_path = XBValidateUtils::findPlatformFile(repo_path, ptree);
-  std::string recipe = repo_path + std::string(recipe_file);
-  std::string profile = repo_path + std::string(profile_file);
+  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_recipe);
+  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_profile);
+  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_path);
+  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
+  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
+  auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
   try
   {
-    xrt_core::runner runner(xrt::device(dev), recipe, profile, std::filesystem::path(repo_path));
+    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
     runner.execute();
     runner.wait();
     const auto bo_result_map = runner.map_buffer("bo_result");

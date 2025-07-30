@@ -600,13 +600,28 @@ struct xrt_smi_lists : request
 struct runner : request
 {
   enum class type {
-    throughput,
-    latency,
-    df_bandwidth,
-    gemm,
-    aie_reconfig_overhead,
-    cmd_chain_latency,
-    cmd_chain_throughput
+    throughput_recipe,
+    throughput_profile,
+    throughput_path,
+    latency_recipe,
+    latency_profile,
+    latency_path,
+    df_bandwidth_recipe,
+    df_bandwidth_profile,
+    df_bandwidth_path,
+    gemm_recipe,
+    gemm_profile,
+    gemm_path,
+    aie_reconfig_overhead_recipe,
+    aie_reconfig_overhead_nop_recipe,
+    aie_reconfig_overhead_profile,
+    aie_reconfig_overhead_path,
+    cmd_chain_latency_recipe,
+    cmd_chain_latency_profile,
+    cmd_chain_latency_path,
+    cmd_chain_throughput_recipe,
+    cmd_chain_throughput_profile,
+    cmd_chain_throughput_path
   };
 
   using result_type = std::string;
