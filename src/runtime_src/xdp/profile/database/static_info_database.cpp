@@ -483,7 +483,11 @@ namespace xdp {
     // Check if new xclbin has new PL metadata
     if ((newXclbinType == XCLBIN_AIE_PL) || (newXclbinType == XCLBIN_PL_ONLY))
     {
-      // Delete previous dummy plDeviceIntf if available and re-create using xclbin with PL
+      /* Delete previous dummy plDeviceIntf if available and re-create using xclbin with PL.
+      * For now, if HW Ctx for PL xclbin is created after a dummy PL Device Interface has been created for AIE only xclbin (for aie_trace), 
+      * XDP errors out and aborts while processing the new PL xclbin. 
+      * So the following deletion of dummy PL Device Intf is unreachable.
+      */
       if ((config->plDeviceIntf != nullptr) && (config->type == CONFIG_PL_DEVICE_INTF_ONLY))
         delete config->plDeviceIntf;
 
