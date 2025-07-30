@@ -2536,7 +2536,7 @@ namespace xdp {
       if (config && (config->type == CONFIG_PL_DEVICE_INTF_ONLY) &&
           (xclbinType == XCLBIN_PL_ONLY || xclbinType == XCLBIN_AIE_PL)) {
           std::stringstream errMsg;
-          errMsg << "Debug and Profiling features are not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
+          errMsg << "AIE Trace is not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
           errMsg << "Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context.";
           xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", errMsg.str());
           std::abort();
