@@ -53,9 +53,6 @@ device_init()
     current_memory_pool_db[i] = default_mem_pool;
     insert_in_map(mem_pool_cache, default_mem_pool);
   }
-  // make first device as default device
-  if (dev_count > 0)
-    tls_objs.dev_hdl = static_cast<device_handle>(0);
 }
 
 static void
