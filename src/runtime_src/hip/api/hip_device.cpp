@@ -128,6 +128,15 @@ hip_device_get_attribute(hipDeviceAttribute_t attr, int device)
 
   throw std::runtime_error("Not implemented");
 }
+
+// Sets thread default device
+// Throws on error
+static void
+hip_set_device(int dev_id)
+{
+  throw_invalid_device_if(check(dev_id), "device to set is not available");
+  tls_objs.dev_hdl = static_cast<device_handle>(dev_id);
+}
 } // xrt::core::hip
 
 // =========================================================================
@@ -285,6 +294,23 @@ hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
+  }
+  return hipErrorUnknown;
+}
+
+hipError_t
+hipSetDevice(int device)
+{
+  try {
+    xrt::core::hip::hip_set_device(device);
+    return hipSuccess;
+  }
+  catch (const xrt_core::system_error& ex) {
+    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
+    return static_cast<hipError_t>(ex.value());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(std::string(__func__) + " - " + ex.what());
   }
   return hipErrorUnknown;
 }
