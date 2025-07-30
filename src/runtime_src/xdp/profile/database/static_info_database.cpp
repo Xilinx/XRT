@@ -520,7 +520,6 @@ namespace xdp {
 
       if ((!config->plDeviceIntf) && (getAppStyle() == AppStyle::REGISTER_XCLBIN_STYLE)) {
           // If AIE_ONLY xclbin loaded first, dummy PLDeviceIntf is created
-          // NOTE: PLDeviceIntf will be overwritten with a new PLDevice Intf if xclbin
           //       with PL is loaded on to the device later.
           if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end()) {
             deviceInfo[DEFAULT_PL_DEVICE_ID] = std::make_unique<DeviceInfo>();
