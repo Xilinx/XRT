@@ -70,9 +70,6 @@ add_subdirectory(runtime_src)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
-message("-- Preparing XRT pkg-config")
-set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
-
 configure_file (
   ${XRT_SOURCE_DIR}/CMake/config/xrt-edge.pc.in
   xrt.pc
@@ -80,7 +77,7 @@ configure_file (
   )
 install (
   FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt.pc
-  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  DESTINATION ${XRT_INSTALL_PKG_CONFIG_DIR}
   COMPONENT ${XRT_DEV_COMPONENT}
   )
 
