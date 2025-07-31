@@ -1092,6 +1092,12 @@ get_run_buffer_pool_memory_mb()
   return value;
 }
 
+get_uc_log_buffer_size()
+{
+  static unsigned int value = detail::get_uint_value("Debug.uc_log_buf_size", 0);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

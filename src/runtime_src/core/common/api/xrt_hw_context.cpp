@@ -7,8 +7,12 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
+#include "core/common/config_reader.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_module.h"
+#include "bo_int.h"
 #include "elf_int.h"
 #include "hw_context_int.h"
 #include "module_int.h"
@@ -20,8 +24,10 @@
 #include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
+#include <fstream>
 #include <limits>
 #include <memory>
+#include <sstream>
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
@@ -44,6 +50,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
+  xrt::bo m_uc_log_bo; // Log buffer used for uc logging
+  bool m_uc_log_bo_initialized = false;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -63,6 +71,46 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 
       m_module_map.emplace(std::move(kernel_name), module_obj);
     }
+  }
+
+  void
+  dump_bo(xrt::bo& bo, const std::string& filename, size_t offset, size_t size)
+  {
+    std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+    if (!ofs.is_open()) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              "Failure opening file " + filename + " for writing log!");
+      return;
+    }
+
+    auto buf = bo.map<char*>() + offset;
+    ofs.write(buf, static_cast<std::streamsize>(size));
+
+    std::stringstream ss;
+    ss << "dumped uc log buffer into file " << filename;
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", ss.str());
+  }
+
+  void
+  dump_uc_log_buffer()
+  {
+    try {
+      // dump uc log buffer if configured in constructor
+      if (!m_uc_log_bo_initialized)
+        return;
+
+      // sync the log buffer
+      m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      auto num_uc = m_hdl->get_num_uc();
+      auto uc_buf_size = m_uc_log_bo.size() / num_uc;
+
+      // dump the log buffer for each uc in a separate file
+      for (auto i = 0; i < num_uc; i++) {
+        auto file_name = "uc_log" + std::to_string(i) + ".txt";
+        dump_bo(m_uc_log_bo, file_name, (i * uc_buf_size), uc_buf_size);
+      }
+    }
+    catch (...) { /*do nothing*/ }
   }
 
 public:
@@ -105,8 +153,53 @@ public:
     return shared_from_this();
   }
 
+  // Initializes uc log buffer, configures it by splitting the buffer
+  // equally among available columns
+  // This API should be called from xrt_hw_context because shared_from_this works
+  // after hw_ctx_impl construction is finished
+  // Made this API public so that it can be called from xrt::hw_context constructor
+  void
+  initialize_uc_log_buffer()
+  {
+    // Create Log buffer for uc logging if ini option is enabled
+    static auto uc_log_buf_size = xrt_core::config::get_uc_log_buffer_size();
+    if (!uc_log_buf_size || m_uc_log_bo_initialized)
+      return;
+
+    try {
+      if (!m_hdl)
+        return; // hw ctx not initialized
+
+      m_uc_log_bo = xrt_core::bo_int::create_bo(xrt::hw_context(shared_from_this()),
+                                                uc_log_buf_size,
+                                                xrt_core::bo_int::use_type::log);
+
+      // split buffer equally among all columns and call config_bo
+      auto num_uc = m_hdl->get_num_uc();
+      auto uc_buf_size = uc_log_buf_size / num_uc;
+
+      std::map<uint32_t, size_t> uc_buf_map;
+      for (auto i = 0; i < num_uc; ++i)
+        uc_buf_map[i] = uc_buf_size;
+
+      xrt_core::bo_int::config_bo(m_uc_log_bo, uc_buf_map); // configure the log buffer
+
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              "UC log buffer initialized successfully");
+      m_uc_log_bo_initialized = true;
+    }
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              std::string{"Failed to create UC log buffer : "} + e.what());
+      m_uc_log_bo_initialized = false;
+    }
+  }
+
   ~hw_context_impl()
   {
+    // dump the uc log buffer before tearing down the ctx
+    dump_uc_log_buffer();
+
     // This trace point measures the time to tear down a hw context on the device
     XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
 
@@ -319,6 +412,7 @@ post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get(), true);
   handle->get_usage_logger()->log_hw_ctx_info(handle.get());
+  handle->initialize_uc_log_buffer();
   return handle;
 }
 
@@ -381,6 +475,7 @@ hw_context::
 add_config(const xrt::elf& elf)
 {
   get_handle()->add_config(elf);
+  get_handle()->initialize_uc_log_buffer();
 }
 
 void
