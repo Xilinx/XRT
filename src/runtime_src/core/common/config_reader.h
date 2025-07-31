@@ -1084,6 +1084,13 @@ get_dtrace_control_file_path()
   return value;
 }
 
+inline unsigned int
+get_uc_log_buffer_size()
+{
+  static unsigned int value = detail::get_uint_value("Debug.uc_log_buf_size", 0);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
