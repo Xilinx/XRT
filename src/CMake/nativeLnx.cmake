@@ -98,7 +98,7 @@ include (CMake/xrtVariables.cmake)
 # Note, that in order to disable RPATH insertion for a specific
 # target (say a static executable), use
 #  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
-SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
+SET(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN/../..:$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}")
 
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE
   DESTINATION ${XRT_INSTALL_DIR}/license
