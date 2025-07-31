@@ -29,7 +29,7 @@
 
 /*****************************************************************************
 ******************************************************************************/
-void XPdi_Header_Set_Transfrom_Type(XPdiLoad *PdiLoad, int type, uint32_t cdoCmdLen) {
+void XPdi_Header_Set_Transform_Type(XPdiLoad *PdiLoad, int type, uint32_t cdoCmdLen) {
 	const char *buf = PdiLoad->PdiPtr;
 	buf += PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) + sizeof(XilPdi_ImgHdr);
 	XilPdi_PrtnHdr *PrtnHdr = (XilPdi_PrtnHdr *) buf;

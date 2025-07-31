@@ -48,6 +48,7 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
+  , XAie_DevInst* devInstance
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -62,6 +63,7 @@ AIETraceOffload::AIETraceOffload
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
+  , devInst(devInstance)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
@@ -187,15 +189,6 @@ bool AIETraceOffload::initReadTrace()
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
-      if(!drv) {
-        bufferInitialized = false;
-        return bufferInitialized;
-      }
-      zynqaie::aie_array* aieObj = drv->getAieArray();
-
-      XAie_DevInst* devInst = aieObj->get_dev();
-
       gmioDMAInsts[i].gmioTileLoc = XAie_TileLoc(traceGMIO->shimColumn, 0);
 
       int driverStatus = XAIE_OK;
@@ -260,12 +253,6 @@ void AIETraceOffload::endReadTrace()
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
-
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
-    if (!drv)
-      return;
-    zynqaie::aie_array* aieObj = drv->getAieArray();
-    XAie_DevInst* devInst = aieObj->get_dev();
 
     // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
     // Enable shim DMA channel, need to start first so the status is correct

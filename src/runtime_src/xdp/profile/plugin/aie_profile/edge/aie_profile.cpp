@@ -1,28 +1,19 @@
-/**
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -32,24 +23,36 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr ;
-    auto aieArray = drv->getAieArray() ;
-    if (!aieArray)
-      return nullptr ;
-    return aieArray->get_dev() ;
+    if (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      // old style
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr ;
+      auto aieArray = drv->getAieArray() ;
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    } else {
+      // new style (hw context flow)
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      if (!hwctx_hdl)
+        return nullptr ;
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if (!hwctx_obj)
+        return nullptr ;
+      auto aieArray = hwctx_obj->get_aie_array_shared().get();
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    }
   }
 
   static void* allocateAieDevice(void* devHandle)
@@ -155,7 +158,7 @@ namespace xdp {
     // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel/stream ID)
-      auto portnum = aie::profile::getPortNumberFromEvent(static_cast<XAie_Events>(startEvent));
+      auto portnum = aie::getPortNumberFromEvent(static_cast<XAie_Events>(startEvent));
       uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
           0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
@@ -392,7 +395,7 @@ namespace xdp {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
           auto resetEvent    = XAIE_EVENT_NONE_CORE;
-          auto portnum       = aie::profile::getPortNumberFromEvent(startEvent);
+          auto portnum       = xdp::aie::getPortNumberFromEvent(startEvent);
           uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
           // Configure group event before reserving and starting counter

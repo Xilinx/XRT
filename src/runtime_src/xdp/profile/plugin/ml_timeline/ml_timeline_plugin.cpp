@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -158,11 +145,17 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
+    if (0 != coreDevice->get_device_id()) {  // Device 0 for xdna(ML)
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "ML Timeline is not supported for current non-ML device.");
+      return;
+    }
+
     uint64_t implId = mMultiImpl.size();
 
     std::string deviceName = "ve2_device" + std::to_string(implId);
     uint64_t deviceId = db->addDevice(deviceName);
-    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
+    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));

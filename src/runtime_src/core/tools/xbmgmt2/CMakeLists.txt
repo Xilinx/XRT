@@ -62,7 +62,7 @@ endif()
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 else()
   target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
@@ -104,7 +104,7 @@ else()
   target_link_libraries(${XBMGMT2_NAME} PRIVATE pthread uuid dl)
 endif()
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   install (TARGETS ${XBMGMT2_NAME}
     RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
   install (PROGRAMS ${XRT_LOADER_SCRIPTS}

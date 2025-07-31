@@ -12,7 +12,7 @@ CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{p
 CPU=`uname -m`
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
-    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]]; then
+    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]] || [[ $OSDIST == "rocky" ]]; then
         CMAKE=cmake3
         if [[ ! -x "$(command -v $CMAKE)" ]]; then
             echo "$CMAKE is not installed, please run xrtdeps.sh"
@@ -38,7 +38,7 @@ fi
 
 # Use GCC 9 on CentOS 8, RHEL 8, AlmaLinux 8 for std::filesystem
 # The dependency is installed by xrtdeps.sh
-if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" || $OSDIST == "almalinux" ]] && [[ $MAJOR == 8 ]]; then
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" || $OSDIST == "almalinux" || $OSDIST == "rocky" ]] && [[ $MAJOR == 8 ]]; then
     source /opt/rh/gcc-toolset-9/enable
 fi
 
@@ -112,7 +112,7 @@ alveo_build=0
 npu_build=0
 base_build=0
 xclbinutil=0
-xrt_install_prefix="/opt/xilinx"
+xrt_install_prefix="/opt/xilinx/xrt"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -149,9 +149,8 @@ while [ $# -gt 0 ]; do
             ;;
         -edge)
             shift
+            cmake_flags+=" -DXRT_EDGE=1"
             edge=1
-            opt=0
-            dbg=0
             ;;
         -hip)
             shift
@@ -270,7 +269,6 @@ fi
 
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
-edge_dir=${EDGE_DIR:-Edge}
 
 # By default compile with warnings as errors.
 # Update every time CMake is generating makefiles.
@@ -278,7 +276,7 @@ edge_dir=${EDGE_DIR:-Edge}
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
-cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR
@@ -417,23 +415,6 @@ if [[ $opt == 1 ]]; then
   fi
   cd $BUILDDIR
 fi
-
-# Verify compilation on edge
-if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
-  mkdir -p $edge_dir
-  cd $edge_dir
-
-  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
-
-  if [[ $nocmake == 0 ]]; then
-    echo "env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src"
-    time env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src
-  fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD"
-  time make -j $jcore $verbose DESTDIR=$PWD
-  cd $BUILDDIR
-fi
-
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files

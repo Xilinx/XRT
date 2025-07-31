@@ -102,8 +102,37 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 {
   auto k = func->get_kernel();
 
+  /*
+   * args (or kernelParams) is defined as the following by CUDA documentation:
+   *
+   * "Kernel parameters can be specified via kernelParams. If f has N
+   * parameters, then kernelParams needs to be an array of N pointers. Each of
+   * kernelParams[0] through kernelParams[N-1] must point to a region of memory
+   * from which the actual kernel parameter will be copied. The number of kernel
+   * parameters and their offsets and sizes do not need to be specified as that
+   * information is retrieved directly from the kernel's image."
+   *
+   * Essentially args is an array of void * where each element points to the
+   * "actual argument" which may be either a scalar or pointer to a buffer.
+   * See the following example:
+        uint64_t opcode = 3;
+        void *o0 = obj0.getDeviceView(); // pointer to device buffer
+        void *o1 = obj1.getDeviceView(); // pointer to device buffer
+        void *o2 = obj2.getDeviceView(); // pointer to device buffer
+        void *o4 = obj4.getDeviceView(); // pointer to device buffer
+        std::array<void *, 8> args = {
+        &opcode, // pointer to scalar
+        nullptr, // ctrlcode pointer
+        nullptr, // pointer to control code size
+        &o0, // pointer to pointer
+        &o1, // pointer to pointer
+        &o2, // pointer to pointer
+        nullptr, // ctrlpkt pointer
+        &o4}; // pointer to pointer
+   */
+
   // create run object and set args
-  r = xrt::run(k);
+  r = func->get_run();
 
   using karg = xrt_core::xclbin::kernel_argument;
   int idx = 0;
@@ -112,21 +141,23 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
     if (arg->index == karg::no_index)
       throw std::runtime_error("function has invalid argument");
 
+    if (!args[idx]) {
+      // Skip nullptr which is used for ctrlcode, ctrlcode size and ctrlpkt
+      idx++;
+      continue;
+    }
+
     switch (arg->type) {
       case karg::argtype::scalar :
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
 
       case karg::argtype::global: {
-        if (!args[idx])
-          break;
-        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
+        void **bufptr = static_cast<void **>(args[idx]);
+        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(*bufptr).first;
         if (!hip_mem)
           throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
 
-        // NPU device is not coherent. We need to sync the buffer objects before launching kernel
-        if (hip_mem->get_type() != memory_type::device)
-          hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
         r.set_arg(arg->index, hip_mem->get_xrt_bo());
         break;
       }
@@ -193,18 +224,40 @@ bool memory_pool_command::submit()
   case free:
     m_mem_pool->free(m_ptr);
     break;
-  
+
   default:
     throw std::runtime_error("Invalid memory pool operation type.");
     break;
   }
-  
+
   return true;
 }
 
 bool memory_pool_command::wait()
 {
   // no-op
+  return true;
+}
+
+bool mem_prefetch_command::submit()
+{
+  auto hip_mem_and_off = memory_database::instance().get_hip_mem_from_addr(m_dev_ptr);
+  auto hip_mem = hip_mem_and_off.first;
+  size_t hip_mem_off = hip_mem_and_off.second;
+  throw_invalid_value_if(!hip_mem, "Invalid prefetch buf address.");
+  throw_invalid_value_if((hip_mem->get_size() < (hip_mem_off + m_size)),
+                         "Invalid prefetch buf address or size.");
+
+  // The under xrt::bo::sync() behaves the same for both TO_DEVICE or FROM_DEVICE direction.
+  // we pick xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE as input argument here.
+  hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE, m_size, hip_mem_off);
+  set_state(state::completed);
+  return true;
+}
+
+bool mem_prefetch_command::wait()
+{
+  // completed in submit()
   return true;
 }
 

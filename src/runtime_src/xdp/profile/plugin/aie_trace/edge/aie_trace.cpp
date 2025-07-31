@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -31,6 +18,7 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/edge/user/shim.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -38,19 +26,34 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return nullptr;
-    return aieArray->get_dev();
+    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == 
+       xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr;
+      auto aieArray = drv->getAieArray();
+      if (!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
+    else {  // For Hw_context flow
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if(!hwctx_obj)
+        return nullptr;
+      auto aieArray = hwctx_obj->get_aie_array_shared();
+      if(!aieArray)
+        return nullptr;
+      return aieArray->get_dev();
+    }
   }
 
   static void* allocateAieDevice(void* devHandle)
@@ -327,7 +330,7 @@ namespace xdp {
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
 
-      if ((type == module_type::core) && !aie::trace::isDmaSet(metricSet)) {
+      if ((type == module_type::core) && !aie::isDmaSet(metricSet)) {
         // If we're not looking at DMA events, then don't display the DMA
         // If core is not active (i.e., DMA-only tile), then ignore this tile
         if (tile.active_core)
@@ -695,7 +698,7 @@ namespace xdp {
         else {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
-          auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
+          auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
             if (aie::isInputSet(type, metricSet))
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
@@ -706,7 +709,7 @@ namespace xdp {
 
         // Configure memory trace events
         for (int i = 0; i < memoryEvents.size(); i++) {
-          bool isCoreEvent = aie::trace::isCoreModuleEvent(memoryEvents[i]);
+          bool isCoreEvent = aie::isCoreModuleEvent(memoryEvents[i]);
           XAie_ModuleType mod = isCoreEvent ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
           auto TraceE = memory.traceEvent();
@@ -749,7 +752,7 @@ namespace xdp {
           uint16_t phyEvent = 0;
 
           // Start
-          if (aie::trace::isCoreModuleEvent(traceStartEvent)) {
+          if (aie::isCoreModuleEvent(traceStartEvent)) {
             auto bcId = memoryTrace->getStartBc();
             coreToMemBcMask |= (1 << bcId);
 
@@ -766,7 +769,7 @@ namespace xdp {
           }
 
           // Stop
-          if (aie::trace::isCoreModuleEvent(traceEndEvent)) {
+          if (aie::isCoreModuleEvent(traceEndEvent)) {
             auto bcId = memoryTrace->getStopBc();
             coreToMemBcMask |= (1 << bcId);
           
@@ -899,7 +902,7 @@ namespace xdp {
         if (shimTrace->start() != XAIE_OK)
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
-        auto channelNum = aie::trace::getChannelNumberFromEvent(interfaceEvents.at(0));
+        auto channelNum = aie::getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet))
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
@@ -1010,5 +1013,14 @@ namespace xdp {
     values.push_back(timerValue);
 
     db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
+  }
+
+  /****************************************************************************
+   * Set AIE device instance
+   ***************************************************************************/
+  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle) 
+  {
+    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    return aieDevInst;
   }
 }  // namespace xdp

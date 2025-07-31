@@ -4,7 +4,7 @@ normal=$(tput sgr0)
 red=$(tput setaf 1)
 
 ABS_PATH=$(pwd)
-yocto_path="$ABS_PATH/yocto/edf"
+yocto_path="$ABS_PATH/yocto/edf/ve2"
 XRT_REPO_DIR=`readlink -f ${ABS_PATH}/..`
 SETTINGS_FILE="$ABS_PATH/yocto.build"
 
@@ -122,38 +122,50 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -d "yocto/edf" ]; then
-    cd yocto/edf
-    source basecamp-init-build-env
+if [ -d "$yocto_path" ]; then
+    cd $yocto_path
+    source internal-edf-init-build-env
 else
     git submodule update --init --recursive --force
-    mkdir -p yocto/edf
-    cd yocto/edf
+    mkdir -p $yocto_path
+    cd $yocto_path
 
     echo "repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE"
-    repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
+    yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-
-    export TEMPLATECONF=$yocto_path/sources/meta-basecamp/conf/templates/default
-
-    source basecamp-init-build-env
-
-    CONF_FILE=$yocto_path/build/conf/local.conf
-
-    sed -i '/^# Source and Sstate mirror settings/a\
-# Use optional internal AMD Xilinx gitenterprise support\
-include conf/distro/include/xilinx-mirrors.conf' "$CONF_FILE"
-
-    sed -i "s|^SOURCE_MIRROR_URL = .*|SOURCE_MIRROR_URL = \"file://$MANIFEST_PATH/downloads\"|" "$CONF_FILE"
-    sed -i "/^SSTATE_MIRRORS = \" \\\.*$/,/^$/c\
-SSTATE_MIRRORS = \"file://.* file://$MANIFEST_PATH/sstate-cache/PATH\"" "$CONF_FILE"
-
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-internal
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-internal/meta-xilinx-restricted-vek280-poc/
-    bitbake-layers add-layer $yocto_path/sources/meta-xilinx-restricted/meta-xilinx-restricted-ea/meta-xilinx-restricted-vek385/
-
+    source internal-edf-init-build-env
     install_recipes
 fi
 
-MACHINE=versal2-common bitbake xrt
+if MACHINE=amd-cortexa78-mali-common bitbake xrt; then
+    echo "bitbake xrt succeeded."
+
+    rm -rf "$yocto_path/rpms"
+    mkdir -p "$yocto_path/rpms"
+
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/cortexa72_cortexa53/xrt-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/zocl-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/kernel-"* "$yocto_path/rpms/"
+
+    cd $yocto_path/rpms
+    echo "Creating $yocto_path/rpms/install_xrt.sh"
+    xrt_dbg=`ls xrt-dbg* zocl-dbg*`
+
+    rpm_list=$(ls *.rpm)
+    for dbg in $xrt_dbg; do
+            rpm_list=$(echo "$rpm_list" | sed -e "s|$dbg||g")
+    done
+    # Remove any empty entries and extra spaces
+    final_rpms=$(echo $rpm_list | xargs)
+
+
+    echo dnf --disablerepo=\"*\" install -y $final_rpms > $yocto_path/rpms/install_xrt.sh
+    echo dnf --disablerepo=\"*\" reinstall -y $final_rpms > $yocto_path/rpms/reinstall_xrt.sh
+
+    echo "RPMs copied to $yocto_path/rpms"
+    cd -
+else
+    echo "bitbake xrt failed"
+fi
+

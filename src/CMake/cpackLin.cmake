@@ -24,6 +24,11 @@ SET(CPACK_RPM_COMPONENT_INSTALL ON)
 # package without component name appended.  To work-around this,
 # populate the variable explictly.
 get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
+
+# Cannot get rid of this aie-rt bogus component so
+# removing it explicitly.  This means we cannot have
+# a runtime component ever in XRT.
+list(REMOVE_ITEM CPACK_COMPONENTS_ALL "runtime")
 message("Install components in the project: ${CPACK_COMPONENTS_ALL}")
 
 # Set up component dependencies on base if built
@@ -166,7 +171,7 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinux)")
+elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinux|rocky)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
@@ -267,6 +272,15 @@ elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner|almalinu
 
 else ()
   SET (CPACK_GENERATOR "TGZ")
+
+  if ("${CPACK_ARCH}" STREQUAL "")
+    execute_process(
+      COMMAND arch
+      OUTPUT_VARIABLE CPACK_ARCH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+  endif()
+  
 endif()
 
 # On Amazon Linux CPACK_REL_VER is just '2' and it is hard to

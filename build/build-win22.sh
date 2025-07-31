@@ -28,7 +28,7 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
-    echo "[-prefix]                  CMAKE_INSTALL_PREFIX (default: $BUILDDIR/<WRelease|WDebug>/xilinx)"
+    echo "[-prefix]                  CMAKE_INSTALL_PREFIX"
     echo "[-cmake]                   CMAKE executable (default: $CMAKE)"
     echo "[-ext]                     Location of link dependencies (default: $EXT_DIR)"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
@@ -147,15 +147,13 @@ fi
 
 BOOST=$(unix2dos $BOOST)
 KHRONOS=$(unix2dos $KHRONOS)
+BUILDDIR_DOS=$(unix2dos $BUILDDIR)
 prefix=$(unix2dos $prefix)
-
-here=$PWD
-cd $BUILDDIR
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf WRelease WDebug"
-    /bin/rm -rf WRelease WDebug
+    echo "/bin/rm -rf $BUILDDIR/{WRelease,WDebug}"
+    /bin/rm -rf $BUILDDIR/{WRelease,WDebug}
     exit 0
 fi
 
@@ -166,44 +164,35 @@ cmake_flags+=" -DBOOST_ROOT=$BOOST"
 if [ $dbg == 1 ]; then
     cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
     mkdir -p WDebug
-    cd WDebug
 
-    if [[ $prefix == "" ]]; then
-        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$(unix2dos $BUILDDIR/WDebug/xilinx)"
-    else
+    if [[ $prefix != "" ]]; then
         cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$prefix"
     fi
 
     if [ $nocmake == 0 ]; then
         echo "${cmake_flags[@]}"
-        "$CMAKE" -G "Visual Studio 17 2022" $cmake_flags ../../src
+        "$CMAKE" -G "Visual Studio 17 2022" -B $BUILDDIR_DOS/WDebug $cmake_flags $BUILDDIR_DOS/../src
     fi
-    "$CMAKE" --build . --verbose --config Debug --target install
-    cd $BUILDDIR
+    "$CMAKE" --build $BUILDDIR_DOS/WDebug --verbose --config Debug
+    "$CMAKE" --install $BUILDDIR_DOS/WDebug --config Debug --prefix $BUILDDIR_DOS/WDebug/xilinx/xrt
 fi
 
 if [ $release == 1 ]; then
     cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
-    mkdir -p WRelease
-    cd WRelease
 
-    if [[ $prefix == "" ]]; then
-        cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$(unix2dos $BUILDDIR/WRelease/xilinx)"
-    else
+    if [[ $prefix != "" ]]; then
         cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$prefix"
     fi
     
     if [ $nocmake == 0 ]; then
         echo "${cmake_flags[@]}"
-        "$CMAKE" -G "Visual Studio 17 2022" $cmake_flags ../../src
+        "$CMAKE" -G "Visual Studio 17 2022" -B $BUILDDIR_DOS/WRelease $cmake_flags $BUILDDIR_DOS/../src
     fi
-    "$CMAKE" --build . --verbose --config Release --target install
+    "$CMAKE" --build $BUILDDIR_DOS/WRelease --verbose --config Release
+    "$CMAKE" --install $BUILDDIR_DOS/WRelease --verbose --config Release --prefix $BUILDDIR_DOS/WRelease/xilinx/xrt
 
     if [[ $sdk == 1 && $npu_build == 1 ]]; then
         echo "Creating SDK installer ..."
-        "$CPACK" -G NSIS -C Release
+        "$CPACK" -G NSIS -B $BUILDDIR_DOS/WRelease -C Release --config $BUILDDIR_DOS/WRelease/CPackConfig.cmake
     fi
-    cd $BUILDDIR
 fi
-
-cd $here

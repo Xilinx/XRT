@@ -40,6 +40,14 @@ public:
   using size_type = uint32_t;
 
   /**
+   * program() - Construct for empty program
+   *
+   * It is undefined behavior to use a default constructed program object
+   * for anything but assignment.
+   */
+  program() = default;
+
+  /**
    * program() - Create a program object using xrt::elf constructors.
    *
    * Construction fails if the ELF is not a valid AIE program.

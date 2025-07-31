@@ -54,16 +54,13 @@ add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
 add_library(core_edgeuser_plugin_xdp_hw_em_objects OBJECT ${XDP_PLUGIN_HW_EM_FILES})
 
 set(AIE_BUILD_DEFINED "$<BOOL:DEFINED XRT_AIE_BUILD>")
-set(VE2_DEFINED "$<BOOL:DEFINED EDGE_VE2>")
 set(AIE_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_user_aie_object_hw_em>")
-set(VE2_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_ve2_hw_emu_objects>")
 
 add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>>
-  $<$<AND:${VE2_DEFINED},${VE2_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_ve2_hw_emu_objects>>
 )
 
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}

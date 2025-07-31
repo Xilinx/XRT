@@ -41,7 +41,8 @@ public:
     event,
     kernel_start,
     mem_cpy,
-    mem_pool_op
+    mem_pool_op,
+    mem_prefetch
   };
 
 protected:
@@ -126,6 +127,10 @@ private:
 
 public:
   kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args);
+  ~kernel_start() override
+  {
+    func->release_run(std::move(r));
+  }
   bool submit() override;
   bool wait() override;
 };
@@ -204,6 +209,21 @@ private:
   void* m_ptr;
   size_t m_size;
   std::future<void> m_handle;
+};
+
+class mem_prefetch_command : public command
+{
+public:
+  // sync() always happens in submit()
+  mem_prefetch_command(std::shared_ptr<stream> s, const void* dev_ptr, size_t size)
+    : command(command::type::mem_prefetch, std::move(s)), m_dev_ptr(dev_ptr), m_size(size)
+  {}
+  bool submit() override;
+  bool wait() override;
+
+private:
+  const void* m_dev_ptr;
+  size_t m_size;
 };
 
 // Global map of commands

@@ -4,9 +4,11 @@
 #define XRT_COMMON_RUNNER_RUNNER_H_
 #include "xrt/detail/config.h"
 #include "xrt/detail/pimpl.h"
+#include "xrt/detail/span.h"
 #include "xrt/experimental/xrt_exception.h"
 
 #include <any>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -82,6 +84,8 @@ public:
    */
   using artifacts_repository = std::map<std::string, std::vector<char>>;
 
+  runner() = default;
+
   // ctor - Create runner from a recipe json.
   // Any artifacts referenced by the recipe are looked up in the
   // current directory.
@@ -120,6 +124,12 @@ public:
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const artifacts_repository&);
 
+  explicit
+  operator bool() const
+  {
+    return handle != nullptr;
+  }
+
   // bind_input() - Bind a buffer object to an input tensor
   XRT_API_EXPORT
   void
@@ -150,6 +160,28 @@ public:
   XRT_API_EXPORT
   std::string
   get_report();
+
+  // map_buffer() - Get raw buffer data as a span of bytes
+  // The buffer is synced from device as part of this call.
+  // The returned data cannot be written to.
+  XRT_API_EXPORT
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& name) const;
+
+  // map_buffer() - Get raw buffer data as a span of type
+  // The buffer is synced from device as part of this call.
+  // The returned data cannot be written to.
+  template <typename MapType>
+  xrt::detail::span<MapType>
+  map_buffer(const std::string& name) const
+  {
+    static_assert(std::is_pointer<MapType>::value &&
+                  std::is_const<std::remove_pointer_t<MapType>>::value,
+                  "MapType must be a pointer and const-qualified type");
+
+    auto span = map_buffer(name);
+    return {reinterpret_cast<MapType*>(span.data()), span.size() / sizeof(MapType)};
+  }
 };
 
 /**

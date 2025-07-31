@@ -33,9 +33,35 @@ class elf : public detail::pimpl<elf_impl>
 public:
   elf() = default;
 
+  /**
+   * elf() - Constructor from ELF file
+   */
   XRT_API_EXPORT
   explicit
   elf(const std::string& fnm);
+
+  /**
+   * elf() - Constructor from raw data
+   *
+   * @param data
+   *  Raw data of elf
+   *
+   * The raw data of the elfcan be deleted after calling the
+   * constructor.
+   */
+  XRT_API_EXPORT
+  explicit
+  elf(const std::string_view& data);
+
+  /**
+   * elf() - Constructor from ELF file
+   *
+   * Avoid ambiguity between std::string and std::string_view.
+   */
+  explicit
+  elf(const char* fnm)
+    : elf(std::string(fnm))
+  {}
 
   /**
    * elf() - Constructor from raw ELF data stream

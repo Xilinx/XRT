@@ -40,7 +40,8 @@ else
     return 1
 fi
 
-if [[ $XILINX_XRT != *"/xrt" ]]; then
+# Poor test to ensure we are in an install location
+if [[ ! -f $XILINX_XRT/version.json ]]; then
     echo "Invalid location: $XILINX_XRT"
     echo "This script must be sourced from XRT install directory"
     return 1

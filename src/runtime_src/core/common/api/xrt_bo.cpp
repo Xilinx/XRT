@@ -1530,6 +1530,15 @@ map()
   });
 }
 
+const void*
+bo::
+map() const
+{
+  return xdp::native::profiling_wrapper("xrt::bo::map", [this]{
+    return handle->get_hbuf();
+  });
+}
+
 void
 bo::
 write(const void* src, size_t size, size_t seek)

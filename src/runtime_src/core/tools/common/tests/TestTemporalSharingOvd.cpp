@@ -123,9 +123,10 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core
   // Measure the latency for running the test cases in parallel
   auto start = std::chrono::high_resolution_clock::now(); 
 
-  // Create two threads to run the test cases
+  // Create two threads to run the test cases on ctx 1 and ctx 3 
+  // so they do temporal sharing on both wndws and lnx
   threads.emplace_back(runTestcase, std::ref(testcases[0]));
-  threads.emplace_back(runTestcase, std::ref(testcases[1]));
+  threads.emplace_back(runTestcase, std::ref(testcases[2]));
 
   for (uint32_t i = 0; i < threads.size(); i++) {
     threads[i].join();

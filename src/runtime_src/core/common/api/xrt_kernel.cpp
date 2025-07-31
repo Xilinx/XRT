@@ -238,31 +238,31 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   begin() const
   {
     return uval;
   }
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   end() const
   {
     return uval + words;
   }
 
-  [[nodiscard]] size_t
+  size_t
   size() const
   {
     return words;
   }
 
-  [[nodiscard]] size_t
+  size_t
   bytes() const
   {
     return words * sizeof(ValueType);
   }
 
-  [[nodiscard]] const ValueType*
+  const ValueType*
   data() const
   {
     return uval;
@@ -399,13 +399,13 @@ struct device_type
     return exec_buffer_cache.alloc<CommandType>();
   }
 
-  [[nodiscard]] xrt_core::device*
+  xrt_core::device*
   get_core_device() const
   {
     return core_device.get();
   }
 
-  [[nodiscard]] xrt::device
+  xrt::device
   get_xrt_device() const
   {
     return xrt::device{core_device};
@@ -441,7 +441,7 @@ public:
     m_bitset.set(m_encoding ? m_encoding->at(idx) : idx);
   }
 
-  [[nodiscard]] bool
+  bool
   test(size_t idx) const
   {
     return m_bitset.test(m_encoding ? m_encoding->at(idx) : idx);
@@ -524,7 +524,7 @@ class ip_context
 
     // Get default memory index of an argument.  The default index is
     // the the largest memory index of a connection for specified argument.
-    [[nodiscard]] int32_t
+    int32_t
     get_arg_memidx(size_t argidx) const
     {
       return default_connection.at(argidx);
@@ -532,7 +532,7 @@ class ip_context
 
     // Validate that specified memory index is a valid connection for
     // argument identified by 'argidx'
-    [[nodiscard]] bool
+    bool
     valid_arg_connection(size_t argidx, size_t memidx) const
     {
       return connections[argidx].test(memidx);
@@ -1204,7 +1204,7 @@ public:
   argument& operator=(argument&) = delete;
   argument& operator=(argument&&) = delete;
 
-  [[nodiscard]] const xarg&
+  const xarg&
   get_xarg() const
   {
     return arg;
@@ -1241,39 +1241,39 @@ public:
   set_fa_desc_offset(size_t offset)
   { arg.fa_desc_offset = offset; }
 
-  [[nodiscard]] size_t
+  size_t
   fa_desc_offset() const
   { return arg.fa_desc_offset; }
 
-  [[nodiscard]] size_t
+  size_t
   index() const
   { return arg.index; }
 
-  [[nodiscard]] size_t
+  size_t
   offset() const
   { return arg.offset; }
 
-  [[nodiscard]] size_t
+  size_t
   size() const
   { return arg.size; }
 
-  [[nodiscard]] const std::string&
+  const std::string&
   name() const
   { return arg.name; }
 
-  [[nodiscard]] direction
+  direction
   dir() const
   { return arg.dir; }
 
-  [[nodiscard]] bool
+  bool
   is_input() const
   { return arg.dir == direction::input; }
 
-  [[nodiscard]] bool
+  bool
   is_output() const
   { return arg.dir == direction::output; }
 
-  [[nodiscard]] xarg::argtype
+  xarg::argtype
   type() const
   { return arg.type; }
 };
@@ -1303,27 +1303,28 @@ public:
   using ctxmgr_type = xrt_core::context_mgr::device_context_mgr;
 
 private:
-  std::string name;                    // kernel name
-  std::shared_ptr<device_type> device; // shared ownership
-  std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
-  xrt::hw_context hwctx;               // context for hw resources if any (can be null)
-  xrt_core::hw_queue hwqueue;          // hwqueue for command submission (shared by all runs)
-  xrt::module m_module;                // module with instructions for function
-  xrt::xclbin xclbin;                  // xclbin with this kernel
-  xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
-  std::vector<argument> args;          // kernel args sorted by argument index
-  std::vector<ipctx> ipctxs;           // CU context locks
-  const property_type& properties;     // Kernel properties from XML meta
-  std::bitset<max_cus> cumask;         // cumask for command execution
-  size_t regmap_size = 0;              // CU register map size
-  size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
-  size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
-  size_t fa_input_entry_bytes = 0;     // Fast adapter input desc bytes
-  size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
-  size_t num_cumasks = 1;              // Required number of command cu masks
+  std::string name;                           // kernel name
+  std::shared_ptr<device_type> device;        // shared ownership
+  std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
+  xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
+  xrt_core::hw_queue hwqueue;                 // hwqueue for command submission (shared by all runs)
+  xrt::module m_module;                       // module with instructions for function
+  xrt::xclbin xclbin;                         // xclbin with this kernel
+  xrt::xclbin::kernel xkernel;                // kernel xclbin metadata
+  std::vector<argument> args;                 // kernel args sorted by argument index
+  std::vector<ipctx> ipctxs;                  // CU context locks
+  const property_type& properties;            // Kernel properties from XML meta
+  std::bitset<max_cus> cumask;                // cumask for command execution
+  size_t regmap_size = 0;                     // CU register map size
+  size_t fa_num_inputs = 0;                   // Fast adapter number of inputs per meta data
+  size_t fa_num_outputs = 0;                  // Fast adapter number of outputs per meta data
+  size_t fa_input_entry_bytes = 0;            // Fast adapter input desc bytes
+  size_t fa_output_entry_bytes = 0;           // Fast adapter output desc bytes
+  size_t num_cumasks = 1;                     // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
-  uint32_t uid;                        // Internal unique id for debug
-  uint32_t m_ctrl_code_index = 0;      // Index to identify which ctrl code to load in elf
+  uint32_t uid;                               // Internal unique id for debug
+  uint32_t m_ctrl_code_id = xrt_core::module_int::no_ctrl_code_id;
+                                              // ID to identify which ctrl code to load from elf
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1512,14 +1513,16 @@ private:
     return data;  // no skipping
   }
 
-  static uint32_t
-  get_ctrlcode_idx(const std::string& name)
+  const xrt_core::module_int::kernel_info&
+  get_kernel_info()
   {
-    // kernel name will be of format - <kernel_name>:<ctrl code index>
-    if (auto i = name.find(":"); i != std::string::npos)
-      return std::stoul(name.substr(i+1, name.size()-i-1));
+    const auto& kernels_info = xrt_core::module_int::get_kernels_info(m_module);
+    for (const auto& kinfo : kernels_info) {
+      if (kinfo.props.name == name)
+        return kinfo;
+    }
 
-    return 0; // default case
+    throw std::runtime_error(std::string{"Unable to get kernel info of : "} + name);
   }
 
   static uint32_t
@@ -1603,14 +1606,14 @@ public:
     , hwctx(std::move(ctx))                                             // hw context
     , hwqueue(hwctx)                                                    // hw queue
     , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
-    , properties(xrt_core::module_int::get_kernel_info(m_module).props) // kernel info present in Elf
+    , properties(get_kernel_info().props)
     , uid(create_uid())
-    , m_ctrl_code_index(get_ctrlcode_idx(nm))                           // control code index
+    , m_ctrl_code_id(xrt_core::module_int::get_ctrlcode_id(m_module, nm)) // control code index
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
     // get kernel info from module and initialize kernel args
-    for (auto& arg : xrt_core::module_int::get_kernel_info(m_module).args)
+    for (const auto& arg : get_kernel_info().args)
       args.emplace_back(arg);
 
     // amend args with computed data based on kernel protocol
@@ -1681,9 +1684,9 @@ public:
   }
 
   uint32_t
-  get_ctrl_code_index() const
+  get_ctrl_code_id() const
   {
-    return m_ctrl_code_index;
+    return m_ctrl_code_id;
   }
 
   xrt::xclbin
@@ -1848,7 +1851,7 @@ public:
 // Multiple run objects against the same kernel object can be created
 // and submitted for execution concurrently.  Each run object manages
 // its own execution buffer (ert command object)
-class run_impl
+class run_impl : public std::enable_shared_from_this<run_impl>
 {
   friend class mailbox_impl;
   using ipctx = std::shared_ptr<ip_context>;
@@ -1982,16 +1985,16 @@ class run_impl
 
   // This function copies the module into a hw_context. The module
   // will be associated with hwctx specific memory.
-  // If module has multiple control codes, index is used to identify
+  // If module has multiple control codes, id is used to identify
   // the control code that needs to be run.
-  // By default control code at zeroth index is picked
+  // By default first control code that is available is picked
   static xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_idx)
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
   {
     if (!module)
       return {};
 
-    return {module, hwctx, ctrl_code_idx};
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id);
   }
 
   virtual std::unique_ptr<arg_setter>
@@ -2146,7 +2149,7 @@ class run_impl
   std::mutex m_mutex;                     // mutex synchronization
 
 public:
-  [[nodiscard]] uint32_t
+  uint32_t
   get_uid() const
   {
     return uid;
@@ -2179,7 +2182,7 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_index())}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
@@ -2222,13 +2225,25 @@ public:
   run_impl& operator=(run_impl&) = delete;
   run_impl& operator=(run_impl&&) = delete;
 
-  [[nodiscard]] kernel_impl*
+  std::shared_ptr<run_impl>
+  get_shared_ptr()
+  {
+    return shared_from_this();
+  }
+
+  std::shared_ptr<run_impl>
+  get_mutable_shared_ptr() const
+  {
+    return std::const_pointer_cast<run_impl>(shared_from_this());
+  }
+
+  kernel_impl*
   get_kernel() const
   {
     return kernel.get();
   }
 
-  [[nodiscard]] kernel_command*
+  kernel_command*
   get_cmd() const
   {
     return cmd.get();
@@ -2283,7 +2298,7 @@ public:
     encode_cumasks = true;
   }
 
-  [[nodiscard]] const std::bitset<max_cus>&
+  const std::bitset<max_cus>&
   get_cumask() const
   {
     return cumask;
@@ -2379,7 +2394,7 @@ public:
     }
   }
 
-  [[nodiscard]] int
+  int
   get_arg_index(const std::string& argnm) const
   {
     for (const auto& arg : kernel->get_args())
@@ -2486,13 +2501,13 @@ public:
     cmd->wait();
   }
 
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   abort() const
   {
     // don't bother if command is done by the time abort is called
     if (cmd->is_done()) {
-      if (cmd->get_state() == ERT_CMD_STATE_NEW)
-        throw xrt_core::error("Cannot abort command that wasn't started");
+      if (cmd->get_state() == ERT_CMD_STATE_NEW) 
+       throw xrt_core::error("Cannot abort command that wasn't started");
       return cmd->get_state();
     }
 
@@ -2516,7 +2531,7 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     // dump dtrace buffer if ini option is enabled
@@ -2549,12 +2564,27 @@ public:
     return state;
   }
 
+  void
+  throw_command_error(ert_cmd_state state) const
+  {
+    auto epkt = get_ert_packet();
+    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+    
+    switch (epkt->opcode) {
+    case ERT_START_NPU:
+    case ERT_START_NPU_PREEMPT:
+    case ERT_START_NPU_PREEMPT_ELF:
+      throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
+    default:
+      throw xrt::run::command_error(state, msg);
+    }
+  }
 
   // wait() - wait for execution to complete
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  [[nodiscard]] std::cv_status
+  std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -2571,32 +2601,31 @@ public:
 
     // dump dtrace buffer if ini option is enabled
     // here dtrace is dumped in both passing and timeout cases
-    static auto dtrace_lib_path = xrt_core::config::get_dtrace_lib_path();
-    if (!dtrace_lib_path.empty())
+    static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
+    if (dtrace_enabled && m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
 
-    if (state == ERT_CMD_STATE_COMPLETED) {
-      m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-      static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-      if (dump)
-        xrt_core::module_int::dump_scratchpad_mem(m_module);
+    if (state != ERT_CMD_STATE_COMPLETED)
+      throw_command_error(state);
 
-      return std::cv_status::no_timeout;
-    }
+    // COMPLETED
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump && m_module)
+      xrt_core::module_int::dump_scratchpad_mem(m_module);
 
-    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
-    throw xrt::run::command_error(state, msg);
+    return std::cv_status::no_timeout;
   }
 
   // state() - get current execution state
-  [[nodiscard]] ert_cmd_state
+  ert_cmd_state
   state() const
   {
     return cmd->get_state();
   }
 
   // return_code() - get kernel execution return code
-  [[nodiscard]] uint32_t
+  uint32_t
   return_code() const
   {
     auto ktype = kernel->get_kernel_type();
@@ -2605,7 +2634,7 @@ public:
     return 0;
   }
 
-  [[nodiscard]] ert_packet*
+  ert_packet*
   get_ert_packet() const
   {
     return cmd->get_ert_packet();
@@ -2978,12 +3007,33 @@ public:
 class run::command_error_impl
 {
 public:
+  xrt::run m_run;
   ert_cmd_state m_state;
   std::string m_message;
 
   command_error_impl(ert_cmd_state state, std::string msg)
     : m_state(state), m_message(std::move(msg))
   {}
+
+  command_error_impl(xrt::run run, ert_cmd_state state, std::string msg)
+    : m_run(std::move(run))
+    , m_state(state)
+    , m_message(std::move(msg))
+  {}
+
+  command_error_impl(xrt::run run, std::string msg)
+    : m_run(std::move(run))
+    , m_state(m_run.state())
+    , m_message(std::move(msg))
+  {}
+
+  xrt::detail::span<const uint32_t>  
+  get_aie_data() const
+  {
+    auto run_impl = m_run.get_handle();
+    auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
+    return {ctx_health->app_health_report, ctx_health->app_health_report_size};
+  }
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3142,6 +3192,20 @@ class runlist_impl
     return static_cast<ert_cmd_state>(pkt->state);
   }
 
+  void
+  throw_command_error(const xrt::run& run, ert_cmd_state state) const
+  {
+    auto epkt = run.get_ert_packet();
+    switch (epkt->opcode) {
+    case ERT_START_NPU:
+    case ERT_START_NPU_PREEMPT:
+    case ERT_START_NPU_PREEMPT_ELF:
+      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
+    default:
+      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+    }
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3186,7 +3250,8 @@ class runlist_impl
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
       set_run_state(run, state);
-      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+
+      throw_command_error(run, state);
     }
 
     return std::cv_status::no_timeout;
@@ -3385,18 +3450,13 @@ public:
   }
 };
 
-class runlist::command_error_impl
+// runlist::command_error_impl is in anticipation of additional
+// implementation data over that of run::command_error_impl
+class runlist::command_error_impl : public run::command_error_impl
 {
 public:
-  const xrt::run m_run;
-  const ert_cmd_state m_state;
-  const std::string m_message;
-
-  command_error_impl(xrt::run run, ert_cmd_state state, std::string msg)
-    : m_run{std::move(run)}
-    , m_state{state}
-    , m_message{std::move(msg)}
-  {}
+  using run::command_error_impl::command_error_impl;
+  using run::command_error_impl::get_aie_data;
 };
 
 } // namespace xrt
@@ -4190,6 +4250,12 @@ command_error(ert_cmd_state state, const std::string& msg)
   : detail::pimpl<run::command_error_impl>(std::make_shared<run::command_error_impl>(state, msg))
 {}
 
+run::command_error::
+command_error(const xrt::run& run, const std::string& msg)
+  : detail::pimpl<run::command_error_impl>(std::make_shared<run::command_error_impl>(run, msg))
+{}
+
+
 ert_cmd_state
 run::command_error::
 get_command_state() const
@@ -4204,6 +4270,38 @@ what() const noexcept
   return handle->m_message.c_str();
 }
 
+static std::string
+amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
+{
+  if (epkt->state != ERT_CMD_STATE_TIMEOUT)
+    return msg;
+
+  std::ostringstream oss;
+  oss << msg << "\n";
+  auto ctx_health = get_ert_ctx_health_data(epkt);
+  oss << std::uppercase << std::hex << std::setfill('0');
+  oss << "txn_op_idx = 0x" << std::setw(8) << ctx_health->txn_op_idx
+    << "\nctx_pc = 0x"<< std::setw(8) << ctx_health->ctx_pc
+    << "\nfatal_error_type = 0x" << std::setw(8) << ctx_health->fatal_error_type
+    << "\nfatal_error_exception_type = 0x" << std::setw(8) << ctx_health->fatal_error_exception_type
+    << "\nfatal_error_exception_pc = 0x" << std::setw(8) << ctx_health->fatal_error_exception_pc
+    << "\nfatal_error_app_module = 0x" << std::setw(8) << ctx_health->fatal_error_app_module
+    << "\n";
+  return oss.str();
+}
+
+run::aie_error::
+aie_error(const xrt::run& run, const std::string& what)
+  : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
+{}
+
+xrt::run::aie_error::span<const uint32_t>  
+run::aie_error::
+data() const
+{
+  return handle->get_aie_data();
+}
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -4215,6 +4313,18 @@ runlist::command_error::
 command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
   : detail::pimpl<runlist::command_error_impl>(std::make_shared<runlist::command_error_impl>(run, state, msg))
 {}
+
+runlist::aie_error::
+aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
+  : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
+{}
+
+runlist::aie_error::span<const uint32_t>  
+runlist::aie_error::
+data() const
+{
+  return handle->get_aie_data();
+}
 
 xrt::run
 runlist::command_error::

@@ -1,49 +1,120 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved
-# -----------------------------------------------------------------------------
-# Include the generated header files (e.g., version.h)
-include_directories(${XRT_BINARY_DIR}/gen)
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-set(XBTRACER_NAME "xbtracer")
+cmake_minimum_required(VERSION 3.10...4.0)
+if (POLICY CMP0144)
+  message("--using CMP0144 for Protobuf checking")
+  cmake_policy(SET CMP0144 NEW)
+else (POLICY CMP0144)
+  message("--CMP0144 is not supported, skipping xbtracer")
+  return()
+endif ()
 
-if(WIN32)
-  set(XRT_HELPER_SCRIPTS "xbtracer" "xbtracer.bat")
-else()
-  set(XRT_HELPER_SCRIPTS "xbtracer")
-endif()
+find_package(Protobuf)
+if (NOT Protobuf_FOUND)
+  message("Protobuf is not found, skipping xbtracer")
+  return()
+endif (NOT Protobuf_FOUND)
+message("Protobuf version is ${Protobuf_VERSION}.")
+if (Protobuf_VERSION VERSION_LESS 3.0)
+  # we use timestamp feature of protobuf
+  message("Protobuf version ${Protobuf_VERSION} is less than 3.0, skip xbtracer.")
+  return()
+endif (Protobuf_VERSION VERSION_LESS 3.0)
 
-set(SRCS src/app/launcher.cpp)
+include_directories (
+${Protobuf_INCLUDE_DIR}
+${CMAKE_CURRENT_BINARY_DIR}
+)
+# Generate Cpp files from Proto file
+file(GLOB PROTO_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.proto"
+)
+
+PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${PROTO_SRC_FILES})
+
+add_custom_target(xbtracer_generated_code DEPENDS ${ProtoSources} ${ProtoHeaders})
+
+add_library(xbtracer_protobuf STATIC ${ProtoSources} ${ProtoHeaders})
+add_dependencies(xbtracer_protobuf xbtracer_generated_code)
+if (MSVC)
+  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267)
+endif(MSVC)
+
+include_directories(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  ${XRT_BINARY_DIR}/gen
+)
+
+file(GLOB XBTRACER_COMMON_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/common/*.cpp"
+)
+
+add_library(xbtracer_common STATIC ${XBTRACER_COMMON_SRC_FILES})
+if (NOT WIN32)
+  target_link_libraries(xbtracer_common PRIVATE dl)
+endif (NOT WIN32)
+
+file(GLOB XBTRACER_WRAPPER_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/*.cpp"
+)
+
+add_library(xrt_wrapper SHARED ${XBTRACER_WRAPPER_SRC_FILES} ${ProtoHeaders})
+
+target_link_libraries(xrt_wrapper PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+add_dependencies(xrt_wrapper xbtracer_common xbtracer_protobuf xrt_coreutil)
+
+file(GLOB XBTRACER_CAPTURE_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/capture/*.cpp"
+)
+
+add_executable(xbtracer ${XBTRACER_CAPTURE_SRC_FILES})
+target_link_libraries(xbtracer PRIVATE xbtracer_common)
+add_dependencies(xbtracer xbtracer_common)
+
+file(GLOB XBREPLAY_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/replay/*.cpp"
+)
+add_executable(xbreplay ${XBREPLAY_SRC_FILES})
+target_link_libraries(xbreplay PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES} xrt_coreutil)
+if (NOT WIN32)
+  target_link_libraries(xbreplay PRIVATE pthread)
+endif (NOT WIN32)
+add_dependencies(xbreplay xbtracer_common xbtracer_protobuf xrt_coreutil)
+# TODO: when buiding with yocto for APU in CI, the status return from message to jason convertion function
+# provided from protobuf built from yocto doesn't match the one in the absl library, which results in
+# build failure. After fixing this issue in yocto APU build, we can always print message as JSON.
+# for now, we by default disable it, as it is not the key feature in the tracer/replay prototype, and replay
+# only tries to dump JSON message when it fails to replay a function.
+if (XRT_XBTRACER_ENABLE_JSON)
+  target_compile_options(xbreplay PRIVATE XBTRACER_PROTOBUF_HAS_JASON)
+
+  add_executable(xbtracer_dump
+    src/misc/xbtracer_dump.cpp
+  )
+  target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${Protobuf_LIBRARIES})
+  add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
+endif (XRT_XBTRACER_ENABLE_JSON)
+
 if (WIN32)
-  list(APPEND SRCS src/app/getopt.c)
-endif()
+include (detoursUtil.cmake)
 
-add_executable(${XBTRACER_NAME} ${SRCS})
+target_include_directories(xrt_wrapper PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xrt_wrapper PRIVATE ms_detours)
+add_dependencies(xrt_wrapper ms_detours)
+target_include_directories(xbtracer PRIVATE ${DETOURS_INCLUDE})
+target_link_libraries(xbtracer PRIVATE ms_detours)
+add_dependencies(xbtracer ms_detours)
+endif(WIN32)
 
-# Static build is a Linux / Ubuntu option only
-if (XRT_STATIC_BUILD)
-  add_executable(${XBTRACER_NAME}_static ${SRCS})
-  target_link_options(${XBTRACER_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
-  # Bypass FindBoost versions and just link explicitly with boost libraries
-  # The -static link option will pick the static libraries.
-  target_link_libraries(${XBTRACER_NAME}_static
-    PRIVATE
-    xrt_coreutil_static
-    boost_system
-    boost_program_options
-    -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
-    uuid
-    dl
-    )
-  set_target_properties(${XBTRACER_NAME}_static PROPERTIES INSTALL_RPATH "")
-  install(TARGETS ${XBTRACER_NAME}_static
-    RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-endif()
-
-install(TARGETS ${XBTRACER_NAME}
+# Install our built executable
+set(XBTRACER_TARGETS xbtracer xbreplay)
+install (TARGETS ${XBTRACER_TARGETS}
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-
-install(PROGRAMS ${XRT_HELPER_SCRIPTS}
-  DESTINATION ${XRT_INSTALL_BIN_DIR}
-  COMPONENT ${XRT_BASE_COMPONENT})
-
-add_subdirectory(src/lib)
+set (XBTRACER_HELPER_SCRIPTS xbtracer.bat xbreplay.bat)
+install (PROGRAMS ${XBTRACER_HELPER_SCRIPTS}
+  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+install(TARGETS xrt_wrapper
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+)

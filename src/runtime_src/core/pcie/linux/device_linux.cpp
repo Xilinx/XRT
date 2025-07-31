@@ -1586,29 +1586,6 @@ device_linux::
 
 void
 device_linux::
-read_dma_stats(boost::property_tree::ptree& pt) const
-{
-  auto handle = get_device_handle();
-
-  xclDeviceUsage devstat = { 0 };
-  xclGetUsageInfo(handle, &devstat);
-
-  boost::property_tree::ptree pt_channels;
-  for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
-    boost::property_tree::ptree pt_dma;
-    pt_dma.put( "id", std::to_string(get_device_id()));
-    pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[idx]) );
-    pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[idx]) );
-
-    // Create our array of data
-    pt_channels.push_back(std::make_pair("", pt_dma));
-  }
-
-  pt.add_child( "transfer_metrics.channels", pt_channels);
-}
-
-void
-device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
   if (auto err = get_dev()->pcieBarRead(offset, buf, len))
@@ -1649,25 +1626,28 @@ close(int dev_handle) const
 
 void
 device_linux::
-xclmgmt_load_xclbin(const char* buffer) const {
+xclmgmt_load_xclbin(span<char> buffer) const
+{
   //resolves to xclbin2
   const char xclbin_magic_str[] = { 0x78, 0x63, 0x6c, 0x62, 0x69, 0x6e, 0x32 };
-  if (sizeof(buffer) < sizeof(xclbin_magic_str))
+  if (buffer.size() < sizeof(xclbin_magic_str))
     throw xrt_core::error("Xclbin is smaller than expected");
-  if (std::memcmp(buffer, xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
+  
+  if (std::memcmp(buffer.data(), xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
     throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
+  
   int ret = 0;
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
-    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>(buffer.data()) };
     ret = get_dev()->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
-  } catch (const std::exception& e) {
+  }
+  catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
 
-  if(ret != 0) {
+  if (ret)
     throw error(ret, "Failed to download xclbin");
-  }
 }
 
 void

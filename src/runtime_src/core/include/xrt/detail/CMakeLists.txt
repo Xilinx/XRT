@@ -6,7 +6,8 @@ set(XRT_XRT_DETAIL_HEADER_SRC
   bitmask.h
   config.h
   param_traits.h
-  pimpl.h)
+  pimpl.h
+  span.h)
 
 set(XRT_XRT_DETAIL_LEGACY_SRC
   ert.h

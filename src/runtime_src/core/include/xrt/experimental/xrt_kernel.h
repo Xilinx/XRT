@@ -72,6 +72,28 @@ public:
     what() const noexcept override;
   };
 
+  /**
+   * aie_error - exception for AIE abnormal command execution
+   *
+   * This exception provides access to context health information.
+   */
+  class aie_error : public command_error
+  {
+    using command_error::command_error;
+    template <typename T> using span = xrt::detail::span<T>;
+  public:
+    XRT_API_EXPORT
+    aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what);
+    /**
+     * Get the raw context health data
+     * The data format is not necessarily ABI compatible so should
+     * not be used in deployed applications.
+     */
+    XRT_API_EXPORT
+    span<const uint32_t>
+    data() const;
+  };
+
 public:
   /**
    * runlist() - Construct empty runlist object

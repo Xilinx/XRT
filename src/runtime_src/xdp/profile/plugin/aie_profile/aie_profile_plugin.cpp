@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -41,12 +28,8 @@
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
 #include "ve2/aie_profile.h"
 #else
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
 #include "core/edge/user/shim.h"
 #include "edge/aie_profile.h"
 #endif
@@ -99,15 +82,16 @@ namespace xdp {
     return db->addDevice("win_device");
 #else
     if (hw_context_flow)
-      return db->addDevice("ve2_device");
+      return db->addDevice("ve2_device"); // Both VE2 and Edge will reach here
     else
-      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id. Edge load_xclbin flow 
 #endif
   }
 
   void AieProfilePlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
+
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
@@ -115,49 +99,23 @@ namespace xdp {
     if (!handle)
       return;
 
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+      return;
+    }
+
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
-      xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_config mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
+      xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
       return;
     }
-    //TODO: Stop using hw_gen for below check once XRT provides and API to get device type across all hw_gen.
-    //      Also remove the relevant header files for both edge and VE2 (query_requests.h, xclbin_int.h). CR-1240834
     else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
-      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
-      try {
-        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
-      }
-      catch (const std::exception& e) {
-        std::stringstream msg;
-        msg << "Exception occured while retrieving loaded xclbin info: " << e.what();
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-      }
-
-      if (xclbin_slot_info.empty())
-        return;
-
-      auto new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
-      xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
-      auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-
-      std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
-      boost::property_tree::ptree aieMetadata;
-      if (data.first && data.second) {
-        metadataReader =
-          aie::readAIEMetadata(data.first, data.second, aieMetadata);
-      }
-      if (!metadataReader)
-      {
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-                              "AIE metadata read failed. Hence, Profiling will not be available.");
-        return;
-      }
-      if(metadataReader->getHardwareGeneration() == 5)
-      {
-        xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_config mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
-        return;
-      }
+  #ifdef XDP_VE2_ZOCL_BUILD
+      xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. AIE Profiling is not yet supported for this combination.");
+      return;
+  #else
+      xrt_core::message::send(severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. AIE Profiling should be available.");
+  #endif
     }
 #endif
 
@@ -175,7 +133,7 @@ namespace xdp {
 #endif
     }
 
-    // delete old data
+    // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
 #ifdef XDP_CLIENT_BUILD
       return;

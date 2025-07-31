@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_linux.h"
 #include "xrt.h"
-#include "zynq_dev.h"
+#include "dev_zocl.h"
 #include "aie_sys_parser.h"
 #include "smi_edge.h"
+#include "system_linux.h"
 
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"
@@ -68,10 +69,13 @@ struct drm_fd
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
-static zynq_device*
+xrt_core::edge::dev_zocl*
 get_edgedev(const xrt_core::device* device)
 {
-  return zynq_device::get_dev();
+  auto edev = xrt_core::edge_linux::get_dev(device->get_device_id());
+  if (!edev)
+    throw xrt_core::error("Invalid device handle");
+  return dynamic_cast<xrt_core::edge::dev_zocl*>(edev.get());
 }
 
 struct bdf
@@ -81,7 +85,7 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    return std::make_tuple(0,0,0,0);
+    return std::make_tuple(0,0,0,device->get_device_id());
   }
 
 };
@@ -922,7 +926,7 @@ template <typename ValueType>
 struct sysfs_fcn
 {
   static ValueType
-  get(zynq_device* dev, const char* entry)
+  get(xrt_core::edge::dev_zocl* dev, const char* entry)
   {
     std::string err;
     ValueType value;
@@ -938,7 +942,7 @@ template <>
 struct sysfs_fcn<std::string>
 {
   static std::string
-  get(zynq_device* dev, const char* entry)
+  get(xrt_core::edge::dev_zocl* dev, const char* entry)
   {
     std::string err;
     std::string value;
@@ -957,7 +961,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   using ValueType = std::vector<VectorValueType>;
 
   static ValueType
-  get(zynq_device* dev, const char* entry)
+  get(xrt_core::edge::dev_zocl* dev, const char* entry)
   {
     std::string err;
     ValueType value;
@@ -1384,9 +1388,14 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
 
   if (ret == 0) //Timeout occured
     return std::cv_status::timeout;
+  //Interrupt received
+  if (pfd.revents & POLLIN) {
+    int pending = 0;
+    if (::read(handle, &pending, sizeof(pending)) == -1)
+      throw error(errno, "Interrupt received but read failed");
 
-  if (pfd.revents & POLLIN) //Interrupt received
     return std::cv_status::no_timeout;
+  }
 
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }

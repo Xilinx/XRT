@@ -2,10 +2,8 @@
 # Copyright (C) 2019-2024, Advanced Micro Devices, Inc. All rights Reserved.
 #
 # Signing xclbin images are currently only support on Linux
-
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.5...4.0)
 project(XCLBINUTIL)
-
 
 # This cmake project depends on some other cmake util files
 # which can be found in folder ${XRT_SOURCE_DIR}/CMake.
@@ -26,7 +24,7 @@ endif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
 
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
-  if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  if (NOT XRT_EDGE)
     # Cannot use find_package(PythonInterp REQUIRED) as it pollutes the
     # global space and later causes failure with find_package(pybind11 ...)
     # in src/python/pybind11/CMakeLists.txt
@@ -66,7 +64,7 @@ include_directories(
   ${PROJECT_BINARY_DIR}/gen
   )
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes") 
+if (NOT XRT_EDGE)
   add_subdirectory(
     ${XRT_SOURCE_DIR}/runtime_src/tools/scripts 
     ${PROJECT_BINARY_DIR}/runtime_src/tools/scripts

@@ -4,6 +4,7 @@
 #include "shim.h"
 #include "system_linux.h"
 #include "hwctx_object.h"
+#include "dev_zocl.h"
 
 #include "core/include/shim_int.h"
 #include "core/include/xdp/aim.h"
@@ -113,19 +114,18 @@ namespace ZYNQ {
 std::map<uint64_t, uint32_t *> shim::mKernelControl;
 
 shim::
-shim(unsigned index)
+shim(unsigned index, std::shared_ptr<xrt_core::edge::dev_zocl> edev_zocl)
   : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
   , mBoardNumber(index)
   , mKernelClockFreq(100)
+  , mDev{std::move(edev_zocl)}
   , mCuMaps(128, {nullptr, 0})
 {
   xclLog(XRT_INFO, "%s", __func__);
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
   mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
   // Validity of mKernelFD is checked using handleCheck in every shim function
-
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
-  mDev = zynq_device::get_dev();
 }
 
 shim::
@@ -932,7 +932,7 @@ std::string
 shim::
 xclGetSysfsPath(const std::string& entry)
 {
-  return zynq_device::get_dev()->get_sysfs_path(entry);
+  return mDev->get_sysfs_path(entry);
 }
 
 int
@@ -1852,9 +1852,8 @@ getIPCountAddrNames(int type,
                     size_t size)
 {
   debug_ip_layout *map;
-  auto dev = zynq_device::get_dev() ;
   std::string entry_str = "debug_ip_layout";
-  std::string path = dev->get_sysfs_path(entry_str);
+  std::string path = mDev->get_sysfs_path(entry_str);
   std::ifstream ifs(path.c_str(), std::ifstream::binary);
   uint32_t count = 0;
   char buffer[65536];

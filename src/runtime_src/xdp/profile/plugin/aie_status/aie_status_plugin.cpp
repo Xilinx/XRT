@@ -34,12 +34,12 @@
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
-#include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/experimental/xrt-next.h"
 
 #ifdef XDP_VE2_BUILD
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
-#include "shim/xdna_hwctx.h"
+#include "shim_ve2/xdna_hwctx.h"
 #else
 #include "core/edge/user/shim.h"
 #endif
@@ -223,14 +223,12 @@ namespace xdp {
       return;
 
     // AIE core register offsets
-#ifdef XDP_VE2_BUILD
-    constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x38004;
-#else
-    constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-#endif
+    auto hwGen = metadataReader->getHardwareGeneration();
+    uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
+    if (hwGen == 5)
+      AIE_OFFSET_CORE_STATUS = 0x38004; // AIE2PS
 
     auto offset = metadataReader->getAIETileRowOffset();
-    auto hwGen = metadataReader->getHardwareGeneration();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall

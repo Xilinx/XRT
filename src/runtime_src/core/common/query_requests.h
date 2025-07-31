@@ -58,6 +58,7 @@ enum class key_type
   xrt_smi_config,
   xrt_smi_lists,
   xclbin_name,
+  runner,
   sequence_name,
   elf_name,
   mobilenet,
@@ -143,6 +144,7 @@ enum class key_type
   rtos_telemetry,
   stream_buffer_telemetry,
 
+  total_mem_usage,
 
   firmware_version,
 
@@ -493,6 +495,11 @@ struct pcie_id : request
   struct data {
     uint16_t device_id;
     uint8_t revision_id;
+
+    // Define the < operator for comparison
+    bool operator<(const data& other) const {
+      return std::tie(device_id, revision_id) < std::tie(other.device_id, other.revision_id);
+    }
   };
 
   using result_type = data;
@@ -586,6 +593,47 @@ struct xrt_smi_lists : request
   // formatting of individual items for the vector
   static std::string
   to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct runner : request
+{
+  enum class type {
+    throughput_recipe,
+    throughput_profile,
+    throughput_path,
+    latency_recipe,
+    latency_profile,
+    latency_path,
+    df_bandwidth_recipe,
+    df_bandwidth_profile,
+    df_bandwidth_path,
+    gemm_recipe,
+    gemm_profile,
+    gemm_path,
+    aie_reconfig_overhead_recipe,
+    aie_reconfig_overhead_nop_recipe,
+    aie_reconfig_overhead_profile,
+    aie_reconfig_overhead_path,
+    cmd_chain_latency_recipe,
+    cmd_chain_latency_profile,
+    cmd_chain_latency_path,
+    cmd_chain_throughput_recipe,
+    cmd_chain_throughput_profile,
+    cmd_chain_throughput_path
+  };
+
+  using result_type = std::string;
+  static const key_type key = key_type::runner;
+  static const char* name() { return "runner"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const override = 0;
+
+  static std::string
+  to_string(const result_type& value)
   {
     return value;
   }
@@ -1954,6 +2002,8 @@ struct aie_partition_info : request
     uint64_t    pasid = 0;
     qos_info    qos {};
     uint64_t    suspensions;    // Suspensions by context switching and idle detection
+    std::string process_name;
+    size_t      memory_usage;   //bytes
   };
 
   using result_type = std::vector<struct data>;
@@ -2081,22 +2131,37 @@ struct stream_buffer_telemetry : request
   get(const device* device) const override = 0;
 };
 
+struct total_mem_usage : request
+{
+  using result_type = uint64_t; // get value type
+  static const key_type key = key_type::total_mem_usage;
+
+  virtual std::any
+  get(const device* device) const override = 0;
+};
+
 // Retrieves the firmware version of the device.
 struct firmware_version : request
 {
+  enum class firmware_type {
+    npu_firmware,
+    uc_firmware
+  };
   struct data
   {
     uint32_t major;
     uint32_t minor;
     uint32_t patch;
     uint32_t build;
+    std::string git_hash;
+    std::string date;
   };
 
   using result_type = data;
   static const key_type key = key_type::firmware_version;
 
-  virtual std::any
-  get(const device* device) const override = 0;
+  std::any
+  get(const device* device, const std::any& req_type) const override = 0;
 };
 
 struct clock_freqs_mhz : request

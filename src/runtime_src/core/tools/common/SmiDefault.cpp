@@ -68,6 +68,6 @@ get_default_smi_config()
   smi_instance->add_subcommand("examine", create_examine_subcommand());
   smi_instance->add_subcommand("configure", create_configure_subcommand());
 
-  return smi_instance->build_smi_config();
+  return smi_instance->build_json();
 }
 } // namespace xrt_smi_default

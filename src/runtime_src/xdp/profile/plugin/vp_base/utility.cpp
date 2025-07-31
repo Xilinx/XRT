@@ -60,7 +60,7 @@ namespace xdp {
 
   const char* getToolVersion()
   {
-    return "2024.2";
+    return "2025.2";
   }
 
   std::string getXRTVersion()
@@ -195,6 +195,14 @@ namespace xdp {
     else if (std::strcmp(envVar, "hw_emu") == 0) mode = HW_EMU ;
 
     return mode ;
+  }
+
+  std::string getGraphUniqueId(uint8_t col, uint8_t channelNum, uint8_t streamId)
+  {
+    std::ostringstream uniqueId;
+    uniqueId << static_cast<int>(col) << "_" << static_cast<int>(channelNum)
+             << "_" << static_cast<int>(streamId);
+    return uniqueId.str();
   }
 
 } // end namespace xdp

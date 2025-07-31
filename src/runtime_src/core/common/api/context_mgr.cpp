@@ -27,7 +27,7 @@ namespace xrt_core::context_mgr {
 // The synchronization ensures that when a thread is in the process of
 // releasing a context, another thread wont call xclOpenContext before
 // the former has closed its context.
-class device_context_mgr
+class device_context_mgr : public xrt_core::device::context_mgr
 {
   // CU indeces are managed per hwctx
   // This struct manages CUs are that are opened by the
@@ -119,31 +119,23 @@ public:
   }
 };
 
-// Get (and create) context manager for device.
-// Cache the created manager so other threads can share.
-static std::shared_ptr<device_context_mgr>
-get_device_context_mgr(const xrt_core::device* device, bool create = false)
-{
-  static std::map<const xrt_core::device*, std::weak_ptr<device_context_mgr>> d2cmgr;
-  static std::mutex ctx_mutex;
-  std::lock_guard<std::mutex> lk(ctx_mutex);
-  auto cmgr = d2cmgr[device].lock();
-  if (!cmgr && create)
-    // NOLINTNEXTLINE using new for weak_ptr
-    d2cmgr[device] = cmgr = std::shared_ptr<device_context_mgr>(new device_context_mgr); 
-  return cmgr;
-}
-
-
 ////////////////////////////////////////////////////////////////
 // Exposed API
 ////////////////////////////////////////////////////////////////
-std::shared_ptr<device_context_mgr>
-create(const xrt_core::device* device)
+
+static std::shared_ptr<device_context_mgr>
+get_device_context_mgr(xrt_core::device* device)
 {
-  // creating a context manager doesn't change device, but aqcuiring a
-  // context is a device operation and cannot use const device
-  return get_device_context_mgr(device, true);
+  if (!device)
+    throw std::runtime_error("Empty device, failed to get device context manager.");
+
+  return std::static_pointer_cast<device_context_mgr>(device->get_context_mgr());
+}
+
+std::shared_ptr<device_context_mgr>
+create(xrt_core::device* device)
+{
+  return get_device_context_mgr(device);
 }
 
 // Regular CU
@@ -151,22 +143,30 @@ cuidx_type
 open_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
   auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-  if (auto ctxmgr = get_device_context_mgr(device))
-    return ctxmgr->open(hwctx, cuname);
-
-  throw std::runtime_error("No context manager for device");
+  auto ctxmgr = get_device_context_mgr(device);
+  return ctxmgr->open(hwctx, cuname);
 }
 
 void
 close_context(const xrt::hw_context& hwctx, cuidx_type cuidx)
 {
   auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-  if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->close(hwctx, cuidx);
-    return;
-  }
-
-  throw std::runtime_error("No context manager for device");
+  auto ctxmgr = get_device_context_mgr(device);
+  ctxmgr->close(hwctx, cuidx);
 }
 
 } // xrt_core::context_mgr
+
+////////////////////////////////////////////////////////////////
+// xrt_core::device context manager APIs definition
+////////////////////////////////////////////////////////////////
+std::shared_ptr<xrt_core::device::context_mgr>
+xrt_core::device::
+get_context_mgr()
+{
+   std::lock_guard<std::mutex> lk(m_mutex);
+   if (!m_ctx_mgr)
+     m_ctx_mgr = std::make_shared<xrt_core::context_mgr::device_context_mgr>();
+
+   return m_ctx_mgr;
+}

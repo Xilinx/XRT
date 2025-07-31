@@ -1,11 +1,10 @@
-/*
- * Copyright (C) 2021-2022 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
-#ifndef _XRT_MAILBOX_H_
-#define _XRT_MAILBOX_H_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_MAILBOX_H_
+#define XRT_MAILBOX_H_
 
-#include "xrt.h"
+#include "xrt/deprecated/xrt.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/detail/pimpl.h"

@@ -121,6 +121,8 @@ await_completion()
       command_cache.remove(cmd.get());
     m_cmd_queue.pop_front();
   }
+  // reset m_top_event as stream completed
+  m_top_event = nullptr;
 }
 
 void

@@ -113,7 +113,6 @@ def main():
 
   sectionname = "Trans"
   workingXclbin = "aiePartitionTrans.xclbin"
-  # aiePartition = os.path.join(args.resource_dir, "aie_partition_trans.json")
   aiePartition = os.path.join(os.getcwd(), "aie_partition_trans.json")
 
   cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,

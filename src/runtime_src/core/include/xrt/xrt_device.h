@@ -4,7 +4,7 @@
 #ifndef XRT_DEVICE_H_
 #define XRT_DEVICE_H_
 
-#include "xrt.h"
+#include "xrt/deprecated/xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/detail/config.h"
 #include "xrt/experimental/xrt_exception.h"

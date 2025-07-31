@@ -6,7 +6,7 @@
 
 if( NOT WIN32)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND (NOT XRT_EDGE))
   xrt_add_subdirectory(doc)
 endif()
 
@@ -27,7 +27,7 @@ if (XRT_ENABLE_WERROR)
   list(APPEND XRT_WARN_OPTS "-Werror")
 endif(XRT_ENABLE_WERROR)
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
 xrt_add_subdirectory(xdp)
@@ -46,7 +46,7 @@ if (XRT_ENABLE_HIP)
   xrt_add_subdirectory(hip)
 endif(XRT_ENABLE_HIP)
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   # Only for host native build.
   # For embedded, headers and libraries are installed in /usr
   # Not requeired setup.sh/.csh

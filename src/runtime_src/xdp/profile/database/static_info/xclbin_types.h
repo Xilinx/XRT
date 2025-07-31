@@ -30,7 +30,8 @@ namespace xdp {
     CONFIG_PL_ONLY,
     CONFIG_AIE_ONLY,
     CONFIG_AIE_PL,
-    CONFIG_AIE_PL_FORMED
+    CONFIG_AIE_PL_FORMED,
+    CONFIG_PL_DEVICE_INTF_ONLY
   } ;
 
 } // end namespace xdp

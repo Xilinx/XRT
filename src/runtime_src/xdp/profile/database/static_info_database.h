@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #ifndef STATIC_INFO_DATABASE_DOT_H
 #define STATIC_INFO_DATABASE_DOT_H
@@ -31,12 +18,15 @@
 #include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/app_style.h"
 #include "xdp/profile/database/static_info/xclbin_types.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
 #include "xdp/config.h"
 
 namespace xdp {
+  // Device ID for PL-only and AIE+PL xclbins in Register Xclbin style.
+  constexpr uint64_t DEFAULT_PL_DEVICE_ID = 0;
 
   // Forward declarations of general XDP constructs
   class VPDatabase;
@@ -85,6 +75,8 @@ namespace xdp {
     uint64_t applicationStartTime = 0 ;
     bool aieApplication = false;
 
+    xdp::AppStyle appStyle = APP_STYLE_NOT_SET;
+
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
     std::vector<std::pair<std::string, std::string> > openedFiles ;
@@ -107,12 +99,17 @@ namespace xdp {
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
+    // Map of hwCtxImpl Handle to unique ID to form device UID.
+    std::map<void*, uint64_t> hwCtxImplUIDMap;
+
     // Static info can be accessed via any host thread, so we have
     //  fine grained locks on each of the types of data.
     std::mutex summaryLock ;
     std::mutex openCLLock ;
     std::mutex deviceLock ;
     std::mutex aieLock ;
+    std::mutex appStyleLock;
+    std::mutex hwCtxImplUIDMapLock;
 
     // AIE device (Supported devices only)
     void* aieDevInst = nullptr ; // XAie_DevInst
@@ -121,8 +118,13 @@ namespace xdp {
     boost::property_tree::ptree aieMetadata;
     std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
+    /* The very first XDP Plugin update device (except PL Deadlock Plugin,
+     * ML Timeline etc.) sets the Application Style internally.
+     */
+    void setAppStyle(AppStyle style);
+
     // When loading a new xclbin, should we reset our internal data structures?
-    bool resetDeviceInfo(uint64_t deviceId, xdp::Device* xdpDevice, xrt_core::uuid new_xclbin_uuid);
+    bool resetDeviceInfoAndCreatePlDeviceIfRequired(uint64_t deviceId, std::unique_ptr<xdp::Device>& xdpDevice, xrt_core::uuid new_xclbin_uuid, std::shared_ptr<xrt_core::device> device);
 
     // Functions that create the overall structure of the Xclbin's PL region
     void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);
@@ -148,13 +150,15 @@ namespace xdp {
     void initializeFIFO(DeviceInfo* devInfo) ;
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
-    void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
-    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    void setAIEGeneration(uint64_t deviceId);
+    void setAIEClockRateMHz(uint64_t deviceId);
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin);
 
     XclbinInfoType getXclbinType(xrt::xclbin& xclbin);
+    xrt::uuid getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device);
+
     // This common private updateDevice functionality takes an xdp::Device
     // pointer to handle any connection to the PL side as necessary.
     // Some plugins do not require any PL control and will pass in nullptr
@@ -178,6 +182,19 @@ namespace xdp {
 
     XDP_CORE_EXPORT bool getAieApplication() const ;
     XDP_CORE_EXPORT void setAieApplication() ;
+
+    /* **** XDP Application Style ****
+     * The very first XDP Plugin to call "continueXDPConfig" in update device,
+     * sets the Application Style depending on whether HWContextImpl based 
+     * invocation was used to reach update device.
+     * XDP Plugins using only HWCtxImpl based invocation, like PL Deadlock, 
+     * ML Timeline etc., don't set/use XDP Application Style.
+     * All other XDP Plugins check whether to continue device configuration
+     * at update device step.
+     * XDP Plugins also check the App Style for accessing Device/Aie Array.
+     */
+    XDP_CORE_EXPORT bool     continueXDPConfig(bool hw_context_flow);
+    XDP_CORE_EXPORT AppStyle getAppStyle() const;
 
     XDP_CORE_EXPORT 
     std::unique_ptr<IpMetadata> populateIpMetadata(uint64_t deviceId, 
@@ -297,6 +314,19 @@ namespace xdp {
                                     std::shared_ptr<xrt_core::device> device,
                                     bool readAIEMetadata = true,
                                     std::unique_ptr<xdp::Device> xdpDevice = nullptr);
+
+    XDP_CORE_EXPORT
+    uint64_t getHwCtxImplUid(void* hwCtxImpl);
+
+    /* API to assign unique id for Device abstraction/HW Context in XDP
+     * For traditional App style using Load Xclbin, this API receives 
+     * Device Handle and uses corresponding sysfs path to identify and
+     * assign unique identifier.
+     * For new App style using register xclbin and HW Ctx invocation, this
+     * API receieves HW Ctx Impl as argument and assigns unique identifier.
+     */
+    XDP_CORE_EXPORT
+    uint64_t getDeviceContextUniqueId(void*);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****

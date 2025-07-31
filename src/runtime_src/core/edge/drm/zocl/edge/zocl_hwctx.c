@@ -82,7 +82,8 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
     s_id = kds_hw_ctx->slot_idx;
     ret = kds_free_hw_ctx(client, kds_hw_ctx);
     if (--slot->hwctx_ref_cnt == 0) {
-        zocl_destroy_aie(slot);
+        if (s_id != 0)
+            zocl_destroy_aie(slot);
         zdev->slot_mask &= ~(1 << s_id);
         DRM_DEBUG("Released the slot %d", s_id);
     }
