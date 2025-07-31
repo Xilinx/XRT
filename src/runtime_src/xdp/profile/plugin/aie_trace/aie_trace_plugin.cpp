@@ -169,7 +169,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 #endif
 
   // Check for device interface
-  PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(0);
+  PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
 
   // Create gmio metadata
   if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
