@@ -523,9 +523,9 @@ void AieTracePluginUnified::endPoll() {
 
       if (data.thread.joinable())
         data.thread.join();
-    }
-    if (data.implementation)
+      if (data.implementation)
       data.implementation->freeResources();
+    }
   }
 }
 } // end namespace xdp
