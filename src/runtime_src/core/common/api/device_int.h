@@ -24,6 +24,10 @@ get_xcl_device_handle(xrtDeviceHandle dhdl);
 std::cv_status
 exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms);
 
+// This API is used by xocl for resetting the shared pointer.
+void
+reset(const xrt::device& device);
+
 }} // device_int, xrt_core
 
 #endif
