@@ -4,6 +4,7 @@
 #define _XRT_COMMON_DEVICE_INT_H_
 
 // This file defines implementation extensions to the XRT Device APIs.
+#include "core/common/config.h"
 #include "core/include/xrt/xrt_device.h"
 #include <chrono>
 #include <condition_variable>
@@ -25,6 +26,7 @@ std::cv_status
 exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms);
 
 // This API is used by xocl for resetting the shared pointer.
+XRT_CORE_COMMON_EXPORT
 void
 reset(const xrt::device& device);
 
