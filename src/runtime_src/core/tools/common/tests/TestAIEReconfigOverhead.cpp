@@ -17,7 +17,6 @@ TestAIEReconfigOverhead::TestAIEReconfigOverhead()
 boost::property_tree::ptree
 TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
-
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_recipe);
   std::string recipe_noop = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_nop_recipe);
@@ -26,9 +25,9 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
   auto recipe_noop_path = XBValidateUtils::findPlatformFile(recipe_noop, ptree);
   auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
-  auto test_path =  XBValidateUtils::findPlatformFile(test, ptree); 
-  try
-  {
+  auto test_path =  XBValidateUtils::findPlatformFile(test, ptree);
+  
+  try {
     xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
 
     //Run 1
@@ -51,10 +50,10 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
-  catch(const std::exception& e)
-  {
+  catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
   }
+
+  return ptree;
 }
