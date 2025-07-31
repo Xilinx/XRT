@@ -50,6 +50,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
     ptree.put("status", XBValidateUtils::test_token_passed);
+    return ptree;
   }
   catch(const std::exception& e)
   {
