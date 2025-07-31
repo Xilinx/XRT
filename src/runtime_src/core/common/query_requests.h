@@ -144,6 +144,7 @@ enum class key_type
   rtos_telemetry,
   stream_buffer_telemetry,
 
+  total_mem_usage,
 
   firmware_version,
 
@@ -2001,6 +2002,8 @@ struct aie_partition_info : request
     uint64_t    pasid = 0;
     qos_info    qos {};
     uint64_t    suspensions;    // Suspensions by context switching and idle detection
+    std::string process_name;
+    size_t      memory_usage;   //bytes
   };
 
   using result_type = std::vector<struct data>;
@@ -2123,6 +2126,15 @@ struct stream_buffer_telemetry : request
 
   using result_type = std::vector<data>;
   static const key_type key = key_type::stream_buffer_telemetry;
+
+  virtual std::any
+  get(const device* device) const override = 0;
+};
+
+struct total_mem_usage : request
+{
+  using result_type = uint64_t; // get value type
+  static const key_type key = key_type::total_mem_usage;
 
   virtual std::any
   get(const device* device) const override = 0;
