@@ -490,13 +490,32 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_VE2Impl::poll(const uint32_t index, void* handle)
+  void AieProfile_VE2Impl::startPoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll.");
+    threadCtrl = true;
+    thread = std::make_unique<std::thread>(&AieProfile_VE2Impl::continuePoll, this, index); 
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll, after creating thread instance.");
+  }
+
+  void AieProfile_VE2Impl::continuePoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::continuePoll");
+
+    while (threadCtrl) {
+      poll(index);
+      std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
+    }
+    //Final Polling Operation
+    poll(index);
+  }
+
+  void AieProfile_VE2Impl::poll(const uint32_t index)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+
     if (!aieDevInst)
       return;
 
@@ -612,6 +631,19 @@ namespace xdp {
       }
     }
   }
+
+  void AieProfile_VE2Impl::endPoll()
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::endPoll");
+    if (!threadCtrl)
+      return;
+
+    threadCtrl = false;
+    if (thread && thread->joinable())
+      thread->join();
+
+    freeResources();
+  }  
 
   void AieProfile_VE2Impl::freeResources() 
   {

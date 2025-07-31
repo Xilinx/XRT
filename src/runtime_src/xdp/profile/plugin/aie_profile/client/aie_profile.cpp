@@ -294,7 +294,7 @@ namespace xdp {
   }
 
   void
-  AieProfile_WinImpl::poll(const uint32_t index, void* handle)
+  AieProfile_WinImpl::poll(const uint32_t index)
   {
     if (finishedPoll)
       return;
@@ -318,7 +318,6 @@ namespace xdp {
       return;
     }
 
-    (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
