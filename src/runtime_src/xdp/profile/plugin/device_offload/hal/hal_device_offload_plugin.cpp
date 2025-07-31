@@ -116,16 +116,43 @@ namespace xdp {
     clearOffloader(deviceId) ;
   }
 
-  void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
+  void HALDeviceOffloadPlugin::updateDevice(void* userHandle, bool hw_context_flow)
   {
+    if (!userHandle) {
+      std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: userHandle is null" << std::endl;
+      return ;
+    }
+
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+      std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: XDP configuration is not continued" << std::endl;
+      return;
+    }
+
+    auto device = util::convertToCoreDevice(handle, hw_context_flow);
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+  if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
+    xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. PL Trace is not yet supported for this combination.");
+    return;
+  }
+  else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+  #ifdef XDP_VE2_ZOCL_BUILD
+    xrt_core::message::send(severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. PL Trace is not yet supported for this combination.");
+    return;
+  #else
+    xrt_core::message::send(severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. PL Trace should be available.");
+  #endif
+    }
+#endif
+ 
     // For HAL devices, the pointer passed in is an xrtDeviceHandle.
     //  We will query information on that passed in handle, but we
-    //  should user our own locally opened handle to access the physical
+    //  should use our own locally opened handle to access the physical
     //  device.
     std::string path = util::getDebugIpLayoutPath(userHandle);
     if (path == "")
       return ;
 
+    // uint64_t deviceId = db->addDevice(path) ;
     uint64_t deviceId = db->addDevice(path) ;
     void* ownedHandle = deviceIdToHandle[deviceId] ;
   

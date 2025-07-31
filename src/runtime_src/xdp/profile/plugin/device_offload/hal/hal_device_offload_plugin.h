@@ -56,7 +56,7 @@ namespace xdp {
 
     // Virtual functions from DeviceOffloadPlugin
     virtual void flushDevice(void* device) ;
-    virtual void updateDevice(void* device) ;
+    virtual void updateDevice(void* device, bool hw_context_flow) ;
   } ;
 
 } // end namespace xdp
