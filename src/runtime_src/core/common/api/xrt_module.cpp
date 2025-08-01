@@ -2512,7 +2512,8 @@ class module_sram : public module_impl
       constexpr uint32_t shift32 = 32;
       for (const auto& entry : buffers) {
         //for each entry, lower 32 is the uc index, and upper 32 is the length in word for that uc
-        buf_sizes[static_cast<uint32_t>(entry & mask32)] = static_cast<size_t>(entry >> shift32);
+        //config_bo requires buf_size in bytes
+        buf_sizes[static_cast<uint32_t>(entry & mask32)] = (static_cast<size_t>(entry >> shift32)) * sizeof(uint32_t);
 	total_size += static_cast<size_t>(entry >> shift32);
       }
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
