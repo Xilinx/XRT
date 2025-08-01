@@ -32,7 +32,7 @@ namespace xrt::core::hip
     auto address = hip_mem->get_address();
     throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipMalloc!");
       
-    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, std::move(hip_mem));
     *ptr = reinterpret_cast<void* >(address);
   }
 
@@ -51,7 +51,7 @@ namespace xrt::core::hip
     auto address = hip_mem->get_address();
     throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipHostMalloc!");
       
-    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, std::move(hip_mem));
     *ptr = address;
   }
   
@@ -67,7 +67,7 @@ namespace xrt::core::hip
     auto host_addr = hip_mem->get_address();
     throw_if(!host_addr, hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister!");
 
-    memory_database::instance().insert(reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(host_addr), size, std::move(hip_mem));
   }
   
   // Get Device pointer from Host Pointer allocated through hipHostMalloc().
@@ -292,7 +292,7 @@ namespace xrt::core::hip
     auto pool = std::make_shared<memory_pool>(dev, MAX_MEMORY_POOL_SIZE_NPU, MEMORY_POOL_BLOCK_SIZE_NPU);
     auto pool_hdl = insert_in_map(mem_pool_cache, pool);
     *mem_pool = reinterpret_cast<hipMemPool_t>(pool_hdl);
-    memory_pool_db[dev->get_device_id()].push_back(pool);
+    memory_pool_db[dev->get_device_id()].push_back(std::move(pool));
   }
   
   static void
@@ -324,7 +324,7 @@ namespace xrt::core::hip
     throw_invalid_value_if(!dev, "Invalid device index.");
 
     auto default_mem_pool = memory_pool_db[device].front();
-    *mem_pool = get_mem_pool_handle(default_mem_pool);
+    *mem_pool = get_mem_pool_handle(std::move(default_mem_pool));
   }
 
   // Gets the current memory pool for the specified device.
@@ -336,7 +336,7 @@ namespace xrt::core::hip
     throw_invalid_value_if(!dev, "Invalid device index.");
 
     auto curr_mem_pool = current_memory_pool_db[device];
-    *mem_pool = get_mem_pool_handle(curr_mem_pool);
+    *mem_pool = get_mem_pool_handle(std::move(curr_mem_pool));
   }
 
   static void
