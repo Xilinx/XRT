@@ -58,6 +58,7 @@ target_include_directories(core_common_library_objects
 target_compile_definitions(core_common_library_objects
   PRIVATE
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 
 # The scheduler object files are for auto config of scheduler. These

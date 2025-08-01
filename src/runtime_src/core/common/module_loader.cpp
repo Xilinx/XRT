@@ -13,6 +13,10 @@
 #include <cstring>
 #include <filesystem>
 
+#ifndef XRT_LIB_DIR
+# error "XRT_LIB_DIR is undefined"
+#endif
+
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
@@ -168,7 +172,8 @@ module_path(const std::string& module)
 #ifdef _WIN32
   path /= module + ".dll";
 #else
-  path /= "lib/xrt/module/lib" + module + ".so";
+  path /= XRT_LIB_DIR;
+  path /= "xrt/module/lib" + module + ".so";
 #endif
 
   if (!sfs::exists(path) || !sfs::is_regular_file(path))
@@ -186,7 +191,8 @@ shim_path()
 #ifdef _WIN32
   path /= name + ".dll";
 #else
-  path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
+  path /= XRT_LIB_DIR;
+  path /= "lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
 
   if (!sfs::exists(path) || !sfs::is_regular_file(path))

@@ -98,7 +98,7 @@ include (CMake/xrtVariables.cmake)
 # Note, that in order to disable RPATH insertion for a specific
 # target (say a static executable), use
 #  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
-SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
+SET(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN/../..:$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}")
 
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE
   DESTINATION ${XRT_INSTALL_DIR}/license
@@ -119,24 +119,30 @@ include (CMake/lint.cmake)
 
 xrt_add_subdirectory(runtime_src)
 
+# Create a symlink from lib -> lib64 for the OS variants where
+# CMAKE_INSTALL_PREFIX is lib64.  This is an test infrastructure
+# work-around and only enabled for non upstream builds.
+if (XRT_XRT
+    AND (NOT XRT_UPSTREAM)
+    AND (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
+    AND (CMAKE_INSTALL_PREFIX STREQUAL "/opt/xilinx/xrt"))
+  set(src_dir ${XRT_BUILD_INSTALL_DIR}/lib64)
+  set(tar_dir ${XRT_BUILD_INSTALL_DIR}/lib)
+  set(work_dir ${XRT_BUILD_INSTALL_DIR})
+  install(CODE "
+    message(STATUS \"Creating install symlink: ${tar_dir} -> ${src_dir}\")
+    execute_process(
+      COMMAND \${CMAKE_COMMAND} -E create_symlink lib64 lib
+      WORKING_DIRECTORY \"${work_dir}\"
+    )
+  ")
+  install(DIRECTORY ${tar_dir}
+    DESTINATION ${XRT_INSTALL_DIR}
+    COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()
+
 # --- Python bindings ---
 xrt_add_subdirectory(python)
-
-# Python tests are for XRT_ALVEO only
-if (XRT_ALVEO)
-
-set(PY_TEST_SRC
-  ../tests/python/22_verify/22_verify.py
-  ../tests/python/utils_binding.py
-  ../tests/python/23_bandwidth/23_bandwidth.py
-  ../tests/python/23_bandwidth/host_mem_23_bandwidth.py
-  ../tests/python/23_bandwidth/versal_23_bandwidth.py)
-install (FILES ${PY_TEST_SRC}
-  PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION ${XRT_INSTALL_DIR}/test
-  COMPONENT ${XRT_COMPONENT})
-
-endif (XRT_ALVEO)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 

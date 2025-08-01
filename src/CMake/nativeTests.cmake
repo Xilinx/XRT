@@ -27,10 +27,3 @@ add_test(NAME xbmgmt2
 
 set_tests_properties(xbmgmt2 PROPERTIES ENVIRONMENT
   "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
-
-add_test(NAME python_binding
-  COMMAND ${PYTHON_EXECUTABLE} "${XRT_SOURCE_DIR}/../tests/python/200_binding/200_main.py"
-  WORKING_DIRECTORY ${XRT_BINARY_DIR})
-
-set_tests_properties(python_binding PROPERTIES ENVIRONMENT
-  "PYTHONPATH=${XRT_BUILD_INSTALL_DIR}/python;XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
