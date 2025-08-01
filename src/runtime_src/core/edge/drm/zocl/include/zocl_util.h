@@ -22,7 +22,7 @@
 #define _8KB	0x2000
 #define _64KB	0x10000
 
-#define ZOCL_MAX_MEM_REGIONS 5
+#define ZOCL_MAX_MEM_REGIONS 32
 #define MAX_PR_SLOT_NUM	32
 #define MAX_CU_NUM     128
 /* Apertures contains both ip and debug ip information */
@@ -161,8 +161,8 @@ struct zocl_cu_subdev {
 };
 
 struct zocl_mem_region {
-	struct device *dev;
-	bool initialized;
+	struct device 		*dev;
+	bool 			initialized;
 };
 
 struct drm_zocl_dev {
@@ -206,7 +206,7 @@ struct drm_zocl_dev {
 	int			 full_overlay_id;
 	struct drm_zocl_slot	*pr_slot[MAX_PR_SLOT_NUM];
 	u32                     slot_mask;
-	int						num_regions;
+	int			num_regions;
 	struct zocl_mem_region	mem_regions[ZOCL_MAX_MEM_REGIONS];
 };
 
