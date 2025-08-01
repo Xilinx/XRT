@@ -510,17 +510,21 @@ void AieTracePluginUnified::endPollforDevice(void *handle) {
   if (AIEData.thread.joinable())
     AIEData.thread.join();
 
-  AIEData.implementation->freeResources();
+  if (AIEData.implementation)
+    AIEData.implementation->freeResources();
 }
 
 void AieTracePluginUnified::endPoll() {
   // Ask all threads to end
   for (auto &p : handleToAIEData) {
-    if (p.second.threadCtrlBool) {
-      p.second.threadCtrlBool = false;
+    auto& data = p.second;
+    if (data.threadCtrlBool) {
+      data.threadCtrlBool = false;
 
-      if (p.second.thread.joinable())
-        p.second.thread.join();
+      if (data.thread.joinable())
+        data.thread.join();
+      if (data.implementation)
+        data.implementation->freeResources();
     }
   }
 }
