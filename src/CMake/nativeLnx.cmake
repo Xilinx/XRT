@@ -128,10 +128,12 @@ if (XRT_XRT
     AND (CMAKE_INSTALL_PREFIX STREQUAL "/opt/xilinx/xrt"))
   set(src_dir ${XRT_BUILD_INSTALL_DIR}/lib64)
   set(tar_dir ${XRT_BUILD_INSTALL_DIR}/lib)
+  set(work_dir ${XRT_BUILD_INSTALL_DIR})
   install(CODE "
     message(STATUS \"Creating install symlink: ${tar_dir} -> ${src_dir}\")
     execute_process(
-      COMMAND \${CMAKE_COMMAND} -E create_symlink \"${src_dir}\" \"${tar_dir}\"
+      COMMAND \${CMAKE_COMMAND} -E create_symlink lib64 lib
+      WORKING_DIRECTORY \"${work_dir}\"
     )
   ")
   install(DIRECTORY ${tar_dir}
