@@ -25,7 +25,12 @@ namespace xdp {
       ~AieProfile_EdgeImpl() = default;
 
       void updateDevice();
-      void poll(const uint32_t index, void* handle);
+
+      void startPoll(const uint32_t index) override;
+      void continuePoll(const uint32_t index) override;
+      void poll(const uint32_t index) override;
+      void endPoll() override;
+
       void freeResources();
       bool checkAieDevice(const uint64_t deviceId, void* handle);
 
