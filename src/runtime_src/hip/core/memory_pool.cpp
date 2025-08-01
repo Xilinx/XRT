@@ -386,10 +386,10 @@ namespace xrt::core::hip
   void
   memory_pool::trim_to(size_t min_bytes_to_hold)
   {
+    std::lock_guard lock(m_mutex);
+
     if (m_reserved_mem_current < min_bytes_to_hold)
       return;
-
-    std::lock_guard lock(m_mutex);
 
     bool node_deleted = false;
     do {
