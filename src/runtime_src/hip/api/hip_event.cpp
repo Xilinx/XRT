@@ -30,6 +30,7 @@ static void hip_event_record(hipEvent_t eve, hipStream_t stream)
   throw_invalid_value_if(!stream, "stream passed is nullptr");
   auto hip_stream = get_stream(stream);
   auto hip_ev = std::dynamic_pointer_cast<event>(command_cache.get(eve));
+  throw_invalid_value_if(!hip_ev, "dynamic_pointer_cast failed");
   hip_ev->record(std::move(hip_stream));
 }
 
