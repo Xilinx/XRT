@@ -104,7 +104,7 @@ hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
     auto dummy_event_hdl = static_cast<event*>(
         insert_in_map(command_cache,
                       std::make_shared<event>()));
-    dummy_event_hdl->record(hip_wait_stream);
+    dummy_event_hdl->record(std::move(hip_wait_stream));
     dummy_event_hdl->add_dependency(hip_event_cmd);
 
     // enqueue dummy event into wait stream

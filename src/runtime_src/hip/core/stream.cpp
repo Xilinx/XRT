@@ -31,12 +31,12 @@ enqueue(std::shared_ptr<command> cmd)
 {
   // if there is top event add command chain list of this event
   // else submit the command
+  std::lock_guard<std::mutex> lock(m_cmd_lock);
   if (m_top_event)
     m_top_event->add_to_chain(cmd);
   else
     cmd->submit();
 
-  std::lock_guard<std::mutex> lock(m_cmd_lock);
   m_cmd_queue.emplace_back(std::move(cmd));
 }
 
