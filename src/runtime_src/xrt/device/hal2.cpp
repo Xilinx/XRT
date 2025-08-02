@@ -4,6 +4,7 @@
 #include "hal2.h"
 
 #include "core/common/api/bo.h"
+#include "core/common/api/device_int.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
@@ -101,7 +102,7 @@ device::
 close_nolock()
 {
   if (m_handle)
-    m_handle.reset();
+    xrt_core::device_int::reset(m_handle);
 }
 
 void
