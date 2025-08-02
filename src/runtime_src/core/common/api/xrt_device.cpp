@@ -222,6 +222,12 @@ exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms
   return xrt_core::hw_queue::exec_wait(device.get_handle().get(), timeout_ms);
 }
 
+void
+reset(const xrt::device& device)
+{
+  device.get_handle().reset();
+}
+
 } // xrt_core::device_int
 
 namespace xrt {
@@ -315,7 +321,7 @@ device::
 reset()
 {
   return xdp::native::profiling_wrapper("xrt::device::reset", [this]{
-    handle.reset();
+    handle->reset();
   });
 }
 
