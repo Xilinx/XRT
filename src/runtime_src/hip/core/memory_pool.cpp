@@ -59,7 +59,7 @@ namespace xrt::core::hip
   memory_pool_node::merge_free_slots(std::shared_ptr<memory_pool_slot> new_free_slot)
   {
     std::shared_ptr<memory_pool_slot> p0 = new_free_slot;
-    std::shared_ptr<memory_pool_slot> p1 = new_free_slot;
+    std::shared_ptr<memory_pool_slot> p1 = std::move(new_free_slot); // should not use new_free_slot onward
 
     while (p0 && p0->is_free()) {
       p1 = p0;
@@ -88,7 +88,7 @@ namespace xrt::core::hip
         dlinkedlist_delete(m_alloc_list, used_slot);
         dlinkedlist_insert(m_free_list, used_slot);
         used_slot->m_is_free = true;
-        merge_free_slots(used_slot);
+        merge_free_slots(std::move(used_slot));
         break;
       }
       used_slot = used_slot->m_next;
@@ -299,7 +299,7 @@ namespace xrt::core::hip
             else {
               // if the free slot found has exactly the same size as required aligned_size
               // there is no need to divide the slot, just remove the slot from m_free_list
-              alloc_slot = free_slot;
+              alloc_slot = std::move(free_slot);
               dlinkedlist_delete(mm->m_free_list, alloc_slot);
               alloc_slot->m_is_free = false;
             }
@@ -386,10 +386,10 @@ namespace xrt::core::hip
   void
   memory_pool::trim_to(size_t min_bytes_to_hold)
   {
+    std::lock_guard lock(m_mutex);
+
     if (m_reserved_mem_current < min_bytes_to_hold)
       return;
-
-    std::lock_guard lock(m_mutex);
 
     bool node_deleted = false;
     do {
