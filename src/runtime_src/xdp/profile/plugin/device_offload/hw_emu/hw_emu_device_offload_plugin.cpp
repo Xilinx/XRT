@@ -106,7 +106,7 @@ namespace xdp {
     }
   }
 
-  void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle)
+  void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle, bool hw_context_flow)
   {
     std::string path = ProcessHwEmuDebugIpLayoutPath(userHandle) ;
     if (path == "")

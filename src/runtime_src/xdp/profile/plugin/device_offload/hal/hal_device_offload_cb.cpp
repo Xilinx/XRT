@@ -38,7 +38,7 @@ namespace xdp {
 } // end namespace xdp 
 
 extern "C"
-void updateDeviceHAL(void* handle, bool hw_context_flow=false) 
+void updateDeviceHAL(void* handle, bool hw_context_flow) 
 {
   xdp::updateDeviceHAL(handle, hw_context_flow) ;
 }

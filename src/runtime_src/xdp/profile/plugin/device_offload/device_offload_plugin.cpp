@@ -120,12 +120,17 @@ namespace xdp {
     }
   }
 
-  void PLDeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
+  uint64_t PLDeviceOffloadPlugin::addDevice(const std::string& sysfsPath, void* handle)
   {
-    uint64_t deviceId = db->addDevice(sysfsPath) ;
+    uint64_t deviceId = 0;
+    if (handle)
+      deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(handle);
+    else
+      deviceId = db->addDevice(sysfsPath) ;
+    std::cout << "!!! Adding device with ID: " << deviceId << std::endl;
 
     if (!device_trace)
-        return;
+        return deviceId;
     
     // When adding a device, also add a writer to dump the information
     std::string version = "1.1" ;
@@ -147,6 +152,8 @@ namespace xdp {
 
     if (continuous_trace)
       XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
+    
+    return deviceId;
   }
 
   void PLDeviceOffloadPlugin::configureDataflow(uint64_t deviceId,

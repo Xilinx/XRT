@@ -108,7 +108,7 @@ namespace xdp {
     //  there is no information to be flushed.
   }
 
-  void OpenCLDeviceInfoPlugin::updateDevice(void* d)
+  void OpenCLDeviceInfoPlugin::updateDevice(void* d, bool hw_context_flow)
   {
     if (getFlowMode() == SW_EMU){
       updateSWEmulationGuidance() ;

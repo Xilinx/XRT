@@ -445,7 +445,7 @@ register_callbacks(void* handle)
     using utype = void (*)(void*, bool);
     using ftype = void (*)(void*);
 
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceHAL"));
+    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceHAL"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDeviceHAL"));
   #endif
 
@@ -646,11 +646,11 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
-  load_once_and_update(xrt_core::config::get_pl_device_trace(),
+  load_once_and_update(
            []() {
-            return ((xrt_core::config::get_pl_device_trace() != "off") ||
+            return ((xrt_core::config::get_device_trace() != "off") ||
                     (xrt_core::config::get_device_counters()));
-           }
+           },
            xrt_core::xdp::hal::device_offload::load,
            xrt_core::xdp::hal::device_offload::update_device,
            "Failed to load HAL PL trace plugin. Caught exception ",
@@ -710,7 +710,7 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::profile::end_poll(handle);
   if ((xrt_core::config::get_device_trace() != "off") ||
       (xrt_core::config::get_device_counters()))
-    xrt_core::xdp::hal::device_offload::finish_flush_device() ;
+    xrt_core::xdp::hal::device_offload::finish_flush_device(handle) ;
 
 #endif
 }
