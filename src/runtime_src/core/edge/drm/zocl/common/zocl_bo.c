@@ -620,7 +620,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		    &args->handle);
 		if (ret) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			drm_gem_dma_object_free(&bo->cma_base.base);
+			zocl_free_cma_bo(&bo->cma_base.base);
 #else
 			drm_gem_cma_free_object(&bo->cma_base.base);
 #endif
