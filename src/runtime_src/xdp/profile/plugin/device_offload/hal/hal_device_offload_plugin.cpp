@@ -50,6 +50,7 @@ namespace xdp {
 
         auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
         std::string path = util::getDebugIpLayoutPath(ownedHandle);
+        std::cout << "!!! HALDeviceOffloadPlugin::HALDeviceOffloadPlugin(): sysPath = " << path << " & index = " << index << " ownedHandle = " << ownedHandle << " & totalDevices = " << numDevices << std::endl;
 
         if ("" != path) {
           // TODO: Update this code to use device ID from the database 
