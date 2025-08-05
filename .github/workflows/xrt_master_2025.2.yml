@@ -459,7 +459,7 @@ jobs:
 
   Release_to_xco:      
     needs: setenv-download  
-    runs-on: [self-hosted, Ubuntu-22.04]
+    runs-on: [xrt, trx]
     strategy:        
       matrix:        
         site: ['xco'] 
