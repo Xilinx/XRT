@@ -607,6 +607,31 @@ zocl_gem_create_object(struct drm_device *dev, size_t size)
 	return (&bo->gem_base);
 }
 
+/**
+ * This function releases CMA GEM buffer objects and frees memory associated
+ * with it.
+ *
+ * @param	zocl_obj: ZOCL buffer object
+ *
+ */
+void zocl_free_cma_bo(struct drm_gem_object *obj)
+{
+	struct drm_zocl_dev *zdev = obj->dev->dev_private;
+	struct drm_zocl_bo *zocl_obj = to_zocl_bo(obj);
+	struct device *mem_dev;
+
+	if (zocl_obj->mem_region >= 0)
+		mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
+	else
+		mem_dev = zdev->ddev->dev;
+	if (zocl_obj->vaddr && mem_dev) {
+		dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
+		zocl_obj->vaddr = NULL;
+	}
+	drm_gem_object_release(obj);
+	kfree(zocl_obj);
+}
+
 /* This callback function release GEM buffer objects and free memory associated
  * with it. This function is also responsable for free up the memory for BOs.
  *
@@ -617,8 +642,6 @@ void zocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_zocl_bo *zocl_obj;
 	struct drm_zocl_dev *zdev;
-	struct drm_device *dev;
-	struct device *mem_dev;
 	int npages;
 	if (IS_ERR(obj) || !obj)
 		return;
@@ -626,7 +649,6 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	DRM_DEBUG("Freeing BO\n");
 	zocl_obj = to_zocl_bo(obj);
 	zdev = obj->dev->dev_private;
-	dev = obj->dev;
 
 	if (!zdev->domain) {
 		zocl_describe(zocl_obj);
@@ -640,17 +662,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			    zocl_obj->mem_index);
 			/* free resources associated with a CMA GEM object */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			if (zocl_obj->mem_region >= 0)
-				mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
-			else
-				mem_dev = dev->dev;
-			if (zocl_obj->vaddr && mem_dev) {
-				dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
-				zocl_obj->vaddr = NULL;
-			}
-
-			drm_gem_object_release(obj);
-			kfree(zocl_obj);
+			zocl_free_cma_bo(obj);
 #else
 			drm_gem_cma_free_object(obj);
 #endif
