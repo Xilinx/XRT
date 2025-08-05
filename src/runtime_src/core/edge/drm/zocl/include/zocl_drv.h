@@ -261,6 +261,7 @@ int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *dev, struct drm_zocl_slot *slot);
+void zocl_free_cma_bo(struct drm_gem_object *obj);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_drm_free_bo(struct drm_zocl_bo *bo);
 struct drm_gem_object *zocl_gem_create_object(struct drm_device *dev, size_t size);
