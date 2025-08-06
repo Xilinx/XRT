@@ -12,9 +12,7 @@ namespace {
 static xrt::elf
 create_elf(void* data, size_t size)
 {
-  std::istringstream stream;
-  stream.rdbuf()->pubsetbuf(static_cast<char*>(data), size);
-  return xrt::elf{stream};
+  return xrt::elf{data, size};
 }
 
 static xrt::uuid
