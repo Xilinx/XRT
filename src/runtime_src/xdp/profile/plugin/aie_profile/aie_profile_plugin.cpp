@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -97,21 +84,26 @@ namespace xdp {
     return db->addDevice("win_device");
 #else
     if (hw_context_flow)
-      return db->addDevice("ve2_device");
+      return db->addDevice("ve2_device"); // Both VE2 and Edge will reach here
     else
-      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id
+      return db->addDevice(util::getDebugIpLayoutPath(handle));  // Get the unique device Id. Edge load_xclbin flow 
 #endif
   }
 
   void AieProfilePlugin::updateAIEDevice(void* handle, bool hw_context_flow)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
+
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
 
     if (!handle)
       return;
+
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+      return;
+    }
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD) && ! defined(XDP_NPU3_BUILD)
@@ -143,7 +135,7 @@ namespace xdp {
 #endif
     }
 
-    // delete old data
+    // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
 #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       return;
@@ -212,33 +204,9 @@ auto time = std::time(nullptr);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
-  // Start the AIE profiling thread
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
-      AIEData.threadCtrlBool = false;
-  #else
-      AIEData.threadCtrlBool = true;
-      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
-      AIEData.thread = std::move(device_thread);
-      xrt_core::message::send(severity_level::warning, "XRT", "AIEProfile pollAIECounters thread started.");
-  #endif
-
-     ++mIndex;
-
-  }
-
-  void AieProfilePlugin::pollAIECounters(const uint32_t index, void* handle)
-  {
-    auto it = handleToAIEData.find(handle);
-    if (it == handleToAIEData.end())
-      return;
-
-    auto& should_continue = it->second.threadCtrlBool;
-    while (should_continue) {
-      handleToAIEData[handle].implementation->poll(index, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
-    }
-    //Final Polling Operation
-    handleToAIEData[handle].implementation->poll(index, handle);
+    // Start the AIE profiling thread
+    AIEData.implementation->startPoll(mIndex);
+    ++mIndex;
   }
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
@@ -264,19 +232,16 @@ auto time = std::time(nullptr);
     if(!AIEData.valid) {
       return;
     }
-
-    // Ask thread to stop
-    AIEData.threadCtrlBool = false;
-
-    if (AIEData.thread.joinable())
-      AIEData.thread.join();
-
+    if (!AIEData.implementation) {
+      handleToAIEData.erase(handle);
+      return;
+    }
+      
     #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
-      AIEData.implementation->poll(0, handle);
+      AIEData.implementation->poll(0);
     #endif
 
-    if (AIEData.implementation)
-      AIEData.implementation->freeResources();
+    AIEData.implementation->endPoll();
     handleToAIEData.erase(handle);
   }
 
@@ -286,20 +251,13 @@ auto time = std::time(nullptr);
 
     #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       auto& AIEData = handleToAIEData.begin()->second;
-      AIEData.implementation->poll(0, nullptr);
+      AIEData.implementation->poll(0);
     #endif
     // Ask all threads to end
-    for (auto& p : handleToAIEData)
-      p.second.threadCtrlBool = false;
-
     for (auto& p : handleToAIEData) {
-      auto& data = p.second;
-      if (data.thread.joinable())
-        data.thread.join();
-      if (data.implementation)
-        data.implementation->freeResources();
+      if (p.second.implementation)
+        p.second.implementation->endPoll();
     }
-
     handleToAIEData.clear();
   }
 

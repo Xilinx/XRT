@@ -26,7 +26,7 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
-elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
+elseif (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
   add_library(xdp_aie_status_plugin MODULE ${AIE_STATUS_PLUGIN_FILES})
   add_dependencies(xdp_aie_status_plugin xdp_core)
   target_link_libraries(xdp_aie_status_plugin PRIVATE xdp_core xaiengine)

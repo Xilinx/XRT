@@ -26,7 +26,8 @@ foreach x ($called)
     if ( $xrt_dir =~ */xrt ) break
 end
 
-if ( $xrt_dir !~ */xrt ) then
+# Poor test to ensure we are in an install location
+if ( ! -f $xrt_dir/version.json ) then
     echo "Invalid location: $xrt_dir"
     echo "This script must be sourced from XRT install directory"
     exit 1

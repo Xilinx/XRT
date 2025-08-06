@@ -1,5 +1,6 @@
 /**
- *  Copyright (C) 2015-2021, Xilinx Inc
+ *  Copyright (C) 2015-2021, Xilinx, Inc.  All rights reserved.
+ *  Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -40,7 +41,12 @@
 #ifndef XCLERR_INT_H_
 #define XCLERR_INT_H_
 
-#include "xrt_error_code.h"
+// The kernel DKMS release copies headers flat to driver/include
+#if defined(__linux__) && defined(__KERNEL__)
+# include "xrt_error_code.h"
+#else
+# include "xrt/detail/xrt_error_code.h"
+#endif
 
 #define	XCL_ERROR_CAPACITY	32
 

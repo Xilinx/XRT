@@ -7,7 +7,7 @@ include_directories(
 
 add_subdirectory(include)
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   xrt_add_subdirectory(common)
   xrt_add_subdirectory(pcie)
   xrt_add_subdirectory(tools)

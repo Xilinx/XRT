@@ -16,6 +16,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -47,7 +48,8 @@ public:
       throw std::runtime_error("not a valid ELF stream");
   }
 
-  explicit elf_impl(const void *data, size_t size)
+  explicit
+  elf_impl(const void *data, size_t size)
   {
     // Uses the same approach as in aiebu reporter.cpp
     // ibufferstream allows reading from data without first copying over
@@ -99,10 +101,14 @@ public:
   get_partition_size() const
   {
     // Partition size is stored in as note 0 in .note.xrt.configuration section
-    if (auto section = m_elf.sections[".note.xrt.configuration"])
-      return std::stoul(get_note(section, 0));
+    auto section = m_elf.sections[".note.xrt.configuration"];
+    if (!section)
+      throw std::runtime_error("ELF is missing xrt configuration info\n");
 
-    throw std::runtime_error("ELF is missing xrt configuration info");
+    uint32_t value = 0;
+    auto data = get_note(section, 0); // this is binary data
+    std::memcpy(&value, data.data(), std::min(data.size(), sizeof(uint32_t)));
+    return value;
   }
 };
 
@@ -151,7 +157,12 @@ elf(std::istream& stream)
 
 elf::
 elf(const void *data, size_t size)
-    : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data, size)}
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data, size)}
+{}
+
+elf::
+elf(const std::string_view& sv)
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(sv.data(), sv.size())}
 {}
 
 xrt::uuid

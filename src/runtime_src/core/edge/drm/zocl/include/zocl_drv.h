@@ -24,6 +24,7 @@
 #include <drm/drm_mm.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+#include <linux/of_reserved_mem.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 #include <drm/drm_gem_dma_helper.h>
 #else
@@ -149,6 +150,10 @@ struct drm_zocl_bo {
 	unsigned int                   mem_index;
 	uint32_t                       flags;
 	unsigned int                   user_flags;
+	void				*vaddr;
+	dma_addr_t			phys;
+	size_t				size;
+	int				mem_region;
 };
 
 struct drm_zocl_copy_bo {
@@ -256,6 +261,7 @@ int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *dev, struct drm_zocl_slot *slot);
+void zocl_free_cma_bo(struct drm_gem_object *obj);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_drm_free_bo(struct drm_zocl_bo *bo);
 struct drm_gem_object *zocl_gem_create_object(struct drm_device *dev, size_t size);

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022 AMD, Inc. All rights reserved.
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #
 # UBUNTU NOTE
@@ -41,7 +41,7 @@ rmmodules()
     depmod -A
 }
 
-installdir=@CMAKE_INSTALL_PREFIX@/xrt
+installdir=@CMAKE_INSTALL_PREFIX@
 systemddir=/etc/systemd/system
 test -e /usr/src/xrt-@XRT_VERSION_STRING@/dkms.conf
 alveo=$?

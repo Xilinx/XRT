@@ -422,7 +422,7 @@ update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ] || [ $FLAVOR == "rocky" ]; then
         rh_package_list
     elif [ $FLAVOR == "fedora" ]; then
         fd_package_list
@@ -447,7 +447,7 @@ validate()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ] || [ $FLAVOR == "rocky" ] ; then
         rpm -q "${RH_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
@@ -729,11 +729,11 @@ install()
         prep_mariner
     elif [ $FLAVOR == "sles" ]; then
         prep_sles
-    elif [ $FLAVOR == "almalinux" ]; then
+    elif [ $FLAVOR == "almalinux" ] || [ $FLAVOR == "rocky" ] ; then
         prep_alma
     fi
 
-    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
+    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ] || [ $FLAVOR == "rocky" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
         if [ $ds9 == 1 ]; then
@@ -748,7 +748,7 @@ install()
         fi
     fi
 
-    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" || $FLAVOR == "almalinux" ]] && [ $MAJOR -eq "8" ]; then
+    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" || $FLAVOR == "almalinux" || $FLAVOR == "rocky" ]] && [ $MAJOR -eq "8" ]; then
         yum install -y gcc-toolset-9-toolchain
     fi
 

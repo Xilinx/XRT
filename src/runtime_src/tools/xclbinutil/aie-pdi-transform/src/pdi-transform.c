@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+
 uint8_t XPdi_Cmd_Match(uint32_t CmdId)
 {
   uint8_t ret = 0;
@@ -53,6 +54,13 @@ char* XPdi_Parse_Cmd(XCdoCmd* Cmd, uint32_t* prevId,
     
   if (!XPdi_Cmd_Match(CmdId)) return cur_pdi_buf;
 
+  // In the transformed pdi, a command group has the following structure:
+  //   command id + number of commands in the group + <command 1 arguments>
+  // + <command 2 arguments> + ...
+  // The pdi transformation compresses all the consecutive cdo commands with
+  // the same command id into a command group
+  // When a cdo command with a different command iѕ is parsed, it starts
+  // a new command group
   if (*prevId !=CmdId) {
     // if (prevId != -1 && *cmd_num != NULL) {
     if ((uint64_t)prevId != UINT64_MAX && *cmd_num != NULL) {
@@ -63,6 +71,9 @@ char* XPdi_Parse_Cmd(XCdoCmd* Cmd, uint32_t* prevId,
     //printf("get cmd id %x\n", CmdId);
     *((uint32_t*)cur_pdi_buf) = CmdId;
     cur_pdi_buf += sizeof(uint32_t);
+    // *cmd_num points to the second data field in the comamnd group, which
+    // is the number of the commands in the group, when a new command with
+    // the same command id is parsed, this number is incremented
     *cmd_num = (uint32_t*)cur_pdi_buf;
     *(*cmd_num) = 0;
     cur_pdi_buf += sizeof(uint32_t);
@@ -105,12 +116,12 @@ char* XPdi_Parse_Cmd(XCdoCmd* Cmd, uint32_t* prevId,
       break;
   }
 
-
   return cur_pdi_buf;
 }
 
 uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
 {
+  // pdi_buf points to the beginning address of the cdo image
   uint32_t const * Orignal_Buf = Buf;
   char* cur_pdi_buf = pdi_buf;
   static uint32_t prevId = -1;
@@ -120,7 +131,7 @@ uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
     prevId = -1;
     cmd_num = NULL; 
   }
-   
+
   while (BufLen) {
     XCdoCmd Cmd;
     uint32_t CmdId = Buf[0] & XCDO_CMD_API_ID_MASK;
@@ -165,8 +176,10 @@ uint8_t allZero(void* mem, size_t len)
 //prepare the data zone
 uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const char *Buf)
 {
+  // pdi_buf points to the beginning address of the cdo image
   uint32_t dma_zero_data_size = 0;
   char const * obuf =  pdi_buf;
+  // data_buf points to the beginning address of the data section in cdo image
   char* data_buf = pdi_buf + CBufLen, *odata_buf = data_buf;
   while(pdi_buf - obuf < CBufLen) {
     uint32_t CmdId = *((uint32_t*)pdi_buf);
@@ -223,8 +236,8 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
     // printf("cmd_id %d num %d , new buf %ldB, origin buf %uB\n", CmdId, num, data_buf - obuf, BufLen * 4);
     XCdo_Print("cmd_id %d num %d , new buf %ldB, origin buf %uB\n", CmdId, num, data_buf - obuf, BufLen * 4);
   }
-  // printf("the all zeror dma data length is  %d\n", dma_zero_data_size);
-  XCdo_Print("the all zeror dma data length is  %d\n", dma_zero_data_size);
+  // printf("the all zero dma data length is  %d\n", dma_zero_data_size);
+  XCdo_Print("the all zero dma data length is  %d\n", dma_zero_data_size);
 
   return data_buf - obuf;
 
@@ -280,6 +293,34 @@ void XPdi_CdoHeader_String(uint32_t* header) {
 }
 
 /*******************************************************************************
+ * Primary function for pdi transformation
+ *
+ * Transformed PDI memory structure:
+ * A PDI includes
+ *   PDI header
+ *   CDO partition
+ *
+ *   PDI header includes
+ *     XilPdi_ImgHdrTbl
+ *     XilPdi_ImgHdr
+ *     XilPdi_PrtnHdr
+ *
+ *   CDO partition includes
+ *     CDO header
+ *     CDO image
+ *
+ *   CDO image include two zones
+ *     command zone
+ *     data zone
+ *
+ *   Command zone contains one more command groups, all the commands in
+ *     a command group have the same command id
+ *   Data zone is only applicable to dma write command, it contains the
+ *     data written by the dma write commands
+ *
+ *   PDI header structs are defined in libinclude/load_pdi.h
+ *   CDO header structure can be seen in cdoHeader[]
+ *
 ********************************************************************************/
 void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 {
@@ -291,16 +332,18 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
     XPdi_Load(PdiLoad);
     return;
   }
-  // printf("start to transform !");
-  XCdo_Print("start to transform !");
+
+  XCdo_Print("\n\nStart to transform the pdi !\n");
   XCdoLoad CdoLoad;
   XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
   ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
+
   //Prepare the new PDI memory
   char* pdi_buf = (char *)malloc((size_t)BufLen * 2 * 4);
   uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
         sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
-  //copy the PDI header
+
+  //Copy the PDI header
   XPdiLoad newPdiLoad;
   newPdiLoad.PdiPtr = pdi_buf;
   newPdiLoad.BasePtr = PdiLoad->BasePtr;
@@ -312,22 +355,35 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
   memcpy(cdo_buf, ((char *)PdiLoad->PdiPtr + HdrLen),
              XCDO_CDO_HDR_LEN * sizeof(uint32_t));
   XPdi_CdoHeader_String((uint32_t*)cdo_buf);
+
   //Parse and generate the command zone
+  // cdo_buf points to the beginning of the cdo partition in the new pdi buffer
+  // Cmd_len is the size of the cdo comamnd zone
   uint32_t Cmd_len = XPdi_Cmd_Parse(cdo_buf +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), BufLen, Buf);
+
   //Change the pdi header to mark that this is a tranform/compress pdi
-  XPdi_Header_Set_Transfrom_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
+  XPdi_Header_Set_Transform_Type(&newPdiLoad, CMDDATASPERATE, Cmd_len);
+
   //Parse and generate the data zone
   uint32_t TotalCdoLen = XPdi_Buf_Parse(cdo_buf  +
              (XCDO_CDO_HDR_LEN * sizeof(uint32_t)), Cmd_len, BufLen, (const char*)Buf);
+
   //Update the pdi length.
-  newPdiLoad.PdiLen = TotalCdoLen + HdrLen;
-  // printf("new cdo len is %d\n", TotalCdoLen);
+  //TotalCdoLen is the total size of cdo command zone + data zone
+  //it doesn't include the cdo header size
+  newPdiLoad.PdiLen = TotalCdoLen + (XCDO_CDO_HDR_LEN * sizeof(uint32_t)) + HdrLen;
   XCdo_Print("new cdo len is %d\n", TotalCdoLen);
-  //test load new pdi
+  XCdo_Print("Transform the pdi done !\n");
+
+  //Test load new pdi
+  XCdo_Print("\n\nTest load the new pdi\n");
   XPdi_Load(&newPdiLoad);
+  XCdo_Print("Test load the new pdi done\n");
+
   //Export the tranform pdi into a file (generate the new pdi file)
   XPdi_Export(&newPdiLoad, pdi_file_out);
+
   //Release the PDI memory
   free(pdi_buf);
   return;

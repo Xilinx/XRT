@@ -35,13 +35,6 @@ namespace xdp {
 // Forwadr declarations of XDP constructs
 struct LatencyConfig;
 
-constexpr unsigned int NUM_CORE_COUNTERS = 4;
-constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
-constexpr unsigned int NUM_SHIM_COUNTERS = 2;
-constexpr unsigned int NUM_MEM_TILE_COUNTERS = 4;
-constexpr unsigned int NUM_UC_EVENT_COUNTERS = 5;
-constexpr unsigned int NUM_UC_LATENCY_COUNTERS = 1;
-
 class AieProfileMetadata {
   private:
     // Currently supporting core modules, memory modules, interface tiles, 
@@ -91,9 +84,6 @@ class AieProfileMetadata {
     const std::string defaultSets[NUM_MODULES] =
       {"s2mm_throughputs", "s2mm_throughputs", "s2mm_throughputs", 
        "s2mm_throughputs", "execution"};
-    const int numCountersMod[NUM_MODULES] =
-      {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, 
-       NUM_MEM_TILE_COUNTERS, NUM_UC_EVENT_COUNTERS+NUM_UC_LATENCY_COUNTERS};
     const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, 
        module_type::mem_tile, module_type::uc};
@@ -154,7 +144,9 @@ class AieProfileMetadata {
 
     bool checkModule(const int module) { return (module >= 0 && module < NUM_MODULES);}
     std::string getModuleName(const int module) { return moduleNames[module]; }
-    int getNumCountersMod(const int module){ return numCountersMod[module]; }
+    int getNumCountersMod(const int module) {
+      return aie::getNumCounters(getHardwareGen(), getModuleType(module)); 
+    }
     module_type getModuleType(const int module) { return moduleTypes[module]; }
 
     uint8_t getAIETileRowOffset() const { return metadataReader == nullptr ? 0 : metadataReader->getAIETileRowOffset(); }

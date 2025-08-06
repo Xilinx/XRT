@@ -17,6 +17,8 @@ file(GLOB AIE_PROFILE_PLUGIN_FILES
   "${PROFILE_DIR}/writer/aie_profile/*.cpp"
 )
 file(GLOB AIE_PROFILE_UTIL_FILES
+  "${PROFILE_DIR}/plugin/aie_base/*"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.cpp"
 )
@@ -51,7 +53,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
-elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
+elseif (DEFINED XRT_AIE_BUILD AND (NOT XRT_EDGE))
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/x86")
 
   file(GLOB AIE_PROFILE_IMPL_FILES
@@ -88,7 +90,7 @@ elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
 
-elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
+  if (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/edge")
 
     file(GLOB AIE_PROFILE_IMPL_FILES

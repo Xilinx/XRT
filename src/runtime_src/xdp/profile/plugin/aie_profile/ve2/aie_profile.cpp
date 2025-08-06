@@ -1,29 +1,20 @@
-/**
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/ve2/aie_profile.h"
 #include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -37,12 +28,6 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/api/hw_context_int.h"
 #include "shim_ve2/xdna_hwctx.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -506,13 +491,32 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_VE2Impl::poll(const uint32_t index, void* handle)
+  void AieProfile_VE2Impl::startPoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll.");
+    threadCtrl = true;
+    thread = std::make_unique<std::thread>(&AieProfile_VE2Impl::continuePoll, this, index); 
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll, after creating thread instance.");
+  }
+
+  void AieProfile_VE2Impl::continuePoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::continuePoll");
+
+    while (threadCtrl) {
+      poll(index);
+      std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
+    }
+    //Final Polling Operation
+    poll(index);
+  }
+
+  void AieProfile_VE2Impl::poll(const uint32_t index)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+
     if (!aieDevInst)
       return;
 
@@ -628,6 +632,19 @@ namespace xdp {
       }
     }
   }
+
+  void AieProfile_VE2Impl::endPoll()
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::endPoll");
+    if (!threadCtrl)
+      return;
+
+    threadCtrl = false;
+    if (thread && thread->joinable())
+      thread->join();
+
+    freeResources();
+  }  
 
   void AieProfile_VE2Impl::freeResources() 
   {

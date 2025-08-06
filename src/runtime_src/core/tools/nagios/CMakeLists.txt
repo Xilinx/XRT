@@ -8,7 +8,7 @@ set(XRT_NAGIOS_INSTALL "${XRT_INSTALL_DIR}/etc/nagios-plugins")
 # Determine the name of the executable
 set(NAGIOS_LOADER_SCRIPTS "nagios_plugin.sh")
 
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+if (NOT XRT_EDGE)
   install (PROGRAMS ${NAGIOS_LOADER_SCRIPTS}
     DESTINATION ${XRT_NAGIOS_INSTALL} COMPONENT ${XRT_BASE_COMPONENT})
 endif()

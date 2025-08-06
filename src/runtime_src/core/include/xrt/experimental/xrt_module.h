@@ -97,6 +97,7 @@ public:
 
   ///@cond
   // Undocumented converting constructor using impl only
+  XRT_API_EXPORT
   explicit
   module(std::shared_ptr<module_impl> impl)
     : detail::pimpl<module_impl>(std::move(impl))

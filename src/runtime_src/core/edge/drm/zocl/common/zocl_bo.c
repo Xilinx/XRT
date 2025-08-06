@@ -16,6 +16,7 @@
 
 #include <linux/pagemap.h>
 #include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/dma-buf.h>
 #include <linux/iommu.h>
 #include <linux/version.h>
@@ -33,6 +34,13 @@
 #include "zocl_drv.h"
 #include "xclbin.h"
 #include "zocl_bo.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static struct drm_gem_dma_object *
+#else
+static struct drm_gem_cma_object *
+#endif
+zocl_cma_create(struct drm_device *dev, size_t size);
 
 static inline void __user *to_user_ptr(u64 address)
 {
@@ -174,25 +182,69 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 static struct drm_zocl_bo *
 zocl_create_cma_mem(struct drm_device *dev, size_t size)
 {
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	int num_regions = zdev->num_regions;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	struct drm_gem_dma_object *cma_obj;
 #else
 	struct drm_gem_cma_object *cma_obj;
 #endif
+	struct device *mem_dev;
 	struct drm_zocl_bo *bo;
+	dma_addr_t phys = 0;
+	void* vaddr = NULL;
+	int mem_region = -1;
 
-	/* Allocate from CMA buffer */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	cma_obj = drm_gem_dma_create(dev, size);
-#else
-	cma_obj = drm_gem_cma_create(dev, size);
-#endif
+	/* Roundng up the size to more than 4K
+	 * to ensure to allocate memory from CMA always */
+	if (size <= PAGE_SIZE)
+		size = round_up(size, 2 * PAGE_SIZE);
+	else
+		size = round_up(size, PAGE_SIZE);
+
+	cma_obj = zocl_cma_create(dev, size);
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
-	bo = to_zocl_bo(&cma_obj->base);
+	while ((!vaddr || !phys) && ++mem_region < num_regions) {
+		mem_dev = zdev->mem_regions[mem_region].dev;
+		if (!mem_dev)
+			continue;
+		vaddr = dma_alloc_coherent(mem_dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+		if (!vaddr)
+			DRM_DEBUG("Failed to allocate from zocl attached memory region %d \n",
+				mem_region);
+	}
 
+	//allocate from default cma if we failed to allocate from zocl attached memory regions
+	if(!phys || !vaddr) {
+		DRM_WARN("Allocating BO from default CMA for invalid or no zocl attached memory regions");
+		mem_region = -1;
+		vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+	}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj->dma_addr = phys;
+#else
+	cma_obj->paddr = phys;
+#endif
+	cma_obj->vaddr = vaddr;
+	if (!cma_obj->vaddr) {
+		DRM_ERROR("Failed to allocate buffer with size %zu\n", size);
+		goto error_free_gem;
+	}
+	bo = to_zocl_bo(&cma_obj->base);
+	bo->vaddr = vaddr;
+	bo->phys = phys;
+	bo->size = size;
+	bo->mem_region = mem_region;
 	return bo;
+
+error_free_gem:
+	drm_gem_object_release(&cma_obj->base);
+	kfree(to_zocl_bo(&cma_obj->base));
+	memset(&cma_obj->base, 0, sizeof(cma_obj->base));
+	return ERR_PTR(-ENOMEM);
 }
 
 /*
@@ -380,6 +432,8 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 
 		bo = zocl_create_range_mem(dev, size, mem);
 	}
+	if (IS_ERR(bo))
+		return ERR_PTR(-ENOMEM);
 
 	if (user_flags & ZOCL_BO_FLAGS_EXECBUF) {
 		bo->flags = ZOCL_BO_FLAGS_EXECBUF;
@@ -566,7 +620,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		    &args->handle);
 		if (ret) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			drm_gem_dma_object_free(&bo->cma_base.base);
+			zocl_free_cma_bo(&bo->cma_base.base);
 #else
 			drm_gem_cma_free_object(&bo->cma_base.base);
 #endif
@@ -1080,7 +1134,8 @@ zocl_cma_create(struct drm_device *dev, size_t size)
 	return cma_obj;
 
 error:
-	kfree(cma_obj);
+	memset(&cma_obj->base, 0, sizeof(cma_obj->base));
+	kfree(gem_obj);
 	return ERR_PTR(ret);
 }
 

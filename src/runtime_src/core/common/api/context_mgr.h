@@ -28,7 +28,7 @@ class device_context_mgr;
 // other words, multi threads using same device can share the same
 // context manager.
 std::shared_ptr<device_context_mgr>
-create(const xrt_core::device* device);
+create(xrt_core::device* device);
 
 // Open a device context a specified compute unit (ip)
 //

@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_CORE_SOURCE
 
@@ -100,7 +87,8 @@ AIETraceConfigFiletype::getExternalBuffers() const
         gmio.streamId = buf_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = 8;
 
-        gmios[gmio.name] = gmio;
+        std::string gmioKey = xdp::getGraphUniqueId(gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        gmios[gmioKey] = gmio;
     }
 
     return gmios;
@@ -241,6 +229,24 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
         }
     }
     return tiles;
+}
+
+std::vector<UCInfo>
+AIETraceConfigFiletype::getActiveMicroControllers() const
+{
+    if (getHardwareGeneration() != 5)
+      return {};
+
+    auto activeUCInfo = aie_meta.get_child_optional("Microcontrollers");
+    if (!activeUCInfo) {
+       xrt_core::message::send(severity_level::info, "XRT", getMessage("Microcontrollers"));
+       return {}; 
+    }
+    std::vector<UCInfo> activeUCs;
+    for (auto const &e : activeUCInfo.get()) {
+        activeUCs.emplace_back(e.second.get<uint8_t>("shim_column"), e.second.get<uint8_t>("index"));
+    }
+    return activeUCs;
 }
 
 } // namespace xdp::aie

@@ -316,7 +316,7 @@ struct script_runner
       sfs::path profile = root / node["profile"];
       auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
       sfs::path dir = root / node["dir"];
-      queue.add(job_type{device, id, recipe_json_string, profile_json_string, dir.string()});
+      queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
     }
     return queue;
   }
@@ -364,7 +364,7 @@ usage()
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--progress] show progress\n";
-  std::cout << " [--report] print runner metrics\n";
+  std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
@@ -378,7 +378,8 @@ usage()
 
 // Entry for parsing the runner script file
 static void
-run_script(const std::string& file, const std::string& dir, uint32_t threads, bool report)
+run_script(const std::string& file, const std::string& dir, uint32_t threads,
+           const std::string& report)
 {
   std::ifstream istr(file);
   auto script = json::parse(istr);
@@ -388,17 +389,23 @@ run_script(const std::string& file, const std::string& dir, uint32_t threads, bo
   script_runner runner{device, script, threads, dir};
   runner.wait();
 
-  if (report) {
+  if (!report.empty()) {
     auto [real, user, system] = st.get_rusage();
     auto jrpt = runner.get_report();
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
 
-    std::cout << jrpt.dump(2) << '\n';
+    if (report == "-")
+      std::cout << jrpt.dump(2) << '\n';
+    else {
+      std::ofstream ostr(report);
+      ostr << jrpt.dump(2) << '\n';
+    }
   }
 }
 
 static void
-run_single(const std::string& recipe, const std::string& profile, const std::string& dir, bool report)
+run_single(const std::string& recipe, const std::string& profile, const std::string& dir,
+           const std::string& report)
 {
   xrt_core::systime st;
   xrt::device device{0};
@@ -408,11 +415,17 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
   runner.execute();
   runner.wait();
 
-  if (report) {
+  if (!report.empty()) {
     auto [real, user, system] = st.get_rusage();
     auto jrpt = json::parse(runner.get_report());
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
-    std::cout << jrpt.dump(2) << '\n';
+
+    if (report == "-")
+      std::cout << jrpt.dump(2) << '\n';
+    else {
+      std::ofstream ostr(report);
+      ostr << jrpt.dump(2) << '\n';
+    }
   }
 }
 
@@ -430,21 +443,31 @@ run(int argc, char* argv[])
   std::string dir = ".";
   std::string script;
   uint32_t threads = 0;
-  bool report = false;
+  std::string report;
   for (auto& arg : args) {
     if (arg == "--help" || arg == "-h" || arg == "-help") {
       usage();
       return;
     }
 
-    if (arg == "--report") {
-      report = true;
-      continue;
-    }
-
     if (arg == "--progress") {
       xrt::ini::set("Runtime.verbosity", static_cast<int>(xrt::message::level::info));
       g_progress = true;
+      continue;
+    }
+
+    // Special handling to process --report options
+    if (arg == "-r" || arg == "--report") {
+      // --report
+      report = "-";      // default stdout
+      cur = "--report";  // try next token
+      continue;
+    }
+
+    if (cur == "--report" && (arg == "-" || arg[0] != '-')) {
+      // --report -
+      // --report <file>
+      report = arg;
       continue;
     }
 
@@ -465,6 +488,8 @@ run(int argc, char* argv[])
       threads = std::stoi(arg);
     else if (cur == "-i" || cur == "--iterations")
       g_iterations = std::stoi(arg);
+    else if (cur == "-r" || cur == "--report")
+      report = arg;
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }

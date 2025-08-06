@@ -16,12 +16,15 @@
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/time.h"
+#include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/xrt/detail/span.h"
+#include "core/include/xrt/experimental/xrt_aie.h"
 #include "core/include/xrt/experimental/xrt_elf.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_kernel.h"
@@ -408,18 +411,34 @@ class recipe
   class header
   {
     xrt::xclbin m_xclbin;
+    xrt::aie::program m_program;
 
     static xrt::xclbin
     read_xclbin(const json& j, const artifacts::repo* repo)
     {
+      if (!j.contains("xclbin"))
+        return {};
+        
       auto path = j.at("xclbin").get<std::string>();
       auto data = repo->get(path);
       return xrt::xclbin{data};
     }
 
+    static xrt::aie::program
+    read_program(const json& j, const artifacts::repo* repo)
+    {
+      if (!j.contains("program"))
+        return {};
+
+      auto path = j.at("program").get<std::string>();
+      auto data = repo->get(path);
+      return xrt::aie::program{data};
+    }
+
   public:
     header(const json& j, const artifacts::repo* repo)
       : m_xclbin{read_xclbin(j, repo)}
+      , m_program{read_program(j, repo)}
     {
       XRT_DEBUGF("Loaded xclbin: %s\n", m_xclbin.get_uuid().to_string().c_str());
     }
@@ -430,6 +449,12 @@ class recipe
     get_xclbin() const
     {
       return m_xclbin;
+    }
+
+    xrt::aie::program
+    get_program() const
+    {
+      return m_program;
     }
 
     report
@@ -449,14 +474,29 @@ class recipe
     {
       std::string m_name;
 
-      enum class type { input, output, inout, internal, weight, spill, unknown };
+      enum class type { input, output, inout, internal, weight, spill, unknown, debug };
       type m_type;
 
       size_t m_size;
 
       // Buffer object is created for internal nodes, but not for
-      // input/output which are bound during execution.
-      xrt::bo m_xrt_bo;
+      // input/output which are bound during execution.  The member is
+      // declared mutable to allow calling sync() through otherwise
+      // const function (map()).  Technically calling sync has no side
+      // effect other than making sure the buffer content is valid.
+      mutable xrt::bo m_xrt_bo;
+
+      static xrt::bo
+      create_bo(const xrt::device& device, type, size_t sz)
+      {
+        return xrt::ext::bo{device, sz};
+      }
+
+      static xrt::bo
+      create_bo(const xrt::hw_context& hwctx, type, size_t sz)
+      {
+        return xrt_core::bo_int::create_bo(hwctx, sz, xrt_core::bo_int::use_type::debug);
+      }
 
       // Internal buffers must specify a size and are created during
       // as part of loading the recipe.  External buffers do not
@@ -468,9 +508,18 @@ class recipe
         : m_name(std::move(name))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
       {
         XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
+      }
+
+      buffer(const xrt::hw_context& hwctx, std::string name, type t, size_t sz)
+        : m_name(std::move(name))
+        , m_type(t)
+        , m_size(sz)
+        , m_xrt_bo{create_bo(hwctx, m_type, m_size)}
+      {
+        XRT_DEBUGF("recipe::resources::buffer(%s), size(%d) type(debug)\n", m_name.c_str(), m_size);
       }
 
       // Copy constructor creates a new buffer with same properties as other
@@ -479,7 +528,14 @@ class recipe
         : m_name(other.m_name)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{m_size ? xrt::ext::bo{device, m_size} : xrt::bo{}}
+        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
+      {}
+
+      buffer(const xrt::hw_context& hwctx, const buffer& other)
+        : m_name(other.m_name)
+        , m_type(other.m_type)
+        , m_size(other.m_size)
+        , m_xrt_bo{create_bo(hwctx, m_type, m_size)}
       {}
 
       static type
@@ -492,7 +548,8 @@ class recipe
           { "internal", type::internal },
           { "weight", type::weight },
           { "spill", type::spill },
-          { "unknown", type::unknown }
+          { "unknown", type::unknown },
+          { "debug", type::debug },
         };
         return s2t.at(t);
       }
@@ -503,22 +560,27 @@ class recipe
 
       // create_buffer - create a buffer object from a property tree node
       static buffer
-      create_buffer(const xrt::device& device, const json& j)
+      create_buffer(const xrt::device& device, const xrt::hw_context& hwctx, const json& j)
       {
         auto tp = to_type(j.at("type").get<std::string>()); // required, input/output/internal
-        auto sz = (tp == type::internal)
-          ? j.at("size").get<size_t>()  // required for internal buffers
+        auto sz = (tp == type::internal || tp == type::debug)
+          ? j.at("size").get<size_t>()  // required for internal or debug buffers
           : j.value<size_t>("size", 0); // optional otherwise
-        return {device, j.at("name").get<std::string>(), tp, sz};
+
+        return (tp == type::debug)
+          ? buffer{hwctx, j.at("name").get<std::string>(), tp, sz}
+          : buffer{device, j.at("name").get<std::string>(), tp, sz};
       }
 
       // create_buffer - create a buffer object from another buffer object
       // This will create a new buffer object with the same properties as the
       // other buffer, but with a new xrt::bo object.
       static buffer
-      create_buffer(const xrt::device& device, const buffer& other)
+      create_buffer(const xrt::device& device, const xrt::hw_context& hwctx, const buffer& other)
       {
-        return {device, other};
+        return (other.m_type == type::debug)
+          ? buffer{hwctx, other}
+          : buffer{device, other};
       }
 
       xrt::bo
@@ -544,6 +606,13 @@ class recipe
                              + std::to_string(m_size));
 
         m_xrt_bo = bo;
+      }
+
+      xrt::detail::span<const std::byte>
+      map() const
+      {
+        m_xrt_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        return xrt::detail::span{m_xrt_bo.map<const std::byte*>(), m_xrt_bo.size()};
       }
     }; // class recipe::resources::buffer
 
@@ -647,11 +716,12 @@ class recipe
 
     // create_buffers - create buffer objects from buffer property tree nodes
     static std::map<std::string, buffer>
-    create_buffers(const xrt::device& device, const json& j)
+    create_buffers(const xrt::device& device, const xrt::hw_context& hwctx, const json& j)
     {
       std::map<std::string, buffer> buffers;
       for (const auto& [name, node] : j.items())
-        buffers.emplace(node.at("name").get<std::string>(), buffer::create_buffer(device, node));
+        buffers.emplace(node.at("name").get<std::string>(),
+                        buffer::create_buffer(device, hwctx, node));
 
       return buffers;
     }
@@ -660,11 +730,12 @@ class recipe
     // This will create new buffer objects with the same properties as the
     // other buffers, but with new xrt::bo objects.
     static std::map<std::string, buffer>
-    create_buffers(const xrt::device& device, const std::map<std::string, buffer>& others)
+    create_buffers(const xrt::device& device, const xrt::hw_context& hwctx,
+                   const std::map<std::string, buffer>& others)
     {
       std::map<std::string, buffer> buffers;
       for (const auto& [name, other] : others)
-        buffers.emplace(name, buffer::create_buffer(device, other));
+        buffers.emplace(name, buffer::create_buffer(device, hwctx, other));
 
       return buffers;
     }
@@ -693,24 +764,49 @@ class recipe
     }
 
     static xrt::hw_context
-    create_hwctx(const xrt::device& device, const xrt::uuid& uuid,
+    create_hwctx(xrt::device device, const xrt::xclbin& xclbin,
                  const xrt::hw_context::qos_type& qos)
     {
       try {
-        return {device, uuid, qos};
+        return {device, device.register_xclbin(xclbin), qos};
       }
       catch (const std::exception& ex) {
         throw xrt_core::runner::hwctx_error{ex.what()};
       }
     }
 
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device, const xrt::aie::program& program,
+                 const xrt::hw_context::qos_type& qos)
+    {
+      try {
+        return {device, program, qos, xrt::hw_context::access_mode::shared};
+      }
+      catch (const std::exception& ex) {
+        throw xrt_core::runner::hwctx_error{ex.what()};
+      }
+    }
+
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device, const header& header, 
+                 const xrt::hw_context::qos_type& qos)
+    {
+      if (auto xclbin = header.get_xclbin())
+        return create_hwctx(device, xclbin, qos);
+
+      if (auto program = header.get_program())
+        return create_hwctx(device, program, qos);
+
+      throw recipe_error("No program or xclbin specified");
+    }
+
   public:
-    resources(xrt::device device, const xrt::xclbin& xclbin,
+    resources(xrt::device device, const header& header,
               const xrt::hw_context::qos_type& qos,
               const json& recipe, const artifacts::repo* repo)
       : m_device{std::move(device)}
-      , m_hwctx{create_hwctx(m_device, m_device.register_xclbin(xclbin), qos)}
-      , m_buffers{create_buffers(m_device, recipe.at("buffers"))}
+      , m_hwctx{create_hwctx(m_device, header, qos)}
+      , m_buffers{create_buffers(m_device, m_hwctx, recipe.at("buffers"))}
       , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
       , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
     {}
@@ -718,7 +814,7 @@ class recipe
     resources(const resources& other)
       : m_device{other.m_device}                             // share device
       , m_hwctx{other.m_hwctx}                               // share hwctx
-      , m_buffers{create_buffers(m_device, other.m_buffers)} // new buffers
+      , m_buffers{create_buffers(m_device, m_hwctx, other.m_buffers)} // new buffers
       , m_kernels{other.m_kernels}                           // share kernels
       , m_cpus{other.m_cpus}                                 // share cpus
     {}
@@ -761,6 +857,15 @@ class recipe
         throw recipe_error("Unknown buffer '" + name + "'");
 
       return it->second;
+    }
+
+    xrt::detail::span<const std::byte>
+    map_buffer(const std::string& name) const
+    {
+      if (auto it = m_buffers.find(name); it != m_buffers.end())
+        return (*it).second.map();
+
+      return {nullptr, 0};
     }
 
     report
@@ -845,7 +950,9 @@ class recipe
         // XRT buffer object.
         argument(const resources& resources, const argument& other)
           : m_buffer{resources::buffer::create_buffer           // new resources:buffer
-                     (resources.get_device(), other.m_buffer)}  // (see earlier comment)
+                     (resources.get_device(),
+                      resources.get_xrt_hwctx(),
+                      other.m_buffer)}                          // (see earlier comment)
           , m_offset{other.m_offset}                            // same offset
           , m_size{other.m_size}                                // same size
           , m_argidx{other.m_argidx}                            // same argidx
@@ -1412,7 +1519,7 @@ public:
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
     , m_header{m_recipe_json.at("header"), repo}
-    , m_resources{m_device, m_header.get_xclbin(), qos, m_recipe_json.at("resources"), repo}
+    , m_resources{m_device, m_header, qos, m_recipe_json.at("resources"), repo}
     , m_execution{m_resources, m_recipe_json.at("execution"), runlist_threshold }
   {}
 
@@ -1488,6 +1595,11 @@ public:
     return rpt;
   }
 
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& nm) const
+  {
+    return m_resources.map_buffer(nm);
+  }
 }; // class recipe
 
 // class profile - Execution profile
@@ -2073,6 +2185,12 @@ public:
     rpt.add(m_execution.get_report());
     return rpt;
   }
+
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& nm) const
+  {
+    return m_recipe.map_buffer(nm);
+  }
 }; // class profile
 
 } // namespace
@@ -2109,6 +2227,9 @@ public:
 
   virtual std::string
   get_report() const = 0;
+
+  virtual xrt::detail::span<const std::byte>
+  map_buffer(const std::string&) const = 0;
 };
 
 // class recipe_impl - Insulated implementation of xrt::runner
@@ -2148,6 +2269,12 @@ public:
   get_report() const override
   {
     return m_recipe.get_report().to_string();
+  }
+
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& nm) const override
+  {
+    return m_recipe.map_buffer(nm);
   }
 }; // class recipe_impl
 
@@ -2191,6 +2318,12 @@ public:
   get_report() const override
   {
     return m_profile.get_report().to_string();
+  }
+
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& nm) const override
+  {
+    return m_profile.map_buffer(nm);
   }
 }; // class profile_impl
 
@@ -2309,6 +2442,13 @@ runner::
 get_report()
 {
   return handle->get_report();
+}
+
+xrt::detail::span<const std::byte>
+runner::
+map_buffer(const std::string& name) const
+{
+  return handle->map_buffer(name);
 }
 
 } // namespace xrt_core

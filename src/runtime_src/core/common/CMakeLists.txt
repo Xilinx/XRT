@@ -11,9 +11,11 @@ add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
-elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  set(AIEBU_FULL OFF)
-  set(AIEBU_SUBMODULE ON)
+elseif (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
+  message(WARNING "Compiling for ARM64, build of submodule aiebu disabled")
+elseif (NOT XRT_EDGE)
+  set(AIEBU_COMPONENT ${XRT_BASE_COMPONENT})
+  set(AIEBU_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
   xrt_add_subdirectory(aiebu)
 else()
   message(WARNING "Edge device, build of submodule aiebu disabled")
@@ -56,6 +58,7 @@ target_include_directories(core_common_library_objects
 target_compile_definitions(core_common_library_objects
   PRIVATE
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 
 # The scheduler object files are for auto config of scheduler. These

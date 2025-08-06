@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -31,7 +18,7 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -522,22 +509,6 @@ namespace xdp {
           config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);            
         }
       }
-
-      //auto switchPortRsc = switchPortMap[portnum];
-
-      // Event options:
-      //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
-      // XAie_Events ssEvent;
-      // if (isPortRunningEvent(event))
-      //  switchPortRsc->getSSRunningEvent(ssEvent);
-      // else
-      //  switchPortRsc->getSSStalledEvent(ssEvent);
-      // events.at(i) = ssEvent;
-
-      // if (newPort) {
-      //  switchPortRsc->start();
-      //  streamPorts.push_back(switchPortRsc);
-      // }
     }
 
     //switchPortMap.clear();
@@ -1310,6 +1281,15 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU SetMetricsSettings.");
     
     return true;
+  }
+
+   /****************************************************************************
+   * Set AIE Device Instance (Currently unused in Windows implementation)
+   ***************************************************************************/
+  void* AieTrace_WinImpl::setAieDeviceInst(void* handle)
+  {
+    (void)handle;
+    return nullptr;
   }
 
 }  // namespace xdp

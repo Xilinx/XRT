@@ -119,6 +119,9 @@ void test_read_pdi(char* pdi, char** data, int* len)
 // cdo_common.h
 FILE* file_pointer;
 
+// Main entry point for pdi transformation
+// Client should call this API
+// Within the function, XPdi_Compress_Transform is the most important call
 __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
 {
    if (!out_file || (out_file[0] == '\0')) 
@@ -133,7 +136,9 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
   printf("Get pdi file %s, do tranform pdi check and parsing.\n", pdi_file);
   int len = 0;
   char *data = NULL;
+  printf("\ntest_read_pdi\n");
   test_read_pdi(pdi_file, &data, &len);
+  printf("test_read_pdi done\n");
 
   XPdiLoad PdiLoad = {0};
   if (len) {
@@ -154,9 +159,11 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
   memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
-  // printf("Original ");
+  XCdo_Print("\n\nLoad original pdi\n");
   XPdi_Load(&PdiLoad);
+  XCdo_Print("Load original pdi done\n");
   SetDebugPdi((uint32_t *)DebugTransformPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
+
   XPdi_Compress_Transform(&PdiLoad, pdi_file_out);
 
   //Verify the data
@@ -172,7 +179,7 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
     }
   }
 
-  printf("The transform PDI check pass!!! Transformed PDI is consistent with traditional PDI\n");
+  printf("\nThe transform PDI check pass!!! Transformed PDI is consistent with traditional PDI\n");
   if (data) free(data);
   return Ret;
 }

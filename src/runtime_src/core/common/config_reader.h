@@ -444,6 +444,13 @@ get_xclbin_programing()
   return value;
 }
 
+inline unsigned int
+get_cert_timeout()
+{
+  static unsigned int value = detail::get_uint_value("Runtime.cert_timeout_ms", 50); // NOLINT
+  return value;
+}
+
 inline bool
 get_xclbin_programming()
 {

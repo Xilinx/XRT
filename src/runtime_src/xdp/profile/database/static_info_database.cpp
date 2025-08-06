@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #include <iostream>
 #include <sstream>
@@ -48,6 +35,7 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
@@ -113,6 +101,56 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(summaryLock);
     aieApplication = true;
+  }
+
+  void VPStaticDatabase::setAppStyle(AppStyle style)
+  {
+    std::lock_guard<std::mutex> lock(appStyleLock);
+    appStyle = style;
+  }
+
+  AppStyle VPStaticDatabase::getAppStyle() const
+  {
+    return appStyle;
+  }
+
+  bool VPStaticDatabase::continueXDPConfig(bool hw_context_flow)
+  {
+    auto style = getAppStyle();
+    switch (style) {
+      case AppStyle::APP_STYLE_NOT_SET:
+      {
+        if (hw_context_flow)
+          setAppStyle(AppStyle::REGISTER_XCLBIN_STYLE);
+        else
+          setAppStyle(AppStyle::LOAD_XCLBIN_STYLE);
+
+        return true;
+      }
+      break;
+      case AppStyle::LOAD_XCLBIN_STYLE:
+      {
+        if (hw_context_flow) {
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Hit HW Context XDP invocation for LOAD_XCLBIN style application. Skip XDP configuration.");
+          return false;
+        }
+        return true;
+      }
+      break;
+      case AppStyle::REGISTER_XCLBIN_STYLE:
+      {
+        if (hw_context_flow)
+          return true;
+
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+            "Got XDP callback in LOAD_XCLBIN when application style has already been identified as REGISTER_XCLBIN. Skip XDP configuration.");
+        return false;
+      }
+      break;
+      default:
+        break;
+    }
+    return false;
   }
 
   // ***************************************************
@@ -395,7 +433,19 @@ namespace xdp {
     if (!config)
       return nullptr ;
 
-    return config->plDeviceIntf ;
+    // In LOAD_XCLBIN_STYLE, PL Device Interface is stored in current config
+    if (getAppStyle() != AppStyle::REGISTER_XCLBIN_STYLE)
+      return config->plDeviceIntf;
+
+    // In REGISTER_XCLBIN_STYLE, the PL Device Interface is always deviceId 0.
+    if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end())
+      return nullptr;
+    config = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig() ;
+    if (!config)
+      return nullptr;
+
+    return config->plDeviceIntf;
+
   }
 
   // Should only be called from Alveo hardware emulation
@@ -431,10 +481,15 @@ namespace xdp {
       return;
 
     // Check if new xclbin has new PL metadata
-    if (newXclbinType == XCLBIN_AIE_PL || newXclbinType == XCLBIN_PL_ONLY)
+    if ((newXclbinType == XCLBIN_AIE_PL) || (newXclbinType == XCLBIN_PL_ONLY))
     {
-      if (config->plDeviceIntf != nullptr)
-          delete config->plDeviceIntf; // It shouldn't be...
+      /* Delete previous dummy plDeviceIntf if available and re-create using xclbin with PL.
+      * For now, if HW Ctx for PL xclbin is created after a dummy PL Device Interface has been created for AIE only xclbin (for aie_trace), 
+      * XDP errors out and aborts while processing the new PL xclbin. 
+      * So the following deletion of dummy PL Device Intf is unreachable.
+      */
+      if ((config->plDeviceIntf != nullptr) && (config->type == CONFIG_PL_DEVICE_INTF_ONLY))
+        delete config->plDeviceIntf;
 
       config->plDeviceIntf = new PLDeviceIntf();
       config->plDeviceIntf->setDevice(std::move(dev));
@@ -461,6 +516,18 @@ namespace xdp {
         deviceInfo[deviceId]->loadedConfigInfos[totalConfigs-2]->plDeviceIntf = nullptr;
       }else {
         // No previous PL device interface available
+      }
+
+      if ((!config->plDeviceIntf) && (getAppStyle() == AppStyle::REGISTER_XCLBIN_STYLE)) {
+          // If AIE_ONLY xclbin loaded first, dummy PLDeviceIntf is created
+          if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end()) {
+            deviceInfo[DEFAULT_PL_DEVICE_ID] = std::make_unique<DeviceInfo>();
+            deviceInfo[DEFAULT_PL_DEVICE_ID]->createEmptyConfig();
+            ConfigInfo* plConfig = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig();
+            plConfig->type = CONFIG_PL_DEVICE_INTF_ONLY;
+            plConfig->plDeviceIntf = new PLDeviceIntf();
+            plConfig->plDeviceIntf->setDevice(std::move(dev));
+          }
       }
     }
   }
@@ -714,13 +781,16 @@ namespace xdp {
   void VPStaticDatabase::getFaConfiguration(uint64_t deviceId, bool* config,
                                             size_t size)
   {
+    if (!config)
+      return;
+
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
 
     ConfigInfo* currentConfig = deviceInfo[deviceId]->currentConfig() ;
-    if (!config)
+    if (!currentConfig)
       return ;
 
     // User space AM in sorted order of their slotIds.  Matches with
@@ -1558,8 +1628,80 @@ namespace xdp {
      */
     if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
       return;
+
     xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
+  }
+
+  xrt::uuid VPStaticDatabase::getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device)
+  {
+    if (!device) {
+      throw std::runtime_error("Invalid device handle - device is null");
+    }
+    if(isClient()) {
+      return device->get_xclbin_uuid();
+    }
+    else if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
+      // This has to be Alveo hardware emulation, which doesn't support
+      // the xclbin_slots query.
+      return device->get_xclbin_uuid();
+    }
+    else {
+      std::vector<xrt_core::query::xclbin_slots::slot_info> xclbin_slot_info;
+      try {
+        xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
+      }
+      catch (const std::exception& e) {
+        std::stringstream msg;
+        msg << "Failed to retrieve xclbin slot information: " << e.what();
+        throw std::runtime_error(msg.str());
+      }
+
+      if (xclbin_slot_info.empty())
+        throw std::runtime_error("No xclbin found - device may not have loaded xclbin");
+
+      return xrt::uuid(xclbin_slot_info.back().uuid);
+    }
+  }
+
+  uint64_t VPStaticDatabase::getHwCtxImplUid(void* hwCtxImpl)
+  {
+    // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
+    // before calling this function. So, we don't need to check for validity here.
+    static uint64_t nextAvailableUID = 1;
+    {
+      std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+      auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
+      if (it != hwCtxImplUIDMap.end())
+        return it->second;
+    }
+
+    auto device = util::convertToCoreDevice(hwCtxImpl, true);
+    xrt::uuid loadedXclbinUuid   = getXclbinUuidOnDevice(device);
+    xrt::xclbin loadedXclbin     = device->get_xclbin(loadedXclbinUuid);
+    XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
+
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+    if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
+        (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
+      hwCtxImplUIDMap[hwCtxImpl] = DEFAULT_PL_DEVICE_ID; // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
+    } else {
+       hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
+    }
+    return hwCtxImplUIDMap[hwCtxImpl];
+  }
+
+  uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
+  {
+    auto style = getAppStyle();
+    if (AppStyle::LOAD_XCLBIN_STYLE == style) {
+      // handle is an xclDeviceHandle in this style
+      // Use sysfs path based unique device identifier in XDP
+      return db->addDevice(util::getDebugIpLayoutPath(handle));
+    }
+    // For REGISTER_XCLBIN_STYLE and APP_STYLE_NOT_SET
+    // handle is an HW Ctx Impl pointer
+    return getHwCtxImplUid(handle);
   }
 
   // Return true if we should reset the device information.
@@ -1573,7 +1715,7 @@ namespace xdp {
       DeviceInfo *devInfo = itr->second.get();
       ConfigInfo* config = devInfo->currentConfig() ;
 
-      if (config->containsXclbin(new_xclbin_uuid)) {
+      if (config != nullptr && config->containsXclbin(new_xclbin_uuid)) {
         // Even if we're attempting to load the same xclbin, if we need to
         // add a PL Device Interface, then we should reset the device info
         if (config->plDeviceIntf == nullptr && xdpDevice != nullptr)
@@ -2362,7 +2504,7 @@ namespace xdp {
     //  create a new PL interface if necessary
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
       ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
-      if (config) {
+      if (config && (config->type != CONFIG_PL_DEVICE_INTF_ONLY)) {
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Marking the end of last config xclbin");
         db->getDynamicInfo().markXclbinEnd(deviceId) ;
 
@@ -2384,6 +2526,15 @@ namespace xdp {
     } else {
       // This is a previously used device being reloaded with a new xclbin
       devInfo = itr->second.get();
+      ConfigInfo *config = devInfo->currentConfig();
+      if (config && (config->type == CONFIG_PL_DEVICE_INTF_ONLY) &&
+          (xclbinType == XCLBIN_PL_ONLY || xclbinType == XCLBIN_AIE_PL)) {
+          std::stringstream errMsg;
+          errMsg << "AIE Trace is not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
+          errMsg << "Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context.";
+          xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", errMsg.str());
+          std::abort();
+      }
 
       // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
       // It is expected to have AIE type xclbin loaded after PL type.
@@ -2423,7 +2574,7 @@ namespace xdp {
 
     if (xdpDevice != nullptr)
       createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
-    
+
     return devInfo;
   }
 

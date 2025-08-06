@@ -40,8 +40,6 @@
 #elif XDP_VE2_BUILD
 #include "ve2/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "core/common/shim/hwctx_handle.h"
-#include "shim_ve2/xdna_hwctx.h"
 #else
 #include "edge/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
@@ -99,9 +97,10 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   return db->addDevice("win_sysfspath");
 #else
   if(hw_context_flow)
-    return db->addDevice("ve2_device");
+    return db->addDevice("ve2_device");  //TODO: Both VE2 and Edge hw_context flow will reach here,
+                                         //      so we need to differentiate them later.
   else
-    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
+    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id. Edge load device flow.
 #endif
 }
 
@@ -111,6 +110,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
   if (!handle)
     return;
+  
+  if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+    return;
+  }
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD) && ! defined(XDP_NPU3_BUILD)
@@ -303,11 +306,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
   }
 #elif XDP_VE2_BUILD
-  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-  auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
-  auto hwctx_obj = dynamic_cast<shim_xdna_edge::xdna_hwctx*>(hwctx_hdl);
-  auto aieObj = hwctx_obj->get_aie_array();
-  XAie_DevInst* devInst = aieObj->get_dev();
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  if(!devInst) {
+    xrt_core::message::send(severity_level::warning, "XRT",
+      "Unable to get AIE device instance. AIE event trace will not be available.");
+    return;
+  }
 
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
@@ -316,12 +320,19 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       ,
       AIEData.metadata->getNumStreams(), devInst);
 #else
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  if(!devInst) {
+    xrt_core::message::send(severity_level::warning, "XRT",
+      "Unable to get AIE device instance. AIE event trace will not be available.");
+    return;
+  }
+
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
       ,
       aieTraceBufSize // total trace buffer size
       ,
-      AIEData.metadata->getNumStreams());
+      AIEData.metadata->getNumStreams(), devInst);
 #endif
 
   auto &offloader = AIEData.offloader;
@@ -510,17 +521,21 @@ void AieTracePluginUnified::endPollforDevice(void *handle) {
   if (AIEData.thread.joinable())
     AIEData.thread.join();
 
-  AIEData.implementation->freeResources();
+  if (AIEData.implementation)
+    AIEData.implementation->freeResources();
 }
 
 void AieTracePluginUnified::endPoll() {
   // Ask all threads to end
   for (auto &p : handleToAIEData) {
-    if (p.second.threadCtrlBool) {
-      p.second.threadCtrlBool = false;
+    auto& data = p.second;
+    if (data.threadCtrlBool) {
+      data.threadCtrlBool = false;
 
-      if (p.second.thread.joinable())
-        p.second.thread.join();
+      if (data.thread.joinable())
+        data.thread.join();
+      if (data.implementation)
+        data.implementation->freeResources();
     }
   }
 }

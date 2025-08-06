@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$copyright": "Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.",
+  "$license": "SPDX-License-Identifier: Apache-2.0",
+  "$id": "https://github.com/Xilinx/XRT/src/runtime_src/core/common/runner/schema/report.schema.json",
+  "title": "Jobs Report Schema",
+  "description": "Report runner metrics",
+  "type": "object",
+  "properties": {
+    "jobs": {
+      "type": "object",
+      "patternProperties": {
+        "^[\\w\\d._-]+$": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "object",
+              "properties": {
+                "elapsed": { "type": "integer" },
+                "iterations": { "type": "integer" },
+                "latency": { "type": "integer" },
+                "throughput": { "type": "integer" }
+              },
+              "required": ["elapsed", "iterations", "latency", "throughput"],
+              "additionalProperties": false
+            },
+            "hwctx": {
+              "type": "object",
+              "properties": {
+                "columns": { "type": "integer" }
+              },
+              "required": ["columns"],
+              "additionalProperties": false
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "buffers": { "type": "integer" },
+                "kernels": { "type": "integer" },
+                "runlist": { "type": "boolean" },
+                "runlist_threshold": { "type": "integer" },
+                "runs": { "type": "integer" },
+                "total_buffer_size": { "type": "integer" }
+              },
+              "required": [
+                "buffers", "kernels", "runlist", "runlist_threshold", "runs", "total_buffer_size"
+              ],
+              "additionalProperties": false
+            },
+            "xclbin": {
+              "type": "object",
+              "properties": {
+                "uuid": { "type": "string", "format": "uuid" }
+              },
+              "required": ["uuid"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["cpu", "hwctx", "resources", "xclbin"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "system": {
+      "type": "object",
+      "properties": {
+        "kernel": { "type": "number" },
+        "real": { "type": "number" },
+        "user": { "type": "number" }
+      },
+      "required": ["kernel", "real", "user"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["jobs"],
+  "additionalProperties": false
+}

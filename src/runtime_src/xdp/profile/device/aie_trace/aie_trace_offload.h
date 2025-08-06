@@ -45,16 +45,47 @@ class AIETraceOffload : public AIETraceOffloadBase {
                     PLDeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm
+                    uint64_t numStrm,
+                    XAie_DevInst* devInstance
                    );
     virtual ~AIETraceOffload();
 
 public:
-    virtual bool initReadTrace();
-    virtual void endReadTrace();
-    virtual bool isTraceBufferFull();
-    virtual void startOffload();
-    virtual void stopOffload();
+    bool initReadTrace();
+    void endReadTrace();
+    bool isTraceBufferFull();
+    void startOffload();
+    void stopOffload();
+
+    inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
+    inline void setContinuousTrace() { traceContinuous = true; }
+    inline bool continuousTrace()    { return traceContinuous; }
+    inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
+
+    inline AIEOffloadThreadStatus getOffloadStatus() {
+      std::lock_guard<std::mutex> lock(statusLock);
+      return offloadStatus;
+    };
+
+    void readTrace(bool final) {mReadTrace(final);};
+
+private:
+
+    void*           deviceHandle;
+    uint64_t        deviceId;
+    PLDeviceIntf*     deviceIntf;
+    AIETraceLogger* traceLogger;
+    XAie_DevInst*   devInst;
+
+    bool isPLIO;
+    uint64_t totalSz;
+    uint64_t numStream;
+    uint64_t bufAllocSz;
+    std::vector<AIETraceBufferInfo>  buffers;
+
+    //Internal use only
+    // Set this for verbose trace offload
+    bool m_debug = false;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds

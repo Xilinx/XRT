@@ -4,9 +4,11 @@
 #define XRT_COMMON_RUNNER_RUNNER_H_
 #include "xrt/detail/config.h"
 #include "xrt/detail/pimpl.h"
+#include "xrt/detail/span.h"
 #include "xrt/experimental/xrt_exception.h"
 
 #include <any>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -158,6 +160,28 @@ public:
   XRT_API_EXPORT
   std::string
   get_report();
+
+  // map_buffer() - Get raw buffer data as a span of bytes
+  // The buffer is synced from device as part of this call.
+  // The returned data cannot be written to.
+  XRT_API_EXPORT
+  xrt::detail::span<const std::byte>
+  map_buffer(const std::string& name) const;
+
+  // map_buffer() - Get raw buffer data as a span of type
+  // The buffer is synced from device as part of this call.
+  // The returned data cannot be written to.
+  template <typename MapType>
+  xrt::detail::span<MapType>
+  map_buffer(const std::string& name) const
+  {
+    static_assert(std::is_pointer<MapType>::value &&
+                  std::is_const<std::remove_pointer_t<MapType>>::value,
+                  "MapType must be a pointer and const-qualified type");
+
+    auto span = map_buffer(name);
+    return {reinterpret_cast<MapType*>(span.data()), span.size() / sizeof(MapType)};
+  }
 };
 
 /**

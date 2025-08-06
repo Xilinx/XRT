@@ -57,6 +57,8 @@ namespace xdp {
   }
 
   XDP_CORE_EXPORT Flow getFlowMode();
+  XDP_CORE_EXPORT std::string getGraphUniqueId(uint8_t col, uint8_t channelNum,
+                                               uint8_t streamId);
 
 } // end namespace xdp
 

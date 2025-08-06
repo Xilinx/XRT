@@ -1,16 +1,16 @@
-/*
- * Copyright (C) 2020-2022 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_BO_H_
 #define XRT_BO_H_
 
-#include "xrt.h"
+#include "xrt/deprecated/xrt.h"
 #include "xrt/detail/xrt_mem.h"
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <memory>
+# include <type_traits>
 #endif
 
 /**
@@ -622,6 +622,15 @@ public:
   map();
 
   /**
+   * map() - Const variant of map
+   *
+   * Constness is enforce through return type
+   */
+  XCL_DRIVER_DLLESPEC
+  const void*
+  map() const;
+
+  /**
    * map() - Map the host side buffer info application
    *
    * @tparam MapType
@@ -633,6 +642,22 @@ public:
   MapType
   map()
   {
+    return reinterpret_cast<MapType>(map());
+  }
+
+  /**
+   * map() - Const variant of map
+   *
+   * Constness is enforce through return type
+   */
+  template<typename MapType>
+  MapType
+  map() const
+  {
+    static_assert(std::is_pointer<MapType>::value &&
+                  std::is_const<std::remove_pointer_t<MapType>>::value,
+                  "MapType must be a pointer and const-qualified type");
+
     return reinterpret_cast<MapType>(map());
   }
 

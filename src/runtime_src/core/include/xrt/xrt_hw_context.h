@@ -9,7 +9,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "experimental/xrt_elf.h"
+#include "xrt/experimental/xrt_elf.h"
 
 #ifdef __cplusplus
 

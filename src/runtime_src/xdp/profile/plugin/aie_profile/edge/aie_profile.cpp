@@ -1,28 +1,19 @@
-/**
- * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -32,25 +23,36 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
-#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr ;
-    auto aieArray = drv->getAieArray() ;
-    if (!aieArray)
-      return nullptr ;
-    return aieArray->get_dev() ;
+    if (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) {
+      // old style
+      auto drv = ZYNQ::shim::handleCheck(devHandle);
+      if (!drv)
+        return nullptr ;
+      auto aieArray = drv->getAieArray() ;
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    } else {
+      // new style (hw context flow)
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(devHandle);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(context);
+      if (!hwctx_hdl)
+        return nullptr ;
+      auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+      if (!hwctx_obj)
+        return nullptr ;
+      auto aieArray = hwctx_obj->get_aie_array_shared().get();
+      if (!aieArray)
+        return nullptr ;
+      return aieArray->get_dev() ;
+    }
   }
 
   static void* allocateAieDevice(void* devHandle)
@@ -487,13 +489,32 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(const uint32_t index, void* handle)
+  void AieProfile_EdgeImpl::startPoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll.");
+    threadCtrl = true;
+    thread = std::make_unique<std::thread>(&AieProfile_EdgeImpl::continuePoll, this, index); 
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll, after creating thread instance.");
+  }
+
+  void AieProfile_EdgeImpl::continuePoll(const uint32_t index)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::continuePoll");
+
+    while (threadCtrl) {
+      poll(index);
+      std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
+    }
+    //Final Polling Operation
+    poll(index);
+  }
+
+  void AieProfile_EdgeImpl::poll(const uint32_t index)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+
     if (!aieDevInst)
       return;
 
@@ -584,6 +605,20 @@ namespace xdp {
       db->getDynamicInfo().addAIESample(index, timestamp, values);
     }
   }
+
+  void AieProfile_EdgeImpl::endPoll()
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::endPoll");
+    if (!threadCtrl)
+      return;
+
+    threadCtrl = false;
+    if (thread && thread->joinable())
+      thread->join();
+
+    freeResources();
+  }  
+
 
   void AieProfile_EdgeImpl::freeResources() 
   {

@@ -90,7 +90,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
     try {
-      device->xclmgmt_load_xclbin(xclbin_buffer.data());
+      device->xclmgmt_load_xclbin({xclbin_buffer.data(), xclbin_buffer.size()});
     } catch (xrt_core::error& e) {
       std::cout << "ERROR: " << e.what() << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);

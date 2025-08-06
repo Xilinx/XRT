@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #ifndef AIE_CONSTRUCTS_DOT_H
 #define AIE_CONSTRUCTS_DOT_H
@@ -27,6 +14,11 @@
 #include <sstream>
 
 namespace xdp::aie {
+  // Microblaze Debug Module (MDM) Counters
+  // https://docs.amd.com/r/en-US/ug984-vivado-microblaze-ref/Performance-Monitoring)
+  constexpr unsigned int NUM_UC_EVENT_COUNTERS = 5;
+  constexpr unsigned int NUM_UC_LATENCY_COUNTERS = 1;
+
   struct aiecompiler_options
   {
     bool broadcast_enable_core;
@@ -511,7 +503,15 @@ namespace xdp {
     }
   };
 
+  struct UCInfo {
+    uint8_t col;
+    uint8_t index;
 
+    UCInfo(uint8_t c, uint8_t i)
+      : col(c),
+        index(i)
+    {}
+  };
 
 } // end namespace xdp
 

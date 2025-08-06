@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
-cmake_minimum_required(VERSION 3.5.0)
-
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 include(CPackComponent)
 
 # Not support by WIX
@@ -39,12 +37,8 @@ if (NOT XRT_NPU)
 ################################################################
 # Khronos ICD loader
 ################################################################
-file(GLOB XRT_OPENCL_DLL_LIB_FILES
-  "${KHRONOS}/bin/OpenCL.dll"
-  )
-
-install(FILES ${XRT_OPENCL_DLL_LIB_FILES}
-   DESTINATION xrt/ext/bin
+install(FILES ${KHRONOS}/bin/OpenCL.dll
+   DESTINATION ext/bin
    COMPONENT opencl_libraries)
 
 cpack_add_component(opencl_libraries

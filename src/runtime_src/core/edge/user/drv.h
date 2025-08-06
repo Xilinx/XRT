@@ -14,6 +14,9 @@ class dev;
 class drv  //Base class for edge type of drivers
 {
 public:
+   virtual std::string
+   name() const = 0;
+
    virtual void
    scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) = 0;
 

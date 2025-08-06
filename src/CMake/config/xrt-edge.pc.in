@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-prefix=@XRT_INSTALL_DIR@
+prefix=@CMAKE_INSTALL_PREFIX@/@XRT_INSTALL_DIR@
 exec_prefix=${prefix}
-libdir=${prefix}/lib
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/include
 
 Name: XRT

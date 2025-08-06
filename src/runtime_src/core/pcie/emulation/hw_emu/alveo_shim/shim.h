@@ -564,7 +564,7 @@ using addr_type = uint64_t;
       std::ofstream mGlobalOutMemStream;
       static std::ofstream mDebugLogStream;
       static bool mFirstBinary;
-      unsigned int binaryCounter;
+      static unsigned int binaryCounter;
 
       std::shared_ptr<unix_socket> sock;
       std::string deviceName;
