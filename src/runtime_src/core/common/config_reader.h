@@ -1084,6 +1084,20 @@ get_dtrace_control_file_path()
   return value;
 }
 
+inline std::string
+get_cert_log_file_path()
+{
+  static std::string value = detail::get_string_value("Debug.cert_log_file_path", "");
+  return value;
+}
+
+inline unsigned int
+get_cert_log_buffer_size()
+{
+  static unsigned int value = detail::get_uint_value("Debug.cert_log_buffer_size", 4096);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
