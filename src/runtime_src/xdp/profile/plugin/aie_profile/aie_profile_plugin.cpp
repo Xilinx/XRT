@@ -199,33 +199,9 @@ auto time = std::time(nullptr);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
-  // Start the AIE profiling thread
-  #ifdef XDP_CLIENT_BUILD
-      AIEData.threadCtrlBool = false;
-  #else
-      AIEData.threadCtrlBool = true;
-      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
-      AIEData.thread = std::move(device_thread);
-      xrt_core::message::send(severity_level::warning, "XRT", "AIEProfile pollAIECounters thread started.");
-  #endif
-
-     ++mIndex;
-
-  }
-
-  void AieProfilePlugin::pollAIECounters(const uint32_t index, void* handle)
-  {
-    auto it = handleToAIEData.find(handle);
-    if (it == handleToAIEData.end())
-      return;
-
-    auto& should_continue = it->second.threadCtrlBool;
-    while (should_continue) {
-      handleToAIEData[handle].implementation->poll(index, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
-    }
-    //Final Polling Operation
-    handleToAIEData[handle].implementation->poll(index, handle);
+    // Start the AIE profiling thread
+    AIEData.implementation->startPoll(mIndex);
+    ++mIndex;
   }
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
@@ -251,19 +227,16 @@ auto time = std::time(nullptr);
     if(!AIEData.valid) {
       return;
     }
-
-    // Ask thread to stop
-    AIEData.threadCtrlBool = false;
-
-    if (AIEData.thread.joinable())
-      AIEData.thread.join();
-
+    if (!AIEData.implementation) {
+      handleToAIEData.erase(handle);
+      return;
+    }
+      
     #ifdef XDP_CLIENT_BUILD
-      AIEData.implementation->poll(0, handle);
+      AIEData.implementation->poll(0);
     #endif
 
-    if (AIEData.implementation)
-      AIEData.implementation->freeResources();
+    AIEData.implementation->endPoll();
     handleToAIEData.erase(handle);
   }
 
@@ -273,20 +246,13 @@ auto time = std::time(nullptr);
 
     #ifdef XDP_CLIENT_BUILD
       auto& AIEData = handleToAIEData.begin()->second;
-      AIEData.implementation->poll(0, nullptr);
+      AIEData.implementation->poll(0);
     #endif
     // Ask all threads to end
-    for (auto& p : handleToAIEData)
-      p.second.threadCtrlBool = false;
-
     for (auto& p : handleToAIEData) {
-      auto& data = p.second;
-      if (data.thread.joinable())
-        data.thread.join();
-      if (data.implementation)
-        data.implementation->freeResources();
+      if (p.second.implementation)
+        p.second.implementation->endPoll();
     }
-
     handleToAIEData.clear();
   }
 

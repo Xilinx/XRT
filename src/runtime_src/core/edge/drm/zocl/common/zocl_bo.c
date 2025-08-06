@@ -195,6 +195,13 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	void* vaddr = NULL;
 	int mem_region = -1;
 
+	/* Roundng up the size to more than 4K
+	 * to ensure to allocate memory from CMA always */
+	if (size <= PAGE_SIZE)
+		size = round_up(size, 2 * PAGE_SIZE);
+	else
+		size = round_up(size, PAGE_SIZE);
+
 	cma_obj = zocl_cma_create(dev, size);
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
@@ -613,7 +620,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		    &args->handle);
 		if (ret) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-			drm_gem_dma_object_free(&bo->cma_base.base);
+			zocl_free_cma_bo(&bo->cma_base.base);
 #else
 			drm_gem_cma_free_object(&bo->cma_base.base);
 #endif
