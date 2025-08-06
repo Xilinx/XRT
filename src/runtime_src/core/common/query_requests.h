@@ -59,7 +59,6 @@ enum class key_type
   xrt_smi_lists,
   xclbin_name,
   runner,
-  sequence_name,
   elf_name,
   mobilenet,
 
@@ -622,7 +621,13 @@ struct runner : request
     cmd_chain_latency_path,
     cmd_chain_throughput_recipe,
     cmd_chain_throughput_profile,
-    cmd_chain_throughput_path
+    cmd_chain_throughput_path,
+    tct_one_column_recipe,
+    tct_one_column_profile,
+    tct_one_column_path,
+    tct_all_column_recipe,
+    tct_all_column_profile,
+    tct_all_column_path
   };
 
   using result_type = std::string;
@@ -688,45 +693,6 @@ struct xclbin_name : request
 };
 
 /**
- * Used to retrieve the path to the dpu sequence file required for the
- * current device assuming a valid sequence "type" is passed. The shim
- * decides the appropriate path and name to return, absolving XRT of
- * needing to know where to look.
- */
-struct sequence_name : request
-{
-  enum class type {
-    df_bandwidth,
-    tct_one_column,
-    tct_all_column,
-    gemm_int8
-  };
-
-  static std::string
-  enum_to_str(const type& type)
-  {
-    switch (type) {
-      case type::df_bandwidth:
-        return "df_bandwidth";
-      case type::tct_one_column:
-        return "tct_one_column";
-      case type::tct_all_column:
-        return "tct_all_column";
-      case type::gemm_int8:
-        return "gemm_int8";
-    }
-    return "unknown";
-  }
-
-  using result_type = std::string;
-  static const key_type key = key_type::sequence_name;
-  static const char* name() { return "sequence_name"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-};
-
-/**
  * Used to retrieve the path to the elf file required for the
  * current device assuming a valid elf "type" is passed. The shim
  * decides the appropriate path and name to return, absolving XRT of
@@ -735,11 +701,6 @@ struct sequence_name : request
 struct elf_name : request
 {
   enum class type {
-    df_bandwidth, 
-    tct_one_column, 
-    tct_all_column, 
-    aie_reconfig_overhead,
-    gemm_int8, 
     nop,
     preemption_noop_4x4,
     preemption_noop_4x8,
@@ -752,16 +713,6 @@ struct elf_name : request
   enum_to_str(const type& type)
   {
     switch (type) {
-      case type::df_bandwidth:
-        return "df_bandwidth";
-      case type::tct_one_column:
-        return "tct_one_column";
-      case type::tct_all_column:
-        return "tct_all_column";
-      case type::aie_reconfig_overhead:
-        return "aie_reconfig_overhead";
-      case type::gemm_int8:
-        return "gemm_int8";
       case type::nop:
         return "nop";
       case type::preemption_noop_4x4:

@@ -36,7 +36,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     auto report = json::parse(runner.get_report());
     auto elapsed = report["cpu"]["elapsed"].get<double>();
 
-    runner = xrt_core::runner(xrt::device(dev), recipe_noop_path, profile_path);
+    runner = xrt_core::runner(xrt::device(dev), recipe_noop_path, profile_path, std::filesystem::path(test_path));
 
     //Run 2
     runner.execute();
