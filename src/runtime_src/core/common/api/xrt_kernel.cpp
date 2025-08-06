@@ -1282,6 +1282,71 @@ public:
 
 namespace xrt {
 
+class buffer_cache
+{
+  std::vector<xrt::bo> m_bo_cache;
+  std::mutex m_mutex;
+  xrt::hw_context m_hw_ctx;
+  std::vector<uint8_t> m_buf_data;
+  const std::size_t m_max_cache_size;
+
+  static void
+  fill_bo_with_data(xrt::bo& bo, const std::vector<uint8_t>& data)
+  {
+    auto ptr = bo.map<char*>();
+    std::memcpy(ptr, data.data(), data.size());
+    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  }
+
+public:
+  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t> data, size_t max_size)
+    : m_hw_ctx(std::move(ctx))
+    , m_buf_data(std::move(data))
+    , m_max_cache_size(max_size)
+  {
+    // Pre allocate the cache size
+    if (m_max_cache_size > 0) {
+      m_bo_cache.reserve(m_max_cache_size);
+
+      for (size_t i = 0; i < m_max_cache_size; i++) {
+        xrt::bo bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size());
+        m_bo_cache.push_back(std::move(bo));
+      }
+    }
+  }
+
+  xrt::bo
+  get_buffer()
+  {
+    xrt::bo bo;
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_bo_cache.empty()) {
+        bo = std::move(m_bo_cache.back());
+        m_bo_cache.pop_back();
+      }
+    }
+
+    if (!bo)
+      bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size()); // create new bo if cache is empty
+
+    fill_bo_with_data(bo, m_buf_data);
+    return bo;
+  }
+
+  void
+  release_buffer(xrt::bo&& bo)
+  {
+    // when cache is reached to max limit we dont insert bo into pool
+    // bo gets destroy when it goes out of scope
+    std::lock_guard<std::mutex> lk(m_mutex);
+    if (m_bo_cache.size() >= m_max_cache_size)
+      return; // dropping the moved bo frees it
+
+    m_bo_cache.push_back(std::move(bo));
+  }
+};
+
 // struct kernel_impl - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -1325,6 +1390,14 @@ private:
   uint32_t uid;                               // Internal unique id for debug
   uint32_t m_ctrl_code_id = xrt_core::module_int::no_ctrl_code_id;
                                               // ID to identify which ctrl code to load from elf
+
+  std::unique_ptr<buffer_cache> m_ctrlpkt_bo_cache;
+                                              // Cache for ctrlpkt buffers, in ELF flow we create xrt::bo
+                                              // and fill it with ctrlpkt data. Creating ctrlpkt bo at xrt::run
+                                              // creation adds overhead and reduces performace, so creating a
+                                              // buffer pool/cache of this ctrlpkt to reduce this overhead
+  bool m_ctrlpkt_cache_enabled = false;       // All Elf flows doesnt need ctrlpkt to be present
+                                              // This boolean indicated if ctrlpkt cache is enabled
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1541,6 +1614,25 @@ private:
     throw xrt_core::error("No such kernel '" + nm + "'");
   }
 
+  // This function creates a buffer pool with ctrlpkt section data of ELF.
+  // The buffer is precreated and filled with data to avoid overhead of run object
+  // creation. This is done as run object creation can come in critical path.
+  void
+  initialize_ctrlpkt_bo_cache()
+  {
+    static auto pool_memory_in_mb = xrt_core::config::get_run_buffer_pool_memory_mb();
+    auto ctrlpkt_data = xrt_core::module_int::get_ctrlpkt_data(m_module, m_ctrl_code_id);
+    auto ctrlpkt_buf_size = ctrlpkt_data.size();
+    if (ctrlpkt_buf_size == 0)
+      return;
+
+    constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;;
+    size_t max_pool_size = (pool_memory_in_mb * bytes_per_mb) / ctrlpkt_buf_size;
+    // create buffer_cache and enqueue it with buffers of max pool size
+    m_ctrlpkt_bo_cache = std::make_unique<buffer_cache>(hwctx, ctrlpkt_data, max_pool_size);
+    m_ctrlpkt_cache_enabled = true;
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1597,6 +1689,11 @@ public:
     // amend args with computed data based on kernel protocol
     amend_args();
 
+    if (m_module) {
+      // ELF flow, initialize ctrlpkt buffer cache
+      initialize_ctrlpkt_bo_cache();
+    }
+
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
@@ -1618,6 +1715,12 @@ public:
 
     // amend args with computed data based on kernel protocol
     amend_args();
+
+    if (m_module) {
+      // ELF flow, initialize ctrlpkt buffer cache
+      initialize_ctrlpkt_bo_cache();
+    }
+
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
@@ -1842,6 +1945,24 @@ public:
   {
     return regmap_size;
   }
+
+  bool
+  is_ctrlpkt_cache_enabled()
+  {
+    return m_ctrlpkt_cache_enabled;
+  }
+
+  xrt::bo
+  get_ctrlpkt_buffer()
+  {
+    return m_ctrlpkt_bo_cache->get_buffer();
+  }
+
+  void
+  release_ctrlpkt_buffer(xrt::bo&& bo)
+  {
+    m_ctrlpkt_bo_cache->release_buffer(std::move(bo));
+  }
 };
 
 // struct run_impl - The internals of an xrtRunHandle
@@ -1988,13 +2109,19 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // If module has multiple control codes, id is used to identify
   // the control code that needs to be run.
   // By default first control code that is available is picked
-  static xrt::module
+  xrt::module
   copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
   {
     if (!module)
       return {};
 
-    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id);
+    // pass pre created ctrlpkt buffer when creating module_sram object
+    if (kernel->is_ctrlpkt_cache_enabled()) {
+      return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, m_ctrlpkt_bo);
+    }
+
+    // pass empty bo if ctrlpkt buffer is not present
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, {});
   }
 
   virtual std::unique_ptr<arg_setter>
@@ -2131,6 +2258,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
 
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt::bo m_ctrlpkt_bo;                   // pre created ctrlpkt buffer associated with this run
   xrt::module m_module;                   // instruction module (optional)
   xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
@@ -2182,6 +2310,7 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
+    , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
     , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
@@ -2218,6 +2347,8 @@ public:
   ~run_impl()
   {
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
+    if (m_ctrlpkt_bo)
+      kernel->release_ctrlpkt_buffer(std::move(m_ctrlpkt_bo));
   }
 
   run_impl(const run_impl&) = delete;
