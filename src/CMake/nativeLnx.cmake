@@ -91,14 +91,17 @@ find_package(Curses REQUIRED)
 # XRT Variables
 include (CMake/xrtVariables.cmake)
 
-# Define RPATH for embedding in libraries and executables.  This allows
-# package creation to automatically determine dependencies.
-# RPATH relative to location of binary:
-#  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
-# Note, that in order to disable RPATH insertion for a specific
-# target (say a static executable), use
-#  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
-SET(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN/../..:$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}")
+# Do not use RPATH when installing into /usr
+if (NOT XRT_SYSTEM_INSTALL)
+  # Define RPATH for embedding in libraries and executables.  This allows
+  # package creation to automatically determine dependencies.
+  # RPATH relative to location of binary:
+  #  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
+  # Note, that in order to disable RPATH insertion for a specific
+  # target (say a static executable), use
+  #  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
+  SET(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN/../..:$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}")
+endif()
 
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE
   DESTINATION ${XRT_INSTALL_DIR}/license
@@ -119,11 +122,9 @@ include (CMake/lint.cmake)
 
 xrt_add_subdirectory(runtime_src)
 
-# Create a symlink from lib -> lib64 for the OS variants where
-# CMAKE_INSTALL_PREFIX is lib64.  This is an test infrastructure
-# work-around and only enabled for non upstream builds.
-if (XRT_XRT
-    AND (NOT XRT_UPSTREAM)
+# For local builds installed to /opt/xilinx/xrt, create a symlink from
+# lib -> lib64 on the OS variants where CMAKE_INSTALL_PREFIX is lib64
+if (NOT XRT_UPSTREAM
     AND (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
     AND (CMAKE_INSTALL_PREFIX STREQUAL "/opt/xilinx/xrt"))
   set(src_dir ${XRT_BUILD_INSTALL_DIR}/lib64)

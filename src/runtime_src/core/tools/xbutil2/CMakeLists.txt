@@ -120,7 +120,10 @@ endif()
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME}
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-install (PROGRAMS ${XRT_HELPER_SCRIPTS}
-  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 
-# -----------------------------------------------------------------------------
+# Do not install loader scripts if installing into system default
+if (NOT XRT_INSTALL_BIN_DIR STREQUAL XRT_INSTALL_UNWRAPPED_DIR)
+  install (PROGRAMS ${XRT_HELPER_SCRIPTS}
+    DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+endif()
+
