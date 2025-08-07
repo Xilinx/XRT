@@ -11,6 +11,7 @@
 #include "core/common/message.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload_base.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
@@ -223,8 +224,8 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         auto ioType = gmio_node.second.get<uint8_t>("type");
         auto channelNumber = gmio_node.second.get<uint8_t>("channel_number");
 
-        gmio.type =  (ioType <  2) ? io_type::GMIO
-                  : ((ioType == 2) ? io_type::TRACE_DMA : io_type::CONTROL_DMA);
+        gmio.type =  (ioType == MM2S_CONTROL) ? io_type::CONTROL_DMA
+                  : ((ioType == S2MM_TRACE)   ? io_type::TRACE_DMA : io_type::GMIO);
         gmio.id = gmio_node.second.get<uint32_t>("id");
         gmio.name = gmio_node.second.get<std::string>("name");
         gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
