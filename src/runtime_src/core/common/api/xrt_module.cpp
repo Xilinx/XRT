@@ -454,7 +454,7 @@ get_demangled_type(const std::string& s, size_t& idx)
   if (it == demangle_type_map.end())
     throw std::runtime_error("Unknown type character in mangled name: " + std::string(1, c));
 
-    return it->second;
+  return it->second;
 }
 
 // Parse mangled name in Itanium ABI style: _Z<length><name><types>
