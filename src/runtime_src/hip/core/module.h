@@ -30,7 +30,6 @@ class function;
 // objects of module_xclbin/module_elf dervied from base class module
 class module
 {
-protected:
   std::shared_ptr<context> m_ctx;
   bool m_is_xclbin;
   bool m_is_full_elf;
