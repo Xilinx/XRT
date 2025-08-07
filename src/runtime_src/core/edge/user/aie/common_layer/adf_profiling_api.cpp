@@ -154,9 +154,14 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
         << " row " << (int)tileLoc.Row << " , event port id " << (int)eventPortId << ", slave or master " << (int)slaveOrMaster
         << ", port interface SOUTH, stream switch port id " << (int)streamPortId).str());
 
-    driverStatus |= XAie_PerfCounterEventValueSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId1, (u32)(numBytes / 4));
+    // AIE2PS Edge devices have an 8-byte stream width that differs from AIE1/AIE2 devices.
+    // NOTE: AIE2P devices also have 8-byte stream width but APIs are not supported for client devices.
+    uint8_t streamWidthInBytes = 4;
+    if (dev->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS)
+        streamWidthInBytes = 8;
+    driverStatus |= XAie_PerfCounterEventValueSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId1, (u32)(numBytes / streamWidthInBytes));
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterEventValueSet: col " << (int)tileLoc.Col
-        << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId1 << ", perf counter event value " << (unsigned int)(numBytes / 4)).str());
+        << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId1 << ", perf counter event value " << (unsigned int)(numBytes / streamWidthInBytes)).str());
 
     driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId0, COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId], XAIE_EVENT_PERF_CNT_1_PL);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col

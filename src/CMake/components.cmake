@@ -5,7 +5,7 @@
 # by parent CMake: LINUX_FLAVOR
 
 # The default XRT build is legacy
-if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO)
+if (NOT XRT_BASE AND NOT XRT_NPU AND NOT XRT_ALVEO AND NOT XRT_EDGE)
   message("-- Defaulting to legacy XRT build")
   set(XRT_XRT 1)
 endif()
