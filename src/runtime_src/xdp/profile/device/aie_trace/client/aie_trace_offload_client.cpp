@@ -31,39 +31,34 @@
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
-  AIETraceOffload::AIETraceOffload(void* handle, uint64_t id, PLDeviceIntf* dInt,
-                                   AIETraceLogger* logger, bool isPlio,
-                                   uint64_t totalSize, uint64_t numStrm,
-                                   xrt::hw_context context,
-                                   std::shared_ptr<AieTraceMetadata>(metadata))
-    : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
-      isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
-      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
-      offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
-      mCircularBufOverwrite(false), context(context), metadata(metadata)
+  AIETraceOffloadClient::AIETraceOffloadClient(void* handle, uint64_t id, PLDeviceIntf* dInt,
+                                               AIETraceLogger* logger, bool isPlio,
+                                               uint64_t totalSize, uint64_t numStrm,
+                                               xrt::hw_context context,
+                                               std::shared_ptr<AieTraceMetadata>(metadata))
+    : AIETraceOffloadBase(handle, id, dInt, logger, isPlio, totalSize, numStrm),
+      context(context), metadata(metadata)
   {
-    bufAllocSz = getAlignedTraceBufSize(totalSz,
-                                        static_cast<unsigned int>(numStream));
-    mReadTrace =
-      std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
+    bufAllocSz = getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
+    mReadTrace = std::bind(&AIETraceOffloadClient::readTraceGMIO, this, std::placeholders::_1);
   }
 
-  AIETraceOffload::~AIETraceOffload() 
+  AIETraceOffloadClient::~AIETraceOffloadClient() 
   {
     stopOffload();
     if (offloadThread.joinable())
       offloadThread.join();
   }
 
-  bool AIETraceOffload::initReadTrace()
+  bool AIETraceOffloadClient::initReadTrace()
   {
     buffers.clear();
     buffers.resize(numStream);
 
+    // TODO: get board-specific values
     constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
 
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Trace Offload");
-
     if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return false;
 
@@ -96,13 +91,11 @@ namespace xdp {
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO* traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-      std::string tracemsg = "Allocating trace buffer of size " +
-                             std::to_string(bufAllocSz) + " for AIE Stream " +
-                             std::to_string(i);
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-                              tracemsg.c_str());
+        "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " 
+        + std::to_string(i));
       xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz,
-                                   XRT_BO_FLAGS_HOST_ONLY, transactionHandler->getGroupID(0)));
+                           XRT_BO_FLAGS_HOST_ONLY, transactionHandler->getGroupID(0)));
       
       buffers[i].bufId = xrt_bos.size();
       if (!buffers[i].bufId) {
@@ -114,38 +107,35 @@ namespace xdp {
         auto bo_map = xrt_bos.back().map<uint8_t*>();
         memset(bo_map, 0, bufAllocSz);
       }
+
       // Start recording the transaction
       XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
-      // AieRC RC;
-      // Todo: get this from aie metadata
       XAie_LocType loc;
-      XAie_DmaDesc DmaDesc;
+      XAie_DmaDesc dmaDesc;
       loc = XAie_TileLoc(traceGMIO->shimColumn, 0);
-      uint8_t s2mm_ch_id = traceGMIO->channelNumber;
+
+      auto dmaType = traceGMIO->type;
+      XAie_DmaDirection dmaDir = (dmaType == S2MM_TRACE) ? DMA_S2MM_TRACE : DMA_S2MM;
+      uint8_t  s2mm_ch_id = (dmaType >= S2MM_TRACE) ? 0 : traceGMIO->channelNumber;
       uint16_t s2mm_bd_id = 15; /* for now use last bd */
 
       // S2MM BD
-      RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc, loc);
-      RC =
-        XAie_DmaSetAddrLen(&DmaDesc, xrt_bos[i].address() + DDR_AIE_ADDR_OFFSET,
-                           static_cast<uint32_t>(bufAllocSz));
-      RC = XAie_DmaEnableBd(&DmaDesc);
-      RC = XAie_DmaSetAxi(&DmaDesc, 0U, 8U, 0U, 0U, 0U);
-      RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
-
-      // printf("Enabling channels....\n");
-      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM,
-                                        s2mm_bd_id);
-      RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
+      RC = XAie_DmaDescInit(&aieDevInst, &dmaDesc, loc);
+      RC = XAie_DmaSetAddrLen(&dmaDesc, xrt_bos[i].address() + DDR_AIE_ADDR_OFFSET,
+                              static_cast<uint32_t>(bufAllocSz));
+      RC = XAie_DmaEnableBd(&dmaDesc);
+      RC = XAie_DmaSetAxi(&dmaDesc, 0U, 8U, 0U, 0U, 0U);
+      RC = XAie_DmaWriteBd(&aieDevInst, &dmaDesc, loc, s2mm_bd_id);
+      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, dmaDir, s2mm_bd_id);
+      RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, dmaDir);
 
       uint8_t* txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
    
       if (!transactionHandler->submitTransaction(txn_ptr))
         return false;
       
-      xrt_core::message::send(
-        severity_level::info, "XRT",
+      xrt_core::message::send(severity_level::info, "XRT",
         "Successfully scheduled AIE Trace Offloading Transaction Buffer.");
 
       // Must clear aie state
@@ -156,7 +146,7 @@ namespace xdp {
     return bufferInitialized;
   }
 
-  void AIETraceOffload::readTraceGMIO(bool final)
+  void AIETraceOffloadClient::readTraceGMIO(bool final)
   {
     // Keep it low to save bandwidth
     constexpr uint64_t chunk_512k = 0x80000;
@@ -176,7 +166,7 @@ namespace xdp {
     }
   }
 
-  uint64_t AIETraceOffload::syncAndLog(uint64_t index)
+  uint64_t AIETraceOffloadClient::syncAndLog(uint64_t index)
   {
     auto& bd = buffers[index];
 
@@ -205,7 +195,7 @@ namespace xdp {
     return nBytes;
   }
 
-  void AIETraceOffload::startOffload() 
+  void AIETraceOffloadClient::startOffload() 
   {
     if (offloadStatus == AIEOffloadThreadStatus::RUNNING)
       return;
@@ -213,10 +203,10 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(statusLock);
     offloadStatus = AIEOffloadThreadStatus::RUNNING;
 
-    offloadThread = std::thread(&AIETraceOffload::continuousOffload, this);
+    offloadThread = std::thread(&AIETraceOffloadClient::continuousOffload, this);
   }
 
-  void AIETraceOffload::continuousOffload()
+  void AIETraceOffloadClient::continuousOffload()
   {
     if (!bufferInitialized && !initReadTrace()) {
       offloadFinished();
@@ -234,13 +224,13 @@ namespace xdp {
     offloadFinished();
   }
 
-  bool AIETraceOffload::keepOffloading() 
+  bool AIETraceOffloadClient::keepOffloading() 
   { 
     std::lock_guard<std::mutex> lock(statusLock);
     return (AIEOffloadThreadStatus::RUNNING == offloadStatus); 
   }
 
-  void AIETraceOffload::stopOffload() 
+  void AIETraceOffloadClient::stopOffload() 
   {
     std::lock_guard<std::mutex> lock(statusLock);
     if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
@@ -248,7 +238,7 @@ namespace xdp {
     offloadStatus = AIEOffloadThreadStatus::STOPPING;
   }
 
-  void AIETraceOffload::offloadFinished() 
+  void AIETraceOffloadClient::offloadFinished() 
   {
     std::lock_guard<std::mutex> lock(statusLock);
     if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
@@ -256,7 +246,7 @@ namespace xdp {
     offloadStatus = AIEOffloadThreadStatus::STOPPED;
   }
 
-  void AIETraceOffload::endReadTrace() 
+  void AIETraceOffloadClient::endReadTrace() 
   {
     for (uint64_t i = 0; i < numStream ; ++i) {
       if (!buffers[i].bufId)
@@ -267,7 +257,7 @@ namespace xdp {
     bufferInitialized = false;
   }
 
-  uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
+  uint64_t AIETraceOffloadClient::searchWrittenBytes(void* buf, uint64_t bytes)
   {
     /*
      * Look For trace boundary using binary search.

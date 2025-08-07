@@ -24,8 +24,9 @@
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
-#ifdef XDP_CLIENT_BUILD
+#ifdef XDP_CLIENT_BUILD 
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
+#include "xdp/profile/device/aie_trace/client/aie_trace_offload_npu3.h"
 #elif XDP_VE2_BUILD
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #else
@@ -48,7 +49,7 @@ public:
 private:
   uint64_t getDeviceIDFromHandle(void *handle, bool hw_context_flow);
   void pollAIETimers(uint64_t index, void *handle);
-  void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
+  void flushOffloader(const std::unique_ptr<AIETraceOffloadBase> &offloader,
                       bool warn);
   void endPoll();
 
@@ -58,13 +59,14 @@ private:
     uint64_t deviceID;
     bool valid;
 
-    std::unique_ptr<AIETraceOffload> offloader;
+    std::unique_ptr<AIETraceOffloadBase> offloader;
     std::unique_ptr<AIETraceLogger> logger;
     std::unique_ptr<AieTraceImpl> implementation;
     std::shared_ptr<AieTraceMetadata> metadata;
     std::atomic<bool> threadCtrlBool;
     std::thread thread;
   };
+  VPWriter *configWriter;
   std::map<void *, AIEData> handleToAIEData;
 };
 

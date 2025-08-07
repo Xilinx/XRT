@@ -40,7 +40,6 @@
 
 namespace xdp {
 
-
 AIETraceOffload::AIETraceOffload
   ( void* handle, uint64_t id
   , PLDeviceIntf* dInt

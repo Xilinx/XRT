@@ -26,13 +26,15 @@
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_trace.h"
-#elif defined(XRT_X86_BUILD)
+#include "client/aie_trace_npu3.h"
+#elif XRT_X86_BUILD
 #include "x86/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #elif XDP_VE2_BUILD
@@ -56,6 +58,7 @@ bool AieTracePluginUnified::live = false;
 
 AieTracePluginUnified::AieTracePluginUnified() : XDPPlugin() {
   AieTracePluginUnified::live = true;
+  configWriter = nullptr;
 
   db->registerPlugin(this);
   db->registerInfo(info::aie_trace);
@@ -89,7 +92,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
   (void)(hw_context_flow);
   return db->addDevice("win_sysfspath");
 #else
@@ -113,7 +116,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
-#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD) && ! defined(XDP_NPU3_BUILD)
   if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
     xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Event Trace is not yet supported for this combination.");
     return;
@@ -139,7 +142,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   AIEData.valid = true; // initialize struct
 
   // Update the static database with information from xclbin
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");  
 #else
@@ -168,8 +171,11 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 #ifdef XDP_CLIENT_BUILD
   xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   AIEData.metadata->setHwContext(context);
-  AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
-#elif defined(XRT_X86_BUILD)
+  if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
+    AIEData.implementation = std::make_unique<AieTrace_NPU3Impl>(db, AIEData.metadata);
+  else  
+    AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
+#elif XRT_X86_BUILD
   AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
   AIEData.implementation = std::make_unique<AieTrace_VE2Impl>(db, AIEData.metadata);
@@ -193,7 +199,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         // This is later required for GMIO trace offload.
         uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
         (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
-                                           gmio.channelNum, gmio.streamId, gmio.burstLength);
+                                           gmio.channelNum, gmio.streamId, gmio.burstLength,
+                                           static_cast<uint8_t>(gmio.type));
       }
     }
 
@@ -213,11 +220,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
   if (AIEData.metadata->getRuntimeMetrics()) {
     std::string configFile = "aie_event_runtime_config.json";
-    VPWriter *writer = new AieTraceConfigWriter(configFile.c_str(), deviceID);
-    writers.push_back(writer);
-    (db->getStaticInfo())
-        .addOpenedFile(writer->getcurrentFileName(),
-                       "AIE_EVENT_RUNTIME_CONFIG");
+    configWriter = new AieTraceConfigWriter(configFile.c_str(), deviceID);
+    writers.push_back(configWriter);
+    (db->getStaticInfo()).addOpenedFile(configWriter->getcurrentFileName(),
+                                        "AIE_EVENT_RUNTIME_CONFIG");
   }
 
   // Add writer for every stream
@@ -288,14 +294,17 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
-#ifdef XDP_CLIENT_BUILD
-  AIEData.offloader = std::make_unique<AIETraceOffload>(
-      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
-      ,
-      aieTraceBufSize // total trace buffer size
-      ,
-      AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
-      AIEData.metadata);
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+  if (aie::isNPU3(AIEData.metadata->getHardwareGen())) {
+    AIEData.offloader = std::make_unique<AIETraceOffloadNPU3>(
+        handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
+        AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
+  }
+  else {
+    AIEData.offloader = std::make_unique<AIETraceOffloadClient>(
+        handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
+        AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
+  }
 #elif XDP_VE2_BUILD
   XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
   if(!devInst) {
@@ -380,6 +389,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
                           "Calling AIE Trace updateDevice.");
 
   AIEData.implementation->updateDevice();
+  if (configWriter)
+    configWriter->write(false);
 
   // Continuous Trace Offload is supported only for PLIO flow
   if (AIEData.metadata->getContinuousTrace())
@@ -404,7 +415,7 @@ void AieTracePluginUnified::pollAIETimers(uint64_t index, void *handle) {
 }
 
 void AieTracePluginUnified::flushOffloader(
-    const std::unique_ptr<AIETraceOffload> &offloader, bool warn) {
+    const std::unique_ptr<AIETraceOffloadBase> &offloader, bool warn) {
   if (offloader->continuousTrace()) {
     offloader->stopOffload();
 
@@ -442,7 +453,7 @@ void AieTracePluginUnified::flushAIEDevice(void *handle) {
 void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   xrt_core::message::send(severity_level::info, "XRT",
                           "Beginning AIE Trace finishFlushAIEDevice.");
-  #ifdef XDP_CLIENT_BUILD
+  #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
     // For now, just return please
     return;
   #endif

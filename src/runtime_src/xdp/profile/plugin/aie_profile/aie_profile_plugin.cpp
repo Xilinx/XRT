@@ -21,11 +21,13 @@
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_profile.h"
-#elif defined(XRT_X86_BUILD)
+#include "client/aie_profile_npu3.h"
+#elif XRT_X86_BUILD
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
 #include "ve2/aie_profile.h"
@@ -77,7 +79,7 @@ namespace xdp {
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
     (void)(hw_context_flow);
     return db->addDevice("win_device");
 #else
@@ -104,7 +106,7 @@ namespace xdp {
     }
 
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
-#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD) && ! defined(XDP_NPU3_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
       xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Profiling is not yet supported for this combination.");
       return;
@@ -122,7 +124,7 @@ namespace xdp {
     auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
     // Update the static database with information from xclbin
     {
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
@@ -135,7 +137,7 @@ namespace xdp {
 
     // Delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
-#ifdef XDP_CLIENT_BUILD
+#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       return;
 #else
       handleToAIEData.erase(handle);
@@ -155,8 +157,11 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
-#elif defined(XRT_X86_BUILD)
+    if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
+      AIEData.implementation = std::make_unique<AieProfile_NPU3Impl>(db, AIEData.metadata);
+    else
+      AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+#elif XRT_X86_BUILD
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
 #elif XDP_VE2_BUILD
     AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata);
@@ -232,7 +237,7 @@ auto time = std::time(nullptr);
       return;
     }
       
-    #ifdef XDP_CLIENT_BUILD
+    #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       AIEData.implementation->poll(0);
     #endif
 
@@ -244,7 +249,7 @@ auto time = std::time(nullptr);
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
 
-    #ifdef XDP_CLIENT_BUILD
+    #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
       auto& AIEData = handleToAIEData.begin()->second;
       AIEData.implementation->poll(0);
     #endif
