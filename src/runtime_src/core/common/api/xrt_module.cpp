@@ -74,16 +74,11 @@ static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 static const char* const Control_Packet_Symbol = "control-packet";
 static const char* const Control_Code_Symbol = "control-code";
 
-// map of mangled arguments to their demangled string representations
+// map of mangled argument types to their demangled string representations
 static const std::map<char, std::string> demangle_type_map = {
   {'v', "void"},
   {'c', "char"},
-  {'i', "int"},
-  {'f', "float"},
-  {'d', "double"},
-  {'b', "bool"},
-  {'s', "short"},
-  {'l', "long"}
+  {'i', "int"}
 };
 
 struct buf
