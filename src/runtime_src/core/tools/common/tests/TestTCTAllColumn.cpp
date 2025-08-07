@@ -16,7 +16,17 @@
 using json = nlohmann::json;
 namespace XBU = XBUtilities;
 
-static constexpr int run_count = 100;
+/* This host application measures the average TCT latency and TCT throughput 
+ * for all columns tests.
+ * The ELF code loopbacks the small chunk of input data from DDR through 
+ * a AIE MM2S Shim DMA channel back to DDR through a S2MM Shim DMA channel.
+ * TCT is used for dma transfer completion. Host app measures the time for
+ * predefined number of Tokens and calculate the latency and throughput.
+ */
+
+//Number of Sample Tokens to measure the throughtput. 
+//This is an assumption coming from elf code running on the device.
+static constexpr int samples = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTAllColumn::TestTCTAllColumn()
@@ -39,11 +49,8 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
     // Create runner once 
     xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
     
-    // Run the execution run_count times 
-    for (int run_num = 0; run_num < run_count; run_num++) {
-      runner.execute();
-      runner.wait();
-    }
+    runner.execute();
+    runner.wait();
 
     // Get final metrics from the last run 
     auto report = json::parse(runner.get_report());
@@ -51,9 +58,9 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
     double throughput = report["cpu"]["throughput"].get<double>(); // Should be in operations/second
 
     if(XBU::getVerbose())
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT (all columns): %.1f us") % latency));
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average time for TCT (all columns): %.1f us") % (latency/samples)));
     
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput (all columns): %.1f TCT/s") % throughput));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput (all columns): %.1f TCT/s") % (samples * throughput)));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e)
