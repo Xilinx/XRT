@@ -26,7 +26,7 @@ namespace XBU = XBUtilities;
 
 //Number of Sample Tokens to measure the throughtput. 
 //This is an assumption coming from elf code running on the device.
-static constexpr int samples = 10000;
+static constexpr int samples = 20000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTAllColumn::TestTCTAllColumn()
