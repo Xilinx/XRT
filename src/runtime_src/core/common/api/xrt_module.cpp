@@ -74,6 +74,11 @@ static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 static const char* const Control_Packet_Symbol = "control-packet";
 static const char* const Control_Code_Symbol = "control-code";
 
+// length of "_Z" prefix in mangled names
+static constexpr uint8_t mangled_prefix_length = 2;
+static constexpr uint8_t decimal_base = 10;
+
+
 // map of mangled argument types to their demangled string representations
 static const std::map<char, std::string> demangle_type_map = {
   {'v', "void"},
@@ -451,11 +456,20 @@ demangle_type(const std::string& s, size_t& idx)
 }
 
 // Parse mangled name in Itanium ABI style: _Z<length><name><types>
+// length : number of characters in the name string.
+// name   : kernel name in string
+// types  : kernel argument data type as below.
+//  'c' represents the arg is a char.
+//  'v' represents the arg is a void.
+//  'i' represents the arg is an int.
+//  'P' represents the arg is a pointer.
+//      Hence, "Pc" = char*, "Pv" = void*, "Pi" = int*
 // demangle() is referenced from ChatGPT response
 static std::string
 demangle(const std::string& mangled)
 {
-  if (mangled.size() < 3 || mangled.substr(0, 2) != "_Z")
+  //Check if mangled prefix "_Z" is present and length is greater than mangled_prefix_length
+  if (mangled.size() <= mangled_prefix_length || mangled.substr(0, mangled_prefix_length) != "_Z")
     return "Not a mangled name";
 
   size_t idx = 2;
@@ -463,7 +477,7 @@ demangle(const std::string& mangled)
 
   // Extract length of function name
   while (idx < mangled.size() && std::isdigit(mangled[idx]))
-    len = len * 10 + (mangled[idx++] - '0');
+    len = len * decimal_base + (mangled[idx++] - '0');
 
   if (idx + len > mangled.size())
     return "Invalid mangled name";
@@ -478,8 +492,7 @@ demangle(const std::string& mangled)
 
   // Append arguments to the function name
   std::string result = name + "(";
-  for (size_t i = 0; i < args.size(); ++i)
-  {
+  for (size_t i = 0; i < args.size(); ++i) {
     if (i > 0)
       result += ", ";
     result += args[i];
