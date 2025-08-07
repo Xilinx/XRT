@@ -438,18 +438,18 @@ generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_typ
 }
 
 
-// Basic Itanium ABI type decoding. demangle_type() is referenced from ChatGPT response
+// Basic Itanium ABI type decoding. demangle_arg_type() is referenced from ChatGPT response
 static std::string
-demangle_type(const std::string& s, size_t& idx)
+demangle_arg_type(const std::string& s, size_t& idx)
 {
   if (idx >= s.size())
-    return "?";
+    throw std::runtime_error("demangle arg index out of bounds");
 
   char c = s[idx++];
 
   // Append "*" for pointer types
   if (c == 'P')
-    return demangle_type(s, idx) + "*";
+    return demangle_arg_type(s, idx) + "*";
 
   auto it = demangle_type_map.find(c);
   return (it != demangle_type_map.end()) ? it->second : "unknown";
@@ -470,7 +470,7 @@ demangle(const std::string& mangled)
 {
   //Check if mangled prefix "_Z" is present and length is greater than mangled_prefix_length
   if (mangled.size() <= mangled_prefix_length || mangled.substr(0, mangled_prefix_length) != "_Z")
-    return "Not a mangled name";
+    throw std::runtime_error("Doesn't have prefix _Z, not a mangled kernel name");
 
   size_t idx = 2;
   size_t len = 0;
@@ -480,7 +480,7 @@ demangle(const std::string& mangled)
     len = len * decimal_base + (mangled[idx++] - '0');
 
   if (idx + len > mangled.size())
-    return "Invalid mangled name";
+    throw std::runtime_error("Invalid mangled name, doesn't have expected kernel name length");
 
   std::string name = mangled.substr(idx, len);
   idx += len;
@@ -488,7 +488,7 @@ demangle(const std::string& mangled)
 
   // Extract types of function arguments
   while (idx < mangled.size())
-    args.push_back(demangle_type(mangled, idx));
+    args.push_back(demangle_arg_type(mangled, idx));
 
   // Append arguments to the function name
   std::string result = name + "(";
