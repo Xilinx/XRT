@@ -31,9 +31,11 @@ class function;
 class module
 {
 protected:
+  // NOLINTBEGIN
   std::shared_ptr<context> m_ctx;
   bool m_is_xclbin;
   bool m_is_full_elf;
+  // NOLINTEND
 
 public:
   module(std::shared_ptr<context> ctx, bool is_xclbin, bool is_full_elf = false)

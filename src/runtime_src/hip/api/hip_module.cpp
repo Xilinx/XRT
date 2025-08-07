@@ -138,20 +138,23 @@ static size_t
 estimate_elf_size(const void* data)
 {
   auto bytes = static_cast<const unsigned char*>(data);
-  if (bytes[0] != 0x7f || bytes[1] != 'E' || bytes[2] != 'L' || bytes[3] != 'F')
+  constexpr unsigned char ELF_HEADER_MAGIC[] = {0x7f, 'E', 'L', 'F'};
+
+  if (bytes[0] != ELF_HEADER_MAGIC[0] || bytes[1] != ELF_HEADER_MAGIC[1] ||
+      bytes[2] != ELF_HEADER_MAGIC[2] || bytes[3] != ELF_HEADER_MAGIC[3])
     throw std::runtime_error("Invalid ELF magic number");
 
   if (bytes[4] == ELFIO::ELFCLASS32) {
     // 32 bit ELF
     auto header = static_cast<const ELFIO::Elf32_Ehdr*>(data);
-    return std::max(header->e_shoff + header->e_shentsize * header->e_shnum,
-                    header->e_phoff + header->e_phentsize * header->e_phnum);
+    return std::max(header->e_shoff + static_cast<ELFIO::Elf32_Off>(header->e_shentsize) * header->e_shnum,
+                    header->e_phoff + static_cast<ELFIO::Elf32_Off>(header->e_phentsize) * header->e_phnum);
   }
   else if (bytes[4] == ELFIO::ELFCLASS64) {
     // 64 bit ELF
     auto header = static_cast<const ELFIO::Elf64_Ehdr*>(data);
-    return std::max(header->e_shoff + header->e_shentsize * header->e_shnum,
-                    header->e_phoff + header->e_phentsize * header->e_phnum);
+    return std::max(header->e_shoff + static_cast<ELFIO::Elf64_Off>(header->e_shentsize) * header->e_shnum,
+                    header->e_phoff + static_cast<ELFIO::Elf64_Off>(header->e_phentsize) * header->e_phnum);
   }
 
   throw std::runtime_error("Unable to calculate ELF size");
@@ -252,7 +255,7 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
     // Treat pointer passed has data to full ELF and
     // try creating full ELF module
     // if it throws fallback to xclbin + ELF flow
-    xrt::core::hip::module_handle handle;
+    xrt::core::hip::module_handle handle = nullptr;
     try {
       auto estimated_size = xrt::core::hip::estimate_elf_size(image);
       handle = xrt::core::hip::create_full_elf_module(image, estimated_size);
