@@ -365,7 +365,10 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
       try {
         _deviceCollection.push_back(get_device_internal(index, _inUserDomain));
-      } catch (...) {
+      } catch (const std::runtime_error& e) {
+        if (boost::icontains(e.what(), "mmap"))
+          throw std::runtime_error(e.what());
+      }  catch (...) {
         /* If the device is not available, quietly ignore it
            Use case: when a device is being reset in parallel */
       }
