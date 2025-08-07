@@ -74,6 +74,18 @@ static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 static const char* const Control_Packet_Symbol = "control-packet";
 static const char* const Control_Code_Symbol = "control-code";
 
+// map of mangled arguments to their demangled string representations
+static const std::map<char, std::string> demangle_type_map = {
+  {'v', "void"},
+  {'c', "char"},
+  {'i', "int"},
+  {'f', "float"},
+  {'d', "double"},
+  {'b', "bool"},
+  {'s', "short"},
+  {'l', "long"}
+};
+
 struct buf
 {
   std::vector<uint8_t> m_data;
@@ -425,26 +437,63 @@ generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_typ
   return argument_name + buf_string;
 }
 
+
+// Basic Itanium ABI type decoding. demangle_type() is referenced from ChatGPT response
 static std::string
-demangle(const std::string& mangled_name)
+demangle_type(const std::string& s, size_t& idx)
 {
-#ifdef _WIN32
-  char demangled_name[1024];
-  if (UnDecorateSymbolName(mangled_name.c_str(), demangled_name, sizeof(demangled_name), UNDNAME_COMPLETE))
-    return std::string(demangled_name);
-  else
-    throw std::runtime_error("Error demangling kernel signature");
-#else
-  int status = 0;
-  std::unique_ptr<char, decltype(&std::free)> demangled_name
-    (abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr, &status), std::free);
+  if (idx >= s.size())
+    return "?";
 
-  if (status)
-    throw std::runtime_error("Error demangling kernel signature");
+  char c = s[idx++];
 
-  return demangled_name.get();
-#endif
+  // Append "*" for pointer types
+  if (c == 'P')
+    return demangle_type(s, idx) + "*";
+
+  auto it = demangle_type_map.find(c);
+  return (it != demangle_type_map.end()) ? it->second : "unknown";
 }
+
+// Parse mangled name in Itanium ABI style: _Z<length><name><types>
+// demangle() is referenced from ChatGPT response
+static std::string
+demangle(const std::string& mangled)
+{
+  if (mangled.size() < 3 || mangled.substr(0, 2) != "_Z")
+    return "Not a mangled name";
+
+  size_t idx = 2;
+  size_t len = 0;
+
+  // Extract length of function name
+  while (idx < mangled.size() && std::isdigit(mangled[idx]))
+    len = len * 10 + (mangled[idx++] - '0');
+
+  if (idx + len > mangled.size())
+    return "Invalid mangled name";
+
+  std::string name = mangled.substr(idx, len);
+  idx += len;
+  std::vector<std::string> args;
+
+  // Extract types of function arguments
+  while (idx < mangled.size())
+    args.push_back(demangle_type(mangled, idx));
+
+  // Append arguments to the function name
+  std::string result = name + "(";
+  for (size_t i = 0; i < args.size(); ++i)
+  {
+    if (i > 0)
+      result += ", ";
+    result += args[i];
+  }
+  result += ")";
+
+  return result;
+}
+
 
 // checks if ELF has .group sections
 static bool
