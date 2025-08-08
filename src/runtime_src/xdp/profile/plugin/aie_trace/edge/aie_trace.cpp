@@ -33,7 +33,7 @@
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
-    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == 
+    if(xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() ==
        xdp::AppStyle::LOAD_XCLBIN_STYLE) {
       auto drv = ZYNQ::shim::handleCheck(devHandle);
       if (!drv)
@@ -247,32 +247,12 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Validitate AIE device and runtime metrics
-   ***************************************************************************/
-  bool AieTrace_EdgeImpl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
-  {
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-          "Unable to get AIE device. AIE event trace will not be available.");
-      return false;
-    }
-
-    // Make sure compiler trace option is available as runtime
-    if (!metadata->getRuntimeMetrics()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /****************************************************************************
    * Update device (e.g., after loading xclbin)
    ***************************************************************************/
   void AieTrace_EdgeImpl::updateDevice()
   {
-    if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
+    // If runtime metrics are not enabled, do not configure trace
+    if(!metadata->getRuntimeMetrics())
       return;
 
     // Set metrics for counters and trace events
@@ -327,8 +307,16 @@ namespace xdp {
       auto subtype    = tile.subtype;
       auto type       = aie::getModuleType(row, metadata->getRowOffset());
       auto typeInt    = static_cast<int>(type);
-      auto& xaieTile  = aieDevice->tile(col, row);
-      auto loc        = XAie_TileLoc(col, row);
+
+      // Get the column relative to partition.
+      // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+      // Hence absolute and relative columns are same.
+      // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+      //       hence we should stop adding partition shift to col for passing to XAIE Apis.
+      auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                        ? col /* startColShift already added */ : tile.col;
+      auto& xaieTile  = aieDevice->tile(relCol, row);
+      auto loc        = XAie_TileLoc(relCol, row);
 
       if ((type == module_type::core) && !aie::isDmaSet(metricSet)) {
         // If we're not looking at DMA events, then don't display the DMA
@@ -341,6 +329,7 @@ namespace xdp {
 
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
+      // Add partition shift to the column to display absolute column on the terminal.
       tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");
 
       if (aie::isInfoVerbosity()) {
@@ -371,6 +360,7 @@ namespace xdp {
       }
 
       // AIE config object for this tile
+      // Add partition shift to the column to report absolute column.
       auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
@@ -952,9 +942,14 @@ namespace xdp {
         && interfaceTileTraceFlushLocs.empty())
       return;
 
-    auto handle = metadata->getHandle();
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-
+    if(aieDevInst == nullptr)
+    {
+      std::stringstream msg;
+      msg << "AIE device instance is not available. AIE Trace might be empty/incomplete as "
+          << "flushing won't be performed.";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      return;
+    }
     if (aie::isDebugVerbosity()) {
       std::stringstream msg;
       msg << "Flushing AIE trace by forcing end event for " << traceFlushLocs.size()
@@ -985,10 +980,6 @@ namespace xdp {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    if (!aieDevInst)
-      return;
 
     // Only read first timer and assume common time domain across all tiles
     static auto tileMetrics = metadata->getConfigMetrics();
@@ -1018,9 +1009,10 @@ namespace xdp {
   /****************************************************************************
    * Set AIE device instance
    ***************************************************************************/
-  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle) 
+  void* AieTrace_EdgeImpl::setAieDeviceInst(void* handle, uint64_t deviceID)
   {
-    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceID));
+    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceID));
     return aieDevInst;
   }
 }  // namespace xdp
