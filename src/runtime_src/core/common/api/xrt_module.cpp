@@ -476,8 +476,13 @@ demangle(const std::string& mangled)
   idx += len;
   std::vector<std::string> args;
 
+  // Parse the argument types from the mangled name
+  // Each argument can have multiple 'P' prefixes indicating pointer depth
+  // followed by a single character representing the base type
   while (idx < mangled.size()) {
     int pointer_depth = 0;
+    // Count pointer depth (number of 'P' characters indicating pointer levels)
+    // For example: "P" = 1 level (char*), "PP" = 2 levels (char**), etc.
     while (idx < mangled.size() && mangled[idx] == 'P') {
       ++pointer_depth;
       ++idx;
