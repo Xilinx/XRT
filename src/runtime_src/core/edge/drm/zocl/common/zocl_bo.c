@@ -179,6 +179,19 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 }
 
+static void* zocl_dma_alloc(struct device *mem_dev, size_t size, dma_addr_t *phys,
+	u32 user_flags)
+{
+	void* vaddr = NULL;
+
+	if (user_flags & ZOCL_BO_FLAGS_CACHEABLE)
+		vaddr = dma_alloc_wc(mem_dev, size, phys, GFP_KERNEL | __GFP_NOWARN);
+	else
+		vaddr = dma_alloc_coherent(mem_dev, size, phys, GFP_KERNEL | __GFP_NOWARN);
+
+	return vaddr;
+}
+
 static struct drm_zocl_bo *
 zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 {
@@ -211,7 +224,7 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 	if (num_regions > 0 && mem_index < ZOCL_MAX_MEM_REGIONS) {
 		mem_dev = zdev->mem_regions[mem_index].dev;
 		if (mem_dev)
-			vaddr = dma_alloc_coherent(mem_dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+			vaddr = zocl_dma_alloc(mem_dev, size, &phys, user_flags);
 		if (!vaddr)
 			DRM_DEBUG("Failed to allocate from zocl attached memory region %d \n",
 				mem_index);
@@ -221,7 +234,7 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 	if(!phys || !vaddr) {
 		DRM_WARN("Allocating BO from default CMA for invalid or no zocl attached memory regions");
 		mem_index = -1;
-		vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+		vaddr = zocl_dma_alloc(dev->dev, size, &phys, user_flags);
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
@@ -239,6 +252,9 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 	bo->phys = phys;
 	bo->size = size;
 	bo->mem_region = mem_index;
+
+	DRM_DEBUG("CMA BO physical_addr %pad size 0x%lx cacheable %d\n",
+		&phys, size, user_flags & ZOCL_BO_FLAGS_CACHEABLE ? 1 : 0);
 	return bo;
 
 error_free_gem:
