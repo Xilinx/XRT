@@ -432,28 +432,16 @@ generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_typ
 
 // Basic Itanium ABI type decoding. get_demangled_type() is referenced from ChatGPT response
 static std::string
-get_demangled_type(const std::string& s, size_t& idx)
+get_demangle_type(char c)
 {
-  if (idx >= s.size())
-    throw std::runtime_error("demangle arg index out of bounds");
-
-  // map of mangled argument types to their demangled string representations
   static const std::map<char, std::string> demangle_type_map = {
     {'v', "void"},
     {'c', "char"},
     {'i', "int"}
   };
-
-  char c = s[idx++];
-
-  // Append "*" for pointer types
-  if (c == 'P')
-    return get_demangled_type(s, idx) + "*";
-
   auto it = demangle_type_map.find(c);
   if (it == demangle_type_map.end())
     throw std::runtime_error("Unknown type character in mangled name: " + std::string(1, c));
-
   return it->second;
 }
 
@@ -465,7 +453,7 @@ get_demangled_type(const std::string& s, size_t& idx)
 //  'v' represents the arg is a void.
 //  'i' represents the arg is an int.
 //  'P' represents the arg is a pointer.
-//      Hence, "Pc" = char*, "Pv" = void*, "Pi" = int*
+//      Hence, "Pc" = char*, "Pv" = void*, "Pi" = int*, "PPc" = char**, etc.
 // demangle() is referenced from ChatGPT response
 static std::string
 demangle(const std::string& mangled)
@@ -488,9 +476,20 @@ demangle(const std::string& mangled)
   idx += len;
   std::vector<std::string> args;
 
-  // Extract type of function arguments
-  while (idx < mangled.size())
-    args.push_back(get_demangled_type(mangled, idx));
+  while (idx < mangled.size()) {
+    int pointer_depth = 0;
+    while (idx < mangled.size() && mangled[idx] == 'P') {
+      ++pointer_depth;
+      ++idx;
+    }
+    if (idx >= mangled.size())
+      throw std::runtime_error("demangle arg index out of bounds");
+
+    std::string type = get_demangle_type(mangled[idx++]);
+    for (int i = 0; i < pointer_depth; ++i)
+      type += "*";
+    args.push_back(type);
+  }
 
   // Append arguments to the function name
   std::string result = name + "(";
