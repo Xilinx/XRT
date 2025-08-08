@@ -503,7 +503,6 @@ demangle(const std::string& mangled)
   return result;
 }
 
-
 // checks if ELF has .group sections
 static bool
 is_group_elf(const ELFIO::elfio& elfio)
