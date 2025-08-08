@@ -624,10 +624,16 @@ void zocl_free_cma_bo(struct drm_gem_object *obj)
 		mem_dev = zdev->mem_regions[zocl_obj->mem_region].dev;
 	else
 		mem_dev = zdev->ddev->dev;
+
 	if (zocl_obj->vaddr && mem_dev) {
-		dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
+		if (zocl_obj->flags & ZOCL_BO_FLAGS_CACHEABLE)
+			dma_free_wc(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
+		else
+			dma_free_coherent(mem_dev, zocl_obj->size, zocl_obj->vaddr, zocl_obj->phys);
+
 		zocl_obj->vaddr = NULL;
 	}
+
 	drm_gem_object_release(obj);
 	kfree(zocl_obj);
 }
