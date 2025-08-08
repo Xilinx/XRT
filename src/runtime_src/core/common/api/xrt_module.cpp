@@ -74,6 +74,10 @@ static const char* const Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 static const char* const Control_Packet_Symbol = "control-packet";
 static const char* const Control_Code_Symbol = "control-code";
 
+// length of "_Z" prefix in mangled names
+static constexpr uint8_t mangled_prefix_length = 2;
+static constexpr uint8_t decimal_base = 10;
+
 struct buf
 {
   std::vector<uint8_t> m_data;
@@ -425,25 +429,83 @@ generate_key_string(const std::string& argument_name, xrt_core::patcher::buf_typ
   return argument_name + buf_string;
 }
 
+
+// Basic Itanium ABI type decoding. get_demangled_type() is referenced from ChatGPT response
 static std::string
-demangle(const std::string& mangled_name)
+get_demangle_type(char c)
 {
-#ifdef _WIN32
-  char demangled_name[1024];
-  if (UnDecorateSymbolName(mangled_name.c_str(), demangled_name, sizeof(demangled_name), UNDNAME_COMPLETE))
-    return std::string(demangled_name);
-  else
-    throw std::runtime_error("Error demangling kernel signature");
-#else
-  int status = 0;
-  std::unique_ptr<char, decltype(&std::free)> demangled_name
-    (abi::__cxa_demangle(mangled_name.c_str(), nullptr, nullptr, &status), std::free);
+  static const std::map<char, std::string> demangle_type_map = {
+    {'v', "void"},
+    {'c', "char"},
+    {'i', "int"}
+  };
+  auto it = demangle_type_map.find(c);
+  if (it == demangle_type_map.end())
+    throw std::runtime_error("Unknown type character in mangled name: " + std::string(1, c));
+  return it->second;
+}
 
-  if (status)
-    throw std::runtime_error("Error demangling kernel signature");
+// Parse mangled name in Itanium ABI style: _Z<length><name><types>
+// length : number of characters in the name string.
+// name   : kernel name in string
+// types  : kernel argument data type as below.
+//  'c' represents the arg is a char.
+//  'v' represents the arg is a void.
+//  'i' represents the arg is an int.
+//  'P' represents the arg is a pointer.
+//      Hence, "Pc" = char*, "Pv" = void*, "Pi" = int*, "PPc" = char**, etc.
+// demangle() is referenced from ChatGPT response
+static std::string
+demangle(const std::string& mangled)
+{
+  //Check if mangled prefix "_Z" is present and length is greater than mangled_prefix_length
+  if (mangled.size() <= mangled_prefix_length || mangled.substr(0, mangled_prefix_length) != "_Z")
+    throw std::runtime_error("Doesn't have prefix _Z, not a mangled kernel name");
 
-  return demangled_name.get();
-#endif
+  size_t idx = 2;
+  size_t len = 0;
+
+  // Extract length of function name
+  while (idx < mangled.size() && std::isdigit(mangled[idx]))
+    len = len * decimal_base + (mangled[idx++] - '0');
+
+  if (idx + len > mangled.size())
+    throw std::runtime_error("Invalid mangled name, doesn't have expected kernel name length");
+
+  std::string name = mangled.substr(idx, len);
+  idx += len;
+  std::vector<std::string> args;
+
+  // Parse the argument types from the mangled name
+  // Each argument can have multiple 'P' prefixes indicating pointer depth
+  // followed by a single character representing the base type
+  while (idx < mangled.size()) {
+    int pointer_depth = 0;
+    // Count pointer depth (number of 'P' characters indicating pointer levels)
+    // For example: "P" = 1 level (char*), "PP" = 2 levels (char**), etc.
+    while (idx < mangled.size() && mangled[idx] == 'P') {
+      ++pointer_depth;
+      ++idx;
+    }
+    if (idx >= mangled.size())
+      throw std::runtime_error("demangle arg index out of bounds");
+
+    std::string type = get_demangle_type(mangled[idx++]);
+    for (int i = 0; i < pointer_depth; ++i)
+      type += "*";
+    args.push_back(type);
+  }
+
+  // Append arguments to the function name
+  std::string result = name + "(";
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (i > 0)
+      result += ", ";
+    result += args[i];
+  }
+  result += ")";
+
+  return result;
 }
 
 // checks if ELF has .group sections
