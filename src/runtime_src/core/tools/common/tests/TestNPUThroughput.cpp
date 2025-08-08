@@ -35,7 +35,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
     runner.wait();
 
     auto report = json::parse(runner.get_report());
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops") % report["cpu"]["throughput"].get<double>()));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f op/s") % report["cpu"]["throughput"].get<double>()));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e)
