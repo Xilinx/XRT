@@ -16,6 +16,7 @@ message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 add_compile_definitions("XRT_BUILD")
 
 # Note if we are building for upstream packaging
+set (XRT_UPSTREAM 0)
 if (XRT_UPSTREAM_DEBIAN)
   set (XRT_UPSTREAM 1)
 endif()
