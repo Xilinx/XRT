@@ -18,7 +18,8 @@ create_validate_subcommand()
     {"pcie-link", "Check if PCIE link is active", "common"},
     {"quick", "Only the first 4 tests will be executed", "common"},
     {"sc-version","Check if SC firmware is up-to-date", "common"},
-    {"verify", "Run 'Hello World' kernel test", "common"}
+    {"verify", "Run 'Hello World' kernel test", "common"},
+    {"aie", "Run AIE PL test", "common"}
   };
 
    std::map<std::string, std::shared_ptr<xrt_core::smi::option>> validate_suboptions;
