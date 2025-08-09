@@ -18,8 +18,6 @@
 #ifndef _XDP_DEVICE_TRACEDEFS_H_
 #define _XDP_DEVICE_TRACEDEFS_H_
 
-#include <cstdint>
-
 #define TRACE_PACKET_SIZE        8
 // Device timestamp is 45 bits so it can never be this value
 #define INVALID_DEVICE_TIMESTAMP 0xffffffffffffffff
@@ -151,6 +149,10 @@ constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x00002222;
 
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM      = 0x14408;
+
+// DMA types
+#define MM2S_CONTROL 2
+#define S2MM_TRACE   3
 
 #define XDP_DEV_GEN_AIE     1U
 #define XDP_DEV_GEN_AIEML   2U

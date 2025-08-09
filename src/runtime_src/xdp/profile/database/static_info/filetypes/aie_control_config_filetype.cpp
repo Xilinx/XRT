@@ -9,9 +9,9 @@
 
 #include "aie_control_config_filetype.h"
 #include "core/common/message.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload_base.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {

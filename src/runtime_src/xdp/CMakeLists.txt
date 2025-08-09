@@ -31,12 +31,7 @@ endif()
 # Only include xdp in npu, alveo, or legacy xrt components
 # For npu, set up different flags used conditionally in
 # in subdirectories.
-if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
-  set(XDP_NPU3_BUILD_CMAKE "yes")
-  add_compile_options("-DSKIP_IOCTL")
-  add_subdirectory(profile)
-
-elseif (XRT_NPU)
+if (XRT_NPU)
   set(XDP_CLIENT_BUILD_CMAKE "yes")
   add_compile_options("-DSKIP_IOCTL")
   add_subdirectory(profile)
