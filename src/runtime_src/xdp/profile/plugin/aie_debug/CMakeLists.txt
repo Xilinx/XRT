@@ -3,8 +3,8 @@
 #
 
 # ====================================================================
-# This builds the AIE Debug plugin.  It is currently built on
-# Edge, Client/NPU3, and VE2 platforms that support AIE.
+# This builds the AIE Debug plugin.  It is currently built
+# on Edge, Client, and VE2 platforms that support AIE.
 # Note it is not built or supported on x86.
 # ====================================================================
 
@@ -45,11 +45,9 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_library(xdp_aie_debug_plugin MODULE ${AIE_DEBUG_PLUGIN_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_debug_plugin xdp_core xrt_coreutil)
-  target_link_libraries(xdp_aie_debug_plugin PRIVATE 
-                        xdp_core xrt_coreutil xaiengine aiebu_library_objects)
+  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_debug_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_debug_plugin PRIVATE 
-                             ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
+  target_include_directories(xdp_aie_debug_plugin PRIVATE ${AIERT_DIR}/include)
   set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_debug_plugin
