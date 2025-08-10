@@ -420,7 +420,7 @@ mariner_package_list()
 
 update_package_list()
 {
-    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ] || [ $FLAVOR == "linuxmint" ]; then
         ub_package_list
     elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ] || [ $FLAVOR == "rocky" ]; then
         rh_package_list
@@ -438,7 +438,7 @@ update_package_list()
 
 validate()
 {
-    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ] || [ $FLAVOR == "linuxmint" ]; then
         #apt-get -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
@@ -661,6 +661,8 @@ install_pybind11()
         sudo dnf install -y pybind11-devel python3-pybind11
     elif [ $FLAVOR == "ubuntu" ] && [ $MAJOR -ge 23 ]; then
         apt-get install -y pybind11-dev
+    elif [ $FLAVOR == "linuxmint" ]; then
+        apt-get install -y pybind11-dev
     else
         # Install/upgrade pybind11 for building the XRT python bindings
         # We need 2.6.0 minimum version
@@ -707,7 +709,7 @@ install_hip()
 
 install()
 {
-    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ] || [ $FLAVOR == "linuxmint" ]; then
         prep_ubuntu
 
         echo "Installing packages..."

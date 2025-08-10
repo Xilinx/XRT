@@ -76,7 +76,7 @@ else()
 endif()
 
 SET(PACKAGE_KIND "TGZ")
-if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
+if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian|linuxmint)")
   execute_process(
     COMMAND dpkg --print-architecture
     OUTPUT_VARIABLE CPACK_ARCH
