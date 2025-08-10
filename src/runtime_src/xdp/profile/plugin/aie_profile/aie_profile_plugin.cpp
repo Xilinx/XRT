@@ -118,7 +118,7 @@ namespace xdp {
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
-      if (hw_context_flow)
+      if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
         (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       else
         (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
