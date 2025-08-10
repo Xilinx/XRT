@@ -315,8 +315,16 @@ namespace xdp {
             continue;
         }
 
-        auto loc         = XAie_TileLoc(col, row);
-        auto& xaieTile   = aieDevice->tile(col, row);
+        // Get the column relative to partition.
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis (CR-1244525).
+        auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                          ? col /* startColShift already added */ : tile.col;
+        auto loc        = XAie_TileLoc(relCol, row);
+        auto& xaieTile  = aieDevice->tile(relCol, row);
+
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                          : xaieTile.pl());
@@ -456,7 +464,7 @@ namespace xdp {
                                                startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, relCol, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
@@ -530,7 +538,10 @@ namespace xdp {
         continue;
 
       std::vector<uint64_t> values;
-      values.push_back(aie->column);
+      auto writerCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                        ? aie->column 
+                        : aie->column + metadata->getPartitionOverlayStartCols().front() /* need to add shift for displaying results*/ ;
+      values.push_back(writerCol);
       values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
