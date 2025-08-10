@@ -36,7 +36,7 @@ namespace xdp {
     
   private:
     std::string mDeviceName;
-    uint64_t mdeviceID;
+    uint64_t mDeviceID;
     bool mHeaderWritten;
   };
 

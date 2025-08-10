@@ -31,11 +31,13 @@ namespace xdp {
     protected :
       VPDatabase* db = nullptr;
       uint32_t mBufSz;
+      uint64_t mDeviceId;
 
     public:
-      MLTimelineImpl(VPDatabase* dB, uint32_t sz)
+      MLTimelineImpl(VPDatabase* dB, uint32_t sz, uint64_t deviceId)
         : db(dB),
-          mBufSz(sz)
+          mBufSz(sz),
+          mDeviceId(deviceId)
       {}
 
       MLTimelineImpl() = delete;

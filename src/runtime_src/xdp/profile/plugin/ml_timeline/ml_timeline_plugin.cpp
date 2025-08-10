@@ -128,7 +128,7 @@ namespace xdp {
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice, false);
     (db->getStaticInfo()).setDeviceName(deviceId, winDeviceName);
 
-    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz, deviceId));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl);
 
@@ -158,7 +158,7 @@ namespace xdp {
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
-    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
+    mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz, deviceId));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl);
     
