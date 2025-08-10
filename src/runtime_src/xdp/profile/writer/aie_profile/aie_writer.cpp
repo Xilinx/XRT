@@ -26,10 +26,10 @@
 namespace xdp {
 
   AIEProfilingWriter::AIEProfilingWriter(const char* fileName,
-                                         const char* deviceName, uint64_t deviceIndex) :
+                                         const char* deviceName, uint64_t deviceID) :
     VPWriter(fileName),
     mDeviceName(deviceName),
-    mDeviceIndex(deviceIndex), mHeaderWritten(false)
+    mdeviceID(deviceID), mHeaderWritten(false)
   {
   }
 
@@ -40,7 +40,7 @@ namespace xdp {
     float fileVersion = 1.2f;
 
     // Report HW generation to inform analysis how to interpret event IDs
-    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mdeviceID);
 
     fout << "HEADER"<<"\n";
     fout << "File Version: " <<fileVersion << "\n";
@@ -49,7 +49,7 @@ namespace xdp {
 
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
-    auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
+    auto aie = (db->getStaticInfo()).getAIECounter(mdeviceID, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "\n"; 
@@ -138,7 +138,7 @@ namespace xdp {
 
     // Write all data elements
     std::vector<counters::Sample> samples =
-      db->getDynamicInfo().moveAIESamples(mDeviceIndex);
+      db->getDynamicInfo().moveAIESamples(mdeviceID);
 
     for (auto& sample : samples) {
       fout << sample.timestamp << ",";
