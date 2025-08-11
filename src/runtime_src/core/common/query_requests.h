@@ -323,6 +323,8 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
+  event_trace,
+  firmware_log,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -4073,6 +4075,34 @@ struct preemption : request
   virtual void
   put(const device*, const std::any&) const override = 0;
 
+};
+
+struct event_trace : request 
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::event_trace;
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  virtual void
+  put(const device*, const std::any&) const override = 0;
+};
+
+struct firmware_log : request
+{  
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::firmware_log;
+
+  virtual std::any
+  get(const device*) const override = 0;
+
+  virtual void
+  put(const device*, const std::any&) const override = 0;
 };
 
 /*
