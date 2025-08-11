@@ -23,21 +23,8 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
   throw_invalid_resource_if(!hip_mod, "module associated with function is unloaded");
 
-  std::shared_ptr<function> hip_func;
-  if (hip_mod->is_full_elf_module()) {
-    auto hip_elf_mod = std::dynamic_pointer_cast<module_full_elf>(hip_mod);
-    throw_invalid_resource_if(!hip_elf_mod, "getting hip module using dynamic pointer cast failed");
-
-    hip_func = hip_elf_mod->get_function(func_hdl);
-    throw_invalid_resource_if(!hip_func, "invalid function passed");
-  }
-  else {
-    auto hip_xclbin_mod = std::dynamic_pointer_cast<module_xclbin>(hip_mod);
-    throw_invalid_resource_if(!hip_xclbin_mod, "getting hip module using dynamic pointer cast failed");
-
-    hip_func = hip_xclbin_mod->get_function(func_hdl);
-    throw_invalid_resource_if(!hip_func, "invalid function passed");
-  }
+  auto hip_func = hip_mod->get_function(func_hdl);
+  throw_invalid_resource_if(!hip_func, "invalid function passed");
 
   // All the RyzenAI kernels run only once, so ignoring grid and block dimensions
   // Revisit if we need to launch multiple times
@@ -61,29 +48,7 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   auto hip_mod = module_cache.get(mod_hdl);
   throw_invalid_resource_if(!hip_mod, "module not available");
 
-  if (hip_mod->is_full_elf_module()) {
-    // module handle passed is created with full ELF
-    auto hip_elf_mod = std::dynamic_pointer_cast<module_full_elf>(hip_mod);
-    throw_invalid_resource_if(!hip_elf_mod, "getting hip module using dynamic pointer cast failed");
-    throw_invalid_resource_if(!module_cache.count(hip_elf_mod.get()), "module not available");
-
-    // create function obj and store in map maintained by fill elf module
-    return hip_elf_mod->add_function(std::make_shared<function>(hip_elf_mod.get(), std::string(name)));
-  }
-  else {
-    // module handle should not be xclbin module
-    throw_invalid_resource_if(hip_mod->is_xclbin_module(), "invalid module handle passed");
-
-    auto hip_elf_mod = std::dynamic_pointer_cast<module_elf>(hip_mod);
-    throw_invalid_resource_if(!hip_elf_mod, "getting hip module using dynamic pointer cast failed");
-
-    // Get xclbin module corresponding to this elf module
-    auto module_xclbin = hip_elf_mod->get_xclbin_module();
-    throw_invalid_resource_if(!module_cache.count(module_xclbin), "module not available");
-
-    // create function obj and store in map maintained by xclbin module
-    return module_xclbin->add_function(std::make_shared<function>(module_xclbin, hip_elf_mod->get_xrt_module(), std::string(name)));
-  }
+  return hip_mod->add_function(std::string{name});
 }
 
 static module_handle
@@ -113,7 +78,6 @@ create_module(const hipModuleData* config)
   // elf load
   auto hip_mod = module_cache.get(reinterpret_cast<module_handle>(config->parent));
   throw_invalid_resource_if(!hip_mod, "module not available");
-  throw_invalid_resource_if(!hip_mod->is_xclbin_module(), "invalid module handle passed");
 
   auto hip_xclbin_mod = std::dynamic_pointer_cast<module_xclbin>(hip_mod);
   throw_invalid_resource_if(!hip_xclbin_mod, "getting hip module using dynamic pointer cast failed");
@@ -138,7 +102,7 @@ static size_t
 estimate_elf_size(const void* data)
 {
   auto bytes = static_cast<const unsigned char*>(data);
-  constexpr unsigned char ELF_HEADER_MAGIC[] = {0x7f, 'E', 'L', 'F'};
+  constexpr std::array<unsigned char, 4> ELF_HEADER_MAGIC = {0x7f, 'E', 'L', 'F'};
 
   if (bytes[0] != ELF_HEADER_MAGIC[0] || bytes[1] != ELF_HEADER_MAGIC[1] ||
       bytes[2] != ELF_HEADER_MAGIC[2] || bytes[3] != ELF_HEADER_MAGIC[3])

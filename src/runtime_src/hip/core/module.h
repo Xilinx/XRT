@@ -33,33 +33,34 @@ class module
 protected:
   // NOLINTBEGIN
   std::shared_ptr<context> m_ctx;
-  bool m_is_xclbin;
-  bool m_is_full_elf;
+  xrt_core::handle_map<function_handle, std::shared_ptr<function>> function_cache;
   // NOLINTEND
 
 public:
-  module(std::shared_ptr<context> ctx, bool is_xclbin, bool is_full_elf = false)
+  explicit module(std::shared_ptr<context> ctx)
     : m_ctx{std::move(ctx)}
-    , m_is_xclbin{is_xclbin}
-    , m_is_full_elf{is_full_elf}
   {}
-
-  bool
-  is_xclbin_module() const
-  {
-    return m_is_xclbin;
-  }
-
-  bool
-  is_full_elf_module() const
-  {
-    return m_is_full_elf;
-  }
 
   std::shared_ptr<context>
   get_context() const
   {
     return m_ctx;
+  }
+
+  virtual function_handle
+  add_function(const std::string& name)
+  {
+    // should be called from derived class
+    throw_invalid_resource_if(true, "invalid module handle passed");
+    return nullptr; // to avoid compiler warning
+  }
+
+  virtual std::shared_ptr<function>
+  get_function(function_handle handle) const
+  {
+    // should be called from derived class
+    throw_invalid_resource_if(true, "invalid module handle passed");
+    return nullptr; // to avoid compiler warning
   }
 
   virtual
@@ -70,24 +71,11 @@ class module_xclbin : public module
 {
   xrt::xclbin m_xrt_xclbin;
   xrt::hw_context m_xrt_hw_ctx;
-  xrt_core::handle_map<function_handle, std::shared_ptr<function>> function_cache;
 
 public:
   module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name);
 
   module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size);
-
-  function_handle
-  add_function(std::shared_ptr<function> f)
-  {
-    return insert_in_map(function_cache, f);
-  }
-
-  std::shared_ptr<function>
-  get_function(function_handle handle) const
-  {
-    return function_cache.get(handle);
-  }
 
   const xrt::hw_context&
   get_hw_context() const
@@ -112,41 +100,46 @@ public:
 
   const xrt::module&
   get_xrt_module() const { return m_xrt_module; }
+
+  function_handle
+  add_function(const std::string& name) override;
+
+  std::shared_ptr<function>
+  get_function(function_handle handle) const override
+  {
+    return function_cache.get(handle);
+  }
 };
 
 class module_full_elf : public module
 {
   xrt::elf m_xrt_elf;
   xrt::hw_context m_xrt_hw_ctx;
-  xrt_core::handle_map<function_handle, std::shared_ptr<function>> function_cache;
 
 public:
   module_full_elf(std::shared_ptr<context> ctx, const std::string& file_name);
 
   module_full_elf(std::shared_ptr<context> ctx, const void* data, size_t size);
 
-  function_handle
-  add_function(std::shared_ptr<function> f)
-  {
-    return insert_in_map(function_cache, f);
-  }
-
-  std::shared_ptr<function>
-  get_function(function_handle handle) const
-  {
-    return function_cache.get(handle);
-  }
-
   const xrt::hw_context&
   get_hw_context() const
   {
     return m_xrt_hw_ctx;
   }
+
+  function_handle
+  add_function(const std::string& name) override;
+
+  std::shared_ptr<function>
+  get_function(function_handle handle) const override
+  {
+    return function_cache.get(handle);
+  }
 };
 
 class function
 {
-  module_xclbin* m_xclbin_module = nullptr;
+  module_elf* m_elf_module = nullptr;
   module_full_elf* m_full_elf_module = nullptr;
   std::vector<xrt::run> m_runs_cache; // cache for the runs to this function
   std::mutex m_runs_mutex; // lock to m_runs_cache
@@ -155,20 +148,8 @@ class function
 
 public:
   function() = default;
-  function(module_xclbin* mod_hdl, const xrt::module& xrt_module, const std::string& name);
+  function(module_elf* mod_hdl, const xrt::module& xrt_module, const std::string& name);
   function(module_full_elf* mod_hdl, const std::string& name);
-
-  module_xclbin*
-  get_xclbin_module() const
-  {
-    return m_xclbin_module;
-  }
-
-  module_full_elf*
-  get_full_elf_module() const
-  {
-    return m_full_elf_module;
-  }
 
   module*
   get_module() const
@@ -176,7 +157,7 @@ public:
     if (m_full_elf_module)
       return m_full_elf_module;
 
-    return m_xclbin_module;
+    return m_elf_module;
   }
 
   const xrt::kernel&
