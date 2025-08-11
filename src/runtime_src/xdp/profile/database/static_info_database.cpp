@@ -2873,6 +2873,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(aieProfileConfigLock);
     aieProfileConfigs[deviceId]=cfg; 
   }
+  
   const AIEProfileFinalConfig& VPStaticDatabase::getProfileConfig(uint64_t deviceId) 
   { 
     std::lock_guard<std::mutex> lock(aieProfileConfigLock);
