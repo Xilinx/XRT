@@ -1228,9 +1228,9 @@ namespace xdp {
    ***************************************************************************/
   const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig()
   {
-    if (aieProfileConfigs.find(deviceID) != aieProfileConfigs.end()) {
+    if (aieProfileConfigs.find(deviceID) != aieProfileConfigs.end()) 
       return aieProfileConfigs[deviceID];
-    }
+    
     const AIEProfileFinalConfig config(configMetrics, configChannel0,
                          configChannel1, metadataReader->getAIETileRowOffset(),
                          bytesTransferConfigMap, latencyConfigMap);
