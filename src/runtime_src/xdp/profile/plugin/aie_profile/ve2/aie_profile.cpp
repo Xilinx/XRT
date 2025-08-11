@@ -4,7 +4,6 @@
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/ve2/aie_profile.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
@@ -145,7 +144,7 @@ namespace xdp {
     // 2. Channel/stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((isMaster) << 8) & (isChannel << 7) & (channel/stream ID)
-      auto portnum = aie::getPortNumberFromEvent(static_cast<XAie_Events>(startEvent));
+      auto portnum = xdp::aie::getPortNumberFromEvent(static_cast<XAie_Events>(startEvent));
       uint8_t streamPortId = (portnum >= tile.stream_ids.size()) ?
           0 : static_cast<uint8_t>(tile.stream_ids.at(portnum));
       uint8_t idToReport = (tile.subtype == io_type::GMIO) ? channel : streamPortId;
@@ -397,7 +396,7 @@ namespace xdp {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
           auto resetEvent    = XAIE_EVENT_NONE_CORE;
-          auto portnum       = aie::getPortNumberFromEvent(startEvent);
+          auto portnum       = xdp::aie::getPortNumberFromEvent(startEvent);
           uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
           // Configure group event before reserving and starting counter

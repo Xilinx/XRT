@@ -4,21 +4,20 @@
 
 # ====================================================================
 # This builds the AIE Profile plugin. It is currently built on Edge,
-# x86, Client/NPU3, and VE2 platforms that support AIE.
+# x86, Client, and VE2 platforms that support AIE.
 # ====================================================================
 
 file(GLOB AIE_PROFILE_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/aie_base/*.h"
-  "${PROFILE_DIR}/plugin/aie_base/*.cpp"
-  "${PROFILE_DIR}/plugin/aie_debug/generations/*.h"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/*.cpp"
   "${PROFILE_DIR}/writer/aie_profile/*.h"
   "${PROFILE_DIR}/writer/aie_profile/*.cpp"
 )
 file(GLOB AIE_PROFILE_UTIL_FILES
-  "${PROFILE_DIR}/plugin/aie_base/*"
-  "${PROFILE_DIR}/plugin/aie_base/generations/*"
+  "${PROFILE_DIR}/plugin/aie_base/*.h"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.cpp"
 )
@@ -45,6 +44,9 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   target_link_libraries(xdp_aie_profile_plugin PRIVATE 
                         xdp_core xrt_coreutil xaiengine aiebu_library_objects)
   target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_NPU3_BUILD=1)
+  endif()
   target_include_directories(xdp_aie_profile_plugin PRIVATE 
                              ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -71,15 +73,16 @@ elseif (DEFINED XRT_AIE_BUILD AND (NOT XRT_EDGE))
     LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
   )
 
-elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+else()
+
+  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/ve2")
 
     file(GLOB AIE_PROFILE_IMPL_FILES
       "${IMPL_DIR}/*.h"
       "${IMPL_DIR}/*.cpp"
     )
-    add_library(xdp_aie_profile_plugin_xdna MODULE ${AIE_PROFILE_PLUGIN_FILES} 
-                ${AIE_PROFILE_IMPL_FILES} ${AIE_PROFILE_UTIL_FILES} ${AIE_PROFILE_CONFIG_FILES})
+    add_library(xdp_aie_profile_plugin_xdna MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} ${AIE_PROFILE_UTIL_FILES} ${AIE_PROFILE_CONFIG_FILES})
     add_dependencies(xdp_aie_profile_plugin_xdna xdp_core xrt_coreutil)
     target_link_libraries(xdp_aie_profile_plugin_xdna PRIVATE xdp_core xrt_coreutil xaiengine)
     target_compile_definitions(xdp_aie_profile_plugin_xdna PRIVATE XDP_VE2_BUILD=1 FAL_LINUX="on")
@@ -89,8 +92,9 @@ elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     install (TARGETS xdp_aie_profile_plugin_xdna
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
+  endif()
 
-elseif (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
+  if (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
     set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/edge")
 
     file(GLOB AIE_PROFILE_IMPL_FILES
@@ -112,8 +116,7 @@ elseif (DEFINED XRT_AIE_BUILD AND XRT_EDGE)
     install (TARGETS xdp_aie_profile_plugin
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
     )
-
-else()
+  endif()
 
 # Else, on edge-aarch64 don't build at all
 

@@ -52,7 +52,7 @@ namespace xdp::aie::profile {
     {METRIC_BYTE_COUNT, static_cast<uint16_t>(START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID)},
     {METRIC_LATENCY,    static_cast<uint16_t>(INTF_TILE_LATENCY_REPORT_EVENT_ID)}
   };
-  
+
   /**
    * @brief   Get metric sets for core modules
    * @param   hwGen integer representing the hardware generation
@@ -86,6 +86,7 @@ namespace xdp::aie::profile {
    * @param   hwGen integer representing the hardware generation
    * @return  Map of microcontroller metric set names with vectors of event IDs
    */
+  //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen);
   std::map<std::string, std::vector<uint8_t>> getMicrocontrollerEventSets(const int hwGen);
 
   /**
@@ -124,7 +125,7 @@ namespace xdp::aie::profile {
   void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
                              const module_type type, const std::string metricSet,
                              const uint8_t channel);
-
+  
   /**
    * @brief Get XAie module enum at the module index 
    * @param moduleIndex module index

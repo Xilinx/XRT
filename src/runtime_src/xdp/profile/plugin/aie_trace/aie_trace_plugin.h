@@ -49,7 +49,7 @@ public:
 private:
   uint64_t getDeviceIDFromHandle(void *handle, bool hw_context_flow);
   void pollAIETimers(uint64_t index, void *handle);
-  void flushOffloader(const std::unique_ptr<AIETraceOffloadBase> &offloader,
+  void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
                       bool warn);
   void endPoll();
 
@@ -59,14 +59,14 @@ private:
     uint64_t deviceID;
     bool valid;
 
-    std::unique_ptr<AIETraceOffloadBase> offloader;
+    std::unique_ptr<AIETraceOffload> offloader;
     std::unique_ptr<AIETraceLogger> logger;
     std::unique_ptr<AieTraceImpl> implementation;
     std::shared_ptr<AieTraceMetadata> metadata;
     std::atomic<bool> threadCtrlBool;
     std::thread thread;
   };
-  VPWriter *configWriter;
+  VPWriter *configWriter{nullptr};
   std::map<void *, AIEData> handleToAIEData;
 };
 

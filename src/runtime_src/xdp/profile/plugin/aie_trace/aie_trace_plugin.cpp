@@ -26,7 +26,7 @@
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
@@ -58,7 +58,6 @@ bool AieTracePluginUnified::live = false;
 
 AieTracePluginUnified::AieTracePluginUnified() : XDPPlugin() {
   AieTracePluginUnified::live = true;
-  configWriter = nullptr;
 
   db->registerPlugin(this);
   db->registerInfo(info::aie_trace);
@@ -92,7 +91,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_cont
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+#ifdef XDP_CLIENT_BUILD
   (void)(hw_context_flow);
   return db->addDevice("win_sysfspath");
 #else
@@ -116,7 +115,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
-#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD) && ! defined(XDP_NPU3_BUILD)
+#if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
   if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
     xrt_core::message::send(severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. AIE Event Trace is not yet supported for this combination.");
     return;
@@ -142,7 +141,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   AIEData.valid = true; // initialize struct
 
   // Update the static database with information from xclbin
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+#ifdef XDP_CLIENT_BUILD
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");  
 #else
@@ -294,7 +293,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
-#if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+#ifdef XDP_CLIENT_BUILD
   if (aie::isNPU3(AIEData.metadata->getHardwareGen())) {
     AIEData.offloader = std::make_unique<AIETraceOffloadNPU3>(
         handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
@@ -415,7 +414,7 @@ void AieTracePluginUnified::pollAIETimers(uint64_t index, void *handle) {
 }
 
 void AieTracePluginUnified::flushOffloader(
-    const std::unique_ptr<AIETraceOffloadBase> &offloader, bool warn) {
+    const std::unique_ptr<AIETraceOffload> &offloader, bool warn) {
   if (offloader->continuousTrace()) {
     offloader->stopOffload();
 
@@ -453,7 +452,7 @@ void AieTracePluginUnified::flushAIEDevice(void *handle) {
 void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   xrt_core::message::send(severity_level::info, "XRT",
                           "Beginning AIE Trace finishFlushAIEDevice.");
-  #if defined(XDP_CLIENT_BUILD) || defined(XDP_NPU3_BUILD)
+  #ifdef XDP_CLIENT_BUILD
     // For now, just return please
     return;
   #endif

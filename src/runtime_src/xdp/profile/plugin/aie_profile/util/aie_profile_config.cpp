@@ -39,7 +39,7 @@ namespace xdp::aie::profile {
         continue;
 
       bool newPort = false;
-      auto portnum = aie::getPortNumberFromEvent(startEvent);
+      auto portnum = xdp::aie::getPortNumberFromEvent(startEvent);
       uint8_t channel = (portnum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store

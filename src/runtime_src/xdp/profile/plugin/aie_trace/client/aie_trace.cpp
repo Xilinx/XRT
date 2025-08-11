@@ -431,11 +431,11 @@ namespace xdp {
     for (size_t i=0; i < events.size(); ++i) {
       // Ensure applicable event
       auto event = events.at(i);
-      if (!aie::isStreamSwitchPortEvent(event))
+      if (!xdp::aie::isStreamSwitchPortEvent(event))
         continue;
 
       //bool newPort = false;
-      auto portnum = aie::getPortNumberFromEvent(event);
+      auto portnum = xdp::aie::getPortNumberFromEvent(event);
       uint8_t channelNum = portnum % 2;
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
@@ -1058,7 +1058,7 @@ namespace xdp {
 
         // Configure memory trace events
         for (uint8_t i = 0; i < memoryEvents.size(); i++) {
-          bool isCoreEvent = aie::isCoreModuleEvent(memoryEvents[i]);
+          bool isCoreEvent = xdp::aie::isCoreModuleEvent(memoryEvents[i]);
 
           if (isCoreEvent) {
             if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, bcId, memoryEvents[i]) != XAIE_OK)

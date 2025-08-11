@@ -4,7 +4,6 @@
 #define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/ve2/aie_trace.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/database/static_info/aie_util.h"

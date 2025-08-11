@@ -395,7 +395,7 @@ namespace xdp {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
           auto resetEvent    = XAIE_EVENT_NONE_CORE;
-          auto portnum       = aie::getPortNumberFromEvent(startEvent);
+          auto portnum       = xdp::aie::getPortNumberFromEvent(startEvent);
           uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
           // Configure group event before reserving and starting counter

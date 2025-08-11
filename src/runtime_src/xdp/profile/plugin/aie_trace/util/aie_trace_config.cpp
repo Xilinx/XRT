@@ -88,11 +88,11 @@ namespace xdp::aie::trace {
     for (int i=0; i < events.size(); ++i) {
       // Ensure applicable event
       auto event = events.at(i);
-      if (!aie::isStreamSwitchPortEvent(event))
+      if (!xdp::aie::isStreamSwitchPortEvent(event))
         continue;
 
       bool newPort = false;
-      auto portnum = aie::getPortNumberFromEvent(event);
+      auto portnum = xdp::aie::getPortNumberFromEvent(event);
       uint8_t channelNum = portnum % 2;
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
@@ -201,7 +201,7 @@ namespace xdp::aie::trace {
                     aie_cfg_base& config)
   {
     // Only needed for core/memory modules and metric sets that include DMA events
-    if (!aie::isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
+    if (!xdp::aie::isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
       return {};
 
     std::vector<XAie_Events> comboEvents;

@@ -5,11 +5,8 @@
 
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/plugin/aie_base/aie_utility.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie1_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/aie2ps_attributes.h"
-#include "xdp/profile/plugin/aie_debug/generations/npu3_attributes.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
+#include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
 
 #include <cmath>
 #include <cstring>
@@ -18,6 +15,9 @@
 
 #include "core/common/message.h"
 
+// ***************************************************************
+// Anonymous namespace for helper functions local to this file
+// ***************************************************************
 namespace xdp::aie::profile {
   using severity_level = xrt_core::message::severity_level;
 
