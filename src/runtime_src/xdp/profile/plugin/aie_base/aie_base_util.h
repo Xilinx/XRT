@@ -5,7 +5,6 @@
 #define AIE_BASE_UTIL_DOT_H
 
 #include <cstdint>
-#include <string>
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
 
@@ -73,9 +72,10 @@ namespace xdp::aie {
    * @brief   Get HW generation-specific number of performance counters
    * @note    This function currently supports AIE1 and AIE2*
    * @param   hwGen integer representing the hardware generation
-   * @return 
+   * @param   mod module type
+   * @return  number of counters available in the module
    */
-  inline int getNumCounters(const int hwGen, xdp::module_type mod)
+  inline unsigned int getNumCounters(const int hwGen, xdp::module_type mod)
   {
     if (mod == xdp::module_type::core) {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::cm_num_counters
@@ -97,6 +97,30 @@ namespace xdp::aie {
   }
 
   /**
+   * @brief   Get HW generation-specific stream bit width
+   * @note    This function currently supports AIE1 and AIE2*
+   * @param   hwGen integer representing the hardware generation
+   * @return  bit width of streams in the array
+   */
+  inline unsigned int getStreamBitWidth(const int hwGen)
+  {
+    return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::stream_bit_width
+              : aie2::stream_bit_width);
+  }
+
+  /**
+   * @brief   Get HW generation-specific cascade bit width
+   * @note    This function currently supports AIE1 and AIE2*
+   * @param   hwGen integer representing the hardware generation
+   * @return  bit width of cascades in the array
+   */
+  inline unsigned int getCascadeBitWidth(const int hwGen)
+  {
+    return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::cascade_bit_width
+              : aie2::cascade_bit_width);
+  }
+
+  /**
    * @brief  Check if event is core module event
    * @param  event Event ID to check
    * @return True if given event is from a core module
@@ -114,7 +138,7 @@ namespace xdp::aie {
    */
   inline bool isPortRunningEvent(const XAie_Events event)
   {
-    std::set<XAie_Events> runningEvents = {
+    static std::set<XAie_Events> runningEvents = {
       XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
       XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
       XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
@@ -139,7 +163,7 @@ namespace xdp::aie {
    */
   inline bool isPortStalledEvent(const XAie_Events event)
   {
-    std::set<XAie_Events> stalledEvents = {
+    static std::set<XAie_Events> stalledEvents = {
       XAIE_EVENT_PORT_STALLED_0_CORE,     XAIE_EVENT_PORT_STALLED_1_CORE,
       XAIE_EVENT_PORT_STALLED_2_CORE,     XAIE_EVENT_PORT_STALLED_3_CORE,
       XAIE_EVENT_PORT_STALLED_4_CORE,     XAIE_EVENT_PORT_STALLED_5_CORE,
@@ -164,7 +188,7 @@ namespace xdp::aie {
    */
   inline bool isPortIdleEvent(const XAie_Events event)
   {
-    std::set<XAie_Events> idleEvents = {
+    static std::set<XAie_Events> idleEvents = {
       XAIE_EVENT_PORT_IDLE_0_CORE,     XAIE_EVENT_PORT_IDLE_1_CORE,
       XAIE_EVENT_PORT_IDLE_2_CORE,     XAIE_EVENT_PORT_IDLE_3_CORE,
       XAIE_EVENT_PORT_IDLE_4_CORE,     XAIE_EVENT_PORT_IDLE_5_CORE,
@@ -189,7 +213,7 @@ namespace xdp::aie {
    */
   inline bool isPortTlastEvent(const XAie_Events event)
   {
-    std::set<XAie_Events> tlastEvents = {
+    static std::set<XAie_Events> tlastEvents = {
       XAIE_EVENT_PORT_TLAST_0_CORE,     XAIE_EVENT_PORT_TLAST_1_CORE,
       XAIE_EVENT_PORT_TLAST_2_CORE,     XAIE_EVENT_PORT_TLAST_3_CORE,
       XAIE_EVENT_PORT_TLAST_4_CORE,     XAIE_EVENT_PORT_TLAST_5_CORE,
