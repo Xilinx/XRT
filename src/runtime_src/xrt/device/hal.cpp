@@ -1,23 +1,11 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2021 Xilinx, Inc
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "hal.h"
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
+#include "core/common/module_loader.h"
 #include "core/include/xrt/experimental/xrt_system.h"
 
 #include <filesystem>
@@ -40,12 +28,6 @@ ends_with(const std::string& str, const std::string& sub)
   return (p==std::string::npos)
     ? false
     : (str.size() - p) == sub.size();
-}
-
-static const char*
-emptyOrValue(const char* cstr)
-{
-  return cstr ? cstr : "";
 }
 
 static void
@@ -80,7 +62,7 @@ dllpath(const std::filesystem::path& root, const std::string& libnm)
 #ifdef _WIN32
   return root / "bin" / (libnm + dllExt().string());
 #else
-  return root / "lib" / ("lib" + libnm + dllExt().string());
+  return root / XRT_LIB_DIR / ("lib" + libnm + dllExt().string());
 #endif
 }
 
@@ -147,7 +129,7 @@ loadDevices()
   hal::device_list devices;
 #ifndef XRT_STATIC_BUILD
   // xrt
-  sfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+  auto xrt = xrt_core::environment::xilinx_xrt();
 
 #if defined (__aarch64__) || defined (__arm__)
   if (xrt.empty()) {
