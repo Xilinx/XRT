@@ -61,8 +61,8 @@ namespace xdp {
       }
   };
 
-  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, uint32_t sz)
-    : MLTimelineImpl(dB, sz)
+  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, uint32_t sz, uint64_t deviceId)
+    : MLTimelineImpl(dB, sz, deviceId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Created ML Timeline Plugin for Client Device.");
