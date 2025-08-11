@@ -209,7 +209,7 @@ namespace xdp {
     constexpr double   earliestSupportedToolVersion() const { return 2019.2; }
     constexpr uint16_t earliestSupportedXRTVersionMajor() const { return 2; }
     constexpr uint16_t earliestSupportedXRTVersionMinor() const { return 5; }
-    XDP_CORE_EXPORT bool validXclbin(void* devHandle) ;
+    XDP_CORE_EXPORT bool validXclbin(void* devHandle, bool hw_context_flow=false) ;
 
     // ****************************************************
     // ***** Functions related to OpenCL information. *****
@@ -329,6 +329,10 @@ namespace xdp {
      */
     XDP_CORE_EXPORT
     uint64_t getDeviceContextUniqueId(void*);
+
+
+    XDP_CORE_EXPORT
+    bool xclbinContainsPl(void* handle, bool hw_context_flow);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****

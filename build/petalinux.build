@@ -2,4 +2,6 @@
 # https://jira.xilinx.com/secure/CreateIssue!default.jspa
 #PETALINUX=/proj/petalinux/2025.2/petalinux-v2025.2_08071216/tool/petalinux-v2025.2-final
 #PETALINUX=/proj/petalinux/2025.2/petalinux-v2025.2_05300031/tool/petalinux-v2025.2-final
-PETALINUX=/proj/petalinux/2025.1/petalinux-v2025.1_05180714/tool/petalinux-v2025.1-final
+#PETALINUX=/proj/petalinux/2025.2/petalinux-v2025.2_08041447/tool/petalinux-v2025.2-final
+#PETALINUX=/proj/petalinux/2025.1/petalinux-v2025.1_05180714/tool/petalinux-v2025.1-final
+PETALINUX=/proj/petalinux/2025.2/petalinux-v2025.2_08011147/tool/petalinux-v2025.2-final

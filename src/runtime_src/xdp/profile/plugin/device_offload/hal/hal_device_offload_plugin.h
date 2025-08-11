@@ -50,6 +50,9 @@ namespace xdp {
     //  function, which takes a preallocated char* and size.
     constexpr static int maxPathLength = 512 ;
 
+    bool initialized = false;
+    void init();
+
   public:
     HALDeviceOffloadPlugin() ;
     ~HALDeviceOffloadPlugin() ;
