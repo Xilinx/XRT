@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/include/xrt/experimental/xrt_system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
 
 #include "hip/core/common.h"
 #include "hip/core/device.h"
 #include "hip/core/memory_pool.h"
+#include "hip/core/module.h"
 
 #include <cstring>
 #include <mutex>
@@ -99,7 +102,7 @@ hip_device_get_name(hipDevice_t device)
 {
   throw_invalid_device_if(check(device), "device requested is not available");
 
-  throw std::runtime_error("Not implemented");
+  return (xrt_core::device_query<xrt_core::query::rom_vbnv>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
 }
 
 static hipDeviceProp_t
@@ -133,6 +136,12 @@ hip_set_device(int dev_id)
 {
   throw_invalid_device_if(check(dev_id), "device to set is not available");
   tls_objs.dev_hdl = static_cast<device_handle>(dev_id);
+}
+
+const char*
+hip_kernel_name_ref(const hipFunction_t f)
+{
+  return (reinterpret_cast<function*>(f))->get_func_name().c_str();
 }
 } // xrt::core::hip
 
@@ -310,4 +319,22 @@ hipSetDevice(int device)
     xrt_core::send_exception_message(std::string(__func__) + " - " + ex.what());
   }
   return hipErrorUnknown;
+}
+
+const char *
+hipKernelNameRef(const hipFunction_t f)
+{
+  try {
+    throw_invalid_value_if(!f, "arg passed is nullptr");
+
+    return xrt::core::hip::hip_kernel_name_ref(f);
+  }
+  catch (const xrt_core::system_error& ex) {
+    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
+    return nullptr;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return nullptr;
 }

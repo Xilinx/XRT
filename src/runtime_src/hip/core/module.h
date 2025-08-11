@@ -148,6 +148,12 @@ public:
     std::scoped_lock lock(m_runs_mutex);
     m_runs_cache.push_back(std::move(run));
   }
+
+  const std::string&
+  get_func_name() const
+  {
+    return m_func_name;
+  }
 };
 
 extern xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache;
