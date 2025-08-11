@@ -7,11 +7,11 @@
 
 class OO_EventTrace : public OptionOptions {
 public:
-  virtual void execute( const SubCmdOptions &_options ) const;
+  void execute( const SubCmdOptions &_options ) const override;
   void validate_args() const;
 
 public:
-  OO_EventTrace(const std::string &_longName, bool _isHidden = false);
+  explicit OO_EventTrace(const std::string &_longName, bool _isHidden = false);
 
 private:
   std::string m_device;

@@ -4084,10 +4084,10 @@ struct event_trace : request
 
   static const key_type key = key_type::event_trace;
 
-  virtual std::any
+  std::any
   get(const device*) const override = 0;
 
-  virtual void
+  void
   put(const device*, const std::any&) const override = 0;
 };
 
@@ -4098,10 +4098,10 @@ struct firmware_log : request
 
   static const key_type key = key_type::firmware_log;
 
-  virtual std::any
+  std::any
   get(const device*) const override = 0;
 
-  virtual void
+  void
   put(const device*, const std::any&) const override = 0;
 };
 
