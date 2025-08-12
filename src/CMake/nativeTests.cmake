@@ -21,9 +21,11 @@ add_test(NAME xrt-smi
 set_tests_properties(xrt-smi PROPERTIES ENVIRONMENT
   "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
 
-add_test(NAME xbmgmt2
-  COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 examine -r host
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+if (XRT_XRT OR XRT_ALVEO)
+  add_test(NAME xbmgmt2
+    COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 examine -r host
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-set_tests_properties(xbmgmt2 PROPERTIES ENVIRONMENT
-  "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
+  set_tests_properties(xbmgmt2 PROPERTIES ENVIRONMENT
+    "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
+endif()
