@@ -56,9 +56,9 @@ target_include_directories(core_common_library_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-target_compile_definitions(core_common_library_objects
-  PRIVATE
+set_property(SOURCE module_loader.cpp APPEND PROPERTY COMPILE_DEFINITIONS
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
   XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 
