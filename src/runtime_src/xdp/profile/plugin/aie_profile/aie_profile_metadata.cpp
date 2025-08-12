@@ -1226,16 +1226,12 @@ namespace xdp {
   /****************************************************************************
    * Get profile configuration
    ***************************************************************************/
-  const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig()
+  std::unique_ptr<const AIEProfileFinalConfig> AieProfileMetadata::createAIEProfileConfig()
   {
-    if (aieProfileConfigs.find(deviceID) != aieProfileConfigs.end()) 
-      return aieProfileConfigs[deviceID];
-    
-    const AIEProfileFinalConfig config(configMetrics, configChannel0,
-                         configChannel1, metadataReader->getAIETileRowOffset(),
-                         bytesTransferConfigMap, latencyConfigMap);
-    aieProfileConfigs[deviceID] = config;
-    return aieProfileConfigs[deviceID];
+    return std::make_unique<const AIEProfileFinalConfig>(
+      configMetrics, configChannel0, configChannel1, 
+      metadataReader->getAIETileRowOffset(), 
+      bytesTransferConfigMap, latencyConfigMap);
   }
 
   /****************************************************************************

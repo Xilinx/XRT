@@ -65,7 +65,7 @@ namespace xdp {
     for(uint8_t i=0; i<static_cast<uint8_t>(module_type::num_types); i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
 
-    const auto& configMetrics = validConfig.configMetrics;
+    const auto& configMetrics = validConfig->configMetrics;
     for(size_t i=0; i<configMetrics.size(); i++)
     {
       std::vector<std::string> metrics;
@@ -73,15 +73,15 @@ namespace xdp {
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
         metrics.push_back(std::to_string(+(elm.first.col+col_shift)) + "," + \
-                          aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) \
+                          aie::getRelativeRowStr(elm.first.row, validConfig->tileRowOffset) \
                           + "," + elm.second);
         if (i == module_type::shim && elm.second == METRIC_BYTE_COUNT) {
-          if(validConfig.bytesTransferConfigMap.find(elm.first) != validConfig.bytesTransferConfigMap.end())
-            metrics.back() += "," + std::to_string(+validConfig.bytesTransferConfigMap.at(elm.first));
+          if(validConfig->bytesTransferConfigMap.find(elm.first) != validConfig->bytesTransferConfigMap.end())
+            metrics.back() += "," + std::to_string(+validConfig->bytesTransferConfigMap.at(elm.first));
         }
         else if (i == module_type::shim && elm.second == METRIC_LATENCY) {
-          if(validConfig.latencyConfigMap.find(create_tileKey(elm.first)) != validConfig.latencyConfigMap.end())
-            metrics.back() += "," + std::to_string(+validConfig.latencyConfigMap.at(create_tileKey(elm.first)).tranx_no) +
+          if(validConfig->latencyConfigMap.find(create_tileKey(elm.first)) != validConfig->latencyConfigMap.end())
+            metrics.back() += "," + std::to_string(+validConfig->latencyConfigMap.at(create_tileKey(elm.first)).tranx_no) +
                       "," + (elm.first.stream_ids.size() > 0 ? std::to_string(+elm.first.stream_ids[0]) : "0");
         }
       }

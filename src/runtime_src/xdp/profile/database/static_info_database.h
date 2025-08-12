@@ -94,7 +94,7 @@ namespace xdp {
     std::vector<std::string> softwareEmulationPortBitWidths ;
 
     // Information tracks valid tiles type and and it's metric settings
-    std::map<uint64_t, AIEProfileFinalConfig> aieProfileConfigs;
+    std::map<uint64_t, std::unique_ptr<const AIEProfileFinalConfig>> aieProfileConfigs;
 
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
@@ -459,8 +459,8 @@ namespace xdp {
     XDP_CORE_EXPORT std::string getCtxInfo(uint64_t deviceId) ;
 
     // Functions to save current valid profile config
-    XDP_CORE_EXPORT void saveProfileConfig(const AIEProfileFinalConfig& cfg, uint64_t deviceId) ;
-    XDP_CORE_EXPORT const AIEProfileFinalConfig& getProfileConfig(uint64_t deviceId) ;
+    XDP_CORE_EXPORT void saveProfileConfig(std::unique_ptr<const AIEProfileFinalConfig> cfg, uint64_t deviceId) ;
+    XDP_CORE_EXPORT const AIEProfileFinalConfig* getProfileConfig(uint64_t deviceId) ;
   } ;
 
 }

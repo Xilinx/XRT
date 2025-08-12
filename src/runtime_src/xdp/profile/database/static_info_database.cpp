@@ -2868,16 +2868,19 @@ namespace xdp {
   }
 
   // Functions to save current valid profile config
-  void VPStaticDatabase::saveProfileConfig(const AIEProfileFinalConfig& cfg, uint64_t deviceId) 
+  void VPStaticDatabase::saveProfileConfig(std::unique_ptr<const AIEProfileFinalConfig> cfg, uint64_t deviceId) 
   { 
     std::lock_guard<std::mutex> lock(aieProfileConfigLock);
-    aieProfileConfigs[deviceId]=cfg; 
+    aieProfileConfigs[deviceId]= std::move(cfg); 
   }
   
-  const AIEProfileFinalConfig& VPStaticDatabase::getProfileConfig(uint64_t deviceId) 
+  const AIEProfileFinalConfig* VPStaticDatabase::getProfileConfig(uint64_t deviceId) 
   { 
     std::lock_guard<std::mutex> lock(aieProfileConfigLock);
-    return aieProfileConfigs[deviceId]; 
+    if (aieProfileConfigs.find(deviceId) == aieProfileConfigs.end())
+      return nullptr;
+  
+    return aieProfileConfigs[deviceId].get();
   }
 
 } // end namespace xdp
