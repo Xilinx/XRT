@@ -44,6 +44,7 @@ namespace xdp {
       };
 
       const std::map<module_type, std::vector<uint64_t>> regValues {
+#ifdef XDP_NPU3_BUILD
         {module_type::core,     {npu3::cm_performance_counter0,    npu3::cm_performance_counter1,
                                  npu3::cm_performance_counter2,    npu3::cm_performance_counter3,
                                  npu3::cm_performance_counter4,    npu3::cm_performance_counter5,
@@ -63,6 +64,7 @@ namespace xdp {
                                  npu3::mem_performance_counter6,   npu3::mem_performance_counter7,
                                  npu3::mem_performance_counter8,   npu3::mem_performance_counter9,
                                  npu3::mem_performance_counter10,  npu3::mem_performance_counter11}}
+#endif
       };
 
       std::map<std::string, std::vector<XAie_Events>> coreStartEvents;
