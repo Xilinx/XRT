@@ -33,14 +33,14 @@ endif()
 # Use PROGRAMS to allow for execution. This is recommended in the
 # CMake documentation. This is used for the setup script to enable
 # auto completion
-install (PROGRAMS
-  ./xbutil2/xbutil-bash-completion
-  ./xbutil2/xbutil-csh-completion
-  ./xbutil2/xbutil-csh-completion-wrapper
-  DESTINATION ${XRT_INSTALL_DIR}/share/completions COMPONENT ${XRT_BASE_COMPONENT})
+if (NOT XRT_EDGE AND NOT WIN32)
+  install (PROGRAMS
+    ./xbutil2/xbutil-bash-completion
+    ./xbutil2/xbutil-csh-completion
+    ./xbutil2/xbutil-csh-completion-wrapper
+    DESTINATION ${XRT_INSTALL_DIR}/share/completions COMPONENT ${XRT_BASE_COMPONENT})
 
-if (XRT_XRT OR XRT_ALVEO)
-  if (NOT WIN32)
+  if (XRT_XRT OR XRT_ALVEO)
     install (PROGRAMS
       ./xbmgmt2/xbmgmt-bash-completion
       ./xbmgmt2/xbmgmt-csh-completion
