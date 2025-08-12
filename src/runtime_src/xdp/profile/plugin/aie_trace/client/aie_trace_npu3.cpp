@@ -589,9 +589,8 @@ namespace xdp {
    * Configure group events (core modules only)
    ***************************************************************************/
   void
-  AieTrace_NPU3Impl::configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                                       const XAie_ModuleType mod, const module_type type, 
-                                       const std::string metricSet)
+  AieTrace_NPU3Impl::configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
+                                       const module_type type, const std::string metricSet)
   {
     // Only needed for core module and metric sets that include DMA events
     if (!aie::isDmaSet(metricSet) || (type != module_type::core))
