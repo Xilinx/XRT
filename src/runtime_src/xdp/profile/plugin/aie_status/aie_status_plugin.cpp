@@ -468,7 +468,7 @@ namespace xdp {
     }
 
     // Grab AIE metadata
-    metadataReader = (db->getStaticInfo()).getAIEmetadataReader(deviceID);
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader)
       return;
     auto hwGen =  metadataReader->getHardwareGeneration();

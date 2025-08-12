@@ -403,7 +403,7 @@ namespace xdp {
                                   void* devHandle, uint64_t deviceID=0) ;
 
     XDP_CORE_EXPORT void readAIEMetadata(uint64_t deviceId, xrt::xclbin xrtXclbin, bool checkDisk);
-    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader(uint64_t deviceId) const;
+    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader(uint64_t deviceId = 0) const;
 
     // ************************************************************************
     // ***** Functions for information from a specific xclbin on a device *****

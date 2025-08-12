@@ -40,7 +40,7 @@ namespace xdp {
   {
     VPDatabase* db = VPDatabase::Instance();
 
-    metadataReader = (db->getStaticInfo()).getAIEmetadataReader(deviceID);
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader)
       return;
 

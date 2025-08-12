@@ -27,7 +27,7 @@ namespace xdp {
   {
     std::unique_ptr<ResultBOContainer> mResultBOHolder;
     public :
-      MLTimelineClientDevImpl(VPDatabase* dB, uint32_t sz, uint64_t deviceId);
+      MLTimelineClientDevImpl(VPDatabase* dB, uint32_t sz);
 
       ~MLTimelineClientDevImpl();
 

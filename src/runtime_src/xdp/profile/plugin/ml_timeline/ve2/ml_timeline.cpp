@@ -50,8 +50,8 @@ namespace xdp {
       }
   };
 
-  MLTimelineVE2Impl::MLTimelineVE2Impl(VPDatabase*dB, uint32_t sz, uint64_t deviceId)
-    : MLTimelineImpl(dB, sz, deviceId),
+  MLTimelineVE2Impl::MLTimelineVE2Impl(VPDatabase*dB, uint32_t sz)
+    : MLTimelineImpl(dB, sz),
       mNumBufSegments(0)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
@@ -84,7 +84,7 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Allocated buffer In MLTimelineVE2Impl::updateDevice");
 
-    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader(mDeviceId);
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (metadataReader) {
       auto activeUCs = metadataReader->getActiveMicroControllers();
       mNumBufSegments = activeUCs.size();
