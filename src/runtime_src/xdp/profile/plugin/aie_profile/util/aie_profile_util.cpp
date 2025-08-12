@@ -247,7 +247,6 @@ namespace xdp::aie::profile {
                                           XAIE_EVENT_DMA_MM2S_3_RUNNING_PL};
       eventSets["trace_dma"]           = {XAIE_EVENT_DMA_TRACE_S2MM_MEMORY_BACKPRESSURE_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_STREAM_STARVATION_PL,
-                                          XAIE_EVENT_DMA_TRACE_S2MM_STALLED_LOCK_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_RUNNING_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_START_BD_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_FINISHED_BD_PL,
@@ -259,27 +258,33 @@ namespace xdp::aie::profile {
     // Microcontroller sets
     if (xdp::aie::isMicroSupported(hwGen)) {
 #ifdef XDP_VE2_BUILD
+      eventSets["uc_core"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
+          XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
+          XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
       eventSets["uc_dma_activity"] = {
           XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
           XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_BACKPRESSURE_UC,
 	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_STARVATION_UC};
-#elif XDP_NPU3_BUILD
-      eventSets["uc_dma_activity"] = {
-          XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
-          XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
-          XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_B_LOCAL_MEMORY_BACKPRESSURE_UC,
-          XAIE_EVENT_DMA_MM2DM_B_REMOTE_MEMORY_STARVATION_UC};
-#endif
       eventSets["uc_axis_throughputs"] = {
           XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
           XAIE_EVENT_CORE_AXIS_MASTER_TLAST_UC,
 	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC,
           XAIE_EVENT_CORE_AXIS_SLAVE_TLAST_UC};
-      eventSets["uc_core"] = {
-          XAIE_EVENT_CORE_REG_WRITE_UC,                    XAIE_EVENT_CORE_JUMP_TAKEN_UC,
-          XAIE_EVENT_CORE_DATA_READ_UC,                    XAIE_EVENT_CORE_DATA_WRITE_UC,
-          XAIE_EVENT_CORE_STREAM_GET_UC,                   XAIE_EVENT_CORE_STREAM_PUT_UC};
+#elif XDP_NPU3_BUILD
+      eventSets["uc_core"] = {};
+      eventSets["uc_dma_activity"] = {
+          XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,             XAIE_EVENT_DMA_DM2MM_LOCAL_MEMORY_STARVATION_UC,
+          XAIE_EVENT_DMA_DM2MM_REMOTE_MEMORY_BACKPRESSURE_UC,
+          XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,             XAIE_EVENT_DMA_MM2DM_B_LOCAL_MEMORY_BACKPRESSURE_UC,
+          XAIE_EVENT_DMA_MM2DM_B_REMOTE_MEMORY_STARVATION_UC};
+      eventSets["uc_axis_throughputs"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,          XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_MASTER_TLAST_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,           XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC,
+          XAIE_EVENT_CORE_AXIS_SLAVE_TLAST_UC};
+#endif
     }
     else {
       eventSets["uc_dma_activity"] = {};
