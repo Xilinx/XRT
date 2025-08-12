@@ -1110,4 +1110,9 @@ namespace xdp {
     return true;
   }
 
+  /****************************************************************************
+   * Set AIE Device Instance (Currently unused in NPU3 implementation)
+   ***************************************************************************/
+  void* AieTrace_NPU3Impl::setAieDeviceInst(void*, uint64_t) {  return nullptr;}
+
 }  // namespace xdp

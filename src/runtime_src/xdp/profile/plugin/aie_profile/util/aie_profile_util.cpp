@@ -233,18 +233,18 @@ namespace xdp::aie::profile {
     }
     else {
 #ifdef XDP_NPU3_BUILD
-      eventSets["output_throughputs"]  = {XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL0_RUNNING_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL1_STREAM_BACKPRESSURE_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL1_MEMORY_STARVATION_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL1_RUNNING_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL2_STREAM_BACKPRESSURE_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL2_MEMORY_STARVATION_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL2_RUNNING_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL3_STREAM_BACKPRESSURE_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL3_MEMORY_STARVATION_PL,
-                                          XAIE_EVENT_DMA_MM2S_SEL3_RUNNING_PL};
+      eventSets["output_throughputs"]  = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_0_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_1_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_2_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_2_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_2_RUNNING_PL,
+                                          XAIE_EVENT_DMA_MM2S_3_STREAM_BACKPRESSURE_PL,
+                                          XAIE_EVENT_DMA_MM2S_3_MEMORY_STARVATION_PL,
+                                          XAIE_EVENT_DMA_MM2S_3_RUNNING_PL};
       eventSets["trace_dma"]           = {XAIE_EVENT_DMA_TRACE_S2MM_MEMORY_BACKPRESSURE_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_STREAM_STARVATION_PL,
                                           XAIE_EVENT_DMA_TRACE_S2MM_STALLED_LOCK_PL,
