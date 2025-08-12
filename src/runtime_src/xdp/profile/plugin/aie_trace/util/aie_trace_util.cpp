@@ -283,6 +283,7 @@ namespace xdp::aie::trace {
 
     // Microcontroller sets
     if (aie::isMicroSupported(hwGen)) {
+#ifdef XDP_VE2_BUILD
       eventSets["uc_axis"] = {
           XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,            XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
 	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,             XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC};
@@ -291,7 +292,6 @@ namespace xdp::aie::trace {
 	        XAIE_EVENT_CORE_JUMP_TAKEN_UC,                     XAIE_EVENT_CORE_DATA_READ_UC,
 	        XAIE_EVENT_CORE_DATA_WRITE_UC,                     XAIE_EVENT_CORE_STREAM_GET_UC,
 	        XAIE_EVENT_CORE_STREAM_PUT_UC};
-#ifdef XDP_VE2_BUILD
       eventSets["uc_dma"] = {
           XAIE_EVENT_DMA_DM2MM_START_TASK_UC,                XAIE_EVENT_DMA_DM2MM_FINISHED_BD_UC,
           XAIE_EVENT_DMA_DM2MM_FINISHED_TASK_UC,             XAIE_EVENT_DMA_MM2DM_START_TASK_UC,
@@ -305,6 +305,14 @@ namespace xdp::aie::trace {
 	        XAIE_EVENT_DMA_MM2DM_FINISHED_TASK_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
 #elif XDP_NPU3_BUILD
+      eventSets["uc_axis"] = {
+          XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,            XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
+	        XAIE_EVENT_CORE_AXIS_SLAVE_RUNNING_UC,             XAIE_EVENT_CORE_AXIS_SLAVE_STALLED_UC};
+      eventSets["uc_program_flow"] = {
+          XAIE_EVENT_CORE_REG_WRITE_UC,                      XAIE_EVENT_CORE_EXCEPTION_TAKEN_UC,
+	        XAIE_EVENT_CORE_JUMP_TAKEN_UC,                     XAIE_EVENT_CORE_DATA_READ_UC,
+	        XAIE_EVENT_CORE_DATA_WRITE_UC,                     XAIE_EVENT_CORE_STREAM_GET_UC,
+	        XAIE_EVENT_CORE_STREAM_PUT_UC};
       eventSets["uc_dma"] = {
           XAIE_EVENT_DMA_DM2MM_A_START_BD_UC,                XAIE_EVENT_DMA_DM2MM_A_FINISHED_BD_UC,
           XAIE_EVENT_DMA_DM2MM_A_LOCAL_MEMORY_STARVATION_UC, XAIE_EVENT_DMA_DM2MM_A_REMOTE_MEMORY_BACKPRESSURE_UC,
