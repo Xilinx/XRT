@@ -730,7 +730,7 @@ namespace xdp {
 
         // Configure combo & group events (e.g., to monitor DMA channels)
         auto comboEvents = configComboEvents(loc, mod, type, metricSet, cfgTile->core_trace_config);
-        xdp::aie::configGroupEvents(loc, mod, type, metricSet);
+        aie::trace::configGroupEvents(&aieDevInst, loc, mod, type, metricSet);
 
         // Set overall start/end for trace capture
         // NOTE: This needs to be done first.
@@ -899,7 +899,7 @@ namespace xdp {
 
         // Specify Sel0/Sel1 for memory tile events 21-44
         if (type == module_type::mem_tile) {
-          xdp::aie::configEventSelections(loc, type, metricSet, channel0, channel1, 
+          aie::trace::configEventSelections(&aieDevInst, loc, type, metricSet, channel0, channel1, 
                                           cfgTile->memory_tile_trace_config);
         }
         else {
@@ -947,7 +947,7 @@ namespace xdp {
           numMemoryTraceEvents++;
 
           // Configure edge events (as needed)
-          xdp::aie::configEdgeEvents(tile, type, metricSet, memoryEvents[i], channel0);
+          aie::trace::configEdgeEvents(&aieDevInst, tile, type, metricSet, memoryEvents[i], channel0);
 
           // Update config file
           uint16_t phyEvent = 0;
