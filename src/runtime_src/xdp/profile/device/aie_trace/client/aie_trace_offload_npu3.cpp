@@ -17,26 +17,29 @@
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
-  AIETraceOffloadNPU3::AIETraceOffloadNPU3(void* handle, uint64_t id, PLDeviceIntf* dInt,
-                                           AIETraceLogger* logger, bool isPlio,
-                                           uint64_t totalSize, uint64_t numStrm,
-                                           xrt::hw_context context,
-                                           std::shared_ptr<AieTraceMetadata>(metadata))
-    : AIETraceOffloadBase(handle, id, dInt, logger, isPlio, totalSize, numStrm),
-      context(context), metadata(metadata)
+  AIETraceOffload::AIETraceOffload(void* handle, uint64_t id, PLDeviceIntf* dInt,
+                                   AIETraceLogger* logger, bool isPlio,
+                                   uint64_t totalSize, uint64_t numStrm,
+                                   xrt::hw_context context,
+                                   std::shared_ptr<AieTraceMetadata>(metadata))
+    : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
+      isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
+      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
+      offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
+      mCircularBufOverwrite(false), context(context), metadata(metadata)
   {
     bufAllocSz = getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
-    mReadTrace = std::bind(&AIETraceOffloadNPU3::readTraceGMIO, this, std::placeholders::_1);
+    mReadTrace = std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
   }
 
-  AIETraceOffloadNPU3::~AIETraceOffloadNPU3() 
+  AIETraceOffload::~AIETraceOffload() 
   {
     stopOffload();
     if (offloadThread.joinable())
       offloadThread.join();
   }
 
-  bool AIETraceOffloadNPU3::initReadTrace()
+  bool AIETraceOffload::initReadTrace()
   {
     // The code below is hanging, so for now don't run
     //return;
@@ -130,7 +133,7 @@ namespace xdp {
     return bufferInitialized;
   }
 
-  void AIETraceOffloadNPU3::readTraceGMIO(bool final)
+  void AIETraceOffload::readTraceGMIO(bool final)
   {
     // Keep it low to save bandwidth
     constexpr uint64_t chunk_512k = 0x80000;
@@ -150,7 +153,7 @@ namespace xdp {
     }
   }
 
-  uint64_t AIETraceOffloadNPU3::syncAndLog(uint64_t index)
+  uint64_t AIETraceOffload::syncAndLog(uint64_t index)
   {
     auto& bd = buffers[index];
 
@@ -179,7 +182,7 @@ namespace xdp {
     return nBytes;
   }
 
-  void AIETraceOffloadNPU3::startOffload() 
+  void AIETraceOffload::startOffload() 
   {
     if (offloadStatus == AIEOffloadThreadStatus::RUNNING)
       return;
@@ -187,10 +190,10 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(statusLock);
     offloadStatus = AIEOffloadThreadStatus::RUNNING;
 
-    offloadThread = std::thread(&AIETraceOffloadNPU3::continuousOffload, this);
+    offloadThread = std::thread(&AIETraceOffload::continuousOffload, this);
   }
 
-  void AIETraceOffloadNPU3::continuousOffload()
+  void AIETraceOffload::continuousOffload()
   {
     if (!bufferInitialized && !initReadTrace()) {
       offloadFinished();
@@ -208,13 +211,13 @@ namespace xdp {
     offloadFinished();
   }
 
-  bool AIETraceOffloadNPU3::keepOffloading() 
+  bool AIETraceOffload::keepOffloading() 
   { 
     std::lock_guard<std::mutex> lock(statusLock);
     return (AIEOffloadThreadStatus::RUNNING == offloadStatus); 
   }
 
-  void AIETraceOffloadNPU3::stopOffload() 
+  void AIETraceOffload::stopOffload() 
   {
     std::lock_guard<std::mutex> lock(statusLock);
     if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
@@ -222,7 +225,7 @@ namespace xdp {
     offloadStatus = AIEOffloadThreadStatus::STOPPING;
   }
 
-  void AIETraceOffloadNPU3::offloadFinished() 
+  void AIETraceOffload::offloadFinished() 
   {
     std::lock_guard<std::mutex> lock(statusLock);
     if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
@@ -230,7 +233,7 @@ namespace xdp {
     offloadStatus = AIEOffloadThreadStatus::STOPPED;
   }
 
-  void AIETraceOffloadNPU3::endReadTrace() 
+  void AIETraceOffload::endReadTrace() 
   {
     for (uint64_t i = 0; i < numStream ; ++i) {
       if (!buffers[i].bufId)
@@ -241,7 +244,7 @@ namespace xdp {
     bufferInitialized = false;
   }
 
-  uint64_t AIETraceOffloadNPU3::searchWrittenBytes(void* buf, uint64_t bytes)
+  uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
   {
     /*
      * Look For trace boundary using binary search.

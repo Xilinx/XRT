@@ -294,16 +294,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
 
 #ifdef XDP_CLIENT_BUILD
-  if (aie::isNPU3(AIEData.metadata->getHardwareGen())) {
-    AIEData.offloader = std::make_unique<AIETraceOffloadNPU3>(
-        handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
-        AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
-  }
-  else {
-    AIEData.offloader = std::make_unique<AIETraceOffloadClient>(
-        handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
-        AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
-  }
+  AIEData.offloader = std::make_unique<AIETraceOffload>(
+      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
+      AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
 #elif XDP_VE2_BUILD
   XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
   if(!devInst) {

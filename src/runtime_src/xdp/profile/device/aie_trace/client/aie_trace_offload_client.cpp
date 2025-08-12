@@ -122,9 +122,7 @@ namespace xdp {
       XAie_LocType loc;
       XAie_DmaDesc DmaDesc;
       loc = XAie_TileLoc(traceGMIO->shimColumn, 0);
-      auto dmaType = traceGMIO->type;
-      XAie_DmaDirection dmaDir = (dmaType == S2MM_TRACE) ? DMA_S2MM_TRACE : DMA_S2MM;
-      uint8_t s2mm_ch_id = (dmaType >= S2MM_TRACE) ? 0 : traceGMIO->channelNumber;
+      uint8_t s2mm_ch_id = traceGMIO->channelNumber;
       uint16_t s2mm_bd_id = 15; /* for now use last bd */
 
       // S2MM BD
@@ -137,9 +135,9 @@ namespace xdp {
       RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
 
       // printf("Enabling channels....\n");
-      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, dmaDir,
+      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM,
                                         s2mm_bd_id);
-      RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, dmaDir);
+      RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
 
       uint8_t* txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
    

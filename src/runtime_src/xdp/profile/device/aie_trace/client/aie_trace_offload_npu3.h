@@ -4,14 +4,12 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_NPU3_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_NPU3_H_
 
-#include "xdp/profile/device/aie_trace/aie_trace_offload_base.h"
-
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/config.h"
-#include "xdp/profile/device/common/npu3_transaction.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/common/npu3_transaction.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 #include <thread>
@@ -26,32 +24,97 @@ namespace xdp {
 class PLDeviceIntf;
 class AIETraceLogger;
 
-class AIETraceOffloadNPU3 : public AIETraceOffloadBase {
+#define debug_stream \
+if(!m_debug); else std::cout
+
+struct AIETraceBufferInfo
+{
+  size_t   bufId;
+//  uint64_t allocSz;	// currently all the buffers are equal size
+  uint64_t usedSz;
+  uint64_t offset;
+  uint32_t rollover_count;
+  bool     isFull;
+  bool     offloadDone;
+
+  AIETraceBufferInfo()
+    : bufId(0),
+      usedSz(0),
+      offset(0),
+      rollover_count(0),
+      isFull(false),
+      offloadDone(false)
+  {}
+};
+
+enum class AIEOffloadThreadStatus {
+  IDLE,
+  RUNNING,
+  STOPPING,
+  STOPPED
+};
+
+class AIETraceOffload
+{
   public:
-    AIETraceOffloadNPU3(void* handle, uint64_t id,
-                        PLDeviceIntf*, AIETraceLogger*,
-                        bool     isPlio,
-                        uint64_t totalSize,
-                        uint64_t numStrm,
-                        xrt::hw_context context,
-                        std::shared_ptr<AieTraceMetadata> metadata
-                       );
-    virtual ~AIETraceOffloadNPU3();
+    AIETraceOffload(void* handle, uint64_t id,
+                    PLDeviceIntf*, AIETraceLogger*,
+                    bool     isPlio,
+                    uint64_t totalSize,
+                    uint64_t numStrm,
+                    xrt::hw_context context,
+                    std::shared_ptr<AieTraceMetadata> metadata
+                   );
+    ~AIETraceOffload();
 
   public:
-    virtual bool initReadTrace();
-    virtual void endReadTrace();
-    virtual void startOffload();
-    virtual void stopOffload();
+    bool initReadTrace();
+    void endReadTrace();
+    void startOffload();
+    void stopOffload();
 
+    inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
+    inline void setContinuousTrace() { traceContinuous = true; }
+    inline bool continuousTrace()    { return traceContinuous; }
+    inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
+
+    inline AIEOffloadThreadStatus getOffloadStatus() {
+      std::lock_guard<std::mutex> lock(statusLock);
+      return offloadStatus;
+    };
+
+    void readTrace(bool final) {mReadTrace(final);};
     bool isTraceBufferFull() {return false;};
 
   private:
+    void*           deviceHandle;
+    uint64_t        deviceId;
+    PLDeviceIntf*   plDeviceIntf;
+    AIETraceLogger* traceLogger;
+
+    bool isPLIO;
+    uint64_t totalSz;
+    uint64_t numStream;
+    uint64_t bufAllocSz;
+    std::vector<AIETraceBufferInfo> buffers;
+
     //Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
     XAie_DevInst aieDevInst = {0};
     std::unique_ptr<aie::NPU3Transaction> tranxHandler;
+
+    // Continuous Trace Offload (For PLIO)
+    bool traceContinuous;
+    uint64_t offloadIntervalUs;
+    bool bufferInitialized;
+    std::mutex statusLock;
+    AIEOffloadThreadStatus offloadStatus;
+    std::thread offloadThread;
+
+    //Circular Buffer Tracking
+    bool mEnCircularBuf;
+    bool mCircularBufOverwrite;
 
     xrt::hw_context context;
     std::shared_ptr<AieTraceMetadata> metadata;
