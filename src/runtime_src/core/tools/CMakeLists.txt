@@ -24,8 +24,10 @@ if (NOT XRT_EDGE)
   endif()
 endif()
 
-install (PROGRAMS "./common/xball"
-  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+if (XRT_XRT)
+  install (PROGRAMS "./common/xball"
+    DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+endif()
 
 if (NOT XRT_EDGE)
   if (NOT WIN32)

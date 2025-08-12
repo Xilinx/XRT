@@ -16,6 +16,7 @@ elseif (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
 elseif (NOT XRT_EDGE)
   set(AIEBU_COMPONENT ${XRT_BASE_COMPONENT})
   set(AIEBU_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
+  set(AIEBU_UPSTREAM ${XRT_UPSTREAM})
   xrt_add_subdirectory(aiebu)
 else()
   message(WARNING "Edge device, build of submodule aiebu disabled")
@@ -55,9 +56,9 @@ target_include_directories(core_common_library_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-target_compile_definitions(core_common_library_objects
-  PRIVATE
+set_property(SOURCE module_loader.cpp APPEND PROPERTY COMPILE_DEFINITIONS
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
   XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 

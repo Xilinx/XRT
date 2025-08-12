@@ -141,8 +141,12 @@ endif()
 
 install (TARGETS ${XCLBINUTIL_NAME}
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
-install (PROGRAMS ${XRT_LOADER_SCRIPTS}
-  DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+
+# Do not install loader scripts if installing into system default
+if (NOT XRT_INSTALL_BIN_DIR STREQUAL XRT_INSTALL_UNWRAPPED_DIR)
+  install (PROGRAMS ${XRT_LOADER_SCRIPTS}
+    DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
+endif()
 
 # ==-- x c l b i n t e s t --==================================================
 SET(TEST_SUITE_NAME "xclbinutil")
@@ -150,7 +154,7 @@ SET(TEST_SUITE_NAME "xclbinutil")
 include (${XRT_SOURCE_DIR}/CMake/unitTestSupport.cmake)
 
 # OpenSSL encryption is only supported on linux
-if(NOT WIN32)
+if(NOT WIN32 AND NOT XRT_SYSTEM_INSTALL)
   # -- Test Signing of the xclbin image using a CER formatted certificate
   xrt_add_test("signing-xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
 
@@ -232,7 +236,7 @@ endif()
 
 find_package(GTest)
 
-if (GTEST_FOUND)
+if (GTEST_FOUND AND NOT XRT_SYSTEM_INSTALL)
   set(UNIT_TEST_NAME "xclbintest")
 
   include_directories(${GTEST_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})

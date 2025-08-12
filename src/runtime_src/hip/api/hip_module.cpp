@@ -7,6 +7,8 @@
 #include "hip/core/stream.h"
 #include "hip/xrt_hip.h"
 
+#include <elfio/elfio.hpp>
+
 namespace xrt::core::hip {
 
 static void
@@ -21,11 +23,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
   throw_invalid_resource_if(!hip_mod, "module associated with function is unloaded");
 
-  // function store module handle of xclbin
-  auto hip_xclbin_mod = std::dynamic_pointer_cast<module_xclbin>(hip_mod);
-  throw_invalid_resource_if(!hip_xclbin_mod, "getting hip module using dynamic pointer cast failed");
-
-  auto hip_func = hip_xclbin_mod->get_function(func_hdl);
+  auto hip_func = hip_mod->get_function(func_hdl);
   throw_invalid_resource_if(!hip_func, "invalid function passed");
 
   // All the RyzenAI kernels run only once, so ignoring grid and block dimensions
@@ -49,18 +47,8 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   auto mod_hdl = reinterpret_cast<module_handle>(hmod);
   auto hip_mod = module_cache.get(mod_hdl);
   throw_invalid_resource_if(!hip_mod, "module not available");
-  // module handle passed should be elf module handle
-  throw_invalid_resource_if(hip_mod->is_xclbin_module(), "invalid module handle passed");
 
-  auto hip_elf_mod = std::dynamic_pointer_cast<module_elf>(hip_mod);
-  throw_invalid_resource_if(!hip_elf_mod, "getting hip module using dynamic pointer cast failed");
-
-  // Get xclbin module corresponding to this elf module
-  auto module_xclbin = hip_elf_mod->get_xclbin_module();
-  throw_invalid_resource_if(!module_cache.count(module_xclbin), "module not available");
-
-  // create function obj and store in map maintained by xclbin module
-  return module_xclbin->add_function(std::make_shared<function>(module_xclbin, hip_elf_mod->get_xrt_module(), std::string(name)));
+  return hip_mod->add_function(std::string{name});
 }
 
 static module_handle
@@ -90,7 +78,6 @@ create_module(const hipModuleData* config)
   // elf load
   auto hip_mod = module_cache.get(reinterpret_cast<module_handle>(config->parent));
   throw_invalid_resource_if(!hip_mod, "module not available");
-  throw_invalid_resource_if(!hip_mod->is_xclbin_module(), "invalid module handle passed");
 
   auto hip_xclbin_mod = std::dynamic_pointer_cast<module_xclbin>(hip_mod);
   throw_invalid_resource_if(!hip_xclbin_mod, "getting hip module using dynamic pointer cast failed");
@@ -107,6 +94,52 @@ create_module(const hipModuleData* config)
     return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->data, config->size));
   }
   throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
+}
+
+
+// Function that estimates ELF size from header
+static size_t
+estimate_elf_size(const void* data)
+{
+  auto bytes = static_cast<const unsigned char*>(data);
+  constexpr std::array<unsigned char, 4> ELF_HEADER_MAGIC = {0x7f, 'E', 'L', 'F'};
+
+  if (bytes[0] != ELF_HEADER_MAGIC[0] || bytes[1] != ELF_HEADER_MAGIC[1] ||
+      bytes[2] != ELF_HEADER_MAGIC[2] || bytes[3] != ELF_HEADER_MAGIC[3])
+    throw std::runtime_error("Invalid ELF magic number");
+
+  if (bytes[4] == ELFIO::ELFCLASS32) {
+    // 32 bit ELF
+    auto header = static_cast<const ELFIO::Elf32_Ehdr*>(data);
+    return std::max(header->e_shoff + static_cast<ELFIO::Elf32_Off>(header->e_shentsize) * header->e_shnum,
+                    header->e_phoff + static_cast<ELFIO::Elf32_Off>(header->e_phentsize) * header->e_phnum);
+  }
+  else if (bytes[4] == ELFIO::ELFCLASS64) {
+    // 64 bit ELF
+    auto header = static_cast<const ELFIO::Elf64_Ehdr*>(data);
+    return std::max(header->e_shoff + static_cast<ELFIO::Elf64_Off>(header->e_shentsize) * header->e_shnum,
+                    header->e_phoff + static_cast<ELFIO::Elf64_Off>(header->e_phentsize) * header->e_phnum);
+  }
+
+  throw std::runtime_error("Unable to calculate ELF size");
+}
+
+static module_handle
+create_full_elf_module(const std::string& fname)
+{
+  auto ctx = get_current_context();
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
+  // create module and store it in module map
+  return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, fname));
+}
+
+static module_handle
+create_full_elf_module(const void* image, size_t size)
+{
+  auto ctx = get_current_context();
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
+  // create module and store it in module map
+  return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, image, size));
 }
 
 static module_handle
@@ -183,10 +216,22 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
   try {
     throw_invalid_resource_if(!module, "module is nullptr");
 
+    // Treat pointer passed has data to full ELF and
+    // try creating full ELF module
+    // if it throws fallback to xclbin + ELF flow
+    xrt::core::hip::module_handle handle = nullptr;
+    try {
+      auto estimated_size = xrt::core::hip::estimate_elf_size(image);
+      handle = xrt::core::hip::create_full_elf_module(image, estimated_size);
+      *module = reinterpret_cast<hipModule_t>(handle);
+      return hipSuccess;
+    }
+    catch (...) { /*do nothing*/ }
+
     // image passed to this call is structure hipModuleData object pointer
     auto config_data = static_cast<const hipModuleData*>(image);
-    auto mod = xrt::core::hip::create_module(config_data);
-    *module = reinterpret_cast<hipModule_t>(mod);
+    handle = xrt::core::hip::create_module(config_data);
+    *module = reinterpret_cast<hipModule_t>(handle);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -221,7 +266,18 @@ hipModuleLoad(hipModule_t* module, const char* fname)
   try {
     throw_invalid_resource_if(!module, "module is nullptr");
 
-    auto handle = xrt::core::hip::create_xclbin_module(std::string{fname});
+    // Treat fname passed is filepath to full ELF and
+    // try creating full ELF module
+    // if it throws fallback to xclbin + ELF flow
+    xrt::core::hip::module_handle handle;
+    try {
+      handle = xrt::core::hip::create_full_elf_module(std::string{fname});
+      *module = reinterpret_cast<hipModule_t>(handle);
+      return hipSuccess;
+    }
+    catch (...) { /*do nothing*/ }
+
+    handle = xrt::core::hip::create_xclbin_module(std::string{fname});
     *module = reinterpret_cast<hipModule_t>(handle);
     return hipSuccess;
   }

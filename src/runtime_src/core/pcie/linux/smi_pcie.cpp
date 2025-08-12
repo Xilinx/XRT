@@ -9,15 +9,23 @@ create_validate_subcommand()
 {
   std::vector<xrt_core::smi::basic_option> validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"aie", "Run AIE PL test", "common"},
     {"aux-connection", "Check if auxiliary power is connected", "common"},
+    {"bist", "Run built-in self test", "common"},
     {"dma", "Run dma test", "common"},
     {"hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
+    {"iops", "Run Input/Output operations per second test", "common"},
     {"m2m", "Run M2M test", "common"},
     {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
     {"p2p", "Run P2P test", "common"},
     {"pcie-link", "Check if PCIE link is active", "common"},
+    {"ps-aie", "Run PS controlled AIE test", "common"},
+    {"ps-iops", "Run IOPS PS test", "common"},
+    {"ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test", "common"},
+    {"ps-verify", "Run 'Hello World' PS kernel test", "common"},
     {"quick", "Only the first 4 tests will be executed", "common"},
     {"sc-version","Check if SC firmware is up-to-date", "common"},
+    {"vcu", "Run VCU test", "common"},
     {"verify", "Run 'Hello World' kernel test", "common"}
   };
 

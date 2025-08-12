@@ -6,10 +6,13 @@
 #include <string>
 #include <vector>
 
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 #ifdef _WIN32
-inline constexpr const char* WRAPPER_LIB = "xrt_wrapper.dll";
+constexpr const char* WRAPPER_LIB = "xrt_wrapper.dll";
 #else
-inline constexpr const char* WRAPPER_LIB = "libxrt_wrapper.so";
+constexpr const char* WRAPPER_LIB = "libxrt_wrapper.so." STR(XRT_ABI_VERSION);
 #endif
 
 namespace xrt::tools::xbtracer {

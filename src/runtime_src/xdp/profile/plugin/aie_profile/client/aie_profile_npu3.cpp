@@ -338,7 +338,7 @@ namespace xdp {
     }
   }
 
-  void AieProfile_NPU3Impl::poll(const uint32_t index, void* handle)
+  void AieProfile_NPU3Impl::poll(const uint32_t index)
   {
     // TODO: polling is not working yet without debug buffer
     return;
@@ -368,7 +368,6 @@ namespace xdp {
       return;
     }
 
-    (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
    
     std::string tranxName = "AieProfilePoll";

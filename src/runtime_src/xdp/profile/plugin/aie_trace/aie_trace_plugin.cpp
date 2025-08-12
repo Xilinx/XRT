@@ -85,22 +85,13 @@ AieTracePluginUnified::~AieTracePluginUnified() {
   AieTracePluginUnified::live = false;
 }
 
-uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle, bool hw_context_flow) {
+uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
   auto itr = handleToAIEData.find(handle);
 
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-#ifdef XDP_CLIENT_BUILD
-  (void)(hw_context_flow);
-  return db->addDevice("win_sysfspath");
-#else
-  if(hw_context_flow)
-    return db->addDevice("ve2_device");  //TODO: Both VE2 and Edge hw_context flow will reach here,
-                                         //      so we need to differentiate them later.
-  else
-    return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id. Edge load device flow.
-#endif
+  return (db->getStaticInfo()).getDeviceContextUniqueId(handle);
 }
 
 void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) {
@@ -133,7 +124,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   if (handleToAIEData.find(handle) != handleToAIEData.end())
     handleToAIEData.erase(handle);
 
-  auto deviceID = getDeviceIDFromHandle(handle, hw_context_flow);
+  auto deviceID = getDeviceIDFromHandle(handle);
 
   // Setting up struct
   auto &AIEData = handleToAIEData[handle];
@@ -145,7 +136,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");  
 #else
-    if(hw_context_flow)
+    if((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
     else
       (db->getStaticInfo()).updateDeviceFromHandle(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
@@ -197,8 +188,14 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         // NOTE: If partition is not used, this value is zero.
         // This is later required for GMIO trace offload.
         uint8_t startColShift = AIEData.metadata->getPartitionOverlayStartCols().front();
-        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn+startColShift,
-                                           gmio.channelNum, gmio.streamId, gmio.burstLength,
+        // Get the column relative to partition.
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis.
+        uint8_t relCol = ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? gmio.shimColumn + startColShift : gmio.shimColumn;
+        (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, relCol, gmio.channelNum,
+                                           gmio.streamId, gmio.burstLength, 
                                            static_cast<uint8_t>(gmio.type));
       }
     }
@@ -218,11 +215,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
 
   if (AIEData.metadata->getRuntimeMetrics()) {
-    std::string configFile = "aie_event_runtime_config.json";
+    std::string configFile = "aie_event_runtime_config_" + std::to_string(deviceID) + ".json";
     configWriter = new AieTraceConfigWriter(configFile.c_str(), deviceID);
     writers.push_back(configWriter);
-    (db->getStaticInfo()).addOpenedFile(configWriter->getcurrentFileName(),
-                                        "AIE_EVENT_RUNTIME_CONFIG");
+    (db->getStaticInfo())
+        .addOpenedFile(configWriter->getcurrentFileName(),
+                       "AIE_EVENT_RUNTIME_CONFIG");
   }
 
   // Add writer for every stream
@@ -298,7 +296,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO, aieTraceBufSize,
       AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(), AIEData.metadata);
 #elif XDP_VE2_BUILD
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
   if(!devInst) {
     xrt_core::message::send(severity_level::warning, "XRT",
       "Unable to get AIE device instance. AIE event trace will not be available.");
@@ -312,7 +310,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       ,
       AIEData.metadata->getNumStreams(), devInst);
 #else
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle));
+  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
   if(!devInst) {
     xrt_core::message::send(severity_level::warning, "XRT",
       "Unable to get AIE device instance. AIE event trace will not be available.");

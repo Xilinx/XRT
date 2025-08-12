@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(xrt++)
 
 include_directories(
@@ -36,6 +36,10 @@ add_compile_options("-DXRT_SOURCE")
 if (NOT WIN32)
 set_source_files_properties(${XRT_XRT_DEVICE_DIR}/hal_static.cpp PROPERTIES
   COMPILE_FLAGS -Wno-unused
+  COMPILE_DEFINITIONS XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
+  )
+set_source_files_properties(${XRT_XRT_DEVICE_DIR}/hal.cpp PROPERTIES
+  COMPILE_DEFINITIONS XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 endif()
 

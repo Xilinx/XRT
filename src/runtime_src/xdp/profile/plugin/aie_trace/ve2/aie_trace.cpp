@@ -233,32 +233,12 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Validitate AIE device and runtime metrics
-   ***************************************************************************/
-  bool AieTrace_VE2Impl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
-  {
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-          "Unable to get AIE device. AIE event trace will not be available.");
-      return false;
-    }
-
-    // Make sure compiler trace option is available as runtime
-    if (!metadata->getRuntimeMetrics()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /****************************************************************************
    * Update device (e.g., after loading xclbin)
    ***************************************************************************/
   void AieTrace_VE2Impl::updateDevice()
   {
-    if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
+    // If runtime metrics are not enabled, do not configure trace
+    if(!metadata->getRuntimeMetrics())
       return;
 
     // Set metrics for counters and trace events
@@ -988,8 +968,14 @@ namespace xdp {
         && interfaceTileTraceFlushLocs.empty())
       return;
 
-    auto handle = metadata->getHandle();
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    if(aieDevInst == nullptr)
+    {
+      std::stringstream msg;
+      msg << "AIE device instance is not available. AIE Trace might be empty/incomplete as "
+          << "flushing won't be performed.";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      return;
+    }
 
     if (aie::isDebugVerbosity()) {
       std::stringstream msg;
@@ -1021,10 +1007,6 @@ namespace xdp {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    if (!aieDevInst)
-      return;
 
     // Only read first timer and assume common time domain across all tiles
     static auto tileMetrics = metadata->getConfigMetrics();
@@ -1054,9 +1036,11 @@ namespace xdp {
   /****************************************************************************
    * Set AIE device instance
    ***************************************************************************/
-  void* AieTrace_VE2Impl::setAieDeviceInst(void* handle) 
+  void* AieTrace_VE2Impl::setAieDeviceInst(void* handle, uint64_t deviceID)
   {
-    void* aieDevInst = (db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceID));
+    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceID));
     return aieDevInst;
   }
+
 }  // namespace xdp
