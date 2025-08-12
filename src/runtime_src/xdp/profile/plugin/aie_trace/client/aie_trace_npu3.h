@@ -53,6 +53,11 @@ namespace xdp {
       std::vector<XAie_Events> configComboEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
                                                  const module_type type, const std::string metricSet, 
                                                  aie_cfg_base& config);
+      void configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
+                             const module_type type, const std::string metricSet);
+      void configEventSelections(const XAie_LocType loc, const module_type type, 
+                                 const std::string metricSet, const uint8_t channel0,
+                                 const uint8_t channel1, aie_cfg_base& config);
       void configEventSelections(const XAie_LocType loc, const module_type type, 
                                  const std::string metricSet, std::vector<uint8_t>& channels,
                                  aie_cfg_base& config);

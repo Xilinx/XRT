@@ -56,6 +56,46 @@ namespace xdp::aie::trace {
                     aie_cfg_base& config);
 
   /**
+   * @brief Configure group events (core modules only)
+   * @param aieDevInst AIE device instance
+   * @param loc        Location of tile
+   * @param mod        Module type (used by driver)
+   * @param type       Module/tile type
+   * @param metricSet  Name of requested metric set
+   */
+  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                         const XAie_ModuleType mod, const module_type type, 
+                         const std::string metricSet);
+
+  /**
+   * @brief Configure event selections for DMA channels
+   * @param aieDevInst AIE device instance
+   * @param loc        Location of tile
+   * @param type       Module/tile type
+   * @param metricSet  Name of requested metric set
+   * @param channel0   First specified channel number
+   * @param channel1   Second specified channel number
+   * @param config     Class used to document configuration
+   */
+  void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                             const module_type type, const std::string metricSet, 
+                             const uint8_t channel0, const uint8_t channel1,
+                             aie_cfg_base& config);
+
+  /**
+   * @brief Configure edge detection events
+   * @param aieDevInst AIE device instance
+   * @param tile       Tile metadata
+   * @param type       Module/tile type
+   * @param metricSet  Name of requested metric set
+   * @param event      Requested event ID
+   * @param channel    Channel number to use for edge events
+   */
+  void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
+                        const module_type type, const std::string metricSet, 
+                        const XAie_Events event, const uint8_t channel = 0);
+
+  /**
    * @brief Configure start of event trace using time delay
    * @param core       Core module in FAL/resource manager
    * @param delay      Requested delay (in AIE clock cycles)
