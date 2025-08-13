@@ -91,6 +91,11 @@ set_target_properties(xrt_coreutil PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   )
 
+if (NOT WIN32)
+  # On linux use xrt_coreutil.a
+  set_target_properties(xrt_coreutil_static PROPERTIES OUTPUT_NAME "xrt_coreutil")
+endif()
+
 ################################################################
 # Define include directories and definitions needed by any target that
 # links with xrt_coreutil
