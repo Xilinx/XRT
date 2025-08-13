@@ -5,6 +5,8 @@
 #define AIE_BASE_UTIL_DOT_H
 
 #include <cstdint>
+#include <string>
+#include <set>
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_base/generations/aie_generations.h"
 
