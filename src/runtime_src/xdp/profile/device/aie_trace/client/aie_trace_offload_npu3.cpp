@@ -3,6 +3,10 @@
 
 #define XDP_PLUGIN_SOURCE
 
+// Guard this file since it redefines a common class
+// TODO: Convert to base and derived classes
+#ifdef XDP_NPU3_BUILD
+
 #include "aie_trace_offload_npu3.h"
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -281,3 +285,5 @@ namespace xdp {
   }
 
 } // namespace xdp
+
+#endif // XDP_NPU3_BUILD
