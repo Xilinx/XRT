@@ -111,6 +111,7 @@ namespace xdp {
     std::mutex appStyleLock;
     std::mutex hwCtxImplUIDMapLock;
     std::mutex aieProfileConfigLock; 
+    mutable std::mutex aieMetadataReaderLock; 
 
     // AIE device (Supported devices only)
     std::function<void (void*)> deallocateAieDevice = nullptr ;
