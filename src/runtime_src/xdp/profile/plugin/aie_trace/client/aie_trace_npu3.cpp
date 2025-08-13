@@ -975,7 +975,7 @@ namespace xdp {
           numMemoryTraceEvents++;
 
           // Configure edge events (as needed)
-          configEdgeEvents(&aieDevInst, tile, type, metricSet, memoryEvents[i], channel0);
+          configEdgeEvents(tile, type, metricSet, memoryEvents[i], channel0);
 
           // Update config file
           uint16_t phyEvent = 0;
