@@ -38,16 +38,26 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   )
 
   file(GLOB AIE_TRACE_COMPONENT_FILES
-    "${OFFLOAD_DIR}/*.h"
-    "${OFFLOAD_DIR}/*.cpp"
     "${DEVICE_DIR}/*.h"
     "${DEVICE_DIR}/*.cpp"
     "${IMPL_DIR}/*.h"
     "${IMPL_DIR}/*.cpp"
   )
 
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    file(GLOB AIE_TRACE_OFFLOAD_FILES
+      "${OFFLOAD_DIR}/aie_trace_offload_npu3.h"
+      "${OFFLOAD_DIR}/aie_trace_offload_npu3.cpp"
+    )
+  else()
+    file(GLOB AIE_TRACE_OFFLOAD_FILES
+      "${OFFLOAD_DIR}/aie_trace_offload_client.h"
+      "${OFFLOAD_DIR}/aie_trace_offload_client.cpp"
+    )
+  endif()
+
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} 
-              ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+              ${AIE_TRACE_OFFLOAD_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE 
                         xdp_core xrt_coreutil xaiengine aiebu_library_objects)

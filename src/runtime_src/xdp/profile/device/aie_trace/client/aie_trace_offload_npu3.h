@@ -4,10 +4,6 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_NPU3_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_NPU3_H_
 
-// Guard this file since it redefines common classes and structs
-// TODO: Convert to base and derived classes
-#ifdef XDP_NPU3_BUILD
-
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -136,6 +132,4 @@ class AIETraceOffload
 
 }
 
-#endif // XDP_NPU3_BUILD
-
-#endif // XDP_PROFILE_AIE_TRACE_OFFLOAD_NPU3_H_
+#endif
