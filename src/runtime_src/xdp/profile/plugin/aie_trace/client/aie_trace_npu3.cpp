@@ -597,11 +597,11 @@ namespace xdp {
       return;
 
     // Set masks for group events
-    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE, 
+    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE,
                            GROUP_CORE_FUNCTIONS_MASK);
-    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_STALL_CORE, 
+    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_STALL_CORE,
                            GROUP_CORE_STALL_MASK);
-    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_STREAM_SWITCH_CORE, 
+    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,
                            GROUP_STREAM_SWITCH_RUNNING_MASK);
   }
 
@@ -864,7 +864,7 @@ namespace xdp {
 
         // Configure combo & group events (e.g., to monitor DMA channels)
         auto comboEvents = configComboEvents(loc, mod, type, metricSet, cfgTile->core_trace_config);
-        configGroupEvents(&aieDevInst, loc, mod, type, metricSet);
+        configGroupEvents(loc, mod, type, metricSet);
 
         // Set end event for trace capture
         // NOTE: This needs to be done first
