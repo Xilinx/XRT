@@ -5,6 +5,7 @@
 
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/plugin/aie_base/aie_base_util.h"
 
 #include <cmath>
 #include <cstring>
@@ -108,14 +109,14 @@ namespace xdp::aie::profile {
       {METRIC_LATENCY,              {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
-    if (hwGen == 1) {
+    if (aie::isAIE1(hwGen)) {
       eventSets["input_stalls"]   = {XAIE_EVENT_PORT_STALLED_0_PL, 
                                      XAIE_EVENT_PORT_IDLE_0_PL};
       eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
                                      XAIE_EVENT_PORT_IDLE_0_PL};
     }
-#ifdef XDP_VE2_BUILD
-    else if (hwGen == 5) {
+#ifndef XDP_CLIENT_BUILD
+    else if (aie::isAIE2ps(hwGen)) {
       eventSets["input_stalls"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                      XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL};
       eventSets["output_stalls"]  = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
@@ -384,25 +385,31 @@ namespace xdp::aie::profile {
     // Modify events based on channel number
     if (channel > 0) {
       // Interface tiles
-#ifdef XDP_VE2_BUILD
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
-#else
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,              XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,       XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,         XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+#ifndef XDP_CLIENT_BUILD
+      // Applicable only for VE2 ZOCL and XDNA builds
+      if (aie::isAIE2ps(hwGen)) {
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
+      }
 #endif
+      // Applicable for Edge Versal and client builds
+      // NOTE: NPU3 build need to be handled separately if required
+      if (!aie::isAIE2ps(hwGen)) {
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,              XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,       XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,         XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+      }
     }
   }
 
