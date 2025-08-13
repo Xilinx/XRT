@@ -136,6 +136,7 @@ enum class key_type
   aie_tiles_stats,
   aie_tiles_status_info,
   aie_partition_info,
+  context_health_info,
 
   misc_telemetry,
   aie_telemetry,
@@ -1979,6 +1980,29 @@ struct aie_partition_info : request
         return "N/A";
     }
   }
+};
+
+// Retrieves the context health info for the device
+// This provides detailed health information for hardware contexts
+// including transaction operation indices, program counters, and error details
+struct context_health_info : request
+{
+  struct data
+  {
+    uint32_t context_id;
+    uint32_t txn_op_idx;
+    uint32_t ctx_pc;
+    uint32_t fatal_error_type;
+    uint32_t fatal_error_exception_type;
+    uint32_t fatal_error_exception_pc;
+    uint32_t fatal_error_app_module;
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::context_health_info;
+
+  virtual std::any
+  get(const device* device) const override = 0;
 };
 
 // Retrieves the AIE telemetry info for the device
