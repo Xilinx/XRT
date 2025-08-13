@@ -66,15 +66,14 @@ namespace xdp {
 #else
     directory = xrt_core::config::get_profiling_directory() ;
 
-    if (!useDir || directory == "") {
-      // If no directory was specified, just use the file in
-      //  the working directory
+    if (!useDir || !isValidDirectory(directory)) {
+      // the directory is not valid, just use the file in the working directory
       fout.open(filename);
       return;
     }
-
-    // The directory was specified.  Try to create it (regardless of if
-    // it exists already or not).
+    
+    // the specified directory is valid, try to create it 
+    // regardless of if it exists already or not
     constexpr mode_t rwx_all = 0777;
     int result = mkdir(directory.c_str(), rwx_all);
 
@@ -104,11 +103,78 @@ namespace xdp {
       currentFileName = filename;
       fout.open(currentFileName);
     }
+
+
 #endif
   }
 
   VPWriter::~VPWriter()
   {
+  }
+
+  // we need to ensure that they path specified is a valid path 
+  // ie, not an absolute path, or other invalid paths 
+
+  bool VPWriter::isValidDirectory(std::string& directory)
+  {
+    // specified directory was empty or whitespace 
+    size_t start = directory.find_first_not_of(" \t\r\n\v");
+    if (directory.empty() || start == std::string::npos) {
+      try {
+        std::string msg = "The user specified profiling directory is empty. Please specify a valid directory.";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      } catch (...) {} // if we catch, just ignore and move on
+      return false;
+    }
+  
+    size_t end = directory.find_last_not_of(" \t\r\n\v");
+    directory = directory.substr(start, end - start + 1);
+
+    // specified directory was an absolute path 
+    if (directory[0] == separator) {
+      try {
+        std::string msg = "The user specified profiling directory is an absolute path. Please specify a relative path.";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      } catch (...) {} // if we catch, just ignore and move on
+      return false;
+    }
+    // specified directory was based off home directory 
+    else if (directory[0] == '~') {
+      try {
+        std::string msg = "The user specified profiling directory is based off the home directory. Please specify a relative path.";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      } catch (...) {} 
+      return false;
+    } 
+    // check for invalid characters in the path 
+    const std::string invalidChars = "<>:\"/\\|?*";
+    else if (directory.find_first_of(invalidChars) != std::string::npos) {
+      try {
+        std::string msg = "The user specified profiling directory contains invalid characters: " + invalidChars;
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      } catch (...) {} 
+      return false;
+    }
+    // specified directory was too long
+    else if (directory.length() > 255) {
+      try {
+        std::string msg = "The user specified profiling directory exceeds the character limit. Please provide a shorter path";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      } catch (...) {}
+      return false;
+    }
+    // specified directory included a trailing slash, we can fix that
+    else if (directory.back() == separator) {
+      directory.pop_back();
+      if (directory.empty()) {
+        return false;
+      }
+    }
+    // security against path traversal attacks? 
+    // else if (path.find("../") != std::string::npos || path.find('\0') != std::string::npos)) {
+    //   return false;
+    // }
+    return true;
   }
 
   // After write is called, if we are doing continuous offload

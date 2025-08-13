@@ -68,6 +68,9 @@ namespace xdp {
     inline const char* getRawBasename() { return basename.c_str() ; } 
     XDP_CORE_EXPORT virtual void switchFiles() ;
     XDP_CORE_EXPORT virtual void refreshFile() ;
+
+    bool isValidDirectory(std::string& directory);
+
   public:
     XDP_CORE_EXPORT VPWriter(const char* filename) ;
     XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst,
@@ -86,6 +89,7 @@ namespace xdp {
     virtual bool isSameDevice(void* /*handle*/) { return false ; }
 
     virtual std::string getDirectory() { return directory ; }
+
   } ;
 
 }
