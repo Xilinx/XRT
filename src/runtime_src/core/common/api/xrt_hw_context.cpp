@@ -102,15 +102,19 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // sync the log buffer
       m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       auto num_uc = m_hdl->get_num_uc();
+      // split buffer equally among available columns
       auto uc_buf_size = m_uc_log_bo.size() / num_uc;
 
       // dump the log buffer for each uc in a separate file
-      for (auto i = 0; i < num_uc; i++) {
-        auto file_name = "uc_log" + std::to_string(i) + ".txt";
+      for (size_t i = 0; i < num_uc; i++) {
+        auto file_name = "uc_log_" + std::to_string(m_hdl->get_slotidx()) + "_" + std::to_string(i) + ".txt";
         dump_bo(m_uc_log_bo, file_name, (i * uc_buf_size), uc_buf_size);
       }
     }
-    catch (...) { /*do nothing*/ }
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              std::string{"Failed to dump UC log buffer : "} + e.what());
+    }
   }
 
 public:
@@ -155,8 +159,6 @@ public:
 
   // Initializes uc log buffer, configures it by splitting the buffer
   // equally among available columns
-  // This API should be called from xrt_hw_context because shared_from_this works
-  // after hw_ctx_impl construction is finished
   // Made this API public so that it can be called from xrt::hw_context constructor
   void
   initialize_uc_log_buffer()
@@ -170,7 +172,7 @@ public:
       if (!m_hdl)
         return; // hw ctx not initialized
 
-      m_uc_log_bo = xrt_core::bo_int::create_bo(xrt::hw_context(shared_from_this()),
+      m_uc_log_bo = xrt_core::bo_int::create_bo(m_core_device,
                                                 uc_log_buf_size,
                                                 xrt_core::bo_int::use_type::log);
 
@@ -178,11 +180,12 @@ public:
       auto num_uc = m_hdl->get_num_uc();
       auto uc_buf_size = uc_log_buf_size / num_uc;
 
+      // create map with UC index and log buffer size
       std::map<uint32_t, size_t> uc_buf_map;
-      for (auto i = 0; i < num_uc; ++i)
+      for (size_t i = 0; i < num_uc; ++i)
         uc_buf_map[i] = uc_buf_size;
 
-      xrt_core::bo_int::config_bo(m_uc_log_bo, uc_buf_map); // configure the log buffer
+      xrt_core::bo_int::config_bo(m_uc_log_bo, uc_buf_map, m_hdl.get()); // configure the log buffer
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
                               "UC log buffer initialized successfully");

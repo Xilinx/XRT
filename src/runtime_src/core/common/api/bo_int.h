@@ -33,6 +33,16 @@ enum class use_type {
   uc_debug = XRT_BO_USE_UC_DEBUG // For microblaze debug data
 };
 
+// create_bo() - Create a buffer object within a device for specific use case
+//
+// Allocates a buffer object in the given device. All the public xrt::bo constructors
+// doesnt use 64 bit flags. So this function acts as an extension to create buffer
+// with specific use flag (debug/dtrace/log). This API is useful for creating buffers
+// that outlive hw context.
+XRT_CORE_COMMON_EXPORT
+xrt::bo
+create_bo(std::shared_ptr<xrt_core::device> m_core_device, size_t sz, use_type type);
+
 // create_bo() - Create a buffer object within a hwctx for specific use case
 //
 // Allocates a buffer object within a hwctx. All the public xrt::bo constructors
@@ -47,11 +57,13 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
 //
 // Configure the buffer object to be used for debug, dtrace, log, debug queue
 // purpose based on buffer type. The buffer object is tied to a slot using
-// the hw ctx that is used to create the bo. A map of uc or column index and
+// the hw ctx passed to this call. If the hwctx passed in null then hwctx that is
+// used to create the bo is used. A map of uc or column index and
 // buffer size is used to split the buffer among the columns in the partition/slot.
 XRT_CORE_COMMON_EXPORT
 void
-config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes);
+config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
+          const xrt_core::hwctx_handle* ctx_handle = nullptr);
 
 // unconfig_bo() - Unconfigure the buffer object configured earlier
 //
@@ -60,7 +72,7 @@ config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes);
 // destruction
 XRT_CORE_COMMON_EXPORT
 void
-unconfig_bo(const xrt::bo& bo);
+unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle = nullptr);
 
 } // bo_int, xrt_core
 

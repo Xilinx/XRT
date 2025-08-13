@@ -1699,6 +1699,22 @@ get_offset(const xrt::bo& bo)
 }
 
 xrt::bo
+create_bo(std::shared_ptr<xrt_core::device> m_core_device, size_t sz, use_type type)
+{
+  xcl_bo_flags flags {0};  // see xrt_mem.h
+  flags.flags = XRT_BO_FLAGS_CACHEABLE;
+  flags.access = XRT_BO_ACCESS_LOCAL;
+  flags.dir = XRT_BO_ACCESS_READ_WRITE;
+  flags.use = static_cast<uint32_t>(type);
+
+  // While the memory group should be ignored (inferred) for
+  // debug / trace / log buffers, it is still passed in as a default
+  // group 1 with no implied correlation to xclbin connectivity
+  // or memory group.
+  return xrt::bo{alloc(device_type{m_core_device}, sz, flags.all, 1)};
+}
+
+xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
@@ -1715,19 +1731,22 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 }
 
 void
-config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes)
+config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
+          const xrt_core::hwctx_handle* ctx_handle)
 {
   auto bo_impl = bo.get_handle();
-  auto ctx = bo_impl->get_hwctx_handle();
-  bo_impl->get_handle()->config(ctx, buf_sizes);
+  // use the ctx handle passed to this call
+  // else use ctx handle used to create this buffer object
+  ctx_handle ? bo_impl->get_handle()->config(ctx_handle, buf_sizes)
+             : bo_impl->get_handle()->config(bo_impl->get_hwctx_handle(), buf_sizes);
 }
 
 void
-unconfig_bo(const xrt::bo& bo)
+unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle)
 {
   auto bo_impl = bo.get_handle();
-  auto ctx = bo_impl->get_hwctx_handle();
-  bo_impl->get_handle()->unconfig(ctx);
+  ctx_handle ? bo_impl->get_handle()->unconfig(ctx_handle)
+             : bo_impl->get_handle()->unconfig(bo_impl->get_hwctx_handle());
 }
 
 } // xrt_core::bo_int
