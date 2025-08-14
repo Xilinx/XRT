@@ -9,7 +9,7 @@
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
-#include "xdp/profile/device/common/npu3_transaction.h"
+#include "xdp/profile/device/common/npu3/npu3_transaction.h"
 
 extern "C" {
   #include <xaiengine.h>

@@ -32,7 +32,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
-  file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
+  file(GLOB AIE_DEVICE_COMMON_FILES
     "${PROFILE_DIR}/device/common/*.h"
     "${PROFILE_DIR}/device/common/*.cpp"
   )
@@ -57,7 +57,12 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   endif()
 
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} 
-              ${AIE_TRACE_OFFLOAD_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+              ${AIE_TRACE_OFFLOAD_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DEVICE_COMMON_FILES})
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    file(GLOB AIE_DEVICE_NPU3_FILES "${PROFILE_DIR}/device/common/npu3/*")
+    add_library(xdp_aie_trace_plugin MODULE ${AIE_DEVICE_NPU3_FILES})
+  endif()
+
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE 
                         xdp_core xrt_coreutil xaiengine aiebu_library_objects)

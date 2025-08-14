@@ -9,7 +9,7 @@
 
 #include "xdp/config.h"
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/device/common/npu3_transaction.h"
+#include "xdp/profile/device/common/npu3/npu3_transaction.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 #include <thread>

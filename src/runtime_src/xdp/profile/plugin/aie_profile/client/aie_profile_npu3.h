@@ -10,7 +10,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
-#include "xdp/profile/device/common/npu3_transaction.h"
+#include "xdp/profile/device/common/npu3/npu3_transaction.h"
 #include "xdp/profile/plugin/aie_base/generations/npu3_registers.h"
 
 extern "C" {
