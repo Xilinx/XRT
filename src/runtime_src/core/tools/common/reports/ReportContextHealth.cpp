@@ -6,90 +6,21 @@
 #include "ReportContextHealth.h"
 #include "core/common/query_requests.h"
 #include "core/common/time.h"
-#include "tools/common/ReportWatchMode.h"
+#include "tools/common/SmiWatchMode.h"
+#include "tools/common/Table2D.h"
 
 // 3rd Party Library - Include Files
+#include <algorithm>
 #include <boost/format.hpp>
-#include <vector>
 #include <iomanip>
 #include <sstream>
-#include <algorithm>
+#include <vector>
 
 using bpt = boost::property_tree::ptree;
 
-// Table layout configuration for context health report
-struct TableColumn {
-  std::string header;
-  int width;
-};
-
-static const std::vector<TableColumn>& getContextHealthColumns() {
-  static const std::vector<TableColumn> context_health_columns = {
-    {"Context ID",           12},
-    {"Txn Op Idx",           12},
-    {"Ctx PC",               12},
-    {"Fatal Err Type",       16},
-    {"Fatal Err Ex Type",    18},
-    {"Fatal Err Ex PC",      16},
-    {"Fatal App Module",     16}
-  };
-  return context_health_columns;
-}
-
-static void generate_table_header(std::stringstream& ss) {
-  ss << "  Context Health Information:\n";
-  
-  const auto& columns = getContextHealthColumns();
-  
-  // Generate single header row
-  ss << "    |";
-  for (const auto& col : columns) {
-    ss << std::left << std::setw(col.width - 1) << col.header << "|";
-  }
-  ss << "\n";
-  
-  // Generate separator line
-  ss << "    |";
-  for (const auto& col : columns) {
-    ss << std::string(col.width - 1, '=') << "|";
-  }
-  ss << "\n";
-}
-
-// Helper structure to hold context data for table generation
-struct ContextData {
-  uint32_t context_id;
-  uint32_t txn_op_idx;
-  uint32_t ctx_pc;
-  uint32_t fatal_error_type;
-  uint32_t fatal_error_exception_type;
-  uint32_t fatal_error_exception_pc;
-  uint32_t fatal_error_app_module;
-};
-
-static void generate_context_data_row(std::stringstream& ss, const ContextData& data) {
-  const auto& columns = getContextHealthColumns();
-  
-  // Single row with all data
-  ss << "    |";
-  ss << std::left << std::setw(columns[0].width - 1) << data.context_id << "|";
-  ss << std::left << std::setw(columns[1].width - 1) << data.txn_op_idx << "|";
-  ss << std::left << std::setw(columns[2].width - 1) << (boost::format("0x%x") % data.ctx_pc).str() << "|";
-  ss << std::left << std::setw(columns[3].width - 1) << data.fatal_error_type << "|";
-  ss << std::left << std::setw(columns[4].width - 1) << data.fatal_error_exception_type << "|";
-  ss << std::left << std::setw(columns[5].width - 1) << (boost::format("0x%x") % data.fatal_error_exception_pc).str() << "|"; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-  ss << std::left << std::setw(columns[6].width - 1) << data.fatal_error_app_module << "|\n"; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-  
-  // Separator line
-  ss << "    |";
-  for (const auto& col : columns) {
-    ss << std::string(col.width - 1, '-') << "|";
-  }
-  ss << "\n";
-}
-
 void
-ReportContextHealth::getPropertyTreeInternal(const xrt_core::device* dev,
+ReportContextHealth::
+getPropertyTreeInternal(const xrt_core::device* dev,
                                             bpt& pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
@@ -98,7 +29,8 @@ ReportContextHealth::getPropertyTreeInternal(const xrt_core::device* dev,
 }
 
 void
-ReportContextHealth::getPropertyTree20202(const xrt_core::device* dev,
+ReportContextHealth::
+getPropertyTree20202(const xrt_core::device* dev,
                                          bpt& pt) const
 {
   bpt context_health_pt{};
@@ -110,7 +42,6 @@ ReportContextHealth::getPropertyTree20202(const xrt_core::device* dev,
     bpt contexts_array{};
     for (const auto& context : context_health_data) {
       bpt context_pt;
-      context_pt.put("context_id", context.context_id);
       context_pt.put("txn_op_idx", context.txn_op_idx);
       context_pt.put("ctx_pc", context.ctx_pc);
       context_pt.put("fatal_error_type", context.fatal_error_type);
@@ -121,7 +52,8 @@ ReportContextHealth::getPropertyTree20202(const xrt_core::device* dev,
     }
     context_health_pt.add_child("contexts", contexts_array);
     context_health_pt.put("context_count", context_health_data.size());
-  } catch (const std::exception& e) {
+  } 
+  catch (const std::exception& e) {
     context_health_pt.put("context_count", 0);
     context_health_pt.put("error", e.what());
   }
@@ -131,13 +63,16 @@ ReportContextHealth::getPropertyTree20202(const xrt_core::device* dev,
 }
 
 // Helper function to parse context IDs from elements_filter
-static std::vector<uint32_t> parse_context_ids(const std::vector<std::string>& elements_filter) {
+static std::vector<uint32_t> 
+parse_context_ids(const std::vector<std::string>& elements_filter) {
   std::vector<uint32_t> context_ids;
+  std::stringstream ctx_stream;
   
   for (const auto& filter : elements_filter) {
     if (filter.find("ctx_id=") == 0) {
       std::string ctx_ids_str = filter.substr(7); // // NOLINT(cppcoreguidelines-avoid-magic-numbers) 
-      std::stringstream ctx_stream(ctx_ids_str);
+      ctx_stream.str(ctx_ids_str);
+      ctx_stream.clear(); // Clear error flags
       std::string ctx_id_token;
       
       // Parse comma-separated context IDs
@@ -145,7 +80,8 @@ static std::vector<uint32_t> parse_context_ids(const std::vector<std::string>& e
         try {
           uint32_t ctx_id = std::stoul(ctx_id_token);
           context_ids.push_back(ctx_id);
-        } catch (const std::exception&) {
+        } 
+        catch (const std::exception&) {
           // Invalid ctx_id format, skip this token
         }
       }
@@ -179,24 +115,35 @@ generate_context_health_report(const xrt_core::device* dev, const std::vector<st
       return ss.str();
     }
 
-    // Generate table with structured headers
-    generate_table_header(ss);
+    // Create Table2D with headers
+    const std::vector<Table2D::HeaderData> table_headers = {
+      {"Txn Op Idx",           Table2D::Justification::left},
+      {"Ctx PC",               Table2D::Justification::left},
+      {"Fatal Err Type",       Table2D::Justification::left},
+      {"Fatal Err Ex Type",    Table2D::Justification::left},
+      {"Fatal Err Ex PC",      Table2D::Justification::left},
+      {"Fatal App Module",     Table2D::Justification::left}
+    };
+    Table2D context_table(table_headers);
     
+    // Add data rows
     for (const auto& context : context_health_data) {
-      // Generate structured data row for all contexts
-      ContextData data{
-        context.context_id,
-        context.txn_op_idx,
-        context.ctx_pc,
-        context.fatal_error_type,
-        context.fatal_error_exception_type,
-        context.fatal_error_exception_pc,
-        context.fatal_error_app_module
+      const std::vector<std::string> entry_data = {
+        (boost::format("0x%x") % context.txn_op_idx).str(),
+        (boost::format("0x%x") % context.ctx_pc).str(),
+        std::to_string(context.fatal_error_type),
+        std::to_string(context.fatal_error_exception_type),
+        (boost::format("0x%x") % context.fatal_error_exception_pc).str(),
+        std::to_string(context.fatal_error_app_module)
       };
-      generate_context_data_row(ss, data);
+      context_table.addEntry(entry_data);
     }
 
-  } catch (const std::exception& e) {
+    ss << "  Context Health Information:\n";
+    ss << context_table.toString("    ");
+
+  } 
+  catch (const std::exception& e) {
     ss << "Error retrieving context health data: " << e.what() << "\n";
   }
 
@@ -204,20 +151,21 @@ generate_context_health_report(const xrt_core::device* dev, const std::vector<st
 }
 
 void
-ReportContextHealth::writeReport(const xrt_core::device* device,
+ReportContextHealth::
+writeReport(const xrt_core::device* device,
                                 const bpt& /*pt*/,
                                 const std::vector<std::string>& elements_filter,
                                 std::ostream& output) const
 {
   // Check for watch mode
-  if (report_watch_mode::parse_watch_mode_options(elements_filter)) {
+  if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
     auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
       return generate_context_health_report(dev, filters, true); // include timestamp for watch mode
     };
     
-    report_watch_mode::run_watch_mode(device, elements_filter, output, 
-                                     report_generator, "Context Health");
+    smi_watch_mode::run_watch_mode(device, elements_filter, output, 
+                                  report_generator, "Context Health");
     return;
   }
   

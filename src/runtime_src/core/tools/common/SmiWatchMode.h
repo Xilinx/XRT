@@ -4,13 +4,13 @@
 #pragma once
 
 // Please keep external include file dependencies to a minimum
-#include <vector>
-#include <string>
 #include <functional>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace xrt_core {
-  class device;
+class device;
 }
 
 /**
@@ -26,15 +26,15 @@ namespace xrt_core {
  * 
  * Usage Example:
  * @code
- * if (report_watch_mode::parse_watch_mode_options(elements_filter)) {
+ * if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
  *   auto generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) {
  *     return my_report_function(dev, filters);
  *   };
- *   report_watch_mode::run_watch_mode(device, elements_filter, std::cout, generator, "My Report");
+ *   smi_watch_mode::run_watch_mode(device, elements_filter, std::cout, generator, "My Report");
  * }
  * @endcode
  */
-class report_watch_mode {
+class smi_watch_mode {
 public:
   /**
    * @brief Function type for generating report content
@@ -66,7 +66,8 @@ public:
    * @note This function only checks for watch mode presence, 
    *       it does not validate or parse other filter options
    */
-  static bool parse_watch_mode_options(const std::vector<std::string>& elements_filter);
+  static bool 
+  parse_watch_mode_options(const std::vector<std::string>& elements_filter);
 
   /**
    * @brief Run watch mode with the provided report generator
@@ -89,7 +90,8 @@ public:
    * @note This function blocks until user interrupts with Ctrl+C
    * @note Thread-safe signal handling using atomic variables
    */
-  static void run_watch_mode(const xrt_core::device* device,
+  static void 
+  run_watch_mode(const xrt_core::device* device,
                             const std::vector<std::string>& elements_filter,
                             std::ostream& output,
                             const ReportGenerator& report_generator,
@@ -111,30 +113,6 @@ public:
    * @note The returned vector may be smaller than the input
    * @note Original vector is not modified (returns new vector)
    */
-  static std::vector<std::string> filter_out_watch_options(const std::vector<std::string>& elements_filter);
-
-private:
-  /**
-   * @brief Set up SIGINT signal handler for watch mode interruption
-   * 
-   * - Saves the current SIGINT handler for restoration later
-   * - Installs custom handler that sets atomic interrupt flag
-   * - Uses thread-safe signal handling compatible with XRT patterns
-   * - Only installs once (subsequent calls are ignored)
-   * 
-   * @note Must be paired with restore_signal_handler() call
-   * @note Uses standard signal() function for cross-platform compatibility
-   */
-  static void setup_signal_handler();
-
-  /**
-   * @brief Restore the original SIGINT signal handler
-   * 
-   * - Restores the signal handler that was active before setup_signal_handler()
-   * - Clears internal state flags
-   * - Safe to call multiple times or without prior setup
-   * 
-   * @note Should be called before exiting watch mode
-   */
-  static void restore_signal_handler();
+  static std::vector<std::string> 
+  filter_out_watch_options(const std::vector<std::string>& elements_filter);
 };

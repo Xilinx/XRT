@@ -108,7 +108,7 @@ public:
    * - "ctx_id=<id>" - Filter to show only specific context ID
    * - "watch" - Enable real-time watch mode with 1-second updates
    * 
-   * @note Integrates with report_watch_mode for real-time monitoring
+   * @note Integrates with smi_watch_mode for real-time monitoring
    * @note Thread-safe implementation for watch mode usage
    */
   void writeReport(const xrt_core::device* device, 
