@@ -254,8 +254,8 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
     }
-    else if (aie::isAIE2ps(hwGen)) {
 #ifndef XDP_CLIENT_BUILD
+    else if (aie::isAIE2ps(hwGen)) {
       eventSets["input_ports_details"] = {
           XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
@@ -264,8 +264,8 @@ namespace xdp::aie::trace {
           XAIE_EVENT_NOC0_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
-#endif
     }
+#endif
     else if (aie::isNPU3(hwGen)) {
 #ifdef XDP_NPU3_BUILD
       eventSets["input_ports_details"] = {
@@ -305,7 +305,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_MM2DM_START_TASK_UC,                XAIE_EVENT_DMA_MM2DM_FINISHED_BD_UC,
 	        XAIE_EVENT_DMA_MM2DM_FINISHED_TASK_UC,             XAIE_EVENT_DMA_MM2DM_LOCAL_MEMORY_STARVATION_UC,
 	        XAIE_EVENT_DMA_MM2DM_REMOTE_MEMORY_BACKPRESSURE_UC};
-      }
+    }
 #elif XDP_NPU3_BUILD
       eventSets["uc_axis"] = {
           XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,            XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
@@ -480,8 +480,8 @@ namespace xdp::aie::trace {
     // Check type to minimize replacements
     if (aie::isInputSet(type, metricSet)) {
       // Input or MM2S
-#ifndef XDP_CLIENT_BUILD
       if (aie::isAIE2ps(hwGen)) {
+#ifndef XDP_CLIENT_BUILD
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_1_START_TASK_PL);
         std::replace(events.begin(), events.end(), 
@@ -494,11 +494,10 @@ namespace xdp::aie::trace {
             XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
-      }
 #endif
-      // Applicable for Edge Versal and client builds
-      // NOTE: NPU3 build need to be handled separately if required
-      if (!aie::isAIE2ps(hwGen)) {
+      } else {
+        // Applicable for Edge Versal and client builds
+        // NOTE: NPU3 build need to be handled separately if required
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,               XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
         std::replace(events.begin(), events.end(), 
@@ -515,8 +514,8 @@ namespace xdp::aie::trace {
     }
     else {
       // Output or S2MM
-#ifndef XDP_CLIENT_BUILD
       if (aie::isAIE2ps(hwGen)) {
+#ifndef XDP_CLIENT_BUILD
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_S2MM_1_START_TASK_PL);
         std::replace(events.begin(), events.end(), 
@@ -529,11 +528,10 @@ namespace xdp::aie::trace {
             XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_NOC0_DMA_S2MM_1_STREAM_STARVATION_PL);
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-      }
 #endif
+      } else {
       // Applicable for Edge Versal and client builds
       // NOTE: NPU3 build need to be handled separately if required
-      if (!aie::isAIE2ps(hwGen)) {
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,               XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
         std::replace(events.begin(), events.end(), 
