@@ -756,12 +756,12 @@ namespace xdp::aie::profile {
     if (!xdp::aie::isMicroSupported(hwGen))
       return;
 
-    uint32_t val;
+    uint32_t privileged;
     static bool showWarning = true;
     auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
-    XAie_Read32(aieDevInst, tileOffset + UC_MEMORY_PRIVILEGED, &val);
+    XAie_Read32(aieDevInst, tileOffset + UC_MEMORY_PRIVILEGED, &privileged);
 
-    if (val) {
+    if (privileged) {
       if (showWarning) {
         xrt_core::message::send(severity_level::warning, "XRT", 
           "Unable to read MDM counters since debug port is privileged.");
