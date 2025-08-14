@@ -115,7 +115,7 @@ namespace xdp::aie::profile {
       eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
                                      XAIE_EVENT_PORT_IDLE_0_PL};
     }
-#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
+#ifndef XDP_CLIENT_BUILD
     else if (aie::isAIE2ps(hwGen)) {
       eventSets["input_stalls"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                      XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL};
@@ -385,7 +385,7 @@ namespace xdp::aie::profile {
     // Modify events based on channel number
     if (channel > 0) {
       // Interface tiles
-#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
+#ifndef XDP_CLIENT_BUILD
       // Applicable only for VE2 ZOCL and XDNA builds
       if (aie::isAIE2ps(hwGen)) {
         std::replace(events.begin(), events.end(), 
