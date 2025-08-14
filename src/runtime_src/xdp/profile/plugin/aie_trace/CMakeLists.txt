@@ -40,6 +40,8 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     file(GLOB AIE_TRACE_COMPONENT_FILES
       "${IMPL_DIR}/aie_trace_npu3.h"
       "${IMPL_DIR}/aie_trace_npu3.cpp"
+      "${IMPL_DIR}/aie_trace.h"
+      "${IMPL_DIR}/aie_trace.cpp"
     )
     file(GLOB AIE_TRACE_OFFLOAD_FILES
       "${OFFLOAD_DIR}/aie_trace_offload_npu3.h"

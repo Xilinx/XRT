@@ -756,7 +756,7 @@ namespace xdp::aie::profile {
     if (!xdp::aie::isMicroSupported(hwGen))
       return;
 
-    uint32_t privileged;
+    uint32_t privileged = 0;
     static bool showWarning = true;
     auto tileOffset = XAie_GetTileAddr(aieDevInst, row, col);
     XAie_Read32(aieDevInst, tileOffset + UC_MEMORY_PRIVILEGED, &privileged);
