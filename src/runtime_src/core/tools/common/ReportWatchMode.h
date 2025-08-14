@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __report_watch_mode_h_
-#define __report_watch_mode_h_
+#pragma once
 
 // Please keep external include file dependencies to a minimum
 #include <vector>
@@ -139,5 +138,3 @@ private:
    */
   static void restore_signal_handler();
 };
-
-#endif

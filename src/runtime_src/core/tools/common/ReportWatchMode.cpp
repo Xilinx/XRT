@@ -25,7 +25,6 @@ namespace {
 
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   bool g_signal_handler_set = false;
-  constexpr int MILLISECONDS_PER_SECOND = 1000;
 
 void watch_signal_handler(int signal) {
   if (signal == SIGINT) {
@@ -131,7 +130,7 @@ void
 report_watch_mode::restore_signal_handler()
 {
   if (g_signal_handler_set) {
-    signal(SIGINT, g_old_signal_handler);
+    static_cast<void>(signal(SIGINT, g_old_signal_handler));
     g_signal_handler_set = false;
   }
 }

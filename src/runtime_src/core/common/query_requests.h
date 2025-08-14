@@ -2001,7 +2001,7 @@ struct context_health_info : request
   using result_type = std::vector<struct data>;
   static const key_type key = key_type::context_health_info;
 
-  virtual std::any
+  std::any
   get(const device* device) const override = 0;
 };
 

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __report_context_health_h_
-#define __report_context_health_h_
+#pragma once
 
 // Please keep external include file dependencies to a minimum
 #include "tools/common/Report.h"
@@ -79,7 +78,8 @@ public:
    * @note Handles exceptions internally and reports errors in property tree
    * @note Compatible with JSON serialization for xrt-smi --format JSON
    */
-  virtual void getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const;
+  void 
+  getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
 
   /**
    * @brief Get property tree representation for XRT 2020.2+ compatibility
@@ -90,7 +90,8 @@ public:
    * @note May have slightly different property tree structure for compatibility
    * @note Falls back to getPropertyTreeInternal implementation if no differences
    */
-  virtual void getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const;
+  void 
+  getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
 
   /**
    * @brief Write formatted context health report to output stream
@@ -110,10 +111,8 @@ public:
    * @note Integrates with report_watch_mode for real-time monitoring
    * @note Thread-safe implementation for watch mode usage
    */
-  virtual void writeReport(const xrt_core::device* device, 
+  void writeReport(const xrt_core::device* device, 
                           const boost::property_tree::ptree& pt, 
                           const std::vector<std::string>& elements_filter, 
-                          std::ostream& output) const;
+                          std::ostream& output) const override;
 };
-
-#endif
