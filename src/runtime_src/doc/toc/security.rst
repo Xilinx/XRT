@@ -96,7 +96,7 @@ PF BAR Driver  Purpose
 1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
                memory.
                By default its size is limited to 256MB but can be expanded
-	       using XRT xbutil tool as described in :doc:`p2p`
+	       using XRT xrt-smi tool as described in :doc:`p2p`
 == === ======= ===============================================================
 
 Sample output of Linux ``lspci`` command for U50 device below::
@@ -331,7 +331,7 @@ Device Reset and Recovery
 
 Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
-can reset a device by using XRT **xbutil** utility. This utility talks to xocl driver which uses the reset
+can reset a device by using XRT **xrt-smi** utility. This utility talks to xocl driver which uses the reset
 message as defined in :doc:`mailbox.main`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals

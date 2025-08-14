@@ -106,7 +106,7 @@ License: Apache-2.0 and/or GPL-2
  FIXME
 
 Files: src/runtime_src/core/pcie/linux/LICENSE
- src/runtime_src/core/pcie/tools/xbutil/LICENSE
+ src/runtime_src/core/pcie/tools/xrt-smi/LICENSE
 Copyright: [yyyy] [name of copyright owner]
 License: Apache-2.0
  FIXME
