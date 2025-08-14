@@ -27,21 +27,23 @@ namespace xdp {
   AIEDB::~AIEDB()
   {
     std::lock_guard<std::mutex> lock(traceLock);
-
-    for (auto info : traceData)
-      delete info;
-    traceData.clear();
+    for (auto& [offloadType, traceData] : traceDataMap)
+      for (auto info : traceData)
+        delete info;
+    traceDataMap.clear();
   }
 
   void AIEDB::addAIETraceData(uint64_t strmIndex, void* buffer,
                               uint64_t bufferSz, bool copy,
-                              uint64_t numTraceStreams)
+                              uint64_t numTraceStreams,
+                              io_type offloadType)
   {
     std::lock_guard<std::mutex> lock(traceLock);
 
     if (numTraceStreams == 0)
       numTraceStreams = strmIndex + 1;
 
+    auto& traceData = traceDataMap[offloadType];
     if (traceData.size() == 0)
       traceData.resize(numTraceStreams);
 
@@ -59,10 +61,14 @@ namespace xdp {
     traceData[strmIndex]->owner = copy;
   }
 
-  aie::TraceDataType* AIEDB::getAIETraceData(uint64_t strmIndex)
+  aie::TraceDataType* AIEDB::getAIETraceData(uint64_t strmIndex, io_type offloadType)
   {
     std::lock_guard<std::mutex> lock(traceLock);
+    
+    if (traceDataMap.find(offloadType) == traceDataMap.end())
+      return nullptr;
 
+    auto& traceData = traceDataMap[offloadType];
     if (traceData.size() == 0)
       return nullptr;
 

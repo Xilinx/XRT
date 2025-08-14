@@ -1257,28 +1257,44 @@ namespace xdp {
 
   uint64_t VPStaticDatabase::getNumAIETraceStream(uint64_t deviceId)
   {
-    uint64_t numAIETraceStream = getNumTracePLIO(deviceId) ;
-    if (numAIETraceStream)
-      return numAIETraceStream ;
-    {
-      // NumTracePLIO also locks the database, so put this lock in its own
-      //  scope after numTracePLIO has returned.
-      std::lock_guard<std::mutex> lock(deviceLock) ;
+    uint64_t numAIETraceStreamPLIO = getNumTracePLIO(deviceId) ;
+    uint64_t numAIETraceStreamGMIO = getNumTraceGMIO(deviceId) ;
+    std::cout << "getNumAIETraceStream: deviceId=" << deviceId
+              << " PLIO=" << numAIETraceStreamPLIO
+              << " GMIO=" << numAIETraceStreamGMIO
+              << " Total=" << (numAIETraceStreamPLIO + numAIETraceStreamGMIO)
+              << std::endl ;
+    return numAIETraceStreamPLIO + numAIETraceStreamGMIO ;
+    // if (numAIETraceStream)
+    //   return numAIETraceStream ;
+    // {
+    //   // NumTracePLIO also locks the database, so put this lock in its own
+    //   //  scope after numTracePLIO has returned.
+    //   std::lock_guard<std::mutex> lock(deviceLock) ;
 
-      if (deviceInfo.find(deviceId) == deviceInfo.end())
-        return 0 ;
+    //   if (deviceInfo.find(deviceId) == deviceInfo.end())
+    //     return 0 ;
 
-      ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
-      if (!config)
-        return 0 ;
+    //   ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
+    //   if (!config)
+    //     return 0 ;
 
-      XclbinInfo* xclbin = config->getAieXclbin();
-      if (!xclbin)
-        return 0;
+    //   XclbinInfo* xclbin = config->getAieXclbin();
+    //   if (!xclbin)
+    //     return 0;
 
-      auto rc = xclbin->aie.gmioList.size() ;
-      return rc;
-    }
+    //   auto rc = xclbin->aie.gmioList.size() ;
+    //   return rc;
+    // }
+  }
+
+  uint64_t VPStaticDatabase::getNumAIETraceStream(uint64_t deviceId, io_type ioType)
+  {
+    if (ioType == io_type::PLIO)
+      return getNumTracePLIO(deviceId);
+    // else if (ioType == io_type::GMIO)
+    else
+      return getNumTraceGMIO(deviceId);
   }
 
   void* VPStaticDatabase::getAieDevInst(std::function<void* (void*)> fetch,
