@@ -23,7 +23,7 @@ The plugin places the requested device report text in a JSON format into the sta
 
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
 
-    - See :ref:`xbutil examine report options <xbutil_report_label>` for a list of valid reports
+    - See :ref:`xrt-smi examine report options <xbutil_report_label>` for a list of valid reports
 
 **Example commands** 
 

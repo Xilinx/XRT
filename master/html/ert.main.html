@@ -101,7 +101,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -566,8 +566,11 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
   uint32_t txn_op_idx;
   uint32_t ctx_pc;
   uint32_t fatal_error_type;
-  uint32_t aie_data_size;
-  uint32_t aie_data;
+  uint32_t fatal_error_exception_type;
+  uint32_t fatal_error_exception_pc;
+  uint32_t fatal_error_app_module;
+  uint32_t app_health_report_size;
+  uint32_t app_health_report;
 };
 </pre></div>
 </div>
@@ -581,23 +584,32 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">fatal_error_type</span></code></dt><dd><p>the fatal error type if context crashes</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">aie_data_size</span></code></dt><dd><p>size in bytes of the aie_data</p>
+<dt><code class="docutils literal notranslate"><span class="pre">fatal_error_exception_type</span></code></dt><dd><p>LX7 exception type</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">aie_data</span></code></dt><dd><p>binary blob dumpped from aie partition</p>
+<dt><code class="docutils literal notranslate"><span class="pre">fatal_error_exception_pc</span></code></dt><dd><p>LX7 program counter at the time of the exception</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">fatal_error_app_module</span></code></dt><dd><p>module name where the exception occurred</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">app_health_report_size</span></code></dt><dd><p>size in bytes of the entire app health report</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">app_health_report</span></code></dt><dd><p>binary blob of the entire app health report (contains aie states)</p>
 </dd>
 </dl>
 <p><strong>Description</strong></p>
 <blockquote>
 <div><p>which has context health data</p>
 </div></blockquote>
-<p>Field              Default value  Comment
-txn_op_idx:        0xFFFFFFFF     there is no txn control code is running or the</p>
+<p>Field                       Default value  Comment
+txn_op_idx:                 0xFFFFFFFF     there is no txn control code is running or the</p>
 <blockquote>
 <div><p>last txn control code op idx is not captured</p>
 </div></blockquote>
-<p>ctx_pc:            0              context .text program counter is not captured
-fatal_error_type:  0              no fatal error or fatal error is not captured
-aie_data_size:     0              aie register data is not captured</p>
+<p>ctx_pc:                     0              context .text program counter is not captured
+fatal_error_type:           0              no fatal error or fatal error is not captured
+fatal_error_exception_type: 0
+fatal_error_exception_pc:   0
+fatal_error_app_module:     0</p>
+<p>app_health_report_size:     0              The entire app health report size</p>
 <p>Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
 packet starting from payload will have the following information.</p>
 <dl class="c function">

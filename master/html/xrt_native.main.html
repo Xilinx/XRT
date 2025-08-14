@@ -119,7 +119,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -622,6 +622,13 @@ Map the contents of the buffer object into host memory </p>
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK3xrt2bo3mapEv">
+<span id="_CPPv3NK3xrt2bo3mapEv"></span><span id="_CPPv2NK3xrt2bo3mapEv"></span><span id="xrt::bo::mapC"></span><span class="target" id="classxrt_1_1bo_1a29f0f737099ac69832348f5cee0e980a"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">map</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt2bo3mapEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1a7778be10aa42a273b879657c35b81f95"><span class="std std-ref">map()</span></a> - Const variant of map</p>
+<p>Constness is enforce through return type </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN3xrt2bo3mapE7MapTypev">
 <span id="_CPPv3I0EN3xrt2bo3mapEv"></span><span id="_CPPv2I0EN3xrt2bo3mapEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MapType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1bo_1a45ad31292051d5d37766b1c635a9dc33"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN3xrt2bo3mapE7MapTypev" title="xrt::bo::map::MapType"><span class="n"><span class="pre">MapType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">map</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN3xrt2bo3mapE7MapTypev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1a7778be10aa42a273b879657c35b81f95"><span class="std std-ref">map()</span></a> - Map the host side buffer info application</p>
@@ -633,6 +640,13 @@ Map the contents of the buffer object into host memory </p>
 <dd class="field-even"><p>Memory mapped buffer </p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0ENK3xrt2bo3mapE7MapTypev">
+<span id="_CPPv3I0ENK3xrt2bo3mapEv"></span><span id="_CPPv2I0ENK3xrt2bo3mapEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MapType</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1bo_1ac997cae1f8a0bd27b7b3c2cfe4adafc8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0ENK3xrt2bo3mapE7MapTypev" title="xrt::bo::map::MapType"><span class="n"><span class="pre">MapType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">map</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK3xrt2bo3mapE7MapTypev" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1a7778be10aa42a273b879657c35b81f95"><span class="std std-ref">map()</span></a> - Const variant of map</p>
+<p>Constness is enforce through return type </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1597,8 +1611,8 @@ Use this API to explicitly set all kernel arguments and start kernel execution f
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE">
-<span id="_CPPv3N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE"></span><span id="_CPPv2N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE"></span><span id="xrt::run::aie_error::aie_error__xrt::runCR.ssCR"></span><span class="target" id="classxrt_1_1run_1_1aie__error_1aab492bee48c20f31213f78f6c0020873"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie_error</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">run</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">what</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1_1aie__error_1aab492bee48c20f31213f78f6c0020873"><span class="std std-ref">aie_error()</span></a> - Constructor must hold on to run object </p>
+<span id="_CPPv3N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE"></span><span id="_CPPv2N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE"></span><span id="xrt::run::aie_error::aie_error__xrt::runCR.ssCR"></span><span class="target" id="classxrt_1_1run_1_1aie__error_1ad859bfedd3bb79ab678b401de53336e3"></span><span class="n"><span class="pre">XRT_API_EXPORT</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">aie_error</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run"><span class="n"><span class="pre">run</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">run</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">what</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1_1aie__error_1ad859bfedd3bb79ab678b401de53336e3"><span class="std std-ref">aie_error()</span></a> - Constructor must hold on to run object </p>
 </dd></dl>
 
 <dl class="cpp function">

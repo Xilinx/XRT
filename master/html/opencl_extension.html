@@ -122,7 +122,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -230,7 +230,7 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 </section>
 <section id="specify-a-buffer-location-by-memory-bank-index">
 <h4>2. Specify a Buffer location by memory bank index<a class="headerlink" href="#specify-a-buffer-location-by-memory-bank-index" title="Permalink to this headline">¶</a></h4>
-<p>This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xbutil query.</p>
+<p>This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xrt-smi query.</p>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Check the memory index from xclbin.info file</span>
 <span class="n">ext</span><span class="p">.</span><span class="n">banks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">XCL_MEM_TOPOLOGY</span><span class="p">;</span><span class="w"></span>
 <span class="n">cl_int</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>

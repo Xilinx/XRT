@@ -106,7 +106,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -173,7 +173,7 @@ platform drivers present in the respective drivers.</p>
 <h2>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xocl</span></code> driver exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
 including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
 sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
 <code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory. Platform drivers XDMA, ICAP,
@@ -555,7 +555,7 @@ MB Scheduler, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 <h2>xclmgmt<a class="headerlink" href="#xclmgmt" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xclmgmt</span></code> driver exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
 including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
 sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
 <code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory. Platform drivers ICAP, FPGA Manager,
@@ -1008,7 +1008,7 @@ AXI Firewall, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 <p>Similar to PCIe drivers <code class="docutils literal notranslate"><span class="pre">zocl</span></code> driver used in embedded platforms
 exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
 including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
 sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
 <code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory.</p>
