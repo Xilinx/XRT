@@ -14,6 +14,11 @@
 #include <sstream>
 
 namespace xdp::aie {
+  // Microblaze Debug Module (MDM) Counters
+  // https://docs.amd.com/r/en-US/ug984-vivado-microblaze-ref/Performance-Monitoring)
+  constexpr unsigned int NUM_UC_EVENT_COUNTERS = 5;
+  constexpr unsigned int NUM_UC_LATENCY_COUNTERS = 1;
+
   struct aiecompiler_options
   {
     bool broadcast_enable_core;
@@ -51,7 +56,9 @@ namespace xdp {
 
   enum io_type {
     PLIO = 0,
-    GMIO
+    GMIO,
+    TRACE_DMA,
+    CONTROL_DMA
   };
 
   struct tile_type
@@ -198,14 +205,16 @@ namespace xdp {
     uint8_t channelNumber;
     uint8_t streamId;
     uint8_t burstLength;
+    uint8_t type;
 
     TraceGMIO(uint32_t i, uint8_t col, uint8_t num, 
-              uint8_t stream, uint8_t len)
+              uint8_t stream, uint8_t len, uint8_t t = 0)
       : id(i)
       , shimColumn(col)
       , channelNumber(num)
       , streamId(stream)
       , burstLength(len)
+      , type(t)
     {}
   };
 
@@ -271,8 +280,8 @@ namespace xdp {
       
       bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
       int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
-      int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-      int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+      int8_t s2mm_channels[NUM_CHANNEL_SELECTS_MAX] = {-1, -1, -1, -1};
+      int8_t mm2s_channels[NUM_CHANNEL_SELECTS_MAX] = {-1, -1, -1, -1};
       std::vector<aie_cfg_counter> pc;
 
       aie_cfg_base(uint32_t count) : pc(count) {

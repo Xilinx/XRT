@@ -9,8 +9,9 @@
 
 #include "aie_control_config_filetype.h"
 #include "core/common/message.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
@@ -220,16 +221,18 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         //   1 : S2MM channel 1
         //   2 : MM2S channel 0 (slave/input)
         //   3 : MM2S channel 1
-        auto slaveOrMaster = gmio_node.second.get<uint8_t>("type");
+        auto ioType = gmio_node.second.get<uint8_t>("type");
         auto channelNumber = gmio_node.second.get<uint8_t>("channel_number");
 
-        gmio.type = io_type::GMIO;
+        gmio.type =  (ioType == MM2S_CONTROL) ? io_type::CONTROL_DMA
+                  : ((ioType == S2MM_TRACE)   ? io_type::TRACE_DMA : io_type::GMIO);
         gmio.id = gmio_node.second.get<uint32_t>("id");
         gmio.name = gmio_node.second.get<std::string>("name");
         gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
-        gmio.slaveOrMaster = slaveOrMaster;
+        gmio.slaveOrMaster = (ioType >= 2) ? (ioType - 2) : ioType;
         gmio.shimColumn = gmio_node.second.get<uint8_t>("shim_column");
-        gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
+        gmio.channelNum = ((ioType == 0) && (channelNumber >= 2)) 
+                        ? (channelNumber - 2) : channelNumber;
         gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 

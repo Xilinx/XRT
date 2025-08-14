@@ -30,7 +30,8 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_dependencies(xdp_aie_pc_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_pc_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_pc_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_pc_plugin PRIVATE ${AIERT_DIR}/include)
+  target_include_directories(xdp_aie_pc_plugin PRIVATE
+                             ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_pc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_pc_plugin

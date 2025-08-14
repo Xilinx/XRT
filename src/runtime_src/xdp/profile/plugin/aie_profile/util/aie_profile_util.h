@@ -87,7 +87,7 @@ namespace xdp::aie::profile {
    * @return  Map of microcontroller metric set names with vectors of event IDs
    */
   //std::map<std::string, std::vector<XAie_Events>> getMicrocontrollerEventSets(const int hwGen);
-  std::map<std::string, std::vector<uint32_t>> getMicrocontrollerEventSets(const int hwGen);
+  std::map<std::string, std::vector<uint8_t>> getMicrocontrollerEventSets(const int hwGen);
 
   /**
    * @brief  Modify configured events
@@ -109,10 +109,10 @@ namespace xdp::aie::profile {
    * @param event metric set group event
    * @param channel channel to be configured
    */
-   void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                          const XAie_ModuleType mod, const module_type type,
-                          const std::string metricSet, const XAie_Events event,
-                          const uint8_t channel);
+  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                         const XAie_ModuleType mod, const module_type type,
+                         const std::string metricSet, const XAie_Events event,
+                         const uint8_t channel);
 
   /**
    * @brief Configure the selection index to monitor channel number in memory tiles
@@ -184,7 +184,7 @@ namespace xdp::aie::profile {
    * @param events vector of events to use in counters
    */
   void configMDMCounters(XAie_DevInst* aieDevInst, int hwGen, uint8_t col, uint8_t row, 
-                         const std::vector<uint32_t> events);
+                         const std::vector<uint8_t> events);
 
   /**
    * @brief Read counters in Microblaze Debug Module (MDM) 

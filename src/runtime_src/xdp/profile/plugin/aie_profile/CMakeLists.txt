@@ -3,19 +3,21 @@
 #
 
 # ====================================================================
-# This builds the AIE Profile plugin.  It is currently built
-# on Edge, x86, Client, and VE2 platforms that support AIE.
+# This builds the AIE Profile plugin. It is currently built on Edge,
+# x86, Client, and VE2 platforms that support AIE.
 # ====================================================================
 
 file(GLOB AIE_PROFILE_PLUGIN_FILES
+  "${PROFILE_DIR}/plugin/aie_base/*.h"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/*.cpp"
   "${PROFILE_DIR}/writer/aie_profile/*.h"
   "${PROFILE_DIR}/writer/aie_profile/*.cpp"
 )
 file(GLOB AIE_PROFILE_UTIL_FILES
-  "${PROFILE_DIR}/plugin/aie_base/*"
-  "${PROFILE_DIR}/plugin/aie_base/generations/*"
+  "${PROFILE_DIR}/plugin/aie_base/*.h"
+  "${PROFILE_DIR}/plugin/aie_base/generations/*.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.h"
   "${PROFILE_DIR}/plugin/aie_profile/util/aie_profile_util.cpp"
 )
@@ -29,17 +31,34 @@ file(GLOB AIE_DRIVER_COMMON_UTIL_FILES
 )
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/client")
+  message("AIEBU_SOURCE_DIR = ${AIEBU_SOURCE_DIR}")
 
-  file(GLOB AIE_PROFILE_IMPL_FILES
-    "${IMPL_DIR}/*.h"
-    "${IMPL_DIR}/*.cpp"
-  )
-  add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_PROFILE_UTIL_FILES})
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/client")
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    file(GLOB AIE_PROFILE_IMPL_FILES
+      "${IMPL_DIR}/aie_profile_npu3.h"
+      "${IMPL_DIR}/aie_profile_npu3.cpp"
+      "${IMPL_DIR}/aie_profile.h"
+      "${IMPL_DIR}/aie_profile.cpp"
+    )
+  else()
+    file(GLOB AIE_PROFILE_IMPL_FILES
+      "${IMPL_DIR}/aie_profile.h"
+      "${IMPL_DIR}/aie_profile.cpp"
+    )
+  endif()
+
+  add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} 
+              ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_PROFILE_UTIL_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
-  target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
+  target_link_libraries(xdp_aie_profile_plugin PRIVATE 
+                        xdp_core xrt_coreutil xaiengine aiebu_library_objects)
   target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
-  target_include_directories(xdp_aie_profile_plugin PRIVATE ${AIERT_DIR}/include)
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_NPU3_BUILD=1)
+  endif()
+  target_include_directories(xdp_aie_profile_plugin PRIVATE 
+                             ${AIERT_DIR}/include ${AIEBU_SOURCE_DIR}/src/cpp/include)
   set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_profile_plugin
@@ -92,7 +111,8 @@ else()
       "${IMPL_DIR}/*.h"
       "${IMPL_DIR}/*.cpp"
     )
-    add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} ${AIE_PROFILE_UTIL_FILES} ${AIE_PROFILE_CONFIG_FILES})
+    add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} 
+                ${AIE_PROFILE_UTIL_FILES} ${AIE_PROFILE_CONFIG_FILES})
     add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
     target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
     if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
@@ -100,7 +120,8 @@ else()
     else()
       target_compile_definitions(xdp_aie_profile_plugin PRIVATE FAL_LINUX="on")
     endif()
-    set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+    set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
+                          SOVERSION ${XRT_SOVERSION})
 
     install (TARGETS xdp_aie_profile_plugin
       LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
