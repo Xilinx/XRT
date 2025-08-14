@@ -38,6 +38,9 @@ add_library(xrt_swemu_static STATIC ${CURR_SOURCE}
 set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+# On linux use xrt_swemu.a
+set_target_properties(xrt_swemu_static PROPERTIES OUTPUT_NAME "xrt_swemu")
+
 target_link_libraries(xrt_swemu
   PRIVATE
   ${PROTOBUF_LIBRARY}

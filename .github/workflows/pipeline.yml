@@ -106,23 +106,23 @@ jobs:
       timeout-minutes: 5
       run: |
         source /opt/xilinx/xrt/setup.sh
-        echo "Y" | xbutil reset -d
+        echo "Y" | xrt-smi reset -d
     - name: Examine card
       timeout-minutes: 5
       run: |
         source /opt/xilinx/xrt/setup.sh
-        xbutil examine -d
+        xrt-smi examine -d
     - name: Validate card
       timeout-minutes: 5
       run: |
         source /opt/xilinx/xrt/setup.sh
-        xbutil validate -d --verbose --batch
-        xbutil examine -d
+        xrt-smi validate -d --verbose --batch
+        xrt-smi examine -d
     - name: Verify kernel
       run: |
         source /opt/xilinx/xrt/setup.sh
         echo "Running 'Verify Kernel' testcase"
-        xbutil validate --batch -r 'Verify kernel' -d --verbose
+        xrt-smi validate --batch -r 'Verify kernel' -d --verbose
     - name: Drivers reloading
       timeout-minutes: 10
       run: |

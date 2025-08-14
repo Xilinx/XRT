@@ -291,6 +291,7 @@ namespace xdp {
 
     auto compilerOptions = metadataReader->getAIECompilerOptions();
     uint8_t numRows = metadataReader->getNumRows();
+    int hwGen = metadataReader->getHardwareGen();
     std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
     if(compilerOptions.enable_multi_layer) {
 
@@ -863,7 +864,7 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
 
         // Modify events as needed
-        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
+        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents, hwGen);
 
         streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type, metricSet, 
                                                           channel0, channel1, interfaceEvents, 

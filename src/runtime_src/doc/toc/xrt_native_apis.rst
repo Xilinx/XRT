@@ -132,7 +132,7 @@ In the above code ``xrt::bo`` buffer objects are created using the class constru
 - The third argument is used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. There are two ways to specify the memory bank index
 
  - Through kernel arguments: In the above example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index. This member function accept kernel argument-index and automatically detect corresponding memory bank index by inspecting XCLBIN.
- - Passing Memory bank index:  The ``xrt::kernel::group_id()`` also accepts the direct memory bank index (as observed from ``xbutil examine --report memory`` output). 
+ - Passing Memory bank index:  The ``xrt::kernel::group_id()`` also accepts the direct memory bank index (as observed from ``xrt-smi examine --report memory`` output). 
   
   
 Creating special Buffers
@@ -459,7 +459,7 @@ Allocating buffers for the IP inputs/outputs
 
 Similar to XRT managed kernel ``xrt::bo`` objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank. 
 
-Below is a example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by ``xbutil examine --report memory`` command.  
+Below is a example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by ``xrt-smi examine --report memory`` command.  
 
 .. code:: c++
       :number-lines: 35

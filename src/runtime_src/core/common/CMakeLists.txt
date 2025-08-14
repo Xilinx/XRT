@@ -56,9 +56,9 @@ target_include_directories(core_common_library_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-target_compile_definitions(core_common_library_objects
-  PRIVATE
+set_property(SOURCE module_loader.cpp APPEND PROPERTY COMPILE_DEFINITIONS
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
   XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
 
@@ -90,6 +90,11 @@ set_target_properties(xrt_coreutil PROPERTIES
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION}
   )
+
+if (NOT WIN32)
+  # On linux use xrt_coreutil.a
+  set_target_properties(xrt_coreutil_static PROPERTIES OUTPUT_NAME "xrt_coreutil")
+endif()
 
 ################################################################
 # Define include directories and definitions needed by any target that

@@ -67,7 +67,7 @@ In two stage platforms, Shell partition contains additional shell components suc
 User
 ====
 
-User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API ``xclLoadXclBin()`` and command line utility ``xbutil program`` to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.
+User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API ``xclLoadXclBin()`` and command line utility ``xrt-smi program`` to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.
 
 .. note::
    Refer to :doc:`mailbox.main` for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.

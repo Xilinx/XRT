@@ -13,7 +13,7 @@ When reporting issues on GitHub please include the following:
 
 1. XRT version including git hash
 2. Alveo platform name and version
-3. Output of ``xbutil query``
+3. Output of ``xrt-smi query``
 4. Output of ``xbmgmt scan``
 5. ``dmesg``
 6. gdb stack trace of host application
