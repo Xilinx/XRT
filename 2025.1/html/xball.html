@@ -101,7 +101,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">xball</a></li>
@@ -161,18 +161,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
              
   <span class="target" id="xball-rst"></span><section id="xball">
 <h1>xball<a class="headerlink" href="#xball" title="Permalink to this headline">¶</a></h1>
-<p>To facilitate running the same <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> or <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> command on a multi-card environment XRT provides a utility script named <code class="docutils literal notranslate"><span class="pre">xball</span></code>. The script <code class="docutils literal notranslate"><span class="pre">xball</span></code> can be used as below:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#xball &lt;xbutil | xbmgmt&gt; &lt;utility arguments&gt;</span>
-xball xbutil examine
+<p>To facilitate running the same <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> or <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> command on a multi-card environment XRT provides a utility script named <code class="docutils literal notranslate"><span class="pre">xball</span></code>. The script <code class="docutils literal notranslate"><span class="pre">xball</span></code> can be used as below:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#xball &lt;xrt-smi | xbmgmt&gt; &lt;utility arguments&gt;</span>
+xball xrt-smi examine
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">xball</span></code> script will detect all the cards attached to the server, and execute the <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> or <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> command on all of them.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">xball</span></code> script will detect all the cards attached to the server, and execute the <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code> or <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> command on all of them.</p>
 <p>Additionally, the <code class="docutils literal notranslate"><span class="pre">xball</span></code> script provides a filtering option to execute the command on some specific cards, such as</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Run `xbutil examine` command only on U30 cards</span>
-xball --device-filter <span class="s1">&#39;u30&#39;</span>  xbutil examine
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Run `xrt-smi examine` command only on U30 cards</span>
+xball --device-filter <span class="s1">&#39;u30&#39;</span>  xrt-smi examine
 
-<span class="c1">#Run `xbutil examine` command only on U250 cards</span>
-xball --device-filter <span class="s1">&#39;^xilinx_u250&#39;</span> xbutil examine
+<span class="c1">#Run `xrt-smi examine` command only on U250 cards</span>
+xball --device-filter <span class="s1">&#39;^xilinx_u250&#39;</span> xrt-smi examine
 </pre></div>
 </div>
 </section>

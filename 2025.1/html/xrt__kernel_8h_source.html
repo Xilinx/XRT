@@ -72,522 +72,550 @@ $(function() {
 <a href="xrt__kernel_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">/*</span></div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment"> * SPDX-License-Identifier: Apache-2.0</span></div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment"> * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.</span></div>
-<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="comment"> * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="comment"> * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="comment"> */</span></div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#ifndef XRT_KERNEL_H_</span></div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#define XRT_KERNEL_H_</span></div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160; </div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/config.h&quot;</span></div>
 <div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="xrt__bo_8h.html">xrt/xrt_bo.h</a>&quot;</span></div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="xrt__device_8h.html">xrt/xrt_device.h</a>&quot;</span></div>
 <div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="xrt__uuid_8h.html">xrt/xrt_uuid.h</a>&quot;</span></div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160; </div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/ert.h&quot;</span></div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &quot;xrt/deprecated/xrt.h&quot;</span></div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160; </div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_exception.h&quot;</span></div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_fence.h&quot;</span></div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_hw_context.h&quot;</span></div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="preprocessor"># include &lt;chrono&gt;</span></div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="preprocessor"># include &lt;condition_variable&gt;</span></div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="preprocessor"># include &lt;cstdint&gt;</span></div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="preprocessor"># include &lt;functional&gt;</span></div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="preprocessor"># include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="preprocessor"># include &lt;vector&gt;</span></div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160; </div>
-<div class="line"><a name="l00034"></a><span class="lineno"><a class="line" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">   34</a></span>&#160;<span class="keyword">typedef</span> <span class="keywordtype">void</span> * <a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a>;</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160; </div>
-<div class="line"><a name="l00042"></a><span class="lineno"><a class="line" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">   42</a></span>&#160;<span class="keyword">typedef</span> <span class="keywordtype">void</span> * <a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a>;  <span class="comment">// NOLINT</span></div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160; </div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160; </div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="keyword">namespace </span><a class="code" href="namespacexrt.html">xrt</a> {</div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160; </div>
-<div class="line"><a name="l00074"></a><span class="lineno"><a class="line" href="structxrt_1_1autostart.html">   74</a></span>&#160;<span class="keyword">struct </span><a class="code" href="structxrt_1_1autostart.html">autostart</a></div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;{</div>
-<div class="line"><a name="l00076"></a><span class="lineno"><a class="line" href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">   76</a></span>&#160;  <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">iterations</a> = 0;</div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;};</div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160; </div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1kernel.html">kernel</a>;</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160; </div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="keyword">class </span>run_impl;</div>
-<div class="line"><a name="l00094"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html">   94</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1run.html">run</a></div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;{</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;  <span class="keyword">class </span>command_error_impl;</div>
-<div class="line"><a name="l00103"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html">  103</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1run_1_1command__error.html">command_error</a> : <span class="keyword">public</span> detail::pimpl&lt;command_error_impl&gt;, <span class="keyword">public</span> std::exception</div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;  {</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;  <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;    XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00107"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#ab37fbc628d3d0286e880b5885a2ebe84">  107</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#ab37fbc628d3d0286e880b5885a2ebe84">command_error</a>(ert_cmd_state <a class="code" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>, <span class="keyword">const</span> std::string&amp; <a class="code" href="classxrt_1_1run_1_1command__error.html#a6240dad583cbd7b037863f3182c8169f">what</a>);</div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160; </div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;    XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;    ert_cmd_state</div>
-<div class="line"><a name="l00114"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#a8101a7b5d1897245d4597223c1683652">  114</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#a8101a7b5d1897245d4597223c1683652">get_command_state</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160; </div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;    XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
-<div class="line"><a name="l00118"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#a6240dad583cbd7b037863f3182c8169f">  118</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#a6240dad583cbd7b037863f3182c8169f">what</a>() const noexcept override;</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/span.h&quot;</span></div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#include &quot;xrt/deprecated/xrt.h&quot;</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160; </div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_exception.h&quot;</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_fence.h&quot;</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="preprocessor"># include &quot;xrt/experimental/xrt_hw_context.h&quot;</span></div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="preprocessor"># include &lt;chrono&gt;</span></div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="preprocessor"># include &lt;condition_variable&gt;</span></div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="preprocessor"># include &lt;cstdint&gt;</span></div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="preprocessor"># include &lt;functional&gt;</span></div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="preprocessor"># include &lt;memory&gt;</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="preprocessor"># include &lt;vector&gt;</span></div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160; </div>
+<div class="line"><a name="l00035"></a><span class="lineno"><a class="line" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">   35</a></span>&#160;<span class="keyword">typedef</span> <span class="keywordtype">void</span> * <a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a>;</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160; </div>
+<div class="line"><a name="l00043"></a><span class="lineno"><a class="line" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">   43</a></span>&#160;<span class="keyword">typedef</span> <span class="keywordtype">void</span> * <a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a>;  <span class="comment">// NOLINT</span></div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160; </div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160; </div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="keyword">namespace </span><a class="code" href="namespacexrt.html">xrt</a> {</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160; </div>
+<div class="line"><a name="l00075"></a><span class="lineno"><a class="line" href="structxrt_1_1autostart.html">   75</a></span>&#160;<span class="keyword">struct </span><a class="code" href="structxrt_1_1autostart.html">autostart</a></div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;{</div>
+<div class="line"><a name="l00077"></a><span class="lineno"><a class="line" href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">   77</a></span>&#160;  <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">iterations</a> = 0;</div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;};</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160; </div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1kernel.html">kernel</a>;</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160; </div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="keyword">class </span>run_impl;</div>
+<div class="line"><a name="l00095"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html">   95</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1run.html">run</a></div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;{</div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;  <span class="keyword">class </span>command_error_impl;</div>
+<div class="line"><a name="l00104"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html">  104</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1run_1_1command__error.html">command_error</a> : <span class="keyword">public</span> detail::pimpl&lt;command_error_impl&gt;, <span class="keyword">public</span> std::exception</div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;  {</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00108"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#aad557a6612338a868cf7f7985e1c3365">  108</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#aad557a6612338a868cf7f7985e1c3365">command_error</a>(ert_cmd_state <a class="code" href="classxrt_1_1run.html#a870fc62997969d36e1782b4a9a3f882b">state</a>, <span class="keyword">const</span> std::string&amp; <a class="code" href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">what</a>);</div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160; </div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00111"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#a9f1557e0f8a0eb918564ed2ebe25ae99">  111</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#a9f1557e0f8a0eb918564ed2ebe25ae99">command_error</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">xrt::run</a>&amp; <a class="code" href="classxrt_1_1run.html">run</a>, <span class="keyword">const</span> std::string&amp; <a class="code" href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">what</a>);</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160; </div>
+<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;    ert_cmd_state</div>
+<div class="line"><a name="l00118"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#a4340face7c5dff05c1fd6ed292ba9e25">  118</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#a4340face7c5dff05c1fd6ed292ba9e25">get_command_state</a>() <span class="keyword">const</span>;</div>
 <div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160; </div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;  private:</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;    <span class="comment">// This member is a mistake, but cannot remove it without breaking ABI</span></div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;    std::shared_ptr&lt;command_error_impl&gt; m_impl;</div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;  };</div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160; </div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;public:</div>
-<div class="line"><a name="l00134"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">  134</a></span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>() = default;</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160; </div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;  explicit</div>
-<div class="line"><a name="l00143"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a519b58fe315478c16889ceab6597a76a">  143</a></span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>(const <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp; krnl);</div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160; </div>
-<div class="line"><a name="l00150"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a4322dadfac444afa077632c677a025bb">  150</a></span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>(const <a class="code" href="classxrt_1_1run.html">run</a>&amp;) = default;</div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160; </div>
-<div class="line"><a name="l00155"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a1b662cfbe1c64a6c566ea1108b76140c">  155</a></span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>(<a class="code" href="classxrt_1_1run.html">run</a>&amp;&amp;) = default;</div>
-<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160; </div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00161"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a12ba3243db877220bf5820eab31e0ff0">  161</a></span>&#160;  ~<a class="code" href="classxrt_1_1run.html">run</a>();</div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160; </div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>&amp;</div>
-<div class="line"><a name="l00169"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a72e1bd6bb46b8165f1d081316b5b2a7c">  169</a></span>&#160;  operator=(const <a class="code" href="classxrt_1_1run.html">run</a>&amp;) = default;</div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160; </div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>&amp;</div>
-<div class="line"><a name="l00175"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#afee6b8aa80257eff7137db40a8c0754e">  175</a></span>&#160;  operator=(<a class="code" href="classxrt_1_1run.html">run</a>&amp;&amp;) = default;</div>
-<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160; </div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00185"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">  185</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start</a>();</div>
-<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160; </div>
-<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00212"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#af4d538a36fb17a6b7dc58e9c9fd4cda6">  212</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start</a>(const <a class="code" href="structxrt_1_1autostart.html">autostart</a>&amp; iterations);</div>
-<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160; </div>
-<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00229"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">  229</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">stop</a>();</div>
-<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160; </div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;  ert_cmd_state</div>
-<div class="line"><a name="l00245"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">  245</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">abort</a>();</div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160; </div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;  ert_cmd_state</div>
-<div class="line"><a name="l00276"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">  276</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait</a>(const std::chrono::milliseconds&amp; timeout = std::chrono::milliseconds{0}) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160; </div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;  ert_cmd_state</div>
-<div class="line"><a name="l00306"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">  306</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">wait</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> timeout_ms)<span class="keyword"> const</span></div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;    <span class="keywordflow">return</span> <a class="code" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait</a>(timeout_ms * std::chrono::milliseconds{1});</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;  }</div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160; </div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;  std::cv_status</div>
-<div class="line"><a name="l00346"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">  346</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">wait2</a>(<span class="keyword">const</span> std::chrono::milliseconds&amp; timeout) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160; </div>
-<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00359"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">  359</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">wait2</a>()<span class="keyword"> const</span></div>
-<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;    <a class="code" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">wait2</a>(std::chrono::milliseconds{0});</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;  }</div>
-<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160; </div>
-<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;  ert_cmd_state</div>
-<div class="line"><a name="l00374"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">  374</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160; </div>
-<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;  uint32_t</div>
-<div class="line"><a name="l00384"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a21fd0c511149be9082f4ae165b7c14b9">  384</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a21fd0c511149be9082f4ae165b7c14b9">return_code</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160; </div>
-<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00413"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">  413</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">add_callback</a>(ert_cmd_state <a class="code" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>,</div>
-<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;               std::function&lt;<span class="keywordtype">void</span>(<span class="keyword">const</span> <span class="keywordtype">void</span>*, ert_cmd_state, <span class="keywordtype">void</span>*)&gt; callback,</div>
-<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;               <span class="keywordtype">void</span>* data);</div>
-<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160; </div>
-<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;  <span class="keyword">explicit</span></div>
-<div class="line"><a name="l00424"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#aa768dd562f3d84242644134c79c83e46">  424</a></span>&#160;  <span class="keyword">operator</span> bool()<span class="keyword"> const</span></div>
-<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;    <span class="keywordflow">return</span> handle != <span class="keyword">nullptr</span>;</div>
-<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;  }</div>
-<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160; </div>
-<div class="line"><a name="l00437"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">  437</a></span>&#160;  <span class="keywordtype">bool</span></div>
-<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;  <a class="code" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">operator &lt; </a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">xrt::run</a>&amp; rhs)<span class="keyword"> const</span></div>
-<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;    <span class="keywordflow">return</span> handle &lt; rhs.handle;</div>
-<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;  }</div>
-<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160; </div>
-<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
-<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00459"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">  459</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(<span class="keywordtype">int</span> index, ArgType&amp;&amp; arg)</div>
-<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;  {</div>
-<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160;    set_arg_at_index(index, &amp;arg, <span class="keyword">sizeof</span>(arg));</div>
-<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160;  }</div>
-<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160; </div>
-<div class="line"><a name="l00478"></a><span class="lineno">  478</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00479"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">  479</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">set_arg</a>(<span class="keywordtype">int</span> index, <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
-<div class="line"><a name="l00480"></a><span class="lineno">  480</span>&#160;  {</div>
-<div class="line"><a name="l00481"></a><span class="lineno">  481</span>&#160;    set_arg_at_index(index, boh);</div>
-<div class="line"><a name="l00482"></a><span class="lineno">  482</span>&#160;  }</div>
-<div class="line"><a name="l00483"></a><span class="lineno">  483</span>&#160; </div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
+<div class="line"><a name="l00122"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">  122</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">what</a>() const noexcept override;</div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160; </div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;  private:</div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    <span class="comment">// This member is a mistake, but cannot remove it without breaking ABI</span></div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;    std::shared_ptr&lt;command_error_impl&gt; m_impl;</div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;  };</div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160; </div>
+<div class="line"><a name="l00134"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1aie__error.html">  134</a></span>&#160;  class <a class="code" href="classxrt_1_1run_1_1aie__error.html">aie_error</a> : public <a class="code" href="classxrt_1_1run_1_1command__error.html">command_error</a></div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;  {</div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00137"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1aie__error.html#a98494d4f99ad0497239d4d76882b16a5">  137</a></span>&#160;    <span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt; <span class="keyword">using</span> <a class="code" href="classxrt_1_1run_1_1aie__error.html#a98494d4f99ad0497239d4d76882b16a5">span</a> = xrt::detail::span&lt;T&gt;;</div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00143"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1aie__error.html#ad859bfedd3bb79ab678b401de53336e3">  143</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1aie__error.html#ad859bfedd3bb79ab678b401de53336e3">aie_error</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">xrt::run</a>&amp; <a class="code" href="classxrt_1_1run.html">run</a>, <span class="keyword">const</span> std::string&amp; <a class="code" href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">what</a>);</div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;    <a class="code" href="classxrt_1_1run_1_1aie__error.html#a98494d4f99ad0497239d4d76882b16a5">span&lt;const uint32_t&gt;</a></div>
+<div class="line"><a name="l00151"></a><span class="lineno"><a class="line" href="classxrt_1_1run_1_1aie__error.html#ab6d6b40bd01cef8ba090f81fdc0c5e73">  151</a></span>&#160;    <a class="code" href="classxrt_1_1run_1_1aie__error.html#ab6d6b40bd01cef8ba090f81fdc0c5e73">data</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;  };</div>
+<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160; </div>
+<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00163"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">  163</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">run</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160; </div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00172"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a83a265d18674729c1dcc5ea9b8016d2e">  172</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a83a265d18674729c1dcc5ea9b8016d2e">run</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp; krnl);</div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160; </div>
+<div class="line"><a name="l00179"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a4322dadfac444afa077632c677a025bb">  179</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a4322dadfac444afa077632c677a025bb">run</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">run</a>&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160; </div>
+<div class="line"><a name="l00184"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a1b662cfbe1c64a6c566ea1108b76140c">  184</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a1b662cfbe1c64a6c566ea1108b76140c">run</a>(<a class="code" href="classxrt_1_1run.html">run</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160; </div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00190"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#aa51e579cf6d2edab15945b9156022771">  190</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#aa51e579cf6d2edab15945b9156022771">~run</a>();</div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160; </div>
+<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>&amp;</div>
+<div class="line"><a name="l00198"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a72e1bd6bb46b8165f1d081316b5b2a7c">  198</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a72e1bd6bb46b8165f1d081316b5b2a7c">operator=</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">run</a>&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160; </div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a>&amp;</div>
+<div class="line"><a name="l00204"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#afee6b8aa80257eff7137db40a8c0754e">  204</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#afee6b8aa80257eff7137db40a8c0754e">operator=</a>(<a class="code" href="classxrt_1_1run.html">run</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160; </div>
+<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00214"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">  214</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">start</a>();</div>
+<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160; </div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00241"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a5f11d9b43906e658d1aea5ed9ea11384">  241</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a5f11d9b43906e658d1aea5ed9ea11384">start</a>(<span class="keyword">const</span> <a class="code" href="structxrt_1_1autostart.html">autostart</a>&amp; iterations);</div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160; </div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00258"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ade0838d664f805f80cda6b36a84c9b34">  258</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ade0838d664f805f80cda6b36a84c9b34">stop</a>();</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160; </div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;  ert_cmd_state</div>
+<div class="line"><a name="l00274"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a9fae7bc6db4e82e4b07da64f3f2f2709">  274</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a9fae7bc6db4e82e4b07da64f3f2f2709">abort</a>();</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
+<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;  ert_cmd_state</div>
+<div class="line"><a name="l00305"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#acdf89c455642da16b4836233bb816713">  305</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#acdf89c455642da16b4836233bb816713">wait</a>(<span class="keyword">const</span> std::chrono::milliseconds&amp; timeout = std::chrono::milliseconds{0}) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160; </div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;  ert_cmd_state</div>
+<div class="line"><a name="l00335"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">  335</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">wait</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> timeout_ms)<span class="keyword"> const</span></div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;    <span class="keywordflow">return</span> <a class="code" href="classxrt_1_1run.html#acdf89c455642da16b4836233bb816713">wait</a>(timeout_ms * std::chrono::milliseconds{1});</div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;  }</div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160; </div>
+<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;  std::cv_status</div>
+<div class="line"><a name="l00375"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a535bf4b02eb838d3bd6354cfbb2b4a6b">  375</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a535bf4b02eb838d3bd6354cfbb2b4a6b">wait2</a>(<span class="keyword">const</span> std::chrono::milliseconds&amp; timeout) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160; </div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00388"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">  388</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">wait2</a>()<span class="keyword"> const</span></div>
+<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;    <a class="code" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">wait2</a>(std::chrono::milliseconds{0});</div>
+<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;  }</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160; </div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;  ert_cmd_state</div>
+<div class="line"><a name="l00403"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a870fc62997969d36e1782b4a9a3f882b">  403</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a870fc62997969d36e1782b4a9a3f882b">state</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160; </div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;  uint32_t</div>
+<div class="line"><a name="l00413"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a35703566f12dfa5f08eed43c801b3e59">  413</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a35703566f12dfa5f08eed43c801b3e59">return_code</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160; </div>
+<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00442"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a6a22e39c54b52caec007bb95e7571e59">  442</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a6a22e39c54b52caec007bb95e7571e59">add_callback</a>(ert_cmd_state <a class="code" href="classxrt_1_1run.html#a870fc62997969d36e1782b4a9a3f882b">state</a>,</div>
+<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;               std::function&lt;<span class="keywordtype">void</span>(<span class="keyword">const</span> <span class="keywordtype">void</span>*, ert_cmd_state, <span class="keywordtype">void</span>*)&gt; callback,</div>
+<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;               <span class="keywordtype">void</span>* data);</div>
+<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160; </div>
+<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00453"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#aa768dd562f3d84242644134c79c83e46">  453</a></span>&#160;  <span class="keyword">operator</span> bool()<span class="keyword"> const</span></div>
+<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;    <span class="keywordflow">return</span> handle != <span class="keyword">nullptr</span>;</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;  }</div>
+<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160; </div>
+<div class="line"><a name="l00466"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">  466</a></span>&#160;  <span class="keywordtype">bool</span></div>
+<div class="line"><a name="l00467"></a><span class="lineno">  467</span>&#160;  <a class="code" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">operator &lt; </a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1run.html">xrt::run</a>&amp; rhs)<span class="keyword"> const</span></div>
+<div class="line"><a name="l00468"></a><span class="lineno">  468</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160;    <span class="keywordflow">return</span> handle &lt; rhs.handle;</div>
+<div class="line"><a name="l00470"></a><span class="lineno">  470</span>&#160;  }</div>
+<div class="line"><a name="l00471"></a><span class="lineno">  471</span>&#160; </div>
+<div class="line"><a name="l00486"></a><span class="lineno">  486</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
 <div class="line"><a name="l00487"></a><span class="lineno">  487</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00488"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">  488</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">set_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
+<div class="line"><a name="l00488"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">  488</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(<span class="keywordtype">int</span> index, ArgType&amp;&amp; arg)</div>
 <div class="line"><a name="l00489"></a><span class="lineno">  489</span>&#160;  {</div>
-<div class="line"><a name="l00490"></a><span class="lineno">  490</span>&#160;    set_arg_at_index(index, boh);</div>
+<div class="line"><a name="l00490"></a><span class="lineno">  490</span>&#160;    set_arg_at_index(index, &amp;arg, <span class="keyword">sizeof</span>(arg));</div>
 <div class="line"><a name="l00491"></a><span class="lineno">  491</span>&#160;  }</div>
 <div class="line"><a name="l00492"></a><span class="lineno">  492</span>&#160; </div>
-<div class="line"><a name="l00496"></a><span class="lineno">  496</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00497"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">  497</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">set_arg</a>(<span class="keywordtype">int</span> index, <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;&amp; boh)</div>
-<div class="line"><a name="l00498"></a><span class="lineno">  498</span>&#160;  {</div>
-<div class="line"><a name="l00499"></a><span class="lineno">  499</span>&#160;    set_arg_at_index(index, boh);</div>
-<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160;  }</div>
-<div class="line"><a name="l00501"></a><span class="lineno">  501</span>&#160; </div>
-<div class="line"><a name="l00504"></a><span class="lineno">  504</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00505"></a><span class="lineno">  505</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00506"></a><span class="lineno">  506</span>&#160;  submit_wait(<span class="keyword">const</span> xrt::fence&amp; fence);</div>
-<div class="line"><a name="l00507"></a><span class="lineno">  507</span>&#160;  </div>
-<div class="line"><a name="l00508"></a><span class="lineno">  508</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00509"></a><span class="lineno">  509</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00510"></a><span class="lineno">  510</span>&#160;  submit_signal(<span class="keyword">const</span> xrt::fence&amp; fence);</div>
+<div class="line"><a name="l00507"></a><span class="lineno">  507</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00508"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">  508</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">set_arg</a>(<span class="keywordtype">int</span> index, <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
+<div class="line"><a name="l00509"></a><span class="lineno">  509</span>&#160;  {</div>
+<div class="line"><a name="l00510"></a><span class="lineno">  510</span>&#160;    set_arg_at_index(index, boh);</div>
+<div class="line"><a name="l00511"></a><span class="lineno">  511</span>&#160;  }</div>
 <div class="line"><a name="l00512"></a><span class="lineno">  512</span>&#160; </div>
-<div class="line"><a name="l00525"></a><span class="lineno">  525</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
-<div class="line"><a name="l00526"></a><span class="lineno">  526</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00527"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">  527</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">set_arg</a>(<span class="keyword">const</span> std::string&amp; argnm, ArgType&amp;&amp; argvalue)</div>
-<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160;  {</div>
-<div class="line"><a name="l00529"></a><span class="lineno">  529</span>&#160;    <span class="keyword">auto</span> index = get_arg_index(argnm);</div>
-<div class="line"><a name="l00530"></a><span class="lineno">  530</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(index, std::forward&lt;ArgType&gt;(argvalue));</div>
-<div class="line"><a name="l00531"></a><span class="lineno">  531</span>&#160;  }</div>
-<div class="line"><a name="l00532"></a><span class="lineno">  532</span>&#160; </div>
-<div class="line"><a name="l00546"></a><span class="lineno">  546</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
-<div class="line"><a name="l00547"></a><span class="lineno">  547</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00548"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">  548</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">update_arg</a>(<span class="keywordtype">int</span> index, ArgType&amp;&amp; arg)</div>
-<div class="line"><a name="l00549"></a><span class="lineno">  549</span>&#160;  {</div>
-<div class="line"><a name="l00550"></a><span class="lineno">  550</span>&#160;    update_arg_at_index(index, &amp;arg, <span class="keyword">sizeof</span>(arg));</div>
-<div class="line"><a name="l00551"></a><span class="lineno">  551</span>&#160;  }</div>
-<div class="line"><a name="l00552"></a><span class="lineno">  552</span>&#160; </div>
-<div class="line"><a name="l00566"></a><span class="lineno">  566</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00567"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">  567</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">update_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
-<div class="line"><a name="l00568"></a><span class="lineno">  568</span>&#160;  {</div>
-<div class="line"><a name="l00569"></a><span class="lineno">  569</span>&#160;    update_arg_at_index(index, boh);</div>
-<div class="line"><a name="l00570"></a><span class="lineno">  570</span>&#160;  }</div>
-<div class="line"><a name="l00571"></a><span class="lineno">  571</span>&#160; </div>
-<div class="line"><a name="l00581"></a><span class="lineno">  581</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
-<div class="line"><a name="l00582"></a><span class="lineno">  582</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00583"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">  583</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(Args&amp;&amp;... args)</div>
-<div class="line"><a name="l00584"></a><span class="lineno">  584</span>&#160;  {</div>
-<div class="line"><a name="l00585"></a><span class="lineno">  585</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(0, std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a name="l00586"></a><span class="lineno">  586</span>&#160;    <a class="code" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start</a>();</div>
-<div class="line"><a name="l00587"></a><span class="lineno">  587</span>&#160;  }</div>
-<div class="line"><a name="l00588"></a><span class="lineno">  588</span>&#160; </div>
-<div class="line"><a name="l00609"></a><span class="lineno">  609</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
-<div class="line"><a name="l00610"></a><span class="lineno">  610</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00611"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a516813415547dd39c27d0219277f2513">  611</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(<a class="code" href="structxrt_1_1autostart.html">autostart</a>&amp;&amp; count, Args&amp;&amp;... args)</div>
-<div class="line"><a name="l00612"></a><span class="lineno">  612</span>&#160;  {</div>
-<div class="line"><a name="l00613"></a><span class="lineno">  613</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(0, std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a name="l00614"></a><span class="lineno">  614</span>&#160;    <a class="code" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start</a>(count);</div>
-<div class="line"><a name="l00615"></a><span class="lineno">  615</span>&#160;  }</div>
-<div class="line"><a name="l00616"></a><span class="lineno">  616</span>&#160; </div>
-<div class="line"><a name="l00629"></a><span class="lineno">  629</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00630"></a><span class="lineno">  630</span>&#160;  <a class="code" href="classxrt_1_1bo.html">xrt::bo</a></div>
-<div class="line"><a name="l00631"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a8199d6f09f478891564f722be2d593fb">  631</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a8199d6f09f478891564f722be2d593fb">get_ctrl_scratchpad_bo</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00632"></a><span class="lineno">  632</span>&#160; </div>
-<div class="line"><a name="l00633"></a><span class="lineno">  633</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00635"></a><span class="lineno">  635</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;run_impl&gt;&amp;</div>
-<div class="line"><a name="l00636"></a><span class="lineno">  636</span>&#160;  get_handle()<span class="keyword"> const</span></div>
-<div class="line"><a name="l00637"></a><span class="lineno">  637</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00638"></a><span class="lineno">  638</span>&#160;    <span class="keywordflow">return</span> handle;</div>
-<div class="line"><a name="l00639"></a><span class="lineno">  639</span>&#160;  }</div>
-<div class="line"><a name="l00640"></a><span class="lineno">  640</span>&#160; </div>
-<div class="line"><a name="l00641"></a><span class="lineno">  641</span>&#160;  <span class="comment">// run() - Construct run object from a pimpl</span></div>
-<div class="line"><a name="l00642"></a><span class="lineno">  642</span>&#160;  <span class="keyword">explicit</span></div>
-<div class="line"><a name="l00643"></a><span class="lineno">  643</span>&#160;  <a class="code" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">run</a>(std::shared_ptr&lt;run_impl&gt; impl)</div>
-<div class="line"><a name="l00644"></a><span class="lineno">  644</span>&#160;    : handle(std::move(impl))</div>
-<div class="line"><a name="l00645"></a><span class="lineno">  645</span>&#160;  {}</div>
-<div class="line"><a name="l00646"></a><span class="lineno">  646</span>&#160; </div>
-<div class="line"><a name="l00647"></a><span class="lineno">  647</span>&#160;  <span class="comment">// backdoor access to command packet</span></div>
-<div class="line"><a name="l00648"></a><span class="lineno">  648</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00649"></a><span class="lineno">  649</span>&#160;  ert_packet*</div>
-<div class="line"><a name="l00650"></a><span class="lineno">  650</span>&#160;  get_ert_packet() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00652"></a><span class="lineno">  652</span>&#160; </div>
-<div class="line"><a name="l00653"></a><span class="lineno">  653</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00654"></a><span class="lineno">  654</span>&#160;  <span class="comment">// Use at your own risk, prefer documented type-safe arguments</span></div>
-<div class="line"><a name="l00655"></a><span class="lineno">  655</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00656"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">  656</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">set_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes)</div>
-<div class="line"><a name="l00657"></a><span class="lineno">  657</span>&#160;  {</div>
-<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;    set_arg_at_index(index, value, bytes);</div>
-<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160;  }</div>
-<div class="line"><a name="l00660"></a><span class="lineno">  660</span>&#160; </div>
-<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160;  <span class="comment">// Use at your own risk, prefer documented type-safe arguments</span></div>
-<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00663"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">  663</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">update_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes)</div>
-<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160;  {</div>
-<div class="line"><a name="l00665"></a><span class="lineno">  665</span>&#160;    update_arg_at_index(index, value, bytes);</div>
-<div class="line"><a name="l00666"></a><span class="lineno">  666</span>&#160;  }</div>
-<div class="line"><a name="l00667"></a><span class="lineno">  667</span>&#160; </div>
-<div class="line"><a name="l00668"></a><span class="lineno">  668</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00669"></a><span class="lineno">  669</span>&#160;  std::shared_ptr&lt;run_impl&gt; handle;</div>
-<div class="line"><a name="l00670"></a><span class="lineno">  670</span>&#160; </div>
-<div class="line"><a name="l00671"></a><span class="lineno">  671</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00672"></a><span class="lineno">  672</span>&#160;  <span class="keywordtype">int</span></div>
-<div class="line"><a name="l00673"></a><span class="lineno">  673</span>&#160;  get_arg_index(<span class="keyword">const</span> std::string&amp; argnm) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00674"></a><span class="lineno">  674</span>&#160; </div>
-<div class="line"><a name="l00675"></a><span class="lineno">  675</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00676"></a><span class="lineno">  676</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00677"></a><span class="lineno">  677</span>&#160;  set_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes);</div>
-<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160; </div>
-<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00680"></a><span class="lineno">  680</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00681"></a><span class="lineno">  681</span>&#160;  set_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;);</div>
-<div class="line"><a name="l00682"></a><span class="lineno">  682</span>&#160; </div>
-<div class="line"><a name="l00683"></a><span class="lineno">  683</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00516"></a><span class="lineno">  516</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00517"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">  517</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">set_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
+<div class="line"><a name="l00518"></a><span class="lineno">  518</span>&#160;  {</div>
+<div class="line"><a name="l00519"></a><span class="lineno">  519</span>&#160;    set_arg_at_index(index, boh);</div>
+<div class="line"><a name="l00520"></a><span class="lineno">  520</span>&#160;  }</div>
+<div class="line"><a name="l00521"></a><span class="lineno">  521</span>&#160; </div>
+<div class="line"><a name="l00525"></a><span class="lineno">  525</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00526"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">  526</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">set_arg</a>(<span class="keywordtype">int</span> index, <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;&amp; boh)</div>
+<div class="line"><a name="l00527"></a><span class="lineno">  527</span>&#160;  {</div>
+<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160;    set_arg_at_index(index, boh);</div>
+<div class="line"><a name="l00529"></a><span class="lineno">  529</span>&#160;  }</div>
+<div class="line"><a name="l00530"></a><span class="lineno">  530</span>&#160; </div>
+<div class="line"><a name="l00533"></a><span class="lineno">  533</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00534"></a><span class="lineno">  534</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00535"></a><span class="lineno">  535</span>&#160;  submit_wait(<span class="keyword">const</span> xrt::fence&amp; fence);</div>
+<div class="line"><a name="l00536"></a><span class="lineno">  536</span>&#160;  </div>
+<div class="line"><a name="l00537"></a><span class="lineno">  537</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00538"></a><span class="lineno">  538</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00539"></a><span class="lineno">  539</span>&#160;  submit_signal(<span class="keyword">const</span> xrt::fence&amp; fence);</div>
+<div class="line"><a name="l00541"></a><span class="lineno">  541</span>&#160; </div>
+<div class="line"><a name="l00554"></a><span class="lineno">  554</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
+<div class="line"><a name="l00555"></a><span class="lineno">  555</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00556"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">  556</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">set_arg</a>(<span class="keyword">const</span> std::string&amp; argnm, ArgType&amp;&amp; argvalue)</div>
+<div class="line"><a name="l00557"></a><span class="lineno">  557</span>&#160;  {</div>
+<div class="line"><a name="l00558"></a><span class="lineno">  558</span>&#160;    <span class="keyword">auto</span> index = get_arg_index(argnm);</div>
+<div class="line"><a name="l00559"></a><span class="lineno">  559</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(index, std::forward&lt;ArgType&gt;(argvalue));</div>
+<div class="line"><a name="l00560"></a><span class="lineno">  560</span>&#160;  }</div>
+<div class="line"><a name="l00561"></a><span class="lineno">  561</span>&#160; </div>
+<div class="line"><a name="l00575"></a><span class="lineno">  575</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> ArgType&gt;</div>
+<div class="line"><a name="l00576"></a><span class="lineno">  576</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00577"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">  577</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">update_arg</a>(<span class="keywordtype">int</span> index, ArgType&amp;&amp; arg)</div>
+<div class="line"><a name="l00578"></a><span class="lineno">  578</span>&#160;  {</div>
+<div class="line"><a name="l00579"></a><span class="lineno">  579</span>&#160;    update_arg_at_index(index, &amp;arg, <span class="keyword">sizeof</span>(arg));</div>
+<div class="line"><a name="l00580"></a><span class="lineno">  580</span>&#160;  }</div>
+<div class="line"><a name="l00581"></a><span class="lineno">  581</span>&#160; </div>
+<div class="line"><a name="l00595"></a><span class="lineno">  595</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00596"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">  596</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">update_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp; boh)</div>
+<div class="line"><a name="l00597"></a><span class="lineno">  597</span>&#160;  {</div>
+<div class="line"><a name="l00598"></a><span class="lineno">  598</span>&#160;    update_arg_at_index(index, boh);</div>
+<div class="line"><a name="l00599"></a><span class="lineno">  599</span>&#160;  }</div>
+<div class="line"><a name="l00600"></a><span class="lineno">  600</span>&#160; </div>
+<div class="line"><a name="l00610"></a><span class="lineno">  610</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
+<div class="line"><a name="l00611"></a><span class="lineno">  611</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00612"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">  612</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(Args&amp;&amp;... args)</div>
+<div class="line"><a name="l00613"></a><span class="lineno">  613</span>&#160;  {</div>
+<div class="line"><a name="l00614"></a><span class="lineno">  614</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(0, std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a name="l00615"></a><span class="lineno">  615</span>&#160;    <a class="code" href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">start</a>();</div>
+<div class="line"><a name="l00616"></a><span class="lineno">  616</span>&#160;  }</div>
+<div class="line"><a name="l00617"></a><span class="lineno">  617</span>&#160; </div>
+<div class="line"><a name="l00638"></a><span class="lineno">  638</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
+<div class="line"><a name="l00639"></a><span class="lineno">  639</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00640"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a516813415547dd39c27d0219277f2513">  640</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(<a class="code" href="structxrt_1_1autostart.html">autostart</a>&amp;&amp; count, Args&amp;&amp;... args)</div>
+<div class="line"><a name="l00641"></a><span class="lineno">  641</span>&#160;  {</div>
+<div class="line"><a name="l00642"></a><span class="lineno">  642</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(0, std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a name="l00643"></a><span class="lineno">  643</span>&#160;    <a class="code" href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">start</a>(count);</div>
+<div class="line"><a name="l00644"></a><span class="lineno">  644</span>&#160;  }</div>
+<div class="line"><a name="l00645"></a><span class="lineno">  645</span>&#160; </div>
+<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160;  <a class="code" href="classxrt_1_1bo.html">xrt::bo</a></div>
+<div class="line"><a name="l00660"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a4dd71a287b9a3ea898982e219738fd25">  660</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a4dd71a287b9a3ea898982e219738fd25">get_ctrl_scratchpad_bo</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160; </div>
+<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;run_impl&gt;&amp;</div>
+<div class="line"><a name="l00665"></a><span class="lineno">  665</span>&#160;  get_handle()<span class="keyword"> const</span></div>
+<div class="line"><a name="l00666"></a><span class="lineno">  666</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00667"></a><span class="lineno">  667</span>&#160;    <span class="keywordflow">return</span> handle;</div>
+<div class="line"><a name="l00668"></a><span class="lineno">  668</span>&#160;  }</div>
+<div class="line"><a name="l00669"></a><span class="lineno">  669</span>&#160; </div>
+<div class="line"><a name="l00670"></a><span class="lineno">  670</span>&#160;  <span class="comment">// run() - Construct run object from a pimpl</span></div>
+<div class="line"><a name="l00671"></a><span class="lineno">  671</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00672"></a><span class="lineno">  672</span>&#160;  <a class="code" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">run</a>(std::shared_ptr&lt;run_impl&gt; impl)</div>
+<div class="line"><a name="l00673"></a><span class="lineno">  673</span>&#160;    : handle(std::move(impl))</div>
+<div class="line"><a name="l00674"></a><span class="lineno">  674</span>&#160;  {}</div>
+<div class="line"><a name="l00675"></a><span class="lineno">  675</span>&#160; </div>
+<div class="line"><a name="l00676"></a><span class="lineno">  676</span>&#160;  <span class="comment">// backdoor access to command packet</span></div>
+<div class="line"><a name="l00677"></a><span class="lineno">  677</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160;  ert_packet*</div>
+<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;  get_ert_packet() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00681"></a><span class="lineno">  681</span>&#160; </div>
+<div class="line"><a name="l00682"></a><span class="lineno">  682</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00683"></a><span class="lineno">  683</span>&#160;  <span class="comment">// Use at your own risk, prefer documented type-safe arguments</span></div>
 <div class="line"><a name="l00684"></a><span class="lineno">  684</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00685"></a><span class="lineno">  685</span>&#160;  update_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes);</div>
-<div class="line"><a name="l00686"></a><span class="lineno">  686</span>&#160; </div>
-<div class="line"><a name="l00687"></a><span class="lineno">  687</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00688"></a><span class="lineno">  688</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00689"></a><span class="lineno">  689</span>&#160;  update_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;);</div>
-<div class="line"><a name="l00690"></a><span class="lineno">  690</span>&#160; </div>
-<div class="line"><a name="l00691"></a><span class="lineno">  691</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ArgType, <span class="keyword">typename</span> ...Args&gt;</div>
-<div class="line"><a name="l00692"></a><span class="lineno">  692</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00693"></a><span class="lineno">  693</span>&#160;  <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(<span class="keywordtype">int</span> argno, ArgType&amp;&amp; arg, Args&amp;&amp;... args)</div>
-<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160;  {</div>
-<div class="line"><a name="l00695"></a><span class="lineno">  695</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(argno, std::forward&lt;ArgType&gt;(arg));</div>
-<div class="line"><a name="l00696"></a><span class="lineno">  696</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(++argno, std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a name="l00697"></a><span class="lineno">  697</span>&#160;  }</div>
-<div class="line"><a name="l00698"></a><span class="lineno">  698</span>&#160;};</div>
+<div class="line"><a name="l00685"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">  685</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">set_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes)</div>
+<div class="line"><a name="l00686"></a><span class="lineno">  686</span>&#160;  {</div>
+<div class="line"><a name="l00687"></a><span class="lineno">  687</span>&#160;    set_arg_at_index(index, value, bytes);</div>
+<div class="line"><a name="l00688"></a><span class="lineno">  688</span>&#160;  }</div>
+<div class="line"><a name="l00689"></a><span class="lineno">  689</span>&#160; </div>
+<div class="line"><a name="l00690"></a><span class="lineno">  690</span>&#160;  <span class="comment">// Use at your own risk, prefer documented type-safe arguments</span></div>
+<div class="line"><a name="l00691"></a><span class="lineno">  691</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00692"></a><span class="lineno"><a class="line" href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">  692</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">update_arg</a>(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes)</div>
+<div class="line"><a name="l00693"></a><span class="lineno">  693</span>&#160;  {</div>
+<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160;    update_arg_at_index(index, value, bytes);</div>
+<div class="line"><a name="l00695"></a><span class="lineno">  695</span>&#160;  }</div>
+<div class="line"><a name="l00696"></a><span class="lineno">  696</span>&#160; </div>
+<div class="line"><a name="l00697"></a><span class="lineno">  697</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00698"></a><span class="lineno">  698</span>&#160;  std::shared_ptr&lt;run_impl&gt; handle;</div>
 <div class="line"><a name="l00699"></a><span class="lineno">  699</span>&#160; </div>
-<div class="line"><a name="l00700"></a><span class="lineno">  700</span>&#160; </div>
-<div class="line"><a name="l00711"></a><span class="lineno">  711</span>&#160;<span class="keyword">class </span>kernel_impl;</div>
-<div class="line"><a name="l00712"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html">  712</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1kernel.html">kernel</a></div>
-<div class="line"><a name="l00713"></a><span class="lineno">  713</span>&#160;{</div>
-<div class="line"><a name="l00714"></a><span class="lineno">  714</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00723"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">  723</a></span>&#160;  <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a> : uint8_t { exclusive = 0, shared = 1, none = 2 };</div>
-<div class="line"><a name="l00724"></a><span class="lineno">  724</span>&#160; </div>
-<div class="line"><a name="l00731"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">  731</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">kernel</a>() = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00732"></a><span class="lineno">  732</span>&#160; </div>
-<div class="line"><a name="l00753"></a><span class="lineno">  753</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00754"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a32cc9ecb08ec3c5da84d3d6b10b3a074">  754</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a32cc9ecb08ec3c5da84d3d6b10b3a074">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1device.html">xrt::device</a>&amp; <a class="code" href="classxrt_1_1device.html">device</a>, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name,</div>
-<div class="line"><a name="l00755"></a><span class="lineno">  755</span>&#160;         <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a> mode = cu_access_mode::shared);</div>
-<div class="line"><a name="l00756"></a><span class="lineno">  756</span>&#160; </div>
-<div class="line"><a name="l00757"></a><span class="lineno">  757</span>&#160; </div>
-<div class="line"><a name="l00760"></a><span class="lineno">  760</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00761"></a><span class="lineno">  761</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<span class="keyword">const</span> xrt::hw_context&amp; ctx, <span class="keyword">const</span> std::string&amp; name);</div>
-<div class="line"><a name="l00763"></a><span class="lineno">  763</span>&#160; </div>
-<div class="line"><a name="l00766"></a><span class="lineno">  766</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1device.html">xrt::device</a>&amp; <a class="code" href="classxrt_1_1device.html">device</a>, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name, <span class="keywordtype">bool</span> ex)</div>
-<div class="line"><a name="l00767"></a><span class="lineno">  767</span>&#160;    : <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<a class="code" href="classxrt_1_1device.html">device</a>, xclbin_id, name, ex ? <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a>::exclusive : <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a>::shared)</div>
-<div class="line"><a name="l00768"></a><span class="lineno">  768</span>&#160;  {}</div>
-<div class="line"><a name="l00769"></a><span class="lineno">  769</span>&#160; </div>
-<div class="line"><a name="l00773"></a><span class="lineno">  773</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00774"></a><span class="lineno">  774</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(xclDeviceHandle dhdl, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name,</div>
-<div class="line"><a name="l00775"></a><span class="lineno">  775</span>&#160;         cu_access_mode mode = cu_access_mode::shared);</div>
-<div class="line"><a name="l00777"></a><span class="lineno">  777</span>&#160; </div>
-<div class="line"><a name="l00783"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#abc04a5d319361cfe70a3b77dfb0b21c2">  783</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#abc04a5d319361cfe70a3b77dfb0b21c2">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;) = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160; </div>
-<div class="line"><a name="l00788"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a42fff186de7e484c987a14a43d70917d">  788</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a42fff186de7e484c987a14a43d70917d">kernel</a>(<a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00789"></a><span class="lineno">  789</span>&#160; </div>
-<div class="line"><a name="l00793"></a><span class="lineno">  793</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00794"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#ab4ca37caccc2e5a6296a41244db82542">  794</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#ab4ca37caccc2e5a6296a41244db82542">~kernel</a>();</div>
-<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160; </div>
-<div class="line"><a name="l00801"></a><span class="lineno">  801</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;</div>
-<div class="line"><a name="l00802"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a35abf20bf3f26a1dc65e1a4163422b7b">  802</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a35abf20bf3f26a1dc65e1a4163422b7b">operator=</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;) = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00803"></a><span class="lineno">  803</span>&#160; </div>
-<div class="line"><a name="l00807"></a><span class="lineno">  807</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;</div>
-<div class="line"><a name="l00808"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a2ec51e741f1ea8c4ab941347988b507b">  808</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a2ec51e741f1ea8c4ab941347988b507b">operator=</a>(<a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00809"></a><span class="lineno">  809</span>&#160; </div>
-<div class="line"><a name="l00818"></a><span class="lineno">  818</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
-<div class="line"><a name="l00819"></a><span class="lineno">  819</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a></div>
-<div class="line"><a name="l00820"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a602dcd5ff860f31695abdf74d24116f9">  820</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(Args&amp;&amp;... args)</div>
-<div class="line"><a name="l00821"></a><span class="lineno">  821</span>&#160;  {</div>
-<div class="line"><a name="l00822"></a><span class="lineno">  822</span>&#160;    <a class="code" href="classxrt_1_1run.html">run</a> r(*<span class="keyword">this</span>);</div>
-<div class="line"><a name="l00823"></a><span class="lineno">  823</span>&#160;    r(std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160;    <span class="keywordflow">return</span> r;</div>
-<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;  }</div>
-<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160; </div>
-<div class="line"><a name="l00837"></a><span class="lineno">  837</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160;  <span class="keywordtype">int</span></div>
-<div class="line"><a name="l00839"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a0137a07a01ff1f4eafc95c4a97aefb2c">  839</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a0137a07a01ff1f4eafc95c4a97aefb2c">group_id</a>(<span class="keywordtype">int</span> argno) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160; </div>
-<div class="line"><a name="l00852"></a><span class="lineno">  852</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00853"></a><span class="lineno">  853</span>&#160;  uint32_t</div>
-<div class="line"><a name="l00854"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#ac08ab6cbafa0b1ad09f8c0a6941a0c68">  854</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#ac08ab6cbafa0b1ad09f8c0a6941a0c68">offset</a>(<span class="keywordtype">int</span> argno) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00700"></a><span class="lineno">  700</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00701"></a><span class="lineno">  701</span>&#160;  <span class="keywordtype">int</span></div>
+<div class="line"><a name="l00702"></a><span class="lineno">  702</span>&#160;  get_arg_index(<span class="keyword">const</span> std::string&amp; argnm) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00703"></a><span class="lineno">  703</span>&#160; </div>
+<div class="line"><a name="l00704"></a><span class="lineno">  704</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00705"></a><span class="lineno">  705</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00706"></a><span class="lineno">  706</span>&#160;  set_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes);</div>
+<div class="line"><a name="l00707"></a><span class="lineno">  707</span>&#160; </div>
+<div class="line"><a name="l00708"></a><span class="lineno">  708</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00709"></a><span class="lineno">  709</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00710"></a><span class="lineno">  710</span>&#160;  set_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;);</div>
+<div class="line"><a name="l00711"></a><span class="lineno">  711</span>&#160; </div>
+<div class="line"><a name="l00712"></a><span class="lineno">  712</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00713"></a><span class="lineno">  713</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00714"></a><span class="lineno">  714</span>&#160;  update_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <span class="keywordtype">void</span>* value, <span class="keywordtype">size_t</span> bytes);</div>
+<div class="line"><a name="l00715"></a><span class="lineno">  715</span>&#160; </div>
+<div class="line"><a name="l00716"></a><span class="lineno">  716</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00717"></a><span class="lineno">  717</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00718"></a><span class="lineno">  718</span>&#160;  update_arg_at_index(<span class="keywordtype">int</span> index, <span class="keyword">const</span> <a class="code" href="classxrt_1_1bo.html">xrt::bo</a>&amp;);</div>
+<div class="line"><a name="l00719"></a><span class="lineno">  719</span>&#160; </div>
+<div class="line"><a name="l00720"></a><span class="lineno">  720</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ArgType, <span class="keyword">typename</span> ...Args&gt;</div>
+<div class="line"><a name="l00721"></a><span class="lineno">  721</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00722"></a><span class="lineno">  722</span>&#160;  <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(<span class="keywordtype">int</span> argno, ArgType&amp;&amp; arg, Args&amp;&amp;... args)</div>
+<div class="line"><a name="l00723"></a><span class="lineno">  723</span>&#160;  {</div>
+<div class="line"><a name="l00724"></a><span class="lineno">  724</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(argno, std::forward&lt;ArgType&gt;(arg));</div>
+<div class="line"><a name="l00725"></a><span class="lineno">  725</span>&#160;    <a class="code" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a>(++argno, std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a name="l00726"></a><span class="lineno">  726</span>&#160;  }</div>
+<div class="line"><a name="l00727"></a><span class="lineno">  727</span>&#160;};</div>
+<div class="line"><a name="l00728"></a><span class="lineno">  728</span>&#160; </div>
+<div class="line"><a name="l00729"></a><span class="lineno">  729</span>&#160; </div>
+<div class="line"><a name="l00740"></a><span class="lineno">  740</span>&#160;<span class="keyword">class </span>kernel_impl;</div>
+<div class="line"><a name="l00741"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html">  741</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1kernel.html">kernel</a></div>
+<div class="line"><a name="l00742"></a><span class="lineno">  742</span>&#160;{</div>
+<div class="line"><a name="l00743"></a><span class="lineno">  743</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00752"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">  752</a></span>&#160;  <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a> : uint8_t { exclusive = 0, shared = 1, none = 2 };</div>
+<div class="line"><a name="l00753"></a><span class="lineno">  753</span>&#160; </div>
+<div class="line"><a name="l00760"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">  760</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">kernel</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00761"></a><span class="lineno">  761</span>&#160; </div>
+<div class="line"><a name="l00782"></a><span class="lineno">  782</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00783"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a01825c09f2508e8f6b48dfe48a3eb378">  783</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a01825c09f2508e8f6b48dfe48a3eb378">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1device.html">xrt::device</a>&amp; <a class="code" href="classxrt_1_1device.html">device</a>, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name,</div>
+<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160;         <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a> mode = cu_access_mode::shared);</div>
+<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160; </div>
+<div class="line"><a name="l00786"></a><span class="lineno">  786</span>&#160; </div>
+<div class="line"><a name="l00789"></a><span class="lineno">  789</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00790"></a><span class="lineno">  790</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<span class="keyword">const</span> xrt::hw_context&amp; ctx, <span class="keyword">const</span> std::string&amp; name);</div>
+<div class="line"><a name="l00792"></a><span class="lineno">  792</span>&#160; </div>
+<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1device.html">xrt::device</a>&amp; <a class="code" href="classxrt_1_1device.html">device</a>, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name, <span class="keywordtype">bool</span> ex)</div>
+<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;    : <a class="code" href="classxrt_1_1kernel.html">kernel</a>(<a class="code" href="classxrt_1_1device.html">device</a>, xclbin_id, name, ex ? <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a>::exclusive : <a class="code" href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">cu_access_mode</a>::shared)</div>
+<div class="line"><a name="l00797"></a><span class="lineno">  797</span>&#160;  {}</div>
+<div class="line"><a name="l00798"></a><span class="lineno">  798</span>&#160; </div>
+<div class="line"><a name="l00802"></a><span class="lineno">  802</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00803"></a><span class="lineno">  803</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(xclDeviceHandle dhdl, <span class="keyword">const</span> <a class="code" href="classxrt_1_1uuid.html">xrt::uuid</a>&amp; xclbin_id, <span class="keyword">const</span> std::string&amp; name,</div>
+<div class="line"><a name="l00804"></a><span class="lineno">  804</span>&#160;         cu_access_mode mode = cu_access_mode::shared);</div>
+<div class="line"><a name="l00806"></a><span class="lineno">  806</span>&#160; </div>
+<div class="line"><a name="l00812"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#abc04a5d319361cfe70a3b77dfb0b21c2">  812</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#abc04a5d319361cfe70a3b77dfb0b21c2">kernel</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00813"></a><span class="lineno">  813</span>&#160; </div>
+<div class="line"><a name="l00817"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a42fff186de7e484c987a14a43d70917d">  817</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a42fff186de7e484c987a14a43d70917d">kernel</a>(<a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00818"></a><span class="lineno">  818</span>&#160; </div>
+<div class="line"><a name="l00822"></a><span class="lineno">  822</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00823"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#aac2e083bf7785c93fe5cbd8358985386">  823</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#aac2e083bf7785c93fe5cbd8358985386">~kernel</a>();</div>
+<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160; </div>
+<div class="line"><a name="l00830"></a><span class="lineno">  830</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;</div>
+<div class="line"><a name="l00831"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a35abf20bf3f26a1dc65e1a4163422b7b">  831</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a35abf20bf3f26a1dc65e1a4163422b7b">operator=</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00832"></a><span class="lineno">  832</span>&#160; </div>
+<div class="line"><a name="l00836"></a><span class="lineno">  836</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;</div>
+<div class="line"><a name="l00837"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a2ec51e741f1ea8c4ab941347988b507b">  837</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a2ec51e741f1ea8c4ab941347988b507b">operator=</a>(<a class="code" href="classxrt_1_1kernel.html">kernel</a>&amp;&amp;) = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160; </div>
+<div class="line"><a name="l00847"></a><span class="lineno">  847</span>&#160;  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Args&gt;</div>
+<div class="line"><a name="l00848"></a><span class="lineno">  848</span>&#160;  <a class="code" href="classxrt_1_1run.html">run</a></div>
+<div class="line"><a name="l00849"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a602dcd5ff860f31695abdf74d24116f9">  849</a></span>&#160;  <a class="code" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator() </a>(Args&amp;&amp;... args)</div>
+<div class="line"><a name="l00850"></a><span class="lineno">  850</span>&#160;  {</div>
+<div class="line"><a name="l00851"></a><span class="lineno">  851</span>&#160;    <a class="code" href="classxrt_1_1run.html">run</a> r(*<span class="keyword">this</span>);</div>
+<div class="line"><a name="l00852"></a><span class="lineno">  852</span>&#160;    r(std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a name="l00853"></a><span class="lineno">  853</span>&#160;    <span class="keywordflow">return</span> r;</div>
+<div class="line"><a name="l00854"></a><span class="lineno">  854</span>&#160;  }</div>
 <div class="line"><a name="l00855"></a><span class="lineno">  855</span>&#160; </div>
-<div class="line"><a name="l00856"></a><span class="lineno">  856</span>&#160;  [[deprecated(<span class="stringliteral">&quot;Please use user-managed xrt::ip &quot;</span></div>
-<div class="line"><a name="l00857"></a><span class="lineno">  857</span>&#160;               <span class="stringliteral">&quot;for read and write register functionality&quot;</span>)]]</div>
-<div class="line"><a name="l00858"></a><span class="lineno">  858</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00859"></a><span class="lineno">  859</span>&#160;  <span class="keywordtype">void</span></div>
-<div class="line"><a name="l00860"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a051841cbd86a31c1d916fe492be72d07">  860</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a051841cbd86a31c1d916fe492be72d07">write_register</a>(uint32_t offset, uint32_t data);</div>
-<div class="line"><a name="l00861"></a><span class="lineno">  861</span>&#160; </div>
-<div class="line"><a name="l00862"></a><span class="lineno">  862</span>&#160;  [[deprecated(<span class="stringliteral">&quot;It is not recommended to use read_register() with XRT &quot;</span></div>
-<div class="line"><a name="l00863"></a><span class="lineno">  863</span>&#160;               <span class="stringliteral">&quot;managed kernels.  Please use user-managed xrt::ip for read and &quot;</span></div>
-<div class="line"><a name="l00864"></a><span class="lineno">  864</span>&#160;               <span class="stringliteral">&quot;write register functionality&quot;</span>)]]</div>
-<div class="line"><a name="l00865"></a><span class="lineno">  865</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00866"></a><span class="lineno">  866</span>&#160;  uint32_t</div>
-<div class="line"><a name="l00867"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a5b9c53ff845a8086428b568ea8be6d5b">  867</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a5b9c53ff845a8086428b568ea8be6d5b">read_register</a>(uint32_t offset) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00868"></a><span class="lineno">  868</span>&#160; </div>
-<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00873"></a><span class="lineno">  873</span>&#160;  std::string</div>
-<div class="line"><a name="l00874"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a7babb100b77b633996f2db4f257277a8">  874</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a7babb100b77b633996f2db4f257277a8">get_name</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00875"></a><span class="lineno">  875</span>&#160; </div>
-<div class="line"><a name="l00879"></a><span class="lineno">  879</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00880"></a><span class="lineno">  880</span>&#160;  xrt::xclbin</div>
-<div class="line"><a name="l00881"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#af6084b7955eeace29fca2d6678b3b886">  881</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#af6084b7955eeace29fca2d6678b3b886">get_xclbin</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00882"></a><span class="lineno">  882</span>&#160; </div>
-<div class="line"><a name="l00883"></a><span class="lineno">  883</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00885"></a><span class="lineno">  885</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;kernel_impl&gt;&amp;</div>
-<div class="line"><a name="l00886"></a><span class="lineno">  886</span>&#160;  get_handle()<span class="keyword"> const</span></div>
-<div class="line"><a name="l00887"></a><span class="lineno">  887</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00888"></a><span class="lineno">  888</span>&#160;    <span class="keywordflow">return</span> handle;</div>
-<div class="line"><a name="l00889"></a><span class="lineno">  889</span>&#160;  }</div>
+<div class="line"><a name="l00866"></a><span class="lineno">  866</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00867"></a><span class="lineno">  867</span>&#160;  <span class="keywordtype">int</span></div>
+<div class="line"><a name="l00868"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a693db42c991f532162695f9f2c4e8779">  868</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a693db42c991f532162695f9f2c4e8779">group_id</a>(<span class="keywordtype">int</span> argno) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00869"></a><span class="lineno">  869</span>&#160; </div>
+<div class="line"><a name="l00881"></a><span class="lineno">  881</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00882"></a><span class="lineno">  882</span>&#160;  uint32_t</div>
+<div class="line"><a name="l00883"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a06512d7bc6c83aa52b84222d51cb2cb9">  883</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a06512d7bc6c83aa52b84222d51cb2cb9">offset</a>(<span class="keywordtype">int</span> argno) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00884"></a><span class="lineno">  884</span>&#160; </div>
+<div class="line"><a name="l00885"></a><span class="lineno">  885</span>&#160;  [[deprecated(<span class="stringliteral">&quot;Please use user-managed xrt::ip &quot;</span></div>
+<div class="line"><a name="l00886"></a><span class="lineno">  886</span>&#160;               <span class="stringliteral">&quot;for read and write register functionality&quot;</span>)]]</div>
+<div class="line"><a name="l00887"></a><span class="lineno">  887</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00888"></a><span class="lineno">  888</span>&#160;  <span class="keywordtype">void</span></div>
+<div class="line"><a name="l00889"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a72beedc80388584628a302f9d111e910">  889</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a72beedc80388584628a302f9d111e910">write_register</a>(uint32_t offset, uint32_t data);</div>
 <div class="line"><a name="l00890"></a><span class="lineno">  890</span>&#160; </div>
-<div class="line"><a name="l00891"></a><span class="lineno">  891</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(std::shared_ptr&lt;kernel_impl&gt; impl)</div>
-<div class="line"><a name="l00892"></a><span class="lineno">  892</span>&#160;    : handle(std::move(impl))</div>
-<div class="line"><a name="l00893"></a><span class="lineno">  893</span>&#160;  {}</div>
-<div class="line"><a name="l00895"></a><span class="lineno">  895</span>&#160; </div>
-<div class="line"><a name="l00896"></a><span class="lineno">  896</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00897"></a><span class="lineno">  897</span>&#160;  std::shared_ptr&lt;kernel_impl&gt; handle;</div>
-<div class="line"><a name="l00898"></a><span class="lineno">  898</span>&#160;};</div>
-<div class="line"><a name="l00899"></a><span class="lineno">  899</span>&#160; </div>
-<div class="line"><a name="l00901"></a><span class="lineno">  901</span>&#160;<span class="comment">// Undocumented experimental API subject to be replaced</span></div>
-<div class="line"><a name="l00902"></a><span class="lineno">  902</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00903"></a><span class="lineno">  903</span>&#160;<span class="keywordtype">void</span></div>
-<div class="line"><a name="l00904"></a><span class="lineno">  904</span>&#160;set_read_range(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">xrt::kernel</a>&amp; kernel, uint32_t <a class="code" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start</a>, uint32_t size);</div>
-<div class="line"><a name="l00906"></a><span class="lineno">  906</span>&#160; </div>
-<div class="line"><a name="l00907"></a><span class="lineno">  907</span>&#160; </div>
-<div class="line"><a name="l00908"></a><span class="lineno">  908</span>&#160;} <span class="comment">// namespace xrt</span></div>
-<div class="line"><a name="l00909"></a><span class="lineno">  909</span>&#160; </div>
-<div class="line"><a name="l00911"></a><span class="lineno">  911</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
-<div class="line"><a name="l00912"></a><span class="lineno">  912</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00913"></a><span class="lineno">  913</span>&#160; </div>
-<div class="line"><a name="l00936"></a><span class="lineno">  936</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00937"></a><span class="lineno">  937</span>&#160;<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div>
-<div class="line"><a name="l00938"></a><span class="lineno">  938</span>&#160;xrtPLKernelOpen(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> deviceHandle, <span class="keyword">const</span> <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> xclbinId, <span class="keyword">const</span> <span class="keywordtype">char</span> *name);</div>
-<div class="line"><a name="l00939"></a><span class="lineno">  939</span>&#160; </div>
-<div class="line"><a name="l00952"></a><span class="lineno">  952</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00953"></a><span class="lineno">  953</span>&#160;<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div>
-<div class="line"><a name="l00954"></a><span class="lineno">  954</span>&#160;xrtPLKernelOpenExclusive(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> deviceHandle, <span class="keyword">const</span> <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> xclbinId, <span class="keyword">const</span> <span class="keywordtype">char</span> *name);</div>
-<div class="line"><a name="l00955"></a><span class="lineno">  955</span>&#160; </div>
-<div class="line"><a name="l00962"></a><span class="lineno">  962</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00963"></a><span class="lineno">  963</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00964"></a><span class="lineno">  964</span>&#160;xrtKernelClose(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle);</div>
-<div class="line"><a name="l00965"></a><span class="lineno">  965</span>&#160; </div>
-<div class="line"><a name="l00980"></a><span class="lineno">  980</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00981"></a><span class="lineno">  981</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00982"></a><span class="lineno">  982</span>&#160;xrtKernelArgGroupId(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, <span class="keywordtype">int</span> argno);</div>
-<div class="line"><a name="l00983"></a><span class="lineno">  983</span>&#160; </div>
-<div class="line"><a name="l00994"></a><span class="lineno">  994</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00995"></a><span class="lineno">  995</span>&#160;uint32_t</div>
-<div class="line"><a name="l00996"></a><span class="lineno">  996</span>&#160;xrtKernelArgOffset(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> khdl, <span class="keywordtype">int</span> argno);</div>
-<div class="line"><a name="l00997"></a><span class="lineno">  997</span>&#160; </div>
-<div class="line"><a name="l01009"></a><span class="lineno"> 1009</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00891"></a><span class="lineno">  891</span>&#160;  [[deprecated(<span class="stringliteral">&quot;It is not recommended to use read_register() with XRT &quot;</span></div>
+<div class="line"><a name="l00892"></a><span class="lineno">  892</span>&#160;               <span class="stringliteral">&quot;managed kernels.  Please use user-managed xrt::ip for read and &quot;</span></div>
+<div class="line"><a name="l00893"></a><span class="lineno">  893</span>&#160;               <span class="stringliteral">&quot;write register functionality&quot;</span>)]]</div>
+<div class="line"><a name="l00894"></a><span class="lineno">  894</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00895"></a><span class="lineno">  895</span>&#160;  uint32_t</div>
+<div class="line"><a name="l00896"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#a364db9ea253dd8afe71a9262f27eeaa8">  896</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#a364db9ea253dd8afe71a9262f27eeaa8">read_register</a>(uint32_t offset) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00897"></a><span class="lineno">  897</span>&#160; </div>
+<div class="line"><a name="l00901"></a><span class="lineno">  901</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00902"></a><span class="lineno">  902</span>&#160;  std::string</div>
+<div class="line"><a name="l00903"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#ae36640e2ec02559da19e50c7feeaad39">  903</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#ae36640e2ec02559da19e50c7feeaad39">get_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00904"></a><span class="lineno">  904</span>&#160; </div>
+<div class="line"><a name="l00908"></a><span class="lineno">  908</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00909"></a><span class="lineno">  909</span>&#160;  xrt::xclbin</div>
+<div class="line"><a name="l00910"></a><span class="lineno"><a class="line" href="classxrt_1_1kernel.html#aebc137ba705d7cabd6af2bcc6caa596c">  910</a></span>&#160;  <a class="code" href="classxrt_1_1kernel.html#aebc137ba705d7cabd6af2bcc6caa596c">get_xclbin</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00911"></a><span class="lineno">  911</span>&#160; </div>
+<div class="line"><a name="l00912"></a><span class="lineno">  912</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00914"></a><span class="lineno">  914</span>&#160;  <span class="keyword">const</span> std::shared_ptr&lt;kernel_impl&gt;&amp;</div>
+<div class="line"><a name="l00915"></a><span class="lineno">  915</span>&#160;  get_handle()<span class="keyword"> const</span></div>
+<div class="line"><a name="l00916"></a><span class="lineno">  916</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00917"></a><span class="lineno">  917</span>&#160;    <span class="keywordflow">return</span> handle;</div>
+<div class="line"><a name="l00918"></a><span class="lineno">  918</span>&#160;  }</div>
+<div class="line"><a name="l00919"></a><span class="lineno">  919</span>&#160; </div>
+<div class="line"><a name="l00920"></a><span class="lineno">  920</span>&#160;  <a class="code" href="classxrt_1_1kernel.html">kernel</a>(std::shared_ptr&lt;kernel_impl&gt; impl)</div>
+<div class="line"><a name="l00921"></a><span class="lineno">  921</span>&#160;    : handle(std::move(impl))</div>
+<div class="line"><a name="l00922"></a><span class="lineno">  922</span>&#160;  {}</div>
+<div class="line"><a name="l00924"></a><span class="lineno">  924</span>&#160; </div>
+<div class="line"><a name="l00925"></a><span class="lineno">  925</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00926"></a><span class="lineno">  926</span>&#160;  std::shared_ptr&lt;kernel_impl&gt; handle;</div>
+<div class="line"><a name="l00927"></a><span class="lineno">  927</span>&#160;};</div>
+<div class="line"><a name="l00928"></a><span class="lineno">  928</span>&#160; </div>
+<div class="line"><a name="l00930"></a><span class="lineno">  930</span>&#160;<span class="comment">// Undocumented experimental API subject to be replaced</span></div>
+<div class="line"><a name="l00931"></a><span class="lineno">  931</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l00932"></a><span class="lineno">  932</span>&#160;<span class="keywordtype">void</span></div>
+<div class="line"><a name="l00933"></a><span class="lineno">  933</span>&#160;set_read_range(<span class="keyword">const</span> <a class="code" href="classxrt_1_1kernel.html">xrt::kernel</a>&amp; kernel, uint32_t <a class="code" href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">start</a>, uint32_t size);</div>
+<div class="line"><a name="l00935"></a><span class="lineno">  935</span>&#160; </div>
+<div class="line"><a name="l00936"></a><span class="lineno">  936</span>&#160; </div>
+<div class="line"><a name="l00937"></a><span class="lineno">  937</span>&#160;} <span class="comment">// namespace xrt</span></div>
+<div class="line"><a name="l00938"></a><span class="lineno">  938</span>&#160; </div>
+<div class="line"><a name="l00940"></a><span class="lineno">  940</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
+<div class="line"><a name="l00941"></a><span class="lineno">  941</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00942"></a><span class="lineno">  942</span>&#160; </div>
+<div class="line"><a name="l00965"></a><span class="lineno">  965</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l00966"></a><span class="lineno">  966</span>&#160;<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div>
+<div class="line"><a name="l00967"></a><span class="lineno">  967</span>&#160;xrtPLKernelOpen(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> deviceHandle, <span class="keyword">const</span> <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> xclbinId, <span class="keyword">const</span> <span class="keywordtype">char</span> *name);</div>
+<div class="line"><a name="l00968"></a><span class="lineno">  968</span>&#160; </div>
+<div class="line"><a name="l00981"></a><span class="lineno">  981</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l00982"></a><span class="lineno">  982</span>&#160;<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div>
+<div class="line"><a name="l00983"></a><span class="lineno">  983</span>&#160;xrtPLKernelOpenExclusive(<a class="code" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a> deviceHandle, <span class="keyword">const</span> <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> xclbinId, <span class="keyword">const</span> <span class="keywordtype">char</span> *name);</div>
+<div class="line"><a name="l00984"></a><span class="lineno">  984</span>&#160; </div>
+<div class="line"><a name="l00991"></a><span class="lineno">  991</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l00992"></a><span class="lineno">  992</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00993"></a><span class="lineno">  993</span>&#160;xrtKernelClose(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle);</div>
+<div class="line"><a name="l00994"></a><span class="lineno">  994</span>&#160; </div>
+<div class="line"><a name="l01009"></a><span class="lineno"> 1009</span>&#160;XRT_API_EXPORT</div>
 <div class="line"><a name="l01010"></a><span class="lineno"> 1010</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01011"></a><span class="lineno"> 1011</span>&#160;xrtKernelReadRegister(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, uint32_t offset, uint32_t* datap);</div>
+<div class="line"><a name="l01011"></a><span class="lineno"> 1011</span>&#160;xrtKernelArgGroupId(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, <span class="keywordtype">int</span> argno);</div>
 <div class="line"><a name="l01012"></a><span class="lineno"> 1012</span>&#160; </div>
-<div class="line"><a name="l01024"></a><span class="lineno"> 1024</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01025"></a><span class="lineno"> 1025</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01026"></a><span class="lineno"> 1026</span>&#160;xrtKernelWriteRegister(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, uint32_t offset, uint32_t data);</div>
-<div class="line"><a name="l01027"></a><span class="lineno"> 1027</span>&#160; </div>
-<div class="line"><a name="l01040"></a><span class="lineno"> 1040</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01041"></a><span class="lineno"> 1041</span>&#160;<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div>
-<div class="line"><a name="l01042"></a><span class="lineno"> 1042</span>&#160;xrtKernelRun(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, ...);</div>
-<div class="line"><a name="l01043"></a><span class="lineno"> 1043</span>&#160; </div>
-<div class="line"><a name="l01054"></a><span class="lineno"> 1054</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01055"></a><span class="lineno"> 1055</span>&#160;<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div>
-<div class="line"><a name="l01056"></a><span class="lineno"> 1056</span>&#160;xrtRunOpen(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle);</div>
-<div class="line"><a name="l01057"></a><span class="lineno"> 1057</span>&#160; </div>
-<div class="line"><a name="l01070"></a><span class="lineno"> 1070</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01071"></a><span class="lineno"> 1071</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01072"></a><span class="lineno"> 1072</span>&#160;xrtRunSetArg(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">int</span> index, ...);</div>
-<div class="line"><a name="l01073"></a><span class="lineno"> 1073</span>&#160; </div>
-<div class="line"><a name="l01087"></a><span class="lineno"> 1087</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01088"></a><span class="lineno"> 1088</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01089"></a><span class="lineno"> 1089</span>&#160;xrtRunUpdateArg(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">int</span> index, ...);</div>
-<div class="line"><a name="l01090"></a><span class="lineno"> 1090</span>&#160; </div>
-<div class="line"><a name="l01100"></a><span class="lineno"> 1100</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01101"></a><span class="lineno"> 1101</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01102"></a><span class="lineno"> 1102</span>&#160;xrtRunStart(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
-<div class="line"><a name="l01103"></a><span class="lineno"> 1103</span>&#160; </div>
-<div class="line"><a name="l01113"></a><span class="lineno"> 1113</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01114"></a><span class="lineno"> 1114</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
-<div class="line"><a name="l01115"></a><span class="lineno"> 1115</span>&#160;xrtRunWait(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
-<div class="line"><a name="l01116"></a><span class="lineno"> 1116</span>&#160; </div>
-<div class="line"><a name="l01127"></a><span class="lineno"> 1127</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01128"></a><span class="lineno"> 1128</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
-<div class="line"><a name="l01129"></a><span class="lineno"> 1129</span>&#160;xrtRunWaitFor(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> timeout_ms);</div>
-<div class="line"><a name="l01130"></a><span class="lineno"> 1130</span>&#160; </div>
-<div class="line"><a name="l01137"></a><span class="lineno"> 1137</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01138"></a><span class="lineno"> 1138</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
-<div class="line"><a name="l01139"></a><span class="lineno"> 1139</span>&#160;xrtRunState(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
-<div class="line"><a name="l01140"></a><span class="lineno"> 1140</span>&#160; </div>
-<div class="line"><a name="l01153"></a><span class="lineno"> 1153</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01154"></a><span class="lineno"> 1154</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01155"></a><span class="lineno"> 1155</span>&#160;xrtRunSetCallback(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keyword">enum</span> ert_cmd_state state,</div>
-<div class="line"><a name="l01156"></a><span class="lineno"> 1156</span>&#160;                  <span class="keywordtype">void</span> (* callback)(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a>, <span class="keyword">enum</span> ert_cmd_state, <span class="keywordtype">void</span>*),</div>
-<div class="line"><a name="l01157"></a><span class="lineno"> 1157</span>&#160;                  <span class="keywordtype">void</span>* data);</div>
-<div class="line"><a name="l01158"></a><span class="lineno"> 1158</span>&#160; </div>
-<div class="line"><a name="l01165"></a><span class="lineno"> 1165</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l01166"></a><span class="lineno"> 1166</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l01167"></a><span class="lineno"> 1167</span>&#160;xrtRunClose(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
-<div class="line"><a name="l01168"></a><span class="lineno"> 1168</span>&#160; </div>
-<div class="line"><a name="l01170"></a><span class="lineno"> 1170</span>&#160; </div>
-<div class="line"><a name="l01171"></a><span class="lineno"> 1171</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a name="l01172"></a><span class="lineno"> 1172</span>&#160;}</div>
-<div class="line"><a name="l01173"></a><span class="lineno"> 1173</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l01174"></a><span class="lineno"> 1174</span>&#160; </div>
-<div class="line"><a name="l01175"></a><span class="lineno"> 1175</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l01023"></a><span class="lineno"> 1023</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01024"></a><span class="lineno"> 1024</span>&#160;uint32_t</div>
+<div class="line"><a name="l01025"></a><span class="lineno"> 1025</span>&#160;xrtKernelArgOffset(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> khdl, <span class="keywordtype">int</span> argno);</div>
+<div class="line"><a name="l01026"></a><span class="lineno"> 1026</span>&#160; </div>
+<div class="line"><a name="l01038"></a><span class="lineno"> 1038</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01039"></a><span class="lineno"> 1039</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01040"></a><span class="lineno"> 1040</span>&#160;xrtKernelReadRegister(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, uint32_t offset, uint32_t* datap);</div>
+<div class="line"><a name="l01041"></a><span class="lineno"> 1041</span>&#160; </div>
+<div class="line"><a name="l01053"></a><span class="lineno"> 1053</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01054"></a><span class="lineno"> 1054</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01055"></a><span class="lineno"> 1055</span>&#160;xrtKernelWriteRegister(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, uint32_t offset, uint32_t data);</div>
+<div class="line"><a name="l01056"></a><span class="lineno"> 1056</span>&#160; </div>
+<div class="line"><a name="l01069"></a><span class="lineno"> 1069</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01070"></a><span class="lineno"> 1070</span>&#160;<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div>
+<div class="line"><a name="l01071"></a><span class="lineno"> 1071</span>&#160;xrtKernelRun(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle, ...);</div>
+<div class="line"><a name="l01072"></a><span class="lineno"> 1072</span>&#160; </div>
+<div class="line"><a name="l01083"></a><span class="lineno"> 1083</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01084"></a><span class="lineno"> 1084</span>&#160;<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div>
+<div class="line"><a name="l01085"></a><span class="lineno"> 1085</span>&#160;xrtRunOpen(<a class="code" href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a> kernelHandle);</div>
+<div class="line"><a name="l01086"></a><span class="lineno"> 1086</span>&#160; </div>
+<div class="line"><a name="l01099"></a><span class="lineno"> 1099</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01100"></a><span class="lineno"> 1100</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01101"></a><span class="lineno"> 1101</span>&#160;xrtRunSetArg(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">int</span> index, ...);</div>
+<div class="line"><a name="l01102"></a><span class="lineno"> 1102</span>&#160; </div>
+<div class="line"><a name="l01116"></a><span class="lineno"> 1116</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01117"></a><span class="lineno"> 1117</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01118"></a><span class="lineno"> 1118</span>&#160;xrtRunUpdateArg(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">int</span> index, ...);</div>
+<div class="line"><a name="l01119"></a><span class="lineno"> 1119</span>&#160; </div>
+<div class="line"><a name="l01129"></a><span class="lineno"> 1129</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01130"></a><span class="lineno"> 1130</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01131"></a><span class="lineno"> 1131</span>&#160;xrtRunStart(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
+<div class="line"><a name="l01132"></a><span class="lineno"> 1132</span>&#160; </div>
+<div class="line"><a name="l01142"></a><span class="lineno"> 1142</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01143"></a><span class="lineno"> 1143</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
+<div class="line"><a name="l01144"></a><span class="lineno"> 1144</span>&#160;xrtRunWait(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
+<div class="line"><a name="l01145"></a><span class="lineno"> 1145</span>&#160; </div>
+<div class="line"><a name="l01156"></a><span class="lineno"> 1156</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01157"></a><span class="lineno"> 1157</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
+<div class="line"><a name="l01158"></a><span class="lineno"> 1158</span>&#160;xrtRunWaitFor(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> timeout_ms);</div>
+<div class="line"><a name="l01159"></a><span class="lineno"> 1159</span>&#160; </div>
+<div class="line"><a name="l01166"></a><span class="lineno"> 1166</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01167"></a><span class="lineno"> 1167</span>&#160;<span class="keyword">enum</span> ert_cmd_state</div>
+<div class="line"><a name="l01168"></a><span class="lineno"> 1168</span>&#160;xrtRunState(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
+<div class="line"><a name="l01169"></a><span class="lineno"> 1169</span>&#160; </div>
+<div class="line"><a name="l01182"></a><span class="lineno"> 1182</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01183"></a><span class="lineno"> 1183</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01184"></a><span class="lineno"> 1184</span>&#160;xrtRunSetCallback(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl, <span class="keyword">enum</span> ert_cmd_state state,</div>
+<div class="line"><a name="l01185"></a><span class="lineno"> 1185</span>&#160;                  <span class="keywordtype">void</span> (* callback)(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a>, <span class="keyword">enum</span> ert_cmd_state, <span class="keywordtype">void</span>*),</div>
+<div class="line"><a name="l01186"></a><span class="lineno"> 1186</span>&#160;                  <span class="keywordtype">void</span>* data);</div>
+<div class="line"><a name="l01187"></a><span class="lineno"> 1187</span>&#160; </div>
+<div class="line"><a name="l01194"></a><span class="lineno"> 1194</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01195"></a><span class="lineno"> 1195</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01196"></a><span class="lineno"> 1196</span>&#160;xrtRunClose(<a class="code" href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a> rhdl);</div>
+<div class="line"><a name="l01197"></a><span class="lineno"> 1197</span>&#160; </div>
+<div class="line"><a name="l01199"></a><span class="lineno"> 1199</span>&#160; </div>
+<div class="line"><a name="l01200"></a><span class="lineno"> 1200</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l01201"></a><span class="lineno"> 1201</span>&#160;}</div>
+<div class="line"><a name="l01202"></a><span class="lineno"> 1202</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l01203"></a><span class="lineno"> 1203</span>&#160; </div>
+<div class="line"><a name="l01204"></a><span class="lineno"> 1204</span>&#160;<span class="preprocessor">#endif</span></div>
 <div class="ttc" id="aclassxrt_1_1bo_html"><div class="ttname"><a href="classxrt_1_1bo.html">xrt::bo</a></div><div class="ttdoc">xrt::bo represents a buffer object that can be used as kernel argument</div><div class="ttdef"><b>Definition:</b> xrt_bo.h:77</div></div>
 <div class="ttc" id="aclassxrt_1_1device_html"><div class="ttname"><a href="classxrt_1_1device.html">xrt::device</a></div><div class="ttdoc">xrt::device represents used for acceleration.</div><div class="ttdef"><b>Definition:</b> xrt_device.h:145</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html"><div class="ttname"><a href="classxrt_1_1kernel.html">xrt::kernel</a></div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:713</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a0137a07a01ff1f4eafc95c4a97aefb2c"><div class="ttname"><a href="classxrt_1_1kernel.html#a0137a07a01ff1f4eafc95c4a97aefb2c">xrt::kernel::group_id</a></div><div class="ttdeci">int group_id(int argno) const</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a051841cbd86a31c1d916fe492be72d07"><div class="ttname"><a href="classxrt_1_1kernel.html#a051841cbd86a31c1d916fe492be72d07">xrt::kernel::write_register</a></div><div class="ttdeci">void write_register(uint32_t offset, uint32_t data)</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html"><div class="ttname"><a href="classxrt_1_1kernel.html">xrt::kernel</a></div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:742</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a01825c09f2508e8f6b48dfe48a3eb378"><div class="ttname"><a href="classxrt_1_1kernel.html#a01825c09f2508e8f6b48dfe48a3eb378">xrt::kernel::kernel</a></div><div class="ttdeci">XRT_API_EXPORT kernel(const xrt::device &amp;device, const xrt::uuid &amp;xclbin_id, const std::string &amp;name, cu_access_mode mode=cu_access_mode::shared)</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a06512d7bc6c83aa52b84222d51cb2cb9"><div class="ttname"><a href="classxrt_1_1kernel.html#a06512d7bc6c83aa52b84222d51cb2cb9">xrt::kernel::offset</a></div><div class="ttdeci">XRT_API_EXPORT uint32_t offset(int argno) const</div></div>
 <div class="ttc" id="aclassxrt_1_1kernel_html_a1f819540d433c87f27067166ab1e8bff"><div class="ttname"><a href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">xrt::kernel::kernel</a></div><div class="ttdeci">kernel()=default</div></div>
 <div class="ttc" id="aclassxrt_1_1kernel_html_a2ec51e741f1ea8c4ab941347988b507b"><div class="ttname"><a href="classxrt_1_1kernel.html#a2ec51e741f1ea8c4ab941347988b507b">xrt::kernel::operator=</a></div><div class="ttdeci">kernel &amp; operator=(kernel &amp;&amp;)=default</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a32cc9ecb08ec3c5da84d3d6b10b3a074"><div class="ttname"><a href="classxrt_1_1kernel.html#a32cc9ecb08ec3c5da84d3d6b10b3a074">xrt::kernel::kernel</a></div><div class="ttdeci">kernel(const xrt::device &amp;device, const xrt::uuid &amp;xclbin_id, const std::string &amp;name, cu_access_mode mode=cu_access_mode::shared)</div></div>
 <div class="ttc" id="aclassxrt_1_1kernel_html_a35abf20bf3f26a1dc65e1a4163422b7b"><div class="ttname"><a href="classxrt_1_1kernel.html#a35abf20bf3f26a1dc65e1a4163422b7b">xrt::kernel::operator=</a></div><div class="ttdeci">kernel &amp; operator=(const kernel &amp;)=default</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a364db9ea253dd8afe71a9262f27eeaa8"><div class="ttname"><a href="classxrt_1_1kernel.html#a364db9ea253dd8afe71a9262f27eeaa8">xrt::kernel::read_register</a></div><div class="ttdeci">XRT_API_EXPORT uint32_t read_register(uint32_t offset) const</div></div>
 <div class="ttc" id="aclassxrt_1_1kernel_html_a42fff186de7e484c987a14a43d70917d"><div class="ttname"><a href="classxrt_1_1kernel.html#a42fff186de7e484c987a14a43d70917d">xrt::kernel::kernel</a></div><div class="ttdeci">kernel(kernel &amp;&amp;)=default</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a5b9c53ff845a8086428b568ea8be6d5b"><div class="ttname"><a href="classxrt_1_1kernel.html#a5b9c53ff845a8086428b568ea8be6d5b">xrt::kernel::read_register</a></div><div class="ttdeci">uint32_t read_register(uint32_t offset) const</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a77e6ff3b69b1ff2365464f483b5b7dd6"><div class="ttname"><a href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">xrt::kernel::cu_access_mode</a></div><div class="ttdeci">cu_access_mode</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:723</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_a7babb100b77b633996f2db4f257277a8"><div class="ttname"><a href="classxrt_1_1kernel.html#a7babb100b77b633996f2db4f257277a8">xrt::kernel::get_name</a></div><div class="ttdeci">std::string get_name() const</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_ab4ca37caccc2e5a6296a41244db82542"><div class="ttname"><a href="classxrt_1_1kernel.html#ab4ca37caccc2e5a6296a41244db82542">xrt::kernel::~kernel</a></div><div class="ttdeci">~kernel()</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a693db42c991f532162695f9f2c4e8779"><div class="ttname"><a href="classxrt_1_1kernel.html#a693db42c991f532162695f9f2c4e8779">xrt::kernel::group_id</a></div><div class="ttdeci">XRT_API_EXPORT int group_id(int argno) const</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a72beedc80388584628a302f9d111e910"><div class="ttname"><a href="classxrt_1_1kernel.html#a72beedc80388584628a302f9d111e910">xrt::kernel::write_register</a></div><div class="ttdeci">XRT_API_EXPORT void write_register(uint32_t offset, uint32_t data)</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_a77e6ff3b69b1ff2365464f483b5b7dd6"><div class="ttname"><a href="classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6">xrt::kernel::cu_access_mode</a></div><div class="ttdeci">cu_access_mode</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:752</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_aac2e083bf7785c93fe5cbd8358985386"><div class="ttname"><a href="classxrt_1_1kernel.html#aac2e083bf7785c93fe5cbd8358985386">xrt::kernel::~kernel</a></div><div class="ttdeci">XRT_API_EXPORT ~kernel()</div></div>
 <div class="ttc" id="aclassxrt_1_1kernel_html_abc04a5d319361cfe70a3b77dfb0b21c2"><div class="ttname"><a href="classxrt_1_1kernel.html#abc04a5d319361cfe70a3b77dfb0b21c2">xrt::kernel::kernel</a></div><div class="ttdeci">kernel(const kernel &amp;)=default</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_ac08ab6cbafa0b1ad09f8c0a6941a0c68"><div class="ttname"><a href="classxrt_1_1kernel.html#ac08ab6cbafa0b1ad09f8c0a6941a0c68">xrt::kernel::offset</a></div><div class="ttdeci">uint32_t offset(int argno) const</div></div>
-<div class="ttc" id="aclassxrt_1_1kernel_html_af6084b7955eeace29fca2d6678b3b886"><div class="ttname"><a href="classxrt_1_1kernel.html#af6084b7955eeace29fca2d6678b3b886">xrt::kernel::get_xclbin</a></div><div class="ttdeci">xrt::xclbin get_xclbin() const</div></div>
-<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html">xrt::run::command_error</a></div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:104</div></div>
-<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_a6240dad583cbd7b037863f3182c8169f"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#a6240dad583cbd7b037863f3182c8169f">xrt::run::command_error::what</a></div><div class="ttdeci">const char * what() const noexcept override</div></div>
-<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_a8101a7b5d1897245d4597223c1683652"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#a8101a7b5d1897245d4597223c1683652">xrt::run::command_error::get_command_state</a></div><div class="ttdeci">ert_cmd_state get_command_state() const</div></div>
-<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_ab37fbc628d3d0286e880b5885a2ebe84"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#ab37fbc628d3d0286e880b5885a2ebe84">xrt::run::command_error::command_error</a></div><div class="ttdeci">command_error(ert_cmd_state state, const std::string &amp;what)</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html"><div class="ttname"><a href="classxrt_1_1run.html">xrt::run</a></div><div class="ttdoc">xrt::run represents one execution of a kernel</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:95</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a00352eeb61b2c185e23c32840dfc61ea"><div class="ttname"><a href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, xrt::bo &amp;&amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:497</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a132df6dc0e490371ccb15d68211f9921"><div class="ttname"><a href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, const void *value, size_t bytes)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:656</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a15fa11c122834664d7d24c7c2867c834"><div class="ttname"><a href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, const xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:567</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a21fd0c511149be9082f4ae165b7c14b9"><div class="ttname"><a href="classxrt_1_1run.html#a21fd0c511149be9082f4ae165b7c14b9">xrt::run::return_code</a></div><div class="ttdeci">uint32_t return_code() const</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a268c7ad2d9bab32d6ba2878a0b00c628"><div class="ttname"><a href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">xrt::run::add_callback</a></div><div class="ttdeci">void add_callback(ert_cmd_state state, std::function&lt; void(const void *, ert_cmd_state, void *)&gt; callback, void *data)</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a3baec6b476f99e4e10a06044690558ac"><div class="ttname"><a href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">xrt::run::state</a></div><div class="ttdeci">ert_cmd_state state() const</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_ae36640e2ec02559da19e50c7feeaad39"><div class="ttname"><a href="classxrt_1_1kernel.html#ae36640e2ec02559da19e50c7feeaad39">xrt::kernel::get_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1kernel_html_aebc137ba705d7cabd6af2bcc6caa596c"><div class="ttname"><a href="classxrt_1_1kernel.html#aebc137ba705d7cabd6af2bcc6caa596c">xrt::kernel::get_xclbin</a></div><div class="ttdeci">XRT_API_EXPORT xrt::xclbin get_xclbin() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1aie__error_html"><div class="ttname"><a href="classxrt_1_1run_1_1aie__error.html">xrt::run::aie_error</a></div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:135</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1aie__error_html_a98494d4f99ad0497239d4d76882b16a5"><div class="ttname"><a href="classxrt_1_1run_1_1aie__error.html#a98494d4f99ad0497239d4d76882b16a5">xrt::run::aie_error::span</a></div><div class="ttdeci">xrt::detail::span&lt; T &gt; span</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:137</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1aie__error_html_ab6d6b40bd01cef8ba090f81fdc0c5e73"><div class="ttname"><a href="classxrt_1_1run_1_1aie__error.html#ab6d6b40bd01cef8ba090f81fdc0c5e73">xrt::run::aie_error::data</a></div><div class="ttdeci">XRT_API_EXPORT span&lt; const uint32_t &gt; data() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1aie__error_html_ad859bfedd3bb79ab678b401de53336e3"><div class="ttname"><a href="classxrt_1_1run_1_1aie__error.html#ad859bfedd3bb79ab678b401de53336e3">xrt::run::aie_error::aie_error</a></div><div class="ttdeci">XRT_API_EXPORT aie_error(const xrt::run &amp;run, const std::string &amp;what)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html">xrt::run::command_error</a></div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:105</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_a13d1bc2c45bef721d7afa584d3f5d45e"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#a13d1bc2c45bef721d7afa584d3f5d45e">xrt::run::command_error::what</a></div><div class="ttdeci">XRT_API_EXPORT const char * what() const noexcept override</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_a4340face7c5dff05c1fd6ed292ba9e25"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#a4340face7c5dff05c1fd6ed292ba9e25">xrt::run::command_error::get_command_state</a></div><div class="ttdeci">XRT_API_EXPORT ert_cmd_state get_command_state() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_a9f1557e0f8a0eb918564ed2ebe25ae99"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#a9f1557e0f8a0eb918564ed2ebe25ae99">xrt::run::command_error::command_error</a></div><div class="ttdeci">XRT_API_EXPORT command_error(const xrt::run &amp;run, const std::string &amp;what)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_1_1command__error_html_aad557a6612338a868cf7f7985e1c3365"><div class="ttname"><a href="classxrt_1_1run_1_1command__error.html#aad557a6612338a868cf7f7985e1c3365">xrt::run::command_error::command_error</a></div><div class="ttdeci">XRT_API_EXPORT command_error(ert_cmd_state state, const std::string &amp;what)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html"><div class="ttname"><a href="classxrt_1_1run.html">xrt::run</a></div><div class="ttdoc">xrt::run represents one execution of a kernel</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:96</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a00352eeb61b2c185e23c32840dfc61ea"><div class="ttname"><a href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, xrt::bo &amp;&amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:526</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a132df6dc0e490371ccb15d68211f9921"><div class="ttname"><a href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, const void *value, size_t bytes)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:685</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a15fa11c122834664d7d24c7c2867c834"><div class="ttname"><a href="classxrt_1_1run.html#a15fa11c122834664d7d24c7c2867c834">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, const xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:596</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a1b662cfbe1c64a6c566ea1108b76140c"><div class="ttname"><a href="classxrt_1_1run.html#a1b662cfbe1c64a6c566ea1108b76140c">xrt::run::run</a></div><div class="ttdeci">run(run &amp;&amp;)=default</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a1bbe2318b069a6bb6920a6ddd21a7792"><div class="ttname"><a href="classxrt_1_1run.html#a1bbe2318b069a6bb6920a6ddd21a7792">xrt::run::start</a></div><div class="ttdeci">XRT_API_EXPORT void start()</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a35703566f12dfa5f08eed43c801b3e59"><div class="ttname"><a href="classxrt_1_1run.html#a35703566f12dfa5f08eed43c801b3e59">xrt::run::return_code</a></div><div class="ttdeci">XRT_API_EXPORT uint32_t return_code() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a4322dadfac444afa077632c677a025bb"><div class="ttname"><a href="classxrt_1_1run.html#a4322dadfac444afa077632c677a025bb">xrt::run::run</a></div><div class="ttdeci">run(const run &amp;)=default</div></div>
 <div class="ttc" id="aclassxrt_1_1run_html_a43f61719426fff8f5f24f0d550e0f29f"><div class="ttname"><a href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">xrt::run::run</a></div><div class="ttdeci">run()=default</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a53ee8f980ab4730a247015501feee605"><div class="ttname"><a href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, ArgType &amp;&amp;arg)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:548</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a6452285402383d151df1fb1bc9f44227"><div class="ttname"><a href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, const xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:488</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a66b075fdd181319c5edbdd4e04db109f"><div class="ttname"><a href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">xrt::run::operator()</a></div><div class="ttdeci">void operator()(Args &amp;&amp;... args)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:583</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a788df7565091221de5376d6c1d4a5f24"><div class="ttname"><a href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">xrt::run::wait</a></div><div class="ttdeci">ert_cmd_state wait(unsigned int timeout_ms) const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:306</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a8199d6f09f478891564f722be2d593fb"><div class="ttname"><a href="classxrt_1_1run.html#a8199d6f09f478891564f722be2d593fb">xrt::run::get_ctrl_scratchpad_bo</a></div><div class="ttdeci">xrt::bo get_ctrl_scratchpad_bo() const</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a8a86a2d453010753756d590e2032e21a"><div class="ttname"><a href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, ArgType &amp;&amp;arg)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:459</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_a95bc7156eb3b30bfe117d875ac40d018"><div class="ttname"><a href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">xrt::run::wait2</a></div><div class="ttdeci">void wait2() const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:359</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ab1943c6897297263da86ef998c2e419c"><div class="ttname"><a href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">xrt::run::wait2</a></div><div class="ttdeci">std::cv_status wait2(const std::chrono::milliseconds &amp;timeout) const</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ac4697b4f95bbb0d67711772ced21b1cd"><div class="ttname"><a href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">xrt::run::abort</a></div><div class="ttdeci">ert_cmd_state abort()</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ac5f4e82835cdf8f601f2ef24e3067390"><div class="ttname"><a href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:479</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ada025d6709796a6ea20182e5b720a96b"><div class="ttname"><a href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">xrt::run::start</a></div><div class="ttdeci">void start()</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ada1100dcaec6d37d228665388d53114c"><div class="ttname"><a href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, const void *value, size_t bytes)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:663</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ae133bb9766ad5daac80bbad0bc748720"><div class="ttname"><a href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">xrt::run::stop</a></div><div class="ttdeci">void stop()</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_ae480cd01d778a871d421611c380d11d8"><div class="ttname"><a href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(const std::string &amp;argnm, ArgType &amp;&amp;argvalue)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:527</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_af17b3aebcbcfc41859e109515fae3557"><div class="ttname"><a href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">xrt::run::operator&lt;</a></div><div class="ttdeci">bool operator&lt;(const xrt::run &amp;rhs) const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:438</div></div>
-<div class="ttc" id="aclassxrt_1_1run_html_afaf1ff8225e15d8802401982f62321e5"><div class="ttname"><a href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">xrt::run::wait</a></div><div class="ttdeci">ert_cmd_state wait(const std::chrono::milliseconds &amp;timeout=std::chrono::milliseconds{0}) const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a4dd71a287b9a3ea898982e219738fd25"><div class="ttname"><a href="classxrt_1_1run.html#a4dd71a287b9a3ea898982e219738fd25">xrt::run::get_ctrl_scratchpad_bo</a></div><div class="ttdeci">XRT_API_EXPORT xrt::bo get_ctrl_scratchpad_bo() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a535bf4b02eb838d3bd6354cfbb2b4a6b"><div class="ttname"><a href="classxrt_1_1run.html#a535bf4b02eb838d3bd6354cfbb2b4a6b">xrt::run::wait2</a></div><div class="ttdeci">XRT_API_EXPORT std::cv_status wait2(const std::chrono::milliseconds &amp;timeout) const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a53ee8f980ab4730a247015501feee605"><div class="ttname"><a href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, ArgType &amp;&amp;arg)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:577</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a5f11d9b43906e658d1aea5ed9ea11384"><div class="ttname"><a href="classxrt_1_1run.html#a5f11d9b43906e658d1aea5ed9ea11384">xrt::run::start</a></div><div class="ttdeci">XRT_API_EXPORT void start(const autostart &amp;iterations)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a6452285402383d151df1fb1bc9f44227"><div class="ttname"><a href="classxrt_1_1run.html#a6452285402383d151df1fb1bc9f44227">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, const xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:517</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a66b075fdd181319c5edbdd4e04db109f"><div class="ttname"><a href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">xrt::run::operator()</a></div><div class="ttdeci">void operator()(Args &amp;&amp;... args)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:612</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a6a22e39c54b52caec007bb95e7571e59"><div class="ttname"><a href="classxrt_1_1run.html#a6a22e39c54b52caec007bb95e7571e59">xrt::run::add_callback</a></div><div class="ttdeci">XRT_API_EXPORT void add_callback(ert_cmd_state state, std::function&lt; void(const void *, ert_cmd_state, void *)&gt; callback, void *data)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a72e1bd6bb46b8165f1d081316b5b2a7c"><div class="ttname"><a href="classxrt_1_1run.html#a72e1bd6bb46b8165f1d081316b5b2a7c">xrt::run::operator=</a></div><div class="ttdeci">run &amp; operator=(const run &amp;)=default</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a788df7565091221de5376d6c1d4a5f24"><div class="ttname"><a href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">xrt::run::wait</a></div><div class="ttdeci">ert_cmd_state wait(unsigned int timeout_ms) const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:335</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a83a265d18674729c1dcc5ea9b8016d2e"><div class="ttname"><a href="classxrt_1_1run.html#a83a265d18674729c1dcc5ea9b8016d2e">xrt::run::run</a></div><div class="ttdeci">XRT_API_EXPORT run(const kernel &amp;krnl)</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a870fc62997969d36e1782b4a9a3f882b"><div class="ttname"><a href="classxrt_1_1run.html#a870fc62997969d36e1782b4a9a3f882b">xrt::run::state</a></div><div class="ttdeci">XRT_API_EXPORT ert_cmd_state state() const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a8a86a2d453010753756d590e2032e21a"><div class="ttname"><a href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, ArgType &amp;&amp;arg)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:488</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a95bc7156eb3b30bfe117d875ac40d018"><div class="ttname"><a href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">xrt::run::wait2</a></div><div class="ttdeci">void wait2() const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:388</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_a9fae7bc6db4e82e4b07da64f3f2f2709"><div class="ttname"><a href="classxrt_1_1run.html#a9fae7bc6db4e82e4b07da64f3f2f2709">xrt::run::abort</a></div><div class="ttdeci">XRT_API_EXPORT ert_cmd_state abort()</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_aa51e579cf6d2edab15945b9156022771"><div class="ttname"><a href="classxrt_1_1run.html#aa51e579cf6d2edab15945b9156022771">xrt::run::~run</a></div><div class="ttdeci">XRT_API_EXPORT ~run()</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_ac5f4e82835cdf8f601f2ef24e3067390"><div class="ttname"><a href="classxrt_1_1run.html#ac5f4e82835cdf8f601f2ef24e3067390">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(int index, xrt::bo &amp;boh)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:508</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_acdf89c455642da16b4836233bb816713"><div class="ttname"><a href="classxrt_1_1run.html#acdf89c455642da16b4836233bb816713">xrt::run::wait</a></div><div class="ttdeci">XRT_API_EXPORT ert_cmd_state wait(const std::chrono::milliseconds &amp;timeout=std::chrono::milliseconds{0}) const</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_ada1100dcaec6d37d228665388d53114c"><div class="ttname"><a href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">xrt::run::update_arg</a></div><div class="ttdeci">void update_arg(int index, const void *value, size_t bytes)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:692</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_ade0838d664f805f80cda6b36a84c9b34"><div class="ttname"><a href="classxrt_1_1run.html#ade0838d664f805f80cda6b36a84c9b34">xrt::run::stop</a></div><div class="ttdeci">XRT_API_EXPORT void stop()</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_ae480cd01d778a871d421611c380d11d8"><div class="ttname"><a href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">xrt::run::set_arg</a></div><div class="ttdeci">void set_arg(const std::string &amp;argnm, ArgType &amp;&amp;argvalue)</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:556</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_af17b3aebcbcfc41859e109515fae3557"><div class="ttname"><a href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">xrt::run::operator&lt;</a></div><div class="ttdeci">bool operator&lt;(const xrt::run &amp;rhs) const</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:467</div></div>
+<div class="ttc" id="aclassxrt_1_1run_html_afee6b8aa80257eff7137db40a8c0754e"><div class="ttname"><a href="classxrt_1_1run.html#afee6b8aa80257eff7137db40a8c0754e">xrt::run::operator=</a></div><div class="ttdeci">run &amp; operator=(run &amp;&amp;)=default</div></div>
 <div class="ttc" id="aclassxrt_1_1uuid_html"><div class="ttname"><a href="classxrt_1_1uuid.html">xrt::uuid</a></div><div class="ttdoc">Wrapper class to treat uuid_t as a value type supporting copying.</div><div class="ttdef"><b>Definition:</b> xrt_uuid.h:44</div></div>
 <div class="ttc" id="anamespacexrt_html"><div class="ttname"><a href="namespacexrt.html">xrt</a></div><div class="ttdef"><b>Definition:</b> xrt_device.h:32</div></div>
-<div class="ttc" id="astructxrt_1_1autostart_html"><div class="ttname"><a href="structxrt_1_1autostart.html">xrt::autostart</a></div><div class="ttdoc">xrt::autostart is a specific type used as template argument.</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:75</div></div>
-<div class="ttc" id="astructxrt_1_1autostart_html_a490e51210dae35c3a65e97e67a1f986a"><div class="ttname"><a href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">xrt::autostart::iterations</a></div><div class="ttdeci">unsigned int iterations</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:76</div></div>
+<div class="ttc" id="astructxrt_1_1autostart_html"><div class="ttname"><a href="structxrt_1_1autostart.html">xrt::autostart</a></div><div class="ttdoc">xrt::autostart is a specific type used as template argument.</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:76</div></div>
+<div class="ttc" id="astructxrt_1_1autostart_html_a490e51210dae35c3a65e97e67a1f986a"><div class="ttname"><a href="structxrt_1_1autostart.html#a490e51210dae35c3a65e97e67a1f986a">xrt::autostart::iterations</a></div><div class="ttdeci">unsigned int iterations</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:77</div></div>
 <div class="ttc" id="axrt__bo_8h_html"><div class="ttname"><a href="xrt__bo_8h.html">xrt_bo.h</a></div></div>
 <div class="ttc" id="axrt__device_8h_html"><div class="ttname"><a href="xrt__device_8h.html">xrt_device.h</a></div></div>
 <div class="ttc" id="axrt__device_8h_html_adfe3b0114657bf4f06299bf397c0d4e0"><div class="ttname"><a href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a></div><div class="ttdeci">void * xrtDeviceHandle</div><div class="ttdef"><b>Definition:</b> xrt_device.h:24</div></div>
-<div class="ttc" id="axrt__kernel_8h_html_a68e3a9b09a4c5ce69eda646169ea6a49"><div class="ttname"><a href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div><div class="ttdeci">void * xrtKernelHandle</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:34</div></div>
-<div class="ttc" id="axrt__kernel_8h_html_ada8884bce9b6c6dbc1d7497d68845061"><div class="ttname"><a href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div><div class="ttdeci">void * xrtRunHandle</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:42</div></div>
+<div class="ttc" id="axrt__kernel_8h_html_a68e3a9b09a4c5ce69eda646169ea6a49"><div class="ttname"><a href="xrt__kernel_8h.html#a68e3a9b09a4c5ce69eda646169ea6a49">xrtKernelHandle</a></div><div class="ttdeci">void * xrtKernelHandle</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:35</div></div>
+<div class="ttc" id="axrt__kernel_8h_html_ada8884bce9b6c6dbc1d7497d68845061"><div class="ttname"><a href="xrt__kernel_8h.html#ada8884bce9b6c6dbc1d7497d68845061">xrtRunHandle</a></div><div class="ttdeci">void * xrtRunHandle</div><div class="ttdef"><b>Definition:</b> xrt_kernel.h:43</div></div>
 <div class="ttc" id="axrt__uuid_8h_html"><div class="ttname"><a href="xrt__uuid_8h.html">xrt_uuid.h</a></div></div>
 <div class="ttc" id="axrt__uuid_8h_html_acc1e121f6e46b5d2345dc98581dd712d"><div class="ttname"><a href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a></div><div class="ttdeci">uuid_t xuid_t</div><div class="ttdef"><b>Definition:</b> xrt_uuid.h:24</div></div>
 </div><!-- fragment --></div><!-- contents -->
