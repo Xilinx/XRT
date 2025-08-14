@@ -25,6 +25,7 @@
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 #ifdef XDP_NPU3_BUILD
+#include "client/aie_profile.h"
 #include "client/aie_profile_npu3.h"
 #elif XDP_CLIENT_BUILD
 #include "client/aie_profile.h"

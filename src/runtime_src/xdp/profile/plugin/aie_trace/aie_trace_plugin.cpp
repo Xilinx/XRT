@@ -32,6 +32,7 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
 #ifdef XDP_NPU3_BUILD
+#include "client/aie_trace.h"
 #include "client/aie_trace_npu3.h"
 #elif XDP_CLIENT_BUILD
 #include "client/aie_trace.h"
