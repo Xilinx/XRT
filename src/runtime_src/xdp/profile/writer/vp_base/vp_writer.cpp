@@ -148,7 +148,7 @@ namespace xdp {
     } 
     // check for invalid characters in the path 
     const std::string invalidChars = "<>:\"/\\|?*";
-    else if (directory.find_first_of(invalidChars) != std::string::npos) {
+    if (directory.find_first_of(invalidChars) != std::string::npos) {
       try {
         std::string msg = "The user specified profiling directory contains invalid characters: " + invalidChars;
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
