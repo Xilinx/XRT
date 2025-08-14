@@ -111,7 +111,7 @@ namespace xdp {
     std::mutex appStyleLock;
     std::mutex hwCtxImplUIDMapLock;
     std::mutex aieProfileConfigLock; 
-    mutable std::mutex aieMetadataReaderLock; 
+    std::mutex aieMetadataReaderLock; 
 
     // AIE device (Supported devices only)
     std::function<void (void*)> deallocateAieDevice = nullptr ;
@@ -404,7 +404,8 @@ namespace xdp {
                                   void* devHandle, uint64_t deviceID=0) ;
 
     XDP_CORE_EXPORT void readAIEMetadata(uint64_t deviceId, xrt::xclbin xrtXclbin, bool checkDisk);
-    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader(uint64_t deviceId = 0) const;
+    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader(uint64_t deviceId = 0) ;
+    XDP_CORE_EXPORT void addAIEmetadataReader(uint64_t deviceId, std::unique_ptr<aie::BaseFiletypeImpl> metadataReader) ;
 
     // ************************************************************************
     // ***** Functions for information from a specific xclbin on a device *****

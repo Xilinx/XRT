@@ -2630,8 +2630,7 @@ namespace xdp {
       } else {
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                               "AIE metadata read successfully from disk!");
-        std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
-        metadataReaders.emplace(deviceId, std::move(metadataReader));
+        addAIEmetadataReader(deviceId, std::move(metadataReader));
       }
       return;
     }
@@ -2654,13 +2653,18 @@ namespace xdp {
     } else {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                               "AIE metadata read successfully!");
-      std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
-      metadataReaders.emplace(deviceId, std::move(metadataReader));
+      addAIEmetadataReader(deviceId, std::move(metadataReader));
     }
   }
 
+  void VPStaticDatabase::addAIEmetadataReader(uint64_t deviceId, std::unique_ptr<aie::BaseFiletypeImpl> metadataReader)
+  {
+    std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
+    metadataReaders[deviceId] = std::move(metadataReader); 
+  }
+
   const xdp::aie::BaseFiletypeImpl*
-  VPStaticDatabase::getAIEmetadataReader(uint64_t deviceId) const
+  VPStaticDatabase::getAIEmetadataReader(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "AIE metadataReader requested");
@@ -2675,12 +2679,12 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
-    if (!getAIEmetadataReader(deviceId))
+    auto metadataReader = getAIEmetadataReader(deviceId);
+    if (!metadataReader)
       return;
 
     try {
-      std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
-      auto hwGen = metadataReaders[deviceId]->getHardwareGeneration();
+      auto hwGen = metadataReader->getHardwareGeneration();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
     } catch(...) {
       return;
@@ -2700,12 +2704,12 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    if (!getAIEmetadataReader(deviceId))
-       return;
+    auto metadataReader = getAIEmetadataReader(deviceId);
+    if (!metadataReader)
+      return;
 
     try {
-      std::lock_guard<std::mutex> lock(aieMetadataReaderLock) ;
-      xclbin->aie.clockRateAIEMHz = metadataReaders[deviceId]->getAIEClockFreqMHz();
+      xclbin->aie.clockRateAIEMHz = metadataReader->getAIEClockFreqMHz();
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "read clockRateAIEMHz: "
                                                         + std::to_string(xclbin->aie.clockRateAIEMHz));
     } catch(...) {
