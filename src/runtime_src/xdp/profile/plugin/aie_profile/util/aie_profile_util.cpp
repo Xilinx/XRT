@@ -396,11 +396,11 @@ namespace xdp::aie::profile {
             XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
-      }
+      } else
 #endif
       // Applicable for Edge Versal and client builds
       // NOTE: NPU3 build need to be handled separately if required
-      if (!aie::isAIE2ps(hwGen)) {
+      {
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
         std::replace(events.begin(), events.end(), 
