@@ -136,7 +136,7 @@ static std::vector<uint32_t> parse_context_ids(const std::vector<std::string>& e
   
   for (const auto& filter : elements_filter) {
     if (filter.find("ctx_id=") == 0) {
-      std::string ctx_ids_str = filter.substr(7); // Extract string after "ctx_id="
+      std::string ctx_ids_str = filter.substr(7); // // NOLINT(cppcoreguidelines-avoid-magic-numbers) 
       std::stringstream ctx_stream(ctx_ids_str);
       std::string ctx_id_token;
       
