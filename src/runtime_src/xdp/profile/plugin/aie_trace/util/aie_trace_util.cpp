@@ -255,7 +255,7 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
     }
     else if (aie::isAIE2ps(hwGen)) {
-#ifndef XDP_CLIENT_BUILD
+#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
       eventSets["input_ports_details"] = {
           XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
@@ -283,7 +283,7 @@ namespace xdp::aie::trace {
 
     // Microcontroller sets
     if (aie::isMicroSupported(hwGen)) {
-#ifndef XDP_CLIENT_BUILD
+#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
     if (aie::isAIE2ps(hwGen)) {
       eventSets["uc_axis"] = {
           XAIE_EVENT_CORE_AXIS_MASTER_RUNNING_UC,            XAIE_EVENT_CORE_AXIS_MASTER_STALLED_UC,
@@ -480,7 +480,7 @@ namespace xdp::aie::trace {
     // Check type to minimize replacements
     if (aie::isInputSet(type, metricSet)) {
       // Input or MM2S
-#ifndef XDP_CLIENT_BUILD
+#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
       if (aie::isAIE2ps(hwGen)) {
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_1_START_TASK_PL);
@@ -515,7 +515,7 @@ namespace xdp::aie::trace {
     }
     else {
       // Output or S2MM
-#ifndef XDP_CLIENT_BUILD
+#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_NPU3_BUILD)
       if (aie::isAIE2ps(hwGen)) {
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_S2MM_1_START_TASK_PL);
