@@ -7,15 +7,15 @@
 Utility Migration Guide 
 ***********************
 
-This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls. A few points: 
+This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xrt-smi``/``xbmgmt`` commands. It lists out the new ``xrt-smi``/``xbmgmt`` calls that replace the existing calls. A few points: 
 
  1) The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. 
  2) The help menus (``--help``) of these new utilities have also been improved and are highly descriptive with regards to both the commands and options. Please refer to them as needed.
  3) The new command opions have both short and long format, for example ``-d`` or ``--device``. In the table below, only the longer option format is used.
 
-You may refer the documentation of the new tools in the following links :doc:`xbutil` and :doc:`xbmgmt` . 
+You may refer the documentation of the new tools in the following links :doc:`xrt-smi` and :doc:`xbmgmt` . 
 
-xbutil
+xrt-smi
 ~~~~~~
 
 +------------+-------------+-------------------+----------------------+
@@ -223,20 +223,20 @@ There were two variants of legacy commands
 
 .. code-block:: shell
 
-       xbutil query  
+       xrt-smi query  
        
 or 
 
 .. code-block:: shell
 
-       xbutil dump
+       xrt-smi dump
 
 
 **New command**
 
 .. code-block:: shell
 
-       xbutil examine --device 0000:b3:00.1 --report all
+       xrt-smi examine --device 0000:b3:00.1 --report all
 
 **2. Validate the card**
 
@@ -244,13 +244,13 @@ or
 
 .. code-block:: shell
 
-        xbutil validate 
+        xrt-smi validate 
         
 **New command**
 
 .. code-block:: shell
  
-        xbutil validate --device 0000:b3:00.1
+        xrt-smi validate --device 0000:b3:00.1
         
 **3. Obtaining platform information such as SC version, flashed partition(s) running on the card, etc.** 
 
@@ -295,12 +295,12 @@ or when a specific partition to choose
 
 .. code-block:: shell
 
-   xbutil --reset 
+   xrt-smi --reset 
    
 **New command**
 
 .. code-block:: shell
 
-   xbutil --reset --device 0000:d8:00.1  
+   xrt-smi --reset --device 0000:d8:00.1  
 
 

@@ -101,7 +101,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -289,7 +289,7 @@ registers</p></td>
 <td><p>CPU direct and P2P access to device attached DDR/HBM/PL-RAM
 memory.
 By default its size is limited to 256MB but can be expanded
-using XRT xbutil tool as described in <a class="reference internal" href="p2p.html"><span class="doc">PCIe Peer-to-Peer (P2P)</span></a></p></td>
+using XRT xrt-smi tool as described in <a class="reference internal" href="p2p.html"><span class="doc">PCIe Peer-to-Peer (P2P)</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -530,7 +530,7 @@ Host&gt;$ xbmgmt advanced --load-conf --input<span class="o">=</span>/tmp/config
 <h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
 <p>Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
-can reset a device by using XRT <strong>xbutil</strong> utility. This utility talks to xocl driver which uses the reset
+can reset a device by using XRT <strong>xrt-smi</strong> utility. This utility talks to xocl driver which uses the reset
 message as defined in <a class="reference internal" href="mailbox.main.html"><span class="doc">Mailbox Subdevice Driver</span></a></p>
 <p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
 and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
