@@ -60,6 +60,11 @@ target_link_libraries(xrt++
 set_target_properties(xrt++ PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+if (NOT WIN32)
+  # On linux use xrt++
+  set_target_properties(xrt++_static PROPERTIES OUTPUT_NAME "xrt++")
+endif()
+
 install(TARGETS xrt++ xrt++_static
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}

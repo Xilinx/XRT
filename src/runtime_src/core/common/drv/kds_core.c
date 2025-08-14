@@ -32,7 +32,7 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	/* Ideally, KDS should be locked to reject new client.
 	 * But, this node is hidden for internal test purpose.
 	 * Let's refine it after new KDS is the default and
-	 * user is allow to configure it through xbutil.
+	 * user is allow to configure it through xrt-smi.
 	 */
 	if (live_clients > 0)
 		return -EBUSY;

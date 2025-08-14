@@ -42,6 +42,9 @@ add_library(xrt_hwemu_static STATIC ${CURR_SOURCE}
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+# On linux use xrt_hwemu.a
+set_target_properties(xrt_hwemu_static PROPERTIES OUTPUT_NAME "xrt_hwemu")
+
 target_link_libraries(xrt_hwemu
   PRIVATE
   ${Boost_SYSTEM_LIBRARY}

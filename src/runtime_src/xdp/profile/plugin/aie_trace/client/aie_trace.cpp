@@ -568,134 +568,6 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Configure group events (core modules only)
-   ***************************************************************************/
-  void AieTrace_WinImpl::configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
-                                           const module_type type, const std::string metricSet)
-  {
-    // Only needed for core module and metric sets that include DMA events
-    if (!aie::isDmaSet(metricSet) || (type != module_type::core))
-      return;
-
-    // Set masks for group events
-    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE, 
-                           GROUP_CORE_FUNCTIONS_MASK);
-    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_STALL_CORE, 
-                           GROUP_CORE_STALL_MASK);
-    XAie_EventGroupControl(&aieDevInst, loc, mod, XAIE_EVENT_GROUP_STREAM_SWITCH_CORE, 
-                           GROUP_STREAM_SWITCH_RUNNING_MASK);
-  }
-
-  /****************************************************************************
-   * Configure event selection (memory tiles only)
-   ***************************************************************************/
-  void AieTrace_WinImpl::configEventSelections(const XAie_LocType loc, const module_type type,
-                                               const std::string metricSet, const uint8_t channel0,
-                                               const uint8_t channel1, aie_cfg_base& config)
-  {
-    if (type != module_type::mem_tile)
-      return;
-
-    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
-
-    if (aie::isDebugVerbosity()) {
-      std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
-      std::string msg = "Configuring memory tile event selections to DMA " 
-                      + typeName + " channels " + std::to_string(channel0) 
-                      + " and " + std::to_string(channel1);
-      xrt_core::message::send(severity_level::debug, "XRT", msg);
-    }
-
-    XAie_EventSelectDmaChannel(&aieDevInst, loc, 0, dmaDir, channel0);
-    XAie_EventSelectDmaChannel(&aieDevInst, loc, 1, dmaDir, channel1);
-
-    // Record for runtime config file
-    config.port_trace_ids[0] = channel0;
-    config.port_trace_ids[1] = channel1;
-    if (aie::isInputSet(type, metricSet)) {
-      config.port_trace_is_master[0] = true;
-      config.port_trace_is_master[1] = true;
-      config.s2mm_channels[0] = channel0;
-      if (channel0 != channel1)
-        config.s2mm_channels[1] = channel1;
-    } 
-    else {
-      config.port_trace_is_master[0] = false;
-      config.port_trace_is_master[1] = false;
-      config.mm2s_channels[0] = channel0;
-      if (channel0 != channel1)
-        config.mm2s_channels[1] = channel1;
-    }
-  }
-
-  /****************************************************************************
-   * Configure edge detection events
-   ***************************************************************************/
-  void AieTrace_WinImpl::configEdgeEvents(const tile_type& tile, const module_type type,
-                                          const std::string metricSet, const XAie_Events event,
-                                          const uint8_t channel)
-  {
-    if ((event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE)
-        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE)
-        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM)
-        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM))
-      return;
-
-    // Catch memory tiles
-    if (type == module_type::mem_tile) {
-      // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-      uint16_t eventNum = aie::isInputSet(type, metricSet)
-          ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
-          : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
-
-      // Register Edge_Detection_event_control
-      // 26    Event 1 triggered on falling edge
-      // 25    Event 1 triggered on rising edge
-      // 23:16 Input event for edge event 1
-      // 10    Event 0 triggered on falling edge
-      //  9    Event 0 triggered on rising edge
-      //  7:0  Input event for edge event 0
-      uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
-
-      xrt_core::message::send(severity_level::debug, "XRT",
-          "Configuring memory tile edge events to detect rise and fall of event " 
-          + std::to_string(eventNum));
-
-      auto tileOffset = _XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
-      XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, 
-                   edgeEventsValue);
-      return;
-    }
-
-    // Below is AIE tile support
-    
-    // Event is DMA_MM2S_stalled_lock or DMA_S2MM_stream_starvation
-    // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-    uint16_t eventNum = aie::isInputSet(type, metricSet)
-        ? ((channel == 0) ? EVENT_MEM_DMA_MM2S_0_STALLED_LOCK
-                          : EVENT_MEM_DMA_MM2S_1_STALLED_LOCK)
-        : ((channel == 0) ? EVENT_MEM_DMA_S2MM_0_STREAM_STARVATION
-                          : EVENT_MEM_DMA_S2MM_1_STREAM_STARVATION);
-
-    // Register Edge_Detection_event_control
-    // 26    Event 1 triggered on falling edge
-    // 25    Event 1 triggered on rising edge
-    // 23:16 Input event for edge event 1
-    // 10    Event 0 triggered on falling edge
-    //  9    Event 0 triggered on rising edge
-    //  7:0  Input event for edge event 0
-    uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
-
-    xrt_core::message::send(severity_level::debug, "XRT", 
-        "Configuring AIE tile edge events to detect rise and fall of event " 
-        + std::to_string(eventNum));
-
-    auto tileOffset = _XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
-    XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM, 
-                 edgeEventsValue);
-  }
-
-  /****************************************************************************
    * Configure requested tiles with trace metrics and settings
    ***************************************************************************/
   bool AieTrace_WinImpl::setMetricsSettings(uint64_t deviceId, void* hwCtxImpl)
@@ -858,7 +730,7 @@ namespace xdp {
 
         // Configure combo & group events (e.g., to monitor DMA channels)
         auto comboEvents = configComboEvents(loc, mod, type, metricSet, cfgTile->core_trace_config);
-        configGroupEvents(loc, mod, type, metricSet);
+        aie::trace::configGroupEvents(&aieDevInst, loc, mod, type, metricSet);
 
         // Set overall start/end for trace capture
         // NOTE: This needs to be done first.
@@ -1027,8 +899,8 @@ namespace xdp {
 
         // Specify Sel0/Sel1 for memory tile events 21-44
         if (type == module_type::mem_tile) {
-          configEventSelections(loc, type, metricSet, channel0, channel1, 
-                                cfgTile->memory_tile_trace_config);
+          aie::trace::configEventSelections(&aieDevInst, loc, type, metricSet, channel0, channel1, 
+                                          cfgTile->memory_tile_trace_config);
         }
         else {
           // Record if these are channel-specific events
@@ -1075,7 +947,7 @@ namespace xdp {
           numMemoryTraceEvents++;
 
           // Configure edge events (as needed)
-          configEdgeEvents(tile, type, metricSet, memoryEvents[i], channel0);
+          aie::trace::configEdgeEvents(&aieDevInst, tile, type, metricSet, memoryEvents[i], channel0);
 
           // Update config file
           uint16_t phyEvent = 0;

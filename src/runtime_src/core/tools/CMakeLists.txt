@@ -13,7 +13,8 @@ if(CMAKE_VERSION VERSION_LESS "3.18.0")
 else()
   xrt_add_subdirectory(xbtracer)
 endif()
-if (NOT XRT_EDGE)
+
+if (XRT_XRT OR XRT_ALVEO)
   xrt_add_subdirectory(xbmgmt2)
   if(NOT WIN32)
     xrt_add_subdirectory(xbtop)
@@ -29,18 +30,21 @@ if (XRT_XRT)
     DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
-if (NOT XRT_EDGE)
-  if (NOT WIN32)
-    # Use PROGRAMS to allow for execution. This is recommended in the CMake documentation
-    # https://cmake.org/cmake/help/latest/command/install.html#files
-    # This is used for the setup script to enable auto completion
+# Use PROGRAMS to allow for execution. This is recommended in the
+# CMake documentation. This is used for the setup script to enable
+# auto completion
+if (NOT XRT_EDGE AND NOT WIN32)
+  install (PROGRAMS
+    ./xbutil2/xbutil-bash-completion
+    ./xbutil2/xbutil-csh-completion
+    ./xbutil2/xbutil-csh-completion-wrapper
+    DESTINATION ${XRT_INSTALL_DIR}/share/completions COMPONENT ${XRT_BASE_COMPONENT})
+
+  if (XRT_XRT OR XRT_ALVEO)
     install (PROGRAMS
       ./xbmgmt2/xbmgmt-bash-completion
       ./xbmgmt2/xbmgmt-csh-completion
       ./xbmgmt2/xbmgmt-csh-completion-wrapper
-      ./xbutil2/xbutil-bash-completion
-      ./xbutil2/xbutil-csh-completion
-      ./xbutil2/xbutil-csh-completion-wrapper
       DESTINATION ${XRT_INSTALL_DIR}/share/completions COMPONENT ${XRT_BASE_COMPONENT})
   endif()
 endif()

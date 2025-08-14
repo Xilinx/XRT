@@ -32,7 +32,7 @@ populate_aie_partition(const xrt_core::device* device)
 
     boost::property_tree::ptree pt_entry;
     pt_entry.put("pid", entry.pid);
-    pt_entry.put("process_name", entry.process_name);
+    pt_entry.put("process_name", entry.process_name.empty() ? "N/A" : entry.process_name);
     pt_entry.put("context_id", entry.metadata.id);
     pt_entry.put("status", entry.is_suspended ? "Idle" : "Active");
     pt_entry.put("instr_bo_mem", entry.instruction_mem ? xrt_core::utils::unit_convert(entry.instruction_mem) : "N/A");
@@ -41,7 +41,7 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("migrations", entry.migrations);
     pt_entry.put("errors", entry.errors);
     pt_entry.put("suspensions", entry.suspensions);
-    pt_entry.put("memory_usage", xrt_core::utils::unit_convert(entry.memory_usage));
+    pt_entry.put("memory_usage", entry.memory_usage == 0 ? "N/A" : xrt_core::utils::unit_convert(entry.memory_usage));
 
     xrt_core::query::aie_partition_info::qos_info qos = entry.qos;
     pt_entry.put("gops", qos.gops ? std::to_string(qos.gops) : "N/A");
@@ -83,7 +83,12 @@ getPropertyTree20202(const xrt_core::device* _pDevice,
 {
   boost::property_tree::ptree pt;
   pt.put("description", "AIE Partition Information");
-  pt.put("total_memory_usage", xrt_core::utils::unit_convert(xrt_core::device_query_default<xrt_core::query::total_mem_usage>(_pDevice, 0)));
+  auto total_mem_usage = xrt_core::device_query_default<xrt_core::query::total_mem_usage>(_pDevice, 0);
+  if (total_mem_usage != 0) {
+    pt.put("total_memory_usage", xrt_core::utils::unit_convert(total_mem_usage));
+  } else {
+    pt.put("total_memory_usage", "N/A");
+  }
   pt.add_child("partitions", populate_aie_partition(_pDevice));
   _pt.add_child("aie_partitions", pt);
 }
@@ -122,11 +127,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << "    HW Contexts:\n";
 
     const std::vector<std::string> headers = {
-      "      |PID                 |Ctx ID   |Submissions |Migrations  |Err  |Priority |",
-      "      |Process Name        |Status   |Completions |Suspensions |     |GOPS     |",
-      "      |Memory Usage        |Instr BO |            |            |     |FPS      |",
-      "      |                    |         |            |            |     |Latency  |",
-      "      |====================|=========|============|============|=====|=========|"
+      "      |PID                 |Ctx ID     |Submissions |Migrations  |Err  |Priority |",
+      "      |Process Name        |Status     |Completions |Suspensions |     |GOPS     |",
+      "      |Memory Usage        |Instr BO   |            |            |     |FPS      |",
+      "      |                    |           |            |            |     |Latency  |",
+      "      |====================|===========|============|============|=====|=========|"
     };
 
     for (const auto& header : headers) {
@@ -138,7 +143,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       const auto& hw_context = pt_hw_context.second;
 
       std::vector<boost::format> row_data;
-      row_data.emplace_back(boost::format("      |%-20s|%-9s|%-12s|%-12s|%-5s|%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-5s|%-9s|")
                    % hw_context.get<int>("pid")
                    % hw_context.get<std::string>("context_id")
                    % hw_context.get<uint64_t>("command_submissions")
@@ -146,22 +151,22 @@ writeReport(const xrt_core::device* /*_pDevice*/,
                    % hw_context.get<uint64_t>("errors")
                    % hw_context.get<std::string>("priority"));
 
-      row_data.emplace_back(boost::format("      |%-20s|%-9s|%-12s|%-12s|     |%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|     |%-9s|")
                    % hw_context.get<std::string>("process_name")
                    % hw_context.get<std::string>("status")
                    % hw_context.get<uint64_t>("command_completions")
                    % hw_context.get<uint64_t>("suspensions")
                    % hw_context.get<std::string>("gops"));
 
-      row_data.emplace_back(boost::format("      |%-20s|%-9s|            |            |     |%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|            |            |     |%-9s|")
                    % hw_context.get<std::string>("memory_usage")
                    % hw_context.get<std::string>("instr_bo_mem")
                    % hw_context.get<std::string>("fps"));
 
-      row_data.emplace_back(boost::format("      |               |         |            |            |     |%-9s|")
+      row_data.emplace_back(boost::format("      |                    |           |            |            |     |%-9s|")
                    % hw_context.get<std::string>("latency"));
 
-      row_data.emplace_back(boost::format("      |--------------------|---------|------------|------------|-----|---------|"));
+      row_data.emplace_back(boost::format("      |--------------------|-----------|------------|------------|-----|---------|"));
 
       for (const auto& row : row_data) {
         _output << row << "\n";

@@ -88,6 +88,9 @@ target_link_libraries(xilinxopencl
   rt
   )
 
+  # On linux use xrt_coreutil.a
+  set_target_properties(xilinxopencl_static PROPERTIES OUTPUT_NAME "xilinxopencl")
+
 endif ()
 
 install(TARGETS xilinxopencl xilinxopencl_static
