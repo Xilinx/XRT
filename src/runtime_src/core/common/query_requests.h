@@ -10,6 +10,7 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/include/ert.h"
 #include "core/include/xclerr_int.h"
 
 #include <cstdint>
@@ -1987,18 +1988,7 @@ struct aie_partition_info : request
 // including transaction operation indices, program counters, and error details
 struct context_health_info : request
 {
-  struct data
-  {
-    uint32_t context_id;
-    uint32_t txn_op_idx;
-    uint32_t ctx_pc;
-    uint32_t fatal_error_type;
-    uint32_t fatal_error_exception_type;
-    uint32_t fatal_error_exception_pc;
-    uint32_t fatal_error_app_module;
-  };
-
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<ert_ctx_health_data>;
   static const key_type key = key_type::context_health_info;
 
   std::any
