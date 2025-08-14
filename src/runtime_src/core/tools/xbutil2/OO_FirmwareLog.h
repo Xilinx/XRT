@@ -17,5 +17,5 @@ private:
   std::string m_device;
   std::string m_action;
   bool m_help;
-  int m_log_level;
+  uint32_t m_log_level;
 };

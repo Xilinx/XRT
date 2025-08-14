@@ -25,7 +25,7 @@ OO_FirmwareLog::OO_FirmwareLog( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("log-level", boost::program_options::value<decltype(m_log_level)>(&m_log_level), "Log level ranging from 0 to 5")
+    ("log-level", boost::program_options::value<decltype(m_log_level)>(&m_log_level), "Log level")
   ;
 
   m_optionsHidden.add_options()
@@ -104,7 +104,8 @@ OO_FirmwareLog::execute(const SubCmdOptions& _options) const
   };
 
   try {
-    xrt_core::device_update<xrt_core::query::firmware_log>(device.get(), action_to_int(m_action));
+    xrt_core::query::firmware_log::value_type params{action_to_int(m_action), m_log_level};
+    xrt_core::device_update<xrt_core::query::firmware_log>(device.get(), params);
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();

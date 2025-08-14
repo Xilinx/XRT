@@ -27,7 +27,7 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
   ;
 
   m_optionsHidden.add_options()
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action), "Action to perform: enable, disable, status");
+    ("action", boost::program_options::value<decltype(m_action)>(&m_action), "Action to perform: enable or disable");
   ;
 
   m_positionalOptions.
@@ -38,8 +38,8 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
 void
 OO_EventTrace::validate_args() const {
   if(m_action.empty() && !m_help)
-    throw xrt_core::error(std::errc::operation_canceled, "Please specify a action 'enable', 'disable' or 'status'");
-  std::vector<std::string> vec_action { "enable", "disable", "status" };
+    throw xrt_core::error(std::errc::operation_canceled, "Please specify a action 'enable' or 'disable'");
+  std::vector<std::string> vec_action { "enable", "disable"};
   if (!m_action.empty() && std::find(vec_action.begin(), vec_action.end(), m_action) == vec_action.end()) {
     throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("\n'%s' is not a valid action for event trace\n") % m_action));
   }

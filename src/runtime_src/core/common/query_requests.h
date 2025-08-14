@@ -4094,7 +4094,12 @@ struct event_trace : request
 struct firmware_log : request
 {  
   using result_type = uint32_t;  // get value type
-  using value_type = uint32_t;   // put value type
+  
+  // Structure to hold both action and log_level parameters
+  struct value_type {
+    uint32_t action;
+    uint32_t log_level;
+  };
 
   static const key_type key = key_type::firmware_log;
 
