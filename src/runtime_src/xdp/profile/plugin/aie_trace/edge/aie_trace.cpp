@@ -277,6 +277,7 @@ namespace xdp {
     // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
+    int hwGen = metadata->getHardwareGen();
 
     // Get the column shift for partition
     // NOTE: If partition is not used, this value is zero.
@@ -837,7 +838,7 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
 
         // Modify events as needed
-        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
+        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents, hwGen);
 
         streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type, metricSet, 
                                                           channel0, channel1, interfaceEvents, 
