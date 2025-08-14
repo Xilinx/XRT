@@ -113,7 +113,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -221,7 +221,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 </section>
 <section id="user">
 <h2>User<a class="headerlink" href="#user" title="Permalink to this headline">¶</a></h2>
-<p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
+<p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Refer to <a class="reference internal" href="mailbox.main.html"><span class="doc">Mailbox Subdevice Driver</span></a> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>

@@ -168,7 +168,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -348,7 +348,7 @@ Compiling host code with XRT native C++ API requires C++ standard with -std=c++1
 <blockquote>
 <div><ul class="simple">
 <li><p>Through kernel arguments: In the above example, the <code class="docutils literal notranslate"><span class="pre">xrt::kernel::group_id()</span></code> member function is used to pass the memory bank index. This member function accept kernel argument-index and automatically detect corresponding memory bank index by inspecting XCLBIN.</p></li>
-<li><p>Passing Memory bank index:  The <code class="docutils literal notranslate"><span class="pre">xrt::kernel::group_id()</span></code> also accepts the direct memory bank index (as observed from <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--report</span> <span class="pre">memory</span></code> output).</p></li>
+<li><p>Passing Memory bank index:  The <code class="docutils literal notranslate"><span class="pre">xrt::kernel::group_id()</span></code> also accepts the direct memory bank index (as observed from <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span> <span class="pre">--report</span> <span class="pre">memory</span></code> output).</p></li>
 </ul>
 </div></blockquote>
 <section id="creating-special-buffers">
@@ -591,7 +591,7 @@ Compiling host code with XRT native C++ API requires C++ standard with -std=c++1
 <section id="allocating-buffers-for-the-ip-inputs-outputs">
 <h3>Allocating buffers for the IP inputs/outputs<a class="headerlink" href="#allocating-buffers-for-the-ip-inputs-outputs" title="Permalink to this headline">¶</a></h3>
 <p>Similar to XRT managed kernel <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank.</p>
-<p>Below is a example of creating two buffers. Note the last argument of <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--report</span> <span class="pre">memory</span></code> command.</p>
+<p>Below is a example of creating two buffers. Note the last argument of <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by <code class="docutils literal notranslate"><span class="pre">xrt-smi</span> <span class="pre">examine</span> <span class="pre">--report</span> <span class="pre">memory</span></code> command.</p>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="w">     </span><span class="k">auto</span><span class="w"> </span><span class="n">buf_in_a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span><span class="w"> </span><span class="n">DATA_SIZE</span><span class="p">,</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span><span class="w"></span>
 <span class="linenos">36</span><span class="w">     </span><span class="k">auto</span><span class="w"> </span><span class="n">buf_in_b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span><span class="w"> </span><span class="n">DATA_SIZE</span><span class="p">,</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span><span class="w"></span>
 </pre></div>

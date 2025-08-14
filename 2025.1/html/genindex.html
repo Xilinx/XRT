@@ -98,7 +98,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -199,7 +199,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo16get_memory_groupEv">xrt::bo::get_memory_group (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt2bo3mapE7MapTypev">xrt::bo::map (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo3mapEv">[1]</a>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt2bo3mapE7MapTypev">xrt::bo::map (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4I0ENK3xrt2bo3mapE7MapTypev">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo3mapEv">[2]</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt2bo3mapEv">[3]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bocvbEv">xrt::bo::operator bool (C++ function)</a>
 </li>
@@ -251,6 +251,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3bdfE">xrt::info::device::bdf (C++ enumerator)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device15dynamic_regionsE">xrt::info::device::dynamic_regions (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device10electricalE">xrt::info::device::electrical (C++ enumerator)</a>
@@ -261,8 +263,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4kdmaE">xrt::info::device::kdma (C++ enumerator)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3m2mE">xrt::info::device::m2m (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device23max_clock_frequency_mhzE">xrt::info::device::max_clock_frequency_mhz (C++ enumerator)</a>
@@ -287,15 +287,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernelE">xrt::kernel (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8get_nameEv">xrt::kernel::get_name (C++ function)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel10get_xclbinEv">xrt::kernel::get_xclbin (C++ function)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8group_idEi">xrt::kernel::group_id (C++ function)</a>
-</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERK6kernel">xrt::kernel::kernel (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERR6kernel">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelEv">[3]</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel6offsetEi">xrt::kernel::offset (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">xrt::kernel::operator() (C++ function)</a>
 </li>
@@ -305,15 +297,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3runE">xrt::run (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5abortEv">xrt::run::abort (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run9aie_errorE">xrt::run::aie_error (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run9aie_error9aie_errorERKN3xrt3runERKNSt6stringE">xrt::run::aie_error::aie_error (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3run13command_errorE">xrt::run::command_error (C++ class)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run13command_error17get_command_stateEv">xrt::run::command_error::get_command_state (C++ function)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run22get_ctrl_scratchpad_boEv">xrt::run::get_ctrl_scratchpad_bo (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runcvbEv">xrt::run::operator bool (C++ function)</a>
 </li>
@@ -323,23 +311,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3runaSERK3run">xrt::run::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3runaSERR3run">[1]</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run11return_codeEv">xrt::run::return_code (C++ function)</a>
-</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK3run">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runERR3run">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[3]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEvRKNSt6stringERR7ArgType">xrt::run::set_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRKN3xrt2boE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRN3xrt2boE">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRRN3xrt2boE">[4]</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5startERK9autostart">xrt::run::start (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run5startEv">[1]</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5stateEv">xrt::run::state (C++ function)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run4stopEv">xrt::run::stop (C++ function)</a>
-</li>
       <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run10update_argEviRR7ArgType">xrt::run::update_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run10update_argEiRKN3xrt2boE">[1]</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitERKNSt6chrono12millisecondsE">xrt::run::wait (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitEj">[1]</a>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitEj">xrt::run::wait (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2ERKNSt6chrono12millisecondsE">xrt::run::wait2 (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2Ev">[1]</a>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2Ev">xrt::run::wait2 (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3runD0Ev">xrt::run::~run (C++ function)</a>
 </li>

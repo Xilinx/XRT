@@ -101,7 +101,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
@@ -198,7 +198,7 @@ own ways they trust to do this.</p>
 <p>The following picture illustrates how a xclbin file is downloaded on baremetal machine</p>
 <img alt="_images/mailbox-msd-mpd-architecture.svg" class="align-center" src="_images/mailbox-msd-mpd-architecture.svg" /><p>As shown by the red arrows in the picture, the flow of the download in this case is as following:</p>
 <ol class="arabic simple">
-<li><p>User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API</p></li>
+<li><p>User requests xclbin download from ‘xrt-smi program’ cmdline or OpenCL API</p></li>
 <li><p>Shim layer issues ioctl to xocl driver</p></li>
 <li><p>Xocl driver subdev icap sends the req to subdev mailbox (the xclbin file is in host memory, the req  size is very small)</p></li>
 <li><p>Mailbox transfers the req to the peer in xclmgmt through hw mailbox</p></li>
@@ -241,7 +241,7 @@ VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
 <p>The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:</p>
 <img alt="_images/sw-mailbox-msd-mpd-download.svg" class="align-center" src="_images/sw-mailbox-msd-mpd-download.svg" /><p>As shown by the green arrows in the picture, the flow of the download in this case is as following:</p>
 <ol class="arabic simple">
-<li><p>User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API</p></li>
+<li><p>User requests xclbin download from ‘xrt-smi program’ cmdline or OpenCL API</p></li>
 <li><p>Shim layer issues ioctl to xocl driver</p></li>
 <li><p>Xocl driver subdev icap sends the req to subdev mailbox</p></li>
 <li><p>Mailbox transfers the req  and xclbin file to MPD as mailbox message</p></li>

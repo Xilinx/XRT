@@ -101,13 +101,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt-smi.html">xrt-smi</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Utility Migration Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil">xbutil</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xrt-smi">xrt-smi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt">xbmgmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#few-examples-of-legacy-vs-new-commands">Few examples of legacy vs new commands</a></li>
 </ul>
@@ -166,7 +166,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
              
   <span class="target" id="xbtools-map-rst"></span><section id="utility-migration-guide">
 <h1>Utility Migration Guide<a class="headerlink" href="#utility-migration-guide" title="Permalink to this headline">¶</a></h1>
-<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls. A few points:</p>
+<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xrt-smi</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls. A few points:</p>
 <blockquote>
 <div><ol class="arabic simple">
 <li><p>The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping.</p></li>
@@ -174,9 +174,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li><p>The new command opions have both short and long format, for example <code class="docutils literal notranslate"><span class="pre">-d</span></code> or <code class="docutils literal notranslate"><span class="pre">--device</span></code>. In the table below, only the longer option format is used.</p></li>
 </ol>
 </div></blockquote>
-<p>You may refer the documentation of the new tools in the following links <a class="reference internal" href="xbutil.html"><span class="doc">xbutil</span></a> and <a class="reference internal" href="xbmgmt.html"><span class="doc">xbmgmt</span></a> .</p>
-<section id="xbutil">
-<h2>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
+<p>You may refer the documentation of the new tools in the following links <a class="reference internal" href="xrt-smi.html"><span class="doc">xrt-smi</span></a> and <a class="reference internal" href="xbmgmt.html"><span class="doc">xbmgmt</span></a> .</p>
+<section id="xrt-smi">
+<h2>xrt-smi<a class="headerlink" href="#xrt-smi" title="Permalink to this headline">¶</a></h2>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 18%" />
@@ -448,24 +448,24 @@ New</p></th>
 <p><strong>1. Getting all the information obtained from the userspace kernel driver</strong></p>
 <p><strong>Legacy command</strong></p>
 <p>There were two variants of legacy commands</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil query
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi query
 </pre></div>
 </div>
 <p>or</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil dump
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi dump
 </pre></div>
 </div>
 <p><strong>New command</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil examine --device <span class="m">0000</span>:b3:00.1 --report all
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi examine --device <span class="m">0000</span>:b3:00.1 --report all
 </pre></div>
 </div>
 <p><strong>2. Validate the card</strong></p>
 <p><strong>Legacy command</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi validate
 </pre></div>
 </div>
 <p><strong>New command</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate --device <span class="m">0000</span>:b3:00.1
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi validate --device <span class="m">0000</span>:b3:00.1
 </pre></div>
 </div>
 <p><strong>3. Obtaining platform information such as SC version, flashed partition(s) running on the card, etc.</strong></p>
@@ -493,11 +493,11 @@ New</p></th>
 </div>
 <p><strong>5. Resetting the device</strong></p>
 <p><strong>Legacy command</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi --reset
 </pre></div>
 </div>
 <p><strong>New command</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset --device <span class="m">0000</span>:d8:00.1
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xrt-smi --reset --device <span class="m">0000</span>:d8:00.1
 </pre></div>
 </div>
 </section>
