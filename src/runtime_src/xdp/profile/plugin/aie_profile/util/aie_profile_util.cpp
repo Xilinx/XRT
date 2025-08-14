@@ -387,7 +387,7 @@ namespace xdp::aie::profile {
       // Interface tiles
       if (aie::isAIE2ps(hwGen)) {
 #ifndef XDP_CLIENT_BUILD
-      // Applicable only for VE2 ZOCL and XDNA builds
+        // Applicable only for VE2 ZOCL and XDNA builds
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
         std::replace(events.begin(), events.end(), 
