@@ -254,8 +254,8 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
     }
-#ifndef XDP_CLIENT_BUILD
     else if (aie::isAIE2ps(hwGen)) {
+#ifndef XDP_CLIENT_BUILD
       eventSets["input_ports_details"] = {
           XAIE_EVENT_NOC0_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_NOC0_DMA_MM2S_0_STALLED_LOCK_PL,
@@ -264,8 +264,8 @@ namespace xdp::aie::trace {
           XAIE_EVENT_NOC0_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,
           XAIE_EVENT_NOC0_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
-    }
 #endif
+    }
     else if (aie::isNPU3(hwGen)) {
 #ifdef XDP_NPU3_BUILD
       eventSets["input_ports_details"] = {
@@ -530,8 +530,8 @@ namespace xdp::aie::trace {
             XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
 #endif
       } else {
-      // Applicable for Edge Versal and client builds
-      // NOTE: NPU3 build need to be handled separately if required
+        // Applicable for Edge Versal and client builds
+        // NOTE: NPU3 build need to be handled separately if required
         std::replace(events.begin(), events.end(), 
             XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,               XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
         std::replace(events.begin(), events.end(), 
