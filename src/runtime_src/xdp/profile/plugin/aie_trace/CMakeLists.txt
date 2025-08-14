@@ -30,26 +30,26 @@ file(GLOB AIE_TRACE_CONFIG_FILES
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/client")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
-  set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 
   file(GLOB AIE_DEVICE_COMMON_FILES
     "${PROFILE_DIR}/device/common/*.h"
     "${PROFILE_DIR}/device/common/*.cpp"
   )
 
-  file(GLOB AIE_TRACE_COMPONENT_FILES
-    "${DEVICE_DIR}/*.h"
-    "${DEVICE_DIR}/*.cpp"
-    "${IMPL_DIR}/*.h"
-    "${IMPL_DIR}/*.cpp"
-  )
-
   if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    file(GLOB AIE_TRACE_COMPONENT_FILES
+      "${IMPL_DIR}/aie_trace_npu3.h"
+      "${IMPL_DIR}/aie_trace_npu3.cpp"
+    )
     file(GLOB AIE_TRACE_OFFLOAD_FILES
       "${OFFLOAD_DIR}/aie_trace_offload_npu3.h"
       "${OFFLOAD_DIR}/aie_trace_offload_npu3.cpp"
     )
   else()
+    file(GLOB AIE_TRACE_COMPONENT_FILES
+      "${IMPL_DIR}/aie_trace.h"
+      "${IMPL_DIR}/aie_trace.cpp"
+    )
     file(GLOB AIE_TRACE_OFFLOAD_FILES
       "${OFFLOAD_DIR}/aie_trace_offload_client.h"
       "${OFFLOAD_DIR}/aie_trace_offload_client.cpp"

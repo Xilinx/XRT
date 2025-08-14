@@ -34,10 +34,18 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   message("AIEBU_SOURCE_DIR = ${AIEBU_SOURCE_DIR}")
 
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/client")
-  file(GLOB AIE_PROFILE_IMPL_FILES
-    "${IMPL_DIR}/*.h"
-    "${IMPL_DIR}/*.cpp"
-  )
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    file(GLOB AIE_PROFILE_IMPL_FILES
+      "${IMPL_DIR}/aie_profile_npu3.h"
+      "${IMPL_DIR}/aie_profile_npu3.cpp"
+    )
+  else()
+    file(GLOB AIE_PROFILE_IMPL_FILES
+      "${IMPL_DIR}/aie_profile.h"
+      "${IMPL_DIR}/aie_profile.cpp"
+    )
+  endif()
+
   add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} 
               ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_PROFILE_UTIL_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)

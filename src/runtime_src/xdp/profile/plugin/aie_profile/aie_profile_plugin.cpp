@@ -24,9 +24,10 @@
 #include "xdp/profile/plugin/aie_base/aie_base_util.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
-#ifdef XDP_CLIENT_BUILD
-#include "client/aie_profile.h"
+#ifdef XDP_NPU3_BUILD
 #include "client/aie_profile_npu3.h"
+#elif XDP_CLIENT_BUILD
+#include "client/aie_profile.h"
 #elif XRT_X86_BUILD
 #include "x86/aie_profile.h"
 #elif XDP_VE2_BUILD
@@ -158,7 +159,9 @@ namespace xdp {
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
     if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
+#ifdef XDP_NPU3_BUILD
       AIEData.implementation = std::make_unique<AieProfile_NPU3Impl>(db, AIEData.metadata);
+#endif
     else
       AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif XRT_X86_BUILD
