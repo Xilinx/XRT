@@ -10,6 +10,8 @@
 #include "OO_P2P.h"
 #include "OO_Performance.h"
 #include "OO_Preemption.h"
+#include "OO_EventTrace.h"
+#include "OO_FirmwareLog.h"
 #include "common/device.h"
 #include "tools/common/XBUtilities.h"
 
@@ -30,7 +32,10 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
     {std::make_shared<OO_HostMem>("host-mem")},
     {std::make_shared<OO_P2P>("p2p")},
     {std::make_shared<OO_Performance>("pmode")},
-    {std::make_shared<OO_Preemption>("force-preemption")} //hidden
+    {std::make_shared<OO_Preemption>("force-preemption")}, //hidden
+    {std::make_shared<OO_EventTrace>("event-trace")}, //hidden
+    {std::make_shared<OO_FirmwareLog>("firmware-log")} //hidden
+
   };
 
   for (const auto& option : m_optionOptionsCollection){

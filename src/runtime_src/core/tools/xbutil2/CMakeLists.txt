@@ -50,6 +50,8 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_HostMem.cpp"
   "OO_Performance.cpp"
   "OO_Preemption.cpp"
+  "OO_EventTrace.cpp"
+  "OO_FirmwareLog.cpp"
 )
 
 # Merge the files into one collection
