@@ -23,12 +23,10 @@ namespace xdp {
 
   private:
     virtual void writeAll(bool openNewFiles) override;
-    uint64_t getDeviceIDFromHandle(void* handle, bool hw_context_flow);
+    uint64_t getDeviceIDFromHandle(void* handle);
     void endPoll();
 
   private:
-    uint32_t mIndex = 0;
-
     static bool live;
     struct AIEData {
       uint64_t deviceID;

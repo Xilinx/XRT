@@ -40,7 +40,7 @@ namespace xdp {
                             "XRT", "Parsing AIE Profile Metadata.");
     VPDatabase* db = VPDatabase::Instance();
 
-    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader(deviceID);
     if (!metadataReader) {
       return;
     }
@@ -1226,12 +1226,12 @@ namespace xdp {
   /****************************************************************************
    * Get profile configuration
    ***************************************************************************/
-  const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
+  std::unique_ptr<const AIEProfileFinalConfig> AieProfileMetadata::createAIEProfileConfig()
   {
-    static const AIEProfileFinalConfig config(configMetrics, configChannel0,
-                         configChannel1, metadataReader->getAIETileRowOffset(),
-                         bytesTransferConfigMap, latencyConfigMap);
-    return config;
+    return std::make_unique<const AIEProfileFinalConfig>(
+      configMetrics, configChannel0, configChannel1, 
+      metadataReader->getAIETileRowOffset(), 
+      bytesTransferConfigMap, latencyConfigMap);
   }
 
   /****************************************************************************

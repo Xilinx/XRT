@@ -89,7 +89,7 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
 
-    metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader();
+    metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader(deviceID);
     if (!metadataReader)
       return;
     
