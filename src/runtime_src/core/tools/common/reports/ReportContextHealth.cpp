@@ -20,8 +20,7 @@ using bpt = boost::property_tree::ptree;
 
 void
 ReportContextHealth::
-getPropertyTreeInternal(const xrt_core::device* dev,
-                                            bpt& pt) const
+getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
@@ -30,12 +29,12 @@ getPropertyTreeInternal(const xrt_core::device* dev,
 
 void
 ReportContextHealth::
-getPropertyTree20202(const xrt_core::device* dev,
-                                         bpt& pt) const
+getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
 {
   bpt context_health_pt{};
 
   try {
+    // For property tree generation, always get all contexts
     auto context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
 
     // Convert structured data to property tree
@@ -64,7 +63,8 @@ getPropertyTree20202(const xrt_core::device* dev,
 
 // Helper function to parse context IDs from elements_filter
 static std::vector<uint32_t> 
-parse_context_ids(const std::vector<std::string>& elements_filter) {
+parse_context_ids(const std::vector<std::string>& elements_filter) 
+{
   std::vector<uint32_t> context_ids;
   std::stringstream ctx_stream;
   
@@ -93,14 +93,27 @@ parse_context_ids(const std::vector<std::string>& elements_filter) {
 }
 
 static std::string
-generate_context_health_report(const xrt_core::device* dev, const std::vector<std::string>& elements_filter, bool include_timestamp = true) {
+generate_context_health_report(const xrt_core::device* dev,
+                               const std::vector<std::string>& elements_filter,
+                               bool include_timestamp = true)
+{
   std::stringstream ss;
   
   // Parse context IDs from elements_filter - collect for future use
   std::vector<uint32_t> context_ids = parse_context_ids(elements_filter);
 
   try {
-    auto context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
+    std::vector<ert_ctx_health_data> context_health_data;
+    
+    // Query device with context_ids parameter if provided
+    if (context_ids.empty()) {
+      // No specific context IDs - get all contexts
+      context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
+    } else {
+      // Pass context_ids vector to device query
+      context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev, context_ids);
+    }
+    
     auto context_count = context_health_data.size();
     
     if (include_timestamp) {
@@ -153,9 +166,9 @@ generate_context_health_report(const xrt_core::device* dev, const std::vector<st
 void
 ReportContextHealth::
 writeReport(const xrt_core::device* device,
-                                const bpt& /*pt*/,
-                                const std::vector<std::string>& elements_filter,
-                                std::ostream& output) const
+            const bpt& /*pt*/,
+            const std::vector<std::string>& elements_filter,
+            std::ostream& output) const
 {
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {

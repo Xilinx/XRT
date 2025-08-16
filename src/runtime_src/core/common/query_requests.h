@@ -1986,13 +1986,22 @@ struct aie_partition_info : request
 // Retrieves the context health info for the device
 // This provides detailed health information for hardware contexts
 // including transaction operation indices, program counters, and error details
+// 
+// Can be called with optional context_ids parameter to filter specific contexts:
+//   - No parameter: Returns all contexts
+//   - std::vector<uint32_t>: Returns only specified context IDs
 struct context_health_info : request
 {
   using result_type = std::vector<ert_ctx_health_data>;
   static const key_type key = key_type::context_health_info;
 
+  // Standard query interface - returns all contexts
   std::any
   get(const device* device) const override = 0;
+
+  // Parameterized query interface - supports context filtering
+  std::any
+  get(const device* device, const std::any& context_ids) const override = 0;
 };
 
 // Retrieves the AIE telemetry info for the device

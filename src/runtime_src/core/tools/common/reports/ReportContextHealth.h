@@ -112,7 +112,7 @@ public:
    * @note Thread-safe implementation for watch mode usage
    */
   void writeReport(const xrt_core::device* device, 
-                          const boost::property_tree::ptree& pt, 
-                          const std::vector<std::string>& elements_filter, 
-                          std::ostream& output) const override;
+                   const boost::property_tree::ptree& pt, 
+                   const std::vector<std::string>& elements_filter, 
+                   std::ostream& output) const override;
 };
