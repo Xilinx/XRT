@@ -19,6 +19,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/reports/platform/*.cpp"
   "../common/reports/aie/*.cpp"
   "../common/Report.cpp"
+  "../common/SmiWatchMode.cpp"
   "../common/ProgressBar.cpp"
   "../common/BusyBar.cpp"
   "../common/Process.cpp"
