@@ -11,7 +11,16 @@
 # pragma warning(disable : 4389 4458)
 #endif
 
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+
 #include <ario/ario.hpp>
+
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 
 #ifdef _WIN32
 # pragma warning( pop )
