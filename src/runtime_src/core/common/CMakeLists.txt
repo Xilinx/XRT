@@ -23,6 +23,7 @@ else()
 endif()
 
 add_library(core_common_library_objects OBJECT
+  archive.cpp
   config_reader.cpp
   debug.cpp
   debug_ip.cpp
@@ -54,6 +55,7 @@ add_library(core_common_library_objects OBJECT
 target_include_directories(core_common_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
 
 set_property(SOURCE module_loader.cpp APPEND PROPERTY COMPILE_DEFINITIONS
