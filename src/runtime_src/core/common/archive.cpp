@@ -33,6 +33,7 @@ class archive_impl
   ARIO::ario m_archive;
 
 public:
+  explicit
   archive_impl(const std::string& archive_filename)
   {
     m_archive.load(archive_filename);
