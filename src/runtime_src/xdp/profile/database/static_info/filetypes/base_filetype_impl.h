@@ -10,7 +10,7 @@
 namespace xdp::aie {
 class BaseFiletypeImpl {
     protected:
-        boost::property_tree::ptree& aie_meta;
+        boost::property_tree::ptree aie_meta;
 
     public:
         BaseFiletypeImpl(boost::property_tree::ptree& aie_project) : aie_meta(aie_project) {}
