@@ -69,8 +69,6 @@ namespace xdp {
     XDP_CORE_EXPORT virtual void switchFiles() ;
     XDP_CORE_EXPORT virtual void refreshFile() ;
 
-    bool isValidDirectory(std::string& directory);
-
   public:
     XDP_CORE_EXPORT VPWriter(const char* filename) ;
     XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst,
