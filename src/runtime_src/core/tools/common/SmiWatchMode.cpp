@@ -17,10 +17,13 @@
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
 namespace signal_handler {
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   std::atomic<bool> watch_interrupted{false};
 
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   void (*old_signal_handler)(int) = nullptr;
 
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) - Required for signal handling
   bool signal_handler_set = false;
 
   void watch(int signal) {
