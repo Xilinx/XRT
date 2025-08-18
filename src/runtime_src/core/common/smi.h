@@ -4,6 +4,7 @@
 #pragma once
 // Local include files
 #include "config.h"
+#include "query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -13,6 +14,8 @@
 #include <vector>
 #include <memory>
 #include <map>
+
+namespace xq = xrt_core::query;
 
 namespace xrt_core::smi {
 
@@ -58,9 +61,14 @@ public:
 
   // Default implementation throws an error 
   virtual tuple_vector
-  get_description_array() const { 
+  get_description_array() const {
     throw std::runtime_error("Illegal call to get_description_array()");
    } 
+
+  bool
+  get_is_optionOption() const {
+    return b_is_optionOption;
+  }
 };
 
 // This class is used to represent an option with a multiline description.
@@ -101,6 +109,9 @@ public:
   get_options() const 
   { return m_options; }
 
+  tuple_vector
+  get_option_options() const;
+
   boost::property_tree::ptree 
   construct_subcommand_json() const;
 
@@ -134,6 +145,10 @@ public:
   tuple_vector
   get_list(const std::string& subcommand, const std::string& suboption) const;
 
+  XRT_CORE_COMMON_EXPORT
+  tuple_vector
+  get_option_options(const std::string& subcommand) const;
+
 };
 
 XRT_CORE_COMMON_EXPORT
@@ -143,5 +158,13 @@ instance();
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_list(const std::string& subcommand, const std::string& suboption);
+
+// Function to get the options for a given subcommand.
+// Example : xrt-smi configure --pmode --device 1
+// This function returns a vector of tuples containing the name, description, and type
+// of each option option once example of which is --pmode
+XRT_CORE_COMMON_EXPORT
+tuple_vector
+get_option_options(const std::string& subcommand);
 
 } // namespace xrt_core::smi

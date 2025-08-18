@@ -9,17 +9,24 @@ create_validate_subcommand()
 {
   std::vector<xrt_core::smi::basic_option> validate_test_desc = {
     {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"aie", "Run AIE PL test", "common"},
     {"aux-connection", "Check if auxiliary power is connected", "common"},
+    {"bist", "Run built-in self test", "common"},
     {"dma", "Run dma test", "common"},
     {"hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "common"},
+    {"iops", "Run Input/Output operations per second test", "common"},
     {"m2m", "Run M2M test", "common"},
     {"mem-bw", "Run 'bandwidth kernel' and check the throughput", "common"},
     {"p2p", "Run P2P test", "common"},
     {"pcie-link", "Check if PCIE link is active", "common"},
+    {"ps-aie", "Run PS controlled AIE test", "common"},
+    {"ps-iops", "Run IOPS PS test", "common"},
+    {"ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test", "common"},
+    {"ps-verify", "Run 'Hello World' PS kernel test", "common"},
     {"quick", "Only the first 4 tests will be executed", "common"},
     {"sc-version","Check if SC firmware is up-to-date", "common"},
-    {"verify", "Run 'Hello World' kernel test", "common"},
-    {"aie", "Run AIE PL test", "common"}
+    {"vcu", "Run VCU test", "common"},
+    {"verify", "Run 'Hello World' kernel test", "common"}
   };
 
    std::map<std::string, std::shared_ptr<xrt_core::smi::option>> validate_suboptions;
@@ -79,15 +86,9 @@ create_configure_subcommand()
   std::map<std::string, std::shared_ptr<xrt_core::smi::option>> configure_suboptions;
   configure_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   configure_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
-  configure_suboptions.emplace("daemon", std::make_shared<xrt_core::smi::option>("daemon", "", "Update the device daemon configuration", "hidden", "", "none"));
-  configure_suboptions.emplace("purge", std::make_shared<xrt_core::smi::option>("purge", "", "Remove the daemon configuration file", "hidden", "", "string"));
-  configure_suboptions.emplace("host", std::make_shared<xrt_core::smi::option>("host", "", "IP or hostname for device peer", "hidden", "", "string"));
-  configure_suboptions.emplace("security", std::make_shared<xrt_core::smi::option>("security", "", "Update the security level for the device", "hidden", "", "string"));
-  configure_suboptions.emplace("clk_throttle", std::make_shared<xrt_core::smi::option>("clk_throttle", "", "Enable/disable the device clock throttling", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_threshold_power_override", std::make_shared<xrt_core::smi::option>("ct_threshold_power_override", "", "Update the power threshold in watts", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_threshold_temp_override", std::make_shared<xrt_core::smi::option>("ct_threshold_temp_override", "", "Update the temperature threshold in celsius", "hidden", "", "string"));
-  configure_suboptions.emplace("ct_reset", std::make_shared<xrt_core::smi::option>("ct_reset", "", "Reset all throttling options", "hidden", "", "string"));
-  configure_suboptions.emplace("showx", std::make_shared<xrt_core::smi::option>("showx", "", "Display the device configuration settings", "hidden", "", "string"));
+  configure_suboptions.emplace("p2p", std::make_shared<xrt_core::smi::option>("p2p", "", "Controls P2P functionality\n", "common", "", "string", true));
+  configure_suboptions.emplace("host-mem", std::make_shared<xrt_core::smi::option>("host-mem", "", "Controls host-mem functionality\n", "common", "", "string", true));
+
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }

@@ -687,7 +687,7 @@ SubCmdValidate::setOptionConfig(const boost::property_tree::ptree &config)
   try{
     m_jsonConfig.addProgramOptions(m_commonOptions, "common", getName());
     m_jsonConfig.addProgramOptions(m_hiddenOptions, "hidden", getName());
-  } 
+  }
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
   }
