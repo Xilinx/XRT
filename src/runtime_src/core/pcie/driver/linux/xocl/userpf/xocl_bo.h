@@ -47,7 +47,7 @@
 /*
  * BO Usage stats stored in an array in drm_device.
  * BO types are tracked: P2P, EXECBUF, etc
- * BO usage stats to be shown in sysfs & with xbutil
+ * BO usage stats to be shown in sysfs & with xrt-smi
 */
 #define XOCL_BO_USAGE_TOTAL	7
 #define XOCL_BO_USAGE_NORMAL	0 //Array indexes

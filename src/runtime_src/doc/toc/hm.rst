@@ -73,31 +73,31 @@ The following table can be used to determine the number of Hugepages required ba
 Enabling the Host Memory by XRT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Irrespective of the Hugepages settings, ``xbutil configure --host-mem`` command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, ``sudo xbutil configure --host-mem -d <bdf>`` command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.
+Irrespective of the Hugepages settings, ``xrt-smi configure --host-mem`` command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, ``sudo xrt-smi configure --host-mem -d <bdf>`` command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.
 
 .. code-block:: bash
 
-  sudo xbutil configure --host-mem -d 0000:a6:00.1 --size 1G enable
-  sudo xbutil configure --host-mem -d 0000:73:00.1 --size 4G enable
-  sudo xbutil configure --host-mem -d 0000:17:00.1 --size 16G enable
+  sudo xrt-smi configure --host-mem -d 0000:a6:00.1 --size 1G enable
+  sudo xrt-smi configure --host-mem -d 0000:73:00.1 --size 4G enable
+  sudo xrt-smi configure --host-mem -d 0000:17:00.1 --size 16G enable
 
 
 Maximum Host memory supported by the platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the platform supporting the host memory access feature, we can observe the following two data from the ``xbutil examine -r pcie-info -d <bdf>`` output
+For the platform supporting the host memory access feature, we can observe the following two data from the ``xrt-smi examine -r pcie-info -d <bdf>`` output
 
      - **Max Shared Host Memory**: The maximum host memory supported by the platform.
-     - **Shared Host Memory**: The host memory specified for this card (by ``xbutil configure --host-mem``)
+     - **Shared Host Memory**: The host memory specified for this card (by ``xrt-smi configure --host-mem``)
 
 Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 1GB host memory, no xclbin loaded.
 
 .. code-block:: bash
 
-  shell>>sudo xbutil configure --host-mem -d 0000:17:00.1 --size 1G enable
+  shell>>sudo xrt-smi configure --host-mem -d 0000:17:00.1 --size 1G enable
 
   Host-mem enabled successfully
-  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+  shell>>xrt-smi examine -r pcie-info -d 0000:17:00.1
 
   -----------------------------------------------
   1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1
@@ -118,7 +118,7 @@ When you load an xclbin with the host mem support, the ``Max Shared Host Mem`` g
 
 .. code-block:: bash
 
-  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+  shell>>xrt-smi examine -r pcie-info -d 0000:17:00.1
 
   -----------------------------------------------
   1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1
@@ -139,7 +139,7 @@ Finally, when you run an application which exercises HOST[0], ``Enabled Host Mem
 
 .. code-block:: bash
 
-  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+  shell>>xrt-smi examine -r pcie-info -d 0000:17:00.1
 
   -----------------------------------------------
   1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1

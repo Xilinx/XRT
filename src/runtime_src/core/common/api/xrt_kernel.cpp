@@ -3027,13 +3027,6 @@ public:
     , m_message(std::move(msg))
   {}
 
-  xrt::detail::span<const uint32_t>  
-  get_aie_data() const
-  {
-    auto run_impl = m_run.get_handle();
-    auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
-    return {ctx_health->app_health_report, ctx_health->app_health_report_size};
-  }
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3456,7 +3449,6 @@ class runlist::command_error_impl : public run::command_error_impl
 {
 public:
   using run::command_error_impl::command_error_impl;
-  using run::command_error_impl::get_aie_data;
 };
 
 } // namespace xrt
@@ -4295,13 +4287,6 @@ aie_error(const xrt::run& run, const std::string& what)
   : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
 {}
 
-xrt::run::aie_error::span<const uint32_t>  
-run::aie_error::
-data() const
-{
-  return handle->get_aie_data();
-}
-
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -4318,13 +4303,6 @@ runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
   : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
 {}
-
-runlist::aie_error::span<const uint32_t>  
-runlist::aie_error::
-data() const
-{
-  return handle->get_aie_data();
-}
 
 xrt::run
 runlist::command_error::

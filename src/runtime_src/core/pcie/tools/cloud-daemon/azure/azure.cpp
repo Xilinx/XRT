@@ -173,7 +173,7 @@ int azureHotReset(size_t index, int *resp)
      * to wireserver since this makes no sense and even hangs the instance.
      * Empty S/N may happen in this scenario,
      *  1. vm boots and is ready before the mgmt side is ready
-     *  2. 'xbutil reset' tries to reset the card immediately after mgmt is ready
+     *  2. 'xrt-smi reset' tries to reset the card immediately after mgmt is ready
      *  in this case, there is no chance for mpd to get S/N info. so we just fails
      *  the reset
      */

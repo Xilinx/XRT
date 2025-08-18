@@ -10,7 +10,7 @@ usage() {
     echo "Program PLP"
     echo
     echo "-i <PATH>	Full path to xclbin file"
-    echo "-card <bdf>   Card bdf printed by xbutil scan, e.g. 0000:b3:00.1"
+    echo "-card <bdf>   Card bdf printed by xrt-smi scan, e.g. 0000:b3:00.1"
     echo "[-help]		List this help"
     exit $1
 }
@@ -51,11 +51,11 @@ fi
 
 # workaround mailbox
 if [ "foo${RP_DEVICE}" == "foo" ] ; then
-	RP_DEVICE=`xbutil scan | grep user | grep -v xilinx | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
+	RP_DEVICE=`xrt-smi scan | grep user | grep -v xilinx | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
 fi
 
 if [ "foo${RP_DEVICE}" == "foo" ] ; then
-	RP_DEVICE=`xbutil scan | grep user | grep dynamic | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
+	RP_DEVICE=`xrt-smi scan | grep user | grep dynamic | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
 fi
 
 if [ "foo${RP_DEVICE}" == "foo" ] ; then

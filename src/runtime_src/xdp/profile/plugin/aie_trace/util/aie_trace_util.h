@@ -117,9 +117,10 @@ namespace xdp::aie::trace {
    * @param metricSet Name of requested metric set
    * @param channel   Channel number
    * @param events    Vector of events in metric set (modified if needed)
+   * @param hwGen     Hardware generation
    */
   void modifyEvents(module_type type, io_type subtype, const std::string metricSet,
-                    uint8_t channel, std::vector<XAie_Events>& events);
+                    uint8_t channel, std::vector<XAie_Events>& events, const int hwGen);
 
   /**
    * @brief Configure group events (core modules only)

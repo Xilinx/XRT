@@ -51,6 +51,8 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_HostMem.cpp"
   "OO_Performance.cpp"
   "OO_Preemption.cpp"
+  "OO_EventTrace.cpp"
+  "OO_FirmwareLog.cpp"
 )
 
 # Merge the files into one collection
@@ -61,7 +63,7 @@ set(XBUTIL2_NAME "xrt-smi")
 if(WIN32)
   set(XRT_HELPER_SCRIPTS "xrt-smi" "xrt-smi.bat")
 else()
-  set(XRT_HELPER_SCRIPTS "xbutil" "xrt-smi")
+  set(XRT_HELPER_SCRIPTS "xrt-smi")
 endif()
 
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
