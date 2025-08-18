@@ -42,6 +42,7 @@ public:
 
 private:
   bool done;
+  bool m_is_enable;
   static void* poll_aie(void *arg);
   xrt_core::device *m_device;
   std::vector<const graph_object*> m_graphs;
