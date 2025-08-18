@@ -40,6 +40,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
       "${IMPL_DIR}/aie_profile_npu3.cpp"
       "${IMPL_DIR}/aie_profile.h"
       "${IMPL_DIR}/aie_profile.cpp"
+      "${PROFILE_DIR}/device/common/npu3/*"
     )
   else()
     file(GLOB AIE_PROFILE_IMPL_FILES
