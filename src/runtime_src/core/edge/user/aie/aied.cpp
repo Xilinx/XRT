@@ -34,7 +34,7 @@ aied::aied(xrt_core::device* device): m_device(device)
 {
   m_is_enable = xrt_core::config::get_enable_aied();
 
-  if(!m_is_enable)
+  if (!m_is_enable)
     return;
   done = false;
   pthread_create(&ptid, NULL, &aied::poll_aie, this);
@@ -43,7 +43,7 @@ aied::aied(xrt_core::device* device): m_device(device)
 
 aied::~aied()
 {
-  if(!m_is_enable)
+  if (!m_is_enable)
     return;
   done = true;
   pthread_kill(ptid, SIGUSR1);
