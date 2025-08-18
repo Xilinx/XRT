@@ -4077,10 +4077,29 @@ struct preemption : request
 
 };
 
+/**
+ * This structure provides a common interface for accessing firmware debug data,
+ * supporting both polling and streaming modes of operation.
+ * 
+ * Fields:
+ * - buffer_offset: Absolute index of last-read event. Updated by driver to new offset 
+ *                  till the point where data is read from buffer.
+ * - data: Pointer to data buffer to be filled by driver with firmware log/trace data
+ * - size: Size in bytes of the data buffer filled by driver
+ * - b_wait: Directive for driver whether to wait for new events or return immediately.
+ *           True = wait for new events. Always false for non-watch mode operations.
+ */
+struct firmware_log_buffer {
+    uint64_t buffer_offset;
+    void* data;
+    uint64_t size;
+    bool b_wait;
+};
+
 struct event_trace : request 
 {
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t;   // put value type
+  using result_type = firmware_log_buffer;  // get value type (shared buffer structure)
+  using value_type = uint32_t;                // put value type
 
   static const key_type key = key_type::event_trace;
 
@@ -4093,7 +4112,7 @@ struct event_trace : request
 
 struct firmware_log : request
 {  
-  using result_type = uint32_t;  // get value type
+  using result_type = firmware_log_buffer;  // get value type (shared buffer structure)
   
   // Structure to hold both action and log_level parameters
   struct value_type {
