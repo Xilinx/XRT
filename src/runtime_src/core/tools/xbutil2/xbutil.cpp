@@ -35,9 +35,7 @@ R"(
   "alveo": [{
     "examine": [{}]
   },{
-    "configure": [{
-      "suboption": ["host-mem", "p2p"]
-    }]
+    "configure": [{}]
   },{
     "advanced":[{
       "suboption": ["read-mem", "write-mem"]
@@ -53,9 +51,7 @@ R"(
   "aie": [{
     "examine": [{}]
   },{
-    "configure": [{
-      "suboption": ["pmode", "force-preemption"]
-    }]
+    "configure": [{}]
   },{
     "advanced":[{
       "suboption": ["read-aie-reg", "aie-clock", "report"]
@@ -82,7 +78,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false, configTree));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
 
     // Parse sub commands from json files
     populateSubCommandsFromJSON(subCommands, executable);
