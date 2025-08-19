@@ -185,6 +185,18 @@ public:
   bool
   write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val);
 
+  /**
+   * get_thermal() - Read AIE thermal temparature
+   *
+   * @return
+   *  returns aie thermal temparature
+   *
+   * This function reads thermal temparature of AIE
+   */
+  XCL_DRIVER_DLLESPEC
+  float
+  get_thermal() const;
+
 private:
   XCL_DRIVER_DLLESPEC
   void

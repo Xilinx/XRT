@@ -103,6 +103,8 @@ exec_buf(xclDeviceHandle handle, xrt_core::buffer_handle* bohdl, xrt_core::hwctx
 // only in edge shim
 std::unique_ptr<xrt_core::buffer_handle>
 get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl);
+
+float get_thermal(xclDeviceHandle handle);
 }} // shim_int, xrt
 
 #endif

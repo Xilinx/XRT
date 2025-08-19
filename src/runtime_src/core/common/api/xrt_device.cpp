@@ -529,6 +529,21 @@ write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
       }
     });
 }
+
+float
+device::
+get_thermal() const
+{
+  return xdp::native::profiling_wrapper("xrt::device::get_thermal",
+  [this] {
+    try {
+      return get_handle()->get_thermal();
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      throw std::runtime_error("get_thermal is not supported on this platform");
+    }
+  });
+}
 } // xrt::aie
 
 ////////////////////////////////////////////////////////////////
