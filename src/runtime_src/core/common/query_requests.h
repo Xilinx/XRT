@@ -4082,15 +4082,16 @@ struct preemption : request
  * supporting both polling and streaming modes of operation.
  * 
  * Fields:
- * - buffer_offset: Absolute index of last-read event. Updated by driver to new offset 
- *                  till the point where data is read from buffer.
+ * - abs_offset: Absolute index to begin loading the next chunk of data. To start with 0 in the very first read.
+                 Updated by driver to new offset from where the next read should start.
  * - data: Pointer to data buffer to be filled by driver with firmware log/trace data
- * - size: Size in bytes of the data buffer filled by driver
- * - b_wait: Directive for driver whether to wait for new events or return immediately.
- *           True = wait for new events. Always false for non-watch mode operations.
+ * - size: size of the buffer. When used from userspace->driver : size(in bytes) of the allocated buffer
+                               When used from driver->userspace : size(in bytes) of the filled buffer
+ * - b_wait: Directive for driver whether to wait for new events or return immediately 
+             in-case there is nothing to read.
  */
-struct firmware_log_buffer {
-    uint64_t buffer_offset;
+struct firmware_debug_buffer {
+    uint64_t abs_offset;
     void* data;
     uint64_t size;
     bool b_wait;
@@ -4098,7 +4099,7 @@ struct firmware_log_buffer {
 
 struct event_trace : request 
 {
-  using result_type = firmware_log_buffer;  // get value type (shared buffer structure)
+  using result_type = firmware_debug_buffer;  // get value type (shared buffer structure)
   using value_type = uint32_t;                // put value type
 
   static const key_type key = key_type::event_trace;
@@ -4112,7 +4113,7 @@ struct event_trace : request
 
 struct firmware_log : request
 {  
-  using result_type = firmware_log_buffer;  // get value type (shared buffer structure)
+  using result_type = firmware_debug_buffer;  // get value type (shared buffer structure)
   
   // Structure to hold both action and log_level parameters
   struct value_type {
