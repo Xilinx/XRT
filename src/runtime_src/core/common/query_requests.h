@@ -324,7 +324,9 @@ enum class key_type
   performance_mode,
   preemption,
   event_trace,
+  event_trace_version,
   firmware_log,
+  firmware_log_version,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -4099,7 +4101,13 @@ struct firmware_debug_buffer {
 
 struct event_trace : request 
 {
-  using result_type = firmware_debug_buffer;  // get value type (shared buffer structure)
+  // Version struct for event trace
+  struct event_trace_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
   using value_type = uint32_t;                // put value type
 
   static const key_type key = key_type::event_trace;
@@ -4107,13 +4115,25 @@ struct event_trace : request
   std::any
   get(const device*) const override = 0;
 
+  // Parameterized get method based on key_type
+  // Returns event_trace_version if key is event_trace_version
+  // Returns firmware_debug_buffer if key is event_trace
+  virtual std::any
+  get(const device*, const key_type&) const = 0;
+
   void
   put(const device*, const std::any&) const override = 0;
 };
 
 struct firmware_log : request
 {  
-  using result_type = firmware_debug_buffer;  // get value type (shared buffer structure)
+  // Version struct for firmware log
+  struct firmware_log_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
   
   // Structure to hold both action and log_level parameters
   struct value_type {
@@ -4125,6 +4145,12 @@ struct firmware_log : request
 
   std::any
   get(const device*) const override = 0;
+
+  // Parameterized get method based on key_type
+  // Returns firmware_log_version if key is firmware_log_version
+  // Returns firmware_debug_buffer if key is firmware_log
+  virtual std::any
+  get(const device*, const key_type&) const = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
