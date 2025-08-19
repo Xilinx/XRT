@@ -59,6 +59,14 @@ public:
   enum class buffer_state { idle, running, completed };
 
   /**
+   * @enum thermal - aie thermal type
+   * 
+   * @var temp
+   *   Thermal zone temperature
+   */
+  enum class thermal { temp };
+
+  /**
    * device() - Construct device with specified access mode
    *
    * @param args
@@ -195,7 +203,11 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   float
-  get_thermal() const;
+  get_thermal(const thermal& arg) const;
+
+  XCL_DRIVER_DLLESPEC
+  void
+  set_thermal_threshold(const thermal& arg) const;
 
 private:
   XCL_DRIVER_DLLESPEC

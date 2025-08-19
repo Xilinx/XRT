@@ -124,11 +124,15 @@ public:
   std::unique_ptr<buffer_handle>
   import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
 
-  virtual float get_thermal() const override
+  virtual float get_thermal(const xrt::aie::device::thermal& arg) const override
   {
-    return xrt::shim_int::get_thermal(get_device_handle());
+    return xrt::shim_int::get_thermal(get_device_handle(), arg);
   }
 
+  virtual void set_thermal_threshold(const xrt::aie::device::thermal& arg) const override
+  {
+    return xrt::shim_int::set_thermal_threshold(get_device_handle(), arg);
+  }
 private:
   // Private look up function for concrete query::request
   virtual const query::request&

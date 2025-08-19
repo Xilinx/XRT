@@ -2237,7 +2237,7 @@ setAIEAccessMode(xrt::aie::access_mode am)
 
 float
 shim::
-get_thermal(xclDeviceHandle handle)
+get_thermal(xclDeviceHandle handle, const xrt::aie::device::thermal& arg)
 {
   const std::string path = "/sys/class/thermal/thermal_zone1/temp";
   std::ifstream file(path);
@@ -2251,6 +2251,14 @@ get_thermal(xclDeviceHandle handle)
   file.close();
   // converting milli degree celcius to degree celcius
   return temp_millidc / 1000.0f;
+}
+
+void
+shim::
+set_thermal_threshold(xclDeviceHandle handle, const xrt::aie::device::thermal& arg)
+{
+  xclLog(XRT_WARNING, "%s: Not supported\n", __func__);
+  return;
 }
 
 #endif
@@ -2311,10 +2319,17 @@ get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl)
 }
 
 float
-get_thermal(xclDeviceHandle handle)
+get_thermal(xclDeviceHandle handle, const xrt::aie::device::thermal& arg)
 {
   auto shim = get_shim_object(handle);
-  return shim->get_thermal(handle);
+  return shim->get_thermal(handle, arg);
+}
+
+void
+set_thermal_threshold(xclDeviceHandle handle, const xrt::aie::device::thermal& arg)
+{
+  auto shim = get_shim_object(handle);
+  return shim->set_thermal_threshold(handle, arg);
 }
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
