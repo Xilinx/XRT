@@ -265,10 +265,6 @@ public:
   int xclExecWait(int timeoutMilliSec);
   int resetDevice(xclResetKind kind);
 
-  // Thermal read/write
-  float get_thermal(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
-  void set_thermal_threshold(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
-
   ////////////////////////////////////////////////////////////////
   // Context handling
   ////////////////////////////////////////////////////////////////

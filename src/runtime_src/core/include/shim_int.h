@@ -103,12 +103,6 @@ exec_buf(xclDeviceHandle handle, xrt_core::buffer_handle* bohdl, xrt_core::hwctx
 // only in edge shim
 std::unique_ptr<xrt_core::buffer_handle>
 get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl);
-
-// get_thermal - get thermal information from thermal driver eg: temparature, etc.
-float get_thermal(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
-
-// set_thermal_threshold - set thermal threshold information in thermal driver eg: temperature, etc.
-void set_thermal_threshold(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
 }} // shim_int, xrt
 
 #endif
