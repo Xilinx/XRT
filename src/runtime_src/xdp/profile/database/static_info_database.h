@@ -94,7 +94,7 @@ namespace xdp {
     std::vector<std::string> softwareEmulationPortBitWidths ;
 
     // Information tracks valid tiles type and and it's metric settings
-    AIEProfileFinalConfig aieProfileConfig;
+    std::map<uint64_t, std::unique_ptr<const AIEProfileFinalConfig>> aieProfileConfigs;
 
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
@@ -110,14 +110,15 @@ namespace xdp {
     std::mutex aieLock ;
     std::mutex appStyleLock;
     std::mutex hwCtxImplUIDMapLock;
+    std::mutex aieProfileConfigLock; 
+    std::mutex aieMetadataReaderLock; 
 
     // AIE device (Supported devices only)
     std::function<void (void*)> deallocateAieDevice = nullptr ;
     // AIE device instances mapped to unique device id.
     std::map<uint64_t, void*> aieDeviceInstances;
     std::map<uint64_t, void*> aieDevices; // xaiefal::XAieDev
-    boost::property_tree::ptree aieMetadata;
-    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
+    std::map<uint64_t, std::unique_ptr<aie::BaseFiletypeImpl>> metadataReaders;
 
     /* The very first XDP Plugin update device (except PL Deadlock Plugin,
      * ML Timeline etc.) sets the Application Style internally.
@@ -402,8 +403,9 @@ namespace xdp {
                                   std::function<void (void*)> deallocate,
                                   void* devHandle, uint64_t deviceID=0) ;
 
-    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool checkDisk);
-    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
+    XDP_CORE_EXPORT void readAIEMetadata(uint64_t deviceId, xrt::xclbin xrtXclbin, bool checkDisk);
+    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader(uint64_t deviceId = 0) ;
+    XDP_CORE_EXPORT void addAIEmetadataReader(uint64_t deviceId, std::unique_ptr<aie::BaseFiletypeImpl> metadataReader) ;
 
     // ************************************************************************
     // ***** Functions for information from a specific xclbin on a device *****
@@ -459,8 +461,8 @@ namespace xdp {
     XDP_CORE_EXPORT std::string getCtxInfo(uint64_t deviceId) ;
 
     // Functions to save current valid profile config
-    XDP_CORE_EXPORT inline void saveProfileConfig(const AIEProfileFinalConfig& cfg) { aieProfileConfig=cfg; }
-    XDP_CORE_EXPORT inline const AIEProfileFinalConfig& getProfileConfig() { return aieProfileConfig; }
+    XDP_CORE_EXPORT void saveProfileConfig(std::unique_ptr<const AIEProfileFinalConfig> cfg, uint64_t deviceId) ;
+    XDP_CORE_EXPORT const AIEProfileFinalConfig* getProfileConfig(uint64_t deviceId) ;
   } ;
 
 }

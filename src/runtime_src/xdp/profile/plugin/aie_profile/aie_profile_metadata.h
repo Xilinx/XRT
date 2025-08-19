@@ -198,7 +198,7 @@ class AieProfileMetadata {
     std::vector<tile_type>
     getTiles(const std::string& graph_name, module_type type, const std::string& kernel_name) const;
 
-    const AIEProfileFinalConfig& getAIEProfileConfig() const ;
+    std::unique_ptr<const AIEProfileFinalConfig> createAIEProfileConfig() ;
 };
 
 } // end XDP namespace
