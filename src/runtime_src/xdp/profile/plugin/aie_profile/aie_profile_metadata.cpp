@@ -722,6 +722,7 @@ namespace xdp {
       const std::vector<std::string>& metricsSettings,
       const std::vector<std::string> graphMetricsSettings)
   {
+std::cout << "!!!!!!!!!! getConfigMetricsForInterfaceTiles start!" << std::endl;
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
@@ -872,6 +873,7 @@ namespace xdp {
     // Pass 1 : process only "all" metric setting
     // all:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
+std::cout << "!!!!!!!!!! i = " << i << std::endl;
       // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
@@ -911,6 +913,7 @@ namespace xdp {
       else
         tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1]);
 
+std::cout << "!!!!!!!!!! Setting metric set for interface tiles to " << metrics[i][1] << std::endl;
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
