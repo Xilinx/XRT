@@ -4112,14 +4112,11 @@ struct event_trace : request
 
   static const key_type key = key_type::event_trace;
 
-  std::any
-  get(const device*) const override = 0;
-
-  // Parameterized get method based on key_type
+  // Parameterized get method based on key_type passed via std::any
   // Returns event_trace_version if key is event_trace_version
   // Returns firmware_debug_buffer if key is event_trace
-  virtual std::any
-  get(const device*, const key_type&) const = 0;
+  std::any
+  get(const device*, const std::any& key) const override = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
@@ -4143,14 +4140,11 @@ struct firmware_log : request
 
   static const key_type key = key_type::firmware_log;
 
-  std::any
-  get(const device*) const override = 0;
-
-  // Parameterized get method based on key_type
+  // Parameterized get method based on key_type passed via std::any
   // Returns firmware_log_version if key is firmware_log_version
   // Returns firmware_debug_buffer if key is firmware_log
-  virtual std::any
-  get(const device*, const key_type&) const = 0;
+  std::any
+  get(const device*, const std::any& key) const override = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
