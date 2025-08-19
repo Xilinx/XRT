@@ -45,6 +45,23 @@ insert_in_map(map& m, value&& v)
 } // xrt::core::hip
 
 namespace {
+template<typename F> hipError_t
+handle_hip_func_error(const char* func_name, hipError_t default_err, F && f)
+{
+  try {
+    std::forward<F>(f)();
+    return hipSuccess;
+  }
+  catch (const xrt_core::system_error &ex) {
+    xrt_core::send_exception_message(std::string(func_name) + " - " + ex.what());
+    return static_cast<hipError_t>(ex.value());
+  }
+  catch (const std::exception &ex) {
+    xrt_core::send_exception_message(std::string(func_name) + " - " + ex.what());
+  }
+  return default_err;
+}
+
 // common functions for throwing hip errors
 inline void
 throw_if(bool check, hipError_t err, const char* err_msg)

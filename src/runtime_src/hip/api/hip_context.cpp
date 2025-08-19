@@ -129,109 +129,55 @@ hip_device_primary_ctx_retain(device_handle dev)
 hipError_t
 hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!ctx, "ctx passed is nullptr");
 
     auto handle = xrt::core::hip::hip_ctx_create(flags, device);
     *ctx = reinterpret_cast<hipCtx_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipCtxDestroy(hipCtx_t ctx)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_ctx_destroy(ctx);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipCtxGetDevice(hipDevice_t* device)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!device, "device passed is nullptr");
 
     *device = static_cast<int>(xrt::core::hip::hip_ctx_get_device());
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipCtxSetCurrent(hipCtx_t ctx)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_ctx_set_current(ctx);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!pctx, "nullptr passed");
 
     auto handle = xrt::core::hip::hip_device_primary_ctx_retain(dev);
     *pctx = reinterpret_cast<hipCtx_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipDevicePrimaryCtxRelease(hipDevice_t dev)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_device_primary_ctx_release(dev);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
