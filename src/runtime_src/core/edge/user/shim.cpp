@@ -2235,6 +2235,24 @@ setAIEAccessMode(xrt::aie::access_mode am)
   access_mode = am;
 }
 
+float
+shim::
+get_thermal(xclDeviceHandle handle)
+{
+  const std::string path = "/sys/class/thermal/thermal_zone1/temp";
+  std::ifstream file(path);
+  if (!file.is_open()) {
+    std::cerr << "Failed to open temp of thermal_zone1 " << path << std::endl;
+    return -1.0f;
+  }
+
+  int temp_millidc;
+  file >> temp_millidc;
+  file.close();
+  // converting milli degree celcius to degree celcius
+  return temp_millidc / 1000.0f;
+}
+
 #endif
 
 } // end namespace ZYNQ
@@ -2290,6 +2308,13 @@ get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl)
 {
   auto shim = get_shim_object(handle);
   return std::make_unique<ZYNQ::shim::buffer_object>(shim, bhdl);
+}
+
+float
+get_thermal(xclDeviceHandle handle)
+{
+  auto shim = get_shim_object(handle);
+  return shim->get_thermal(handle);
 }
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////

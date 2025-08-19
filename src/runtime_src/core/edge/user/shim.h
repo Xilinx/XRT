@@ -265,6 +265,10 @@ public:
   int xclExecWait(int timeoutMilliSec);
   int resetDevice(xclResetKind kind);
 
+  // Thermal read/write
+  float get_thermal(xclDeviceHandle handle);
+  // void set_thermal_threshold(xclDeviceHandle handle);
+
   ////////////////////////////////////////////////////////////////
   // Context handling
   ////////////////////////////////////////////////////////////////
