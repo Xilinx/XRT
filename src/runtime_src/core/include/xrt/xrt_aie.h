@@ -61,10 +61,10 @@ public:
   /**
    * @enum thermal - aie thermal type
    * 
-   * @var temp
+   * @var temperature
    *   Thermal zone temperature
    */
-  enum class thermal { temp };
+  enum class thermal { temperature };
 
   /**
    * device() - Construct device with specified access mode
@@ -194,17 +194,22 @@ public:
   write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val);
 
   /**
-   * get_thermal() - Read AIE thermal temparature
+   * get_thermal() - Read AIE thermal information
    *
    * @return
-   *  returns aie thermal temparature
+   *  returns aie thermal information based on argument
    *
-   * This function reads thermal temparature of AIE
+   * This function reads thermal information eg: temparature of AIE
    */
   XCL_DRIVER_DLLESPEC
   float
   get_thermal(const thermal& arg) const;
 
+  /**
+   * set_thermal_threshold() - set AIE thermal threshold based on arg
+   *
+   * This function sets thermal threshold eg: temparature threshold of AIE
+   */
   XCL_DRIVER_DLLESPEC
   void
   set_thermal_threshold(const thermal& arg) const;

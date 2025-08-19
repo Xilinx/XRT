@@ -1207,6 +1207,29 @@ reset() const
   drv->xclReset();
 }
 
+float
+device_linux::
+get_thermal(const xrt::aie::device::thermal& arg) const
+{
+  const std::string path = "/sys/class/thermal/thermal_zone1/temp";
+  std::ifstream file(path);
+  if (!file.is_open())
+    throw system_error(-ENODEV, "Failed to open file: " + path);
+
+  int temp_millidc;
+  file >> temp_millidc;
+  file.close();
+
+  return temp_millidc / 1000.0f;
+}
+
+void
+device_linux::
+set_thermal_threshold(const xrt::aie::device::thermal& arg) const
+{
+  throw system_error(-ENODEV, "Not Supported");
+}
+
 ////////////////////////////////////////////////////////////////
 // Custom ishim implementation
 // Redefined from xrt_core::ishim for functions that are not
