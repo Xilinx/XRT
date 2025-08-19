@@ -105,9 +105,10 @@ hip_device_get_name(hipDevice_t device)
   return (xrt_core::device_query<xrt_core::query::rom_vbnv>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
 }
 
-static hipDeviceProp_t
-hip_get_device_properties(hipDevice_t device)
+static void
+hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
 {
+  throw_invalid_value_if(!props, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
   throw std::runtime_error("Not implemented");
@@ -127,9 +128,10 @@ hip_device_get_uuid(hipDevice_t device)
   return uid;
 }
 
-static int
-hip_device_get_attribute(hipDeviceAttribute_t attr, int device)
+static void
+hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
+  throw_invalid_value_if(!pi, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
   throw std::runtime_error("Not implemented");
@@ -218,8 +220,7 @@ hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 #endif
 {
   return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
-    throw_invalid_value_if(!props, "arg passed is nullptr");
-    *props = xrt::core::hip::hip_get_device_properties(device);
+    xrt::core::hip::hip_get_device_properties(props, device);
   });
 }
 
@@ -236,8 +237,7 @@ hipError_t
 hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
   return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
-    throw_invalid_value_if(!pi, "arg passed is nullptr");
-    *pi = xrt::core::hip::hip_device_get_attribute(attr, device);
+	xrt::core::hip::hip_device_get_attribute(pi, attr, device);
   });
 }
 
