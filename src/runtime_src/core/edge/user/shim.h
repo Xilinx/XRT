@@ -266,8 +266,8 @@ public:
   int resetDevice(xclResetKind kind);
 
   // Thermal read/write
-  float get_thermal(xclDeviceHandle handle);
-  // void set_thermal_threshold(xclDeviceHandle handle);
+  float get_thermal(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
+  void set_thermal_threshold(xclDeviceHandle handle, const xrt::aie::device::thermal& arg);
 
   ////////////////////////////////////////////////////////////////
   // Context handling
