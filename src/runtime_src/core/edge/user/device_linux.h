@@ -32,8 +32,8 @@ public:
   void reset() const override;
 
   // thermal functions
-  virtual float get_thermal(const xrt::aie::device::thermal& arg) const override;
-  virtual void set_thermal_threshold(const xrt::aie::device::thermal& arg) const override;
+  float get_thermal(const xrt::aie::device::thermal& arg) const override;
+  void set_thermal_threshold(const xrt::aie::device::thermal& arg) const override;
 
   ////////////////////////////////////////////////////////////////
   // Custom ishim implementation
