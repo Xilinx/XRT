@@ -69,117 +69,68 @@ static bool hip_event_query(hipEvent_t eve)
 // =========================================================================
 hipError_t hipEventCreate(hipEvent_t* event)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     auto handle = xrt::core::hip::hip_event_create();
     *event = reinterpret_cast<hipEvent_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t hipEventDestroy(hipEvent_t event)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
-    
+
     xrt::core::hip::hip_event_destroy(event);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t hipEventSynchronize(hipEvent_t event)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     xrt::core::hip::hip_event_synchronize(event);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
     throw_invalid_value_if(!stream, "stream passed is nullptr");
 
     xrt::core::hip::hip_event_record(event, stream);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t hipEventQuery (hipEvent_t event)
 {
-  try {
+  hipError_t err = hipErrorUnknown, ret = hipSuccess;
+  err = handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     if (xrt::core::hip::hip_event_query(event)){
-      return hipSuccess;
+      ret = hipSuccess;
     }
     else {
-      return hipErrorNotReady;
+      ret = hipErrorNotReady;
     }
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
+  if (err != hipSuccess)
+    return err;
+  return ret;
 }
 
 hipError_t hipEventElapsedTime (float *ms, hipEvent_t start, hipEvent_t stop)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!start, "start event passed is nullptr");
     throw_invalid_value_if(!stop, "stop event passed is nullptr");
     throw_invalid_value_if(!ms, "the ms (elapsed time output) passed is nullptr");
 
     *ms = xrt::core::hip::hip_event_elapsed_time(start, stop);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 

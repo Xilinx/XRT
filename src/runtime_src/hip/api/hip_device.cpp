@@ -105,9 +105,10 @@ hip_device_get_name(hipDevice_t device)
   return (xrt_core::device_query<xrt_core::query::rom_vbnv>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
 }
 
-static hipDeviceProp_t
-hip_get_device_properties(hipDevice_t device)
+static void
+hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
 {
+  throw_invalid_value_if(!props, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
   throw std::runtime_error("Not implemented");
@@ -127,9 +128,10 @@ hip_device_get_uuid(hipDevice_t device)
   return uid;
 }
 
-static int
-hip_device_get_attribute(hipDeviceAttribute_t attr, int device)
+static void
+hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
+  throw_invalid_value_if(!pi, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
   throw std::runtime_error("Not implemented");
@@ -156,62 +158,32 @@ hip_kernel_name_ref(const hipFunction_t f)
 hipError_t
 hipInit(unsigned int flags)
 {
-  try {
-    xrt::core::hip::hip_init(flags);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorNotInitialized;
+  return handle_hip_func_error(__func__, hipErrorNotInitialized, [&] {
+    xrt::core::hip::hip_init(flags); });
 }
 
 hipError_t
 hipGetDeviceCount(size_t* count)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!count, "arg passed is nullptr");
-
     *count = xrt::core::hip::hip_get_device_count();
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipDeviceGet(hipDevice_t* device, int ordinal)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!device, "device is nullptr");
-
     *device = xrt::core::hip::hip_device_get(ordinal);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipDeviceGetName(char* name, int len, hipDevice_t device)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if((!name || len <= 0), "invalid arg");
 
     auto name_str = xrt::core::hip::hip_device_get_name(device);
@@ -220,16 +192,7 @@ hipDeviceGetName(char* name, int len, hipDevice_t device)
     auto cpy_size = (static_cast<size_t>(len) <= (name_str.length() + 1) ? (len - 1) : name_str.length());
     std::memcpy(name, name_str.c_str(), cpy_size);
     name[cpy_size] = '\0';
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 #if HIP_VERSION >= 60000000
@@ -256,91 +219,47 @@ hipError_t
 hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 #endif
 {
-  try {
-    throw_invalid_value_if(!props, "arg passed is nullptr");
-
-    *props = xrt::core::hip::hip_get_device_properties(device);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_get_device_properties(props, device);
+  });
 }
 
 hipError_t
 hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!uuid, "arg passed is nullptr");
-
     *uuid = xrt::core::hip::hip_device_get_uuid(device);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
-  try {
-    throw_invalid_value_if(!pi, "arg passed is nullptr");
-
-    *pi = xrt::core::hip::hip_device_get_attribute(attr, device);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+	xrt::core::hip::hip_device_get_attribute(pi, attr, device);
+  });
 }
 
 hipError_t
 hipSetDevice(int device)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_set_device(device);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(std::string(__func__) + " - " + ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 const char *
 hipKernelNameRef(const hipFunction_t f)
 {
-  try {
+  const char* kname_ref = nullptr;
+  hipError_t err = handle_hip_func_error(__func__, hipErrorInvalidValue, [&] {
     throw_invalid_value_if(!f, "arg passed is nullptr");
+    kname_ref = xrt::core::hip::hip_kernel_name_ref(f);
+  });
 
-    return xrt::core::hip::hip_kernel_name_ref(f);
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
+  if (err != hipSuccess)
     return nullptr;
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return nullptr;
+
+  return kname_ref;
 }
