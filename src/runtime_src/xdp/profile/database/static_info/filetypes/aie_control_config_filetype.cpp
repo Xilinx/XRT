@@ -179,7 +179,7 @@ AIEControlConfigFiletype::getPLIOs() const
         plio.channelNum = 0;
         plio.burstLength = 0;
 
-        std::string plioKey = xdp::getGraphUniqueId(plio.shimColumn, plio.channelNum, plio.streamId);
+        std::string plioKey = xdp::aie::getGraphUniqueId(plio);
         plios[plioKey] = plio;
     }
 
@@ -233,7 +233,7 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
-        std::string gmioKey = xdp::getGraphUniqueId(gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        std::string gmioKey = xdp::aie::getGraphUniqueId(gmio);
         gmios[gmioKey] = gmio;
     }
 
