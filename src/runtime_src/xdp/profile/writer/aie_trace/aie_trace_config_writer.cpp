@@ -315,7 +315,7 @@ namespace xdp {
               bpt::ptree port3;
               port1.put("", tile_trace_config.port_trace_ids[i]);
               port2.put("", tile_trace_config.port_trace_is_master[i]);
-              port3.put("", tile->core_trace_config.port_trace_names[i]);
+              port3.put("", tile_trace_config.port_trace_names[i]);
               port_trace_ids.push_back(std::make_pair("", port1));
               port_trace_is_master.push_back(std::make_pair("", port2));
               port_trace_names.push_back(std::make_pair("", port3));
