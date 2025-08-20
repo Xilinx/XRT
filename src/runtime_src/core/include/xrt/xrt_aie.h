@@ -283,6 +283,28 @@ public:
    */
   void
   reset_array();
+     /**
+   * get_aie_freq() - Get current AIE frequency for this hardware context
+   *
+   * Return: Current frequency in MHz
+   *
+   * This function retrieves the current AIE frequency for the partition
+   * associated with this hardware context.
+   */
+  double
+  get_aie_freq() const;
+
+    /**
+   * set_aie_freq() - Set AIE frequency for this hardware context
+   *
+   * @freq_mhz: Frequency to set in MHz
+   *
+   * This function sets the AIE frequency for the partition
+   * associated with this hardware context.
+   */
+  void
+  set_aie_freq(double /* freq_mhz*/);
+
 };
 
 class profiling_impl;

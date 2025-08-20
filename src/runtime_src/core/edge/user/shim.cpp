@@ -2165,6 +2165,62 @@ openAIEContext(xrt::aie::access_mode am)
   return ret ? -errno : ret;
 }
 
+uint64_t
+shim::
+get_aie_freq(const zynqaie::hwctx_object* hwctx_obj)
+{
+#ifdef XRT_ENABLE_AIE
+  if (!hwctx_obj)
+    throw xrt_core::error(-EINVAL, "Invalid hardware context object");
+
+  auto hw_ctx_id = hwctx_obj->get_slotidx();
+  auto partition_info = hwctx_obj->get_partition_info();
+
+
+  struct drm_zocl_aie_freq_scale aie_arg;
+  aie_arg.hw_ctx_id = hw_ctx_id;
+  aie_arg.partition_id = partition_info.partition_id;
+  aie_arg.freq = 0;
+  aie_arg.dir = 0;
+
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg);
+
+  if (ret)
+    throw xrt_core::error(-errno, boost::str(boost::format("Reading AIE frequency from hw_context(%d) partition(%d) failed") % hw_ctx_id % partition_info.partition_id));
+
+  return aie_arg.freq;  // Return frequency in Hz
+#else
+  throw xrt_core::error(std::errc::not_supported, "AIE is not enabled for this device");
+#endif
+}
+
+void
+shim::
+set_aie_freq(const zynqaie::hwctx_object* hwctx_obj, uint64_t freq_hz)
+{
+#ifdef XRT_ENABLE_AIE
+  if (!hwctx_obj)
+    throw xrt_core::error(-EINVAL, "Invalid hardware context object");
+
+  auto hw_ctx_id = hwctx_obj->get_slotidx();
+  auto partition_info = hwctx_obj->get_partition_info();
+
+  struct drm_zocl_aie_freq_scale aie_arg;
+  aie_arg.hw_ctx_id = hw_ctx_id;
+  aie_arg.partition_id = partition_info.partition_id;
+  aie_arg.freq = freq_hz;
+  aie_arg.dir = 1;
+
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg);
+
+  if (ret)
+    throw xrt_core::error(-errno, boost::str(boost::format("Setting AIE frequency for hw_context(%d) partition(%d) to %lu Hz failed") % hw_ctx_id % partition_info.partition_id % freq_hz));
+
+#else
+  throw xrt_core::error(std::errc::not_supported, "AIE is not enabled for this device");
+#endif
+}
+
 xrt::aie::access_mode
 shim::
 getAIEAccessMode()

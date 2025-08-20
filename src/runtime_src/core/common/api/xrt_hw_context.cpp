@@ -23,6 +23,10 @@
 #include <limits>
 #include <memory>
 
+namespace {
+static constexpr double hz_per_mhz = 1'000'000.0;
+}
+
 namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
@@ -213,6 +217,43 @@ public:
 
     throw std::runtime_error("no module found with given kernel name in ctx");
   }
+
+  double
+  get_aie_freq() const
+  {
+    try {
+      auto freq_hz = m_hdl->get_aie_freq();
+      return static_cast<double>(freq_hz) / hz_per_mhz; // Convert Hz to MHz
+    }
+    catch (const xrt_core::error& e) {
+      if (e.code() == std::errc::not_supported)
+        throw std::runtime_error("get_aie_freq() API is not supported on this platform");
+
+      throw std::runtime_error("Failed to read AIE frequency: " + std::string(e.what()));
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error("Failed to read AIE frequency: " + std::string(e.what()));
+    }
+  }
+
+  void
+  set_aie_freq(double freq_mhz)
+  {
+    try {
+      auto freq_hz = static_cast<uint64_t>(freq_mhz * hz_per_mhz);
+      m_hdl->set_aie_freq(freq_hz);
+    }
+    catch (const xrt_core::error& e) {
+      if (e.code() == std::errc::not_supported)
+        throw std::runtime_error("set_aie_freq() API is not supported on this platform");
+
+      throw std::runtime_error("Failed to set AIE frequency: " + std::string(e.what()));
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error("Failed to set AIE frequency: " + std::string(e.what()));
+    }
+  }
+
 };
 
 } // xrt
@@ -394,6 +435,20 @@ hw_context::
 // xrt_aie_hw_context C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt::aie {
+
+double
+hw_context::
+get_aie_freq() const
+{
+  return get_handle()->get_aie_freq();
+}
+
+void
+hw_context::
+set_aie_freq(double freq_mhz)
+{
+  get_handle()->set_aie_freq(freq_mhz);
+}
 
 void
 hw_context::
