@@ -291,7 +291,7 @@ namespace xdp {
 
     auto compilerOptions = metadataReader->getAIECompilerOptions();
     uint8_t numRows = metadataReader->getNumRows();
-    int hwGen = metadataReader->getHardwareGen();
+    int hwGen = metadataReader->getHardwareGeneration();
     std::shared_ptr<xaiefal::XAieBroadcast> traceStartBroadcastCh1 = nullptr, traceStartBroadcastCh2 = nullptr;
     if(compilerOptions.enable_multi_layer) {
 
