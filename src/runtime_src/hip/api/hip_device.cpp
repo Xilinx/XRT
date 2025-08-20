@@ -111,7 +111,7 @@ hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
   throw_invalid_value_if(!props, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
-  throw std::runtime_error("Not implemented");
+  throw_hip_error(hipErrorNotSupported, "Not implemented");
 }
 
 static hipUUID
@@ -134,7 +134,7 @@ hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
   throw_invalid_value_if(!pi, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
-  throw std::runtime_error("Not implemented");
+  throw_hip_error(hipErrorNotSupported, "Not implemented");
 }
 
 // Sets thread default device

@@ -56,7 +56,7 @@ namespace xrt::core::hip
         break;
       }
       case hipHostMallocWriteCombined: {
-        throw xrt_core::system_error(hipErrorInvalidValue, "XRT bo creation doesn't support WriteCombined flag.");
+        throw_hip_error(hipErrorInvalidValue, "XRT bo creation doesn't support WriteCombined flag.");
       }
       default:
         break;
@@ -163,11 +163,9 @@ namespace xrt::core::hip
   memory_database::memory_database()
       : m_addr_map(), m_sub_mem_cache(), m_mutex()
   {
-    if (m_memory_database) {
-      throw std::runtime_error
-        ("Multiple instances of hip memory_database detected, only one\n"
+    throw_invalid_value_if(m_memory_database != nullptr,
+        "Multiple instances of hip memory_database detected, only one\n"
         "can be loaded at any given time.");
-    }
     m_memory_database = this;
   }
 

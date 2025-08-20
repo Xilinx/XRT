@@ -111,9 +111,8 @@ namespace xrt::core::hip
 
     m_reserved_mem_current = m_pool_size;
 
-    if (m_pool_size > m_max_total_size)
-      throw std::runtime_error("mem poolsize is too big.");
-    else if (m_pool_size == m_max_total_size)
+    throw_invalid_value_if(m_pool_size > m_max_total_size, "mem poolsize is too big.");
+    if (m_pool_size == m_max_total_size)
       m_auto_extend = false;
 
     m_list.emplace(m_list.end(), std::make_shared<memory_pool_node>(m_device, m_pool_size, m_last_id++));
@@ -239,18 +238,14 @@ namespace xrt::core::hip
 
     throw_invalid_value_if(!ptr, "empty sub memory handle for pool malloc.");
     auto sub_mem = memory_database::instance().get_sub_mem_from_handle(reinterpret_cast<memory_handle>(ptr));
-    if (!sub_mem) {
-      throw std::runtime_error("Invlid sub_memory handle");
-      return;
-    }
+    throw_invalid_handle_if(!sub_mem, "Invlid sub_memory handle");
 
     // every allocation from pool has page size alignment
     size_t aligned_size = get_page_aligned_size(size);
 
     std::lock_guard lock(m_mutex);
 
-    if (aligned_size > m_pool_size)
-      throw std::runtime_error("requested size is greater than memory pool block size.");
+    throw_invalid_value_if(aligned_size > m_pool_size, "requested size is greater than memory pool block size.");
 
     std::shared_ptr<memory_pool_node> mm;
 
