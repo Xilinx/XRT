@@ -269,11 +269,11 @@ struct ishim
   { throw not_supported_error{__func__}; }
 
   virtual float
-  get_thermal(const xrt::aie::device::thermal& arg) const
+  get_thermal(const xrt::aie::device::thermal&) const
   { throw not_supported_error{__func__}; }
 
   virtual void
-  set_thermal_threshold(const xrt::aie::device::thermal& arg) const
+  set_thermal_threshold(const xrt::aie::device::thermal&) const
   { throw not_supported_error{__func__}; }
 
 };
