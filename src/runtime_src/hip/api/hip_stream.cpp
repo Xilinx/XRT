@@ -119,7 +119,7 @@ hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
 hipError_t
 hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!stream, "stream passed is nullptr");
     auto handle = xrt::core::hip::hip_stream_create_with_flags(flags);
     *stream = reinterpret_cast<hipStream_t>(handle);
@@ -129,21 +129,21 @@ hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 hipError_t
 hipStreamDestroy(hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_stream_destroy(stream); });
 }
 
 hipError_t
 hipStreamSynchronize(hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_stream_synchronize(stream); });
 }
 
 hipError_t
 hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_stream_wait_event(stream, event, flags); });
 }
 
