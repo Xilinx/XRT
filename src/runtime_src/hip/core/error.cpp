@@ -140,4 +140,51 @@ namespace xrt::core::hip
     return error_name;
   }
 
+  //////////////////////////////////////////////
+  // Class XRT HIP exception
+  hip_exception::
+  hip_exception(hipError_t ec, const char* what)
+    : m_code(ec), m_what(what)
+  {}
+
+
+  hipError_t
+  hip_exception::
+  value() const noexcept
+  {
+    return m_code;
+  }
+
+  const char*
+  hip_exception::
+  what() const noexcept
+  {
+    return m_what.c_str();
+  }
+
+  // TODO: there can be extra checking to return better HIP error code based on the
+  // value of exception. However, there will be work needs to do in the platform dependent
+  // driver, e.g. today, on windows, it only throws std::runtime_error if it fails to
+  // allocate buffer with no specific error code, once, it provides error code, we can
+  // extend this implementation to provide proper HIP error code.
+  const static std::map<int, hipError_t> sys_to_hip_error_map =
+  {
+  #ifdef __linux__
+    { ENOENT, hipErrorFileNotFound },
+    { EACCES, hipErrorInvalidHandle },
+    { ENOMEM, hipErrorOutOfMemory },
+    { EINVAL, hipErrorInvalidValue },
+    { ENODEV, hipErrorInvalidDevice },
+  #endif
+  };
+
+  hipError_t
+  system_to_hip_error(int serror)
+  {
+    auto it = sys_to_hip_error_map.find(serror);
+    if (it == sys_to_hip_error_map.end())
+      return hipErrorOperatingSystem;
+
+    return it->second;
+  }
 }
