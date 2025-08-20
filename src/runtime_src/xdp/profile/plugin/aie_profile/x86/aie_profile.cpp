@@ -171,7 +171,27 @@ namespace xdp {
     return true;
   }
 
-  void AieProfile_x86Impl::poll(const uint32_t index, void* handle)
+  void AieProfile_x86Impl::startPoll(const uint64_t id)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_x86Impl::startPoll.");
+    threadCtrl = true;
+    thread = std::make_unique<std::thread>(&AieProfile_x86Impl::continuePoll, this, id); 
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_x86Impl::startPoll, after creating thread instance.");
+  }
+
+  void AieProfile_x86Impl::continuePoll(const uint64_t id)
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_x86Impl::continuePoll");
+
+    while (threadCtrl) {
+      poll(id);
+      std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
+    }
+    //Final Polling Operation
+    poll(id);
+  }
+
+  void AieProfile_x86Impl::poll(const uint64_t id)
   {
     try {
       // input bo
@@ -206,7 +226,7 @@ namespace xdp {
         values.push_back(counter.timerValue);
         values.push_back(counter.payload);
         double timestamp = xrt_core::time_ns() / 1.0e6;
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
+        db->getDynamicInfo().addAIESample(id, timestamp, values);
       }
     }
     catch (...) {
@@ -214,6 +234,19 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
+  }
+
+  void AieProfile_x86Impl::endPoll()
+  {
+    xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_x86Impl::endPoll");
+    if (!threadCtrl)
+      return;
+
+    threadCtrl = false;
+    if (thread && thread->joinable())
+      thread->join();
+
+    freeResources();
   }
 
   void AieProfile_x86Impl::freeResources()
