@@ -1207,20 +1207,32 @@ reset() const
   drv->xclReset();
 }
 
+static
 float
-device_linux::
-get_thermal(const xrt::aie::device::thermal& arg) const
+get_thermal_temperature()
 {
   const std::string path = "/sys/class/thermal/thermal_zone1/temp";
   std::ifstream file(path);
   if (!file.is_open())
     throw system_error(-ENODEV, "Failed to open file: " + path);
 
-  int temp_millidc;
-  file >> temp_millidc;
+  int millidc;
+  file >> millidc;
   file.close();
 
-  return temp_millidc / 1000.0f;
+  return millidc / 1000.0f;
+}
+
+float
+device_linux::
+get_thermal(const xrt::aie::device::thermal& arg) const
+{
+  switch(arg) {
+    case xrt::aie::device::thermal::temperature:
+      return get_thermal_temperature();
+    default:
+      throw error(-ENODEV, "Invalid thermal argument");
+  }
 }
 
 void
