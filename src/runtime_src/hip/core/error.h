@@ -44,5 +44,46 @@ protected:
 private:
   hipError_t m_last_error;
 }; // class error
+
+/**
+ * @class hip_exception
+ * @brief Exception class for HIP errors.
+ */
+class hip_exception: public std::exception
+{
+public:
+  /**
+   * @brief Construct a HIP exception.
+   * @param ec HIP error code.
+   * @param what Error description string.
+   */
+  hip_exception(hipError_t ec, const char* what);
+
+  /**
+   * @brief Get the HIP error code value.
+   * @return HIP error code.
+   */
+  hipError_t
+  value() const noexcept;
+
+  /**
+   * @brief Get the error description string.
+   * @return Error description.
+   */
+  const char*
+  what() const noexcept override;
+private:
+  hipError_t m_code; // HIP error code
+  std::string m_what; // Error description string
+};
+
+/**
+ * @brief Convert a system error code to a HIP error code.
+ * @param serror System error code.
+ * @return Corresponding HIP error code.
+ */
+hipError_t
+system_to_hip_error(int serror);
+
 }
 #endif // xrthip_error_h
