@@ -179,7 +179,7 @@ AIEControlConfigFiletype::getPLIOs() const
         plio.channelNum = 0;
         plio.burstLength = 0;
 
-        std::string plioKey = xdp::getGraphUniqueId(plio.shimColumn, plio.channelNum, plio.streamId);
+        std::string plioKey = xdp::aie::getGraphUniqueId(plio);
         plios[plioKey] = plio;
     }
 
@@ -233,7 +233,7 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
-        std::string gmioKey = xdp::getGraphUniqueId(gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        std::string gmioKey = xdp::aie::getGraphUniqueId(gmio);
         gmios[gmioKey] = gmio;
     }
 
@@ -297,6 +297,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         auto currGraph   = name.substr(0, namePos);
         auto currPort    = name.substr(namePos+1);
 
+std::cout << "!!!!!!!!!! Parsing " << currPort << std::endl;
+
         // Make sure this matches what we're looking for
         if ((portName.compare("all") != 0)
             && (portName.compare(currPort) != 0)
@@ -322,9 +324,13 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                 continue;
         }
 
+std::cout << "!!!!!!!!!!     Passed polarity check!" << std::endl;
+
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
+
+std::cout << "!!!!!!!!!!     Passed column check!" << std::endl;
 
         // Make sure stream/channel number is as specified
         // NOTE1: For PLIO, we use the SOUTH location only
@@ -336,6 +342,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
               && (specifiedId != streamId))
             continue;
         }
+
+std::cout << "!!!!!!!!!!     Passed channel check!" << std::endl;
 
         tile_type tile;
         tile.col = shimCol;

@@ -110,7 +110,7 @@ namespace xdp::aie {
   void displayColShiftInfo(uint8_t colShift);
 
   XDP_CORE_EXPORT
-  uint32_t getStreamWidth(uint8_t hw_gen);
+  std::string getGraphUniqueId(io_config& ioc);
 
 } // namespace xdp::aie
 

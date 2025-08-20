@@ -537,7 +537,7 @@ namespace xdp::aie::profile {
     if (metricSet != METRIC_BYTE_COUNT)
       return bytes;
 
-    uint32_t streamWidth = aie::getStreamWidth(hwGen);
+    uint32_t streamWidth = aie::getStreamBitWidth(hwGen);
     uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
 
     return total_beats;
