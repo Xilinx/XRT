@@ -226,7 +226,7 @@ namespace xdp {
         values.push_back(counter.timerValue);
         values.push_back(counter.payload);
         double timestamp = xrt_core::time_ns() / 1.0e6;
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
+        db->getDynamicInfo().addAIESample(id, timestamp, values);
       }
     }
     catch (...) {
