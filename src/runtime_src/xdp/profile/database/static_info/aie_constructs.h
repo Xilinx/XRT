@@ -60,6 +60,7 @@ namespace xdp {
     uint8_t  col = 0;
     std::vector<uint8_t> stream_ids;
     std::vector<uint8_t> is_master_vec;
+    std::vector<std::string> port_names;
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;
     bool     active_memory = false;
@@ -271,6 +272,7 @@ namespace xdp {
       
       bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
       int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
+      std::string port_trace_names[NUM_SWITCH_MONITOR_PORTS];
       int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
       int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
       std::vector<aie_cfg_counter> pc;

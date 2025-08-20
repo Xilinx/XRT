@@ -344,15 +344,16 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-            // Add to existing list of stream IDs
+            // Add to existing lists of stream IDs, master/slave, and port names
             it->stream_ids.push_back(streamId);
-            // Add to existing list of master/slave
             it->is_master_vec.push_back(isMaster);
+            it->port_names.push_back(currPort);
         }
         else {
             // Grab first stream ID and add to list of tiles
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
+            tile.port_names.push_back(currPort);
             tile.subtype = type;
             tiles.emplace_back(std::move(tile));
         }
