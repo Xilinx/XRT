@@ -73,10 +73,11 @@ namespace xdp {
       return;
     }
 
-    // need to ensure that the specified directory is a relative path 
-    // if not, we just use the file in the working directory
+    // if the path is neither a relative path nor the name of a folder we can create
+    // just put the file in the current directory
     size_t start = directory.find_first_not_of(" \t\n\r");
-    if (start == std::string::npos || directory.compare(start, 2, "./") != 0) {
+    if (start != std::string::npos) directory = directory.substr(start);
+    if (!(std::isalpha(directory[0]) || (directory.size() > 1 && directory[0] == '.' && directory[1] == '/'))) {
       fout.open(filename);
       return;
     }
