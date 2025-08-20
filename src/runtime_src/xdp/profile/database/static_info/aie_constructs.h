@@ -281,6 +281,7 @@ namespace xdp {
         for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
           port_trace_is_master[i] = false;
           port_trace_ids[i] = -1;
+          port_trace_names[i] = "unused";
         }
       };
   };
