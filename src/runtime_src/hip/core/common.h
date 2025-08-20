@@ -70,10 +70,16 @@ handle_hip_func_error(const char* func_name, hipError_t default_err, F && f)
 
 // common functions for throwing hip errors
 inline void
+throw_hip_error(hipError_t err, const char* err_msg)
+{
+  throw xrt::core::hip::hip_exception(err, err_msg);
+}
+
+inline void
 throw_if(bool check, hipError_t err, const char* err_msg)
 {
   if (check)
-    throw xrt::core::hip::hip_exception(err, err_msg);
+    throw_hip_error(err, err_msg);
 }
 
 inline void
@@ -105,6 +111,7 @@ throw_context_destroyed_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorContextIsDestroyed, err_msg);
 }
+
 }
 #endif
 
