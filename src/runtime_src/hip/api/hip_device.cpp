@@ -165,7 +165,7 @@ hipInit(unsigned int flags)
 hipError_t
 hipGetDeviceCount(size_t* count)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!count, "arg passed is nullptr");
     *count = xrt::core::hip::hip_get_device_count();
   });
@@ -174,7 +174,7 @@ hipGetDeviceCount(size_t* count)
 hipError_t
 hipDeviceGet(hipDevice_t* device, int ordinal)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!device, "device is nullptr");
     *device = xrt::core::hip::hip_device_get(ordinal);
   });
@@ -183,7 +183,7 @@ hipDeviceGet(hipDevice_t* device, int ordinal)
 hipError_t
 hipDeviceGetName(char* name, int len, hipDevice_t device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if((!name || len <= 0), "invalid arg");
 
     auto name_str = xrt::core::hip::hip_device_get_name(device);
@@ -219,7 +219,7 @@ hipError_t
 hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 #endif
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_get_device_properties(props, device);
   });
 }
@@ -227,7 +227,7 @@ hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 hipError_t
 hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!uuid, "arg passed is nullptr");
     *uuid = xrt::core::hip::hip_device_get_uuid(device);
   });
@@ -236,7 +236,7 @@ hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
 hipError_t
 hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
 	xrt::core::hip::hip_device_get_attribute(pi, attr, device);
   });
 }
@@ -244,7 +244,7 @@ hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 hipError_t
 hipSetDevice(int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_set_device(device);
   });
 }
