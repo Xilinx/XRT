@@ -497,30 +497,30 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::startPoll(const uint32_t index)
+  void AieProfile_EdgeImpl::startPoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll.");
     threadCtrl = true;
-    thread = std::make_unique<std::thread>(&AieProfile_EdgeImpl::continuePoll, this, index); 
+    thread = std::make_unique<std::thread>(&AieProfile_EdgeImpl::continuePoll, this, id); 
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll, after creating thread instance.");
   }
 
-  void AieProfile_EdgeImpl::continuePoll(const uint32_t index)
+  void AieProfile_EdgeImpl::continuePoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::continuePoll");
 
     while (threadCtrl) {
-      poll(index);
+      poll(id);
       std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
     }
     //Final Polling Operation
-    poll(index);
+    poll(id);
   }
 
-  void AieProfile_EdgeImpl::poll(const uint32_t index)
+  void AieProfile_EdgeImpl::poll(const uint64_t id)
   {
     // Wait until xclbin has been loaded and device has been updated in database
-    if (!(db->getStaticInfo().isDeviceReady(index)))
+    if (!(db->getStaticInfo().isDeviceReady(id)))
       return;
 
     if (!aieDevInst)
@@ -531,9 +531,9 @@ namespace xdp {
     uint64_t timerValue = 0;
 
     // Iterate over all AIE Counters & Timers
-    auto numCounters = db->getStaticInfo().getNumAIECounter(index);
+    auto numCounters = db->getStaticInfo().getNumAIECounter(id);
     for (uint64_t c=0; c < numCounters; c++) {
-      auto aie = db->getStaticInfo().getAIECounter(index, c);
+      auto aie = db->getStaticInfo().getAIECounter(id, c);
       if (!aie)
         continue;
 
@@ -613,7 +613,7 @@ namespace xdp {
 
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6;
-      db->getDynamicInfo().addAIESample(index, timestamp, values);
+      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
   }
 
