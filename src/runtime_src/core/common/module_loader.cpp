@@ -156,7 +156,7 @@ static sfs::path
 platform_path(const std::string& file_name)
 {
   sfs::path xpath{file_name};
-  if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
+  if (sfs::exists(xpath))
     return xpath;
 
   if (!xpath.is_absolute())
