@@ -7,7 +7,6 @@
 
 #include <string>
 #include "xdp/config.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
 
 // Functions that can be used in the database, the plugins, and the writers
 

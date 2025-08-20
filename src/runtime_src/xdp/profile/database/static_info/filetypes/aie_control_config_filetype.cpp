@@ -297,8 +297,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         auto currGraph   = name.substr(0, namePos);
         auto currPort    = name.substr(namePos+1);
 
-std::cout << "!!!!!!!!!! Parsing " << currPort << std::endl;
-
         // Make sure this matches what we're looking for
         if ((portName.compare("all") != 0)
             && (portName.compare(currPort) != 0)
@@ -324,13 +322,9 @@ std::cout << "!!!!!!!!!! Parsing " << currPort << std::endl;
                 continue;
         }
 
-std::cout << "!!!!!!!!!!     Passed polarity check!" << std::endl;
-
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
-
-std::cout << "!!!!!!!!!!     Passed column check!" << std::endl;
 
         // Make sure stream/channel number is as specified
         // NOTE1: For PLIO, we use the SOUTH location only
@@ -342,8 +336,6 @@ std::cout << "!!!!!!!!!!     Passed column check!" << std::endl;
               && (specifiedId != streamId))
             continue;
         }
-
-std::cout << "!!!!!!!!!!     Passed channel check!" << std::endl;
 
         tile_type tile;
         tile.col = shimCol;
