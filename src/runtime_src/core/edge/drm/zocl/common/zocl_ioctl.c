@@ -293,6 +293,13 @@ int zocl_close_graph_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fi
 	return zocl_close_graph_ctx(zdev, drm_graph_ctx, filp);
 }
 
+int
+zocl_reset_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
+        return zocl_reset(zdev, NULL, 1);
+}
+
 /*
  * Block comment for context switch.
  * The read_axlf_ioctl can happen without calling open context, we need to use mutex
