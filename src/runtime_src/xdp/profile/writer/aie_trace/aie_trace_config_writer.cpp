@@ -307,23 +307,18 @@ namespace xdp {
             bpt::ptree port_trace_config;
             bpt::ptree port_trace_ids;
             bpt::ptree port_trace_is_master;
-            bpt::ptree port_trace_names;
 
             for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
               bpt::ptree port1;
               bpt::ptree port2;
-              bpt::ptree port3;
               port1.put("", tile_trace_config.port_trace_ids[i]);
               port2.put("", tile_trace_config.port_trace_is_master[i]);
-              port3.put("", tile->core_trace_config.port_trace_names[i]);
               port_trace_ids.push_back(std::make_pair("", port1));
               port_trace_is_master.push_back(std::make_pair("", port2));
-              port_trace_names.push_back(std::make_pair("", port3));
             }
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
-            port_trace_config.add_child("names", port_trace_names);
             TileTraceConfig_C.add_child("PortTraceConfig", port_trace_config);
           }
 
