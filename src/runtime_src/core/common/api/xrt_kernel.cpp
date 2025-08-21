@@ -1304,14 +1304,15 @@ public:
     , m_buf_data(std::move(data))
     , m_max_cache_size(max_size)
   {
-    // Pre allocate the cache size
-    if (m_max_cache_size > 0) {
-      m_bo_cache.reserve(m_max_cache_size);
+    if (m_max_cache_size == 0)
+      return; // Case where ctrlpkt size is greater than pool memory
 
-      for (size_t i = 0; i < m_max_cache_size; i++) {
-        xrt::bo bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size());
-        m_bo_cache.push_back(std::move(bo));
-      }
+    // Pre allocate the cache size
+    m_bo_cache.reserve(m_max_cache_size);
+
+    for (size_t i = 0; i < m_max_cache_size; i++) {
+      xrt::bo bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size());
+      m_bo_cache.push_back(std::move(bo));
     }
   }
 
@@ -1941,13 +1942,13 @@ public:
   }
 
   size_t
-  get_regmap_size()
+  get_regmap_size() const
   {
     return regmap_size;
   }
 
   bool
-  is_ctrlpkt_cache_enabled()
+  is_ctrlpkt_cache_enabled() const
   {
     return m_ctrlpkt_cache_enabled;
   }
