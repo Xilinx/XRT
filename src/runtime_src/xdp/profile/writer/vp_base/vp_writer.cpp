@@ -77,7 +77,7 @@ namespace xdp {
     // just put the file in the current directory
     size_t start = directory.find_first_not_of(" \t\n\r");
     if (start != std::string::npos) directory = directory.substr(start);
-    if (!(std::isalpha(directory[0] == 0) || (directory.size() > 1 && directory[0] == '.' && directory[1] == '/'))) {
+    if (!(std::isalpha(directory[0]) || (directory.size() > 1 && directory[0] == '.' && directory[1] == '/'))) {
       fout.open(filename);
       try {
         std::string msg =
