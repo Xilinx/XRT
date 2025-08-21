@@ -9,7 +9,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "core/common/config_reader.h"
+#include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "bo_int.h"
@@ -24,10 +24,15 @@
 #include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
+#include <ctime>
 #include <fstream>
 #include <limits>
 #include <memory>
 #include <sstream>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
@@ -102,12 +107,18 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // sync the log buffer
       m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       auto num_uc = m_hdl->get_num_uc();
-      // split buffer equally among available columns
       auto uc_buf_size = m_uc_log_bo.size() / num_uc;
 
       // dump the log buffer for each uc in a separate file
+      // Add timestamp in file name
+      auto current_time = std::chrono::system_clock::now();
+      std::time_t time = std::chrono::system_clock::to_time_t(current_time);
+      std::stringstream time_stamp;
+      time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+
       for (size_t i = 0; i < num_uc; i++) {
-        auto file_name = "uc_log_" + std::to_string(m_hdl->get_slotidx()) + "_" + std::to_string(i) + ".txt";
+        auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
+            + time_stamp.str() + "_" + std::to_string(m_hdl->get_slotidx()) + "_" + std::to_string(i) + ".bin";
         dump_bo(m_uc_log_bo, file_name, (i * uc_buf_size), uc_buf_size);
       }
     }
@@ -164,7 +175,7 @@ public:
   initialize_uc_log_buffer()
   {
     // Create Log buffer for uc logging if ini option is enabled
-    static auto uc_log_buf_size = xrt_core::config::get_uc_log_buffer_size();
+    static auto uc_log_buf_size = xrt_core::config::get_log_buffer_size_per_uc();
     if (!uc_log_buf_size || m_uc_log_bo_initialized)
       return;
 
@@ -172,18 +183,21 @@ public:
       if (!m_hdl)
         return; // hw ctx not initialized
 
+      // We get size of single uc but we create one buffer for all uc's and split it
+      // uc needs buffer that is 32 Byte aligned
+      constexpr std::size_t alignment = 32;
+      // round up size to be 32 Byte aligned
+      size_t uc_aligned_size = (uc_log_buf_size + alignment - 1) & ~(alignment - 1);
+
+      auto num_uc = m_hdl->get_num_uc();
       m_uc_log_bo = xrt_core::bo_int::create_bo(m_core_device,
-                                                uc_log_buf_size,
+                                                (uc_aligned_size * num_uc),
                                                 xrt_core::bo_int::use_type::log);
 
-      // split buffer equally among all columns and call config_bo
-      auto num_uc = m_hdl->get_num_uc();
-      auto uc_buf_size = uc_log_buf_size / num_uc;
-
-      // create map with UC index and log buffer size
+      // create map with uc index and log buffer size
       std::map<uint32_t, size_t> uc_buf_map;
-      for (size_t i = 0; i < num_uc; ++i)
-        uc_buf_map[i] = uc_buf_size;
+      for (uint32_t i = 0; i < num_uc; ++i)
+        uc_buf_map[i] = uc_aligned_size;
 
       xrt_core::bo_int::config_bo(m_uc_log_bo, uc_buf_map, m_hdl.get()); // configure the log buffer
 
