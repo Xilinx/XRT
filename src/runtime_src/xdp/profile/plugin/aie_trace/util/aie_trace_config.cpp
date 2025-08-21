@@ -160,6 +160,10 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = channel;
           config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
+          if (slaveOrMaster == XAIE_STRMSW_MASTER)
+            config.port_trace_names[portnum] = tile.s2mm_names.at(channel);
+          else
+            config.port_trace_names[portnum] = tile.mm2s_names.at(channel);
         }
       }
 

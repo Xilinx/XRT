@@ -347,13 +347,13 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             // Add to existing lists of stream IDs, master/slave, and port names
             it->stream_ids.push_back(streamId);
             it->is_master_vec.push_back(isMaster);
-            it->port_names.push_back(currPort);
+            it->port_names.push_back(name);
         }
         else {
             // Grab first stream ID and add to list of tiles
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
-            tile.port_names.push_back(currPort);
+            tile.port_names.push_back(name);
             tile.subtype = type;
             tiles.emplace_back(std::move(tile));
         }
@@ -403,6 +403,21 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = shared_buffer.second.get<uint8_t>("column");
         tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
+
+        // Store names of DMA channels for reporting purposes
+        for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
+            auto channel = chan.get<uint8_t>("channel");
+            if (channel >= NUM_MEM_CHANNELS) {
+              xrt_core::message::send(severity_level::info, "XRT", "Unable to store dmaChannel");
+              continue;
+            }
+
+            if (chan.get<std::string>("direction") == "s2mm")
+              tile.s2mm_names[channel] = chan.get<std::string>("name");
+            else
+              tile.mm2s_names[channel] = chan.get<std::string>("name");
+        }
+
         allTiles.emplace_back(std::move(tile));
     }
 
