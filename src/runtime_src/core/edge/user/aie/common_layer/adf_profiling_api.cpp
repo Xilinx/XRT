@@ -197,7 +197,7 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
 
     rcCombo = comboEvent3->setEvents(combo_events, combo_opts);
     if (rcCombo != XAIE_OK)
-      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to set combo event resources.")
+      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to set combo event resources.");
 
     // Start the combo event 0
     rcCombo = comboEvent3->start();
