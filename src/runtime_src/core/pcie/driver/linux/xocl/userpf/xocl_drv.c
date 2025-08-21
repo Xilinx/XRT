@@ -1583,7 +1583,7 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 		return -EINVAL;
 	}
 
-	if (page_sz > (PAGE_SIZE << (MAX_ORDER-1))) {
+	if (page_sz > (PAGE_SIZE*MAX_ORDER_NR_PAGES)) {
 		DRM_WARN("Unable to allocate with page size 0x%llx", page_sz);
 		return -EINVAL;
 	}
@@ -1992,7 +1992,7 @@ static int __init xocl_init(void)
 {
 	int		ret, i = 0;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0) && !defined(RHEL_9_4_GE)
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 #else
 	xrt_class = class_create("xrt_user");
