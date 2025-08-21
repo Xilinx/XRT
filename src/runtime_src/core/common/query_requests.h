@@ -325,10 +325,14 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
-  event_trace,
+  event_trace_data,
   event_trace_version,
-  firmware_log,
+  event_trace_state,
+  event_trace_config,
+  firmware_log_data,
   firmware_log_version,
+  firmware_log_state,
+  firmware_log_config,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -4121,55 +4125,95 @@ struct firmware_debug_buffer {
     bool b_wait;
 };
 
-struct event_trace : request 
+struct event_trace_version : request 
 {
-  // Version struct for event trace
-  struct event_trace_version {
+  struct result_type {
     uint16_t major;
     uint16_t minor;
   };
 
-  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
-  using value_type = uint32_t;                // put value type
+  static const key_type key = key_type::event_trace_version;
 
-  static const key_type key = key_type::event_trace;
-
-  // Parameterized get method based on key_type passed via std::any
-  // Returns event_trace_version if key is event_trace_version
-  // Returns firmware_debug_buffer if key is event_trace
   std::any
-  get(const device*, const std::any& key) const override = 0;
+  get(const device*) const override = 0;
+};
+
+struct event_trace_data : request
+{
+  using result_type = firmware_debug_buffer;
+  static const key_type key = key_type::event_trace_data;
+
+  std::any
+  get(const device*) const override = 0;
+
+};
+
+struct event_trace_state : request
+{
+  static const key_type key = key_type::event_trace_state;
+
+  std::any
+  get(const device*) const override = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
 };
 
-struct firmware_log : request
-{  
-  // Version struct for firmware log
-  struct firmware_log_version {
+struct event_trace_config : request
+{
+  static const key_type key = key_type::event_trace_config;
+  using result_type = std::string;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+// Firmware log version query - following telemetry pattern
+struct firmware_log_version : request 
+{
+  struct result_type {
     uint16_t major;
     uint16_t minor;
   };
 
-  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
-  
-  // Structure to hold both action and log_level parameters
-  struct value_type {
+  static const key_type key = key_type::firmware_log_version;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+// Firmware log data query - following telemetry pattern
+struct firmware_log_data : request
+{
+  using result_type = firmware_debug_buffer;
+  static const key_type key = key_type::firmware_log_data;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+struct firmware_log_state : request
+{
+  struct value_type{
     uint32_t action;
     uint32_t log_level;
   };
 
-  static const key_type key = key_type::firmware_log;
-
-  // Parameterized get method based on key_type passed via std::any
-  // Returns firmware_log_version if key is firmware_log_version
-  // Returns firmware_debug_buffer if key is firmware_log
+  static const key_type key = key_type::firmware_log_state;
   std::any
-  get(const device*, const std::any& key) const override = 0;
+  get(const device*) const override = 0;
 
   void
   put(const device*, const std::any&) const override = 0;
+};
+
+struct firmware_log_config : request
+{
+  static const key_type key = key_type::firmware_log_config;
+  using result_type = std::string;
+
+  std::any
+  get(const device*) const override = 0;
 };
 
 /*

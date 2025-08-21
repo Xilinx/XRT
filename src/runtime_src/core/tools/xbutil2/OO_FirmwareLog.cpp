@@ -104,8 +104,8 @@ OO_FirmwareLog::execute(const SubCmdOptions& _options) const
   };
 
   try {
-    xrt_core::query::firmware_log::value_type params{action_to_int(m_action), m_log_level};
-    xrt_core::device_update<xrt_core::query::firmware_log>(device.get(), params);
+    xrt_core::query::firmware_log_state::value_type params{action_to_int(m_action), m_log_level};
+    xrt_core::device_update<xrt_core::query::firmware_log_state>(device.get(), params);
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
