@@ -101,7 +101,7 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
   };
 
   try {
-    xrt_core::device_update<xrt_core::query::event_trace>(device.get(), action_to_int(m_action));
+    xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), action_to_int(m_action));
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
