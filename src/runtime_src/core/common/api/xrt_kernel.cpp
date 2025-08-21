@@ -1397,8 +1397,8 @@ private:
                                               // and fill it with ctrlpkt data. Creating ctrlpkt bo at xrt::run
                                               // creation adds overhead and reduces performace, so creating a
                                               // buffer pool/cache of this ctrlpkt to reduce this overhead
-  bool m_ctrlpkt_cache_enabled = false;       // All Elf flows doesnt need ctrlpkt to be present
-                                              // This boolean indicated if ctrlpkt cache is enabled
+  bool m_ctrlpkt_cache_enabled = false;       // Some ELFs doesn't have ctrlpkt section, so no need of cache
+                                              // This boolean indicates if ctrlpkt cache is enabled
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1627,9 +1627,14 @@ private:
     if (ctrlpkt_buf_size == 0)
       return;
 
-    constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;;
-    size_t max_pool_size = (pool_memory_in_mb * bytes_per_mb) / ctrlpkt_buf_size;
-    // create buffer_cache and enqueue it with buffers of max pool size
+    constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
+    // Even tough pool memory is less than ctrlpkt size we still maintain one entry
+    // in cache to reduce overhead for atleast one run
+    constexpr size_t min_pool_size = 1;
+    size_t max_pool_size =
+        std::max((pool_memory_in_mb * bytes_per_mb) / ctrlpkt_buf_size, min_pool_size);
+
+    // create buffer_cache with calculated pool size
     m_ctrlpkt_bo_cache = std::make_unique<buffer_cache>(hwctx, ctrlpkt_data, max_pool_size);
     m_ctrlpkt_cache_enabled = true;
   }
