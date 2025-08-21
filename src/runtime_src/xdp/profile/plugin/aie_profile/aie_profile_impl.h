@@ -38,9 +38,9 @@ namespace xdp {
 
     virtual void updateDevice() = 0;
 
-    virtual void startPoll(const uint32_t index) = 0;
-    virtual void continuePoll(const uint32_t index) = 0;
-    virtual void poll(const uint32_t index) = 0;
+    virtual void startPoll(const uint64_t id) = 0;
+    virtual void continuePoll(const uint64_t id) = 0;
+    virtual void poll(const uint64_t id) = 0;
     virtual void endPoll() = 0;
 
     virtual void freeResources() = 0;

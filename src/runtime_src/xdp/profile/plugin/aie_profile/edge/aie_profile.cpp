@@ -97,8 +97,8 @@ namespace xdp {
 
   bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, void* handle)
   {
-    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle, deviceId)) ;
+    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle, deviceId)) ;
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no AIE profiling.");
@@ -125,7 +125,7 @@ namespace xdp {
         }
         else {
           XAie_DevInst* aieDevInst =
-            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, metadata->getHandle()));
+            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, metadata->getHandle(), metadata->getDeviceID()));
 
           for (auto& counter : counters) {
             tile_type tile;
@@ -315,8 +315,16 @@ namespace xdp {
             continue;
         }
 
-        auto loc         = XAie_TileLoc(col, row);
-        auto& xaieTile   = aieDevice->tile(col, row);
+        // Get the column relative to partition.
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis
+        auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                          ? col /* startColShift already added */ : tile.col;
+        auto loc        = XAie_TileLoc(relCol, row);
+        auto& xaieTile  = aieDevice->tile(relCol, row);
+
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                          : xaieTile.pl());
@@ -456,7 +464,7 @@ namespace xdp {
                                                startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, relCol, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
@@ -489,30 +497,30 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::startPoll(const uint32_t index)
+  void AieProfile_EdgeImpl::startPoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll.");
     threadCtrl = true;
-    thread = std::make_unique<std::thread>(&AieProfile_EdgeImpl::continuePoll, this, index); 
+    thread = std::make_unique<std::thread>(&AieProfile_EdgeImpl::continuePoll, this, id); 
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::startPoll, after creating thread instance.");
   }
 
-  void AieProfile_EdgeImpl::continuePoll(const uint32_t index)
+  void AieProfile_EdgeImpl::continuePoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_EdgeImpl::continuePoll");
 
     while (threadCtrl) {
-      poll(index);
+      poll(id);
       std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
     }
     //Final Polling Operation
-    poll(index);
+    poll(id);
   }
 
-  void AieProfile_EdgeImpl::poll(const uint32_t index)
+  void AieProfile_EdgeImpl::poll(const uint64_t id)
   {
     // Wait until xclbin has been loaded and device has been updated in database
-    if (!(db->getStaticInfo().isDeviceReady(index)))
+    if (!(db->getStaticInfo().isDeviceReady(id)))
       return;
 
     if (!aieDevInst)
@@ -523,14 +531,17 @@ namespace xdp {
     uint64_t timerValue = 0;
 
     // Iterate over all AIE Counters & Timers
-    auto numCounters = db->getStaticInfo().getNumAIECounter(index);
+    auto numCounters = db->getStaticInfo().getNumAIECounter(id);
     for (uint64_t c=0; c < numCounters; c++) {
-      auto aie = db->getStaticInfo().getAIECounter(index, c);
+      auto aie = db->getStaticInfo().getAIECounter(id, c);
       if (!aie)
         continue;
 
       std::vector<uint64_t> values;
-      values.push_back(aie->column);
+      auto writerCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                        ? aie->column 
+                        : aie->column + metadata->getPartitionOverlayStartCols().front() /* need to add shift for displaying results*/ ;
+      values.push_back(writerCol);
       values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
@@ -602,7 +613,7 @@ namespace xdp {
 
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6;
-      db->getDynamicInfo().addAIESample(index, timestamp, values);
+      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
   }
 

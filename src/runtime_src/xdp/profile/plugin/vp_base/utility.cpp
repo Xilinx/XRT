@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_CORE_SOURCE
 
@@ -195,14 +182,6 @@ namespace xdp {
     else if (std::strcmp(envVar, "hw_emu") == 0) mode = HW_EMU ;
 
     return mode ;
-  }
-
-  std::string getGraphUniqueId(uint8_t col, uint8_t channelNum, uint8_t streamId)
-  {
-    std::ostringstream uniqueId;
-    uniqueId << static_cast<int>(col) << "_" << static_cast<int>(channelNum)
-             << "_" << static_cast<int>(streamId);
-    return uniqueId.str();
   }
 
 } // end namespace xdp

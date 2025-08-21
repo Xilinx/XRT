@@ -26,10 +26,10 @@
 namespace xdp {
 
   AIEProfilingWriter::AIEProfilingWriter(const char* fileName,
-                                         const char* deviceName, uint64_t deviceIndex) :
+                                         const char* deviceName, uint64_t deviceID) :
     VPWriter(fileName),
     mDeviceName(deviceName),
-    mDeviceIndex(deviceIndex), mHeaderWritten(false)
+    mDeviceID(deviceID), mHeaderWritten(false)
   {
   }
 
@@ -40,7 +40,7 @@ namespace xdp {
     float fileVersion = 1.2f;
 
     // Report HW generation to inform analysis how to interpret event IDs
-    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceID);
 
     fout << "HEADER"<<"\n";
     fout << "File Version: " <<fileVersion << "\n";
@@ -49,7 +49,7 @@ namespace xdp {
 
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
-    auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
+    auto aie = (db->getStaticInfo()).getAIECounter(mDeviceID, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "\n"; 
@@ -57,15 +57,15 @@ namespace xdp {
 
   void AIEProfilingWriter::writeMetricSettings()
   {
-    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader(mDeviceID);
     uint8_t col_shift = metadataReader->getPartitionOverlayStartCols().front();
-    auto validConfig = (db->getStaticInfo()).getProfileConfig();
+    auto validConfig = (db->getStaticInfo()).getProfileConfig(mDeviceID);
 
     std::map<module_type, std::vector<std::string>> filteredConfig;
     for(uint8_t i=0; i<static_cast<uint8_t>(module_type::num_types); i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
 
-    const auto& configMetrics = validConfig.configMetrics;
+    const auto& configMetrics = validConfig->configMetrics;
     for(size_t i=0; i<configMetrics.size(); i++)
     {
       std::vector<std::string> metrics;
@@ -73,15 +73,15 @@ namespace xdp {
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
         metrics.push_back(std::to_string(+(elm.first.col+col_shift)) + "," + \
-                          aie::getRelativeRowStr(elm.first.row, validConfig.tileRowOffset) \
+                          aie::getRelativeRowStr(elm.first.row, validConfig->tileRowOffset) \
                           + "," + elm.second);
         if (i == module_type::shim && elm.second == METRIC_BYTE_COUNT) {
-          if(validConfig.bytesTransferConfigMap.find(elm.first) != validConfig.bytesTransferConfigMap.end())
-            metrics.back() += "," + std::to_string(+validConfig.bytesTransferConfigMap.at(elm.first));
+          if(validConfig->bytesTransferConfigMap.find(elm.first) != validConfig->bytesTransferConfigMap.end())
+            metrics.back() += "," + std::to_string(+validConfig->bytesTransferConfigMap.at(elm.first));
         }
         else if (i == module_type::shim && elm.second == METRIC_LATENCY) {
-          if(validConfig.latencyConfigMap.find(create_tileKey(elm.first)) != validConfig.latencyConfigMap.end())
-            metrics.back() += "," + std::to_string(+validConfig.latencyConfigMap.at(create_tileKey(elm.first)).tranx_no) +
+          if(validConfig->latencyConfigMap.find(create_tileKey(elm.first)) != validConfig->latencyConfigMap.end())
+            metrics.back() += "," + std::to_string(+validConfig->latencyConfigMap.at(create_tileKey(elm.first)).tranx_no) +
                       "," + (elm.first.stream_ids.size() > 0 ? std::to_string(+elm.first.stream_ids[0]) : "0");
         }
       }
@@ -138,7 +138,7 @@ namespace xdp {
 
     // Write all data elements
     std::vector<counters::Sample> samples =
-      db->getDynamicInfo().moveAIESamples(mDeviceIndex);
+      db->getDynamicInfo().moveAIESamples(mDeviceID);
 
     for (auto& sample : samples) {
       fout << sample.timestamp << ",";

@@ -30,6 +30,7 @@ else()
   if (Python3_FOUND)
     message("-- Python libs version: ${Python3_VERSION}")
     message("-- PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS}")
+    message("-- Python3_SITEARCH ${Python3_SITEARCH}")
     set(PYTHONLIBS_VERSION_MAJOR ${Python3_VERSION_MAJOR})
     set(PYTHONLIBS_VERSION_MINOR ${Python3_VERSION_MINOR})
   endif(Python3_FOUND)
@@ -50,6 +51,11 @@ if (pybind11_FOUND)
   INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
   pybind11_add_module(pyxrt src/pyxrt.cpp)
   target_link_libraries(pyxrt PRIVATE xrt_coreutil uuid pthread)
+
+  if (CMAKE_INSTALL_PREFIX STREQUAL "/usr"
+      OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+    set (XRT_INSTALL_PYTHON_DIR ${Python3_SITEARCH})
+  endif()
 
   install(TARGETS pyxrt
     EXPORT xrt-targets

@@ -6,13 +6,16 @@
    comment:: Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 
-xbutil
+xrt-smi
 ======
+.. note::
+	``xbutil`` has been renamed to ``xrt-smi``.
+xbutil is still available in the 2024.2 release, but this alias has been removed in this release. You can still use xbutil in the 2024.2 version of Xilinx Runtime.
 
-This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.  
+This document describes the latest ``xrt-smi`` commands. These latest commands are default from 21.1 release.  
 
 
-For an instructive video on xbutil commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
+For an instructive video on xrt-smi commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
 
 
 **Global options**: These are the global options can be used with any command. 
@@ -23,28 +26,28 @@ For an instructive video on xbutil commands listed below click `here <https://ww
  - ``--help`` : Get help message
  - ``--version`` : Report the version of XRT and its drivers
 
-Currently supported ``xbutil`` commands are
+Currently supported ``xrt-smi`` commands are
 
-    - ``xbutil program``
-    - ``xbutil validate``
-    - ``xbutil examine``
-    - ``xbutil configure``
-    - ``xbutil reset``
+    - ``xrt-smi program``
+    - ``xrt-smi validate``
+    - ``xrt-smi examine``
+    - ``xrt-smi configure``
+    - ``xrt-smi reset``
 
 **Note**: For applicable commands, if only one device is present on the system ``--device`` (or ``-d``) is not required. If more than one device is present in the system, ``--device`` (or ``-d``) is required.
 
 
-xbutil program
+xrt-smi program
 ~~~~~~~~~~~~~~
 
-The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=245>`_.
+The ``xrt-smi program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=245>`_.
 
 **The supported options**
 
 
 .. code-block:: shell
 
-    xbutil program [--device|-d] <user bdf> [--user|-u] <xclbin>
+    xrt-smi program [--device|-d] <user bdf> [--user|-u] <xclbin>
 
 
 **The details of the supported options**
@@ -63,20 +66,20 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 
 .. code-block:: shell
 
-     xbutil program --device 0000:b3:00.1 --user ./my_kernel.xclbin
+     xrt-smi program --device 0000:b3:00.1 --user ./my_kernel.xclbin
  
 
-xbutil validate
+xrt-smi validate
 ~~~~~~~~~~~~~~~
 
-The command ``xbutil validate`` validates the installed card by running precompiled basic tests `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
+The command ``xrt-smi validate`` validates the installed card by running precompiled basic tests `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
 
 **The supported options**
 
 
 .. code-block:: shell
 
-   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename> [--param] <test>:<key>:<value>
+   xrt-smi validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename> [--param] <test>:<key>:<value>
  
  
 
@@ -124,22 +127,22 @@ The command ``xbutil validate`` validates the installed card by running precompi
 .. code-block:: shell
 
     # Run all the tests 
-    xbutil validate --device 0000:b3:00.1
+    xrt-smi validate --device 0000:b3:00.1
  
     # Run "DMA" test, produce text output in stdout
-    xbutil validate --device 0000:b3:00.1 --run DMA
+    xrt-smi validate --device 0000:b3:00.1 --run DMA
  
     # Run "DMA" and "Validate Kernel" test and generates Json format
-    xbutil validate --device 0000:b3:00.1 --run DMA "Verify Kernel" --format JSON --output xyz.json
+    xrt-smi validate --device 0000:b3:00.1 --run DMA "Verify Kernel" --format JSON --output xyz.json
 
     # Pass in a custom block size to dma test
-    xbutil validate --device 0000:b3:00.1 --run DMA --param dma:block-size:1024
+    xrt-smi validate --device 0000:b3:00.1 --run DMA --param dma:block-size:1024
 
 
-xbutil examine 
+xrt-smi examine 
 ~~~~~~~~~~~~~~
 
-The command ``xbutil examine``  can be used to find the details of the specific device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
+The command ``xrt-smi examine``  can be used to find the details of the specific device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
 
 
 **The supported options**
@@ -147,7 +150,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
 .. code-block:: shell
 
-    xbutil examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
+    xrt-smi examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
 
 
@@ -194,27 +197,27 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
 .. code-block:: shell
 
-    # Shows ``xbutil examine --host``
-    xbutil examine
+    # Shows ``xrt-smi examine --host``
+    xrt-smi examine
  
     # Reports electrical information in the stdout
-    xbutil examine --device 0000:b3:00.1 --report electrical
+    xrt-smi examine --device 0000:b3:00.1 --report electrical
  
     # Reports "electrical" and "firewall" and dump in json format
-    xbutil examine --device 0000:b3:00.1  --report electrical firewall --format JSON --output n.json
+    xrt-smi examine --device 0000:b3:00.1  --report electrical firewall --format JSON --output n.json
 
  
  
-xbutil configure
+xrt-smi configure
 ~~~~~~~~~~~~~~~~
-Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo) `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
+Command ``xrt-smi configure`` is used to configure specific settings based on the need of user application (requires sudo) `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
 
 
 **The supported options**
 
 .. code-block:: shell 
 
-    xbutil configure [ --host-mem | --p2p | --performance ] [--help]
+    xrt-smi configure [ --host-mem | --p2p | --performance ] [--help]
 
 
 **The details of the supported options**
@@ -226,7 +229,7 @@ Command ``xbutil configure`` is used to configure specific settings based on the
     
     - ``enable``: Enable the host-memory or p2p
     - ``disable``: Disable the host-memory or p2p
-- The ``--size`` is used in conjuction with ``xbutil configure --host-mem enable`` to specify the host-memory size to be enabled
+- The ``--size`` is used in conjuction with ``xrt-smi configure --host-mem enable`` to specify the host-memory size to be enabled
     
     - ``<size>``: Size and unit specified as a combined string 
 - The ``--performance`` select specific configuration for benchmarking tests
@@ -244,31 +247,31 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 .. code-block:: shell
 
     # Enable Host-Memory of Size 1 GB
-    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 1G 
+    sudo xrt-smi configure --device 0000:b3:00.1 --host-mem enable --size 1G 
     
     # Enable Host-Memory of size 256 MB
-    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 256M
+    sudo xrt-smi configure --device 0000:b3:00.1 --host-mem enable --size 256M
     
     # Disable previously enabled Host-Memory
-    sudo xbutil configure --device 0000:b3:00.1 --host-mem disable
+    sudo xrt-smi configure --device 0000:b3:00.1 --host-mem disable
     
     # Enable P2P
-    sudo xbutil configure --device 0000:b3:00.1 --p2p enable
+    sudo xrt-smi configure --device 0000:b3:00.1 --p2p enable
  
     # Disable P2P
-    sudo xbutil configure --device 0000:b3:00.1 --p2p disable
+    sudo xrt-smi configure --device 0000:b3:00.1 --p2p disable
  
 
 
-xbutil reset
+xrt-smi reset
 ~~~~~~~~~~~~
-This ``xbutil reset`` command can be used to reset device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
+This ``xrt-smi reset`` command can be used to reset device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
 
 **The supported options**
 
 .. code-block:: shell
 
-    xbutil reset [--device| -d] <user bdf> [--type| -t] <reset type>
+    xrt-smi reset [--device| -d] <user bdf> [--type| -t] <reset type>
 
 **The details of the supported options**
 
@@ -285,5 +288,5 @@ This ``xbutil reset`` command can be used to reset device `<video reference> <ht
 
 .. code-block:: shell
  
-    xbutil reset --device 0000:65:00.1
+    xrt-smi reset --device 0000:65:00.1
 

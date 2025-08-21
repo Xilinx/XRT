@@ -454,21 +454,14 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
-   * Get the stream width in bits for specified hw_gen
+   * Create a unique identifier for an input/output configuration
    ***************************************************************************/
-  uint32_t getStreamWidth(uint8_t hw_gen)
+  std::string getGraphUniqueId(io_config& ioc)
   {
-    // Stream width in bytes
-    static const std::unordered_map<uint8_t, uint8_t> streamWidthMap = {
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIE),     static_cast<uint8_t>(4)},
-      {static_cast<uint8_t>(XDP_DEV_GEN_AIEML),   static_cast<uint8_t>(4)}
-    };
-    uint32_t default_width = 32;
-    
-    if (streamWidthMap.find(hw_gen) == streamWidthMap.end())
-      return default_width;
-    
-    return streamWidthMap.at(hw_gen);
+    std::ostringstream uniqueId;
+    uniqueId << +ioc.shimColumn << "_" << +ioc.slaveOrMaster
+             << "_" << +ioc.streamId << "_" << +ioc.channelNum;
+    return uniqueId.str();
   }
 
 } // namespace xdp::aie

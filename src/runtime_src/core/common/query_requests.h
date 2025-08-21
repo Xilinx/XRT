@@ -10,6 +10,7 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/include/ert.h"
 #include "core/include/xclerr_int.h"
 
 #include <cstdint>
@@ -136,6 +137,7 @@ enum class key_type
   aie_tiles_stats,
   aie_tiles_status_info,
   aie_partition_info,
+  context_health_info,
 
   misc_telemetry,
   aie_telemetry,
@@ -323,6 +325,10 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
+  event_trace,
+  event_trace_version,
+  firmware_log,
+  firmware_log_version,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -1979,6 +1985,26 @@ struct aie_partition_info : request
         return "N/A";
     }
   }
+};
+
+// Retrieves the context health info for the device
+// This provides detailed health information for hardware contexts
+// including transaction operation indices, program counters, and error details
+// 
+// Can be called with optional filtering parameters:
+//   - No parameter: Returns all contexts
+//   - std::vector<uint32_t>: Returns only specified context IDs (Win)
+//   - std::vector<std::pair<uint32_t, uint32_t>>: Returns contexts matching (context_id, pid) pairs (Linux)
+struct context_health_info : request
+{
+  using result_type = std::vector<ert_ctx_health_data>;
+  static const key_type key = key_type::context_health_info;
+
+  std::any
+  get(const device* device) const override = 0;
+
+  std::any
+  get(const device* device, const std::any& context_info) const override = 0;
 };
 
 // Retrieves the AIE telemetry info for the device
@@ -4073,6 +4099,77 @@ struct preemption : request
   virtual void
   put(const device*, const std::any&) const override = 0;
 
+};
+
+/**
+ * This structure provides a common interface for accessing firmware debug data,
+ * supporting both polling and streaming modes of operation.
+ * 
+ * Fields:
+ * - abs_offset: Absolute index to begin loading the next chunk of data. To start with 0 in the very first read.
+                 Updated by driver to new offset from where the next read should start.
+ * - data: Pointer to data buffer to be filled by driver with firmware log/trace data
+ * - size: size of the buffer. When used from userspace->driver : size(in bytes) of the allocated buffer
+                               When used from driver->userspace : size(in bytes) of the filled buffer
+ * - b_wait: Directive for driver whether to wait for new events or return immediately 
+             in-case there is nothing to read.
+ */
+struct firmware_debug_buffer {
+    uint64_t abs_offset;
+    void* data;
+    uint64_t size;
+    bool b_wait;
+};
+
+struct event_trace : request 
+{
+  // Version struct for event trace
+  struct event_trace_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
+  using value_type = uint32_t;                // put value type
+
+  static const key_type key = key_type::event_trace;
+
+  // Parameterized get method based on key_type passed via std::any
+  // Returns event_trace_version if key is event_trace_version
+  // Returns firmware_debug_buffer if key is event_trace
+  std::any
+  get(const device*, const std::any& key) const override = 0;
+
+  void
+  put(const device*, const std::any&) const override = 0;
+};
+
+struct firmware_log : request
+{  
+  // Version struct for firmware log
+  struct firmware_log_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = firmware_debug_buffer;  // Default result type for backward compatibility
+  
+  // Structure to hold both action and log_level parameters
+  struct value_type {
+    uint32_t action;
+    uint32_t log_level;
+  };
+
+  static const key_type key = key_type::firmware_log;
+
+  // Parameterized get method based on key_type passed via std::any
+  // Returns firmware_log_version if key is firmware_log_version
+  // Returns firmware_debug_buffer if key is firmware_log
+  std::any
+  get(const device*, const std::any& key) const override = 0;
+
+  void
+  put(const device*, const std::any&) const override = 0;
 };
 
 /*

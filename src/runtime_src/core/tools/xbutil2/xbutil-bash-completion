@@ -1,4 +1,4 @@
-# bash completion for xbutil                              -*- shell-script -*-
+# bash completion for xrt-smi                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
@@ -77,10 +77,10 @@ _xbutil_completion()
 {
   commonSubCommands="--verbose --batch --force --help -h --version"
   # COMP_CWORD is the current index of the cursor in the command line
-  # 0 is the first argument (xbutil), 1 is the desired command for xbutil,
+  # 0 is the first argument (xrt-smi), 1 is the desired command for xrt-smi,
   # 2 is an option for the command, etc.
   case ${COMP_CWORD} in
-    # Case for command after xbutil
+    # Case for command after xrt-smi
     1)
       options="program validate examine configure reset ${commonSubCommands}"
       ;;

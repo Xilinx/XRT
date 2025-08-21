@@ -179,8 +179,21 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 }
 
+static void* zocl_dma_alloc(struct device *mem_dev, size_t size, dma_addr_t *phys,
+	u32 user_flags)
+{
+	void* vaddr = NULL;
+
+	if (user_flags & ZOCL_BO_FLAGS_CACHEABLE)
+		vaddr = dma_alloc_wc(mem_dev, size, phys, GFP_KERNEL | __GFP_NOWARN);
+	else
+		vaddr = dma_alloc_coherent(mem_dev, size, phys, GFP_KERNEL | __GFP_NOWARN);
+
+	return vaddr;
+}
+
 static struct drm_zocl_bo *
-zocl_create_cma_mem(struct drm_device *dev, size_t size)
+zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	int num_regions = zdev->num_regions;
@@ -191,9 +204,9 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 #endif
 	struct device *mem_dev;
 	struct drm_zocl_bo *bo;
+	unsigned int mem_index;
 	dma_addr_t phys = 0;
 	void* vaddr = NULL;
-	int mem_region = -1;
 
 	/* Roundng up the size to more than 4K
 	 * to ensure to allocate memory from CMA always */
@@ -206,21 +219,22 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
-	while ((!vaddr || !phys) && ++mem_region < num_regions) {
-		mem_dev = zdev->mem_regions[mem_region].dev;
-		if (!mem_dev)
-			continue;
-		vaddr = dma_alloc_coherent(mem_dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+	mem_index = GET_MEM_INDEX(user_flags);
+
+	if (num_regions > 0 && mem_index < ZOCL_MAX_MEM_REGIONS) {
+		mem_dev = zdev->mem_regions[mem_index].dev;
+		if (mem_dev)
+			vaddr = zocl_dma_alloc(mem_dev, size, &phys, user_flags);
 		if (!vaddr)
 			DRM_DEBUG("Failed to allocate from zocl attached memory region %d \n",
-				mem_region);
+				mem_index);
 	}
 
 	//allocate from default cma if we failed to allocate from zocl attached memory regions
 	if(!phys || !vaddr) {
 		DRM_WARN("Allocating BO from default CMA for invalid or no zocl attached memory regions");
-		mem_region = -1;
-		vaddr = dma_alloc_coherent(dev->dev, size, &phys, GFP_KERNEL | __GFP_NOWARN);
+		mem_index = -1;
+		vaddr = zocl_dma_alloc(dev->dev, size, &phys, user_flags);
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
@@ -237,7 +251,10 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	bo->vaddr = vaddr;
 	bo->phys = phys;
 	bo->size = size;
-	bo->mem_region = mem_region;
+	bo->mem_region = mem_index;
+
+	DRM_DEBUG("CMA BO physical_addr %pad size 0x%lx cacheable %d\n",
+		&phys, size, user_flags & ZOCL_BO_FLAGS_CACHEABLE ? 1 : 0);
 	return bo;
 
 error_free_gem:
@@ -258,7 +275,7 @@ error_free_gem:
  * @return	bo pointer on success, error code on failure
  */
 static struct drm_zocl_bo *
-zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
+zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem, u32 user_flags)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct drm_zocl_bo *bo = NULL;
@@ -269,7 +286,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	do {
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
 			struct drm_zocl_bo *cma_bo =
-				zocl_create_cma_mem(dev, size);
+				zocl_create_cma_mem(dev, size, user_flags);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
@@ -419,7 +436,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (err < 0)
 			goto free;
 	} else if (user_flags & ZOCL_BO_FLAGS_CMA) {
-		bo = zocl_create_cma_mem(dev, size);
+		bo = zocl_create_cma_mem(dev, size, user_flags);
 	} else {
 		/* We are allocating from a separate mem Index, i.e. PL-DDR or LPDDR */
 		unsigned int mem_index = GET_MEM_INDEX(user_flags);
@@ -430,7 +447,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (!mem->zm_used || mem->zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
 			return ERR_PTR(-EINVAL);
 
-		bo = zocl_create_range_mem(dev, size, mem);
+		bo = zocl_create_range_mem(dev, size, mem, user_flags);
 	}
 	if (IS_ERR(bo))
 		return ERR_PTR(-ENOMEM);

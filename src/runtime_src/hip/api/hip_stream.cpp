@@ -119,71 +119,31 @@ hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
 hipError_t
 hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!stream, "stream passed is nullptr");
-
     auto handle = xrt::core::hip::hip_stream_create_with_flags(flags);
     *stream = reinterpret_cast<hipStream_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipStreamDestroy(hipStream_t stream)
 {
-  try {
-    xrt::core::hip::hip_stream_destroy(stream);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_stream_destroy(stream); });
 }
 
 hipError_t
 hipStreamSynchronize(hipStream_t stream)
 {
-  try {
-    xrt::core::hip::hip_stream_synchronize(stream);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_stream_synchronize(stream); });
 }
 
 hipError_t
 hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags)
 {
-  try {
-    xrt::core::hip::hip_stream_wait_event(stream, event, flags);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_stream_wait_event(stream, event, flags); });
 }
 

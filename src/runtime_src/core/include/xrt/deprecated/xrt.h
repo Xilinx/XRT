@@ -710,7 +710,7 @@ XCL_DRIVER_DLLHIDDEN
 const struct axlf_section_header*
 wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
-/* Use xbutil to reset device */
+/* Use xrt-smi to reset device */
 XRT_DEPRECATED
 XCL_DRIVER_DLLHIDDEN
 int

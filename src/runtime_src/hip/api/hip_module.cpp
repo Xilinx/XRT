@@ -175,45 +175,27 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
                       uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
                       void** kernelParams, void** extra)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_module_launch_kernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
                                              blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_handle_if(!hfunc, "function passed is nullptr");
 
     auto handle = xrt::core::hip::hip_module_get_function(hmod, name);
     *hfunc = reinterpret_cast<hipFunction_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 static hipError_t
 hip_module_load_data_helper(hipModule_t* module, const void* image)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_resource_if(!module, "module is nullptr");
 
     // Treat pointer passed has data to full ELF and
@@ -224,7 +206,7 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
       auto estimated_size = xrt::core::hip::estimate_elf_size(image);
       handle = xrt::core::hip::create_full_elf_module(image, estimated_size);
       *module = reinterpret_cast<hipModule_t>(handle);
-      return hipSuccess;
+      return;
     }
     catch (...) { /*do nothing*/ }
 
@@ -232,16 +214,7 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
     auto config_data = static_cast<const hipModuleData*>(image);
     handle = xrt::core::hip::create_module(config_data);
     *module = reinterpret_cast<hipModule_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
@@ -263,7 +236,7 @@ hipModuleLoadData(hipModule_t* module, const void* image)
 hipError_t
 hipModuleLoad(hipModule_t* module, const char* fname)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_resource_if(!module, "module is nullptr");
 
     // Treat fname passed is filepath to full ELF and
@@ -273,55 +246,28 @@ hipModuleLoad(hipModule_t* module, const char* fname)
     try {
       handle = xrt::core::hip::create_full_elf_module(std::string{fname});
       *module = reinterpret_cast<hipModule_t>(handle);
-      return hipSuccess;
+      return;
     }
     catch (...) { /*do nothing*/ }
 
     handle = xrt::core::hip::create_xclbin_module(std::string{fname});
     *module = reinterpret_cast<hipModule_t>(handle);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipModuleUnload(hipModule_t hmod)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_module_unload(hmod);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 
 hipError_t
 hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
 {
-  try {
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     xrt::core::hip::hip_func_set_attribute(func, attr, value);
-    return hipSuccess;
-  }
-  catch (const xrt_core::system_error& ex) {
-    xrt_core::send_exception_message(std::string(__func__) +  " - " + ex.what());
-    return static_cast<hipError_t>(ex.value());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  });
 }
 

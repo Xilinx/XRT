@@ -329,8 +329,9 @@ public:
   static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
   int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
+  void xclReset();
 
-  // Application debug path functionality for xbutil
+  // Application debug path functionality for xrt-smi
   size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);
   size_t xclDebugReadCounters(xdp::AIMCounterResults* aCounterResults);
   size_t xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult);

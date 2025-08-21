@@ -75,6 +75,11 @@ target_link_libraries(xrt_core_static
   pthread
   )
 
+if (NOT WIN32)
+  # On linux use xrt_core.a
+  set_target_properties(xrt_core_static PROPERTIES OUTPUT_NAME "xrt_core")
+endif()
+
 # Shim for Linux is installed in the base component as it is
 # used by both Alveo and NPU components.   
 install(TARGETS xrt_core xrt_core_static

@@ -490,30 +490,30 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_VE2Impl::startPoll(const uint32_t index)
+  void AieProfile_VE2Impl::startPoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll.");
     threadCtrl = true;
-    thread = std::make_unique<std::thread>(&AieProfile_VE2Impl::continuePoll, this, index); 
+    thread = std::make_unique<std::thread>(&AieProfile_VE2Impl::continuePoll, this, id); 
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::startPoll, after creating thread instance.");
   }
 
-  void AieProfile_VE2Impl::continuePoll(const uint32_t index)
+  void AieProfile_VE2Impl::continuePoll(const uint64_t id)
   {
     xrt_core::message::send(severity_level::debug, "XRT", " In AieProfile_VE2Impl::continuePoll");
 
     while (threadCtrl) {
-      poll(index);
+      poll(id);
       std::this_thread::sleep_for(std::chrono::microseconds(metadata->getPollingIntervalVal()));
     }
     //Final Polling Operation
-    poll(index);
+    poll(id);
   }
 
-  void AieProfile_VE2Impl::poll(const uint32_t index)
+  void AieProfile_VE2Impl::poll(const uint64_t id)
   {
     // Wait until xclbin has been loaded and device has been updated in database
-    if (!(db->getStaticInfo().isDeviceReady(index)))
+    if (!(db->getStaticInfo().isDeviceReady(id)))
       return;
 
     if (!aieDevInst)
@@ -525,9 +525,9 @@ namespace xdp {
     auto hwGen = metadata->getHardwareGen();
 
     // Iterate over all AIE Counters & Timers
-    auto numCounters = db->getStaticInfo().getNumAIECounter(index);
+    auto numCounters = db->getStaticInfo().getNumAIECounter(id);
     for (uint64_t c=0; c < numCounters; c++) {
-      auto aie = db->getStaticInfo().getAIECounter(index, c);
+      auto aie = db->getStaticInfo().getAIECounter(id, c);
       if (!aie)
         continue;
 
@@ -604,7 +604,7 @@ namespace xdp {
 
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6;
-      db->getDynamicInfo().addAIESample(index, timestamp, values);
+      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
 
     // Read and record MDM counters (if available)
@@ -627,7 +627,7 @@ namespace xdp {
         values.push_back(0);
         values.push_back(counterValues.at(c));
       
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
+        db->getDynamicInfo().addAIESample(id, timestamp, values);
       }
     }
   }
