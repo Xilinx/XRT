@@ -58,10 +58,9 @@ COMP_FILE="/usr/share/bash-completion/bash_completion"
 # correctly or setup on other shells.
 # 3. Make sure the bash completion file exists
 if [[ $- != *e* ]] && [[ "$BASH" == *"/bash" ]] && [ -f "${COMP_FILE}" ]; then
-    # Enable autocompletion for the xbutil and xbmgmt commands
+    # Enable autocompletion for xrt-smi commands
     source $COMP_FILE
     source $XILINX_XRT/share/completions/xbutil-bash-completion
-    source $XILINX_XRT/share/completions/xbmgmt-bash-completion
 else
     echo Autocomplete not enabled for XRT tools
 fi
