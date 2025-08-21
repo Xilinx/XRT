@@ -32,6 +32,8 @@ public:
   virtual void
   get_info(boost::property_tree::ptree& pt) const;
 
+  virtual void reset() const {}
+
   /**
    * get_device_handle() - Get underlying shim device handle
    *

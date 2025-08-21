@@ -1488,6 +1488,15 @@ xclIPName2Index(const char *name)
   return -ENOENT;
 }
 
+void
+shim::
+xclReset()
+{
+    drm_zocl_reset zocl_reset = {0};
+    ioctl(mKernelFD, DRM_IOCTL_ZOCL_RESET, &zocl_reset);
+    return;
+}
+
 int
 shim::
 xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
@@ -2956,6 +2965,13 @@ xclIPName2Index(xclDeviceHandle handle, const char *name)
     xrt_core::send_exception_message(ex.what());
     return -ENOENT;
   }
+}
+
+void
+xclReset(xclDeviceHandle handle)
+{
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    drv->xclReset();
 }
 
 int

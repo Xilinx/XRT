@@ -29,6 +29,7 @@ public:
   virtual void read(uint64_t addr, void* buf, uint64_t len) const override;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const override;
   virtual void reset(const query::reset_type) const;
+  void reset() const override;
 
   ////////////////////////////////////////////////////////////////
   // Custom ishim implementation

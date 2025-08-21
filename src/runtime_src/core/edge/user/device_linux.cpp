@@ -1193,6 +1193,13 @@ reset(query::reset_type key) const
   }
 }
 
+void
+device_linux::
+reset() const
+{
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+  drv->xclReset();
+}
 
 ////////////////////////////////////////////////////////////////
 // Custom ishim implementation
