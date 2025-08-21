@@ -435,6 +435,7 @@ public:
    */
   virtual void reset() const {}
   // Move all these 'pt' functions out the class interface
+
   virtual void get_info(boost::property_tree::ptree&) const {}
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
