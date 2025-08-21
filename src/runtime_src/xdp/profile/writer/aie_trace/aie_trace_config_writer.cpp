@@ -154,18 +154,28 @@ namespace xdp {
             bpt::ptree sel_trace_config;
             bpt::ptree s2mm_channels;
             bpt::ptree mm2s_channels;
+            bpt::ptree s2mm_names;
+            bpt::ptree mm2s_names;
 
             for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
               bpt::ptree chan1;
               bpt::ptree chan2;
+              bpt::ptree chan3;
+              bpt::ptree chan4;
               chan1.put("", tile->core_trace_config.s2mm_channels[i]);
               chan2.put("", tile->core_trace_config.mm2s_channels[i]);
+              chan3.put("", tile->core_trace_config.s2mm_names[i]);
+              chan4.put("", tile->core_trace_config.mm2s_names[i]);
               s2mm_channels.push_back(std::make_pair("", chan1));
               mm2s_channels.push_back(std::make_pair("", chan2));
+              s2mm_names.push_back(std::make_pair("", chan3));
+              mm2s_names.push_back(std::make_pair("", chan4));
             }
             
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
+            sel_trace_config.add_child("s2mm_names", s2mm_names);
+            sel_trace_config.add_child("mm2s_names", mm2s_names);
             core_trace_config.add_child("SelTraceConfig", sel_trace_config);
           }
 
@@ -293,6 +303,7 @@ namespace xdp {
           TileTraceConfig_C.put("start_event", tile_trace_config.start_event);
           TileTraceConfig_C.put("stop_event", tile_trace_config.stop_event);
 
+          // Write traced_events
           {
             bpt::ptree traced_events;
             for (auto& e : tile_trace_config.traced_events) {
@@ -303,6 +314,7 @@ namespace xdp {
             TileTraceConfig_C.add_child("traced_events", traced_events);
           }
 
+          // Write PortTraceConfig
           {
             bpt::ptree port_trace_config;
             bpt::ptree port_trace_ids;
@@ -327,6 +339,7 @@ namespace xdp {
             TileTraceConfig_C.add_child("PortTraceConfig", port_trace_config);
           }
 
+          // Write SelTraceConfig
           {
             bpt::ptree sel_trace_config;
             bpt::ptree s2mm_channels;
@@ -343,6 +356,22 @@ namespace xdp {
             
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
+
+            if (tile->type == module_type::mem_tile) {
+              bpt::ptree s2mm_names;
+              bpt::ptree mm2s_names;
+              for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
+                bpt::ptree chan3;
+                bpt::ptree chan4;
+                chan3.put("", tile_trace_config.s2mm_names[i]);
+                chan4.put("", tile_trace_config.mm2s_names[i]);
+                s2mm_names.push_back(std::make_pair("", chan3));
+                mm2s_names.push_back(std::make_pair("", chan4));
+              }
+              sel_trace_config.add_child("s2mm_names", s2mm_names);
+              sel_trace_config.add_child("mm2s_names", mm2s_names);
+            }
+
             TileTraceConfig_C.add_child("SelTraceConfig", sel_trace_config);
           }
 
