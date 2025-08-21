@@ -180,7 +180,7 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
     comboEvent3 = fal_util::s_pXAieDev->tile(shimColumn, 0).pl().comboEvent(4);
     int rcCombo = comboEvent3->reserve();
     if (rcCombo != XAIE_OK)
-      std::cout << "ERROR: event::start_profiling: Failed to reserve combo event resources." << std::endl;
+      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to reserve combo event resources.");
 
     // Set up the combo event with FSM type using 4 events state machine
     XAie_Events eventA = XAIE_EVENT_USER_EVENT_1_PL;
@@ -197,12 +197,12 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
 
     rcCombo = comboEvent3->setEvents(combo_events, combo_opts);
     if (rcCombo != XAIE_OK)
-      std::cout << "ERROR: event::start_profiling: Failed to set combo event resources." << std::endl;
+      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to set combo event resources.")
 
     // Start the combo event 0
     rcCombo = comboEvent3->start();
     if (rcCombo != XAIE_OK)
-      std::cout << "ERROR: event::start_profiling: Failed to start combo event." << std::endl;
+      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to start combo event.");
 
     driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId1, COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId], COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId]);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col
