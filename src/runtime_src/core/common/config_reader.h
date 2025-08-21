@@ -1085,9 +1085,9 @@ get_dtrace_control_file_path()
 }
 
 inline unsigned int
-get_uc_log_buffer_size()
+get_log_buffer_size_per_uc()
 {
-  static unsigned int value = detail::get_uint_value("Debug.uc_log_buf_size", 0);
+  static unsigned int value = detail::get_uint_value("Debug.log_buf_size_per_uc", 0);
   return value;
 }
 
