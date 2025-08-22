@@ -464,10 +464,16 @@ namespace xdp {
           // NOTE: channel info informs back-end there will be events on that channel
           config.port_trace_ids[portnum] = channelNum;
           config.port_trace_is_master[portnum] = isMaster;
-          if (isMaster)
+          config.port_trace_names[portnum] = tile.port_names.at(portnum);
+
+          if (isMaster) {
             config.s2mm_channels[channelNum] = channelNum;
-          else
+            config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+          }
+          else {
             config.mm2s_channels[channelNum] = channelNum;
+            config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+          }
         }
         else if (type == module_type::shim) {
           // Interface tiles (e.g., GMIO)
@@ -490,10 +496,14 @@ namespace xdp {
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
           config.port_trace_names[portnum] = tile.port_names.at(portnum);
           
-          if (tile.is_master_vec.at(portnum) == 0)
+          if (tile.is_master_vec.at(portnum) == 0) {
             config.mm2s_channels[channelNum] = channel; // Slave or Input Port
-          else
+            config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+          }
+          else {
             config.s2mm_channels[channelNum] = channel; // Master or Output Port
+            config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+          }
         }
         else {
           // Memory tiles
@@ -507,7 +517,8 @@ namespace xdp {
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = channel;
-          config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);            
+          config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
+          config.port_trace_names[portnum] = tile.port_names.at(portnum);
         }
       }
     }
@@ -900,18 +911,20 @@ namespace xdp {
 
         // Specify Sel0/Sel1 for memory tile events 21-44
         if (type == module_type::mem_tile) {
-          aie::trace::configEventSelections(&aieDevInst, loc, type, metricSet, channel0, channel1, 
-                                          cfgTile->memory_tile_trace_config);
+          aie::trace::configEventSelections(&aieDevInst, tile, loc, type, metricSet, channel0, 
+                                            channel1, cfgTile->memory_tile_trace_config);
         }
         else {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
           auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
-            if (aie::isInputSet(type, metricSet))
+            if (aie::isInputSet(type, metricSet)) {
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
-            else
+            }
+            else {
               cfgTile->core_trace_config.s2mm_channels[0] = channelNum;
+            }
           }
         }
 

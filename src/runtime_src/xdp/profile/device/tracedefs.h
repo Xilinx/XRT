@@ -125,7 +125,6 @@ constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
 constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
 constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
-// TODO: get from generational attributes header
 constexpr uint32_t NUM_MEM_CHANNELS = 6;
 
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;

@@ -700,7 +700,7 @@ namespace xdp {
           auto iter1 = configChannel1.find(tile);
           uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
           uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-          aie::trace::configEventSelections(aieDevInst, loc, type, metricSet, channel0, 
+          aie::trace::configEventSelections(aieDevInst, tile, loc, type, metricSet, channel0, 
                                             channel1, cfgTile->memory_tile_trace_config);
         }
         else {
@@ -708,10 +708,14 @@ namespace xdp {
           // NOTE: for now, check first event and assume single channel
           auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
-            if (aie::isInputSet(type, metricSet))
+            if (aie::isInputSet(type, metricSet)) {
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
-            else
+              cfgTile->core_trace_config.mm2s_names[0] = tile.mm2s_names.at(channelNum);
+            }
+            else {
               cfgTile->core_trace_config.s2mm_channels[0] = channelNum;
+              cfgTile->core_trace_config.s2mm_names[0] = tile.s2mm_names.at(channelNum);
+            }
           }
         }
 
@@ -921,10 +925,14 @@ namespace xdp {
         cfgTile->interface_tile_trace_config.packet_type = packetType;
         auto channelNum = aie::getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
-          if (aie::isInputSet(type, metricSet))
+          if (aie::isInputSet(type, metricSet)) {
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
-          else
+            cfgTile->interface_tile_trace_config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+          }
+          else {
             cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
+            cfgTile->interface_tile_trace_config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+          }
         }
       } // interface tiles
 
