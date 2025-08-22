@@ -107,8 +107,8 @@ rh_package_list()
 
     if  [ "$MAJOR" -lt 10 ]; then
         RH_LIST+=(\
-	cppcheck \
-	gnuplot\
+	    cppcheck \
+	    gnuplot\
         )
     fi
     if [ $FLAVOR == "amzn" ]; then
@@ -596,7 +596,7 @@ prep_rhel()
     if [ $MAJOR -ge 10 ]; then
         prep_rhel10
     elif [ $MAJOR == 9 ]; then
-	prep_rhel9
+	    prep_rhel9
     else
         if [ $MAJOR == 8 ]; then
              prep_rhel8
@@ -679,7 +679,7 @@ prep_alma()
     if [ $MAJOR -ge 10 ]; then
         prep_alma10
     elif [ $MAJOR == 9 ]; then
-	prep_alma9
+	    prep_alma9
     elif [ $MAJOR == 8 ]; then
         prep_alma8
     fi
