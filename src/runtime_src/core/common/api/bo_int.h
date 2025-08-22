@@ -41,7 +41,7 @@ enum class use_type {
 // that outlive hw context.
 XRT_CORE_COMMON_EXPORT
 xrt::bo
-create_bo(std::shared_ptr<xrt_core::device> m_core_device, size_t sz, use_type type);
+create_bo(const std::shared_ptr<xrt_core::device>& m_core_device, size_t sz, use_type type);
 
 // create_bo() - Create a buffer object within a hwctx for specific use case
 //
@@ -70,6 +70,8 @@ config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
 // XRT Userspace can use this function to explicitly unconfigure the bo. It gives
 // more control on when to unconfigure the bo instead of relying on buffer handle
 // destruction
+// NOTE: The caller must ensure that the same buffer object and context handle
+// used in the corresponding config_bo() call are passed to this function.
 XRT_CORE_COMMON_EXPORT
 void
 unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle = nullptr);
