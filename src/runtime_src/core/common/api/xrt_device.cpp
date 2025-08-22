@@ -547,12 +547,12 @@ get_thermal(const thermal& arg) const
 
 void
 device::
-set_thermal_threshold(const thermal& arg) const
+set_thermal_threshold(const thermal& arg, uint32_t value) const
 {
   return xdp::native::profiling_wrapper("xrt::device::set_thermal_threshold",
-  [this, arg] {
+  [this, arg, value] {
     try {
-      get_handle()->set_thermal_threshold(arg);
+      get_handle()->set_thermal_threshold(arg, value);
     }
     catch (const xrt_core::query::no_such_key&) {
       throw std::runtime_error("set_thermal_threshold is not supported on this platform");

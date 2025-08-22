@@ -1237,7 +1237,7 @@ get_thermal(const xrt::aie::device::thermal& arg) const
 
 void
 device_linux::
-set_thermal_threshold(const xrt::aie::device::thermal& arg) const
+set_thermal_threshold(const xrt::aie::device::thermal& arg, uint32_t value) const
 {
   throw system_error(-ENODEV, "Not Supported");
 }
