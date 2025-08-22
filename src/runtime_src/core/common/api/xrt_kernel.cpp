@@ -1397,8 +1397,6 @@ private:
                                               // and fill it with ctrlpkt data. Creating ctrlpkt bo at xrt::run
                                               // creation adds overhead and reduces performace, so creating a
                                               // buffer pool/cache of this ctrlpkt to reduce this overhead
-  bool m_ctrlpkt_cache_enabled = false;       // Some ELFs doesn't have ctrlpkt section, so no need of cache
-                                              // This boolean indicates if ctrlpkt cache is enabled
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1636,7 +1634,6 @@ private:
 
     // create buffer_cache with calculated pool size
     m_ctrlpkt_bo_cache = std::make_unique<buffer_cache>(hwctx, ctrlpkt_data, max_pool_size);
-    m_ctrlpkt_cache_enabled = true;
   }
 
 public:
@@ -1952,22 +1949,17 @@ public:
     return regmap_size;
   }
 
-  bool
-  is_ctrlpkt_cache_enabled() const
-  {
-    return m_ctrlpkt_cache_enabled;
-  }
-
   xrt::bo
   get_ctrlpkt_buffer()
   {
-    return m_ctrlpkt_bo_cache->get_buffer();
+    return m_ctrlpkt_bo_cache ? m_ctrlpkt_bo_cache->get_buffer() : xrt::bo{};
   }
 
   void
   release_ctrlpkt_buffer(xrt::bo&& bo)
   {
-    m_ctrlpkt_bo_cache->release_buffer(std::move(bo));
+    if (m_ctrlpkt_bo_cache)
+      m_ctrlpkt_bo_cache->release_buffer(std::move(bo));
   }
 };
 
@@ -2121,13 +2113,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     if (!module)
       return {};
 
-    // pass pre created ctrlpkt buffer when creating module_sram object
-    if (kernel->is_ctrlpkt_cache_enabled()) {
-      return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, m_ctrlpkt_bo);
-    }
-
-    // pass empty bo if ctrlpkt buffer is not present
-    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, {});
+    // Pass pre created ctrlpkt buffer when creating module_sram object.
+    // This buffer is empty when ELF doesn't have ctrlpkt
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, m_ctrlpkt_bo);
   }
 
   virtual std::unique_ptr<arg_setter>
