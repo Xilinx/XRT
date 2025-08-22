@@ -571,10 +571,10 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Configure event selection (memory tiles only)
    ***************************************************************************/
-  void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                             const module_type type, const std::string metricSet, 
-                             const uint8_t channel0, const uint8_t channel1,
-                             aie_cfg_base& config)
+  void configEventSelections(XAie_DevInst* aieDevInst, const tile_type& tile,
+                             const XAie_LocType loc, const module_type type, 
+                             const std::string metricSet, const uint8_t channel0, 
+                             const uint8_t channel1, aie_cfg_base& config)
   {
     if (type != module_type::mem_tile)
       return;
@@ -598,15 +598,21 @@ namespace xdp::aie::trace {
       config.port_trace_is_master[0] = true;
       config.port_trace_is_master[1] = true;
       config.s2mm_channels[0] = channel0;
-      if (channel0 != channel1)
+      config.s2mm_names[0] = tile.s2mm_names.at(channel0);
+      if (channel0 != channel1) {
         config.s2mm_channels[1] = channel1;
+        config.s2mm_names[1] = tile.s2mm_names.at(channel1);
+      }
     } 
     else {
       config.port_trace_is_master[0] = false;
       config.port_trace_is_master[1] = false;
       config.mm2s_channels[0] = channel0;
-      if (channel0 != channel1)
+      config.mm2s_names[0] = tile.mm2s_names.at(channel0);
+      if (channel0 != channel1) {
         config.mm2s_channels[1] = channel1;
+        config.mm2s_names[1] = tile.mm2s_names.at(channel1);
+      }
     }
   }
 
