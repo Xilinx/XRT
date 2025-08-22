@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+name: clang-tidy-post
+
+on:
+  workflow_run:
+    workflows: ["clang-tidy-review"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post review messages
+        uses: stsoe/clang-tidy-review/post/@patches
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          annotations: false
+          max_comments: 25
