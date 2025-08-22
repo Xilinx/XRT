@@ -196,6 +196,8 @@ public:
   /**
    * get_thermal() - Read AIE thermal information
    *
+   * @param arg
+   *  thermal enum option
    * @return
    *  returns aie thermal information based on argument
    *
@@ -208,11 +210,16 @@ public:
   /**
    * set_thermal_threshold() - set AIE thermal threshold based on arg
    *
+   * @param arg
+   *  thermal enum option
+   * @param value
+   *  threshold value to set
+   *
    * This function sets thermal threshold eg: temparature threshold of AIE
    */
   XCL_DRIVER_DLLESPEC
   void
-  set_thermal_threshold(const thermal& arg) const;
+  set_thermal_threshold(const thermal& arg, uint32_t value) const;
 
 private:
   XCL_DRIVER_DLLESPEC

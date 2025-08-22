@@ -273,7 +273,7 @@ struct ishim
   { throw not_supported_error{__func__}; }
 
   virtual void
-  set_thermal_threshold(const xrt::aie::device::thermal&) const
+  set_thermal_threshold(const xrt::aie::device::thermal&, uint32_t) const
   { throw not_supported_error{__func__}; }
 
 };
