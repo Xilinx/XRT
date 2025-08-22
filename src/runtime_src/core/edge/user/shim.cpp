@@ -1316,7 +1316,8 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
 	  return ret;
   }
 
-  xdp::update_device(handle, true);
+  if (!hw_context_enable)
+    xdp::update_device(handle, false);
   #ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
   #endif
