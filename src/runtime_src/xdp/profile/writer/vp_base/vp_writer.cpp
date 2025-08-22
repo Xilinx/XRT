@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -94,7 +94,7 @@ namespace xdp {
 
     // The directory was specified.  Try to create it (regardless of if
     // it exists already or not).
-    constexpr mode_t rwx_all = 777;
+    constexpr mode_t rwx_all = 0777;
     int result = mkdir(directory.c_str(), rwx_all);
 
     try {
