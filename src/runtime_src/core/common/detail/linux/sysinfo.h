@@ -103,6 +103,26 @@ get_os_info(boost::property_tree::ptree &pt)
   gethostname(hostname, 256);
   std::string hn(hostname);
   pt.put("hostname", hn);
+
+  //processor name
+  std::ifstream cpuinfo("/proc/cpuinfo");
+  std::string line;
+  std::string modelName = "Unknown";
+
+  if (cpuinfo.is_open()) {
+    while (std::getline(cpuinfo, line)) {
+      if (line.rfind("model name", 0) == 0) { // Check if line starts with "model name"
+        size_t colonPos = line.find(":");
+        if (colonPos != std::string::npos) {
+          modelName = line.substr(colonPos + 2); // Extract substring after ": "
+          break;
+        }
+      }
+    }
+    cpuinfo.close();
+  }
+
+  pt.put("processor", modelName);
 }
 
 } //xrt_core::sysinfo
