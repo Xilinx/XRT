@@ -61,6 +61,8 @@ namespace xdp {
     std::vector<uint8_t> stream_ids;
     std::vector<uint8_t> is_master_vec;
     std::vector<std::string> port_names;
+    std::vector<std::string> s2mm_names;
+    std::vector<std::string> mm2s_names;
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;
     bool     active_memory = false;
