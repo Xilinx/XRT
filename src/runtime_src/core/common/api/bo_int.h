@@ -41,7 +41,7 @@ enum class use_type {
 // that outlive hw context.
 XRT_CORE_COMMON_EXPORT
 xrt::bo
-create_bo(std::shared_ptr<xrt_core::device> m_core_device, size_t sz, use_type type);
+create_bo(const std::shared_ptr<xrt_core::device>& m_core_device, size_t sz, use_type type);
 
 // create_bo() - Create a buffer object within a hwctx for specific use case
 //
