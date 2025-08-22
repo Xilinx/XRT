@@ -14,6 +14,16 @@
 namespace xrt_core { class device; }
 
 /**
+ * @brief Raw event record structure
+ */
+struct event_record
+{
+  uint64_t timestamp;
+  uint16_t event_id;
+  uint64_t payload;
+};
+
+/**
  * @brief Configuration loader for firmware event trace data
  * 
  * This class reads event trace configuration from trace_events.json
@@ -87,13 +97,11 @@ public:
 
   /**
    * @brief Parse a single trace event from raw data
-   * @param timestamp Event timestamp
-   * @param event_id Event ID 
-   * @param payload Raw payload data
+   * @param record Raw event record
    * @return Parsed event structure
    */
   parsed_event
-  parse_event(uint64_t timestamp, uint16_t event_id, uint64_t payload) const;
+  parse_event(const event_record& record) const;
 
   /**
    * @brief Get event name by ID
@@ -143,13 +151,6 @@ public:
     return {file_major, file_minor};
   }
 
-  /**
-   * @brief Validate version compatibility with device
-   * @param device Pointer to device for querying shim version
-   * @return true if versions match, false with warning if mismatch
-   */
-  bool
-  validate_version_compatibility(const xrt_core::device* device) const;
 
 private:
   /**

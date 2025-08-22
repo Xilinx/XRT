@@ -6,13 +6,10 @@
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <regex>
 #include <set>
 #include <sstream>
 
-#include "core/common/query_requests.h"
-#include "core/common/device.h"
 #include "core/common/json/nlohmann/json.hpp"
 
 namespace {
@@ -51,8 +48,7 @@ load_from_json(const std::string& json_file_path)
     return true;
   } 
   catch (const std::exception& e) {
-    std::cerr << "JSON parsing error: " << e.what() << std::endl;
-    return false;
+    throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
   }
 }
 
@@ -369,13 +365,13 @@ process_event_pairs(std::map<uint16_t, event_info>& events_map)
 
 event_trace_config::parsed_event
 event_trace_config::
-parse_event(uint64_t timestamp, uint16_t event_id, uint64_t payload) const 
+parse_event(const event_record& record) const 
 {
   parsed_event parsed;
-  parsed.timestamp = timestamp;
-  parsed.event_id = event_id;
-  parsed.raw_payload = payload;
-  auto event_it = event_map.find(event_id);
+  parsed.timestamp = record.timestamp;
+  parsed.event_id = record.event_id;
+  parsed.raw_payload = record.payload;
+  auto event_it = event_map.find(record.event_id);
   if (event_it != event_map.end()) {
     const event_info& event = event_it->second;
     parsed.name = event.name;
@@ -383,7 +379,7 @@ parse_event(uint64_t timestamp, uint16_t event_id, uint64_t payload) const
     parsed.categories = event.categories;
     for (const auto& arg : event.args) {
       try {
-        std::string value = extract_arg_value(payload, arg);
+        std::string value = extract_arg_value(record.payload, arg);
         parsed.args[arg.name] = value;
       } 
       catch (const std::exception& e) {
@@ -392,7 +388,7 @@ parse_event(uint64_t timestamp, uint16_t event_id, uint64_t payload) const
     }
   } else {
     parsed.name = "UNKNOWN";
-    parsed.description = "Unknown event ID: " + std::to_string(event_id);
+    parsed.description = "Unknown event ID: " + std::to_string(record.event_id);
     parsed.categories = {"UNKNOWN"};
   }
   return parsed;
@@ -461,29 +457,4 @@ format_value(uint64_t value, const std::string& format) const
     oss << value;
   }
   return oss.str();
-}
-
-bool
-event_trace_config::
-validate_version_compatibility(const xrt_core::device* device) const 
-{
-  if (!device) {
-    std::cerr << "Warning: Cannot validate event trace version - no device provided" << std::endl;
-    return false;
-  }
-  try {
-    auto shim_version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
-    if (file_major != shim_version.major || file_minor != shim_version.minor) {
-      std::cerr << "Warning: Event trace version mismatch!" << std::endl;
-      std::cerr << "  YAML file version: " << file_major << "." << file_minor << std::endl;
-      std::cerr << "  Device/Shim version: " << shim_version.major << "." << shim_version.minor << std::endl;
-      std::cerr << "  Event parsing may be incorrect or incomplete." << std::endl;
-      return false;
-    }
-    return true;
-  } 
-  catch (const std::exception& e) {
-    std::cerr << "Warning: Failed to validate event trace version: " << e.what() << std::endl;
-    return false;
-  }
 }

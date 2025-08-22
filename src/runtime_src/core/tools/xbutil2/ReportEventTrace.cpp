@@ -76,10 +76,12 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
         // Parse event using json based configuration
-        auto parsed_event = config->parse_event(events[i].timestamp, 
-                                               events[i].event_id, 
-                                               events[i].payload);
-        
+        event_record record{events[i].timestamp, 
+                            events[i].event_id, 
+                            events[i].payload};
+
+        auto parsed_event = config->parse_event(record);
+
         bpt event_pt;
         event_pt.put("timestamp", parsed_event.timestamp);
         event_pt.put("event_id", parsed_event.event_id);
@@ -126,17 +128,39 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
   pt.add_child("event_trace", event_trace_pt);
 }
 
+static void
+validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
+                               const xrt_core::device* device) 
+{
+  if (!device) {
+    throw std::runtime_error("Warning: Cannot validate event trace version - no device provided");
+  }
+
+  auto firmware_version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
+  if (version.first != firmware_version.major || version.second != firmware_version.minor) {
+    std::stringstream err;
+    err << "Warning: Event trace version mismatch!\n"
+        << "  JSON file version: " << version.first << "." << version.second << "\n"
+        << "  Firmware version: " << firmware_version.major << "." << firmware_version.minor << "\n"
+        << "  Event parsing may be incorrect or incomplete.";
+    throw std::runtime_error(err.str());
+  }
+}
+
 static std::string
 generate_event_trace_report(const xrt_core::device* dev,
-                           const std::vector<std::string>& elements_filter)
+                            const std::vector<std::string>& /*elements_filter*/)
 {
   std::stringstream ss{};
   
   try {
     // Get the event trace configuration
     auto config = get_event_trace_config(dev);
-    
-    // Query event trace data from device using specific query struct 
+
+    auto version = config->get_file_version();
+    validate_version_compatibility(version, dev);
+
+    // Query event trace data from device using specific query struct
     auto log_buffer = xrt_core::device_query<xrt_core::query::event_trace_data>(dev);
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
@@ -174,10 +198,9 @@ generate_event_trace_report(const xrt_core::device* dev,
     // Add data rows
     for (size_t i = 0; i < event_count; ++i) {
       // Parse event using JSON-based configuration
-      auto parsed_event = config->parse_event(events[i].timestamp, 
-                                              events[i].event_id, 
-                                              events[i].payload);
-      
+      event_record record{events[i].timestamp, events[i].event_id, events[i].payload};
+      auto parsed_event = config->parse_event(record);
+
       // Join categories with pipe separator for backward compatibility
       std::string categories_str{};
       for (size_t j = 0; j < parsed_event.categories.size(); ++j) {

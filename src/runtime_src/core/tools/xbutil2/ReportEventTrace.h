@@ -72,6 +72,7 @@ public:
    * @param elements_filter Filter options (reserved for future use)
    * @param output Output stream for report text
    */
+
   void
   writeReport(const xrt_core::device* device,
              const boost::property_tree::ptree& pt,
