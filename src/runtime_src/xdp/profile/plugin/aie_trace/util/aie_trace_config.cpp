@@ -118,15 +118,16 @@ namespace xdp::aie::trace {
           // NOTE: channel info informs back-end there will be events on that channel
           config.port_trace_ids[portnum] = channelNum;
           config.port_trace_is_master[portnum] = isMaster;
-          config.port_trace_names[portnum] = tile.port_names.at(portnum);
 
           if (isMaster) {
             config.s2mm_channels[channelNum] = channelNum;
-            config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+            if (channelNum < tile.s2mm_names.size())
+              config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
           }
           else {
             config.mm2s_channels[channelNum] = channelNum;
-            config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+            if (channelNum < tile.mm2s_names.size())
+              config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
           }
         }
         // Interface tiles (e.g., PLIO, GMIO)
@@ -147,16 +148,13 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
-          config.port_trace_names[portnum] = tile.port_names.at(portnum);
+          if (portnum < tile.port_names.size())
+            config.port_trace_names[portnum] = tile.port_names.at(portnum);
 
-          if (tile.is_master_vec.at(portnum) == 0) {
+          if (tile.is_master_vec.at(portnum) == 0)
             config.mm2s_channels[channelNum] = channel;
-            config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
-          }
-          else {
+          else
             config.s2mm_channels[channelNum] = channel;
-            config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
-          }
         }
         else {
           // Memory tiles
@@ -170,12 +168,8 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = channel;
           config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
-          config.port_trace_names[portnum] = tile.port_names.at(portnum);
-
-          if (slaveOrMaster == XAIE_STRMSW_MASTER)
-            config.s2mm_names[channel] = tile.s2mm_names.at(channel);
-          else
-            config.mm2s_names[channel] = tile.mm2s_names.at(channel);
+          if (portnum < tile.port_names.size())
+            config.port_trace_names[portnum] = tile.port_names.at(portnum);
         }
       }
 
