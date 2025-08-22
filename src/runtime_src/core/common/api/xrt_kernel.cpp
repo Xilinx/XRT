@@ -1281,6 +1281,12 @@ public:
 } // namespace
 
 namespace xrt {
+// class buffer_cache - A thread safe cache to hold pre created buffers
+// This class maintains a fixed size pool of reusable buffers to
+// minimize allocation overhead.
+// get_buffer() returns a buffer from the cache if available, or creates one on demand.
+// release_buffer() returns a buffer to the cache only if the pool size limit is not exceeded
+
 
 class buffer_cache
 {
@@ -1305,7 +1311,7 @@ public:
     , m_max_cache_size(max_size)
   {
     if (m_max_cache_size == 0)
-      return; // Case where ctrlpkt size is greater than pool memory
+      return; // case where single entry size is greater than pool memory
 
     // Pre allocate the cache size
     m_bo_cache.reserve(m_max_cache_size);
@@ -1323,7 +1329,7 @@ public:
     {
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_bo_cache.empty()) {
-        bo = std::move(m_bo_cache.back());
+        bo = std::move(m_bo_cache.back()); // return existing bo
         m_bo_cache.pop_back();
       }
     }
@@ -1616,24 +1622,27 @@ private:
   // This function creates a buffer pool with ctrlpkt section data of ELF.
   // The buffer is precreated and filled with data to avoid overhead of run object
   // creation. This is done as run object creation can come in critical path.
-  void
-  initialize_ctrlpkt_bo_cache()
+  static std::unique_ptr<buffer_cache>
+  initialize_ctrlpkt_bo_cache(const xrt::hw_context& ctx, const xrt::module& module, uint32_t id)
   {
     static auto pool_memory_in_mb = xrt_core::config::get_run_buffer_pool_memory_mb();
-    auto ctrlpkt_data = xrt_core::module_int::get_ctrlpkt_data(m_module, m_ctrl_code_id);
+    if (!module)
+      return nullptr; // applicable only for ELF flows
+
+    auto ctrlpkt_data = xrt_core::module_int::get_ctrlpkt_data(module, id);
     auto ctrlpkt_buf_size = ctrlpkt_data.size();
     if (ctrlpkt_buf_size == 0)
-      return;
+      return nullptr;
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
-    // Even tough pool memory is less than ctrlpkt size we still maintain one entry
+    // Even though if pool memory is less than ctrlpkt size, we still maintain one entry
     // in cache to reduce overhead for atleast one run
     constexpr size_t min_pool_size = 1;
     size_t max_pool_size =
         std::max((pool_memory_in_mb * bytes_per_mb) / ctrlpkt_buf_size, min_pool_size);
 
-    // create buffer_cache with calculated pool size
-    m_ctrlpkt_bo_cache = std::make_unique<buffer_cache>(hwctx, ctrlpkt_data, max_pool_size);
+    // create and return buffer_cache with calculated pool size
+    return std::make_unique<buffer_cache>(ctx, ctrlpkt_data, max_pool_size);
   }
 
 public:
@@ -1657,6 +1666,7 @@ public:
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
     , uid(create_uid())
+    , m_ctrlpkt_bo_cache(initialize_ctrlpkt_bo_cache(hwctx, m_module, m_ctrl_code_id))
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
 
@@ -1692,11 +1702,6 @@ public:
     // amend args with computed data based on kernel protocol
     amend_args();
 
-    if (m_module) {
-      // ELF flow, initialize ctrlpkt buffer cache
-      initialize_ctrlpkt_bo_cache();
-    }
-
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
@@ -1709,6 +1714,7 @@ public:
     , properties(get_kernel_info().props)
     , uid(create_uid())
     , m_ctrl_code_id(xrt_core::module_int::get_ctrlcode_id(m_module, nm)) // control code index
+    , m_ctrlpkt_bo_cache(initialize_ctrlpkt_bo_cache(hwctx, m_module, m_ctrl_code_id))
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
@@ -1718,11 +1724,6 @@ public:
 
     // amend args with computed data based on kernel protocol
     amend_args();
-
-    if (m_module) {
-      // ELF flow, initialize ctrlpkt buffer cache
-      initialize_ctrlpkt_bo_cache();
-    }
 
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
@@ -1952,7 +1953,9 @@ public:
   xrt::bo
   get_ctrlpkt_buffer()
   {
-    return m_ctrlpkt_bo_cache ? m_ctrlpkt_bo_cache->get_buffer() : xrt::bo{};
+    return m_ctrlpkt_bo_cache
+      ? m_ctrlpkt_bo_cache->get_buffer()
+      : xrt::bo{};
   }
 
   void
@@ -2107,15 +2110,16 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // If module has multiple control codes, id is used to identify
   // the control code that needs to be run.
   // By default first control code that is available is picked
-  xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
+  static xrt::module
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx,
+              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
   {
     if (!module)
       return {};
 
     // Pass pre created ctrlpkt buffer when creating module_sram object.
     // This buffer is empty when ELF doesn't have ctrlpkt
-    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, m_ctrlpkt_bo);
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
   virtual std::unique_ptr<arg_setter>
@@ -2305,7 +2309,7 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
     , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id())}
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo)}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())

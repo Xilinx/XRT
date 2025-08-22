@@ -2598,7 +2598,7 @@ class module_sram : public module_impl
   }
 
 public:
-  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id, xrt::bo ctrlpkt_bo)
+  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id, const xrt::bo& ctrlpkt_bo)
     : module_impl{ parent->get_cfg_uuid() }
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
