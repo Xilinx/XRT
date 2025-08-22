@@ -1305,6 +1305,17 @@ int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_cr
   bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
+  ret = drv->mapKernelControl(xrt_core::xclbin::get_cus_pair(buffer));
+  if (ret) {
+	  xclLog(XRT_WARNING, "%s: Map CUs Failed\n", __func__);
+	  return ret;
+  }
+  ret = drv->mapKernelControl(xrt_core::xclbin::get_dbg_ips_pair(buffer));
+  if (ret) {
+	  xclLog(XRT_WARNING, "%s: Map Debug IPs Failed\n", __func__);
+	  return ret;
+  }
+
   if (!hw_context_enable)
     xdp::update_device(handle, false);
   #ifndef __HWEM__
