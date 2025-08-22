@@ -145,4 +145,17 @@ hwctx_object::reset_array() const
 #endif
 }
 
+uint64_t
+hwctx_object::
+get_aie_freq() const
+{
+ return m_shim->get_aie_freq(this);
+}
+
+void
+hwctx_object::
+set_aie_freq(uint64_t freq_hz) const
+{
+ return m_shim->set_aie_freq(this, freq_hz);
+}
 }
