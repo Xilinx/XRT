@@ -98,17 +98,12 @@ if (XRT_STATIC_BUILD)
     RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
-# YAML-CPP - Required for event trace configuration (xbutil2 only)
-find_package(yaml-cpp REQUIRED)
-set(YAML_CPP_LIBRARY yaml-cpp)
-
 target_link_libraries(${XBUTIL2_NAME}
   PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  ${YAML_CPP_LIBRARY}
   )
 
 if (NOT WIN32)

@@ -8,9 +8,7 @@
 #include <set>
 #include <string>
 #include <vector>
-
-// Forward declaration to avoid full yaml-cpp include in header
-namespace YAML { class Node; }
+#include "core/common/json/nlohmann/json.hpp"
 
 // Forward declaration for device
 namespace xrt_core { class device; }
@@ -18,8 +16,8 @@ namespace xrt_core { class device; }
 /**
  * @brief Configuration loader for firmware event trace data
  * 
- * This class reads event trace configuration from trace_events.yaml
- * using yaml-cpp library and provides methods to parse and interpret 
+ * This class reads event trace configuration from trace_events.json
+ * using nlohmann::json and provides methods to parse and interpret 
  * firmware trace events.
  */
 class event_trace_config {
@@ -78,14 +76,14 @@ public:
 
 public:
   /**
-   * @brief Constructor - loads configuration from YAML file
-   * @param yaml_file_path Path to trace_events.yaml file
+   * @brief Constructor - loads configuration from JSON file
+   * @param json_file_path Path to trace_events.json file
    * 
    * After construction, call validate_version_compatibility() with a device
-   * to check if the YAML file version matches the device/shim version.
+   * to check if the JSON file version matches the device/shim version.
    */
   explicit
-  event_trace_config(const std::string& yaml_file_path = "trace_events.yaml");
+  event_trace_config(const std::string& json_file_path = "trace_events.json");
 
   /**
    * @brief Parse a single trace event from raw data
@@ -137,8 +135,8 @@ public:
   }
 
   /**
-   * @brief Get YAML file version
-   * @return pair of (major, minor) version from YAML file
+   * @brief Get JSON file version
+   * @return pair of (major, minor) version from JSON file
    */
   std::pair<uint16_t, uint16_t>
   get_file_version() const {
@@ -155,62 +153,62 @@ public:
 
 private:
   /**
-   * @brief Load configuration from YAML file using yaml-cpp
-   * @param yaml_file_path Path to YAML file
+   * @brief Load configuration from JSON file using nlohmann::json
+   * @param json_file_path Path to JSON file
    * @return true on success, false on failure
    */
   bool
-  load_from_yaml(const std::string& yaml_file_path);
+  load_from_json(const std::string& json_file_path);
 
   /**
-   * @brief Load and validate YAML file
-   * @param yaml_file_path Path to YAML file
-   * @return YAML node for the loaded file
+   * @brief Load and validate JSON file
+   * @param json_file_path Path to JSON file
+   * @return nlohmann::json object for the loaded file
    * @throws std::runtime_error if file cannot be loaded
    */
-  YAML::Node
-  load_yaml_file(const std::string& yaml_file_path);
+  nlohmann::json
+  load_json_file(const std::string& json_file_path);
 
   /**
-   * @brief Parse data_format section from YAML
-   * @param config Root YAML node
+   * @brief Parse data_format section from JSON
+   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   void
-  parse_data_format(const YAML::Node& config);
+  parse_data_format(const nlohmann::json& config);
 
   /**
-   * @brief Parse version information from YAML
-   * @param config Root YAML node
+   * @brief Parse version information from JSON
+   * @param config Root JSON object
    * @throws std::runtime_error if version parsing fails
    */
   void
-  parse_version(const YAML::Node& config);
+  parse_version(const nlohmann::json& config);
 
   /**
-   * @brief Parse lookups section from YAML (optional)
-   * @param config Root YAML node
+   * @brief Parse lookups section from JSON (optional)
+   * @param config Root JSON object
    */
   void
-  parse_lookups(const YAML::Node& config);
+  parse_lookups(const nlohmann::json& config);
 
   /**
-   * @brief Parse categories section from YAML
-   * @param config Root YAML node
+   * @brief Parse categories section from JSON
+   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   void
-  parse_categories(const YAML::Node& config);
+  parse_categories(const nlohmann::json& config);
 
   /**
-   * @brief Create category info from YAML node
-   * @param category YAML node for single category
+   * @brief Create category info from JSON object
+   * @param category JSON object for single category
    * @param forced_id_categories Set of already used forced IDs
    * @return category_info structure
    * @throws std::runtime_error if validation fails
    */
   category_info
-  create_category_info(const YAML::Node& category, 
+  create_category_info(const nlohmann::json& category, 
                       std::set<uint32_t>& forced_id_categories);
 
   /**
@@ -221,72 +219,72 @@ private:
   assign_category_ids(const std::set<uint32_t>& forced_id_categories);
 
   /**
-   * @brief Parse arg_sets section from YAML (optional)
-   * @param config Root YAML node
+   * @brief Parse arg_sets section from JSON (optional)
+   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   void
-  parse_arg_sets(const YAML::Node& config);
+  parse_arg_sets(const nlohmann::json& config);
 
   /**
    * @brief Parse a list of arguments for an arg_set
-   * @param arg_list YAML node containing argument array
+   * @param arg_list JSON array containing argument objects
    * @param arg_set_name Name of the arg_set for error reporting
    * @return Vector of parsed event_arg structures
    * @throws std::runtime_error if validation fails
    */
   std::vector<event_arg>
-  parse_argument_list(const YAML::Node& arg_list, 
+  parse_argument_list(const nlohmann::json& arg_list, 
                      const std::string& arg_set_name);
 
   /**
-   * @brief Create event_arg from YAML node
-   * @param arg_data YAML node for single argument
+   * @brief Create event_arg from JSON object
+   * @param arg_data JSON object for single argument
    * @param start_position Starting bit position for this argument
    * @param arg_set_name Name of containing arg_set for error reporting
    * @return event_arg structure
    * @throws std::runtime_error if validation fails
    */
   event_arg
-  create_event_arg(const YAML::Node& arg_data, uint32_t start_position,
+  create_event_arg(const nlohmann::json& arg_data, uint32_t start_position,
                   const std::string& arg_set_name);
 
   /**
-   * @brief Parse events section from YAML
-   * @param config Root YAML node
+   * @brief Parse events section from JSON
+   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   void
-  parse_events(const YAML::Node& config);
+  parse_events(const nlohmann::json& config);
 
   /**
-   * @brief Create event_info from YAML node
-   * @param event_data YAML node for single event
+   * @brief Create event_info from JSON object
+   * @param event_data JSON object for single event
    * @param name_check Set of used event names for duplicate detection
    * @return event_info structure
    * @throws std::runtime_error if validation fails
    */
   event_info
-  create_event_info(const YAML::Node& event_data, 
+  create_event_info(const nlohmann::json& event_data, 
                    std::set<std::string>& name_check);
 
   /**
    * @brief Parse and validate event categories
-   * @param event_data YAML node for event
+   * @param event_data JSON object for event
    * @param event Event info to populate
    * @throws std::runtime_error if category references are invalid
    */
   void
-  parse_event_categories(const YAML::Node& event_data, event_info& event);
+  parse_event_categories(const nlohmann::json& event_data, event_info& event);
 
   /**
    * @brief Parse event arguments reference
-   * @param event_data YAML node for event
+   * @param event_data JSON object for event
    * @param event Event info to populate
    * @throws std::runtime_error if arg_set reference is invalid
    */
   void
-  parse_event_arguments(const YAML::Node& event_data, event_info& event);
+  parse_event_arguments(const nlohmann::json& event_data, event_info& event);
 
   /**
    * @brief Assign IDs to events without forced IDs
@@ -327,8 +325,8 @@ private:
   // Configuration data
   uint32_t event_bits;                                     // Event ID bit width
   uint32_t payload_bits;                                   // Payload bit width
-  uint16_t file_major;                                     // YAML file major version
-  uint16_t file_minor;                                     // YAML file minor version
+  uint16_t file_major;                                     // JSON file major version
+  uint16_t file_minor;                                     // JSON file minor version
   std::map<std::string, std::map<uint32_t, std::string>> code_tables;  // Numeric code to string lookup tables
   std::map<std::string, category_info> category_map;      // Category name -> info
   std::map<std::string, std::vector<event_arg>> arg_templates;  // Argument set definitions

@@ -34,7 +34,7 @@ struct trace_event {
 static event_trace_config* get_event_trace_config(const xrt_core::device* dev) {
 
   boost::property_tree::ptree ptree;
-  std::string config  = xrt_core::device_query<xrt_core::query::event_trace_config>(dev);
+  std::string config = xrt_core::device_query<xrt_core::query::event_trace_config>(dev);
 
   static event_trace_config config_obj(config);
   return &config_obj;
@@ -71,11 +71,11 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     // Parse trace events from buffer
     if (log_buffer.data && log_buffer.size > 0) {
       size_t event_count = log_buffer.size / sizeof(trace_event);
-      trace_event* events = static_cast<trace_event*>(log_buffer.data);
+      auto events = static_cast<trace_event*>(log_buffer.data);
       
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
-        // Parse event using yaml-cpp based configuration
+        // Parse event using json based configuration
         auto parsed_event = config->parse_event(events[i].timestamp, 
                                                events[i].event_id, 
                                                events[i].payload);
@@ -86,7 +86,7 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
         event_pt.put("event_name", parsed_event.name);
         
         // Join categories with pipe separator for backward compatibility
-        std::string categories_str;
+        std::string categories_str{};
         for (size_t j = 0; j < parsed_event.categories.size(); ++j) {
           if (j > 0) categories_str += "|";
           categories_str += parsed_event.categories[j];
@@ -103,13 +103,6 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
         if (!parsed_event.args.empty()) {
           event_pt.add_child("args", args_pt);
         }
-        
-        // Extract context_id from payload if not already parsed
-        if (parsed_event.args.find("context_id") == parsed_event.args.end()) {
-          uint32_t context_id = parsed_event.raw_payload & 0xF;
-          event_pt.put("context_id", context_id);
-        }
-        
         events_array.push_back(std::make_pair("", event_pt));
       }
       event_trace_pt.add_child("events", events_array);
@@ -137,7 +130,7 @@ static std::string
 generate_event_trace_report(const xrt_core::device* dev,
                            const std::vector<std::string>& elements_filter)
 {
-  std::stringstream ss;
+  std::stringstream ss{};
   
   try {
     // Get the event trace configuration
@@ -151,7 +144,7 @@ generate_event_trace_report(const xrt_core::device* dev,
     ss << "=======================================================\n";
     
     if (!config->is_valid()) {
-      ss << "Warning: YAML file is invalid\n";
+      ss << "Warning: JSON file is invalid\n";
     }
     ss << "\n";
 
@@ -162,7 +155,7 @@ generate_event_trace_report(const xrt_core::device* dev,
 
     // Parse trace events from buffer
     size_t event_count = log_buffer.size / sizeof(trace_event);
-    trace_event* events = static_cast<trace_event*>(log_buffer.data);
+    auto events = static_cast<trace_event*>(log_buffer.data);
 
     ss << boost::format("Total Events: %d\n") % event_count;
     ss << boost::format("Buffer Offset: %d\n\n") % log_buffer.abs_offset;
@@ -180,20 +173,20 @@ generate_event_trace_report(const xrt_core::device* dev,
     
     // Add data rows
     for (size_t i = 0; i < event_count; ++i) {
-      // Parse event using YAML-based configuration
+      // Parse event using JSON-based configuration
       auto parsed_event = config->parse_event(events[i].timestamp, 
                                               events[i].event_id, 
                                               events[i].payload);
       
       // Join categories with pipe separator for backward compatibility
-      std::string categories_str;
+      std::string categories_str{};
       for (size_t j = 0; j < parsed_event.categories.size(); ++j) {
         if (j > 0) categories_str += "|";
         categories_str += parsed_event.categories[j];
       }
       
       // Format parsed arguments
-      std::string args_str;
+      std::string args_str{};
       for (const auto& arg_pair : parsed_event.args) {
         if (!args_str.empty()) args_str += ", ";
         args_str += arg_pair.first + "=" + arg_pair.second;
