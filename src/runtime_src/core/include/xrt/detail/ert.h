@@ -1207,6 +1207,7 @@ static inline struct ert_ctx_health_data*
 get_ert_ctx_health_data(const struct ert_packet* pkt)
 {
   switch (pkt->opcode) {
+  case ERT_START_CU:
   case ERT_START_NPU:
   case ERT_START_NPU_PREEMPT:
   case ERT_START_NPU_PREEMPT_ELF:
