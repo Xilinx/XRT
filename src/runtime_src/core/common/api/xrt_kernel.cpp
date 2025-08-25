@@ -2571,6 +2571,7 @@ public:
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
     
     switch (epkt->opcode) {
+    case ERT_START_CU:
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
@@ -3190,6 +3191,7 @@ class runlist_impl
   {
     auto epkt = run.get_ert_packet();
     switch (epkt->opcode) {
+    case ERT_START_CU:
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
