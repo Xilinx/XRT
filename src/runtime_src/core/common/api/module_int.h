@@ -48,8 +48,11 @@ static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 // These buffers are patched and sent to driver/firmware for execution
 // If module has multiple control codes, ctrl_code_id is used to
 // identify the control code that needs to be run.
+// Also pre created ctrlpkt bo with data filled from ELF is passed
+// to reduce overhead of bo creation during module object init
 xrt::module
-create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_id);
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx,
+                  uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo);
 
 // Get control code id from kernel name given to construct xrt::kernel
 // Throws exception if this kernel is not present in ELF
@@ -125,6 +128,12 @@ dump_dtrace_buffer(const xrt::module& module);
 // Throws if ELF doesn't contain scratchpad memory
 xrt::bo
 get_ctrl_scratchpad_bo(const xrt::module& module);
+
+// Returns ctrlpkt section data in ELF
+// This data is used to create ctrlpkt buffers ahead in xrt::kernel object
+// returns empty vector if ctrlpkt section is not present
+std::vector<uint8_t>
+get_ctrlpkt_data(const xrt::module& module, uint32_t ctrl_code_id);
 
 } // xrt_core::module_int
 
