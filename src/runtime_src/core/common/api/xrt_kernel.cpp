@@ -1278,23 +1278,21 @@ public:
   { return arg.type; }
 };
 
-} // namespace
-
-namespace xrt {
 // class buffer_cache - A thread safe cache to hold pre created buffers
+//
 // This class maintains a fixed size pool of reusable buffers to
-// minimize allocation overhead.
-// get_buffer() returns a buffer from the cache if available, or creates one on demand.
-// release_buffer() returns a buffer to the cache only if the pool size limit is not exceeded
-
-
+// minimize allocation overhead.  get_buffer() returns a buffer from
+// the cache if available, or creates one on demand.  release_buffer()
+// returns a buffer to the cache only if the pool size limit is not
+// exceeded
 class buffer_cache
 {
-  std::vector<xrt::bo> m_bo_cache;
-  std::mutex m_mutex;
   xrt::hw_context m_hw_ctx;
   std::vector<uint8_t> m_buf_data;
   const std::size_t m_max_cache_size;
+
+  mutable std::mutex m_mutex;
+  mutable std::vector<xrt::bo> m_bo_cache;
 
   static void
   fill_bo_with_data(xrt::bo& bo, const std::vector<uint8_t>& data)
@@ -1304,26 +1302,31 @@ class buffer_cache
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
+  static std::vector<xrt::bo>
+  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size)
+  {
+    if (!cache_size)
+      return {};
+
+    std::vector<xrt::bo> cache;
+    cache.reserve(cache_size);
+
+    for (size_t i = 0; i < cache_size; ++i)
+      cache.push_back(xrt::ext::bo(hwctx, bo_size));
+    
+    return cache;
+  }
+
 public:
-  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t> data, size_t max_size)
+  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size)
     : m_hw_ctx(std::move(ctx))
     , m_buf_data(std::move(data))
     , m_max_cache_size(max_size)
-  {
-    if (m_max_cache_size == 0)
-      return; // case where single entry size is greater than pool memory
-
-    // Pre allocate the cache size
-    m_bo_cache.reserve(m_max_cache_size);
-
-    for (size_t i = 0; i < m_max_cache_size; i++) {
-      xrt::bo bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size());
-      m_bo_cache.push_back(std::move(bo));
-    }
-  }
+    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size())}
+  {}
 
   xrt::bo
-  get_buffer()
+  get_buffer() const
   {
     xrt::bo bo;
     {
@@ -1342,7 +1345,7 @@ public:
   }
 
   void
-  release_buffer(xrt::bo&& bo)
+  release_buffer(xrt::bo&& bo) const
   {
     // when cache is reached to max limit we dont insert bo into pool
     // bo gets destroy when it goes out of scope
@@ -1352,8 +1355,11 @@ public:
 
     m_bo_cache.push_back(std::move(bo));
   }
-};
+}; // buffer_cache
 
+} // namespace
+
+namespace xrt {
 // struct kernel_impl - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -1625,7 +1631,6 @@ private:
   static std::unique_ptr<buffer_cache>
   initialize_ctrlpkt_bo_cache(const xrt::hw_context& ctx, const xrt::module& module, uint32_t id)
   {
-    static auto pool_memory_in_mb = xrt_core::config::get_run_buffer_pool_memory_mb();
     if (!module)
       return nullptr; // applicable only for ELF flows
 
@@ -1635,14 +1640,15 @@ private:
       return nullptr;
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
+    static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
+
     // Even though if pool memory is less than ctrlpkt size, we still maintain one entry
     // in cache to reduce overhead for atleast one run
     constexpr size_t min_pool_size = 1;
-    size_t max_pool_size =
-        std::max((pool_memory_in_mb * bytes_per_mb) / ctrlpkt_buf_size, min_pool_size);
+    size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
 
-    // create and return buffer_cache with calculated pool size
-    return std::make_unique<buffer_cache>(ctx, ctrlpkt_data, max_pool_size);
+    // Create and return buffer_cache with calculated pool size
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size);
   }
 
 public:
@@ -1951,7 +1957,7 @@ public:
   }
 
   xrt::bo
-  get_ctrlpkt_buffer()
+  get_ctrlpkt_buffer() const
   {
     return m_ctrlpkt_bo_cache
       ? m_ctrlpkt_bo_cache->get_buffer()
@@ -1959,7 +1965,7 @@ public:
   }
 
   void
-  release_ctrlpkt_buffer(xrt::bo&& bo)
+  release_ctrlpkt_buffer(xrt::bo&& bo) const
   {
     if (m_ctrlpkt_bo_cache)
       m_ctrlpkt_bo_cache->release_buffer(std::move(bo));
