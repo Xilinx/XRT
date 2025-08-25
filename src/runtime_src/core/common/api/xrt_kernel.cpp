@@ -2569,9 +2569,16 @@ public:
   {
     auto epkt = get_ert_packet();
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+
+    auto opcode = epkt->opcode;
+
+    // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
+    // well as for Alveo.  For Alveo we do not want to throw aie_error.
+    // The TXN flow can be identified by the kernel type.
+    if (opcode == ERT_START_CU && kernel->get_kernel_type() == kernel_type::dpu)
+      opcode = ERT_START_NPU;
     
-    switch (epkt->opcode) {
-    case ERT_START_CU:
+    switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
@@ -3190,8 +3197,16 @@ class runlist_impl
   throw_command_error(const xrt::run& run, ert_cmd_state state) const
   {
     auto epkt = run.get_ert_packet();
-    switch (epkt->opcode) {
-    case ERT_START_CU:
+    auto opcode = epkt->opcode;
+    auto rhdl = run.get_handle();
+
+    // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
+    // well as for Alveo.  For Alveo we do not want to throw aie_error.
+    // The TXN flow can be identified by the kernel type.
+    if (opcode == ERT_START_CU && rhdl->get_kernel()->get_kernel_type() == kernel_impl::kernel_type::dpu)
+      opcode = ERT_START_NPU;
+
+    switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
