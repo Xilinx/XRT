@@ -1,68 +1,57 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+name: clang-tidy-review
+
 on:
-  # scheduled workflows run on the latest commit on the default or base branch
-  schedule:
-    - cron: '0 4 * * 1/2'
-  
-  # allow manual dispatch
-  workflow_dispatch:  
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: master
     
+  workflow_dispatch:
+
 jobs:
   clangtidy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout XRT
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: recursive
         fetch-depth: 0
-      
-    - name: Store sha
-      run: echo ${{ github.sha }} > sha
-      
-    - name: Compare sha
-      uses: actions/cache@v4
-      id: cache-sha
-      with:
-        path: sha
-        key: clangtidy-${{ github.sha }}
-        
+
+    # Dependencies needed for external cmake configuration
     - name: Install dependencies
-      if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
-        sudo pip3 install clang-html
 
-    - name: Configure legacy XRT
-      if: steps.cache-sha.outputs.cache-hit != 'true'
+    - name: Configure legacy XRT build
       run: |
         cmake -B build/legacy \
         -DXRT_ENABLE_HIP=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_BUILD_TYPE=Release src
-        
+
     - name: Configure edge XRT
-      if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
         env XRT_NATIVE_BUILD=no cmake -B build/edge \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_BUILD_TYPE=Release src
 
     - name: Configure NPU XRT
-      if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
         cmake -B build/npu \
         -DXRT_NPU=1 \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_BUILD_TYPE=Release src
 
-    - name: Merge compile commands
-      if: steps.cache-sha.outputs.cache-hit != 'true'
+    - name: Merge databases into one compile_commands.json
       run: |
         python <<EOF
         import json, os
 
-        build_dirs = ["build/legacy", "build/edge", "build/npu"]
+        # Last entry is preserved
+        build_dirs = ["build/npu", "build/edge", "build/legacy"]
         merged_commands = {}
 
         for build_dir in build_dirs:
@@ -78,22 +67,36 @@ jobs:
 
         print("Merged compile_commands.json created.")
         EOF
-      
-    - name: Build with clangtidy
-      if: steps.cache-sha.outputs.cache-hit != 'true'
-      run: |
-        run-clang-tidy -p . -j 16 -export-fixes=fixes.yml |& tee build.clangtidy.log
-        clang-tidy-html build.clangtidy.log
 
-    - name: Upload clang raw log
-      if: steps.cache-sha.outputs.cache-hit != 'true'
+    - name: Upload merged database
       uses: actions/upload-artifact@v4
       with:
-        name: clang-tidy-log
-        path: build.clangtidy.log
-    - name: Upload clang html
-      if: steps.cache-sha.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v4
+        name: compile_commands
+        path: compile_commands.json
+
+    # Review uses external combined database
+    - name: Create clang-tidy review
+      id: review
+      uses: stsoe/clang-tidy-review@patches
       with:
-        name: clang-tidy-html
-        path: clang.html
+        apt_packages: |
+         cmake, g++, pkg-config, libdrm-dev,
+         ocl-icd-dev, ocl-icd-libopencl1, ocl-icd-opencl-dev,
+         libamdhip64-dev,
+         libboost-dev, libboost-filesystem-dev, libboost-program-options-dev,
+         libncurses5-dev,
+         libssl-dev,
+         rapidjson-dev,
+         libelf-dev,
+         libprotoc-dev, protobuf-compiler,
+         uuid-dev,
+         systemtap-sdt-dev,
+         curl, libcurl4-openssl-dev,
+         libudev-dev
+        # disable default checks and rely on closest .clangtidy
+        clang_tidy_checks: ''
+        split_workflow: true
+
+    - name: Upload clang-tidy review
+      uses: stsoe/clang-tidy-review/upload@patches
+      id: upload-review
