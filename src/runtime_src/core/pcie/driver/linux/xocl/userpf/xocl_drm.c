@@ -497,6 +497,9 @@ static const struct file_operations xocl_driver_fops = {
 	.read		= drm_read,
 	.unlocked_ioctl = xocl_drm_ioctl,
 	.release	= drm_release,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+        .fop_flags      = FOP_UNSIGNED_OFFSET,
+#endif
 };
 
 static const struct vm_operations_struct xocl_vm_ops = {

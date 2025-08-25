@@ -111,6 +111,11 @@ namespace zynqaie {
     void
     reset_array() const override;
 
+    uint64_t
+    get_aie_freq() const override;
+
+    void
+    set_aie_freq(uint64_t freq_hz)const override;
 #ifdef XRT_ENABLE_AIE
     std::shared_ptr<aie_array>
     get_aie_array_shared();
