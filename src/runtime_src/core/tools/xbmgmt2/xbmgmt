@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 # Copyright (C) 2020-2022 Xilinx, Inc.
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
-if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
+if [ "$(uname | grep -E '^(windows32|CYGWIN)')" ]; then
     trap "" INT
     "$0.bat" "$@"
     exit $?
@@ -18,7 +19,6 @@ XRT_PROG=xbmgmt2
 
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
-XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
     # Indicates that the legacy was specified
@@ -34,18 +34,18 @@ while [ $# -gt 0 ]; do
        reported via the --help option."
         echo "----------------------------------------------------------------------"
         exit 1
-	    ;;
-	# Copy the options the remaining options
-	*)
-	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-	    XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
-	    shift
-	    ;;
+        ;;
+    # Copy the options the remaining options
+    *)
+        eval "XRTWRAP_PROG_ARG_$XRTWARP_PROG_ARGS_size=\"\$1\""
+        XRTWARP_PROG_ARGS_size=$((XRTWARP_PROG_ARGS_size + 1))
+        shift
+        ;;
     esac
 done
 
 # -- Find and call the loader
-XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
+XRT_LOADER="$(dirname "$0")/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
     echo "ERROR: Could not find 64-bit loader executable."
@@ -53,4 +53,12 @@ if [ ! -f "$XRT_LOADER" ]; then
     exit 1
 fi
 
-"${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"
+# Build arguments dynamically for final call
+i=0
+while [ $i -lt $XRTWARP_PROG_ARGS_size ]; do
+    eval "arg=\$XRTWRAP_PROG_ARG_$i"
+    set -- "$@" "$arg"
+    i=$((i + 1))
+done
+
+"${XRT_LOADER}" -exec ${XRT_PROG} "$@"
