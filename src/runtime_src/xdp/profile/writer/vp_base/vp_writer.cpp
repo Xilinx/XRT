@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -66,10 +66,29 @@ namespace xdp {
 #else
     directory = xrt_core::config::get_profiling_directory() ;
 
-    if (!useDir || directory == "") {
-      // If no directory was specified, just use the file in
+    if (!useDir || directory == "" ) {
+      // If no directory was specified just use the file in
       //  the working directory
       fout.open(filename);
+      return;
+    }
+
+    // If the path is neither a relative path nor the name of a folder we can create
+    // just put the file in the current directory
+    size_t start = directory.find_first_not_of(" \t\n\r");
+    if (start != std::string::npos) directory = directory.substr(start);
+    if (!(std::isalpha(directory[0]) || (directory.size() > 1 && directory[0] == '.' && directory[1] == '/'))) {
+      fout.open(filename);
+      try {
+        std::string msg =
+          "The user specified profiling directory is not valid. Please provide a relative path or the name of a folder that can be created.";
+        xrt_core::message::send(xrt_core::message::severity_level::info,
+                                "XRT", msg);
+      }
+      catch (...) {
+        // The message sending could throw a boost::property_tree exception.
+        // If we catch it, just ignore it and move on.
+      }
       return;
     }
 
