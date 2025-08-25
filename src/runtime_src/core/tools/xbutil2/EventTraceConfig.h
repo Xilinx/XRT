@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#pragma once
+#ifndef __EVENT_TRACE_CONFIG_H__
+#define __EVENT_TRACE_CONFIG_H__
 
 #include <cstdint>
 #include <map>
@@ -13,6 +14,7 @@
 // Forward declaration for device
 namespace xrt_core { class device; }
 
+namespace xrt_core::tools::xrt_smi{
 /**
  * @brief Raw event record structure
  */
@@ -52,7 +54,6 @@ public:
     std::string name;           // Category name
     std::string description;    // Category description
     uint32_t id;               // Category bit ID
-    bool forced_id;            // Whether ID was explicitly set
   };
 
   /**
@@ -67,8 +68,6 @@ public:
     std::string args_name;                 // Argument set name (from arg_sets)
     std::vector<event_arg> args;           // Resolved event arguments
     std::string type;                      // Event type (start/done/null)
-    int pair_id;                          // Paired event ID (for start/done pairs)
-    bool forced_id;                       // Whether ID was explicitly set
   };
 
   /**
@@ -120,20 +119,6 @@ public:
   get_event_categories(uint16_t event_id) const;
 
   /**
-   * @brief Check if configuration is valid (loaded successfully)
-   * @return true if valid, false otherwise
-   */
-  bool
-  is_valid() const { return config_valid; }
-
-  /**
-   * @brief Get last error message
-   * @return Error message string
-   */
-  const std::string&
-  get_error() const { return last_error; }
-
-  /**
    * @brief Get data format information
    * @return pair of (event_bits, payload_bits)
    */
@@ -154,51 +139,49 @@ public:
 
 private:
   /**
-   * @brief Load configuration from JSON file using nlohmann::json
-   * @param json_file_path Path to JSON file
-   * @return true on success, false on failure
-   */
-  bool
-  load_from_json(const std::string& json_file_path);
-
-  /**
-   * @brief Load and validate JSON file
-   * @param json_file_path Path to JSON file
-   * @return nlohmann::json object for the loaded file
-   * @throws std::runtime_error if file cannot be loaded
-   */
-  nlohmann::json
-  load_json_file(const std::string& json_file_path);
-
-  /**
-   * @brief Parse data_format section from JSON
+   * @brief Parse event_bits from JSON data_format
    * @param config Root JSON object
-   * @throws std::runtime_error if parsing fails
+   * @return event_bits (uint32_t)
    */
-  void
-  parse_data_format(const nlohmann::json& config);
+  static uint32_t parse_event_bits(const nlohmann::json& config);
 
   /**
-   * @brief Parse version information from JSON
+   * @brief Parse payload_bits from JSON data_format
    * @param config Root JSON object
-   * @throws std::runtime_error if version parsing fails
+   * @return payload_bits (uint32_t)
    */
-  void
-  parse_version(const nlohmann::json& config);
+  static uint32_t parse_payload_bits(const nlohmann::json& config);
+
+  /**
+   * @brief Parse major version from JSON
+   * @param config Root JSON object
+   * @return major version (uint16_t)
+   */
+  static uint16_t 
+  parse_major_version(const nlohmann::json& config);
+
+  /**
+   * @brief Parse minor version from JSON
+   * @param config Root JSON object
+   * @return minor version (uint16_t)
+   */
+  static uint16_t 
+  parse_minor_version(const nlohmann::json& config);
 
   /**
    * @brief Parse lookups section from JSON (optional)
    * @param config Root JSON object
+   * @return code_tables map
    */
-  void
-  parse_lookups(const nlohmann::json& config);
+  static std::map<std::string, std::map<uint32_t, std::string>>
+  parse_code_table(const nlohmann::json& config);
 
   /**
    * @brief Parse categories section from JSON
    * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  void
+  static std::map<std::string, category_info>
   parse_categories(const nlohmann::json& config);
 
   /**
@@ -208,24 +191,16 @@ private:
    * @return category_info structure
    * @throws std::runtime_error if validation fails
    */
-  category_info
-  create_category_info(const nlohmann::json& category, 
-                      std::set<uint32_t>& forced_id_categories);
-
-  /**
-   * @brief Assign IDs to categories without forced IDs
-   * @param forced_id_categories Set of forced category IDs to avoid
-   */
-  void
-  assign_category_ids(const std::set<uint32_t>& forced_id_categories);
+  static category_info
+  create_category_info(const nlohmann::json& category);
 
   /**
    * @brief Parse arg_sets section from JSON (optional)
    * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  void
-  parse_arg_sets(const nlohmann::json& config);
+  static std::map<std::string, std::vector<event_arg>>
+  parse_arg_sets(const nlohmann::json& config, uint32_t payload_bits);
 
   /**
    * @brief Parse a list of arguments for an arg_set
@@ -234,9 +209,9 @@ private:
    * @return Vector of parsed event_arg structures
    * @throws std::runtime_error if validation fails
    */
-  std::vector<event_arg>
+  static std::vector<event_arg>
   parse_argument_list(const nlohmann::json& arg_list, 
-                     const std::string& arg_set_name);
+                      const std::string& arg_set_name, uint32_t payload_bits);
 
   /**
    * @brief Create event_arg from JSON object
@@ -246,7 +221,7 @@ private:
    * @return event_arg structure
    * @throws std::runtime_error if validation fails
    */
-  event_arg
+  static event_arg
   create_event_arg(const nlohmann::json& arg_data, uint32_t start_position,
                   const std::string& arg_set_name);
 
@@ -255,8 +230,10 @@ private:
    * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  void
-  parse_events(const nlohmann::json& config);
+  static std::map<uint16_t, event_info>
+  parse_events(const nlohmann::json& config, 
+               const std::map<std::string, category_info>& category_map, 
+               const std::map<std::string, std::vector<event_arg>>& arg_templates);
 
   /**
    * @brief Create event_info from JSON object
@@ -265,9 +242,8 @@ private:
    * @return event_info structure
    * @throws std::runtime_error if validation fails
    */
-  event_info
-  create_event_info(const nlohmann::json& event_data, 
-                   std::set<std::string>& name_check);
+  static event_info
+  create_event_info(const nlohmann::json& event_data, const std::map<std::string, category_info>& category_map, const std::map<std::string, std::vector<event_arg>>& arg_templates);
 
   /**
    * @brief Parse and validate event categories
@@ -275,8 +251,8 @@ private:
    * @param event Event info to populate
    * @throws std::runtime_error if category references are invalid
    */
-  void
-  parse_event_categories(const nlohmann::json& event_data, event_info& event);
+  static void
+  parse_event_categories(const nlohmann::json& event_data, event_info& event, const std::map<std::string, category_info>& category_map);
 
   /**
    * @brief Parse event arguments reference
@@ -284,24 +260,8 @@ private:
    * @param event Event info to populate
    * @throws std::runtime_error if arg_set reference is invalid
    */
-  void
-  parse_event_arguments(const nlohmann::json& event_data, event_info& event);
-
-  /**
-   * @brief Assign IDs to events without forced IDs
-   * @param events_with_forced_id Map of events with forced IDs
-   * @param events_without_id Vector of events needing ID assignment
-   */
-  void
-  assign_event_ids(std::map<uint16_t, event_info>& events_with_forced_id,
-                  std::vector<event_info>& events_without_id);
-
-  /**
-   * @brief Process START/DONE event pairs and link them
-   * @param events_map Map of all events to process
-   */
-  void
-  process_event_pairs(std::map<uint16_t, event_info>& events_map);
+  static void
+  parse_event_arguments(const nlohmann::json& event_data, event_info& event, const std::map<std::string, std::vector<event_arg>>& arg_templates);
 
   /**
    * @brief Extract argument value from payload
@@ -324,6 +284,7 @@ private:
 
 private:
   // Configuration data
+  nlohmann::json config;
   uint32_t event_bits;                                     // Event ID bit width
   uint32_t payload_bits;                                   // Payload bit width
   uint16_t file_major;                                     // JSON file major version
@@ -332,8 +293,8 @@ private:
   std::map<std::string, category_info> category_map;      // Category name -> info
   std::map<std::string, std::vector<event_arg>> arg_templates;  // Argument set definitions
   std::map<uint16_t, event_info> event_map;               // Event ID -> info
-  
-  // Status
-  bool config_valid;             // Whether configuration is valid
-  std::string last_error;        // Last error message
 };
+
+} // namespace xrt_core::tools::xrt_smi
+
+#endif // __EVENT_TRACE_CONFIG_H__

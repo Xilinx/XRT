@@ -12,48 +12,14 @@
 
 #include "core/common/json/nlohmann/json.hpp"
 
+
 namespace {
-constexpr uint32_t EVENT_BITS_DEFAULT = 16;
-constexpr uint32_t PAYLOAD_BITS_DEFAULT = 48;
-}
 
-event_trace_config::
-event_trace_config(const std::string& json_file_path)
-  : event_bits(EVENT_BITS_DEFAULT),
-    payload_bits(PAYLOAD_BITS_DEFAULT),
-    file_major(0),
-    file_minor(0),
-    code_tables{},
-    category_map{},
-    arg_templates{},
-    event_map{},
-    config_valid(false)
-{
-  load_from_json(json_file_path);
-}
+constexpr uint32_t event_bits_default = 16;
+constexpr uint32_t payload_bits_default = 48;
 
-bool 
-event_trace_config::
-load_from_json(const std::string& json_file_path) 
-{
-  try {
-    nlohmann::json config = load_json_file(json_file_path);
-    parse_version(config);
-    parse_data_format(config);
-    parse_lookups(config);
-    parse_categories(config);
-    parse_arg_sets(config);
-    parse_events(config);
-    config_valid = true;
-    return true;
-  } 
-  catch (const std::exception& e) {
-    throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
-  }
-}
-
-nlohmann::json 
-event_trace_config::load_json_file(const std::string& json_file_path) 
+static nlohmann::json 
+load_json_file(const std::string& json_file_path) 
 {
   if (json_file_path.empty()) {
     throw std::runtime_error("JSON file path cannot be empty");
@@ -67,47 +33,64 @@ event_trace_config::load_json_file(const std::string& json_file_path)
   return j;
 }
 
-void 
-event_trace_config::parse_data_format(const nlohmann::json& config) 
-{
-  if (!config.contains("data_format")) {
-    throw std::runtime_error("Missing required 'data_format' section in JSON");
+} // End of unnamed namespace
+namespace xrt_core::tools::xrt_smi{
+
+event_trace_config::
+event_trace_config(const std::string& json_file_path)
+  : config(load_json_file(json_file_path)),
+    event_bits(parse_event_bits(config)),
+    payload_bits(parse_payload_bits(config)),
+    file_major(parse_major_version(config)),
+    file_minor(parse_minor_version(config)),
+    code_tables(parse_code_table(config)),
+    category_map(parse_categories(config)),
+    arg_templates(parse_arg_sets(config, payload_bits)),
+    event_map(parse_events(config, category_map, arg_templates))
+{}
+
+uint32_t event_trace_config::parse_event_bits(const nlohmann::json& config) {
+  if (!config.contains("data_format") || !config["data_format"].contains("event_bits")) {
+    return event_bits_default;
   }
-  const auto& data_format = config["data_format"];
-  if (!data_format.contains("event_bits")) {
-    throw std::runtime_error("Missing 'event_bits' in data_format section");
+  uint32_t event_bits_val = config["data_format"]["event_bits"].get<uint32_t>();
+  if (event_bits_val == 0) {
+    throw std::runtime_error("Event bits must be greater than 0");
   }
-  if (!data_format.contains("payload_bits")) {
-    throw std::runtime_error("Missing 'payload_bits' in data_format section");
-  }
-  event_bits = data_format["event_bits"].get<uint32_t>();
-  payload_bits = data_format["payload_bits"].get<uint32_t>();
-  if (event_bits == 0 || payload_bits == 0) {
-    throw std::runtime_error("Event bits and payload bits must be greater than 0");
-  }
+  return event_bits_val;
 }
 
-void
-event_trace_config::
-parse_version(const nlohmann::json& config) 
-{
-  if (config.contains("version")) {
-    const auto& version = config["version"];
-    if (version.contains("major")) {
-      file_major = version["major"].get<uint16_t>();
-    }
-    if (version.contains("minor")) {
-      file_minor = version["minor"].get<uint16_t>();
-    }
+uint32_t event_trace_config::parse_payload_bits(const nlohmann::json& config) {
+  if (!config.contains("data_format") || !config["data_format"].contains("payload_bits")) {
+    return payload_bits_default;
   }
+  uint32_t payload_bits_val = config["data_format"]["payload_bits"].get<uint32_t>();
+  if (payload_bits_val == 0) {
+    throw std::runtime_error("Payload bits must be greater than 0");
+  }
+  return payload_bits_val;
 }
 
-void
-event_trace_config::
-parse_lookups(const nlohmann::json& config) 
+uint16_t event_trace_config::parse_major_version(const nlohmann::json& config) {
+  if (config.contains("version") && config["version"].contains("major")) {
+    return config["version"]["major"].get<uint16_t>();
+  }
+  return 0;
+}
+
+uint16_t event_trace_config::parse_minor_version(const nlohmann::json& config) {
+  if (config.contains("version") && config["version"].contains("minor")) {
+    return config["version"]["minor"].get<uint16_t>();
+  }
+  return 0;
+}
+
+std::map<std::string, std::map<uint32_t, std::string>>
+event_trace_config::parse_code_table(const nlohmann::json& config)
 {
+  std::map<std::string, std::map<uint32_t, std::string>> code_tables;
   if (!config.contains("lookups")) {
-    return;
+    return code_tables;
   }
   for (const auto& [lookup_name, lookup_entries] : config["lookups"].items()) {
     std::map<uint32_t, std::string> lookup_map;
@@ -116,84 +99,57 @@ parse_lookups(const nlohmann::json& config)
     }
     code_tables[lookup_name] = lookup_map;
   }
+  return code_tables;
 }
 
-void
-event_trace_config::
-parse_categories(const nlohmann::json& config) 
+std::map<std::string, event_trace_config::category_info>
+event_trace_config::parse_categories(const nlohmann::json& config)
 {
+  std::map<std::string, category_info> category_map;
   if (!config.contains("categories")) {
     throw std::runtime_error("Missing required 'categories' section in JSON");
   }
-  std::set<std::string> name_check;
-  std::set<uint32_t> forced_id_categories;
   for (const auto& category : config["categories"]) {
     if (!category.contains("name")) {
       throw std::runtime_error("Category missing required 'name' field");
     }
     std::string name = category["name"].get<std::string>();
-    if (name_check.count(name)) {
-      throw std::runtime_error("Duplicate category name: " + name);
-    }
-    name_check.insert(name);
-    category_info cat_info = create_category_info(category, forced_id_categories);
+    category_info cat_info = create_category_info(category);
     category_map[name] = cat_info;
   }
-  assign_category_ids(forced_id_categories);
+  return category_map;
 }
 
 event_trace_config::category_info
-event_trace_config::
-create_category_info(const nlohmann::json& category, std::set<uint32_t>& forced_id_categories) 
+event_trace_config::create_category_info(const nlohmann::json& category) 
 {
   category_info cat_info;
   cat_info.name = category["name"].get<std::string>();
   cat_info.description = category.contains("description") ? category["description"].get<std::string>() : "";
-  cat_info.forced_id = false;
   if (category.contains("id")) {
     uint32_t id = category["id"].get<uint32_t>();
-    if (forced_id_categories.count(id)) {
-      throw std::runtime_error("Duplicate category ID " + std::to_string(id) + " for category " + cat_info.name);
-    }
-    forced_id_categories.insert(id);
     cat_info.id = id;
-    cat_info.forced_id = true;
   }
   return cat_info;
 }
 
-void
-event_trace_config::
-assign_category_ids(const std::set<uint32_t>& forced_id_categories) 
+std::map<std::string, std::vector<event_trace_config::event_arg>>
+event_trace_config::parse_arg_sets(const nlohmann::json& config, uint32_t payload_bits)
 {
-  uint32_t next_id = 0;
-  for (auto& cat_pair : category_map) {
-    if (!cat_pair.second.forced_id) {
-      while (forced_id_categories.count(next_id)) {
-        next_id++;
-      }
-      cat_pair.second.id = next_id++;
-    }
-  }
-}
-
-void
-event_trace_config::
-parse_arg_sets(const nlohmann::json& config) 
-{
+  std::map<std::string, std::vector<event_arg>> arg_templates;
   if (!config.contains("arg_sets")) {
-    return;
+    return arg_templates;
   }
   for (auto it = config["arg_sets"].begin(); it != config["arg_sets"].end(); ++it) {
     std::string arg_name = it.key();
-    std::vector<event_arg> args = parse_argument_list(it.value(), arg_name);
+    std::vector<event_arg> args = parse_argument_list(it.value(), arg_name, payload_bits);
     arg_templates[arg_name] = args;
   }
+  return arg_templates;
 }
 
 std::vector<event_trace_config::event_arg>
-event_trace_config::
-parse_argument_list(const nlohmann::json& arg_list, const std::string& arg_set_name) 
+event_trace_config::parse_argument_list(const nlohmann::json& arg_list, const std::string& arg_set_name, uint32_t payload_bits)
 {
   std::vector<event_arg> args;
   uint32_t start_position = 0;
@@ -209,8 +165,7 @@ parse_argument_list(const nlohmann::json& arg_list, const std::string& arg_set_n
 }
 
 event_trace_config::event_arg
-event_trace_config::
-create_event_arg(const nlohmann::json& arg_data
+event_trace_config::create_event_arg(const nlohmann::json& arg_data
                  , uint32_t start_position
                  , const std::string& arg_set_name) 
 {
@@ -234,57 +189,39 @@ create_event_arg(const nlohmann::json& arg_data
   return arg;
 }
 
-void
-event_trace_config::
-parse_events(const nlohmann::json& config) 
+std::map<uint16_t, event_trace_config::event_info>
+event_trace_config::parse_events(const nlohmann::json& config, 
+                                 const std::map<std::string, category_info>& category_map, 
+                                 const std::map<std::string, std::vector<event_arg>>& arg_templates)
 {
-  std::set<std::string> name_check;
-  std::map<uint16_t, event_info> events_with_forced_id;
-  std::vector<event_info> events_without_id;
-  for (auto it = config["events"].begin(); it != config["events"].end(); ++it) {
+  std::map<uint16_t, event_info> event_map;
+  for (const auto& it : config["events"].items()) {
     const nlohmann::json& event_data = it.value();
-    event_info event = create_event_info(event_data, name_check);
-    if (event.forced_id) {
-      if (events_with_forced_id.count(event.id)) {
-        throw std::runtime_error("Duplicate event ID " + std::to_string(event.id) + " for event " + event.name);
-      }
-      events_with_forced_id[event.id] = event;
-    } else {
-      events_without_id.push_back(event);
-    }
+    event_info event = create_event_info(event_data, category_map, arg_templates);
+    event.id = static_cast<uint16_t>(std::stoul(it.key()));
+    event_map[event.id] = event;
   }
-  assign_event_ids(events_with_forced_id, events_without_id);
-  process_event_pairs(events_with_forced_id);
-  event_map = events_with_forced_id;
+  return event_map;
 }
 
 event_trace_config::event_info
-event_trace_config::
-create_event_info(const nlohmann::json& event_data, std::set<std::string>& name_check) 
+event_trace_config::create_event_info(const nlohmann::json& event_data, 
+                                      const std::map<std::string, category_info>& category_map, 
+                                      const std::map<std::string, std::vector<event_arg>>& arg_templates)
 {
   event_info event;
   event.name = event_data["name"].get<std::string>();
-  if (name_check.count(event.name)) {
-    throw std::runtime_error("Duplicate event name: " + event.name);
-  }
-  name_check.insert(event.name);
   event.description = event_data.contains("description") ? event_data["description"].get<std::string>() : "";
   event.type = "null";
-  event.pair_id = -1;
-  parse_event_categories(event_data, event);
-  parse_event_arguments(event_data, event);
-  if (event_data.contains("id")) {
-    event.id = static_cast<uint16_t>(event_data["id"].get<uint32_t>());
-    event.forced_id = true;
-  } else {
-    event.forced_id = false;
-  }
+  parse_event_categories(event_data, event, category_map);
+  parse_event_arguments(event_data, event, arg_templates);
   return event;
 }
 
 void
-event_trace_config::
-parse_event_categories(const nlohmann::json& event_data, event_info& event) 
+event_trace_config::parse_event_categories(const nlohmann::json& event_data, 
+                                           event_info& event, 
+                                           const std::map<std::string, category_info>& category_map)
 {
   uint32_t category_mask = 0;
   if (event_data.contains("categories")) {
@@ -303,8 +240,9 @@ parse_event_categories(const nlohmann::json& event_data, event_info& event)
 }
 
 void
-event_trace_config::
-parse_event_arguments(const nlohmann::json& event_data, event_info& event) 
+event_trace_config::parse_event_arguments(const nlohmann::json& event_data, 
+                                          event_info& event, const std::map<std::string, 
+                                          std::vector<event_arg>>& arg_templates)
 {
   event.args_name = event_data.contains("args_name") ? event_data["args_name"].get<std::string>() : "";
   if (!event.args_name.empty()) {
@@ -313,53 +251,6 @@ parse_event_arguments(const nlohmann::json& event_data, event_info& event)
       throw std::runtime_error("Event '" + event.name + "' references unknown arg_set: " + event.args_name);
     }
     event.args = arg_it->second;
-  }
-}
-
-void
-event_trace_config::
-assign_event_ids(std::map<uint16_t, event_info>& events_with_forced_id,
-                std::vector<event_info>& events_without_id) 
-{
-  uint16_t next_id = 0;
-  for (auto& event : events_without_id) {
-    while (events_with_forced_id.count(next_id)) {
-      next_id++;
-    }
-    event.id = next_id;
-    events_with_forced_id[next_id] = event;
-    next_id++;
-  }
-}
-
-void
-event_trace_config::
-process_event_pairs(std::map<uint16_t, event_info>& events_map) 
-{
-  std::map<std::string, std::map<std::string, uint16_t>> pairs;
-  std::regex start_re(R"(^(.*)_START$)");
-  std::regex done_re(R"(^(.*)_DONE$)");
-  for (auto& event_pair : events_map) {
-    event_info& event = event_pair.second;
-    std::smatch match;
-    if (std::regex_match(event.name, match, start_re)) {
-      std::string stub = match[1].str();
-      pairs[stub]["start"] = event.id;
-      event.type = "start";
-    } else if (std::regex_match(event.name, match, done_re)) {
-      std::string stub = match[1].str();
-      pairs[stub]["done"] = event.id;
-      event.type = "done";
-    }
-  }
-  for (const auto& pair : pairs) {
-    const auto& pair_map = pair.second;
-    if (pair_map.count("start") && pair_map.count("done")) {
-      uint16_t start_id = pair_map.at("start");
-      uint16_t done_id = pair_map.at("done");
-      events_map[start_id].pair_id = done_id;
-      events_map[done_id].pair_id = start_id;
-    }
   }
 }
 
@@ -458,3 +349,5 @@ format_value(uint64_t value, const std::string& format) const
   }
   return oss.str();
 }
+
+} // namespace xrt_core::tools::xrt_smi

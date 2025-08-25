@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#pragma once
+#ifndef __REPORT_EVENT_TRACE_H__
+#define __REPORT_EVENT_TRACE_H__
 
 #include "tools/common/Report.h"
 
@@ -37,7 +38,8 @@ public:
    * - Report name: "event-trace"
    * - Description: "Log to console firmware event trace information"
    */
-  ReportEventTrace() : Report("event-trace", "Log to console firmware event trace information", true /*deviceRequired*/) { /*empty*/ };
+  ReportEventTrace() 
+    :  Report("event-trace", "Log to console firmware event trace information", true /*deviceRequired*/) { };
 
   /**
    * @brief Generate property tree representation of event trace data
@@ -79,3 +81,5 @@ public:
              const std::vector<std::string>& elements_filter,
              std::ostream& output) const override;
 };
+
+#endif // __REPORT_EVENT_TRACE_H__

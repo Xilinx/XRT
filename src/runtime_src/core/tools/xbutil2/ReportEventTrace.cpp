@@ -31,12 +31,13 @@ struct trace_event {
 };
 
 // Global event trace configuration instance
-static event_trace_config* get_event_trace_config(const xrt_core::device* dev) {
+static xrt_core::tools::xrt_smi::event_trace_config* 
+get_event_trace_config(const xrt_core::device* dev) {
 
   boost::property_tree::ptree ptree;
   std::string config = xrt_core::device_query<xrt_core::query::event_trace_config>(dev);
 
-  static event_trace_config config_obj(config);
+  static xrt_core::tools::xrt_smi::event_trace_config config_obj(config);
   return &config_obj;
 }
 
@@ -76,7 +77,7 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
         // Parse event using json based configuration
-        event_record record{events[i].timestamp, 
+        xrt_core::tools::xrt_smi::event_record record{events[i].timestamp, 
                             events[i].event_id, 
                             events[i].payload};
 
@@ -111,12 +112,10 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       event_trace_pt.put("event_count", event_count);
       event_trace_pt.put("buffer_offset", log_buffer.abs_offset);
       event_trace_pt.put("buffer_size", log_buffer.size);
-      event_trace_pt.put("config_valid", config->is_valid());
     } else {
       event_trace_pt.put("event_count", 0);
       event_trace_pt.put("buffer_offset", 0);
       event_trace_pt.put("buffer_size", 0);
-      event_trace_pt.put("config_valid", config->is_valid());
     }
   } 
   catch (const std::exception& e) {
@@ -166,10 +165,7 @@ generate_event_trace_report(const xrt_core::device* dev,
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
           % log_buffer.size % xrt_core::timestamp();
     ss << "=======================================================\n";
-    
-    if (!config->is_valid()) {
-      ss << "Warning: JSON file is invalid\n";
-    }
+
     ss << "\n";
 
     if (!log_buffer.data || log_buffer.size == 0) {
@@ -198,7 +194,7 @@ generate_event_trace_report(const xrt_core::device* dev,
     // Add data rows
     for (size_t i = 0; i < event_count; ++i) {
       // Parse event using JSON-based configuration
-      event_record record{events[i].timestamp, events[i].event_id, events[i].payload};
+      xrt_core::tools::xrt_smi::event_record record{events[i].timestamp, events[i].event_id, events[i].payload};
       auto parsed_event = config->parse_event(record);
 
       // Join categories with pipe separator for backward compatibility
