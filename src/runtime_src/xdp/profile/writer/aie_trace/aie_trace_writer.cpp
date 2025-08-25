@@ -30,10 +30,12 @@ namespace xdp {
                                  const std::string& version, 
                                  const std::string& creationTime, 
                                  const std::string& /*xrtV*/, 
-                                 const std::string& /*toolV*/)
+                                 const std::string& /*toolV*/,
+                                 io_type oType)
     : VPTraceWriter(filename, version, creationTime, 6 /* us */),
       deviceId(devId),
-      traceStreamId(trStrmId)
+      traceStreamId(trStrmId),
+      offloadType(oType)
 #if 0
       xrtVersion(xrtV),
       toolVersion(toolV)
@@ -73,7 +75,7 @@ namespace xdp {
   void AIETraceWriter::writeTraceEvents()
   {
     // write the entire buffer
-    aie::TraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    aie::TraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId, offloadType);
     if (nullptr == traceData) {
       return;
     }

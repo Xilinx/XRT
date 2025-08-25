@@ -84,7 +84,9 @@ class AieTraceMetadata {
     std::string getCounterScheme(){return counterScheme;}
 
     uint32_t getIterationCount(){return iterationCount;}
-    uint64_t getNumStreams() {return numAIETraceOutput;}
+    // uint64_t getNumStreams() {return numAIETraceOutput;}
+    uint64_t getNumStreamsPLIO() {return numAIETraceOutputPLIO;}
+    uint64_t getNumStreamsGMIO() {return numAIETraceOutputGMIO;}
     uint64_t getContinuousTrace() {return continuousTrace;}
     void resetContinuousTrace() {continuousTrace = false;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
@@ -99,7 +101,8 @@ class AieTraceMetadata {
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
 
-    void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
+    void setNumStreamsPLIO(uint64_t newNumTraceStreams) {numAIETraceOutputPLIO = newNumTraceStreams;}
+    void setNumStreamsGMIO(uint64_t newNumTraceStreams) {numAIETraceOutputGMIO = newNumTraceStreams;}
     void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}
     void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
     uint64_t getDelay() {return ((useDelay) ? delayCycles : 0);}
@@ -132,7 +135,8 @@ class AieTraceMetadata {
     uint32_t iterationCount = 0;
     uint64_t delayCycles = 0;
     uint64_t deviceID;
-    uint64_t numAIETraceOutput = 0;
+    uint64_t numAIETraceOutputPLIO = 0;
+    uint64_t numAIETraceOutputGMIO = 0;
     uint64_t offloadIntervalUs = 0;
     unsigned int aie_trace_file_dump_int_s;
     

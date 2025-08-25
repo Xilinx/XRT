@@ -35,6 +35,7 @@
 #include "xdp/profile/database/dynamic_info/string_table.h"
 #include "xdp/profile/database/dynamic_info/types.h"
 #include "xdp/profile/database/events/vtf_event.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp {
 
@@ -164,8 +165,8 @@ namespace xdp {
     XDP_CORE_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
 
     // Add and get AIE Trace Data Buffer
-    XDP_CORE_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy);
-    XDP_CORE_EXPORT aie::TraceDataType* getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
+    XDP_CORE_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy, io_type offloadType);
+    XDP_CORE_EXPORT aie::TraceDataType* getAIETraceData(uint64_t deviceId, uint64_t strmIndex, io_type offloadType);
 
     // Functions that are used by counter-based plugins
     XDP_CORE_EXPORT void addPowerSample(uint64_t deviceId, double timestamp,
