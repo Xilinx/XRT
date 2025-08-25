@@ -27,9 +27,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateDeviceHWEmu(void* handle)
+void updateDeviceHWEmu(void* handle, bool hw_context_flow)
 {
-  xdp::hwEmuDeviceOffloadPluginInstance.updateDevice(handle) ;
+  xdp::hwEmuDeviceOffloadPluginInstance.updateDevice(handle, hw_context_flow) ;
 }
 
 extern "C"

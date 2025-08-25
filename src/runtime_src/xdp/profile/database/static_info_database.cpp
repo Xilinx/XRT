@@ -1522,10 +1522,9 @@ namespace xdp {
 
   // ************************************************************************
 
-  bool VPStaticDatabase::validXclbin(void* devHandle)
+  bool VPStaticDatabase::validXclbin(void* devHandle, bool hw_context_flow)
   {
-    std::shared_ptr<xrt_core::device> device =
-      xrt_core::get_userpf_device(devHandle);
+    std::shared_ptr<xrt_core::device> device = util::convertToCoreDevice(devHandle, hw_context_flow);
 
     // If this xclbin was built with tools before the 2019.2 release, we
     //  do not support device profiling.  The XRT version of 2019.2 was 2.5.459
@@ -1703,6 +1702,20 @@ namespace xdp {
     // For REGISTER_XCLBIN_STYLE and APP_STYLE_NOT_SET
     // handle is an HW Ctx Impl pointer
     return getHwCtxImplUid(handle);
+  }
+
+  bool VPStaticDatabase::xclbinContainsPl(void* handle, bool hw_context_flow)
+  {
+    auto device = util::convertToCoreDevice(handle, hw_context_flow);
+    if (!device)
+      return false;
+
+    xrt::uuid loadedXclbinUuid = getXclbinUuidOnDevice(device);
+    xrt::xclbin loadedXclbin = device->get_xclbin(loadedXclbinUuid);
+    XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
+
+    return ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
+            (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL));
   }
 
   // Return true if we should reset the device information.

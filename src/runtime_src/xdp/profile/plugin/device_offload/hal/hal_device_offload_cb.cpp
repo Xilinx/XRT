@@ -25,9 +25,9 @@ namespace xdp {
 
   // This function gets called in a callback at the HAL/Shim layer.
   //  It has to be a hardware run.
-  static void updateDeviceHAL(void* handle)
+  static void updateDeviceHAL(void* handle, bool hw_context_flow)
   {
-    deviceOffloadPluginInstance.updateDevice(handle) ;
+    deviceOffloadPluginInstance.updateDevice(handle, hw_context_flow) ;
   }
 
   static void flushDeviceHAL(void* handle)
@@ -38,9 +38,9 @@ namespace xdp {
 } // end namespace xdp 
 
 extern "C"
-void updateDeviceHAL(void* handle) 
+void updateDeviceHAL(void* handle, bool hw_context_flow) 
 {
-  xdp::updateDeviceHAL(handle) ;
+  xdp::updateDeviceHAL(handle, hw_context_flow) ;
 }
 
 extern "C"
