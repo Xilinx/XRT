@@ -49,8 +49,8 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     : deviceID{device_id},
       db{database},
       aieTraceImpl{impl},
-      offloadEnabledPLIO(xrt_core::config::get_aie_trace_offload_plio_enabled()),
-      offloadEnabledGMIO(xrt_core::config::get_aie_trace_offload_gmio_enabled())
+      offloadEnabledPLIO(true),
+      offloadEnabledGMIO(true)
   {}
 
   void AIETraceOffloadManager::initPLIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {

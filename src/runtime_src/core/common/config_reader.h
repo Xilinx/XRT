@@ -1070,20 +1070,6 @@ get_aie_trace_settings_enable_system_timeline()
   return value;
 }
 
-inline bool
-get_aie_trace_offload_plio_enabled()
-{
-  static bool value = detail::get_bool_value("AIE_trace_settings.enable_offload_plio", true);
-  return value;
-}
-
-inline bool
-get_aie_trace_offload_gmio_enabled()
-{
-  static bool value = detail::get_bool_value("AIE_trace_settings.enable_offload_gmio", true);
-  return value;
-}
-
 inline std::string
 get_dtrace_lib_path()
 {
