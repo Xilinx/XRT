@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __EVENT_TRACE_CONFIG_H__
-#define __EVENT_TRACE_CONFIG_H__
+#ifndef EVENT_TRACE_CONFIG_H
+#define EVENT_TRACE_CONFIG_H
 
 #include <cstdint>
 #include <map>
@@ -297,4 +297,4 @@ private:
 
 } // namespace xrt_core::tools::xrt_smi
 
-#endif // __EVENT_TRACE_CONFIG_H__
+#endif // EVENT_TRACE_CONFIG_H

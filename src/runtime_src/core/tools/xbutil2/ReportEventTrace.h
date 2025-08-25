@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __REPORT_EVENT_TRACE_H__
-#define __REPORT_EVENT_TRACE_H__
+#ifndef REPORT_EVENT_TRACE_H
+#define REPORT_EVENT_TRACE_H
 
 #include "tools/common/Report.h"
 
@@ -82,4 +82,4 @@ public:
              std::ostream& output) const override;
 };
 
-#endif // __REPORT_EVENT_TRACE_H__
+#endif // REPORT_EVENT_TRACE_H
