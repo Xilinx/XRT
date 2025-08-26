@@ -16,6 +16,13 @@
 
 using bpt = boost::property_tree::ptree;
 
+namespace {
+constexpr size_t bits_per_byte = 8;
+constexpr size_t byte_alignment = 7;
+constexpr size_t bits_per_uint64 = 64;
+constexpr size_t hex_width_64 = 16;
+}
+
 void
 ReportFirmwareLog::
 getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
@@ -25,35 +32,54 @@ getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
 
 void
 ReportFirmwareLog::
-getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
+getPropertyTree20202(const xrt_core::device* /*dev*/, bpt& /*pt*/) const // Stubbing out for now till we decide on whether to add json dump support
 {}
 
 std::vector<std::string> 
-ReportFirmwareLog::parse_log_entry(const uint8_t* data_ptr, size_t offset, size_t buf_size, size_t header_size, const std::vector<xrt_core::tools::xrt_smi::firmware_log_config::field_info>& fields) {
+ReportFirmwareLog::parse_log_entry(const uint8_t* data_ptr, 
+                                   size_t offset, 
+                                   size_t buf_size, 
+                                   const xrt_core::tools::xrt_smi::firmware_log_config& config) 
+{
   uint32_t argc = 0;
+  size_t header_size = config.get_header_size();
+  const auto& structures = config.get_structures();
+  auto it = structures.find("ipu_log_message_header");
+  if (it == structures.end()) {
+    // Handle error: structure not found
+    return {};
+  }
   std::vector<std::string> entry_data;
 
   size_t bit_offset = 0; // Start at bit 0
-  for (const auto& field : fields) {
+  for (const auto& field : it->second.fields) {
     size_t bit_width = field.width;
-    size_t byte_offset = offset + (bit_offset / 8);
+    size_t byte_offset = offset + (bit_offset / bits_per_byte);
     size_t end_bit = bit_offset + bit_width;
-    size_t end_byte = offset + ((end_bit + 7) / 8);
+    size_t end_byte = offset + ((end_bit + byte_alignment) / bits_per_byte);
     if (end_byte <= offset + header_size) {
       uint64_t raw = 0;
       size_t bytes_to_read = end_byte - byte_offset;
       std::memcpy(&raw, data_ptr + byte_offset, bytes_to_read);
-      size_t lsb = bit_offset % 8;
-      uint64_t mask = (bit_width == 64) ? ~0ULL : ((1ULL << bit_width) - 1);
+      size_t lsb = bit_offset % bits_per_byte;
+      uint64_t mask = (bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << bit_width) - 1);
       uint64_t value = (raw >> lsb) & mask;
       if (field.name == "argc")
         argc = static_cast<uint32_t>(value);
       if (field.format.find("x") != std::string::npos)
-        entry_data.push_back((bit_width == 64) ? boost::str(boost::format("0x%016X") % value) : boost::str(boost::format("0x%08X") % value));
+        entry_data.emplace_back((bit_width == bits_per_uint64) ? boost::str(boost::format("0x%0" + std::to_string(hex_width_64) + "X") % value) : boost::str(boost::format("0x%08X") % value));
+      else if (field.name == "level") {
+        const auto& enums = config.get_enums();
+        auto it = enums.find(field.enumeration);
+        if (it != enums.end())
+          entry_data.emplace_back(std::to_string(value) + ":" + it->second.get_enumerator_name(static_cast<uint32_t>(value)));
+        else
+          entry_data.emplace_back(std::to_string(value));
+      }
       else
-        entry_data.push_back(std::to_string(value));
+        entry_data.emplace_back(std::to_string(value));
     } else {
-      entry_data.push_back("-");
+      entry_data.emplace_back("-");
     }
     bit_offset += bit_width; // Move to the next field
   }
@@ -70,14 +96,13 @@ ReportFirmwareLog::parse_log_entry(const uint8_t* data_ptr, size_t offset, size_
     }
     msg_str = oss.str();
   }
-  entry_data.push_back(msg_str);
-
+  entry_data.emplace_back(msg_str);
   return entry_data;
 }
 
 static std::string
 generate_firmware_log_report(const xrt_core::device* dev,
-                             const std::vector<std::string>& elements_filter)
+                             const std::vector<std::string>& /*elements_filter*/)
 {
   std::stringstream ss;
 
@@ -100,11 +125,10 @@ generate_firmware_log_report(const xrt_core::device* dev,
       return ss.str();
     }
 
-    // Decode header from first 16 bytes
     const auto& structures = config.get_structures();
     auto it = structures.find("ipu_log_message_header");
 
-    const uint8_t* data_ptr = static_cast<const uint8_t*>(log_buffer.data);
+    const auto* data_ptr = static_cast<const uint8_t*>(log_buffer.data);
     size_t buf_size = log_buffer.size;
     size_t offset = 0;
 
@@ -117,7 +141,7 @@ generate_firmware_log_report(const xrt_core::device* dev,
     size_t header_size = config.get_header_size();
 
     while (offset + header_size <= buf_size) {
-      auto entry_data = ReportFirmwareLog::parse_log_entry(data_ptr, offset, buf_size, header_size, it->second.fields);
+      auto entry_data = ReportFirmwareLog::parse_log_entry(data_ptr, offset, buf_size, config);
       log_table.addEntry(entry_data);
       size_t msg_size = entry_data.back().size() * sizeof(uint32_t); // Approximate message size
       size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment

@@ -33,7 +33,7 @@ public:
    * value_to_name: Map from value to enumerator name
    */
   struct enum_info {
-    std::string name;
+    std::string m_name;
     std::map<std::string, uint32_t> enumerator_to_value;
     std::map<uint32_t, std::string> value_to_enumerator;
 
@@ -79,6 +79,7 @@ public:
    * Loads and parses the JSON file, populating enums and structures.
    * Sets valid_ to true if successful, false otherwise.
    */
+    explicit
     firmware_log_config(const std::string& json_file_path); // Initializes using static parse APIs
 
   /**

@@ -41,14 +41,14 @@ parse_enums(const nlohmann::json& config)
   const auto& enums_json = config["enumerations"];
   for (auto it = enums_json.begin(); it != enums_json.end(); ++it) {
     enum_info enum_info;
-    enum_info.name = it.key();
+    enum_info.m_name = it.key();
     if (it.value().contains("enumerators")) {
       for (const auto& [name, value] : it.value()["enumerators"].items()) {
         enum_info.enumerator_to_value[name] = value;
         enum_info.value_to_enumerator[value] = name;
       }
     }
-    enums_map[enum_info.name] = enum_info;
+    enums_map[enum_info.m_name] = enum_info;
   }
   return enums_map;
 }

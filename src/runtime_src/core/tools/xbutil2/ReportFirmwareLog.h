@@ -105,9 +105,9 @@ public:
    * of the log entry.
    */
   static std::vector<std::string> parse_log_entry(const uint8_t* data_ptr, 
-                                                size_t offset, size_t buf_size, 
-                                                size_t header_size, 
-                                                const std::vector<xrt_core::tools::xrt_smi::firmware_log_config::field_info>& fields);
+                                                  size_t offset, 
+                                                  size_t buf_size, 
+                                                  const xrt_core::tools::xrt_smi::firmware_log_config& config);
 };
 
 #endif // REPORT_FIRMWARE_LOG_H
