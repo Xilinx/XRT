@@ -597,23 +597,39 @@ namespace xdp::aie::trace {
     if (aie::isInputSet(type, metricSet)) {
       config.port_trace_is_master[0] = true;
       config.port_trace_is_master[1] = true;
+      // config.s2mm_channels[0] = channel0;
+      // config.s2mm_names[0] = tile.s2mm_names.at(channel0);
+      // if (channel0 != channel1) {
+      //   config.s2mm_channels[1] = channel1;
+      //   config.s2mm_names[1] = tile.s2mm_names.at(channel1);
+      // }
       config.s2mm_channels[0] = channel0;
-      config.s2mm_names[0] = tile.s2mm_names.at(channel0);
+      if (channel0 < tile.s2mm_names.size())
+        config.s2mm_names[0] = tile.s2mm_names[channel0];
       if (channel0 != channel1) {
         config.s2mm_channels[1] = channel1;
-        config.s2mm_names[1] = tile.s2mm_names.at(channel1);
+      if (channel1 < tile.s2mm_names.size())
+        config.s2mm_names[1] = tile.s2mm_names[channel1];
       }
     } 
     else {
       config.port_trace_is_master[0] = false;
       config.port_trace_is_master[1] = false;
+      // config.mm2s_channels[0] = channel0;
+      // config.mm2s_names[0] = tile.mm2s_names.at(channel0);
+      // if (channel0 != channel1) {
+      //   config.mm2s_channels[1] = channel1;
+      //   config.mm2s_names[1] = tile.mm2s_names.at(channel1);
+      // }
       config.mm2s_channels[0] = channel0;
-      config.mm2s_names[0] = tile.mm2s_names.at(channel0);
+      if (channel0 < tile.mm2s_names.size())
+        config.mm2s_names[0] = tile.mm2s_names[channel0];
       if (channel0 != channel1) {
         config.mm2s_channels[1] = channel1;
-        config.mm2s_names[1] = tile.mm2s_names.at(channel1);
+        if (channel1 < tile.mm2s_names.size())
+          config.mm2s_names[1] = tile.mm2s_names[channel1];
+        }
       }
-    }
   }
 
   /****************************************************************************
