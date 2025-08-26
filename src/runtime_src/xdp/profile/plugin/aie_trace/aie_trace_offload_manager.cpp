@@ -54,9 +54,7 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
   {}
 
   void AIETraceOffloadManager::initPLIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
-    offloadEnabledPLIO = xrt_core::config::get_aie_trace_offload_plio_enabled();
     if (!offloadEnabledPLIO) {
-      // std::cout << "!!! AIETraceOffloadManager::initPLIO: PLIO offload disabled by config, skipping.." << std::endl;
       return;
     }
 
@@ -81,9 +79,7 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
               uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
               uint64_t bufSize, uint64_t numStreams, xrt::hw_context context, std::shared_ptr<AieTraceMetadata> metadata)
   {
-    offloadEnabledGMIO = xrt_core::config::get_aie_trace_offload_gmio_enabled();
     if (!offloadEnabledGMIO) {
-      // std::cout << "!!! AIETraceOffloadManager::initGMIO: GMIO offload disabled by config, skipping..." << std::endl;
       return;
     }
 
@@ -96,22 +92,18 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
   }
 #else
   void AIETraceOffloadManager::initGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
-    offloadEnabledGMIO = xrt_core::config::get_aie_trace_offload_gmio_enabled();
     if (!offloadEnabledGMIO) {
-      // std::cout << "!!! AIETraceOffloadManager::initGMIO: GMIO offload disabled by config, skipping" << std::endl;
       return;
     }
 
     gmio.logger = std::make_unique<AIETraceDataLogger>(device_id, io_type::GMIO);
     gmio.offloader = std::make_unique<AIETraceOffload>(handle, device_id, deviceIntf, gmio.logger.get(), false, bufSize, numStreams, devInst);
     gmio.valid = true;
-    // std::cout << "!!! AIETraceOffloadManager::initGMIO called. numStreams: " << numStreams << std::endl;
   }
 #endif
 
   void AIETraceOffloadManager::startOffload(bool continuousTrace, uint64_t offloadIntervalUs){
     if (!offloadEnabledPLIO && !offloadEnabledGMIO) {
-      // std::cout << "!!! AIETraceOffloadManager::startOffload: Both PLIO and GMIO offload disabled by config." << std::endl;
       return;
     }
     if (offloadEnabledPLIO)
