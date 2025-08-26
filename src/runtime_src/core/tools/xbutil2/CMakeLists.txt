@@ -53,6 +53,8 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_Preemption.cpp"
   "OO_EventTrace.cpp"
   "OO_FirmwareLog.cpp"
+  "ReportEventTrace.cpp"
+  "EventTraceConfig.cpp"
 )
 
 # Merge the files into one collection

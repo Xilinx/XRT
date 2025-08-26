@@ -25,6 +25,7 @@
 #include "tools/common/reports/ReportDynamicRegion.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
 #include "tools/common/reports/ReportElectrical.h"
+#include "tools/xbutil2/ReportEventTrace.h"
 #include "tools/common/reports/ReportFirewall.h"
 #include "tools/common/reports/ReportHost.h"
 #include "tools/common/reports/ReportMailbox.h"
@@ -65,6 +66,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportContextHealth>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
+    std::make_shared<ReportEventTrace>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
