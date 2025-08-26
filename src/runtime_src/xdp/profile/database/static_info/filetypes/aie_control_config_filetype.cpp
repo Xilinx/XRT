@@ -406,12 +406,16 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
 
         // Store names of DMA channels for reporting purposes
         for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
-            // NOTE: Channels are listed in numerical order
-            //auto channel = chan.second.get<uint8_t>("channel");
+            auto channel = chan.second.get<uint8_t>("channel");
+            if (channel >= NUM_MEM_CHANNELS) {
+              xrt_core::message::send(severity_level::info, "XRT", "Unable to store dmaChannel");
+              continue;
+            }
+
             if (chan.second.get<std::string>("direction") == "s2mm")
-              tile.s2mm_names.push_back( chan.second.get<std::string>("name") );
+              tile.s2mm_names[channel] = chan.second.get<std::string>("name");
             else
-              tile.mm2s_names.push_back( chan.second.get<std::string>("name") );
+              tile.mm2s_names[channel] = chan.second.get<std::string>("name");
         }
 
         allTiles.emplace_back(std::move(tile));
