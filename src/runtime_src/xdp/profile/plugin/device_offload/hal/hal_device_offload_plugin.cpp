@@ -115,6 +115,12 @@ namespace xdp {
     if (!handle)
       return;
 
+    // NOTE: In load xclin style, multiple calls to loadXclbin have to flush before updateDevice
+    // This makes sure we do not flush if the app style is not set
+    if ((db->getStaticInfo()).getAppStyle() == AppStyle::APP_STYLE_NOT_SET) {
+      std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: AppStyle not set, skipping flush" << std::endl;
+      return ;
+    }
 
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
     std::string path = util::getDebugIpLayoutPath(handle);
@@ -134,7 +140,10 @@ namespace xdp {
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle, bool hw_context_flow)
   {
-    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: hw_context_flow = " << hw_context_flow << std::endl;
+    static int updateCount = 0;
+    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: updateCount = " <<updateCount++
+              << ", userHandle = " << userHandle 
+              << ", hw_context_flow = " << hw_context_flow << std::endl;
     if (!userHandle) {
       std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: userHandle is null" << std::endl;
       return ;
@@ -150,22 +159,22 @@ namespace xdp {
       return ;
     }
 
-
-
-  auto device = util::convertToCoreDevice(userHandle, hw_context_flow);
+    auto device = util::convertToCoreDevice(userHandle, hw_context_flow);
+    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: userHandle = " << userHandle << " & device = " 
+              << device.get() << " & hw_context_flow = " << hw_context_flow << std::endl;
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
-  if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. PL Trace is not yet supported for this combination.");
-    return;
-  }
-  else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
-  #ifdef XDP_VE2_ZOCL_BUILD
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. PL Trace is not yet supported for this combination.");
-    return;
-  #else
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. PL Trace should be available.");
-  #endif
+    if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. PL Trace is not yet supported for this combination.");
+      return;
     }
+    else if(0 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "zocl") {
+    #ifdef XDP_VE2_ZOCL_BUILD
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Got XDNA device when xdp_mode is set to ZOCL. PL Trace is not yet supported for this combination.");
+      return;
+    #else
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Got EDGE device when xdp_mode is set to ZOCL. PL Trace should be available.");
+    #endif
+      }
 #endif
  
     init();

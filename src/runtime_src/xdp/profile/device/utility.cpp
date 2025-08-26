@@ -95,11 +95,14 @@ namespace xdp::util {
   std::shared_ptr<xrt_core::device>
   convertToCoreDevice(void* handle, bool hw_context_flow)
   {
+    std::cout << "!!! convertToCoreDevice: calling get_userpf_device(), handle = " << handle 
+              << " hw_context_flow = " << hw_context_flow << std::endl;
     if (hw_context_flow) {
       xrt::hw_context context =
         xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
       return xrt_core::hw_context_int::get_core_device(context);
     }
+
     return xrt_core::get_userpf_device(handle);
   }
 
