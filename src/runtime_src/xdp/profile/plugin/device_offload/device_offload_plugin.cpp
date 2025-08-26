@@ -124,7 +124,6 @@ namespace xdp {
   {
     uint64_t deviceId = 0;
     deviceId = db->addDevice(sysfsPath) ;
-    std::cout << "!!! Adding device with ID: " << deviceId << std::endl;
 
     if (!device_trace)
         return deviceId;

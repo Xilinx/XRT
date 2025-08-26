@@ -1524,10 +1524,7 @@ namespace xdp {
 
   bool VPStaticDatabase::validXclbin(void* devHandle, bool hw_context_flow)
   {
-    std::cout << "!!! VPStaticDatabase::validXclbin, devHandle " << devHandle
-              << ", hw_context_flow " << hw_context_flow << std::endl;
     std::shared_ptr<xrt_core::device> device = util::convertToCoreDevice(devHandle, hw_context_flow);
-    std::cout << "!!! VPStaticDatabase::validXclbin, device " << device.get() << std::endl;
 
     // If this xclbin was built with tools before the 2019.2 release, we
     //  do not support device profiling.  The XRT version of 2019.2 was 2.5.459
@@ -1697,7 +1694,6 @@ namespace xdp {
   uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
   {
     auto style = getAppStyle();
-    std::cout << "!!! VPStaticDatabase::getDeviceContextUniqueId called, handle = " << handle << ", AppStyle = " << style << std::endl;
     if (AppStyle::LOAD_XCLBIN_STYLE == style) {
       // handle is an xclDeviceHandle in this style
       // Use sysfs path based unique device identifier in XDP

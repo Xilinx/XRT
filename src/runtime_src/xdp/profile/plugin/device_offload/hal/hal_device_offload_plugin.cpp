@@ -71,9 +71,7 @@ namespace xdp {
 
   void HALDeviceOffloadPlugin::init()
   {
-    std::cout << "!!! HALDeviceOffloadPlugin::init() called" << std::endl;
     if (initialized) {
-      std::cout << "!!! HALDeviceOffloadPlugin::init() already initialized" << std::endl;
       return;
     }
     // Open all existing devices so that XDP can access the owned handles
@@ -85,7 +83,6 @@ namespace xdp {
 
         auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
         std::string path = util::getDebugIpLayoutPath(ownedHandle);
-        std::cout << "!!! HALDeviceOffloadPlugin::HALDeviceOffloadPlugin(): sysPath = " << path << " & index = " << index << " ownedHandle = " << ownedHandle << " & totalDevices = " << numDevices << std::endl;
 
         if ("" != path) {
           // TODO: Update this code to use device ID from the database 
@@ -104,7 +101,6 @@ namespace xdp {
         continue;
       }
     }
-    std::cout << "!!! HALDeviceOffloadPlugin::init() completed" << std::endl;
     initialized = true;
   }
 
@@ -118,16 +114,13 @@ namespace xdp {
     // NOTE: In load xclin style, multiple calls to loadXclbin have to flush before updateDevice
     // This makes sure we do not flush if the app style is not set
     if ((db->getStaticInfo()).getAppStyle() == AppStyle::APP_STYLE_NOT_SET) {
-      std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: AppStyle not set, skipping flush" << std::endl;
       return ;
     }
 
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
     std::string path = util::getDebugIpLayoutPath(handle);
-    std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: path = " << path << std::endl;
     
     uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(handle);
-    std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: deviceId = " << deviceId << std::endl;
 
     if (offloaders.find(deviceId) != offloaders.end()) {
       auto offloader = std::get<0>(offloaders[deviceId]) ;
@@ -141,27 +134,16 @@ namespace xdp {
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle, bool hw_context_flow)
   {
     static int updateCount = 0;
-    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: updateCount = " <<updateCount++
-              << ", userHandle = " << userHandle 
-              << ", hw_context_flow = " << hw_context_flow << std::endl;
-    if (!userHandle) {
-      std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: userHandle is null" << std::endl;
+    if (!userHandle)
       return ;
-    }
 
-    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
-      std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: XDP configuration is not continued" << std::endl;
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow)))
       return;
-    }
 
-    if (!(db->getStaticInfo()).xclbinContainsPl(userHandle, hw_context_flow)) {
-      std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: xclbin does not contain PL" << std::endl;
+    if (!(db->getStaticInfo()).xclbinContainsPl(userHandle, hw_context_flow))
       return ;
-    }
 
     auto device = util::convertToCoreDevice(userHandle, hw_context_flow);
-    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: userHandle = " << userHandle << " & device = " 
-              << device.get() << " & hw_context_flow = " << hw_context_flow << std::endl;
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Got ZOCL device when xdp_mode is set to XDNA. PL Trace is not yet supported for this combination.");
@@ -183,12 +165,10 @@ namespace xdp {
     //  should use our own locally opened handle to access the physical
     //  device.
     std::string path = util::getDebugIpLayoutPath(userHandle);
-    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: path = " << path << std::endl;
     // if (path == "")
     //   return ;
 
     uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(userHandle);
-    std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: deviceId = " << deviceId << std::endl;
     void* ownedHandle = deviceIdToHandle[deviceId] ;
   
     clearOffloader(deviceId); 
