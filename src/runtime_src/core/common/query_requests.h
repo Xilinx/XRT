@@ -4200,7 +4200,7 @@ struct firmware_log_state : request
     uint32_t action;
     uint32_t log_level;
   };
-  using result_type = value_type;  // get value type
+  using result_type = uint32_t;  // get value type
 
   static const key_type key = key_type::firmware_log_state;
   std::any
