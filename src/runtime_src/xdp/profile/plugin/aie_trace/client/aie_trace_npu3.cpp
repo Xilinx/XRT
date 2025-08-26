@@ -934,8 +934,8 @@ namespace xdp {
         {
           uint16_t phyEvent1 = 0;
           uint16_t phyEvent2 = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent1);
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent2);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
           if (type == module_type::core) {
             cfgTile->memory_trace_config.start_event = phyEvent1;
             cfgTile->memory_trace_config.stop_event = phyEvent2;
@@ -979,7 +979,7 @@ namespace xdp {
 
           // Update config file
           uint16_t phyEvent = 0;
-          auto phyMod = XAIE_CORE_MOD;
+          auto phyMod = (type == module_type::mem_tile) ? XAIE_MEM_MOD: XAIE_CORE_MOD;
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, memoryEvents[i], &phyEvent);
 
           if (type == module_type::mem_tile)
