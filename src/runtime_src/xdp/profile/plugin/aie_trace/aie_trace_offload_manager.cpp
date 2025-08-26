@@ -7,7 +7,6 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
   void AIETraceOffloadManager::startPLIOOffload(bool continuousTrace, uint64_t offloadIntervalUs) {
-    // std::cout << "!!! AIETraceOffloadManager::startPLIOOffload called." << std::endl;
     if (plio.offloader && continuousTrace) {
       plio.offloader->setContinuousTrace();
       plio.offloader->setOffloadIntervalUs(offloadIntervalUs);
@@ -17,7 +16,6 @@ namespace xdp {
   }
 
   void AIETraceOffloadManager::startGMIOOffload(bool continuousTrace, uint64_t offloadIntervalUs) {
-    // std::cout << "!!! AIETraceOffloadManager::startGMIOOffload called." << std::endl;
     if (gmio.offloader && continuousTrace) {
       gmio.offloader->setContinuousTrace(); // GMIO trace offload does not support continuous trace
       gmio.offloader->setOffloadIntervalUs(offloadIntervalUs);
@@ -70,7 +68,6 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     (void)devInst;
 #endif
     plio.valid = true;
-    // std::cout << "!!! AIETraceOffloadManager::initPLIO called. numStreams: " << numStreams << std::endl;
   }
 
   // TODO: Use const references for parameters where applicable
@@ -116,11 +113,9 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     bool readStatus = true;
 
     if (offloadEnabledPLIO && plio.offloader) {
-      // std::cout << "!!! AIETraceOffloadManager::initReadTraces: Initializing PLIO trace read." << std::endl;
       readStatus &= plio.offloader->initReadTrace();
     }
     if (offloadEnabledGMIO && gmio.offloader) {
-      // std::cout << "!!! AIETraceOffloadManager::initReadTraces: Initializing GMIO trace read." << std::endl;
       readStatus &= gmio.offloader->initReadTrace();
     }
     return readStatus;
@@ -128,17 +123,14 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
 
   void AIETraceOffloadManager::flushAll(bool warn) {
     if (offloadEnabledPLIO && plio.offloader) {
-      // std::cout << "!!! AIETraceOffloadManager::flushAll: Flushing PLIO traces." << std::endl;
       flushOffloader(plio.offloader, warn);
     }
     if (offloadEnabledGMIO && gmio.offloader) {
-      // std::cout << "!!! AIETraceOffloadManager::flushAll: Flushing GMIO traces." << std::endl;
       flushOffloader(gmio.offloader, warn);
     }
   }
 
   void AIETraceOffloadManager::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn) {
-    // std::cout << "!!! AIETraceOffloadManager::flushOffloader called." << std::endl;
     if (offloader->continuousTrace()) {
       offloader->stopOffload();
       while (offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) {}
