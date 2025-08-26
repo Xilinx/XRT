@@ -89,8 +89,7 @@ namespace xdp {
 
         if ("" != path) {
           // TODO: Update this code to use device ID from the database 
-          // addDevice(path); 
-          uint64_t deviceId = addDevice(path, ownedHandle);
+          uint64_t deviceId = addDevice(path);
 
           // Now, map device ID of this device with device handle owned by XDP
           deviceIdToHandle[deviceId] = ownedHandle;
@@ -120,10 +119,7 @@ namespace xdp {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
     std::string path = util::getDebugIpLayoutPath(handle);
     std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: path = " << path << std::endl;
-    // if (path == "")
-    //   return ;
     
-    // uint64_t deviceId = db->addDevice(path) ;
     uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(handle);
     std::cout << "!!! HALDeviceOffloadPlugin::flushDevice: deviceId = " << deviceId << std::endl;
 
@@ -182,7 +178,6 @@ namespace xdp {
     // if (path == "")
     //   return ;
 
-    // uint64_t deviceId = db->addDevice(path) ;
     uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(userHandle);
     std::cout << "!!! HALDeviceOffloadPlugin::updateDevice: deviceId = " << deviceId << std::endl;
     void* ownedHandle = deviceIdToHandle[deviceId] ;
