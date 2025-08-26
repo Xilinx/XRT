@@ -40,37 +40,6 @@ namespace xdp {
   HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : PLDeviceOffloadPlugin()
   {
     db->registerInfo(info::device_offload) ;
-    std::cout << "!!! HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() skipping init() call for now" << std::endl;
-
-    // // Open all existing devices so that XDP can access the owned handles
-    // uint32_t numDevices = xrt_core::get_total_devices(true).second;
-    // uint32_t index = 0;
-    // while (index < numDevices) {
-    //   try {
-    //     xrtDevices.push_back(std::make_unique<xrt::device>(index));
-
-    //     auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
-    //     std::string path = util::getDebugIpLayoutPath(ownedHandle);
-    //     std::cout << "!!! HALDeviceOffloadPlugin::HALDeviceOffloadPlugin(): sysPath = " << path << " & index = " << index << " ownedHandle = " << ownedHandle << " & totalDevices = " << numDevices << std::endl;
-
-    //     if ("" != path) {
-    //       // TODO: Update this code to use device ID from the database 
-    //       // addDevice(path); 
-    //       uint64_t deviceId = addDevice(path, ownedHandle);
-
-    //       // Now, map device ID of this device with device handle owned by XDP
-    //       deviceIdToHandle[deviceId] = ownedHandle;
-    //     }
-
-    //     // Move on to the next device
-    //     ++index;
-    //   } catch (const std::runtime_error& e) {
-    //     std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
-    //     xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
-    //     ++index;
-    //     continue;
-    //   }
-    // }
   }
 
   HALDeviceOffloadPlugin::~HALDeviceOffloadPlugin()

@@ -173,7 +173,7 @@ private:
 protected:
   PLDeviceIntf* dev_intf;
   bool m_initialized = false;
-  bool m_debug = true; /* Enable Output stream for log */
+  bool m_debug = false; /* Enable Output stream for log */
 
 private:
   PLDeviceTraceLogger* deviceTraceLogger;

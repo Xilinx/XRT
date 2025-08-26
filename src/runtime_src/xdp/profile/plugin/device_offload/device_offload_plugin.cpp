@@ -123,10 +123,6 @@ namespace xdp {
   uint64_t PLDeviceOffloadPlugin::addDevice(const std::string& sysfsPath, void* handle)
   {
     uint64_t deviceId = 0;
-    // if (handle)
-    //   deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(handle);
-    // else
-    //   deviceId = db->addDevice(sysfsPath) ;
     deviceId = db->addDevice(sysfsPath) ;
     std::cout << "!!! Adding device with ID: " << deviceId << std::endl;
 
