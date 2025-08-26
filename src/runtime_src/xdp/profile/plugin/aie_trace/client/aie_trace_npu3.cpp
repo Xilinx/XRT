@@ -580,8 +580,8 @@ namespace xdp {
 
     // Since we're tracing DMA events, start trace right away.
     // Specify user event 0 as trace end so we can flush after run.
-    comboEvents.push_back(XAIE_EVENT_TRUE_MEM);
-    comboEvents.push_back(XAIE_EVENT_USER_EVENT_0_MEM);
+    comboEvents.push_back(XAIE_EVENT_TRUE_CORE);
+    comboEvents.push_back(XAIE_EVENT_USER_EVENT_0_CORE);
     return comboEvents;
   }
 
@@ -908,6 +908,7 @@ namespace xdp {
       if ((type == module_type::core) || (type == module_type::mem_tile)) {
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
         XAie_ModuleType mod = XAIE_MEM_MOD;
+        auto phyMod = (type == module_type::mem_tile) ? XAIE_MEM_MOD: XAIE_CORE_MOD;
 
         // Set overall start/end for trace capture
         auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
@@ -934,8 +935,8 @@ namespace xdp {
         {
           uint16_t phyEvent1 = 0;
           uint16_t phyEvent2 = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, traceStartEvent, &phyEvent1);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, traceEndEvent, &phyEvent2);
           if (type == module_type::core) {
             cfgTile->memory_trace_config.start_event = phyEvent1;
             cfgTile->memory_trace_config.stop_event = phyEvent2;
@@ -979,7 +980,7 @@ namespace xdp {
 
           // Update config file
           uint16_t phyEvent = 0;
-          auto phyMod = (type == module_type::mem_tile) ? XAIE_MEM_MOD: XAIE_CORE_MOD;
+          
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, memoryEvents[i], &phyEvent);
 
           if (type == module_type::mem_tile)
