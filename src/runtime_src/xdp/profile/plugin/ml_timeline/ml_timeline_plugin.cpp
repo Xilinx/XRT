@@ -122,7 +122,7 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    //uint64_t deviceId = getHwCtxImplUid(hwCtxImpl); // TODO
+    //uint64_t deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl); // TODO
     uint64_t implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
 
     std::string winDeviceName = "win_device" + std::to_string(implId);
@@ -153,7 +153,7 @@ namespace xdp {
       return;
     }
 
-    uint64_t deviceId = getHwCtxImplUid(hwCtxImpl);
+    uint64_t deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
     uint64_t implId = mMultiImpl.size();  // to match ML Timeline output file naming convention
 
     std::string deviceName = util::getDeviceName(hwCtxImpl, true);
