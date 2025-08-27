@@ -112,10 +112,11 @@ namespace xdp {
     if (path == "")
       return ;
 
+    // TODO: Update plugin to get deviceId using set AppStyle
     uint64_t deviceId = db->addDevice(path) ;
     if (devicesSeen.find(deviceId) == devicesSeen.end()) {
       devicesSeen.emplace(deviceId) ;
-      addDevice(path) ; // Base class functionality to add writer
+      createWriters(deviceId) ; // Base class functionality to add writer
     }
 
     // Clear out any previous interface we might have had for talking to this

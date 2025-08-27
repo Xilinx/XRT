@@ -85,8 +85,8 @@ namespace xdp {
         std::string path = util::getDebugIpLayoutPath(ownedHandle);
 
         if ("" != path) {
-          // TODO: Update this code to use device ID from the database 
-          uint64_t deviceId = addDevice(path);
+          uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(ownedHandle);
+          createWriters(deviceId); // Base class functionality to add writer
 
           // Now, map device ID of this device with device handle owned by XDP
           deviceIdToHandle[deviceId] = ownedHandle;
@@ -139,7 +139,7 @@ namespace xdp {
     if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow)))
       return;
 
-    if (!(db->getStaticInfo()).xclbinContainsPl(userHandle, hw_context_flow))
+    if (hw_context_flow && (!(db->getStaticInfo()).xclbinContainsPl(userHandle, hw_context_flow)))
       return ;
 
     auto device = util::convertToCoreDevice(userHandle, hw_context_flow);
@@ -157,19 +157,22 @@ namespace xdp {
     #endif
       }
 #endif
- 
-    init();
-    // For HAL devices, the pointer passed in is an xrtDeviceHandle.
-    //  We will query information on that passed in handle, but we
-    //  should use our own locally opened handle to access the physical
-    //  device.
-    std::string path = util::getDebugIpLayoutPath(userHandle);
-    // if (path == "")
-    //   return ;
 
+    void* ownedHandle = nullptr;
     uint64_t deviceId = (db->getStaticInfo()).getDeviceContextUniqueId(userHandle);
-    void* ownedHandle = deviceIdToHandle[deviceId] ;
-  
+    if (hw_context_flow) {
+      createWriters(deviceId);
+    }
+    else {
+      // For HAL devices, the pointer passed in is an xrtDeviceHandle.
+      //  We will query information on that passed in handle, but we
+      //  should use our own locally opened handle to access the physical
+      //  device.
+      //  NOTE: Applicable to LOAD_XCLBIN_STYLE app style. 
+      init();
+      ownedHandle = deviceIdToHandle[deviceId] ;
+    }
+
     clearOffloader(deviceId); 
 
     if (!(db->getStaticInfo()).validXclbin(userHandle, hw_context_flow)) {
@@ -185,7 +188,7 @@ namespace xdp {
     }
     
     // Update the static database with all the information that
-    //  will be needed later
+    // will be needed later
     if(hw_context_flow)
       db->getStaticInfo().updateDeviceFromCoreDevice(deviceId, device, true, std::make_unique<HalDevice>(device->get_device_handle()));
     else

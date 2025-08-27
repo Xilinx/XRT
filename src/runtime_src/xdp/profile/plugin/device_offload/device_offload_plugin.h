@@ -61,7 +61,7 @@ namespace xdp {
 
     std::map<uint64_t, DeviceData> offloaders;
 
-    uint64_t addDevice(const std::string& sysfsPath) ;
+    void createWriters(uint64_t deviceId) ;
     void configureDataflow(uint64_t deviceId, PLDeviceIntf* devInterface) ;
     void configureFa(uint64_t deviceId, PLDeviceIntf* devInterface) ;
     void configureCtx(uint64_t deviceId, PLDeviceIntf* devInterface) ;

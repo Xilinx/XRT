@@ -122,8 +122,9 @@ namespace xdp {
     if (path == "")
       return ;
 
-    uint64_t deviceId = 0;
-    deviceId = db->addDevice(path) ;
+    // TODO: Update plugin to get deviceId using set AppStyle
+    uint64_t deviceId =  db->addDevice(path) ;
+    createWriters(deviceId) ;
 
     if (!(db->getStaticInfo()).validXclbin(device->get_xcl_handle())) {
       std::string msg =
