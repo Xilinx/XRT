@@ -53,11 +53,10 @@ processor_name()
 
   if (cpuinfo.is_open()) {
     while (std::getline(cpuinfo, line)) {
-      if (line.rfind("model name", 0) != 0) { // Check if line starts with "model name"
+      if (line.rfind("model name", 0) != 0)  // Check if line starts with "model name"
         continue;
-      }
-      size_t colon_pos = line.find(":");
-      if (colon_pos != std::string::npos) {
+
+      if (auto colon_pos = line.find(":"); colon_pos != std::string::npos) {
         model_name = line.substr(colon_pos + 2); // Extract substring after ": "
         break;
       }
@@ -116,9 +115,9 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
   pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
-  boost::property_tree::ptree ptLibInfo;
-  ptLibInfo.push_back( {"", glibc_info()} );
-  pt.put_child("libraries", ptLibInfo);
+  boost::property_tree::ptree pt_lib_info;
+  pt_lib_info.push_back( {"", glibc_info()} );
+  pt.put_child("libraries", pt_lib_info);
 
   char hostname[256] = {0};
   gethostname(hostname, 256);
