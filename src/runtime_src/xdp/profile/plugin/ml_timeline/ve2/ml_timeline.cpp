@@ -64,7 +64,7 @@ namespace xdp {
               "In destructor for ML Timeline Plugin for VE2 Device.");
   }
 
-  void MLTimelineVE2Impl::updateDevice(void* hwCtxImpl)
+  void MLTimelineVE2Impl::updateDevice(void* hwCtxImpl, uint64_t devId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::updateDevice");
@@ -84,7 +84,7 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Allocated buffer In MLTimelineVE2Impl::updateDevice");
 
-    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader(devId);
     if (metadataReader) {
       auto activeUCs = metadataReader->getActiveMicroControllers();
       mNumBufSegments = activeUCs.size();

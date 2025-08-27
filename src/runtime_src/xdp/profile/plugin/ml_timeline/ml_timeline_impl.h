@@ -42,7 +42,7 @@ namespace xdp {
 
       virtual ~MLTimelineImpl() {}
 
-      virtual void updateDevice(void*) = 0;
+      virtual void updateDevice(void*, uint64_t) = 0;
       virtual void finishflushDevice(void*, uint64_t) = 0;
   };
 

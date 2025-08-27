@@ -105,8 +105,9 @@ namespace xdp {
 
   void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
           "In ML Timeline Plugin : updateDevice.");
+          
       
 #ifdef XDP_CLIENT_BUILD
 
@@ -151,16 +152,18 @@ namespace xdp {
       return;
     }
 
+    uint64_t deviceId = getHwCtxImplUid(hwCtxImpl);
+
     uint64_t implId = mMultiImpl.size();
 
-    std::string deviceName = "ve2_device" + std::to_string(implId);
-    uint64_t deviceId = db->addDevice(deviceName);
+    std::string deviceName = util::getDeviceName(hwCtxImpl, true);
+
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
-    mlImpl->updateDevice(hwCtxImpl);
+    mlImpl->updateDevice(hwCtxImpl, deviceId);
     
   #endif
 
@@ -178,7 +181,7 @@ namespace xdp {
       return;   
     }
     std::map<void* /*hwCtxImpl*/,
-             std::pair<uint64_t /* deviceId */, std::unique_ptr<MLTimelineImpl>>>::iterator itr;
+             std::pair<uint64_t /* implId */, std::unique_ptr<MLTimelineImpl>>>::iterator itr;
 
     itr = mMultiImpl.find(hwCtxImpl);
     if (itr == mMultiImpl.end()) {
