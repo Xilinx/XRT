@@ -133,7 +133,6 @@ namespace xdp {
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle, bool hw_context_flow)
   {
-    static int updateCount = 0;
     if (!userHandle)
       return ;
 
