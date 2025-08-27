@@ -53,15 +53,15 @@ processor_name()
 
   if (cpuinfo.is_open()) {
     while (std::getline(cpuinfo, line)) {
-      if (line.rfind("model name", 0) == 0) { // Check if line starts with "model name"
-        size_t colon_pos = line.find(":");
-        if (colon_pos != std::string::npos) {
-          model_name = line.substr(colon_pos + 2); // Extract substring after ": "
-          break;
-        }
+      if (line.rfind("model name", 0) != 0) { // Check if line starts with "model name"
+        continue;
+      }
+      size_t colon_pos = line.find(":");
+      if (colon_pos != std::string::npos) {
+        model_name = line.substr(colon_pos + 2); // Extract substring after ": "
+        break;
       }
     }
-    cpuinfo.close();
   }
   return model_name;
 }
