@@ -46,7 +46,7 @@ inline
 void update_device(void* handle, bool hw_context_flow)
 {
 #ifndef __HWEM__
-  hal::update_device(handle); //PL device offload
+  hal::update_device(handle, hw_context_flow); //PL device offload
   aie::update_device(handle, hw_context_flow); //trace
   //aie::dbg::update_device(handle); //debug
 #else
