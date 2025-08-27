@@ -187,9 +187,9 @@ namespace xdp {
     // Update the static database with all the information that
     //  will be needed later
     if(hw_context_flow)
-      db->getStaticInfo().updateDeviceFromCoreDevice(deviceId, device, true, std::move(std::make_unique<HalDevice>(device->get_device_handle())));
+      db->getStaticInfo().updateDeviceFromCoreDevice(deviceId, device, true, std::make_unique<HalDevice>(device->get_device_handle()));
     else
-      db->getStaticInfo().updateDeviceFromHandle(deviceId, std::move(std::make_unique<HalDevice>(ownedHandle)), userHandle) ;
+      db->getStaticInfo().updateDeviceFromHandle(deviceId, std::make_unique<HalDevice>(ownedHandle), userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
