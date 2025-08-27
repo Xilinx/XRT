@@ -92,6 +92,11 @@ namespace xdp {
       * For now, each buffer segment is equal sized.
       */
       uint32_t segmentSzInBytes = mBufSz / mNumBufSegments;
+      uint32_t remBytes = segmentSzInBytes % RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+      if (0 != remBytes) {
+        // Each segment needs to be aligned at RECORD_TIMER_ENTRY_SZ_IN_BYTES
+        segmentSzInBytes -= remBytes;
+      }
 
       std::map<uint32_t, size_t> activeUCsegmentMap;
       for (auto const &e : activeUCs) {
