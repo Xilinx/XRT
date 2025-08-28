@@ -1,7 +1,9 @@
-#!/bin/bash
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 # -- Detect a Windows environment and automatically switch to the .bat file
-if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
+if [ "$(uname | grep -E '^(windows32|CYGWIN)')" ]; then
   trap "" INT
   "$0.bat" "$@"
   exit $?
@@ -12,7 +14,6 @@ XRT_PROG=xclbinutil
 
 # -- Examine the options 
 XRTWARP_PROG_ARGS_size=0
-XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     #  Future option example syntax
@@ -23,22 +24,31 @@ while [ $# -gt 0 ]; do
 
     # Copy the remaining options
     *)
-      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+      eval "XRTWRAP_PROG_ARG_$XRTWARP_PROG_ARGS_size=\"\$1\""
+      XRTWARP_PROG_ARGS_size=$((XRTWARP_PROG_ARGS_size + 1))
       shift
       ;;
   esac
 done
 
 # -- Find loader directory
-XRT_LOADER_DIR="`dirname \"$0\"`"
+XRT_LOADER_DIR="$(dirname "$0")"
 
 # For edge platforms loader is not required as tools are in standard location(/usr).
 # So calling unwrapped tool from this script itself.
-if [[ $XRT_LOADER_DIR =~ "/usr" ]]; then
-    "${XRT_LOADER_DIR}/unwrapped/${XRT_PROG}" "${XRTWRAP_PROG_ARGS[@]}"
-    exit 0
-fi
+case "$XRT_LOADER_DIR" in
+    */usr*|/usr*)
+        # Build arguments dynamically
+        i=0
+        while [ $i -lt $XRTWARP_PROG_ARGS_size ]; do
+            eval "arg=\$XRTWRAP_PROG_ARG_$i"
+            set -- "$@" "$arg"
+            i=$((i + 1))
+        done
+        "${XRT_LOADER_DIR}/unwrapped/${XRT_PROG}" "$@"
+        exit 0
+        ;;
+esac
 
 # Call loader for dc platforms
 XRT_LOADER="${XRT_LOADER_DIR}/unwrapped/loader"
@@ -49,5 +59,12 @@ if [ ! -f "$XRT_LOADER" ]; then
   exit 1
 fi
 
-"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+# Build arguments dynamically for final call
+i=0
+while [ $i -lt $XRTWARP_PROG_ARGS_size ]; do
+    eval "arg=\$XRTWRAP_PROG_ARG_$i"
+    set -- "$@" "$arg"
+    i=$((i + 1))
+done
 
+"${XRT_LOADER}" -exec $XRT_PROG "$@"
