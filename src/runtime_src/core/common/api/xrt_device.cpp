@@ -529,6 +529,36 @@ write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
       }
     });
 }
+
+float
+device::
+get_thermal(const thermal& arg) const
+{
+  return xdp::native::profiling_wrapper("xrt::device::get_thermal",
+  [this, arg] {
+    try {
+      return get_handle()->get_thermal(arg);
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      throw std::runtime_error("get_thermal is not supported on this platform");
+    }
+  });
+}
+
+void
+device::
+set_thermal_threshold(const thermal& arg, uint32_t value) const
+{
+  return xdp::native::profiling_wrapper("xrt::device::set_thermal_threshold",
+  [this, arg, value] {
+    try {
+      get_handle()->set_thermal_threshold(arg, value);
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      throw std::runtime_error("set_thermal_threshold is not supported on this platform");
+    }
+  });
+}
 } // xrt::aie
 
 ////////////////////////////////////////////////////////////////
