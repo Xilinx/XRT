@@ -22,7 +22,7 @@
 //  called directly.
 
 extern "C" 
-void updateDeviceHAL(void* handle) ;
+void updateDeviceHAL(void* handle, bool hw_context_flow=false) ;
 
 extern "C"
 void flushDeviceHAL(void* handle) ;

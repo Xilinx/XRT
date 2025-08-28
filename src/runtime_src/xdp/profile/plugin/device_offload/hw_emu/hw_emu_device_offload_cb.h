@@ -22,7 +22,7 @@
 //  called directly.
 
 extern "C"
-void updateDeviceHWEmu(void* handle) ;
+void updateDeviceHWEmu(void* handle, bool hw_context_flow=false) ;
 
 extern "C"
 void flushDeviceHWEmu(void* handle) ;
