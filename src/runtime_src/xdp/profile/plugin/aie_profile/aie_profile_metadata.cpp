@@ -494,11 +494,9 @@ namespace xdp {
       if ((metrics[i].size() != 3) && (metrics[i].size() != 4))
         continue;
 
-      if (metrics[i].size() == 3) {
-        if (metrics[i][1].find('{') == std::string::npos) { 
-          // not found
-          continue;
-        } 
+      if ((metrics[i].size() == 3) && (metrics[i][1].find('{') == std::string::npos)) {
+        // the second string in this metric set does not contain a '{', which means it does not describe a range of tiles
+        continue;
       }
 
       isRange = true;
@@ -518,7 +516,7 @@ namespace xdp {
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
         
-        if (minTile.size() != 2 || maxTile.size() != 2) {
+        if ((minTile.size() != 2) || (maxTile.size() != 2)) {
           std::stringstream msg;
           msg << "Tile range specification in tile_based_" << modName
               << "_metrics is not a valid format and hence skipped. Should be {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}";
