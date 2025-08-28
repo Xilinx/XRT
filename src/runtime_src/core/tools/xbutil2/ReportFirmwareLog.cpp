@@ -97,7 +97,7 @@ parse_log_entry(const uint8_t* data_ptr,
       field_context ctx{data_ptr, offset, bit_offset, bit_width, std::make_shared<firmware_log_config::field_info>(field)};
       std::string field_value = parse_field(ctx, config);
       if (field.name == "argc") {
-        argc = static_cast<uint32_t>(std::stoul(field_value, nullptr, 16));
+        argc = static_cast<uint32_t>(std::stoul(field_value, nullptr, hex_width_64));
       }
       entry_data.emplace_back(field_value);
     } else {
