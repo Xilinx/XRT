@@ -68,45 +68,27 @@ namespace xdp {
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineVE2Impl::updateDevice");
-    try {
-      mResultBOHolder = std::make_unique<xdp::ResultBOContainer>(hwCtxImpl, mBufSz);
-      memset(mResultBOHolder->map(), 0, mBufSz);
-
-    } catch (std::exception& e) {
-      std::stringstream msg;
-      msg << "Unable to create/initialize result buffer of size "
-          << std::hex << mBufSz << std::dec
-          << " Bytes for Record Timer Values. Cannot get ML Timeline info. " 
-          << e.what() << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-      return;
-    }
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-              "Allocated buffer In MLTimelineVE2Impl::updateDevice");
 
     auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader(devId);
+    std::map<uint32_t, size_t> activeUCsegmentMap;
     if (metadataReader) {
       auto activeUCs = metadataReader->getActiveMicroControllers();
       mNumBufSegments = activeUCs.size();
       /*
       * For now, each buffer segment is equal sized.
       */
-      uint32_t segmentSzInBytes = mBufSz / mNumBufSegments;
-      uint32_t remBytes = segmentSzInBytes % RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+      uint32_t alignment = mNumBufSegments * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+      uint32_t remBytes  = mBufSz % alignment;
       if (0 != remBytes) {
-        // Each segment needs to be aligned at RECORD_TIMER_ENTRY_SZ_IN_BYTES
-        segmentSzInBytes -= remBytes;
+        mBufSz -= remBytes;
       }
-
-      std::map<uint32_t, size_t> activeUCsegmentMap;
+      uint32_t segmentSzInBytes = mBufSz / mNumBufSegments;
       for (auto const &e : activeUCs) {
         // For VE2, index for buffer segment is same as the SHIM Col number
         activeUCsegmentMap[e.col] = segmentSzInBytes;
       }
-      xrt_core::bo_int::config_bo(mResultBOHolder->mBO, activeUCsegmentMap);
-
       std::stringstream numSegmentMsg;
-      numSegmentMsg << "ML Timeline buffer is configured to have " 
+      numSegmentMsg << "ML Timeline buffer will be configured to have " 
           << mNumBufSegments << " segments, each " 
           << segmentSzInBytes << " bytes in size." << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
@@ -124,6 +106,28 @@ namespace xdp {
           << " Please check the number of columns used by the design." << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
     }
+
+    try {
+      mResultBOHolder = std::make_unique<xdp::ResultBOContainer>(hwCtxImpl, mBufSz);
+      memset(mResultBOHolder->map(), 0, mBufSz);
+
+    } catch (std::exception& e) {
+      std::stringstream msg;
+      msg << "Unable to create/initialize result buffer of size "
+          << std::hex << mBufSz << std::dec
+          << " Bytes for Record Timer Values. Cannot get ML Timeline info. " 
+          << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      return;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Allocated buffer In MLTimelineVE2Impl::updateDevice.");
+    if (metadataReader) {
+      xrt_core::bo_int::config_bo(mResultBOHolder->mBO, activeUCsegmentMap);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Configuration of ML Timeline buffer done for active microcontrollers.");
+    }      
+
   }
 
   void MLTimelineVE2Impl::finishflushDevice(void* hwCtxImpl, uint64_t implId)
