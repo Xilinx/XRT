@@ -440,6 +440,8 @@ namespace xdp {
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+    bool isAll = false;
+    bool isRange = false;
 
     // Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
@@ -448,6 +450,8 @@ namespace xdp {
 
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
+
+      isAll = true;
 
       auto tiles = metadataReader->getTiles(metrics[i][0], mod, "all");
       for (auto& e : tiles) {
@@ -487,8 +491,17 @@ namespace xdp {
 
     // Pass 2 : process only range of tiles metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      if ((metrics[i].size() != 3) && (metrics[i].size() != 5))
+      if ((metrics[i].size() != 3) && (metrics[i].size() != 4))
         continue;
+
+      if (metrics[i].size() == 3) {
+        if (metrics[i][1].find('{') == std::string::npos) { 
+          // not found
+          continue;
+        } 
+      }
+
+      isRange = true;
 
       uint8_t minRow = 0, minCol = 0;
       uint8_t maxRow = 0, maxCol = 0;
@@ -584,8 +597,7 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed
-      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() == 3) 
-          || (metrics[i].size() == 5))
+      if (isAll || isRange)
         continue;
 
       uint8_t col = 0;
