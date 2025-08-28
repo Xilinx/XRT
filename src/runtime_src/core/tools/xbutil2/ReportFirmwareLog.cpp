@@ -16,24 +16,19 @@
 
 using bpt = boost::property_tree::ptree;
 
-namespace {
+namespace xrt_core::tools::xrt_smi {
 
 struct field_context {
   const uint8_t* data_ptr;
   size_t offset;
   size_t bit_offset;
   size_t bit_width;
-  const xrt_core::tools::xrt_smi::firmware_log_config::field_info& field;
+  std::shared_ptr<firmware_log_config::field_info> field;
 };
 
-constexpr size_t bits_per_byte = 8;
-constexpr size_t byte_alignment = 7;
-constexpr size_t bits_per_uint64 = 64;
-constexpr size_t hex_width_64 = 16;
-
-std::string
+static std::string
 parse_field(const field_context& ctx,
-            const xrt_core::tools::xrt_smi::firmware_log_config& config)
+            const firmware_log_config& config)
 {
   size_t byte_offset = ctx.offset + (ctx.bit_offset / bits_per_byte);
   size_t end_bit = ctx.bit_offset + ctx.bit_width;
@@ -45,12 +40,12 @@ parse_field(const field_context& ctx,
   uint64_t mask = (ctx.bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << ctx.bit_width) - 1);
   uint64_t value = (raw >> lsb) & mask;
 
-  if (ctx.field.format.find("x") != std::string::npos) {
+  if (ctx.field && ctx.field->format.find("x") != std::string::npos) {
     return (ctx.bit_width == bits_per_uint64) ? boost::str(boost::format("0x%0" + std::to_string(hex_width_64) + "X") % value) : boost::str(boost::format("0x%08X") % value);
   } 
-  else if (ctx.field.name == "level") {
+  else if (ctx.field && ctx.field->name == "level") {
     const auto& enums = config.get_enums();
-    auto itr = enums.find(ctx.field.enumeration);
+    auto itr = enums.find(ctx.field->enumeration);
     if (itr != enums.end()) {
       return std::to_string(value) + ":" + itr->second.get_enumerator_name(static_cast<uint32_t>(value));
     }
@@ -58,7 +53,7 @@ parse_field(const field_context& ctx,
   return std::to_string(value);
 }
 
-std::string
+static std::string
 parse_message(const uint8_t* data_ptr,
               size_t msg_offset,
               size_t argc,
@@ -77,26 +72,11 @@ parse_message(const uint8_t* data_ptr,
   return "";
 }
 
-} // anonymous namespace
-
-void
-ReportFirmwareLog::
-getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
-{
-  getPropertyTree20202(dev, pt);
-}
-
-void
-ReportFirmwareLog::
-getPropertyTree20202(const xrt_core::device* /*dev*/, bpt& /*pt*/) const // Stubbing out for now till we decide on whether to add json dump support
-{}
-
-std::vector<std::string> 
-ReportFirmwareLog::
+static std::vector<std::string> 
 parse_log_entry(const uint8_t* data_ptr,
                 size_t offset,
                 size_t buf_size,
-                const xrt_core::tools::xrt_smi::firmware_log_config& config)
+                const firmware_log_config& config)
 {
   uint32_t argc = 0;
   size_t header_size = config.get_header_size();
@@ -114,7 +94,7 @@ parse_log_entry(const uint8_t* data_ptr,
     size_t bit_width = field.width;
     size_t end_bit = bit_offset + bit_width;
     if (offset + ((end_bit + byte_alignment) / bits_per_byte) <= offset + header_size) {
-      field_context ctx{data_ptr, offset, bit_offset, bit_width, field};
+      field_context ctx{data_ptr, offset, bit_offset, bit_width, std::make_shared<firmware_log_config::field_info>(field)};
       std::string field_value = parse_field(ctx, config);
       if (field.name == "argc") {
         argc = static_cast<uint32_t>(std::stoul(field_value, nullptr, 16));
@@ -146,7 +126,7 @@ generate_firmware_log_report(const xrt_core::device* dev,
     return ss.str();
   }
 
-  xrt_core::tools::xrt_smi::firmware_log_config config(config_path);
+  firmware_log_config config(config_path);
 
   try {
     // Get raw buffer from device
@@ -172,7 +152,7 @@ generate_firmware_log_report(const xrt_core::device* dev,
     size_t header_size = config.get_header_size();
 
     while (offset + header_size <= buf_size) {
-      auto entry_data = ReportFirmwareLog::parse_log_entry(data_ptr, offset, buf_size, config);
+      auto entry_data = parse_log_entry(data_ptr, offset, buf_size, config);
       log_table.addEntry(entry_data);
       size_t msg_size = entry_data.back().size() * sizeof(uint32_t); // Approximate message size
       size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment
@@ -188,6 +168,20 @@ generate_firmware_log_report(const xrt_core::device* dev,
   return ss.str();
 }
 
+} // namespace xrt_core::tools::xrt_smi
+
+void
+ReportFirmwareLog::
+getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
+{
+  getPropertyTree20202(dev, pt);
+}
+
+void
+ReportFirmwareLog::
+getPropertyTree20202(const xrt_core::device* /*dev*/, bpt& /*pt*/) const // Stubbing out for now till we decide on whether to add json dump support
+{}
+
 void
 ReportFirmwareLog::
 writeReport(const xrt_core::device* device,
@@ -198,7 +192,7 @@ writeReport(const xrt_core::device* device,
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
-      return generate_firmware_log_report(dev, filters);
+      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, filters);
     };
     smi_watch_mode::run_watch_mode(device, elements_filter, output,
                                    report_generator, "Firmware Log");
@@ -208,7 +202,7 @@ writeReport(const xrt_core::device* device,
   // Non-watch mode
   output << "Firmware Log Report\n";
   output << "===================\n\n";
-  output << generate_firmware_log_report(device, elements_filter);
+  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, elements_filter);
   output << std::endl;
 }
 

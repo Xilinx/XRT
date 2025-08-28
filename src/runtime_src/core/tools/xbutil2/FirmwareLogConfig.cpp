@@ -4,8 +4,10 @@
 #include <fstream>
 #include "FirmwareLogConfig.h"
 
-namespace {
-static nlohmann::json load_json_config(const std::string& json_file_path) {
+namespace xrt_core::tools::xrt_smi {
+
+static nlohmann::json 
+load_json_config(const std::string& json_file_path) {
   if (json_file_path.empty()) {
     throw std::runtime_error("JSON file path cannot be empty");
   }
@@ -17,9 +19,6 @@ static nlohmann::json load_json_config(const std::string& json_file_path) {
   file >> j;
   return j;
 }
-} // namespace
-
-namespace xrt_core::tools::xrt_smi {
 
 firmware_log_config::
 firmware_log_config(const std::string& json_file_path)
@@ -106,7 +105,7 @@ calculate_header_size(const std::map<std::string, structure_info>& structures) {
   for (const auto& field : it->second.fields) {
     size += field.width;
   }
-  return (size + 7) / 8; // Convert bit width to byte size
+  return (size + byte_alignment) / bits_per_byte; // Convert bit width to byte size
 }
 
 } // namespace xrt_core::tools::xrt_smi

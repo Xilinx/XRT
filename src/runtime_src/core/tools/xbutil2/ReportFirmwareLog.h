@@ -52,7 +52,8 @@ public:
    * @note Handles exceptions internally and reports errors in property tree
    * @note Compatible with JSON serialization for xrt-smi --format JSON
    */
-  void getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
+  void 
+  getPropertyTreeInternal(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
 
   /**
    * @brief Get property tree representation for XRT 2020.2+ compatibility
@@ -63,7 +64,8 @@ public:
    * @note May have slightly different property tree structure for compatibility
    * @note Falls back to getPropertyTreeInternal implementation if no differences
    */
-  void getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
+  void 
+  getPropertyTree20202(const xrt_core::device* dev, boost::property_tree::ptree& pt) const override;
 
   /**
    * @brief Write formatted firmware log report to output stream
@@ -83,10 +85,11 @@ public:
    * @note Integrates with smi_watch_mode for real-time monitoring
    * @note Thread-safe implementation for watch mode usage
    */
-  void writeReport(const xrt_core::device* device,
-                   const boost::property_tree::ptree& pt,
-                   const std::vector<std::string>& elements_filter,
-                   std::ostream& output) const override;
+  void 
+  writeReport(const xrt_core::device* device,
+              const boost::property_tree::ptree& pt,
+              const std::vector<std::string>& elements_filter,
+              std::ostream& output) const override;
 
 public:
   /**
@@ -104,10 +107,12 @@ public:
    * is based on the provided configuration object, which defines the structure
    * of the log entry.
    */
-  static std::vector<std::string> parse_log_entry(const uint8_t* data_ptr, 
-                                                  size_t offset, 
-                                                  size_t buf_size, 
-                                                  const xrt_core::tools::xrt_smi::firmware_log_config& config);
+  static 
+  std::vector<std::string> 
+  parse_log_entry(const uint8_t* data_ptr, 
+                  size_t offset, 
+                  size_t buf_size, 
+                  const xrt_core::tools::xrt_smi::firmware_log_config& config);
 };
 
 #endif // REPORT_FIRMWARE_LOG_H

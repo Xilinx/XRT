@@ -11,6 +11,12 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 namespace xrt_core::tools::xrt_smi {
+
+constexpr size_t bits_per_byte = 8;
+constexpr size_t byte_alignment = 7;
+constexpr size_t bits_per_uint64 = 64;
+constexpr size_t hex_width_64 = 16;
+
 /**
  * @brief Parser for firmware_log.json configuration
  *
@@ -107,7 +113,8 @@ public:
    * @param structures Map of structure name to StructureInfo
    * @return Calculated header size in bytes
    */
-  static size_t calculate_header_size(const std::map<std::string, structure_info>& structures);
+  static size_t 
+  calculate_header_size(const std::map<std::string, structure_info>& structures);
 
   /**
    * @brief Get the calculated header size
@@ -124,19 +131,22 @@ private:
    * @brief Parse the root JSON object
    * @param  nlohmann::json object
    */
-  void parse_json(const nlohmann::json&);
+  static void 
+  parse_json(const nlohmann::json&);
 
   /**
    * @brief Parse enumerations section from JSON
    * @param enums_json JSON object for enumerations
    */
-  static std::map<std::string, enum_info> parse_enums(const nlohmann::json& config);
+  static std::map<std::string, enum_info> 
+  parse_enums(const nlohmann::json& config);
 
   /**
    * @brief Parse structures section from JSON
    * @param structs_json JSON object for structures
    */
-  static std::map<std::string, structure_info> parse_structures(const nlohmann::json& config);
+  static std::map<std::string, structure_info> 
+  parse_structures(const nlohmann::json& config);
 
 private:
   nlohmann::json config; ///< Raw JSON configuration
