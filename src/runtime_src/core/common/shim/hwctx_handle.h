@@ -55,6 +55,13 @@ public:
   virtual slot_id
   get_slotidx() const = 0;
 
+  // Get number of UCs in the hardware context created
+  virtual size_t
+  get_num_uc() const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
   // Get a hardware queue for this context.  The return value is
   // allowed to be nullptr if the shim does not support hardware
   // queues.  The returned hwqueue is owned by the hwctx, it is
