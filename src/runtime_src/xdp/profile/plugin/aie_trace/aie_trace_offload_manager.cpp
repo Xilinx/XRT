@@ -68,6 +68,13 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     (void)devInst;
 #endif
     plio.valid = true;
+    std::stringstream msg;
+    msg << "Total size of " << std::fixed << std::setprecision(3)
+        << (bufSize / (1024.0 * 1024.0))
+        << " MB is used for AIE trace buffer for "
+        << numStreams << " PLIO streams.";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+
   }
 
   // TODO: Use const references for parameters where applicable
@@ -86,6 +93,12 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
         handle, device_id, deviceIntf, gmio.logger.get(), false, // isPLIO = false
         bufSize, numStreams, context, metadata);
     gmio.valid = true;
+    std::stringstream msg;
+    msg << "Total size of " << std::fixed << std::setprecision(3)
+        << (bufSize / (1024.0 * 1024.0))
+        << " MB is used for AIE trace buffer for "
+        << numStreams << " GMIO streams.";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 #else
   void AIETraceOffloadManager::initGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
@@ -96,6 +109,12 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     gmio.logger = std::make_unique<AIETraceDataLogger>(device_id, io_type::GMIO);
     gmio.offloader = std::make_unique<AIETraceOffload>(handle, device_id, deviceIntf, gmio.logger.get(), false, bufSize, numStreams, devInst);
     gmio.valid = true;
+    std::stringstream msg;
+    msg << "Total size of " << std::fixed << std::setprecision(3)
+        << (bufSize / (1024.0 * 1024.0))
+        << " MB is used for AIE trace buffer for "
+        << numStreams << " GMIO streams.";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 #endif
 
@@ -200,8 +219,6 @@ bool AIETraceOffloadManager::configureAndInitPLIO(
   uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
   uint64_t desiredBufSize, uint64_t numStreamsPLIO, XAie_DevInst* devInst)
 {
-  uint64_t sz = aieTraceImpl ? aieTraceImpl->checkTraceBufSize(desiredBufSize) : desiredBufSize;
-
   uint8_t memIndex = 0;
   if (deviceIntf)
     memIndex = deviceIntf->getAIETs2mmMemIndex(0);
