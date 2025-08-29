@@ -24,12 +24,9 @@ namespace xdp {
       gmio.offloader->startOffload();
   }
 
-uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
-                                 uint64_t device_id,
-                                 uint8_t memIndex,
-                                 uint64_t desired)
+uint64_t AIETraceOffloadManager::checkAndCapToBankSize(uint8_t memIndex, uint64_t desired)
 {
-  auto* memory = db->getStaticInfo().getMemory(device_id, memIndex);
+  auto* memory = db->getStaticInfo().getMemory(deviceID, memIndex);
   if (!memory)
     return desired;
 
@@ -51,14 +48,13 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
       offloadEnabledGMIO(true)
   {}
 
-  void AIETraceOffloadManager::initPLIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
-    if (!offloadEnabledPLIO) {
+  void AIETraceOffloadManager::initPLIO(void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
+    if (!offloadEnabledPLIO)
       return;
-    }
 
-    plio.logger = std::make_unique<AIETraceDataLogger>(device_id, io_type::PLIO);
+    plio.logger = std::make_unique<AIETraceDataLogger>(deviceID, io_type::PLIO);
 #ifndef XDP_CLIENT_BUILD
-    plio.offloader = std::make_unique<AIETraceOffload>(handle, device_id, deviceIntf, plio.logger.get(), true, bufSize, numStreams, devInst);
+    plio.offloader = std::make_unique<AIETraceOffload>(handle, deviceID, deviceIntf, plio.logger.get(), true, bufSize, numStreams, devInst);
 #else
     // Suppress unused parameter warnings in client build
     (void)handle;
@@ -77,20 +73,17 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
 
   }
 
-  // TODO: Use const references for parameters where applicable
   #ifdef XDP_CLIENT_BUILD
-  void AIETraceOffloadManager::initGMIO(
-              uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
-              uint64_t bufSize, uint64_t numStreams, xrt::hw_context context, std::shared_ptr<AieTraceMetadata> metadata)
-  {
-    if (!offloadEnabledGMIO) {
+  void AIETraceOffloadManager::initGMIO(void* handle, PLDeviceIntf* deviceIntf,
+              uint64_t bufSize, uint64_t numStreams, xrt::hw_context context, 
+              std::shared_ptr<AieTraceMetadata> metadata) {
+    if (!offloadEnabledGMIO)
       return;
-    }
 
-    gmio.logger = std::make_unique<AIETraceDataLogger>(device_id, io_type::GMIO);
+    gmio.logger = std::make_unique<AIETraceDataLogger>(deviceID, io_type::GMIO);
     // Use the client-specific AIETraceOffload constructor
     gmio.offloader = std::make_unique<AIETraceOffload>(
-        handle, device_id, deviceIntf, gmio.logger.get(), false, // isPLIO = false
+        handle, deviceID, deviceIntf, gmio.logger.get(), false, // isPLIO = false
         bufSize, numStreams, context, metadata);
     gmio.valid = true;
     std::stringstream msg;
@@ -101,13 +94,14 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 #else
-  void AIETraceOffloadManager::initGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
+  void AIETraceOffloadManager::initGMIO(void* handle, PLDeviceIntf* deviceIntf, 
+                                        uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst) {
     if (!offloadEnabledGMIO) {
       return;
     }
 
-    gmio.logger = std::make_unique<AIETraceDataLogger>(device_id, io_type::GMIO);
-    gmio.offloader = std::make_unique<AIETraceOffload>(handle, device_id, deviceIntf, gmio.logger.get(), false, bufSize, numStreams, devInst);
+    gmio.logger = std::make_unique<AIETraceDataLogger>(deviceID, io_type::GMIO);
+    gmio.offloader = std::make_unique<AIETraceOffload>(handle, deviceID, deviceIntf, gmio.logger.get(), false, bufSize, numStreams, devInst);
     gmio.valid = true;
     std::stringstream msg;
     msg << "Total size of " << std::fixed << std::setprecision(3)
@@ -119,9 +113,9 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
 #endif
 
   void AIETraceOffloadManager::startOffload(bool continuousTrace, uint64_t offloadIntervalUs){
-    if (!offloadEnabledPLIO && !offloadEnabledGMIO) {
+    if (!offloadEnabledPLIO && !offloadEnabledGMIO)
       return;
-    }
+
     if (offloadEnabledPLIO)
       startPLIOOffload(continuousTrace, offloadIntervalUs);
     if (offloadEnabledGMIO)
@@ -131,22 +125,22 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
   bool AIETraceOffloadManager::initReadTraces() {
     bool readStatus = true;
 
-    if (offloadEnabledPLIO && plio.offloader) {
+    if (offloadEnabledPLIO && plio.offloader)
       readStatus &= plio.offloader->initReadTrace();
-    }
-    if (offloadEnabledGMIO && gmio.offloader) {
+
+    if (offloadEnabledGMIO && gmio.offloader)
       readStatus &= gmio.offloader->initReadTrace();
-    }
+
     return readStatus;
   }
 
   void AIETraceOffloadManager::flushAll(bool warn) {
-    if (offloadEnabledPLIO && plio.offloader) {
+    if (offloadEnabledPLIO && plio.offloader)
       flushOffloader(plio.offloader, warn);
-    }
-    if (offloadEnabledGMIO && gmio.offloader) {
+
+    if (offloadEnabledGMIO && gmio.offloader)
       flushOffloader(gmio.offloader, warn);
-    }
+
   }
 
   void AIETraceOffloadManager::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn) {
@@ -162,15 +156,15 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     }
   }
 
-  void AIETraceOffloadManager::createTraceWriters(uint64_t device_id, uint64_t numStreamsPLIO, uint64_t numStreamsGMIO, std::vector<VPWriter*>& writers) {
+  void AIETraceOffloadManager::createTraceWriters(uint64_t numStreamsPLIO, uint64_t numStreamsGMIO, std::vector<VPWriter*>& writers) {
     if (offloadEnabledPLIO) {
       // Add writer for every PLIO stream
       for (uint64_t n = 0; n < numStreamsPLIO; ++n) {
-        std::string fileName = "aie_trace_plio_" + std::to_string(device_id) + "_" +
+        std::string fileName = "aie_trace_plio_" + std::to_string(deviceID) + "_" +
                               std::to_string(n) + ".txt";
         VPWriter *writer = new AIETraceWriter(
           fileName.c_str(),
-          device_id,
+          deviceID,
           n,  // stream id
           "", // version
           "", // creation time
@@ -183,7 +177,7 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
                                           "AIE_EVENT_TRACE");
 
         std::stringstream msg;
-        msg << "Creating AIE trace file " << fileName << " for device " << device_id;
+        msg << "Creating AIE trace file " << fileName << " for device " << deviceID;
         xrt_core::message::send(severity_level::info, "XRT", msg.str());
       }
     }
@@ -191,11 +185,11 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
     if (offloadEnabledGMIO) {
       // Add writer for every GMIO stream
       for (uint64_t n = 0; n < numStreamsGMIO; ++n) {
-        std::string fileName = "aie_trace_gmio_" + std::to_string(device_id) + "_" +
+        std::string fileName = "aie_trace_gmio_" + std::to_string(deviceID) + "_" +
                               std::to_string(n) + ".txt";
         VPWriter *writer = new AIETraceWriter(
           fileName.c_str(),
-          device_id,
+          deviceID,
           n,  // stream id
           "", // version
           "", // creation time
@@ -208,22 +202,21 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(VPDatabase* db,
                                           "AIE_EVENT_TRACE");
 
         std::stringstream msg;
-        msg << "Creating AIE trace file " << fileName << " for device " << device_id;
+        msg << "Creating AIE trace file " << fileName << " for device " << deviceID;
         xrt_core::message::send(severity_level::info, "XRT", msg.str());
       }
     }
   }
 
 
-bool AIETraceOffloadManager::configureAndInitPLIO(
-  uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
-  uint64_t desiredBufSize, uint64_t numStreamsPLIO, XAie_DevInst* devInst)
+bool AIETraceOffloadManager::configureAndInitPLIO(void* handle, PLDeviceIntf* deviceIntf,
+                  uint64_t desiredBufSize, uint64_t numStreamsPLIO, XAie_DevInst* devInst)
 {
   uint8_t memIndex = 0;
   if (deviceIntf)
     memIndex = deviceIntf->getAIETs2mmMemIndex(0);
 
-  desiredBufSize = checkAndCapToBankSize(db, device_id, memIndex, desiredBufSize);
+  desiredBufSize = checkAndCapToBankSize(memIndex, desiredBufSize);
   desiredBufSize = aieTraceImpl->checkTraceBufSize(desiredBufSize);
 
   if (!devInst) {
@@ -232,12 +225,12 @@ bool AIETraceOffloadManager::configureAndInitPLIO(
     return false;
   }
 
-  initPLIO(device_id, handle, deviceIntf, sz, numStreamsPLIO, devInst);
+  initPLIO(handle, deviceIntf, desiredBufSize, numStreamsPLIO, devInst);
   return true;
 }
 
 bool AIETraceOffloadManager::configureAndInitGMIO(
-  uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
+  void* handle, PLDeviceIntf* deviceIntf,
   uint64_t desiredBufSize, uint64_t numStreamsGMIO
 #ifdef XDP_CLIENT_BUILD
   , const xrt::hw_context& hwctx, const std::shared_ptr<AieTraceMetadata>& md
@@ -246,11 +239,11 @@ bool AIETraceOffloadManager::configureAndInitGMIO(
 #endif
   )
 {
-  desiredBufSize = checkAndCapToBankSize(db, device_id, /*bank 0*/ 0, desiredBufSize);
+  desiredBufSize = checkAndCapToBankSize(/*bank 0*/ 0, desiredBufSize);
   desiredBufSize = aieTraceImpl->checkTraceBufSize(desiredBufSize);
 
 #ifdef XDP_CLIENT_BUILD
-  initGMIO(device_id, handle, deviceIntf, desiredBufSize, numStreamsGMIO, hwctx, md);
+  initGMIO(handle, deviceIntf, desiredBufSize, numStreamsGMIO, hwctx, md);
   return true;
 #else
   if (!devInst) {
@@ -258,7 +251,7 @@ bool AIETraceOffloadManager::configureAndInitGMIO(
       "Unable to get AIE device instance. AIE event trace will not be available.");
     return false;
   }
-  initGMIO(device_id, handle, deviceIntf, desiredBufSize, numStreamsGMIO, devInst);
+  initGMIO(handle, deviceIntf, desiredBufSize, numStreamsGMIO, devInst);
   return true;
 #endif
 }

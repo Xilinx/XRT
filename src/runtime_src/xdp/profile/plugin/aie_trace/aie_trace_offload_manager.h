@@ -16,7 +16,6 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/database.h"
 
-// #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
 #elif XDP_VE2_BUILD
@@ -43,7 +42,7 @@ class AIETraceOffloadManager {
   private:
     void startPLIOOffload(bool continuousTrace, uint64_t offloadIntervalUs);
     void startGMIOOffload(bool continuousTrace, uint64_t offloadIntervalUs);
-    uint64_t checkAndCapToBankSize(VPDatabase* db, uint64_t device_id, uint8_t memIndex, uint64_t desired);
+    uint64_t checkAndCapToBankSize(uint8_t memIndex, uint64_t desired);
 
     uint64_t deviceID;
     VPDatabase* db;
@@ -55,26 +54,26 @@ class AIETraceOffloadManager {
 
   public:
     AIETraceOffloadManager(uint64_t device_id, VPDatabase* database, AieTraceImpl* impl=nullptr);
-    void initPLIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst);
+    void initPLIO(void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst);
 
     // TODO: Use const references for parameters where applicable
   #ifdef XDP_CLIENT_BUILD
-    void initGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
+    void initGMIO(void* handle, PLDeviceIntf* deviceIntf,
                   uint64_t bufSize, uint64_t numStreams, xrt::hw_context context,
                   std::shared_ptr<AieTraceMetadata> metadata);
   #else
-    void initGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst);
+    void initGMIO(void* handle, PLDeviceIntf* deviceIntf, uint64_t bufSize, uint64_t numStreams, XAie_DevInst* devInst);
   #endif
 
     void startOffload(bool continuousTrace, uint64_t offloadIntervalUs);
     bool initReadTraces();
     void flushAll(bool warn);
     void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
-    void createTraceWriters(uint64_t device_id, uint64_t numStreamsPLIO, uint64_t numStreamsGMIO,
+    void createTraceWriters(uint64_t numStreamsPLIO, uint64_t numStreamsGMIO,
                             std::vector<VPWriter*>& writers);
-    bool configureAndInitPLIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
+    bool configureAndInitPLIO(void* handle, PLDeviceIntf* deviceIntf,
                               uint64_t desiredBufSize, uint64_t numStreamsPLIO, XAie_DevInst* devInst);
-    bool configureAndInitGMIO(uint64_t device_id, void* handle, PLDeviceIntf* deviceIntf,
+    bool configureAndInitGMIO(void* handle, PLDeviceIntf* deviceIntf,
                               uint64_t desiredBufSize, uint64_t numStreamsGMIO
   #ifdef XDP_CLIENT_BUILD
                               , const xrt::hw_context& hwctx, const std::shared_ptr<AieTraceMetadata>& md

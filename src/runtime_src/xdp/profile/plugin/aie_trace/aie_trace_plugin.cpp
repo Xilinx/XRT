@@ -228,9 +228,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   uint64_t numStreamsGMIO = AIEData.metadata->getNumStreamsGMIO();
   bool isPLIO = (numStreamsPLIO > 0) ? true : false;
   bool isGMIO = (numStreamsGMIO > 0) ? true : false;
-  // bool isPLIOGMIO = isPLIO && isGMIO;
-  AIEData.offloadManager->createTraceWriters(deviceID, numStreamsPLIO,
-                                             numStreamsGMIO, writers);
+  AIEData.offloadManager->createTraceWriters(numStreamsPLIO, numStreamsGMIO, writers);
 
   // Ensure trace buffer size is appropriate
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
@@ -244,13 +242,13 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
         "Unable to get AIE device instance. AIE event trace will not be available.");
       return;
     }
-    AIEData.offloadManager->configureAndInitPLIO(deviceID, handle, deviceIntf, 
-        aieTraceBufSize, AIEData.metadata->getNumStreamsPLIO(), devInst);
+    AIEData.offloadManager->configureAndInitPLIO(handle, deviceIntf, aieTraceBufSize,
+                                      AIEData.metadata->getNumStreamsPLIO(), devInst);
   }
   if (isGMIO) {
 #ifdef XDP_CLIENT_BUILD
   if (!AIEData.offloadManager->configureAndInitGMIO(
-        deviceID, handle, deviceIntf, aieTraceBufSize,
+        handle, deviceIntf, aieTraceBufSize,
         AIEData.metadata->getNumStreamsGMIO(),
         AIEData.metadata->getHwContext(), AIEData.metadata))
     return;
@@ -258,7 +256,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   XAie_DevInst* devInst =
     static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
   if (!AIEData.offloadManager->configureAndInitGMIO(
-        deviceID, handle, deviceIntf, aieTraceBufSize,
+        handle, deviceIntf, aieTraceBufSize,
         AIEData.metadata->getNumStreamsGMIO(), devInst))
     return;
 #endif
