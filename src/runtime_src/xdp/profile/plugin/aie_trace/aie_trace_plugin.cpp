@@ -28,7 +28,8 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
-#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
+// #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
+#include "aie_trace_offload_manager.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_trace.h"
@@ -198,10 +199,13 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   }
 
   // Check if trace streams are available TODO
-  AIEData.metadata->setNumStreams(
-      (db->getStaticInfo()).getNumAIETraceStream(deviceID));
+  AIEData.metadata->setNumStreamsPLIO(
+      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::PLIO));
+  AIEData.metadata->setNumStreamsGMIO(
+      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::GMIO));
 
-  if (AIEData.metadata->getNumStreams() == 0) {
+  if ((AIEData.metadata->getNumStreamsPLIO() == 0) && 
+      (AIEData.metadata->getNumStreamsGMIO() == 0)) {
     AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT",
                             AIE_TRACE_UNAVAILABLE);
@@ -217,122 +221,50 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
                        "AIE_EVENT_RUNTIME_CONFIG");
   }
 
-  // Add writer for every stream
-  for (uint64_t n = 0; n < AIEData.metadata->getNumStreams(); ++n) {
-    std::string fileName = "aie_trace_" + std::to_string(deviceID) + "_" +
-                           std::to_string(n) + ".txt";
-    VPWriter *writer = new AIETraceWriter(
-      fileName.c_str(),
-      deviceID,
-      n,  // stream id
-      "", // version
-      "", // creation time
-      "", // xrt version
-      ""  // tool version
-    );
-    writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(),
-                                      "AIE_EVENT_TRACE");
+  if (!AIEData.offloadManager)
+    AIEData.offloadManager = std::make_unique<AIETraceOffloadManager>(deviceID, db, AIEData.implementation.get());
 
-    std::stringstream msg;
-    msg << "Creating AIE trace file " << fileName << " for device " << deviceID;
-    xrt_core::message::send(severity_level::info, "XRT", msg.str());
-  }
+  uint64_t numStreamsPLIO = AIEData.metadata->getNumStreamsPLIO();
+  uint64_t numStreamsGMIO = AIEData.metadata->getNumStreamsGMIO();
+  bool isPLIO = (numStreamsPLIO > 0) ? true : false;
+  bool isGMIO = (numStreamsGMIO > 0) ? true : false;
+  AIEData.offloadManager->createTraceWriters(numStreamsPLIO, numStreamsGMIO, writers);
 
   // Ensure trace buffer size is appropriate
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
-  bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
+  // uint64_t aieTraceBufSizePLIO = aieTraceBufSize;
+  // uint64_t aieTraceBufSizeGMIO = aieTraceBufSize;
+  if (isPLIO) {
 
-  if (AIEData.metadata->getContinuousTrace())
-    XDPPlugin::startWriteThread(AIEData.metadata->getFileDumpIntS(),
-                                "AIE_EVENT_TRACE", false);
-
-  // First, check against memory bank size
-  // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
-  uint8_t memIndex = 0;
-  if (isPLIO && (deviceIntf != nullptr))
-    memIndex = deviceIntf->getAIETs2mmMemIndex(0);
-
-  Memory *memory = (db->getStaticInfo()).getMemory(deviceID, memIndex);
-
-  if (memory != nullptr) {
-    uint64_t fullBankSize = memory->size * 1024;
-
-    if ((fullBankSize > 0) && (aieTraceBufSize > fullBankSize)) {
-      aieTraceBufSize = fullBankSize;
-      std::string msg = "Requested AIE trace buffer is too big for memory "
-                        "resource. Limiting to " +
-                        std::to_string(fullBankSize) + ".";
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+    XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
+    if(!devInst) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "Unable to get AIE device instance. AIE event trace will not be available.");
+      return;
     }
+    AIEData.offloadManager->configureAndInitPLIO(handle, deviceIntf, aieTraceBufSize,
+                                      AIEData.metadata->getNumStreamsPLIO(), devInst);
   }
-
-  // Ensures Contiguous Memory Allocation specific for linux/edge.
-  aieTraceBufSize = AIEData.implementation->checkTraceBufSize(aieTraceBufSize);
-
-  // Create AIE Trace Offloader
-  AIEData.logger = std::make_unique<AIETraceDataLogger>(deviceID);
-
-  if (xrt_core::config::get_verbosity() >=
-      static_cast<uint32_t>(severity_level::debug)) {
-    std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
-    std::stringstream msg;
-    msg << "Total size of " << std::fixed << std::setprecision(3)
-        << (aieTraceBufSize / (1024.0 * 1024.0))
-        << " MB is used for AIE trace buffer for "
-        << std::to_string(AIEData.metadata->getNumStreams()) << " " << flowType
-        << " streams.";
-    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-  }
-
+  if (isGMIO) {
 #ifdef XDP_CLIENT_BUILD
-  AIEData.offloader = std::make_unique<AIETraceOffload>(
-      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
-      ,
-      aieTraceBufSize // total trace buffer size
-      ,
-      AIEData.metadata->getNumStreams(), AIEData.metadata->getHwContext(),
-      AIEData.metadata);
-#elif XDP_VE2_BUILD
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
-  if(!devInst) {
-    xrt_core::message::send(severity_level::warning, "XRT",
-      "Unable to get AIE device instance. AIE event trace will not be available.");
+  if (!AIEData.offloadManager->configureAndInitGMIO(
+        handle, deviceIntf, aieTraceBufSize,
+        AIEData.metadata->getNumStreamsGMIO(),
+        AIEData.metadata->getHwContext(), AIEData.metadata))
     return;
-  }
-
-  AIEData.offloader = std::make_unique<AIETraceOffload>(
-      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
-      ,
-      aieTraceBufSize // total trace buffer size
-      ,
-      AIEData.metadata->getNumStreams(), devInst);
 #else
-  XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
-  if(!devInst) {
-    xrt_core::message::send(severity_level::warning, "XRT",
-      "Unable to get AIE device instance. AIE event trace will not be available.");
+  XAie_DevInst* devInst =
+    static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
+  if (!AIEData.offloadManager->configureAndInitGMIO(
+        handle, deviceIntf, aieTraceBufSize,
+        AIEData.metadata->getNumStreamsGMIO(), devInst))
     return;
-  }
-
-  AIEData.offloader = std::make_unique<AIETraceOffload>(
-      handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
-      ,
-      aieTraceBufSize // total trace buffer size
-      ,
-      AIEData.metadata->getNumStreams(), devInst);
 #endif
-
-  auto &offloader = AIEData.offloader;
-
-  // Can't call init without setting important details in offloader
-  if (AIEData.metadata->getContinuousTrace()) {
-    offloader->setContinuousTrace();
-    offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
   }
 
+  auto &offloaderManager = AIEData.offloadManager;
   try {
-    if (!offloader->initReadTrace()) {
+    if (!offloaderManager->initReadTraces()) {
       xrt_core::message::send(severity_level::warning, "XRT",
                               AIE_TRACE_BUF_ALLOC_FAIL);
       AIEData.valid = false;
@@ -363,12 +295,12 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
     // Start the AIE trace timestamps thread
     // NOTE: we purposely start polling before configuring trace events
-    AIEData.threadCtrlBool = true;
+    AIEData.pollAIETimerThreadCtrlBool = true;
     auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers,
                                      this, deviceID, handle);
-    AIEData.thread = std::move(device_thread);
+    AIEData.pollAIETimerThread = std::move(device_thread);
   } else {
-    AIEData.threadCtrlBool = false;
+    AIEData.pollAIETimerThreadCtrlBool = false;
   }
 
   // Sets up and calls the PS kernel on x86 implementation
@@ -380,7 +312,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
 
   // Continuous Trace Offload is supported only for PLIO flow
   if (AIEData.metadata->getContinuousTrace())
-    offloader->startOffload();
+    offloaderManager->startOffload(AIEData.metadata->getContinuousTrace(),
+                                  AIEData.metadata->getOffloadIntervalUs());
   xrt_core::message::send(severity_level::info, "XRT",
                           "Finished AIE Trace updateAIEDevice.");
 }
@@ -391,30 +324,13 @@ void AieTracePluginUnified::pollAIETimers(uint64_t index, void *handle) {
   if (it == handleToAIEData.end())
     return;
 
-  auto &should_continue = it->second.threadCtrlBool;
+  auto &should_continue = it->second.pollAIETimerThreadCtrlBool;
 
   while (should_continue) {
     handleToAIEData[handle].implementation->pollTimers(index, handle);
     std::this_thread::sleep_for(std::chrono::microseconds(
         handleToAIEData[handle].metadata->getPollingIntervalVal()));
   }
-}
-
-void AieTracePluginUnified::flushOffloader(
-    const std::unique_ptr<AIETraceOffload> &offloader, bool warn) {
-  if (offloader->continuousTrace()) {
-    offloader->stopOffload();
-
-    while (offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED)
-      ;
-  } else {
-    offloader->readTrace(true);
-    offloader->endReadTrace();
-  }
-
-  if (warn && offloader->isTraceBufferFull())
-    xrt_core::message::send(severity_level::warning, "XRT",
-                            AIE_TS2MM_WARN_MSG_BUF_FULL);
 }
 
 void AieTracePluginUnified::flushAIEDevice(void *handle) {
@@ -433,7 +349,8 @@ void AieTracePluginUnified::flushAIEDevice(void *handle) {
 
   // Flush AIE then datamovers
   AIEData.implementation->flushTraceModules();
-  flushOffloader(AIEData.offloader, false);
+  if (AIEData.offloadManager)
+    AIEData.offloadManager->flushAll(false);
 }
 
 void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
@@ -462,7 +379,10 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
 
   // Flush AIE then datamovers
   AIEData.implementation->flushTraceModules();
-  flushOffloader(AIEData.offloader, true);
+  if (AIEData.offloadManager)
+    AIEData.offloadManager->flushAll(true);
+
+
   XDPPlugin::endWrite();
 
   handleToAIEData.erase(itr);
@@ -481,7 +401,8 @@ void AieTracePluginUnified::writeAll(bool openNewFiles) {
 
     if (AIEData.valid) {
       AIEData.implementation->flushTraceModules();
-      flushOffloader(AIEData.offloader, true);
+      if (AIEData.offloadManager)
+        AIEData.offloadManager->flushAll(true);
     }
   }
 
@@ -499,13 +420,13 @@ void AieTracePluginUnified::endPollforDevice(void *handle) {
 
   auto &AIEData = itr->second;
 
-  if (!AIEData.valid || !AIEData.threadCtrlBool)
+  if (!AIEData.valid || !AIEData.pollAIETimerThreadCtrlBool)
     return;
 
-  AIEData.threadCtrlBool = false;
+  AIEData.pollAIETimerThreadCtrlBool = false;
 
-  if (AIEData.thread.joinable())
-    AIEData.thread.join();
+  if (AIEData.pollAIETimerThread.joinable())
+    AIEData.pollAIETimerThread.join();
 
   if (AIEData.implementation)
     AIEData.implementation->freeResources();
@@ -515,11 +436,11 @@ void AieTracePluginUnified::endPoll() {
   // Ask all threads to end
   for (auto &p : handleToAIEData) {
     auto& data = p.second;
-    if (data.threadCtrlBool) {
-      data.threadCtrlBool = false;
+    if (data.pollAIETimerThreadCtrlBool) {
+      data.pollAIETimerThreadCtrlBool = false;
 
-      if (data.thread.joinable())
-        data.thread.join();
+      if (data.pollAIETimerThread.joinable())
+        data.pollAIETimerThread.join();
       if (data.implementation)
         data.implementation->freeResources();
     }

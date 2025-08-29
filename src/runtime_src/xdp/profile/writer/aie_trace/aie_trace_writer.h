@@ -40,6 +40,7 @@ namespace xdp {
 
    uint64_t deviceId;
    uint64_t traceStreamId;
+   io_type  offloadType;
 
   protected:
     virtual void writeHeader();
@@ -53,7 +54,8 @@ namespace xdp {
                    const std::string& version, 
 		   const std::string& creationTime, 
 		   const std::string& xrtV,
-		   const std::string& toolV);
+		   const std::string& toolV,
+       io_type oType);
     ~AIETraceWriter();
 
     virtual bool write(bool openNewFile);

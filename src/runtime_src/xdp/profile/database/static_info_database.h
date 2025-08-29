@@ -401,6 +401,7 @@ namespace xdp {
                                   std::unique_ptr<aie_cfg_tile>& tile) ;
     XDP_CORE_EXPORT uint64_t getNumTracePLIO(uint64_t deviceId) ;
     XDP_CORE_EXPORT uint64_t getNumAIETraceStream(uint64_t deviceId) ;
+    XDP_CORE_EXPORT uint64_t getNumAIETraceStream(uint64_t deviceId, io_type ioType);
     XDP_CORE_EXPORT void* getAieDevInst(std::function<void* (void*)> fetch,
                                    void* devHandle, uint64_t deviceID=0) ;
     XDP_CORE_EXPORT void* getAieDevice(std::function<void* (void*)> allocate,
