@@ -1698,8 +1698,8 @@ get_offset(const xrt::bo& bo)
   return handle->get_offset();
 }
 
-xrt::bo
-create_bo(const std::shared_ptr<xrt_core::device>& device, size_t sz, use_type type)
+static xrtBufferFlags
+compose_internal_bo_flags(use_type type)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
   flags.flags = XRT_BO_FLAGS_CACHEABLE;
@@ -1707,27 +1707,27 @@ create_bo(const std::shared_ptr<xrt_core::device>& device, size_t sz, use_type t
   flags.dir = XRT_BO_ACCESS_READ_WRITE;
   flags.use = static_cast<uint32_t>(type);
 
+  return flags.all;
+}
+
+xrt::bo
+create_bo(const std::shared_ptr<xrt_core::device>& device, size_t sz, use_type type)
+{
   // While the memory group should be ignored (inferred) for
   // debug / trace / log buffers, it is still passed in as a default
   // group 1 with no implied correlation to xclbin connectivity
   // or memory group.
-  return xrt::bo{alloc(device_type{device}, sz, flags.all, 1)};
+  return xrt::bo{alloc(device_type{device}, sz, compose_internal_bo_flags(type), 1)};
 }
 
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 {
-  xcl_bo_flags flags {0};  // see xrt_mem.h
-  flags.flags = XRT_BO_FLAGS_CACHEABLE;
-  flags.access = XRT_BO_ACCESS_LOCAL;
-  flags.dir = XRT_BO_ACCESS_READ_WRITE;
-  flags.use = static_cast<uint32_t>(type);
-
   // While the memory group should be ignored (inferred) for
   // debug / trace buffers, it is still passed in as a default
   // group 1 with no implied correlation to xclbin connectivity
   // or memory group.
-  return xrt::bo{alloc(device_type{hwctx}, sz, flags.all, 1)};
+  return xrt::bo{alloc(device_type{hwctx}, sz, compose_internal_bo_flags(type), 1)};
 }
 
 void

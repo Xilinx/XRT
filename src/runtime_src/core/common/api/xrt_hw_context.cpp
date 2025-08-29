@@ -56,8 +56,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     size_t m_size_per_uc;
     xrt::bo m_uc_log_bo; // log buffer used for uc logging
 
-    static void
-    dump_bo(xrt::bo& bo, const std::string& filename, size_t offset, size_t size)
+    void
+    dump_bo(const std::string& filename, size_t offset, size_t size)
     {
       std::ofstream ofs(filename, std::ios::out | std::ios::binary);
       if (!ofs.is_open()) {
@@ -66,7 +66,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         return;
       }
 
-      auto buf = bo.map<char*>() + offset;
+      auto buf = m_uc_log_bo.map<char*>() + offset;
       ofs.write(buf, static_cast<std::streamsize>(size));
 
       std::stringstream ss;
@@ -75,14 +75,13 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
 
     static xrt::bo
-    init_and_get_uc_log_bo(std::shared_ptr<xrt_core::device> device,
+    init_and_get_uc_log_bo(const std::shared_ptr<xrt_core::device>& device,
                            xrt_core::hwctx_handle* ctx_hdl,
                            size_t size_per_uc,
                            size_t num_uc)
     {
-      auto bo = xrt_core::bo_int::create_bo(std::move(device),
-                                            (size_per_uc * num_uc),
-                                            xrt_core::bo_int::use_type::log);
+      auto bo = xrt_core::bo_int::
+        create_bo(device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
       // create map with uc index and log buffer size
       std::map<uint32_t, size_t> uc_buf_map;
@@ -98,7 +97,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
 
     // may throw
-    uc_log_buffer(std::shared_ptr<xrt_core::device> device,
+    uc_log_buffer(const std::shared_ptr<xrt_core::device>& device,
                   xrt_core::hwctx_handle* ctx_hdl,
                   size_t size)
       : m_num_uc(ctx_hdl->get_num_uc())
@@ -127,7 +126,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         for (size_t i = 0; i < m_num_uc; i++) {
           auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
               + time_stamp.str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
-          dump_bo(m_uc_log_bo, file_name, (i * m_size_per_uc), m_size_per_uc);
+          dump_bo(file_name, (i * m_size_per_uc), m_size_per_uc);
         }
       }
       catch (const std::exception& e) {
@@ -169,20 +168,21 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // Initializes uc log buffer, configures it by splitting the buffer
   // equally among available columns
   static std::unique_ptr<uc_log_buffer>
-  init_uc_log_buf(std::shared_ptr<xrt_core::device> device, xrt_core::hwctx_handle* ctx_hdl)
+  init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
   {
     // Create uc log buffer only if ini option is enabled
+    // If enabled, but not supported then this function returns nullptr
     static auto uc_log_buf_size = xrt_core::config::get_log_buffer_size_per_uc();
     if (!uc_log_buf_size || !ctx_hdl)
       return nullptr;
 
-    // We get size of single uc but we create one buffer for all uc's and split it
-    // uc needs buffer that is 32 Byte aligned
+    // We get size of single uc but we create one buffer for all uc's
+    // and split it uc needs buffer that is 32 Byte aligned
     constexpr std::size_t alignment = 32;
     // round up size to be 32 Byte aligned
     size_t uc_aligned_size = (uc_log_buf_size + alignment - 1) & ~(alignment - 1);
     try {
-      return std::make_unique<uc_log_buffer>(std::move(device), ctx_hdl, uc_aligned_size);
+      return std::make_unique<uc_log_buffer>(device, ctx_hdl, uc_aligned_size);
     }
     catch (const std::exception& e) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
@@ -199,8 +199,7 @@ public:
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
-  {
-  }
+  {}
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, access_mode mode)
     : m_core_device{std::move(device)}

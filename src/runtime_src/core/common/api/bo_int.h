@@ -35,19 +35,21 @@ enum class use_type {
 
 // create_bo() - Create a buffer object within a device for specific use case
 //
-// Allocates a buffer object in the given device. All the public xrt::bo constructors
-// doesnt use 64 bit flags. So this function acts as an extension to create buffer
-// with specific use flag (debug/dtrace/log). This API is useful for creating buffers
-// that outlive hw context.
+// Allocates a buffer object in the given device. All the public
+// xrt::bo constructors doesnt use 64 bit flags. So this function acts
+// as an extension to create buffer with specific use flag
+// (debug/dtrace/log). This API is useful for creating buffers that
+// outlive hw context.
 XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_bo(const std::shared_ptr<xrt_core::device>& m_core_device, size_t sz, use_type type);
 
 // create_bo() - Create a buffer object within a hwctx for specific use case
 //
-// Allocates a buffer object within a hwctx. All the public xrt::bo constructors
-// doesnt use 64 bit flags. So this function acts as an extension to create buffer
-// with specific use flag (debug/dtrace/log).
+// Allocates a buffer object within a hwctx. All the public xrt::bo
+// constructors doesnt use 64 bit flags. So this function acts as an
+// extension to create buffer with specific use flag
+// (debug/dtrace/log).
 XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
@@ -55,11 +57,12 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
 // config_bo() - Configure the buffer object for the given use case (based on
 // the flag passed)
 //
-// Configure the buffer object to be used for debug, dtrace, log, debug queue
-// purpose based on buffer type. The buffer object is tied to a slot using
-// the hw ctx passed to this call. If the hwctx passed in null then hwctx that is
-// used to create the bo is used. A map of uc or column index and
-// buffer size is used to split the buffer among the columns in the partition/slot.
+// Configure the buffer object to be used for debug, dtrace, log,
+// debug queue purpose based on buffer type. The buffer object is tied
+// to a slot using the hw ctx passed to this call. If the hwctx passed
+// in null then hwctx that is used to create the bo is used. A map of
+// uc or column index and buffer size is used to split the buffer
+// among the columns in the partition/slot.
 XRT_CORE_COMMON_EXPORT
 void
 config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
@@ -67,11 +70,11 @@ config_bo(const xrt::bo& bo, const std::map<uint32_t, size_t>& buf_sizes,
 
 // unconfig_bo() - Unconfigure the buffer object configured earlier
 //
-// XRT Userspace can use this function to explicitly unconfigure the bo. It gives
-// more control on when to unconfigure the bo instead of relying on buffer handle
-// destruction
-// NOTE: The caller must ensure that the same buffer object and context handle
-// used in the corresponding config_bo() call are passed to this function.
+// XRT Userspace can use this function to explicitly unconfigure the
+// bo. It gives more control on when to unconfigure the bo instead of
+// relying on buffer handle destruction NOTE: The caller must ensure
+// that the same buffer object and context handle used in the
+// corresponding config_bo() call are passed to this function.
 XRT_CORE_COMMON_EXPORT
 void
 unconfig_bo(const xrt::bo& bo, const xrt_core::hwctx_handle* ctx_handle = nullptr);
