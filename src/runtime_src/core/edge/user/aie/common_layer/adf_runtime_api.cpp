@@ -321,6 +321,90 @@ err_code graph_api::end(unsigned long long cycleTimeout)
     return err_code::ok;
 }
 
+
+
+err_code checkSharedBufferConfigForUpdate(
+                        const shared_buffer_config* pSharedBufferConfig,
+                        const graph_config* pGraphConfig, size_t numBytes)
+{
+    if (!pSharedBufferConfig)
+        return errorMsg(err_code::internal_error,
+            "ERROR: adf::graph::update: Invalid Shared Buffer configuration.");
+
+    //error checking: does this shared buffer belong to the graph
+    if (pSharedBufferConfig->graphId != pGraphConfig->id)
+        return errorMsg(err_code::user_error,
+            "ERROR: adf::graph::update: Shared Buffer " +
+            pSharedBufferConfig->name + " does not belong to graph " +
+            pGraphConfig->name + ".");
+
+    // error checking: has only output ports
+    if (pSharedBufferConfig -> numInputs != 0 || pSharedBufferConfig -> numOutputs == 0)
+        return errorMsg(err_code::user_error,
+            "ERROR: adf::graph::update: API cannot be used for Shared Buffer " +
+            pSharedBufferConfig->name + ". adf::graph::update can be used "
+            "when shared buffer has zero input ports.");
+
+    // error checking: size
+    fprintf(stderr,"numbytes=%d sharedbuggernumbytes=%d\n",numBytes, pSharedBufferConfig->numBytes);
+    if (numBytes != pSharedBufferConfig->numBytes)
+        return errorMsg(err_code::user_error, "ERROR: adf::graph::update parameter size " + std::to_string(numBytes)
+            + " bytes is inconsistent with Shared Buffer " + pSharedBufferConfig->name + " size " + std::to_string(pSharedBufferConfig->numBytes) + " bytes.");
+
+    return err_code::ok;
+}
+
+err_code graph_api::update(const shared_buffer_config* pSharedBufferConfig, const void* pValue, size_t numBytes)
+{
+    err_code ret = checkSharedBufferConfigForUpdate(pSharedBufferConfig, pGraphConfig, numBytes);
+    if (ret != err_code::ok)
+        return ret;
+
+    if (!pSharedBufferConfig)
+        return errorMsg(err_code::internal_error, "ERROR: adf::graph::update: Invalid Shared buffer configuration.");
+
+    XAie_LocType tile = XAie_TileLoc(pSharedBufferConfig->column, pSharedBufferConfig->row + 1);
+
+    int driverStatus = AieRC::XAIE_OK;
+
+    int prd_lock_acq_val = -1;
+    int cns_lock_acq_val = -pSharedBufferConfig->numOutputs;
+
+    if (readOnlySharedBufferInitialized.find(pSharedBufferConfig -> id) == readOnlySharedBufferInitialized.end())
+    {
+        if (!pSharedBufferConfig -> initialized)
+        {
+            prd_lock_acq_val = 0;
+            cns_lock_acq_val = 0;
+        }
+        /* Added a work around to reset locks, CR-1248458 to track. Remove XAie_LockSetValue() callers once
+         * issue is addressed.
+         */
+        XAie_LockSetValue(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->producerLocks[0], 0));
+        XAie_LockSetValue(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->consumerLocks[0], 0));
+        readOnlySharedBufferInitialized.insert(pSharedBufferConfig -> id);
+    }
+
+    // Acquire update lock to prevent further reads from shared buffer.
+    driverStatus |= XAie_LockAcquire(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->producerLocks[0], prd_lock_acq_val), LOCK_TIMEOUT);
+
+    // Acquire buffer lock after all the readers are done reading
+    driverStatus |= XAie_LockAcquire(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->consumerLocks[0], cns_lock_acq_val), LOCK_TIMEOUT);
+
+    // Update data in the shared buffer
+    driverStatus |= XAie_DataMemBlockWrite(config->get_dev(), tile, pSharedBufferConfig->addr[0], pValue, numBytes);
+
+    // Release the locks
+    driverStatus |= XAie_LockRelease(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->producerLocks[0], 1), LOCK_TIMEOUT);
+    driverStatus |= XAie_LockRelease(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->consumerLocks[0], pSharedBufferConfig->numOutputs), LOCK_TIMEOUT);
+
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::update: XAieTile_LockAcquire timeout or AIE driver error.");
+    fprintf(stderr, "sharedbuffer=%s numoutputs=%d\n", pSharedBufferConfig->name.c_str(), pSharedBufferConfig->numOutputs);
+    return err_code::ok;
+}
+
+
 err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_config* pGraphConfig, size_t numBytes, bool isRunning)
 {
     if (!pRTPConfig)

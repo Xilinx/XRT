@@ -386,6 +386,51 @@ get_rtp(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx_object* hw
   return rtps;
 }
 
+std::unordered_map<std::string, adf::shared_buffer_config>
+get_shared_buffers(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
+{
+  auto start_col = get_start_col(aie_meta, hwctx);
+  std::vector<size_t> addresses;
+  std::vector<int> producer_locks;
+  std::vector<int> consumer_locks;
+
+
+  std::unordered_map<std::string, adf::shared_buffer_config> shared_buffer_configs;
+
+  for (auto& shared_buffer_node : aie_meta.get_child("aie_metadata.SharedBufferConfigs")) {
+    adf::shared_buffer_config shared_buffer_config;
+
+    shared_buffer_config.id = shared_buffer_node.second.get<uint16_t>("id");
+    shared_buffer_config.name = shared_buffer_node.second.get<std::string>("name");
+    shared_buffer_config.graphId = shared_buffer_node.second.get<uint32_t>("graph_id");
+    shared_buffer_config.numBytes =shared_buffer_node.second.get<size_t>("size");
+    shared_buffer_config.column = shared_buffer_node.second.get<uint16_t>("column") + start_col;
+    shared_buffer_config.row = shared_buffer_node.second.get<uint16_t>("row");
+    shared_buffer_config.numInputs = shared_buffer_node.second.get<uint16_t>("num_inputs");
+    shared_buffer_config.numOutputs = shared_buffer_node.second.get<uint16_t>("num_outputs");
+    shared_buffer_config.initialized = shared_buffer_node.second.get<bool>("initialized");
+
+    for (auto& item : shared_buffer_node.second.get_child("address")) {
+      addresses.push_back(item.second.get_value<size_t>());
+    }
+    shared_buffer_config.addr = addresses;
+
+    for (auto& item : shared_buffer_node.second.get_child("producer_lock_ids")) {
+      producer_locks.push_back(item.second.get_value<size_t>());
+    }
+    shared_buffer_config.producerLocks = producer_locks;
+
+    for (auto& item : shared_buffer_node.second.get_child("consumer_lock_ids")) {
+      consumer_locks.push_back(item.second.get_value<size_t>());
+    }
+    shared_buffer_config.consumerLocks = consumer_locks;
+
+    shared_buffer_configs[shared_buffer_config.name] = shared_buffer_config;
+  }
+
+  return shared_buffer_configs;
+}
+
 std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const pt::ptree& aie_meta,const zynqaie::hwctx_object* hwctx)
 {
@@ -666,6 +711,19 @@ get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_objec
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_rtp(aie_meta, graph_id, hwctx);
+}
+
+std::unordered_map<std::string, adf::shared_buffer_config>
+get_shared_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
+{
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
+  if (!data.first || !data.second)
+    return {};
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_shared_buffers(aie_meta, hwctx);
 }
 
 std::unordered_map<std::string, adf::gmio_config>

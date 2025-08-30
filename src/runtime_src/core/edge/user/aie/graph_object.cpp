@@ -39,6 +39,9 @@ graph_object::graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char*
 
   /* Initialize graph rtp metadata */
   rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, m_hwctx);
+  /* Initialize graph shared buffer config */
+  shared_buffer_configs = xrt_core::edge::aie::get_shared_buffers(device.get());
+
   graph_api_obj = std::make_shared<adf::graph_api>(&graph_config, m_aie_array->get_config());
   graph_api_obj->configure();
   state = graph_state::reset;
@@ -270,22 +273,36 @@ graph_object::end_graph(uint64_t cycle)
     state = graph_state::end;
   }
 }
-
+/* This function is a common interface to update both RTP and Shared buffer.
+ * It first iterates through RTP config and if not found, then iterates through
+ * shared buffer config.
+ */
 void
 graph_object::update_graph_rtp(const char* port, const char* buffer, size_t size)
 {
   auto it = rtps.find(port);
-  if (it == rtps.end())
-    throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' not found");
-  auto& rtp = it->second;
+  if (it == rtps.end()) {
+    /* find if the update is for shared buffer */
+    auto it = shared_buffer_configs.find(port);
+    if (it == shared_buffer_configs.end()) {
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP Port / Shared Buffer Name '" + port + "' not found");
+    }
+    else {
+      auto& shared_buffer = it->second;
+      graph_api_obj->update(&shared_buffer, (const void*)buffer, size);
+    }
+  }
+  else {
+    auto& rtp = it->second;
 
-  if (access_mode == xrt::graph::access_mode::shared && !rtp.isAsync)
-    throw xrt_core::error(-EPERM, "Shared context can not update sync RTP");
+    if (access_mode == xrt::graph::access_mode::shared && !rtp.isAsync)
+      throw xrt_core::error(-EPERM, "Shared context can not update sync RTP");
 
-  if (rtp.isPL)
-    throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
+    if (rtp.isPL)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
 
-  graph_api_obj->update(&rtp, (const void*)buffer, size);
+    graph_api_obj->update(&rtp, (const void*)buffer, size);
+  }
 }
 
 void

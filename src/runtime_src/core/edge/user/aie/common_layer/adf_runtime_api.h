@@ -24,6 +24,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 extern "C"
 {
@@ -49,6 +50,7 @@ public:
   err_code end(unsigned long long cycleTimeout);
   err_code update(const rtp_config* pRTPConfig, const void* pValue, size_t numBytes);
   err_code read(const rtp_config* pRTPConfig, void* pValue, size_t numBytes);
+  err_code update(const shared_buffer_config* pSharedBufferConfig, const void* pValue, size_t numBytes);
 
 private:
   const graph_config* pGraphConfig;
@@ -60,6 +62,8 @@ private:
   std::vector<XAie_LocType> iterMemTiles;
   std::unordered_map<int, int> asyncRtpUpdateTimes; //For AIE-ML, maintain a map of async RTP portIds to the number of update calls
   std::shared_ptr<config_manager> config;
+  std::unordered_set<int> readOnlySharedBufferInitialized; // Maintain a set of read only shared buffer ids for which atleast one update is made.
+
 };
 
 class gmio_api
