@@ -24,7 +24,9 @@
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
-#ifdef XDP_CLIENT_BUILD
+#ifdef XDP_NPU3_BUILD
+#include "xdp/profile/device/aie_trace/client/aie_trace_offload_npu3.h"
+#elif XDP_CLIENT_BUILD 
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
 #elif XDP_VE2_BUILD
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
@@ -65,6 +67,7 @@ private:
     std::atomic<bool> threadCtrlBool;
     std::thread thread;
   };
+  VPWriter *configWriter{nullptr};
   std::map<void *, AIEData> handleToAIEData;
 };
 
