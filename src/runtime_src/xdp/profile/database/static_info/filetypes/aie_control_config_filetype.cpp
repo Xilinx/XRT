@@ -180,7 +180,7 @@ AIEControlConfigFiletype::getPLIOs() const
         plio.channelNum = 0;
         plio.burstLength = 0;
 
-        std::string plioKey = xdp::getGraphUniqueId(plio.shimColumn, plio.channelNum, plio.streamId);
+        std::string plioKey = xdp::aie::getGraphUniqueId(plio);
         plios[plioKey] = plio;
     }
 
@@ -236,7 +236,7 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
         gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
-        std::string gmioKey = xdp::getGraphUniqueId(gmio.shimColumn, gmio.channelNum, gmio.streamId);
+        std::string gmioKey = xdp::aie::getGraphUniqueId(gmio);
         gmios[gmioKey] = gmio;
     }
 
@@ -347,15 +347,16 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-            // Add to existing list of stream IDs
+            // Add to existing lists of stream IDs, master/slave, and port names
             it->stream_ids.push_back(streamId);
-            // Add to existing list of master/slave
             it->is_master_vec.push_back(isMaster);
+            it->port_names.push_back(name);
         }
         else {
             // Grab first stream ID and add to list of tiles
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
+            tile.port_names.push_back(name);
             tile.subtype = type;
             tiles.emplace_back(std::move(tile));
         }
@@ -405,6 +406,24 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = shared_buffer.second.get<uint8_t>("column");
         tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
+        // Ensure vectors are re-sized for direct indexing by channel
+        tile.s2mm_names.resize(NUM_MEM_CHANNELS, "unused");
+        tile.mm2s_names.resize(NUM_MEM_CHANNELS, "unused");
+
+        // Store names of DMA channels for reporting purposes
+        for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
+            auto channel = chan.second.get<uint8_t>("channel");
+            if (channel >= NUM_MEM_CHANNELS) {
+              xrt_core::message::send(severity_level::info, "XRT", "Unable to store dmaChannel");
+              continue;
+            }
+
+            if (chan.second.get<std::string>("direction") == "s2mm")
+              tile.s2mm_names[channel] = chan.second.get<std::string>("name");
+            else
+              tile.mm2s_names[channel] = chan.second.get<std::string>("name");
+        }
+
         allTiles.emplace_back(std::move(tile));
     }
 

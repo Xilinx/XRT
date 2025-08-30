@@ -62,7 +62,6 @@ rh_package_list()
      boost-program-options \
      boost-static \
      cmake \
-     cppcheck \
      curl \
      dkms \
      elfutils-devel \
@@ -72,7 +71,6 @@ rh_package_list()
      gdb \
      git \
      glibc-static \
-     gnuplot \
      gnutls-devel \
      gtest-devel \
      json-glib-devel \
@@ -107,6 +105,12 @@ rh_package_list()
      zlib-static \
     )
 
+    if  [ "$MAJOR" -lt 10 ]; then
+        RH_LIST+=(\
+	    cppcheck \
+	    gnuplot\
+        )
+    fi
     if [ $FLAVOR == "amzn" ]; then
         RH_LIST+=(\
         system-lsb-core \
@@ -538,6 +542,19 @@ prep_rhel9()
     subscription-manager repos --enable "codeready-builder-for-rhel-9-x86_64-rpms"
 }
 
+prep_rhel10()
+{
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+        yum check-update
+    fi
+
+    echo "Enabling CodeReady-Builder repository..."
+    subscription-manager repos --enable "codeready-builder-for-rhel-10-x86_64-rpms"
+}
+
 prep_centos8()
 {
     echo "Enabling EPEL repository..."
@@ -576,8 +593,10 @@ prep_centos()
 
 prep_rhel()
 {
-    if [ $MAJOR -ge 9 ]; then
-        prep_rhel9
+    if [ $MAJOR -ge 10 ]; then
+        prep_rhel10
+    elif [ $MAJOR == 9 ]; then
+	    prep_rhel9
     else
         if [ $MAJOR == 8 ]; then
              prep_rhel8
@@ -645,10 +664,22 @@ prep_alma9()
     dnf config-manager --set-enabled crb
 }
 
+prep_alma10()
+{
+    echo "Enabling EPEL repository..."
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    yum check-update
+
+    echo "Enabling CodeReady-Builder repository..."
+    dnf config-manager --set-enabled crb
+}
+
 prep_alma()
 {
-    if [ $MAJOR -ge 9 ]; then
-        prep_alma9
+    if [ $MAJOR -ge 10 ]; then
+        prep_alma10
+    elif [ $MAJOR == 9 ]; then
+	    prep_alma9
     elif [ $MAJOR == 8 ]; then
         prep_alma8
     fi

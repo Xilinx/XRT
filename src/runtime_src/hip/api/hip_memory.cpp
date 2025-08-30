@@ -452,23 +452,6 @@ namespace xrt::core::hip
   }
 } // xrt::core::hip
 
-template<typename F> hipError_t
-handle_hip_memory_error(F && f)
-{
-  try {
-    f();
-    return hipSuccess;
-  } 
-  catch (const xrt_core::system_error &ex) {
-    xrt_core::send_exception_message(ex.what());
-    return static_cast<hipError_t> (ex.value());
-  }
-  catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
-}
-
 // Allocate memory on the device.
 hipError_t
 hipMalloc(void** ptr, size_t size)
@@ -478,7 +461,9 @@ hipMalloc(void** ptr, size_t size)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc(ptr, size); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_malloc(ptr, size);
+  });
 }
 
 // Allocates device accessible host memory.
@@ -490,179 +475,231 @@ hipHostMalloc(void** ptr, size_t size, unsigned int flags)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_malloc(ptr, size, flags); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_host_malloc(ptr, size, flags);
+  });
 }
 
 // Free memory allocated by the hipHostMalloc().
 hipError_t
 hipHostFree(void* ptr)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_free(ptr); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_host_free(ptr);
+  });
 }
 
 // Free memory allocated by the hipMalloc().
 hipError_t
 hipFree(void* ptr)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_free(ptr); });
+  return handle_hip_func_error(__func__, hipErrorUnknown,
+    [&] { xrt::core::hip::hip_free(ptr);
+  });
 }
 
 // Register host memory so it can be accessed from the current device.
 hipError_t
 hipHostRegister(void* host_ptr, size_t size, unsigned int flags)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_register(host_ptr, size, flags); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_host_register(host_ptr, size, flags);
+  });
 }
 
 // Un-register host pointer.
 hipError_t
 hipHostUnregister(void* host_ptr)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_unregister(host_ptr); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_host_unregister(host_ptr);
+  });
 }
 
 // Get Device pointer from Host Pointer allocated through hipHostMalloc.
 hipError_t
 hipHostGetDevicePointer(void** device_ptr, void* host_ptr, unsigned int flags)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_get_device_pointer(device_ptr, host_ptr, flags); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_host_get_device_pointer(device_ptr, host_ptr, flags);
+  });
 }
 
 // Copy data from src to dst.
 hipError_t
 hipMemcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy(dst, src, size, kind); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memcpy(dst, src, size, kind);
+  });
 }
 
 // Async copy data from src to dst.
 hipError_t
 hipMemcpyAsync(void* dst, const void* src, size_t size, hipMemcpyKind kind, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy_async(dst, src, size, kind, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memcpy_async(dst, src, size, kind, stream);
+  });
 }
 
 // Fills the first size bytes of the memory area pointed to by dest with the constant byte value value.
 hipError_t
 hipMemset(void* dst, int value, size_t size)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset(dst, value, size); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memset(dst, value, size);
+  });
 }
 
 hipError_t
 hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream);
+  });
 }
 
 // Fills the first sizeBytes bytes of the memory area pointed to by dev with the constant byte value value.
 hipError_t
 hipMemsetAsync(void* dst, int value, size_t size, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, static_cast<std::uint8_t>(value), size, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memset_async<std::uint8_t>(dst, static_cast<std::uint8_t>(value), size, stream);
+  });
 }
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
 hipError_t
 hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint32_t>(dst, value, count*sizeof(std::uint32_t), stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memset_async<std::uint32_t>(dst, value, count*sizeof(std::uint32_t), stream);
+  });
 }
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
 hipError_t
 hipMemsetD16Async(void* dst, unsigned short value, size_t count, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream);
+  });
 }
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
 hipError_t
 hipMemsetD8Async(void* dst, unsigned char value, size_t count, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream);
+  });
 }
 
 // Creates a memory pool
 hipError_t
 hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps*	pool_props)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_pool_create(mem_pool, pool_props); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_pool_create(mem_pool, pool_props);
+  });
 }
 
 // Destroy a memory pool
 hipError_t
 hipMemPoolDestroy(hipMemPool_t mem_pool)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_pool_destroy(mem_pool); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_pool_destroy(mem_pool);
+  });
 }
 
 // Allocates memory with stream ordered semantics.
 hipError_t
 hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc_async(dev_ptr, size, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_malloc_async(dev_ptr, size, stream);
+  });
 }
 
 // Frees memory with stream ordered semantics.
 hipError_t
 hipFreeAsync(void* dev_ptr, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_free_async(dev_ptr, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_free_async(dev_ptr, stream);
+  });
 }
 
 // Gets attributes of a memory pool.
 hipError_t
 hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_pool_get_attribute(mem_pool, attr, value); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_pool_get_attribute(mem_pool, attr, value);
+  });
 }
 
 // Sets attributes of a memory pool.
 hipError_t
 hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_pool_set_attribute(mem_pool, attr, value); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_pool_set_attribute(mem_pool, attr, value);
+  });
 }
 
 // Releases freed memory back to the OS.
 hipError_t
 hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_pool_trim_to(mem_pool, min_bytes_to_hold); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_pool_trim_to(mem_pool, min_bytes_to_hold);
+  });
 }
 
 // Prefetches memory to the specified destination device using HIP.
 hipError_t
 hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_mem_prefetch_async(dev_ptr, count, device, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_mem_prefetch_async(dev_ptr, count, device, stream);
+  });
 }
 
 // Allocates memory from a specified pool with stream ordered semantics.
 hipError_t
 hipMallocFromPoolAsync(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc_from_pool_async(dev_ptr, size, mem_pool, stream); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_malloc_from_pool_async(dev_ptr, size, mem_pool, stream);
+  });
 }
 
 // Returns the default memory pool of the specified device.
 hipError_t
 hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_get_default_mempool(mem_pool, device); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_device_get_default_mempool(mem_pool, device);
+  });
 }
 
 // Gets the current memory pool for the specified device.
 hipError_t
 hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_get_mempool(mem_pool, device); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_device_get_mempool(mem_pool, device);
+  });
 }
 
 // Sets the current memory pool of a device.
 hipError_t
 hipDeviceSetMemPool(int device, hipMemPool_t mem_pool)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_set_mempool(device, mem_pool); });
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    xrt::core::hip::hip_device_set_mempool(device, mem_pool);
+  });
 }

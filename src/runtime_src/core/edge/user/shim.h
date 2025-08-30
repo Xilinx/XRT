@@ -329,6 +329,7 @@ public:
   static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
   int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
+  void xclReset();
 
   // Application debug path functionality for xrt-smi
   size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);
@@ -362,6 +363,8 @@ public:
   void open_graph_context(const zynqaie::hwctx_object* hwctx, const uuid_t xclbinId, unsigned int graph_id, xrt::graph::access_mode am);
   void close_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graph_id);
   int openAIEContext(xrt::aie::access_mode am);
+  uint64_t get_aie_freq(const zynqaie::hwctx_object* hwctx_obj);
+  void set_aie_freq(const zynqaie::hwctx_object* hwctx_obj, uint64_t freq_hz);
   xrt::aie::access_mode getAIEAccessMode();
   void setAIEAccessMode(xrt::aie::access_mode am);
 #endif

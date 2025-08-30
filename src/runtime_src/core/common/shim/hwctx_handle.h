@@ -119,6 +119,19 @@ public:
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
+
+  virtual uint64_t
+  get_aie_freq() const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual void
+  set_aie_freq(uint64_t /*freq_hz */) const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
 };
 
 } // xrt_core

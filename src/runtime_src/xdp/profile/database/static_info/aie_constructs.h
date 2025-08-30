@@ -67,6 +67,9 @@ namespace xdp {
     uint8_t  col = 0;
     std::vector<uint8_t> stream_ids;
     std::vector<uint8_t> is_master_vec;
+    std::vector<std::string> port_names;
+    std::vector<std::string> s2mm_names;
+    std::vector<std::string> mm2s_names;
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;
     bool     active_memory = false;
@@ -280,14 +283,22 @@ namespace xdp {
       
       bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
       int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
+      std::string port_trace_names[NUM_SWITCH_MONITOR_PORTS];
       int8_t s2mm_channels[NUM_CHANNEL_SELECTS_MAX] = {-1, -1, -1, -1};
       int8_t mm2s_channels[NUM_CHANNEL_SELECTS_MAX] = {-1, -1, -1, -1};
+      std::string s2mm_names[NUM_MEM_CHANNELS];
+      std::string mm2s_names[NUM_MEM_CHANNELS];
       std::vector<aie_cfg_counter> pc;
 
       aie_cfg_base(uint32_t count) : pc(count) {
         for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
           port_trace_is_master[i] = false;
           port_trace_ids[i] = -1;
+          port_trace_names[i] = "unused";
+        }
+        for (uint32_t i=0; i < NUM_MEM_CHANNELS; ++i) {
+          s2mm_names[i] = "unused";
+          mm2s_names[i] = "unused";
         }
       };
   };

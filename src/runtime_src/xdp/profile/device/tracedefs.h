@@ -128,6 +128,7 @@ constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
 constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
 constexpr uint32_t NUM_CHANNEL_SELECTS_SHIM_NPU3 = 4;
 constexpr uint32_t NUM_CHANNEL_SELECTS_MAX = 4;
+constexpr uint32_t NUM_MEM_CHANNELS = 6;
 
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t CORE_BROADCAST_EVENT_BASE = 107;

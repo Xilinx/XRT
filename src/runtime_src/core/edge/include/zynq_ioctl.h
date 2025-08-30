@@ -137,6 +137,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_INFO_CU,
 	/* Open/Close context */
 	DRM_ZOCL_CTX,
+	/* zocl reset */
+	DRM_ZOCL_RESET,
 	/* Error injection */
 	DRM_ZOCL_ERROR_INJECT,
 	/* Request/Release AIE partition */
@@ -356,6 +358,10 @@ struct drm_zocl_aie_fd {
 	uint32_t partition_id;
 	uint32_t uid;
 	int fd;
+};
+
+struct drm_zocl_reset {
+	uint32_t dev_id;
 };
 
 struct drm_zocl_aie_reset {
@@ -720,6 +726,8 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_INFO_CU, struct drm_zocl_info_cu)
 #define DRM_IOCTL_ZOCL_CTX             DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CTX, struct drm_zocl_ctx)
+#define DRM_IOCTL_ZOCL_RESET           DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_RESET, struct drm_zocl_reset)
 #define DRM_IOCTL_ZOCL_ERROR_INJECT    DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_ERROR_INJECT, struct drm_zocl_error_inject)
 #define DRM_IOCTL_ZOCL_AIE_FD          DRM_IOWR(DRM_COMMAND_BASE + \

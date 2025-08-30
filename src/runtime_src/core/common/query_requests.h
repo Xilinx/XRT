@@ -10,6 +10,7 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/include/ert.h"
 #include "core/include/xclerr_int.h"
 
 #include <cstdint>
@@ -136,6 +137,7 @@ enum class key_type
   aie_tiles_stats,
   aie_tiles_status_info,
   aie_partition_info,
+  context_health_info,
 
   misc_telemetry,
   aie_telemetry,
@@ -323,6 +325,14 @@ enum class key_type
   xgq_scaling_temp_override,
   performance_mode,
   preemption,
+  event_trace_data,
+  event_trace_version,
+  event_trace_state,
+  event_trace_config,
+  firmware_log_data,
+  firmware_log_version,
+  firmware_log_state,
+  firmware_log_config,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -1979,6 +1989,26 @@ struct aie_partition_info : request
         return "N/A";
     }
   }
+};
+
+// Retrieves the context health info for the device
+// This provides detailed health information for hardware contexts
+// including transaction operation indices, program counters, and error details
+// 
+// Can be called with optional filtering parameters:
+//   - No parameter: Returns all contexts
+//   - std::vector<uint32_t>: Returns only specified context IDs (Win)
+//   - std::vector<std::pair<uint32_t, uint32_t>>: Returns contexts matching (context_id, pid) pairs (Linux)
+struct context_health_info : request
+{
+  using result_type = std::vector<ert_ctx_health_data>;
+  static const key_type key = key_type::context_health_info;
+
+  std::any
+  get(const device* device) const override = 0;
+
+  std::any
+  get(const device* device, const std::any& context_info) const override = 0;
 };
 
 // Retrieves the AIE telemetry info for the device
@@ -4073,6 +4103,120 @@ struct preemption : request
   virtual void
   put(const device*, const std::any&) const override = 0;
 
+};
+
+/**
+ * This structure provides a common interface for accessing firmware debug data,
+ * supporting both polling and streaming modes of operation.
+ * 
+ * Fields:
+ * - abs_offset: Absolute index to begin loading the next chunk of data. To start with 0 in the very first read.
+                 Updated by driver to new offset from where the next read should start.
+ * - data: Pointer to data buffer to be filled by driver with firmware log/trace data
+ * - size: size of the buffer. When used from userspace->driver : size(in bytes) of the allocated buffer
+                               When used from driver->userspace : size(in bytes) of the filled buffer
+ * - b_wait: Directive for driver whether to wait for new events or return immediately 
+             in-case there is nothing to read.
+ */
+struct firmware_debug_buffer {
+    uint64_t abs_offset;
+    void* data;
+    uint64_t size;
+    bool b_wait;
+};
+
+struct event_trace_version : request 
+{
+  struct result_type {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  static const key_type key = key_type::event_trace_version;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+struct event_trace_data : request
+{
+  using result_type = firmware_debug_buffer;
+  static const key_type key = key_type::event_trace_data;
+
+  std::any
+  get(const device*) const override = 0;
+
+};
+
+struct event_trace_state : request
+{
+  static const key_type key = key_type::event_trace_state;
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t; // put value type
+
+  std::any
+  get(const device*) const override = 0;
+
+  void
+  put(const device*, const std::any&) const override = 0;
+};
+
+struct event_trace_config : request
+{
+  static const key_type key = key_type::event_trace_config;
+  using result_type = std::string;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+// Firmware log version query - following telemetry pattern
+struct firmware_log_version : request 
+{
+  struct result_type {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  static const key_type key = key_type::firmware_log_version;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+// Firmware log data query - following telemetry pattern
+struct firmware_log_data : request
+{
+  using result_type = firmware_debug_buffer;
+  static const key_type key = key_type::firmware_log_data;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+struct firmware_log_state : request
+{
+  struct value_type{
+    uint32_t action;
+    uint32_t log_level;
+  };
+  using result_type = value_type;  // get value type
+
+  static const key_type key = key_type::firmware_log_state;
+  std::any
+  get(const device*) const override = 0;
+
+  void
+  put(const device*, const std::any&) const override = 0;
+};
+
+struct firmware_log_config : request
+{
+  static const key_type key = key_type::firmware_log_config;
+  using result_type = std::string;
+
+  std::any
+  get(const device*) const override = 0;
 };
 
 /*

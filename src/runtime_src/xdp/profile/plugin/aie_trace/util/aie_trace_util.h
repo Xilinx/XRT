@@ -117,9 +117,10 @@ namespace xdp::aie::trace {
    * @param metricSet Name of requested metric set
    * @param channel   Channel number
    * @param events    Vector of events in metric set (modified if needed)
+   * @param hwGen     Hardware generation
    */
   void modifyEvents(module_type type, io_type subtype, const std::string metricSet,
-                    uint8_t channel, std::vector<XAie_Events>& events);
+                    uint8_t channel, std::vector<XAie_Events>& events, const int hwGen);
 
   /**
    * @brief Configure group events (core modules only)
@@ -136,6 +137,7 @@ namespace xdp::aie::trace {
   /**
   * @brief Configure event selections for DMA channels
   * @param aieDevInst AIE device instance
+  * @param tile       Tile metadata
   * @param loc        Location of tile
   * @param type       Module/tile type
   * @param metricSet  Name of requested metric set
@@ -143,10 +145,10 @@ namespace xdp::aie::trace {
   * @param channel1   Second specified channel number
   * @param config     Class used to document configuration
   */
-  void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                             const module_type type, const std::string metricSet, 
-                             const uint8_t channel0, const uint8_t channel1,
-                             aie_cfg_base& config);
+  void configEventSelections(XAie_DevInst* aieDevInst, const tile_type& tile,
+                             const XAie_LocType loc, const module_type type,
+                             const std::string metricSet, const uint8_t channel0,
+                             const uint8_t channel1, aie_cfg_base& config);
 
   /**
   * @brief Configure edge detection events

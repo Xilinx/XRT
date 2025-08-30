@@ -1278,10 +1278,88 @@ public:
   { return arg.type; }
 };
 
+// class buffer_cache - A thread safe cache to hold pre created buffers
+//
+// This class maintains a fixed size pool of reusable buffers to
+// minimize allocation overhead.  get_buffer() returns a buffer from
+// the cache if available, or creates one on demand.  release_buffer()
+// returns a buffer to the cache only if the pool size limit is not
+// exceeded
+class buffer_cache
+{
+  xrt::hw_context m_hw_ctx;
+  std::vector<uint8_t> m_buf_data;
+  const std::size_t m_max_cache_size;
+
+  mutable std::mutex m_mutex;
+  mutable std::vector<xrt::bo> m_bo_cache;
+
+  static void
+  fill_bo_with_data(xrt::bo& bo, const std::vector<uint8_t>& data)
+  {
+    auto ptr = bo.map<char*>();
+    std::memcpy(ptr, data.data(), data.size());
+    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  }
+
+  static std::vector<xrt::bo>
+  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size)
+  {
+    if (!cache_size)
+      return {};
+
+    std::vector<xrt::bo> cache;
+    cache.reserve(cache_size);
+
+    for (size_t i = 0; i < cache_size; ++i)
+      cache.push_back(xrt::ext::bo(hwctx, bo_size));
+    
+    return cache;
+  }
+
+public:
+  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size)
+    : m_hw_ctx(std::move(ctx))
+    , m_buf_data(std::move(data))
+    , m_max_cache_size(max_size)
+    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size())}
+  {}
+
+  xrt::bo
+  get_buffer() const
+  {
+    xrt::bo bo;
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_bo_cache.empty()) {
+        bo = std::move(m_bo_cache.back()); // return existing bo
+        m_bo_cache.pop_back();
+      }
+    }
+
+    if (!bo)
+      bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size()); // create new bo if cache is empty
+
+    fill_bo_with_data(bo, m_buf_data);
+    return bo;
+  }
+
+  void
+  release_buffer(xrt::bo&& bo) const
+  {
+    // when cache is reached to max limit we dont insert bo into pool
+    // bo gets destroy when it goes out of scope
+    std::lock_guard<std::mutex> lk(m_mutex);
+    if (m_bo_cache.size() >= m_max_cache_size)
+      return; // dropping the moved bo frees it
+
+    m_bo_cache.push_back(std::move(bo));
+  }
+}; // buffer_cache
+
 } // namespace
 
 namespace xrt {
-
 // struct kernel_impl - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -1325,6 +1403,12 @@ private:
   uint32_t uid;                               // Internal unique id for debug
   uint32_t m_ctrl_code_id = xrt_core::module_int::no_ctrl_code_id;
                                               // ID to identify which ctrl code to load from elf
+
+  std::unique_ptr<buffer_cache> m_ctrlpkt_bo_cache;
+                                              // Cache for ctrlpkt buffers, in ELF flow we create xrt::bo
+                                              // and fill it with ctrlpkt data. Creating ctrlpkt bo at xrt::run
+                                              // creation adds overhead and reduces performace, so creating a
+                                              // buffer pool/cache of this ctrlpkt to reduce this overhead
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -1541,6 +1625,32 @@ private:
     throw xrt_core::error("No such kernel '" + nm + "'");
   }
 
+  // This function creates a buffer pool with ctrlpkt section data of ELF.
+  // The buffer is precreated and filled with data to avoid overhead of run object
+  // creation. This is done as run object creation can come in critical path.
+  static std::unique_ptr<buffer_cache>
+  initialize_ctrlpkt_bo_cache(const xrt::hw_context& ctx, const xrt::module& module, uint32_t id)
+  {
+    if (!module)
+      return nullptr; // applicable only for ELF flows
+
+    auto ctrlpkt_data = xrt_core::module_int::get_ctrlpkt_data(module, id);
+    auto ctrlpkt_buf_size = ctrlpkt_data.size();
+    if (ctrlpkt_buf_size == 0)
+      return nullptr;
+
+    constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
+    static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
+
+    // Even though if pool memory is less than ctrlpkt size, we still maintain one entry
+    // in cache to reduce overhead for atleast one run
+    constexpr size_t min_pool_size = 1;
+    size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
+
+    // Create and return buffer_cache with calculated pool size
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size);
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1562,6 +1672,7 @@ public:
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
     , uid(create_uid())
+    , m_ctrlpkt_bo_cache(initialize_ctrlpkt_bo_cache(hwctx, m_module, m_ctrl_code_id))
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
 
@@ -1609,6 +1720,7 @@ public:
     , properties(get_kernel_info().props)
     , uid(create_uid())
     , m_ctrl_code_id(xrt_core::module_int::get_ctrlcode_id(m_module, nm)) // control code index
+    , m_ctrlpkt_bo_cache(initialize_ctrlpkt_bo_cache(hwctx, m_module, m_ctrl_code_id))
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
@@ -1618,6 +1730,7 @@ public:
 
     // amend args with computed data based on kernel protocol
     amend_args();
+
     m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
@@ -1838,9 +1951,24 @@ public:
   }
 
   size_t
-  get_regmap_size()
+  get_regmap_size() const
   {
     return regmap_size;
+  }
+
+  xrt::bo
+  get_ctrlpkt_buffer() const
+  {
+    return m_ctrlpkt_bo_cache
+      ? m_ctrlpkt_bo_cache->get_buffer()
+      : xrt::bo{};
+  }
+
+  void
+  release_ctrlpkt_buffer(xrt::bo&& bo) const
+  {
+    if (m_ctrlpkt_bo_cache)
+      m_ctrlpkt_bo_cache->release_buffer(std::move(bo));
   }
 };
 
@@ -1989,12 +2117,15 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // the control code that needs to be run.
   // By default first control code that is available is picked
   static xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx,
+              uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
   {
     if (!module)
       return {};
 
-    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id);
+    // Pass pre created ctrlpkt buffer when creating module_sram object.
+    // This buffer is empty when ELF doesn't have ctrlpkt
+    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
   virtual std::unique_ptr<arg_setter>
@@ -2131,6 +2262,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
 
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt::bo m_ctrlpkt_bo;                   // pre created ctrlpkt buffer associated with this run
   xrt::module m_module;                   // instruction module (optional)
   xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
@@ -2182,7 +2314,8 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
-    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id())}
+    , m_ctrlpkt_bo(kernel->get_ctrlpkt_buffer())
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context(), kernel->get_ctrl_code_id(), m_ctrlpkt_bo)}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
@@ -2218,6 +2351,8 @@ public:
   ~run_impl()
   {
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
+    if (m_ctrlpkt_bo)
+      kernel->release_ctrlpkt_buffer(std::move(m_ctrlpkt_bo));
   }
 
   run_impl(const run_impl&) = delete;
@@ -2569,8 +2704,16 @@ public:
   {
     auto epkt = get_ert_packet();
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+
+    auto opcode = epkt->opcode;
+
+    // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
+    // well as for Alveo.  For Alveo we do not want to throw aie_error.
+    // The TXN flow can be identified by the kernel type.
+    if (opcode == ERT_START_CU && kernel->get_kernel_type() == kernel_type::dpu)
+      opcode = ERT_START_NPU;
     
-    switch (epkt->opcode) {
+    switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
@@ -3027,13 +3170,6 @@ public:
     , m_message(std::move(msg))
   {}
 
-  xrt::detail::span<const uint32_t>  
-  get_aie_data() const
-  {
-    auto run_impl = m_run.get_handle();
-    auto ctx_health = get_ert_ctx_health_data(run_impl->get_ert_packet());
-    return {ctx_health->app_health_report, ctx_health->app_health_report_size};
-  }
 };
 
 // class runlist_impl - The internals of a runlist
@@ -3196,7 +3332,16 @@ class runlist_impl
   throw_command_error(const xrt::run& run, ert_cmd_state state) const
   {
     auto epkt = run.get_ert_packet();
-    switch (epkt->opcode) {
+    auto opcode = epkt->opcode;
+    auto rhdl = run.get_handle();
+
+    // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
+    // well as for Alveo.  For Alveo we do not want to throw aie_error.
+    // The TXN flow can be identified by the kernel type.
+    if (opcode == ERT_START_CU && rhdl->get_kernel()->get_kernel_type() == kernel_impl::kernel_type::dpu)
+      opcode = ERT_START_NPU;
+
+    switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
@@ -3456,7 +3601,6 @@ class runlist::command_error_impl : public run::command_error_impl
 {
 public:
   using run::command_error_impl::command_error_impl;
-  using run::command_error_impl::get_aie_data;
 };
 
 } // namespace xrt
@@ -4295,13 +4439,6 @@ aie_error(const xrt::run& run, const std::string& what)
   : command_error(run, amend_aie_error_message(run.get_ert_packet(), what))
 {}
 
-xrt::run::aie_error::span<const uint32_t>  
-run::aie_error::
-data() const
-{
-  return handle->get_aie_data();
-}
-
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -4318,13 +4455,6 @@ runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
   : command_error(run, state, amend_aie_error_message(run.get_ert_packet(), what))
 {}
-
-runlist::aie_error::span<const uint32_t>  
-runlist::aie_error::
-data() const
-{
-  return handle->get_aie_data();
-}
 
 xrt::run
 runlist::command_error::

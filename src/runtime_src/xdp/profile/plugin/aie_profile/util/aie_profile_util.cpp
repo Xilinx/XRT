@@ -170,6 +170,23 @@ namespace xdp::aie::profile {
       eventSets["output_throughputs"]  = {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, 
                                           XAIE_EVENT_PORT_RUNNING_0_PL};
     }
+    
+    if (aie::isAIE1(hwGen)) {
+      eventSets["input_stalls"]   = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                     XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                     XAIE_EVENT_PORT_IDLE_0_PL};
+    }
+    else if (aie::isAIE2ps(hwGen)) {
+#ifndef XDP_CLIENT_BUILD
+      eventSets["input_stalls"]   = {XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                     XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"]  = {XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                     XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL};
+      eventSets["input_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
+      eventSets["output_throughputs"] = {XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL};
+#endif
+    }
     else {
       std::vector<XAie_Events> tlasts  = {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL,
                                           XAIE_EVENT_PORT_TLAST_2_PL,   XAIE_EVENT_PORT_TLAST_3_PL,
@@ -552,27 +569,30 @@ namespace xdp::aie::profile {
     // Modify events based on channel number
     if (channel > 0) {
       // Interface tiles
-#ifdef XDP_VE2_BUILD
-      // VE2 devices
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
-#else
-      // All other devices
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,              XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,       XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-      std::replace(events.begin(), events.end(), 
-          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,         XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+      if (aie::isAIE2ps(hwGen)) {
+#ifndef XDP_CLIENT_BUILD
+        // Applicable only for VE2 ZOCL and XDNA builds
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_NOC0_DMA_S2MM_1_STALLED_LOCK_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_NOC0_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_NOC0_DMA_MM2S_1_MEMORY_STARVATION_PL);
 #endif
+      } else {
+        // Applicable for Edge Versal and client builds
+        // NOTE: NPU3 build need to be handled separately if required
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,              XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,       XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+        std::replace(events.begin(), events.end(), 
+            XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,         XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+      }
     }
   }
 
@@ -701,10 +721,10 @@ namespace xdp::aie::profile {
     if (metricSet != METRIC_BYTE_COUNT)
       return bytes;
 
-    uint32_t streamWidth = aie::getStreamWidth(hwGen);
-    uint32_t total_beats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamWidth));
+    uint32_t streamByteWidth = aie::getStreamBitWidth(hwGen) / 8;
+    uint32_t totalBeats = static_cast<uint32_t>(std::ceil(1.0 * bytes / streamByteWidth));
 
-    return total_beats;
+    return totalBeats;
   }
 
   /****************************************************************************

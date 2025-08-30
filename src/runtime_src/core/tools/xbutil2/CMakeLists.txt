@@ -19,6 +19,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/reports/platform/*.cpp"
   "../common/reports/aie/*.cpp"
   "../common/Report.cpp"
+  "../common/SmiWatchMode.cpp"
   "../common/ProgressBar.cpp"
   "../common/BusyBar.cpp"
   "../common/Process.cpp"
@@ -50,6 +51,12 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_HostMem.cpp"
   "OO_Performance.cpp"
   "OO_Preemption.cpp"
+  "OO_EventTrace.cpp"
+  "OO_FirmwareLog.cpp"
+  "ReportEventTrace.cpp"
+  "EventTraceConfig.cpp"
+  "ReportFirmwareLog.cpp"
+  "FirmwareLogConfig.cpp"
 )
 
 # Merge the files into one collection

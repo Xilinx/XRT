@@ -600,8 +600,6 @@ struct ert_access_valid_cmd {
  * @fatal_error_exception_type: LX7 exception type
  * @fatal_error_exception_pc:   LX7 program counter at the time of the exception
  * @fatal_error_app_module:     module name where the exception occurred
- * @app_health_report_size:     size in bytes of the entire app health report
- * @app_health_report:          binary blob of the entire app health report (contains aie states)
  *
  * Field                       Default value  Comment
  * txn_op_idx:                 0xFFFFFFFF     there is no txn control code is running or the
@@ -611,8 +609,6 @@ struct ert_access_valid_cmd {
  * fatal_error_exception_type: 0
  * fatal_error_exception_pc:   0
  * fatal_error_app_module:     0
- *
- * app_health_report_size:     0              The entire app health report size
  *
  * Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
  * packet starting from payload will have the following information.
@@ -626,9 +622,6 @@ struct ert_ctx_health_data {
   uint32_t fatal_error_exception_type;
   uint32_t fatal_error_exception_pc;
   uint32_t fatal_error_app_module;
-  // platform dependent
-  uint32_t app_health_report_size;
-  uint32_t app_health_report[];
 };
 
 /**
@@ -1214,6 +1207,7 @@ static inline struct ert_ctx_health_data*
 get_ert_ctx_health_data(const struct ert_packet* pkt)
 {
   switch (pkt->opcode) {
+  case ERT_START_CU:
   case ERT_START_NPU:
   case ERT_START_NPU_PREEMPT:
   case ERT_START_NPU_PREEMPT_ELF:

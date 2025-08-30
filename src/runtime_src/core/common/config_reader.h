@@ -1059,7 +1059,7 @@ get_aie_trace_settings_file_dump_interval_s()
 inline unsigned int
 get_aie_trace_settings_poll_timers_interval_us()
 {
-  static unsigned int value = detail::get_uint_value("AIE_trace_settings.poll_timers_interval_us", 100);
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.poll_timers_interval_us", 50);
   return value;
 }
 
@@ -1081,6 +1081,14 @@ inline std::string
 get_dtrace_control_file_path()
 {
   static std::string value = detail::get_string_value("Debug.dtrace_control_file_path", "");
+  return value;
+}
+
+inline unsigned int
+get_run_buffer_pool_memory_mb()
+{
+  static constexpr unsigned int default_pool_memory_mb = 64;
+  static unsigned int value = detail::get_uint_value("Runtime.run_buffer_pool_memory_mb", default_pool_memory_mb);
   return value;
 }
 

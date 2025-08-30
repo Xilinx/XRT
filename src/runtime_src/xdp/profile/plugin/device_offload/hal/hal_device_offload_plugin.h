@@ -50,13 +50,16 @@ namespace xdp {
     //  function, which takes a preallocated char* and size.
     constexpr static int maxPathLength = 512 ;
 
+    bool initialized = false;
+    void init();
+
   public:
     HALDeviceOffloadPlugin() ;
     ~HALDeviceOffloadPlugin() ;
 
     // Virtual functions from DeviceOffloadPlugin
     virtual void flushDevice(void* device) ;
-    virtual void updateDevice(void* device) ;
+    virtual void updateDevice(void* device, bool hw_context_flow) ;
   } ;
 
 } // end namespace xdp

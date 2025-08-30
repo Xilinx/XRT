@@ -123,25 +123,16 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
  * print basic information about a test
  */
 static void
-pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
+pretty_print_test_desc(std::shared_ptr<TestRunner> testPtr, boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  // If the status is anything other than skipped print the test name
-  auto _status = test.get<std::string>("status", "");
-  if (!boost::equals(_status, test_token_skipped)) {
-    std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
-    // Only use the long name option when displaying the test
-    _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
+  test = testPtr->get_test_header();
+  std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
+  // Only use the long name option when displaying the test
+  _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
 
-    if (XBU::getVerbose())
-      XBU::message(boost::str(boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
-  }
-  else if (XBU::getVerbose()) {
-    std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
-    XBU::message(boost::str(boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name")));
+  if (XBU::getVerbose())
     XBU::message(boost::str(boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
-  }
-
 }
 
 /*
@@ -158,10 +149,9 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
 
   // if supported and details/error/warning: ostr
   // if supported and xclbin/testcase: verbose
-  // if not supported: verbose
   auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase", "DPU-Sequence", "Benchmarks"};
-    if (boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end()) {
       if (XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else
@@ -317,20 +307,19 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     auto bdf = xrt_core::device_query<xq::pcie_bdf>(device);
 
     boost::property_tree::ptree ptTest;
+    pretty_print_test_desc(testPtr, ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     try {
       ptTest = testPtr->startTest(device);
     } catch (const std::runtime_error& e) {
       std::cout << e.what() << std::endl;
       return test_status::failed;
     } catch (const std::exception&) {
-      ptTest = testPtr->get_test_header();
       XBValidateUtils::logger(ptTest, "Error", "The test timed out");
       ptTest.put("status", test_token_failed);
       status = test_status::failed;
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    pretty_print_test_desc(ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     pretty_print_test_run(ptTest, status, std::cout);
   }
 

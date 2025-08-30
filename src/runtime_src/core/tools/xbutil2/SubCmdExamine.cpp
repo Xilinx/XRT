@@ -21,9 +21,11 @@
 #include "tools/common/reports/ReportBOStats.h"
 #include "tools/common/reports/ReportClocks.h"
 #include "tools/common/reports/ReportCmcStatus.h"
+#include "tools/common/reports/ReportContextHealth.h"
 #include "tools/common/reports/ReportDynamicRegion.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
 #include "tools/common/reports/ReportElectrical.h"
+#include "tools/xbutil2/ReportEventTrace.h"
 #include "tools/common/reports/ReportFirewall.h"
 #include "tools/common/reports/ReportHost.h"
 #include "tools/common/reports/ReportMailbox.h"
@@ -36,6 +38,7 @@
 #include "tools/common/reports/ReportQspiStatus.h"
 #include "tools/common/reports/ReportTelemetry.h"
 #include "tools/common/reports/ReportThermal.h"
+#include "tools/xbutil2/ReportFirmwareLog.h"
 
 #include <filesystem>
 #include <fstream>
@@ -61,14 +64,17 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
     std::make_shared<ReportClocks>(),
+    std::make_shared<ReportContextHealth>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
+    std::make_shared<ReportEventTrace>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
     std::make_shared<ReportPreemption>(),
     std::make_shared<ReportPsKernels>(),
+    std::make_shared<ReportFirmwareLog>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),

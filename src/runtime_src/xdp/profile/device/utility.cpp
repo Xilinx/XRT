@@ -100,6 +100,7 @@ namespace xdp::util {
         xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
       return xrt_core::hw_context_int::get_core_device(context);
     }
+
     return xrt_core::get_userpf_device(handle);
   }
 

@@ -2201,17 +2201,14 @@ class module_sram : public module_impl
   }
 
   void
-  create_ctrlpkt_buf(const module_impl* parent)
+  create_ctrlpkt_buf(const xrt::bo& ctrlpkt_bo)
   {
-    const auto& ctrl_pkt_buf = parent->get_ctrlpkt(m_ctrl_code_id);
-    size_t sz = ctrl_pkt_buf.size();
-    if (sz == 0) {
+    if (ctrlpkt_bo.size() == 0) {
       XRT_DEBUGF("ctrpkt buf is empty\n");
       return;
     }
 
-    m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
-    fill_ctrlpkt_buf(m_ctrlpkt_bo, ctrl_pkt_buf, false /*don't sync*/);
+    m_ctrlpkt_bo = ctrlpkt_bo; // assign pre created buffer
 
     if (is_dump_control_packet()) {
       std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
@@ -2601,7 +2598,7 @@ class module_sram : public module_impl
   }
 
 public:
-  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id = xrt_core::module_int::no_ctrl_code_id)
+  module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx, uint32_t id, const xrt::bo& ctrlpkt_bo)
     : module_impl{ parent->get_cfg_uuid() }
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
@@ -2620,7 +2617,7 @@ public:
     if (os_abi == Elf_Amd_Aie2p) {
       // make sure to create control-packet buffer first because we may
       // need to patch control-packet address to instruction buffer
-      create_ctrlpkt_buf(m_parent.get());
+      create_ctrlpkt_buf(ctrlpkt_bo);
       create_ctrlpkt_pm_bufs(m_parent.get());
       create_instr_buf(m_parent.get());
       fill_bo_addresses();
@@ -2747,9 +2744,10 @@ public:
 namespace xrt_core::module_int {
 
 xrt::module
-create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_id)
+create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx, uint32_t ctrl_code_id,
+                  const xrt::bo& ctrlpkt_bo)
 {
-  return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id)};
+  return xrt::module{std::make_shared<xrt::module_sram>(parent.get_handle(), hwctx, ctrl_code_id, ctrlpkt_bo)};
 }
 
 uint32_t
@@ -2928,6 +2926,19 @@ get_ctrl_scratchpad_bo(const xrt::module& module)
 
   return module_sram->get_ctrl_scratchpad_bo();
 }
+
+std::vector<uint8_t>
+get_ctrlpkt_data(const xrt::module& module, uint32_t ctrl_code_id)
+{
+  try {
+    const auto& buf = module.get_handle()->get_ctrlpkt(ctrl_code_id);
+    return {buf.data(), buf.data() + buf.size()};
+  }
+  catch (...) {
+    return {}; // returns empty buffer
+  }
+}
+
 } // xrt_core::module_int
 
 namespace {
@@ -2966,7 +2977,8 @@ module(void* userptr, size_t sz, const xrt::uuid& uuid)
 
 module::
 module(const xrt::module& parent, const xrt::hw_context& hwctx)
-: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx) }
+: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx,
+                                                            xrt_core::module_int::no_ctrl_code_id, xrt::bo{}) }
 {}
 
 xrt::uuid
