@@ -136,7 +136,7 @@ get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_objec
  * @device: device with loaded meta data
  */
 std::unordered_map<std::string, adf::shared_buffer_config>
-get_shared_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
+get_shared_buffers(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx = nullptr);
 
 
 /**

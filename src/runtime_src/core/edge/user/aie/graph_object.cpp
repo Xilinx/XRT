@@ -40,7 +40,7 @@ graph_object::graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char*
   /* Initialize graph rtp metadata */
   rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, m_hwctx);
   /* Initialize graph shared buffer config */
-  shared_buffer_configs = xrt_core::edge::aie::get_shared_buffers(device.get());
+  shared_buffer_configs = xrt_core::edge::aie::get_shared_buffers(device.get(), graph_config.id, m_hwctx);
 
   graph_api_obj = std::make_shared<adf::graph_api>(&graph_config, m_aie_array->get_config());
   graph_api_obj->configure();

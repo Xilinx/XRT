@@ -387,7 +387,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx_object* hw
 }
 
 std::unordered_map<std::string, adf::shared_buffer_config>
-get_shared_buffers(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx)
+get_shared_buffers(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx_object* hwctx)
 {
   auto start_col = get_start_col(aie_meta, hwctx);
   std::vector<size_t> addresses;
@@ -398,8 +398,10 @@ get_shared_buffers(const pt::ptree& aie_meta, const zynqaie::hwctx_object* hwctx
   std::unordered_map<std::string, adf::shared_buffer_config> shared_buffer_configs;
 
   for (auto& shared_buffer_node : aie_meta.get_child("aie_metadata.SharedBufferConfigs")) {
-    adf::shared_buffer_config shared_buffer_config;
+    if (shared_buffer_node.second.get<int>("graph_id") != graph_id)
+      continue;
 
+    adf::shared_buffer_config shared_buffer_config;
     shared_buffer_config.id = shared_buffer_node.second.get<uint16_t>("id");
     shared_buffer_config.name = shared_buffer_node.second.get<std::string>("name");
     shared_buffer_config.graphId = shared_buffer_node.second.get<uint32_t>("graph_id");
@@ -714,7 +716,7 @@ get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_objec
 }
 
 std::unordered_map<std::string, adf::shared_buffer_config>
-get_shared_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
+get_shared_buffers(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx)
 {
   auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
   auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
@@ -723,7 +725,7 @@ get_shared_buffers(const xrt_core::device* device, const zynqaie::hwctx_object* 
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_shared_buffers(aie_meta, hwctx);
+  return ::get_shared_buffers(aie_meta, graph_id, hwctx);
 }
 
 std::unordered_map<std::string, adf::gmio_config>
