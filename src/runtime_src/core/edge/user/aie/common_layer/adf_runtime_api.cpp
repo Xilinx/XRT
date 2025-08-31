@@ -346,7 +346,6 @@ err_code checkSharedBufferConfigForUpdate(
             "when shared buffer has zero input ports.");
 
     // error checking: size
-    fprintf(stderr,"numbytes=%d sharedbuggernumbytes=%d\n",numBytes, pSharedBufferConfig->numBytes);
     if (numBytes != pSharedBufferConfig->numBytes)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::update parameter size " + std::to_string(numBytes)
             + " bytes is inconsistent with Shared Buffer " + pSharedBufferConfig->name + " size " + std::to_string(pSharedBufferConfig->numBytes) + " bytes.");
@@ -400,7 +399,7 @@ err_code graph_api::update(const shared_buffer_config* pSharedBufferConfig, cons
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::update: XAieTile_LockAcquire timeout or AIE driver error.");
-    fprintf(stderr, "sharedbuffer=%s numoutputs=%d\n", pSharedBufferConfig->name.c_str(), pSharedBufferConfig->numOutputs);
+
     return err_code::ok;
 }
 
