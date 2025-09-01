@@ -268,14 +268,6 @@ struct ishim
   open_aie_buffer_handle(const xrt::uuid&, const char*)
   { throw not_supported_error{__func__}; }
 
-  virtual float
-  get_thermal(const xrt::aie::device::thermal&) const
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  set_thermal_threshold(const xrt::aie::device::thermal&, uint32_t) const
-  { throw not_supported_error{__func__}; }
-
 };
 
 template <typename DeviceType>
