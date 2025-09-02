@@ -696,7 +696,7 @@ static
 void
 set_thermal_threshold_temperature(uint32_t val)
 {
-  throw xrt_core::error(-EINVAL, "Not Supported");
+  throw xrt_core::error(-ENOTSUP, "Feature Not Supported");
 }
 
 struct aie_set_thermal
@@ -713,9 +713,12 @@ struct aie_set_thermal
     switch(thermal_t) {
       case thermal_type::temperature:
         set_thermal_threshold_temperature(val);
+        break;
       default:
         throw xrt_core::error(-EINVAL, "Invalid thermal argument");
     }
+
+    return true;
   }
 };
 
