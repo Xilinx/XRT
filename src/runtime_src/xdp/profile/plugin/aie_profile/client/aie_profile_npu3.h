@@ -27,9 +27,9 @@ namespace xdp {
 
     void updateDevice();
     
-    void startPoll(const uint32_t /*index*/) override {}
-    void continuePoll(const uint32_t /*index*/) override {}
-    void poll(const uint32_t index) override;
+    void startPoll(const uint64_t /*id*/) override {}
+    void continuePoll(const uint64_t /*id*/) override {}
+    void poll(const uint64_t id) override;
     void endPoll() override {}
 
     void freeResources();

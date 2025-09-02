@@ -335,7 +335,7 @@ namespace xdp {
     }
   }
 
-  void AieProfile_NPU3Impl::poll(const uint32_t index)
+  void AieProfile_NPU3Impl::poll(const uint32_t id)
   {
     // TODO: polling is not working yet without debug buffer
     return;
@@ -385,7 +385,7 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       std::vector<uint64_t> values = outputValues[i];
       values[5] = static_cast<uint64_t>(output[i]); //write pc value
-      db->getDynamicInfo().addAIESample(index, timestamp, values);
+      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
 
     finishedPoll = true;
