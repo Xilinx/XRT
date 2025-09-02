@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include "aie_trace_metadata.h"
+#include "aie_trace_offload_manager.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
@@ -48,22 +49,20 @@ public:
 private:
   uint64_t getDeviceIDFromHandle(void *handle);
   void pollAIETimers(uint64_t index, void *handle);
-  void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
-                      bool warn);
+  // void flushOffloader(const std::unique_ptr<AIETraceOffload> &offloader,
+  //                     bool warn);
   void endPoll();
 
 private:
   static bool live;
   struct AIEData {
     uint64_t deviceID;
-    bool valid;
-
-    std::unique_ptr<AIETraceOffload> offloader;
-    std::unique_ptr<AIETraceLogger> logger;
+    bool valid = false;
+    std::atomic<bool> pollAIETimerThreadCtrlBool;
+    std::thread pollAIETimerThread;
+    std::unique_ptr<AIETraceOffloadManager> offloadManager;
     std::unique_ptr<AieTraceImpl> implementation;
     std::shared_ptr<AieTraceMetadata> metadata;
-    std::atomic<bool> threadCtrlBool;
-    std::thread thread;
   };
   std::map<void *, AIEData> handleToAIEData;
 };
