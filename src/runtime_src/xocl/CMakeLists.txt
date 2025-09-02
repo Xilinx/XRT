@@ -100,21 +100,25 @@ install(TARGETS xilinxopencl xilinxopencl_static
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
 
+set(CL_DEST_DIR ${XRT_INSTALL_INCLUDE_DIR}/)
+if(XRT_EDGE)
+  set(CL_DEST_DIR ${XRT_INSTALL_INCLUDE_DIR}/xrt/)
+endif()
+
 # Release OpenCL extension headers
 install (FILES
   ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext_xilinx.h
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
+  DESTINATION ${CL_DEST_DIR}/CL
   COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
 
 # Preserve legacy behavior in legacy XRT package. The component
 # setup will have defined XRT_BASE_DEV_COMPONENT to XRT
-if (XRT_XRT)
+if (XRT_XRT OR XRT_EDGE)
   install (FILES
     ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext.h
     ${XRT_SOURCE_DIR}/include/1_2/CL/cl2xrt.hpp
-    DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
+    DESTINATION ${CL_DEST_DIR}/CL
     COMPONENT ${XRT_BASE_DEV_COMPONENT}
     )
-endif (XRT_XRT)
-  
+endif (XRT_XRT) 
