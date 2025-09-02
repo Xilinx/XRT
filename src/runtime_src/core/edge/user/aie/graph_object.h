@@ -53,6 +53,9 @@ namespace zynqaie {
     std::shared_ptr<adf::graph_api> graph_api_obj;
     /* This is the collections of rtps that are used. */
     std::unordered_map<std::string, adf::rtp_config> rtps;
+    /* Shared buffer config */
+    std::unordered_map<std::string, adf::shared_buffer_config> shared_buffer_configs;
+
 
   public:
     graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* name,

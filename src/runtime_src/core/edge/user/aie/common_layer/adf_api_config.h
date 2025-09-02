@@ -189,6 +189,32 @@ struct external_buffer_config
   }
 };
 
+
+struct shared_buffer_config
+{
+    /// Shared buffer instance ID
+    short id;
+    /// Shared buffer name
+    std::string name;
+    /// Graph id
+    int graphId;
+    /// Shared buffer size per buffer
+    size_t numBytes;
+    /// Shared buffer column
+    short column;
+    /// Shared buffer row
+    short row;
+    /// Shared buffer number of input ports
+    short numInputs;
+    /// Shared buffer number of output ports
+    short numOutputs;
+    /// Shared buffer initial_value constraint specified
+    bool initialized;
+    std::vector<size_t> addr;
+    std::vector<int> producerLocks;
+    std::vector<int> consumerLocks;
+};
+
 struct kernel_config
 {
     ///Kernel object id
