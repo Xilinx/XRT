@@ -31,7 +31,6 @@ public:
   virtual void reset(const query::reset_type) const;
   void reset() const override;
 
-
   ////////////////////////////////////////////////////////////////
   // Custom ishim implementation
   // Redefined from xrt_core::ishim for functions that are not

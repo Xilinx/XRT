@@ -1153,17 +1153,17 @@ struct aie_get_thermal : request
   using result_type = float;
   static const key_type key = key_type::aie_get_thermal;
 
-  virtual std::any
-  get(const device*, const std::any& arg) const override = 0;
+  std::any
+  get(const device*, const std::any&) const override = 0;
 };
 
 struct aie_set_thermal : request
 {
-  using result_type = float;
+  using result_type = std::any;
   static const key_type key = key_type::aie_set_thermal;
 
-  virtual std::any
-  get(const device*, const std::any& arg, const std::any& value) const override = 0;
+  std::any
+  get(const device*, const std::any&, const std::any&) const override = 0;
 };
 
 struct graph_status : request
