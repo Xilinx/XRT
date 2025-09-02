@@ -335,7 +335,7 @@ namespace xdp {
     }
   }
 
-  void AieProfile_NPU3Impl::poll(const uint32_t id)
+  void AieProfile_NPU3Impl::poll(const uint64_t id)
   {
     // TODO: polling is not working yet without debug buffer
     return;
