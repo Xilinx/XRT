@@ -376,11 +376,6 @@ err_code graph_api::update(const shared_buffer_config* pSharedBufferConfig, cons
             prd_lock_acq_val = 0;
             cns_lock_acq_val = 0;
         }
-        /* Added a work around to reset locks, CR-1248458 to track. Remove XAie_LockSetValue() callers once
-         * issue is addressed.
-         */
-        XAie_LockSetValue(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->producerLocks[0], 0));
-        XAie_LockSetValue(config->get_dev(), tile, XAie_LockInit(pSharedBufferConfig->consumerLocks[0], 0));
         readOnlySharedBufferInitialized.insert(pSharedBufferConfig -> id);
     }
 
