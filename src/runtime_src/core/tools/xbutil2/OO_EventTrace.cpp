@@ -94,6 +94,14 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  if (boost::iequals(m_action, "status")) {
+    // Get the current event trace state
+    const auto event_trace_state = xrt_core::device_query<xrt_core::query::event_trace_state>(device.get());
+    std::cout << "Event Trace Status:\n";
+    std::cout << "  Action: " << (event_trace_state == 1 ? "enabled" : "disabled") << "\n";
+    return;
+  }
+
   XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
 
   auto action_to_int = [](const std::string& action) -> uint32_t {

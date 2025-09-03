@@ -131,6 +131,15 @@ std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
+ * get_shared_buffers() - get shared buffer data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::unordered_map<std::string, adf::shared_buffer_config>
+get_shared_buffers(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx = nullptr);
+
+
+/**
  * get_gmios() - get gmio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

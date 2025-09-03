@@ -1084,6 +1084,21 @@ get_dtrace_control_file_path()
   return value;
 }
 
+inline unsigned int
+get_run_buffer_pool_memory_mb()
+{
+  static constexpr unsigned int default_pool_memory_mb = 64;
+  static unsigned int value = detail::get_uint_value("Runtime.run_buffer_pool_memory_mb", default_pool_memory_mb);
+  return value;
+}
+
+inline unsigned int
+get_log_buffer_size_per_uc()
+{
+  static unsigned int value = detail::get_uint_value("Debug.log_buf_size_per_uc", 0);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

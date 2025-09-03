@@ -120,10 +120,8 @@ namespace xdp {
     }
   }
 
-  void PLDeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
+  void PLDeviceOffloadPlugin::createWriters(uint64_t deviceId)
   {
-    uint64_t deviceId = db->addDevice(sysfsPath) ;
-
     if (!device_trace)
         return;
     
