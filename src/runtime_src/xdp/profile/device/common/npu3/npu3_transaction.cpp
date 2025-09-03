@@ -88,10 +88,15 @@ namespace xdp::aie {
                 std::cout << "File size: " << fSize << std::endl;
                 control_code_buf.resize(fSize);
      
-                if (inAsm.read(control_code_buf.data(), fSize))
-                    std::cout << "ASM file read!" << std::endl;
-                else
-                    std::cout << "Unable to read file " << getAsmFileName() << std::endl;
+                inAsm.read(control_code_buf.data(), fSize);
+                std::streamsize bytesRead = inAsm.gcount();
+                if (static_cast<std::size_t>(bytesRead) != static_cast<std::size_t>(fSize)) {
+                   std::cerr << "Read " << bytesRead << " bytes but expected " << fSize
+                                               << " for file " << getAsmFileName() << '\n';
+                   control_code_buf.resize(static_cast<std::size_t>(bytesRead)); // keep only read bytes
+                } else {
+                   std::cout << "ASM file read (" << fSize << " bytes): " << getAsmFileName() << '\n';
+                }
             } 
             else {
                 std::cout << "Unable to open file " << getAsmFileName() << std::endl;
