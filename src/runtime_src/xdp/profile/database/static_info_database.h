@@ -209,7 +209,7 @@ namespace xdp {
     constexpr double   earliestSupportedToolVersion() const { return 2019.2; }
     constexpr uint16_t earliestSupportedXRTVersionMajor() const { return 2; }
     constexpr uint16_t earliestSupportedXRTVersionMinor() const { return 5; }
-    XDP_CORE_EXPORT bool validXclbin(void* devHandle) ;
+    XDP_CORE_EXPORT bool validXclbin(void* devHandle, bool hw_context_flow=false) ;
 
     // ****************************************************
     // ***** Functions related to OpenCL information. *****
@@ -330,6 +330,10 @@ namespace xdp {
     XDP_CORE_EXPORT
     uint64_t getDeviceContextUniqueId(void*);
 
+
+    XDP_CORE_EXPORT
+    bool xclbinContainsPl(void* handle, bool hw_context_flow);
+
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
     // ***** which creates events from raw PL trace    *****
@@ -397,6 +401,7 @@ namespace xdp {
                                   std::unique_ptr<aie_cfg_tile>& tile) ;
     XDP_CORE_EXPORT uint64_t getNumTracePLIO(uint64_t deviceId) ;
     XDP_CORE_EXPORT uint64_t getNumAIETraceStream(uint64_t deviceId) ;
+    XDP_CORE_EXPORT uint64_t getNumAIETraceStream(uint64_t deviceId, io_type ioType);
     XDP_CORE_EXPORT void* getAieDevInst(std::function<void* (void*)> fetch,
                                    void* devHandle, uint64_t deviceID=0) ;
     XDP_CORE_EXPORT void* getAieDevice(std::function<void* (void*)> allocate,

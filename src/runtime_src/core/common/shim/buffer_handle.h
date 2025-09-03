@@ -116,7 +116,7 @@ public:
   // the flag that is used to create this bo. This call creates metadata
   // using map of column/uc index and buffer sizes and passes the info to driver.
   virtual void
-  config(xrt_core::hwctx_handle* /*ctx*/, const std::map<uint32_t, size_t>& /*buf_sizes*/)
+  config(const xrt_core::hwctx_handle* /*ctx*/, const std::map<uint32_t, size_t>& /*buf_sizes*/)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
@@ -125,7 +125,7 @@ public:
   // If this call is not made explicitly the derived buffer_handle class
   // destoryer should handle the unconfiguring part.
   virtual void
-  unconfig(xrt_core::hwctx_handle*)
+  unconfig(const xrt_core::hwctx_handle*)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }

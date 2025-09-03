@@ -61,7 +61,7 @@ namespace xdp {
 
     std::map<uint64_t, DeviceData> offloaders;
 
-    void addDevice(const std::string& sysfsPath) ;
+    void createWriters(uint64_t deviceId) ;
     void configureDataflow(uint64_t deviceId, PLDeviceIntf* devInterface) ;
     void configureFa(uint64_t deviceId, PLDeviceIntf* devInterface) ;
     void configureCtx(uint64_t deviceId, PLDeviceIntf* devInterface) ;
@@ -81,7 +81,7 @@ namespace xdp {
     virtual void writeAll(bool openNewFiles) ;
 
     virtual void flushDevice(void* device) = 0 ;
-    virtual void updateDevice(void* device) = 0 ;
+    virtual void updateDevice(void* device, bool hw_context_flow=false) = 0 ;
 
     virtual void broadcast(VPDatabase::MessageType msg, void* blob) ;
 

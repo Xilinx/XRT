@@ -45,7 +45,7 @@ namespace xdp {
 
     uint32_t mBufSz;
     std::map<void* /*hwCtxImpl*/,
-             std::pair<uint64_t /* deviceId */, std::unique_ptr<MLTimelineImpl>>> mMultiImpl;
+             std::pair<uint64_t /* implId */, std::unique_ptr<MLTimelineImpl>>> mMultiImpl;
   };
 
 } // end namespace xdp

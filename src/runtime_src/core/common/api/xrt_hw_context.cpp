@@ -7,8 +7,12 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
+#include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_module.h"
+#include "bo_int.h"
 #include "elf_int.h"
 #include "hw_context_int.h"
 #include "module_int.h"
@@ -20,8 +24,15 @@
 #include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
+#include <ctime>
+#include <fstream>
 #include <limits>
 #include <memory>
+#include <sstream>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
@@ -37,6 +48,94 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   using qos_type = cfg_param_type;
   using access_mode = xrt::hw_context::access_mode;
 
+  // Struct used for initializing and dumping firmware log buffer
+  struct uc_log_buffer
+  {
+    size_t m_num_uc; // number of uc's
+    uint32_t m_slot_idx; // index of slot in which these uc's are present
+    size_t m_size_per_uc;
+    xrt::bo m_uc_log_bo; // log buffer used for uc logging
+
+    void
+    dump_bo(const std::string& filename, size_t offset, size_t size)
+    {
+      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+      if (!ofs.is_open()) {
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                                "Failure opening file " + filename + " for writing log!");
+        return;
+      }
+
+      auto buf = m_uc_log_bo.map<char*>() + offset;
+      ofs.write(buf, static_cast<std::streamsize>(size));
+
+      std::stringstream ss;
+      ss << "dumped uc log buffer into file " << filename;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", ss.str());
+    }
+
+    static xrt::bo
+    init_and_get_uc_log_bo(const std::shared_ptr<xrt_core::device>& device,
+                           xrt_core::hwctx_handle* ctx_hdl,
+                           size_t size_per_uc,
+                           size_t num_uc)
+    {
+      auto bo = xrt_core::bo_int::
+        create_bo(device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
+
+      // create map with uc index and log buffer size
+      std::map<uint32_t, size_t> uc_buf_map;
+      for (uint32_t i = 0; i < num_uc; ++i)
+        uc_buf_map[i] = size_per_uc;
+
+      xrt_core::bo_int::config_bo(bo, uc_buf_map, ctx_hdl); // configure the log buffer
+
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              "uC log buffer initialized successfully");
+
+      return bo;
+    }
+
+    // may throw
+    uc_log_buffer(const std::shared_ptr<xrt_core::device>& device,
+                  xrt_core::hwctx_handle* ctx_hdl,
+                  size_t size)
+      : m_num_uc(ctx_hdl->get_num_uc())
+      , m_slot_idx(ctx_hdl->get_slotidx())
+      , m_size_per_uc(size)
+      , m_uc_log_bo(init_and_get_uc_log_bo(device, ctx_hdl, size, m_num_uc))
+    {}
+
+    ~uc_log_buffer()
+    {
+      try {
+        // dump uc log buffer if configured in constructor
+        if (!m_uc_log_bo)
+          return;
+
+        // sync the log buffer
+        m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+        // dump the log buffer for each uc in a separate file
+        // Add timestamp in file name
+        auto current_time = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(current_time);
+        std::stringstream time_stamp;
+        time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+
+        for (size_t i = 0; i < m_num_uc; i++) {
+          auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
+              + time_stamp.str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
+          dump_bo(file_name, (i * m_size_per_uc), m_size_per_uc);
+        }
+      }
+      catch (const std::exception& e) {
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                                std::string{"Failed to dump UC log buffer : "} + e.what());
+      }
+    }
+  };
+
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   std::map<std::string, xrt::module> m_module_map; // map b/w kernel name and module
@@ -44,6 +143,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
+  std::unique_ptr<uc_log_buffer> m_uc_log_buf;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
@@ -65,6 +165,32 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
+  // Initializes uc log buffer, configures it by splitting the buffer
+  // equally among available columns
+  static std::unique_ptr<uc_log_buffer>
+  init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
+  {
+    // Create uc log buffer only if ini option is enabled
+    // If enabled, but not supported then this function returns nullptr
+    static auto uc_log_buf_size = xrt_core::config::get_log_buffer_size_per_uc();
+    if (!uc_log_buf_size || !ctx_hdl)
+      return nullptr;
+
+    // We get size of single uc but we create one buffer for all uc's
+    // and split it uc needs buffer that is 32 Byte aligned
+    constexpr std::size_t alignment = 32;
+    // round up size to be 32 Byte aligned
+    size_t uc_aligned_size = (uc_log_buf_size + alignment - 1) & ~(alignment - 1);
+    try {
+      return std::make_unique<uc_log_buffer>(device, ctx_hdl, uc_aligned_size);
+    }
+    catch (const std::exception& e) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              std::string{"Failed to create UC log buffer : "} + e.what());
+      return nullptr;
+    }
+  }
+
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
     : m_core_device(std::move(device))
@@ -72,14 +198,15 @@ public:
     , m_cfg_param(std::move(cfg_param))
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
-  {
-  }
+    , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
+  {}
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, access_mode mode)
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
+    , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
   {}
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, cfg_param_type cfg_param, access_mode mode)
@@ -95,6 +222,7 @@ public:
     , m_cfg_param{std::move(cfg_param)}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
+    , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
   {
     create_module_map(elf);
   }
@@ -142,6 +270,7 @@ public:
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       m_partition_size = part_size;
       create_module_map(elf);
+      m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
       return;
     }
 

@@ -20,7 +20,7 @@
 namespace xdp {
 namespace hal {
   void flush_device(void* handle) ;
-  void update_device(void* handle) ;
+  void update_device(void* handle, bool hw_context_flow) ;
 
 namespace device_offload {
 
