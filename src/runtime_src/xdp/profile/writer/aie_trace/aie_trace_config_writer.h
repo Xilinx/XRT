@@ -58,7 +58,7 @@ namespace xdp {
   }
 
   virtual bool write(bool openNewFile) ;
-  };
+  } ;
 
 
 } // end namespace xdp
