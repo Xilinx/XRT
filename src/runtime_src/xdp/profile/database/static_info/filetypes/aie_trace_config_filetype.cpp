@@ -154,6 +154,24 @@ AIETraceConfigFiletype::getMemoryTiles(const std::string& graph_name,
             tile_type tile;
             tile.col = shared_buffer.second.get<uint8_t>("column");
             tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
+            // Ensure vectors are re-sized for direct indexing by channel
+            tile.s2mm_names.resize(NUM_MEM_CHANNELS, "unused");
+            tile.mm2s_names.resize(NUM_MEM_CHANNELS, "unused");
+
+            // Store names of DMA channels for reporting purposes
+            for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
+                auto channel = chan.second.get<uint8_t>("channel");
+                if (channel >= NUM_MEM_CHANNELS) {
+                  xrt_core::message::send(severity_level::info, "XRT", "Unable to store dmaChannel");
+                  continue;
+                }
+
+                if (chan.second.get<std::string>("direction") == "s2mm")
+                  tile.s2mm_names[channel] = chan.second.get<std::string>("name");
+                else
+                  tile.mm2s_names[channel] = chan.second.get<std::string>("name");
+            }
+
             allTiles.emplace_back(std::move(tile));
         }
     }

@@ -44,6 +44,8 @@ jobs:
             packageType: rpm  
           - os: rhel8.10      
             packageType: rpm
+          - os: rhel10.0      
+            packageType: rpm
           - os: ubuntu2004      
             packageType: deb      
           - os: hip      
