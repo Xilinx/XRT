@@ -8,6 +8,7 @@
 
 #include "core/common/utils.h"
 #include "core/common/query_requests.h"
+#include "core/common/archive.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
@@ -298,6 +299,22 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   if (testObjectsToRun.empty())
     throw std::runtime_error("No test given to validate against.");
 
+  // Get archive path from device query and create archive object
+  std::unique_ptr<xrt_core::archive> test_archive;
+  try {
+    std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device.get());
+    auto archive = XBValidateUtils::findPlatformFile(archive_path, ptDevCollectionTestSuite);
+    if (!archive.empty() && std::filesystem::exists(archive)) {
+      test_archive = std::make_unique<xrt_core::archive>(archive);
+      XBU::verbose("Loaded test archive: " + archive);
+    } else {
+      XBU::verbose("Archive path not found or does not exist: " + archive);
+    }
+  } catch (const std::exception& e) {
+    XBU::verbose("Archive not available: " + std::string(e.what()));
+    // Continue without archive - this is not a fatal error
+  }
+
   get_platform_info(device, ptDeviceInfo, schemaVersion, std::cout);
   std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
@@ -309,7 +326,8 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     boost::property_tree::ptree ptTest;
     pretty_print_test_desc(testPtr, ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     try {
-      ptTest = testPtr->startTest(device);
+      // Call startTest with archive if available, otherwise use standard call
+      ptTest = test_archive ? testPtr->startTest(device, test_archive.get()) : testPtr->startTest(device);
     } catch (const std::runtime_error& e) {
       std::cout << e.what() << std::endl;
       return test_status::failed;
@@ -321,6 +339,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     pretty_print_test_run(ptTest, status, std::cout);
+    ++test_idx;
   }
 
   print_status(status, std::cout);

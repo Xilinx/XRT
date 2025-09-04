@@ -8,6 +8,7 @@
 #include "xrt/xrt_device.h"
 #include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
+#include "core/common/archive.h"
 
 using json = nlohmann::json;
 // System - Include Files
@@ -23,15 +24,52 @@ boost::property_tree::ptree
 TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_recipe);
-  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_profile);
-  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::latency_path); 
-  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
-  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
-  auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
-  try
-  {
-    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
+  return ptree;
+}
+
+boost::property_tree::ptree
+TestNPULatency::run(std::shared_ptr<xrt_core::device> dev, const xrt_core::archive* archive)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  
+  // If no archive provided, fall back to standard implementation
+  if (archive == nullptr) {
+    XBValidateUtils::logger(ptree, "Info", "No archive provided, using standard latency test");
+    return ptree;
+  }
+  
+  try {
+    // Extract recipe and profile as strings from archive (flattened names in ar archive)
+    std::string recipe_data = archive->data("recipe_latency.json");
+    std::string profile_data = archive->data("profile_latency.json"); 
+    
+    // Extract binary artifacts and build artifacts repository
+    xrt_core::runner::artifacts_repository artifacts_repo;
+    
+    // Based on the recipe structure, extract the specific artifacts referenced:
+    // - xclbin from header.xclbin: "validate_latency_strx.xclbin"
+    // - ctrlcode (elf files) from kernels[].ctrlcode: "nop_latency_strx.elf"
+    std::vector<std::string> artifact_names = {
+      "validate.xclbin", 
+      "nop.elf" 
+    };
+    
+    // Extract available artifacts from archive into repository
+    for (const auto& artifact_name : artifact_names) {
+      try {
+        std::string artifact_data = archive->data(artifact_name);
+        
+        // Convert string to vector<char> for artifacts_repository
+        std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
+        artifacts_repo[artifact_name] = std::move(artifact_binary);
+      }
+      catch (const std::exception&) {
+        XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("Required artifact not found: %s") % artifact_name));
+      }
+    }
+    
+    // Create runner with recipe, profile, and artifacts repository
+    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();
 
@@ -39,8 +77,7 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % report["cpu"]["latency"].get<double>()));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
-  catch(const std::exception& e)
-  {
+  catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
     return ptree;
