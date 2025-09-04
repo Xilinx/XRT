@@ -105,15 +105,6 @@ hip_device_get_name(hipDevice_t device)
   return (xrt_core::device_query<xrt_core::query::rom_vbnv>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
 }
 
-static void
-hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
-{
-  throw_invalid_value_if(!props, "arg passed is nullptr");
-  throw_invalid_device_if(check(device), "device requested is not available");
-
-  throw std::runtime_error("Not implemented");
-}
-
 static hipUUID
 hip_device_get_uuid(hipDevice_t device)
 {
@@ -129,12 +120,66 @@ hip_device_get_uuid(hipDevice_t device)
 }
 
 static void
+hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
+{
+  throw_invalid_value_if(!props, "arg passed is nullptr");
+  throw_invalid_device_if(check(device), "device requested is not available");
+
+  hipDeviceProp_t device_props = {0};
+  auto device_handle = (device_cache.get_or_error(device))->get_xrt_device().get_handle();
+  // Query PCIe BDF (Bus/Device/Function) information
+  auto uuid = xrt_core::device_query<xrt_core::query::pcie_bdf>(device_handle);
+  // Query device name using rom_vbnv
+  // Copy device name to device_props.name, ensuring no buffer overflow
+  auto name_str = (xrt_core::device_query<xrt_core::query::rom_vbnv>(device_handle));
+  auto cpy_size = (sizeof(device_props.name) <= (name_str.length() + 1)
+    ? (sizeof(device_props.name) - 1)
+    : name_str.length());
+  std::memcpy(device_props.name, name_str.c_str(), cpy_size);
+  device_props.name[cpy_size] = '\0';
+  device_props.uuid = hip_device_get_uuid(device);
+  // Extract and assign PCI domain, bus, and device IDs from the queried PCIe BDF tuple
+  device_props.pciDomainID = std::get<0>(uuid);
+  device_props.pciBusID = std::get<1>(uuid);
+  device_props.pciDeviceID = std::get<2>(uuid);
+  // Query if compute preemption is supported
+  device_props.computePreemptionSupported = xrt_core::device_query<xrt_core::query::preemption>(device_handle);
+  device_props.canMapHostMemory = 1;
+  device_props.computeMode = 0;
+  device_props.concurrentKernels = 0;
+  *props = device_props;
+}
+
+static void
 hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
   throw_invalid_value_if(!pi, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
-  throw std::runtime_error("Not implemented");
+  hipDeviceProp_t prop = {0};
+  hip_get_device_properties(&prop, device);
+  switch (attr) {
+    case hipDeviceAttributeCanMapHostMemory:
+      *pi = prop.canMapHostMemory;
+      break;
+    case hipDeviceAttributeComputeMode:
+      *pi = prop.computeMode;
+      break;
+    case  hipDeviceAttributeComputePreemptionSupported:
+      *pi = prop.computePreemptionSupported;
+      break;
+    case hipDeviceAttributeConcurrentKernels:
+      *pi = prop.concurrentKernels;
+      break;
+    case hipDeviceAttributePciBusId:
+      *pi = prop.pciBusID;
+      break;
+    case hipDeviceAttributePciDeviceId:
+      *pi = prop.pciDeviceID;
+      break;
+    default:
+      throw std::runtime_error("unsupported attribute type");
+  }
 }
 
 // Sets thread default device
