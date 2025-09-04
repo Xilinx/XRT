@@ -31,8 +31,9 @@ class TestRunner : public JSONConfigurable {
     
     // Overloaded version with archive support for individual test implementations
     // We'll remove the default run implementation once all tests overload this version
-    virtual boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev, 
-                                            const xrt_core::archive* archive) {
+    virtual boost::property_tree::ptree 
+    run(std::shared_ptr<xrt_core::device> dev, 
+        const xrt_core::archive* /*archive*/) {
       // Default implementation ignores archive and calls original run method
       return run(dev);
     }

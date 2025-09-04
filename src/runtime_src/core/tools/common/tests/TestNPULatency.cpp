@@ -32,23 +32,17 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev, const xrt_core::archi
 {
   boost::property_tree::ptree ptree = get_test_header();
   
-  // If no archive provided, fall back to standard implementation
   if (archive == nullptr) {
     XBValidateUtils::logger(ptree, "Info", "No archive provided, using standard latency test");
     return ptree;
   }
   
   try {
-    // Extract recipe and profile as strings from archive (flattened names in ar archive)
     std::string recipe_data = archive->data("recipe_latency.json");
     std::string profile_data = archive->data("profile_latency.json"); 
     
-    // Extract binary artifacts and build artifacts repository
     xrt_core::runner::artifacts_repository artifacts_repo;
     
-    // Based on the recipe structure, extract the specific artifacts referenced:
-    // - xclbin from header.xclbin: "validate_latency_strx.xclbin"
-    // - ctrlcode (elf files) from kernels[].ctrlcode: "nop_latency_strx.elf"
     std::vector<std::string> artifact_names = {
       "validate.xclbin", 
       "nop.elf" 
