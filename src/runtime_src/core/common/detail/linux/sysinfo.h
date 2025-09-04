@@ -56,7 +56,7 @@ processor_name()
       if (line.rfind("model name", 0) != 0)  // Check if line starts with "model name"
         continue;
 
-      if (auto colon_pos = line.find(":"); colon_pos != std::string::npos) {
+      if (auto colon_pos = line.find(": "); colon_pos != std::string::npos) {
         model_name = line.substr(colon_pos + 2); // Extract substring after ": "
         break;
       }
