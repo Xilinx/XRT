@@ -21,11 +21,11 @@ namespace xdp {
     public:
       AieTrace_NPU3Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
       ~AieTrace_NPU3Impl() = default;
-      virtual void updateDevice();
-      virtual void flushTraceModules();
-      virtual void freeResources();
-      virtual void pollTimers(uint64_t index, void* handle);
-      virtual uint64_t checkTraceBufSize(uint64_t size);
+      void updateDevice() override;
+      void flushTraceModules() override;
+      void freeResources() override;
+      void pollTimers(uint64_t index, void* handle) override;
+      uint64_t checkTraceBufSize(uint64_t size) override;
       void* setAieDeviceInst(void*, uint64_t) override;
 
       void modifyEvents(module_type type, io_type subtype, 

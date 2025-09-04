@@ -151,11 +151,11 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
-#ifdef XDP_NPU3_BUILD
+  #ifdef XDP_NPU3_BUILD
     if (aie::isNPU3(AIEData.metadata->getHardwareGen()))
       AIEData.implementation = std::make_unique<AieProfile_NPU3Impl>(db, AIEData.metadata);
     else
-#endif
+  #endif
       AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif XRT_X86_BUILD
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
