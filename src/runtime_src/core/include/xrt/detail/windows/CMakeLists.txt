@@ -8,11 +8,6 @@ set(XRT_WINDOWS_HEADER_SRC
   types.h
   uuid.h)
 
-# Legacy deprecated install
-install (FILES ${XRT_WINDOWS_HEADER_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/windows
-  COMPONENT ${XRT_BASE_DEV_COMPONENT})
-
 # base component install
 install (FILES ${XRT_WINDOWS_HEADER_SRC}
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail/windows
