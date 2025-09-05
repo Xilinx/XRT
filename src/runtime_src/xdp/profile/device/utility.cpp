@@ -71,7 +71,7 @@ namespace xdp::util {
 
   std::string getDeviceName(void* deviceHandle, bool hw_context_flow)
   {
-    std::string deviceName = "";
+    std::string deviceName = "device";
 
     // The deviceHandle could either be a pointer to a hw_context_impl
     // or a shim pointer.  We need to get the core device in either case.

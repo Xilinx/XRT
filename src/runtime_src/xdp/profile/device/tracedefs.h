@@ -124,7 +124,10 @@ constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
 constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
+// NOTE: This is 2 for memory tiles and 4 for interface tiles (NPU3 only)
 constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
+constexpr uint32_t NUM_CHANNEL_SELECTS_SHIM_NPU3 = 4;
+constexpr uint32_t NUM_CHANNEL_SELECTS_MAX = 4;
 constexpr uint32_t NUM_MEM_CHANNELS = 6;
 
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
@@ -147,6 +150,10 @@ constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x00002222;
 
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM      = 0x14408;
+
+// DMA types
+#define MM2S_CONTROL 2
+#define S2MM_TRACE   3
 
 #define XDP_DEV_GEN_AIE     1U
 #define XDP_DEV_GEN_AIEML   2U
