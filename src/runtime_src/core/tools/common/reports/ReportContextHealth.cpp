@@ -17,6 +17,7 @@
 #include <vector>
 
 using bpt = boost::property_tree::ptree;
+using context_health_info = xrt_core::query::context_health_info;
 
 void
 ReportContextHealth::
@@ -41,13 +42,14 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     bpt contexts_array{};
     for (const auto& context : context_health_data) {
       bpt context_pt;
-      context_pt.put("txn_op_idx", context.txn_op_idx);
-      context_pt.put("ctx_pc", context.ctx_pc);
-      context_pt.put("fatal_error_type", context.fatal_error_type);
-      context_pt.put("fatal_error_exception_type", context.fatal_error_exception_type);
-      context_pt.put("fatal_error_exception_pc", context.fatal_error_exception_pc);
-      context_pt.put("fatal_error_app_module", context.fatal_error_app_module);
-      contexts_array.push_back(std::make_pair("", context_pt));
+      context_pt.put("ctx_id"                     ,context.ctx_id);
+      context_pt.put("txn_op_idx"                 ,context.health_data.txn_op_idx);
+      context_pt.put("ctx_pc"                     ,context.health_data.ctx_pc);
+      context_pt.put("fatal_error_type"           ,context.health_data.fatal_error_type);
+      context_pt.put("fatal_error_exception_type" ,context.health_data.fatal_error_exception_type);
+      context_pt.put("fatal_error_exception_pc"   ,context.health_data.fatal_error_exception_pc);
+      context_pt.put("fatal_error_app_module"     ,context.health_data.fatal_error_app_module);
+      contexts_array.push_back(std::make_pair(""  ,context_pt));
     }
     context_health_pt.add_child("contexts", contexts_array);
     context_health_pt.put("context_count", context_health_data.size());
@@ -144,7 +146,7 @@ generate_context_health_report(const xrt_core::device* dev,
   std::stringstream ss;
 
   try {
-    std::vector<ert_ctx_health_data> context_health_data;
+    std::vector<context_health_info::smi_context_health> context_health_data;
 
     // If any pid is nonzero, pass pairs
     bool has_nonzero_pid = std::any_of(context_pid_pairs.begin(), context_pid_pairs.end(), [](const auto& p){ return p.second != 0; });
@@ -165,6 +167,7 @@ generate_context_health_report(const xrt_core::device* dev,
 
     // Create Table2D with headers
     const std::vector<Table2D::HeaderData> table_headers = {
+      {"Ctx Id",               Table2D::Justification::left},
       {"Txn Op Idx",           Table2D::Justification::left},
       {"Ctx PC",               Table2D::Justification::left},
       {"Fatal Err Type",       Table2D::Justification::left},
@@ -177,12 +180,13 @@ generate_context_health_report(const xrt_core::device* dev,
     // Add data rows
     for (const auto& context : context_health_data) {
       const std::vector<std::string> entry_data = {
-        (boost::format("0x%x") % context.txn_op_idx).str(),
-        (boost::format("0x%x") % context.ctx_pc).str(),
-        (boost::format("0x%x") % context.fatal_error_type).str(),
-        (boost::format("0x%x") % context.fatal_error_exception_type).str(),
-        (boost::format("0x%x") % context.fatal_error_exception_pc).str(),
-        (boost::format("0x%x") % context.fatal_error_app_module).str()
+        (boost::format("%d")   % context.ctx_id).str(),
+        (boost::format("0x%x") % context.health_data.txn_op_idx).str(),
+        (boost::format("0x%x") % context.health_data.ctx_pc).str(),
+        (boost::format("0x%x") % context.health_data.fatal_error_type).str(),
+        (boost::format("0x%x") % context.health_data.fatal_error_exception_type).str(),
+        (boost::format("0x%x") % context.health_data.fatal_error_exception_pc).str(),
+        (boost::format("0x%x") % context.health_data.fatal_error_app_module).str()
       };
       context_table.addEntry(entry_data);
     }
