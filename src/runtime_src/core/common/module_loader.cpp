@@ -173,15 +173,26 @@ module_path(const std::string& module)
   path /= module + ".dll";
 #else
   path /= XRT_LIB_DIR;
-  path /= "xrt/module/lib" + module + ".so";
+  path /= "xrt/module/lib" + module + ".so." + XRT_VERSION_MAJOR;
 #endif
-
   if (!sfs::exists(path) || !sfs::is_regular_file(path))
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
 }
-  
+
+static sfs::path
+sdk_path(const std::string& module)
+{
+  sfs::path sdk(value_or_empty(getenv("AMD_NPU_SDK_PATH")));
+  if (sdk.empty())
+    throw std::runtime_error("AMD_NPU_SDK_PATH environment variable not set");
+
+  // The SDK path is only applicable on Client Windows
+  sdk /= module + ".dll";
+  return sdk;
+}
+
 static sfs::path
 shim_path()
 {
@@ -258,6 +269,34 @@ module_loader(const std::string& module_name,
     warning_function();
 
   // Explicitly do not close the handle.  We need these dynamic
+  // symbols to remain open and linked through the rest of the
+  // execution
+}
+
+sdk_loader::
+sdk_loader(const std::string& module_name,
+           std::function<void (void*)> register_function,
+           std::function<void ()> warning_function,
+           std::function<int ()> error_function)
+{
+  if (error_function) {
+    // Check prerequirements for this particular plugin.  If they are
+    // not met, then return before we do any linking
+    if (error_function())
+      return;
+  }
+
+  auto path = sdk_path(module_name);
+  auto handle = load_library(path.string());
+
+  // Do the plugin specific functionality
+  if (register_function)
+    register_function(handle);
+
+  if (warning_function)
+    warning_function();
+
+  // Explictly do not close the handle.  We need these dynamic
   // symbols to remain open and linked through the rest of the
   // execution
 }

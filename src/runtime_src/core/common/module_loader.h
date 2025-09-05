@@ -49,6 +49,20 @@ public:
 };
 
 /**
+ * This class is responsible for loading a plugin module on Windows
+ * from the SDK install directory, separate from the XRT installation.
+ */
+class sdk_loader
+{
+public:
+  XRT_CORE_COMMON_EXPORT
+  sdk_loader(const std::string& plugin_name,
+             std::function<void (void*)> registration_function,
+             std::function<void ()> warning_function,
+             std::function<int ()> error_function = nullptr);
+};
+
+/**
  * Load XRT core library at runtime
  */
 class shim_loader

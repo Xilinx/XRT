@@ -14,12 +14,12 @@ file(GLOB NATIVE_PLUGIN_FILES
   "${PROFILE_DIR}/writer/native/*.cpp"
 )
 
-add_library(xdp_native_plugin MODULE ${NATIVE_PLUGIN_FILES})
+add_library(xdp_native_plugin SHARED ${NATIVE_PLUGIN_FILES})
 add_dependencies(xdp_native_plugin xdp_core xrt_coreutil)
 target_link_libraries(xdp_native_plugin PRIVATE xdp_core xrt_coreutil)
 
 set_target_properties(xdp_native_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_native_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} NAMELINK_SKIP
 )
