@@ -7,9 +7,17 @@
 #include "tools/common/TestRunner.h"
 #include "xrt/xrt_device.h"
 
+// Forward declaration
+namespace xrt_core { class archive; }
+
 class TestNPULatency : public TestRunner {
   public:
     boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
+    
+    // Archive-aware version - extracts test artifacts from archive
+    boost::property_tree::ptree 
+    run (std::shared_ptr<xrt_core::device> dev, 
+        const xrt_core::archive* archive) override;
 
   public:
     TestNPULatency();

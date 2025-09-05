@@ -333,6 +333,7 @@ enum class key_type
   firmware_log_version,
   firmware_log_state,
   firmware_log_config,
+  archive_path,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -4213,6 +4214,15 @@ struct firmware_log_state : request
 struct firmware_log_config : request
 {
   static const key_type key = key_type::firmware_log_config;
+  using result_type = std::string;
+
+  std::any
+  get(const device*) const override = 0;
+};
+
+struct archive_path : request
+{
+  static const key_type key = key_type::archive_path;
   using result_type = std::string;
 
   std::any
