@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -38,12 +38,32 @@ machine_info()
 static boost::property_tree::ptree
 glibc_info()
 {
-  boost::property_tree::ptree _pt;
-  _pt.put("name", "glibc");
-  _pt.put("version", gnu_get_libc_version());
-  return _pt;
+  boost::property_tree::ptree pt;
+  pt.put("name", "glibc");
+  pt.put("version", gnu_get_libc_version());
+  return pt;
 }
 
+static std::string 
+processor_name()
+{
+  std::ifstream cpuinfo("/proc/cpuinfo");
+  std::string line;
+  std::string model_name = "Unknown";
+
+  if (cpuinfo.is_open()) {
+    while (std::getline(cpuinfo, line)) {
+      if (line.rfind("model name", 0) != 0)  // Check if line starts with "model name"
+        continue;
+
+      if (auto colon_pos = line.find(": "); colon_pos != std::string::npos) {
+        model_name = line.substr(colon_pos + 2); // Extract substring after ": "
+        break;
+      }
+    }
+  }
+  return model_name;
+}
 } //end anonymous namespace
 
 
@@ -95,14 +115,16 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
   pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
-  boost::property_tree::ptree _ptLibInfo;
-  _ptLibInfo.push_back( {"", glibc_info()} );
-  pt.put_child("libraries", _ptLibInfo);
+  boost::property_tree::ptree pt_lib_info;
+  pt_lib_info.push_back( {"", glibc_info()} );
+  pt.put_child("libraries", pt_lib_info);
 
   char hostname[256] = {0};
   gethostname(hostname, 256);
   std::string hn(hostname);
   pt.put("hostname", hn);
+
+  pt.put("processor", processor_name());
 }
 
 } //xrt_core::sysinfo
