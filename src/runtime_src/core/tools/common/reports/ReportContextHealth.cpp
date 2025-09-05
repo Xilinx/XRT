@@ -19,6 +19,7 @@
 
 using bpt = boost::property_tree::ptree;
 using context_health_info = xrt_core::query::context_health_info;
+using context_health_info = xrt_core::query::context_health_info;
 
 void
 ReportContextHealth::
