@@ -2002,7 +2002,8 @@ struct aie_partition_info : request
 struct context_health_info : request
 {
   struct smi_context_health {
-    uint32_t ctx_id;
+    uint64_t ctx_id;
+    uint64_t pid;
     ert_ctx_health_data health_data;
   };
   using result_type = std::vector<smi_context_health>;
