@@ -14,6 +14,7 @@
 #include <boost/format.hpp>
 #include <iomanip>
 #include <map>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -119,6 +120,8 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter)
 {
   std::vector<uint64_t> context_ids;
   std::vector<uint64_t> pids;
+  std::vector<uint64_t> context_ids;
+  std::vector<uint64_t> pids;
   
   // Parse both ctx_id and pid from filter
   for (const auto& element : elements_filter) {
@@ -134,6 +137,7 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter)
   
   // Create pairs - map 1:1, pad with 0 if lists are different lengths
   std::vector<std::pair<uint64_t, uint64_t>> pairs;
+  std::vector<std::pair<uint64_t, uint64_t>> pairs;
   size_t max_size = std::max(context_ids.size(), pids.size());
   
   for (size_t i = 0; i < max_size; ++i) {
@@ -145,6 +149,7 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter)
   return pairs;
 }
 
+static std::vector<uint64_t> 
 static std::vector<uint64_t> 
 parse_context_ids(const std::vector<std::string>& elements_filter) 
 {
@@ -164,6 +169,8 @@ generate_context_health_report(const xrt_core::device* dev,
 {
   std::stringstream ss;
   // Parse context_id/pid pairs from elements_filter
+  std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
+  std::vector<uint64_t> context_ids = parse_context_ids(elements_filter);
   std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
   std::vector<uint64_t> context_ids = parse_context_ids(elements_filter);
 
