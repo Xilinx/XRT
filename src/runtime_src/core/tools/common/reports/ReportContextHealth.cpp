@@ -40,7 +40,7 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     auto context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
 
     // Group contexts by PID
-    std::map<uint32_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
+    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
     for (const auto& context : context_health_data) {
       contexts_by_pid[context.pid].push_back(context);
     }
@@ -187,16 +187,14 @@ generate_context_health_report(const xrt_core::device* dev,
     }
 
     // Group contexts by PID
-    std::map<uint32_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
+    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
     for (const auto& context : context_health_data) {
       contexts_by_pid[context.pid].push_back(context);
     }
 
-    // Create separate table for each PID
     for (const auto& [pid, contexts] : contexts_by_pid) {
       ss << "  Context Health Information (PID: " << pid << "):\n";
 
-      // Create Table2D with headers (no PID column since it's in the header)
       const std::vector<Table2D::HeaderData> table_headers = {
         {"Ctx Id",               Table2D::Justification::left},
         {"Txn Op Idx",           Table2D::Justification::left},
