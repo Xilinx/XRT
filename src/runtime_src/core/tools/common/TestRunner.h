@@ -17,14 +17,30 @@
 #include <boost/property_tree/ptree.hpp>
 
 // System - Include Files
+#include <memory>
 #include <filesystem>
 #include <string>
 #include <vector>
 
+// Forward declarations
+namespace xrt_core { class archive; }
+
 class TestRunner : public JSONConfigurable {
   public:
     virtual boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev) = 0;
-    boost::property_tree::ptree startTest(std::shared_ptr<xrt_core::device> dev);
+    
+    // Overloaded version with archive support for individual test implementations
+    // We'll remove the default run implementation once all tests overload this version
+    virtual boost::property_tree::ptree 
+    run(std::shared_ptr<xrt_core::device> dev, 
+        const xrt_core::archive* /*archive*/) {
+      // Default implementation ignores archive and calls original run method
+      return run(dev);
+    }
+    
+    boost::property_tree::ptree startTest(std::shared_ptr<xrt_core::device> dev, 
+                                          const xrt_core::archive* archive = nullptr);
+    
     virtual void set_param(const std::string, const std::string) {}
     bool is_explicit() const { return m_explicit; };
     virtual bool getConfigHidden() const { return is_explicit(); };
