@@ -657,6 +657,63 @@ struct aie_set_freq
   }
 };
 
+static
+float
+get_thermal_temperature()
+{
+  const std::string path = "/sys/class/thermal/thermal_zone1/temp";
+  std::ifstream file(path);
+  if (!file.is_open())
+    throw xrt_core::error(-ENODEV, "Failed to open file: " + path);
+
+  int millidc;
+  file >> millidc;
+  file.close();
+
+  return millidc / 1000.0f;
+}
+
+static
+void
+set_thermal_threshold_temperature(uint32_t val)
+{
+  throw xrt_core::error(-ENOTSUP, "Feature Not Supported");
+}
+
+struct aie_thermal
+{
+  using result_type = query::aie_thermal::result_type;
+  using thermal_type = xrt::aie::device::thermal_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& thermal)
+  {
+    auto thermal_t = std::any_cast<thermal_type>(thermal);
+
+    switch(thermal_t) {
+      case thermal_type::temperature:
+        return get_thermal_temperature();
+      default:
+        throw xrt_core::error(-EINVAL, "Invalid thermal argument");
+    }
+  }
+
+  static void
+  put(const xrt_core::device* device, key_type key, const std::any& thermal, const std::any& value)
+  {
+    auto thermal_t = std::any_cast<thermal_type>(thermal);
+    auto val = std::any_cast<uint32_t>(value);
+
+    switch(thermal_t) {
+      case thermal_type::temperature:
+        set_thermal_threshold_temperature(val);
+        break;
+      default:
+        throw xrt_core::error(-EINVAL, "Invalid thermal argument");
+    }
+  }
+};
+
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -1012,6 +1069,24 @@ struct function2_get : QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter, typename Setter>
+struct function2_getput : virtual QueryRequestType
+{
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+
+  void
+  put(const xrt_core::device* device, const std::any& arg1, const std::any& value) const
+  {
+    auto k = QueryRequestType::key;
+    Setter::put(device, k, arg1, value);
+  }
+};
+
 template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
@@ -1058,6 +1133,14 @@ emplace_func2_request()
   query_tbl.emplace(k, std::make_unique<function2_get<QueryRequestType, Getter>>());
 }
 
+template <typename QueryRequestType, typename Getter, typename Setter = Getter>
+static void
+emplace_func2_getput()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_getput<QueryRequestType, Getter, Setter>>());
+}
+
 template <typename QueryRequestType, typename Getter>
 static void
 emplace_func3_request()
@@ -1093,6 +1176,7 @@ initialize_query_table()
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
   emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
+  emplace_func2_getput<query::aie_thermal,              aie_thermal>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");

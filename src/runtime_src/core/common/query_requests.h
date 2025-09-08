@@ -295,6 +295,7 @@ enum class key_type
   xclbin_slots,
   aie_get_freq,
   aie_set_freq,
+  aie_thermal,
   dtbo_path,
 
   boot_partition,
@@ -1144,6 +1145,18 @@ struct aie_set_freq : request
 
   virtual std::any
   get(const device*, const std::any& partition_id, const std::any& freq) const override = 0;
+};
+
+struct aie_thermal : request
+{
+  using result_type = float;
+  static const key_type key = key_type::aie_thermal;
+
+  virtual std::any
+  get(const device*, const std::any&) const override = 0;
+
+  virtual void
+  put(const device*, const std::any&, const std::any&) const override = 0;
 };
 
 struct graph_status : request
