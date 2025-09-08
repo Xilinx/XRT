@@ -108,7 +108,7 @@ namespace xdp {
       loc = XAie_TileLoc(traceGMIO->shimColumn, 0);
 
       auto dmaType = traceGMIO->type;
-      XAie_DmaDirection dmaDir = (dmaType == S2MM_TRACE) ? DMA_S2MM_TRACE : DMA_S2MM;
+      XAie_DmaDirection dmaDir = (dmaType == io_type::TRACE_DMA) ? DMA_S2MM_TRACE : DMA_S2MM;
       uint8_t  s2mm_ch_id = (dmaType >= S2MM_TRACE) ? 0 : traceGMIO->channelNumber;
       uint16_t s2mm_bd_id = 0; /* always use first bd in private pool */
 
