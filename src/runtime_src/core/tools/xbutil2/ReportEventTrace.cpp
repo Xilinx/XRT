@@ -148,7 +148,7 @@ validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
 
 static std::string
 generate_event_trace_report(const xrt_core::device* dev,
-                            const std::vector<std::string>& /*elements_filter*/)
+                            bool is_watch)
 {
   std::stringstream ss{};
   
@@ -160,7 +160,7 @@ generate_event_trace_report(const xrt_core::device* dev,
     validate_version_compatibility(version, dev);
 
     // Query event trace data from device using specific query struct
-    auto log_buffer = xrt_core::device_query<xrt_core::query::event_trace_data>(dev);
+    auto log_buffer = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, is_watch);
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
           % log_buffer.size % xrt_core::timestamp();
@@ -244,7 +244,7 @@ writeReport(const xrt_core::device* device,
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
     auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
-      return generate_event_trace_report(dev, filters); 
+      return generate_event_trace_report(dev, true); 
     };
 
     smi_watch_mode::run_watch_mode(device, elements_filter, output,
@@ -253,6 +253,6 @@ writeReport(const xrt_core::device* device,
   }
   output << "Event Trace Report\n";
   output << "==================\n\n";
-  output << generate_event_trace_report(device, elements_filter);
+  output << generate_event_trace_report(device, false);
   output << std::endl;
 }

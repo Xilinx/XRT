@@ -113,14 +113,14 @@ parse_log_entry(const uint8_t* data_ptr,
 
 static std::string
 generate_firmware_log_report(const xrt_core::device* dev,
-                             const std::vector<std::string>& /*elements_filter*/)
+                             bool is_watch)
 {
   std::stringstream ss;
 
   // Load config once (could be cached in a real implementation)
   std::string config_path;
   try {
-    config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev);
+    config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev, is_watch);
   } catch (const std::exception& e) {
     ss << "Error retrieving firmware log config path: " << e.what() << "\n";
     return ss.str();
@@ -192,7 +192,7 @@ writeReport(const xrt_core::device* device,
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
-      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, filters);
+      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, true);
     };
     smi_watch_mode::run_watch_mode(device, elements_filter, output,
                                    report_generator, "Firmware Log");
@@ -202,7 +202,7 @@ writeReport(const xrt_core::device* device,
   // Non-watch mode
   output << "Firmware Log Report\n";
   output << "===================\n\n";
-  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, elements_filter);
+  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, false);
   output << std::endl;
 }
 
