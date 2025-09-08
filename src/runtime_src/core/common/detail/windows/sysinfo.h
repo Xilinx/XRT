@@ -224,6 +224,11 @@ get_os_info(boost::property_tree::ptree &pt)
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", "BIOSVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("bios_version", value);
+
+  //processor name
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "ProcessorNameString", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("processor", value);
 }
 
 } //xrt_core::sysinfo

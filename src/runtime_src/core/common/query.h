@@ -20,6 +20,7 @@
 #include <boost/format.hpp>
 
 #include <stdexcept>
+#include <any>
 
 namespace xrt_core {
 
@@ -93,6 +94,10 @@ struct request
   virtual void
   put(const device*, const std::any&) const
   { throw std::runtime_error("query update does not support one argument"); }
+
+  virtual void
+  put(const device*, const std::any&, const std::any&) const
+  { throw std::runtime_error("query update does not support two arguments"); }
 };
 
 // Base class for query exceptions.

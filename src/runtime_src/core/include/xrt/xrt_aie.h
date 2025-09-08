@@ -59,6 +59,16 @@ public:
   enum class buffer_state { idle, running, completed };
 
   /**
+   * @enum thermal_type - enumerates the type of thermal parameters available for the AIE device
+   * 
+   * @var temperature
+   *   Represents the current temperature reading from the thermal of AIE device. It is measured in degree celsius
+   *
+   * This enum defines different themal-related metrics that can be queried or set on the AIE device.
+   */
+  enum class thermal_type { temperature };
+
+  /**
    * device() - Construct device with specified access mode
    *
    * @param args
@@ -184,6 +194,34 @@ public:
   XCL_DRIVER_DLLESPEC
   bool
   write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val);
+
+  /**
+   * get_thermal() - Read thermal information of AIE device
+   *
+   * @param thermal
+   *  thermal_type enum option
+   * @return
+   *  returns aie thermal information based on argument
+   *
+   * This function reads thermal information of AIE device eg: temparature of AIE device
+   */
+  XCL_DRIVER_DLLESPEC
+  float
+  get_thermal(thermal_type thermal) const;
+
+  /**
+   * set_thermal_threshold() - set thermal threshold of AIE device
+   *
+   * @param thermal
+   *  thermal_type enum option
+   * @param value
+   *  threshold value to set
+   *
+   * This function sets thermal threshold of AIE device eg: temparature threshold of AIE device
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  set_thermal_threshold(thermal_type thermal, uint32_t value) const;
 
 private:
   XCL_DRIVER_DLLESPEC
