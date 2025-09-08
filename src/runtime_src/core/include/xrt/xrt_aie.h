@@ -205,7 +205,7 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   float
-  get_thermal(const thermal& arg) const;
+  get_thermal(thermal arg) const;
 
   /**
    * set_thermal_threshold() - set AIE thermal threshold based on arg
@@ -219,7 +219,7 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   void
-  set_thermal_threshold(const thermal& arg, uint32_t value) const;
+  set_thermal_threshold(thermal arg, uint32_t value) const;
 
 private:
   XCL_DRIVER_DLLESPEC
