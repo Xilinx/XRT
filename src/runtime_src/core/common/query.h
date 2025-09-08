@@ -20,6 +20,7 @@
 #include <boost/format.hpp>
 
 #include <stdexcept>
+#include <any>
 
 namespace xrt_core {
 

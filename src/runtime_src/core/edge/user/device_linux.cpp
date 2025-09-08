@@ -683,12 +683,12 @@ set_thermal_threshold_temperature(uint32_t val)
 struct aie_thermal
 {
   using result_type = query::aie_thermal::result_type;
-  using thermal_type = xrt::aie::device::thermal;
+  using thermal_type = xrt::aie::device::thermal_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const std::any& arg)
+  get(const xrt_core::device* device, key_type key, const std::any& thermal)
   {
-    auto thermal_t = std::any_cast<thermal_type>(arg);
+    auto thermal_t = std::any_cast<thermal_type>(thermal);
 
     switch(thermal_t) {
       case thermal_type::temperature:
@@ -699,9 +699,9 @@ struct aie_thermal
   }
 
   static void
-  put(const xrt_core::device* device, key_type key, const std::any& arg, const std::any& value)
+  put(const xrt_core::device* device, key_type key, const std::any& thermal, const std::any& value)
   {
-    auto thermal_t = std::any_cast<thermal_type>(arg);
+    auto thermal_t = std::any_cast<thermal_type>(thermal);
     auto val = std::any_cast<uint32_t>(value);
 
     switch(thermal_t) {
