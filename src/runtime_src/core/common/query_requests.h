@@ -4158,6 +4158,9 @@ struct event_trace_data : request
   static const key_type key = key_type::event_trace_data;
 
   std::any
+  get(const device*) const override = 0;
+
+  std::any
   get(const device*, const std::any&) const override = 0;
 
 };
@@ -4203,6 +4206,9 @@ struct firmware_log_data : request
 {
   using result_type = firmware_debug_buffer;
   static const key_type key = key_type::firmware_log_data;
+
+  std::any
+  get(const device*) const override = 0;
 
   std::any
   get(const device*, const std::any&) const override = 0;
