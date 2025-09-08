@@ -68,6 +68,8 @@ namespace xdp {
       meta_config.num_rows,
       meta_config.num_columns,
       meta_config.shim_row,
+      0,
+      0,
       meta_config.mem_row_start,
       meta_config.mem_num_rows,
       meta_config.aie_tile_row_start,
