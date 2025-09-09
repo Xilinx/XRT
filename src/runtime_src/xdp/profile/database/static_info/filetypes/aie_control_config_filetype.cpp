@@ -14,6 +14,9 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
+// Local constants for interface tile configuration
+// TODO: replace with API in aie_base
+constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
 namespace pt = boost::property_tree;
 using severity_level = xrt_core::message::severity_level;
 
@@ -344,16 +347,42 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-            // Add to existing lists of stream IDs, master/slave, and port names
+            // Add to existing lists of stream IDs and master/slave
             it->stream_ids.push_back(streamId);
             it->is_master_vec.push_back(isMaster);
-            it->port_names.push_back(name);
+
+            // Ensure port_names vector is pre-sized for direct indexing by port number
+            if (it->port_names.size() < NUM_SWITCH_MONITOR_PORTS)
+                it->port_names.resize(NUM_SWITCH_MONITOR_PORTS, "unused");
+
+            // Use direct indexing by streamId with bounds checking
+            if (streamId < NUM_SWITCH_MONITOR_PORTS) {
+                it->port_names[streamId] = name;
+            } else {
+                xrt_core::message::send(severity_level::info, "XRT",
+                    "Interface tile streamId " + std::to_string(streamId) +
+                    " exceeds maximum ports (" + std::to_string(NUM_SWITCH_MONITOR_PORTS) +
+                    "). Unable to store port name.");
+            }
         }
         else {
-            // Grab first stream ID and add to list of tiles
+            // Pre-size vectors for direct indexing by port number
+            tile.port_names.resize(NUM_SWITCH_MONITOR_PORTS, "unused");
+
+            // Add first stream ID and master/slave to vectors
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
-            tile.port_names.push_back(name);
+
+            // Set port name at specific index with bounds checking
+            if (streamId < NUM_SWITCH_MONITOR_PORTS) {
+                tile.port_names[streamId] = name;
+            } else {
+                xrt_core::message::send(severity_level::info, "XRT",
+                    "Interface tile streamId " + std::to_string(streamId) +
+                    " exceeds maximum ports (" + std::to_string(NUM_SWITCH_MONITOR_PORTS) +
+                    "). Unable to store port name.");
+            }
+
             tile.subtype = type;
             tiles.emplace_back(std::move(tile));
         }
