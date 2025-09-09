@@ -243,12 +243,11 @@ writeReport(const xrt_core::device* device,
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
-    auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
+    auto report_generator = [](const xrt_core::device* dev) -> std::string {
       return generate_event_trace_report(dev, true); 
     };
 
-    smi_watch_mode::run_watch_mode(device, elements_filter, output,
-                                  report_generator, "Event Trace");
+    smi_watch_mode::run_watch_mode(device, output, report_generator, "Event Trace");
     return;
   }
   output << "Event Trace Report\n";

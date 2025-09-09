@@ -191,11 +191,10 @@ writeReport(const xrt_core::device* device,
 {
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
+    auto report_generator = [](const xrt_core::device* dev) -> std::string {
       return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, true);
     };
-    smi_watch_mode::run_watch_mode(device, elements_filter, output,
-                                   report_generator, "Firmware Log");
+    smi_watch_mode::run_watch_mode(device, output, report_generator, "Firmware Log");
     return;
   }
 
