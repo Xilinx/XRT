@@ -4160,6 +4160,9 @@ struct event_trace_data : request
   std::any
   get(const device*) const override = 0;
 
+  std::any
+  get(const device*, const std::any&) const override = 0;
+
 };
 
 struct event_trace_state : request
@@ -4206,6 +4209,9 @@ struct firmware_log_data : request
 
   std::any
   get(const device*) const override = 0;
+
+  std::any
+  get(const device*, const std::any&) const override = 0;
 };
 
 struct firmware_log_state : request

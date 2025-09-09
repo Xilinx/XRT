@@ -49,7 +49,7 @@ public:
    * - Return formatted string ready for display
    * - Handle any exceptions internally (return error message if needed)
    */
-  using ReportGenerator = std::function<std::string(const xrt_core::device*, const std::vector<std::string>&)>;
+  using ReportGenerator = std::function<std::string(const xrt_core::device*)>;
 
   /**
    * @brief Parse watch mode options from element filters
@@ -92,27 +92,7 @@ public:
    */
   static void 
   run_watch_mode(const xrt_core::device* device,
-                            const std::vector<std::string>& elements_filter,
-                            std::ostream& output,
-                            const ReportGenerator& report_generator,
-                            const std::string& report_title = "Report");
-
-  /**
-   * @brief Filter out watch-specific options from element filters
-   * 
-   * @param elements_filter Input element filters that may contain watch options
-   * @return New vector with watch-specific options removed
-   * 
-   * Removes the following patterns:
-   * - "watch" - Simple watch mode activation
-   * - "watch=<value>" - Watch mode with custom options (future extension)
-   * 
-   * This allows the filtered list to be passed to report generators
-   * without them needing to handle watch-specific syntax.
-   * 
-   * @note The returned vector may be smaller than the input
-   * @note Original vector is not modified (returns new vector)
-   */
-  static std::vector<std::string> 
-  filter_out_watch_options(const std::vector<std::string>& elements_filter);
+                 std::ostream& output,
+                 const ReportGenerator& report_generator,
+                 const std::string& report_title = "Report");
 };

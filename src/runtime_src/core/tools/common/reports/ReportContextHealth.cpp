@@ -138,12 +138,10 @@ parse_context_ids(const std::vector<std::string>& elements_filter)
 
 static std::string
 generate_context_health_report(const xrt_core::device* dev,
-                               const std::vector<std::string>& elements_filter)
+                               const std::vector<std::pair<uint32_t, uint32_t>>& context_pid_pairs,
+                               const std::vector<uint32_t>& context_ids)
 {
   std::stringstream ss;
-  // Parse context_id/pid pairs from elements_filter
-  std::vector<std::pair<uint32_t, uint32_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
-  std::vector<uint32_t> context_ids = parse_context_ids(elements_filter);
 
   try {
     std::vector<ert_ctx_health_data> context_health_data;
@@ -207,21 +205,24 @@ writeReport(const xrt_core::device* device,
             const std::vector<std::string>& elements_filter,
             std::ostream& output) const
 {
+  // Parse context_id/pid pairs from elements_filter
+  std::vector<std::pair<uint32_t, uint32_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
+  std::vector<uint32_t> context_ids = parse_context_ids(elements_filter);
+
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
-    auto report_generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) -> std::string {
-      return generate_context_health_report(dev, filters); 
+    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
+      return generate_context_health_report(dev, context_pid_pairs, context_ids);
     };
     
-    smi_watch_mode::run_watch_mode(device, elements_filter, output, 
-                                  report_generator, "Context Health");
+    smi_watch_mode::run_watch_mode(device, output, report_generator, "Context Health");
     return;
   }
   
   // Non-watch mode: use the same API but without timestamp
   output << "Context Health Report\n";
   output << "=====================\n\n";
-  output << generate_context_health_report(device, elements_filter);
+  output << generate_context_health_report(device, context_pid_pairs, context_ids);
   output << std::endl;
 }
