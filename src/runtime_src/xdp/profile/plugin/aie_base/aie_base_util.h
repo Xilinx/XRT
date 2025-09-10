@@ -95,6 +95,57 @@ namespace xdp::aie {
       return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_counters
                 : aie2::mem_num_counters);
     }
+
+    return 0;
+  }
+
+  /**
+   * @brief   Get HW generation-specific number of MM2S channels
+   * @note    This function currently supports AIE1, AIE2*, and NPU3
+   * @param   hwGen integer representing the hardware generation
+   * @param   mod module type
+   * @return  number of counters available in the module
+   */
+  inline unsigned int getNumMM2SChannels(const int hwGen, xdp::module_type mod)
+  {
+    if ((mod == xdp::module_type::core) || (mod == xdp::module_type::dma)) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_dma_mm2s_channels
+                : aie2::mm_num_dma_mm2s_channels);
+    }
+    if (mod == xdp::module_type::shim) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_dma_mm2s_channels
+                : aie2::shim_num_dma_mm2s_channels);
+    }
+    if (mod == xdp::module_type::mem_tile) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_dma_mm2s_channels
+                : aie2::mem_num_dma_mm2s_channels);
+    }
+
+    return 0;
+  }
+
+  /**
+   * @brief   Get HW generation-specific number of S2MM channels
+   * @note    This function currently supports AIE1, AIE2*, and NPU3
+   * @param   hwGen integer representing the hardware generation
+   * @param   mod module type
+   * @return  number of counters available in the module
+   */
+  inline unsigned int getNumS2MMChannels(const int hwGen, xdp::module_type mod)
+  {
+    if ((mod == xdp::module_type::core) || (mod == xdp::module_type::dma)) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_dma_s2mm_channels
+                : aie2::mm_num_dma_s2mm_channels);
+    }
+    if (mod == xdp::module_type::shim) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_dma_s2mm_channels
+                : aie2::shim_num_dma_s2mm_channels);
+    }
+    if (mod == xdp::module_type::mem_tile) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_dma_s2mm_channels
+                : aie2::mem_num_dma_s2mm_channels);
+    }
+
     return 0;
   }
 
