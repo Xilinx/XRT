@@ -72,7 +72,7 @@ namespace xdp::aie {
 
   /**
    * @brief   Get HW generation-specific number of performance counters
-   * @note    This function currently supports AIE1 and AIE2*
+   * @note    This function currently supports AIE1, AIE2*, and NPU3
    * @param   hwGen integer representing the hardware generation
    * @param   mod module type
    * @return  number of counters available in the module
@@ -101,6 +101,62 @@ namespace xdp::aie {
     }
     if (mod == xdp::module_type::uc) {
       return (NUM_UC_EVENT_COUNTERS + NUM_UC_LATENCY_COUNTERS);
+    }
+
+    return 0;
+  }
+
+  /**
+   * @brief   Get HW generation-specific number of MM2S channels
+   * @note    This function currently supports AIE1, AIE2*, and NPU3
+   * @param   hwGen integer representing the hardware generation
+   * @param   mod module type
+   * @return  number of counters available in the module
+   */
+  inline unsigned int getNumMM2SChannels(const int hwGen, xdp::module_type mod)
+  {
+    if ((mod == xdp::module_type::core) || (mod == xdp::module_type::dma)) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_dma_mm2s_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::mm_num_dma_mm2s_channels
+                : aie2::mm_num_dma_mm2s_channels));
+    }
+    if (mod == xdp::module_type::shim) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_dma_mm2s_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::shim_num_dma_mm2s_channels
+                : aie2::shim_num_dma_mm2s_channels));
+    }
+    if (mod == xdp::module_type::mem_tile) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_dma_mm2s_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::mem_num_dma_mm2s_channels
+                : aie2::mem_num_dma_mm2s_channels));
+    }
+
+    return 0;
+  }
+
+  /**
+   * @brief   Get HW generation-specific number of S2MM channels
+   * @note    This function currently supports AIE1, AIE2*, and NPU3
+   * @param   hwGen integer representing the hardware generation
+   * @param   mod module type
+   * @return  number of counters available in the module
+   */
+  inline unsigned int getNumS2MMChannels(const int hwGen, xdp::module_type mod)
+  {
+    if ((mod == xdp::module_type::core) || (mod == xdp::module_type::dma)) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mm_num_dma_s2mm_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::mm_num_dma_s2mm_channels
+                : aie2::mm_num_dma_s2mm_channels));
+    }
+    if (mod == xdp::module_type::shim) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::shim_num_dma_s2mm_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::shim_num_dma_s2mm_channels
+                : aie2::shim_num_dma_s2mm_channels));
+    }
+    if (mod == xdp::module_type::mem_tile) {
+      return (xdp::aie::isAIE2ps(hwGen)    ? aie2ps::mem_num_dma_s2mm_channels
+                : (xdp::aie::isNPU3(hwGen) ? npu3::mem_num_dma_s2mm_channels
+                : aie2::mem_num_dma_s2mm_channels));
     }
 
     return 0;

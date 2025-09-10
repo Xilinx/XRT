@@ -1049,7 +1049,7 @@ namespace xdp {
         // Modify events as needed
         modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
         
-        // Specify Sel0/Sel1 for interface tiles (new for NPU3)
+        // Specify selections for interface tiles (new for NPU3)
         configEventSelections(loc, type, metricSet, channels, cfgTile->interface_tile_trace_config);
         configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0, channel1, 
                                 interfaceEvents, cfgTile->interface_tile_trace_config);
