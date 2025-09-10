@@ -2015,7 +2015,12 @@ struct aie_partition_info : request
 //   - std::vector<std::pair<uint32_t, uint32_t>>: Returns contexts matching (context_id, pid) pairs (Linux)
 struct context_health_info : request
 {
-  using result_type = std::vector<ert_ctx_health_data>;
+  struct smi_context_health {
+    uint64_t ctx_id;
+    uint64_t pid;
+    ert_ctx_health_data health_data;
+  };
+  using result_type = std::vector<smi_context_health>;
   static const key_type key = key_type::context_health_info;
 
   std::any
