@@ -14,9 +14,6 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 namespace xdp::aie {
-// Local constants for interface tile configuration
-// TODO: replace with API in aie_base
-constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
 namespace pt = boost::property_tree;
 using severity_level = xrt_core::message::severity_level;
 
@@ -351,35 +348,28 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             it->stream_ids.push_back(streamId);
             it->is_master_vec.push_back(isMaster);
 
-            // Ensure port_names vector is pre-sized for direct indexing by port number
-            if (it->port_names.size() < NUM_SWITCH_MONITOR_PORTS)
-                it->port_names.resize(NUM_SWITCH_MONITOR_PORTS, "unused");
-
             // Use direct indexing by streamId with bounds checking
-            if (streamId < NUM_SWITCH_MONITOR_PORTS) {
+            if (streamId < it->port_names.size()) {
                 it->port_names[streamId] = name;
             } else {
                 xrt_core::message::send(severity_level::info, "XRT",
                     "Interface tile streamId " + std::to_string(streamId) +
-                    " exceeds maximum ports (" + std::to_string(NUM_SWITCH_MONITOR_PORTS) +
+                    " exceeds maximum ports (" + std::to_string(it->port_names.size()) +
                     "). Unable to store port name.");
             }
         }
         else {
-            // Pre-size vectors for direct indexing by port number
-            tile.port_names.resize(NUM_SWITCH_MONITOR_PORTS, "unused");
-
             // Add first stream ID and master/slave to vectors
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
 
             // Set port name at specific index with bounds checking
-            if (streamId < NUM_SWITCH_MONITOR_PORTS) {
+            if (streamId < tile.port_names.size()) {
                 tile.port_names[streamId] = name;
             } else {
                 xrt_core::message::send(severity_level::info, "XRT",
                     "Interface tile streamId " + std::to_string(streamId) +
-                    " exceeds maximum ports (" + std::to_string(NUM_SWITCH_MONITOR_PORTS) +
+                    " exceeds maximum ports (" + std::to_string(tile.port_names.size()) +
                     "). Unable to store port name.");
             }
 
@@ -432,9 +422,6 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = shared_buffer.second.get<uint8_t>("column");
         tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
-        // Ensure vectors are re-sized for direct indexing by channel
-        tile.s2mm_names.resize(NUM_MEM_CHANNELS, "unused");
-        tile.mm2s_names.resize(NUM_MEM_CHANNELS, "unused");
 
         // Store names of DMA channels for reporting purposes
         for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
