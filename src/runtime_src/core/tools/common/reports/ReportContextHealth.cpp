@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <boost/format.hpp>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <vector>
 
 using bpt = boost::property_tree::ptree;
+using context_health_info = xrt_core::query::context_health_info;
 
 void
 ReportContextHealth::
@@ -37,20 +39,38 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     // For property tree generation, always get all contexts
     auto context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
 
-    // Convert structured data to property tree
-    bpt contexts_array{};
+    // Group contexts by PID
+    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
     for (const auto& context : context_health_data) {
-      bpt context_pt;
-      context_pt.put("txn_op_idx", context.txn_op_idx);
-      context_pt.put("ctx_pc", context.ctx_pc);
-      context_pt.put("fatal_error_type", context.fatal_error_type);
-      context_pt.put("fatal_error_exception_type", context.fatal_error_exception_type);
-      context_pt.put("fatal_error_exception_pc", context.fatal_error_exception_pc);
-      context_pt.put("fatal_error_app_module", context.fatal_error_app_module);
-      contexts_array.push_back(std::make_pair("", context_pt));
+      contexts_by_pid[context.pid].push_back(context);
     }
-    context_health_pt.add_child("contexts", contexts_array);
-    context_health_pt.put("context_count", context_health_data.size());
+
+    // Convert structured data to property tree, grouped by PID
+    bpt pids_array{};
+    for (const auto& [pid, contexts] : contexts_by_pid) {
+      bpt pid_pt;
+      pid_pt.put("pid", pid);
+      
+      bpt contexts_array{};
+      for (const auto& context : contexts) {
+        bpt context_pt;
+        context_pt.put("ctx_id"                     ,context.ctx_id);
+        context_pt.put("txn_op_idx"                 ,context.health_data.txn_op_idx);
+        context_pt.put("ctx_pc"                     ,context.health_data.ctx_pc);
+        context_pt.put("fatal_error_type"           ,context.health_data.fatal_error_type);
+        context_pt.put("fatal_error_exception_type" ,context.health_data.fatal_error_exception_type);
+        context_pt.put("fatal_error_exception_pc"   ,context.health_data.fatal_error_exception_pc);
+        context_pt.put("fatal_error_app_module"     ,context.health_data.fatal_error_app_module);
+        contexts_array.push_back(std::make_pair("", context_pt));
+      }
+      pid_pt.add_child("contexts", contexts_array);
+      pid_pt.put("context_count", contexts.size());
+      
+      pids_array.push_back(std::make_pair("", pid_pt));
+    }
+    context_health_pt.add_child("pids", pids_array);
+    context_health_pt.put("total_context_count", context_health_data.size());
+    context_health_pt.put("pid_count", contexts_by_pid.size());
   } 
   catch (const std::exception& e) {
     context_health_pt.put("context_count", 0);
@@ -61,10 +81,10 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
   pt.add_child("context_health", context_health_pt);
 }
 
-static std::vector<uint32_t> 
+static std::vector<uint64_t> 
 parse_values(const std::string& input) 
 {
-  std::vector<uint32_t> result;
+  std::vector<uint64_t> result;
   if (input.empty()) {
     return result;
   }
@@ -79,7 +99,7 @@ parse_values(const std::string& input)
     
     if (!token.empty()) {
       try {
-        uint32_t value = std::stoul(token);
+        uint64_t value = std::stoull(token);
         result.push_back(value);
       } 
       catch (const std::exception&) {
@@ -93,11 +113,11 @@ parse_values(const std::string& input)
 
 // Helper function to parse context IDs and PIDs and create pairs
 // Usage: ctx_id=1,2,3 pid=100,200,300 creates pairs (1,100), (2,200), (3,300)
-static std::vector<std::pair<uint32_t, uint32_t>> 
+static std::vector<std::pair<uint64_t, uint64_t>> 
 parse_context_pid_pairs(const std::vector<std::string>& elements_filter) 
 {
-  std::vector<uint32_t> context_ids;
-  std::vector<uint32_t> pids;
+  std::vector<uint64_t> context_ids;
+  std::vector<uint64_t> pids;
   
   // Parse both ctx_id and pid from filter
   for (const auto& element : elements_filter) {
@@ -112,19 +132,19 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter)
   }
   
   // Create pairs - map 1:1, pad with 0 if lists are different lengths
-  std::vector<std::pair<uint32_t, uint32_t>> pairs;
+  std::vector<std::pair<uint64_t, uint64_t>> pairs;
   size_t max_size = std::max(context_ids.size(), pids.size());
   
   for (size_t i = 0; i < max_size; ++i) {
-    uint32_t ctx_id = (i < context_ids.size()) ? context_ids[i] : 0;
-    uint32_t pid = (i < pids.size()) ? pids[i] : 0;
+    uint64_t ctx_id = (i < context_ids.size()) ? context_ids[i] : 0;
+    uint64_t pid = (i < pids.size()) ? pids[i] : 0;
     pairs.emplace_back(ctx_id, pid);
   }
   
   return pairs;
 }
 
-static std::vector<uint32_t> 
+static std::vector<uint64_t> 
 parse_context_ids(const std::vector<std::string>& elements_filter) 
 {
   for (const auto& element : elements_filter) {
@@ -138,13 +158,13 @@ parse_context_ids(const std::vector<std::string>& elements_filter)
 
 static std::string
 generate_context_health_report(const xrt_core::device* dev,
-                               const std::vector<std::pair<uint32_t, uint32_t>>& context_pid_pairs,
-                               const std::vector<uint32_t>& context_ids)
+                               const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                               const std::vector<uint64_t>& context_ids)
 {
   std::stringstream ss;
 
   try {
-    std::vector<ert_ctx_health_data> context_health_data;
+    std::vector<context_health_info::smi_context_health> context_health_data;
 
     // If any pid is nonzero, pass pairs
     bool has_nonzero_pid = std::any_of(context_pid_pairs.begin(), context_pid_pairs.end(), [](const auto& p){ return p.second != 0; });
@@ -163,34 +183,44 @@ generate_context_health_report(const xrt_core::device* dev,
       return ss.str();
     }
 
-    // Create Table2D with headers
-    const std::vector<Table2D::HeaderData> table_headers = {
-      {"Txn Op Idx",           Table2D::Justification::left},
-      {"Ctx PC",               Table2D::Justification::left},
-      {"Fatal Err Type",       Table2D::Justification::left},
-      {"Fatal Err Ex Type",    Table2D::Justification::left},
-      {"Fatal Err Ex PC",      Table2D::Justification::left},
-      {"Fatal App Module",     Table2D::Justification::left}
-    };
-    Table2D context_table(table_headers);
-
-    // Add data rows
+    // Group contexts by PID
+    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
     for (const auto& context : context_health_data) {
-      const std::vector<std::string> entry_data = {
-        (boost::format("0x%x") % context.txn_op_idx).str(),
-        (boost::format("0x%x") % context.ctx_pc).str(),
-        (boost::format("0x%x") % context.fatal_error_type).str(),
-        (boost::format("0x%x") % context.fatal_error_exception_type).str(),
-        (boost::format("0x%x") % context.fatal_error_exception_pc).str(),
-        (boost::format("0x%x") % context.fatal_error_app_module).str()
-      };
-      context_table.addEntry(entry_data);
+      contexts_by_pid[context.pid].push_back(context);
     }
 
-    ss << "  Context Health Information:\n";
-    ss << context_table.toString("    ");
+    for (const auto& [pid, contexts] : contexts_by_pid) {
+      ss << "  Context Health Information (PID: " << pid << "):\n";
 
-  } 
+      const std::vector<Table2D::HeaderData> table_headers = {
+        {"Ctx Id",               Table2D::Justification::left},
+        {"Txn Op Idx",           Table2D::Justification::left},
+        {"Ctx PC",               Table2D::Justification::left},
+        {"Fatal Err Type",       Table2D::Justification::left},
+        {"Fatal Err Ex Type",    Table2D::Justification::left},
+        {"Fatal Err Ex PC",      Table2D::Justification::left},
+        {"Fatal App Module",     Table2D::Justification::left}
+      };
+      Table2D context_table(table_headers);
+
+      // Add data rows for this PID
+      for (const auto& context : contexts) {
+        const std::vector<std::string> entry_data = {
+          (boost::format("%d")   % context.ctx_id).str(),
+          (boost::format("0x%x") % context.health_data.txn_op_idx).str(),
+          (boost::format("0x%x") % context.health_data.ctx_pc).str(),
+          (boost::format("0x%x") % context.health_data.fatal_error_type).str(),
+          (boost::format("0x%x") % context.health_data.fatal_error_exception_type).str(),
+          (boost::format("0x%x") % context.health_data.fatal_error_exception_pc).str(),
+          (boost::format("0x%x") % context.health_data.fatal_error_app_module).str()
+        };
+        context_table.addEntry(entry_data);
+      }
+
+      ss << context_table.toString("    ");
+      ss << "\n";
+    } 
+  }
   catch (const std::exception& e) {
     ss << "Error retrieving context health data: " << e.what() << "\n";
   }
@@ -206,8 +236,8 @@ writeReport(const xrt_core::device* device,
             std::ostream& output) const
 {
   // Parse context_id/pid pairs from elements_filter
-  std::vector<std::pair<uint32_t, uint32_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
-  std::vector<uint32_t> context_ids = parse_context_ids(elements_filter);
+  std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
+  std::vector<uint64_t> context_ids = parse_context_ids(elements_filter);
 
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
