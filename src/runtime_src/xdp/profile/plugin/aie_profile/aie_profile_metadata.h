@@ -125,7 +125,10 @@ class AieProfileMetadata {
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal() {return pollingInterval;}
     void checkSettings();
-    bool isConfigured() const { return configMetrics.size() > 0; }
+    bool isConfigured() const {
+      return std::any_of(configMetrics.begin(), configMetrics.end(),
+        [](const auto& map) { return !map.empty(); } );
+    }
 
     std::vector<std::string> getSettingsVector(std::string settingsString);
 
