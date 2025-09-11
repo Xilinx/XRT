@@ -92,9 +92,8 @@ namespace xdp {
     if (!handle)
       return;
 
-    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) 
       return;
-    }
 
     // In a multipartition scenario, if the user wants to profile one specific partition
     // and we have configured one partition, we can skip the rest of them
@@ -152,6 +151,9 @@ namespace xdp {
       return;
     }
     AIEData.valid = true;
+
+    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->getConfiguredFirstXclbin()))
+      configuredOnePartition = true;
 
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);

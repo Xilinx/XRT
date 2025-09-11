@@ -98,6 +98,14 @@ namespace xdp {
       getConfigMetricsForintfTilesLatencyConfig(module_type::shim, latencyMetricsSettings);
     }
 
+    // If there are tiles configured for this xclbin, then we have configured the first xclbin and will not configure any upcoming ones
+    for (const auto& map : configMetrics) {
+      if (!map.empty()) {
+        configuredFirstXclbin = true;
+        break;
+      }
+    }
+
     xrt_core::message::send(severity_level::info,
                             "XRT", "Finished Parsing AIE Profile Metadata."); 
   }
