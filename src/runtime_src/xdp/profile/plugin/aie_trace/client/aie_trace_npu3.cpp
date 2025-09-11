@@ -429,7 +429,6 @@ namespace xdp {
     (void)tile;
 
     std::set<uint8_t> portSet;
-    //std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
 
     // Traverse all counters and request monitor ports as needed
     for (size_t i=0; i < events.size(); ++i) {
@@ -444,24 +443,22 @@ namespace xdp {
       uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store
-      //if (switchPortMap.find(portnum) == switchPortMap.end()) {
       if (portSet.find(portnum) == portSet.end()) {
         portSet.insert(portnum);
-        //auto switchPortRsc = xaieTile.sswitchPort();
-        //if (switchPortRsc->reserve() != AieRC::XAIE_OK)
-        //  continue;
-        //newPort = true;
-        //switchPortMap[portnum] = switchPortRsc;
 
         if (type == module_type::core) {
           // AIE Tiles - Monitor DMA channels
           bool isMaster = ((portnum >= 2) || (metricSet.find("s2mm") != std::string::npos));
+          auto totalChannels = isMaster ? aie::getNumS2MMChannels(metadata->getHardwareGen(), type)
+                                        : aie::getNumMM2SChannels(metadata->getHardwareGen(), type);
+          if (channelNum >= totalChannels)
+            continue;
+
           auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = isMaster ? "S2MM" : "MM2S";
           std::string msg = "Configuring core module stream switch to monitor DMA " 
                           + typeName + " channel " + std::to_string(channelNum);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
-          //switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channelNum);
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, DMA, channelNum);
 
           // Record for runtime config file
@@ -492,8 +489,8 @@ namespace xdp {
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " port with stream ID of " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
-          //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
+          // NOTE: Port type on NPU3 is PL and not SOUTH
+          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, PL, streamPortId);
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = channelNum;
