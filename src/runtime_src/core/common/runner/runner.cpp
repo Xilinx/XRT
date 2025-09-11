@@ -1957,7 +1957,6 @@ class profile
     class executor
     {
       profile* m_profile;
-      recipe* m_recipe;
 
       recipe::execution* m_base;
       std::vector<recipe::execution> m_copies;
@@ -1975,7 +1974,6 @@ class profile
     public:
       executor(profile* profile, recipe* recipe, size_t depth)
         : m_profile{profile}
-        , m_recipe{recipe}
         , m_base{recipe->get_execution()}
         , m_copies{create_execution_copies(recipe, depth)}
       {
