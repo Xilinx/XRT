@@ -35,7 +35,7 @@ namespace xdp {
     XDP_CORE_EXPORT
     VPRunSummaryWriter(const char* filename, VPDatabase* inst) ;
     XDP_CORE_EXPORT
-    virtual ~VPRunSummaryWriter() = default;
+    ~VPRunSummaryWriter() override = default;
 
     XDP_CORE_EXPORT
     virtual bool write(bool openNewFile) ;

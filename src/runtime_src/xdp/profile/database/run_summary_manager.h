@@ -48,6 +48,19 @@ namespace xdp {
     RunSummaryManager() = default;
     ~RunSummaryManager() = default;
 
+    // There should only be one instance of the RunSummaryManager
+    // owned by the singleton VPDatabase object.  So explicitly
+    // disable copys and moves.
+
+    // Copy constructor
+    RunSummaryManager(const RunSummaryManager& x) = delete;
+    // Copy assignment
+    RunSummaryManager& operator=(const RunSummaryManager& x) = delete;
+    // Move constructor
+    RunSummaryManager(RunSummaryManager&& r) = delete;
+    // Move assignment
+    RunSummaryManager& operator=(RunSummaryManager&& r) = delete;
+
     void addOpenedFile(const std::string& name, const std::string& type,
 		       uint64_t deviceId);
     std::vector<OpenedFileDescriptor>& getOpenedFiles();
