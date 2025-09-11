@@ -73,7 +73,7 @@ endif()
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 # Determine what functionality should be added
-if (NOT XRT_EDGE)
+if (NOT XRT_EDGE OR DEFINED XDNA_VE2)
   target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 else()
   target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
