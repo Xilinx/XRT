@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,7 @@
 
 #define XDP_CORE_SOURCE
 
+#include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
@@ -49,7 +50,7 @@ namespace xdp {
     // After all the plugins have written their data, we can dump the
     //  generic summary
     if (summary != nullptr) {
-      staticdb.addOpenedFile(summary->getcurrentFileName(), "PROFILE_SUMMARY") ;
+      addOpenedFile(summary->getcurrentFileName(), "PROFILE_SUMMARY") ;
       summary->write(false) ;
     }
 
@@ -68,6 +69,15 @@ namespace xdp {
   bool VPDatabase::alive()
   {
     return VPDatabase::live ;
+  }
+
+  void VPDatabase::associateContextWithId(uint64_t contextId, void* handle)
+  {
+    xrt::hw_context context =
+      xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+
+    xrt::uuid uuid = context.get_xclbin_uuid();
+    contextToUUID[contextId] = uuid;
   }
 
   uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,9 +39,9 @@ namespace xdp {
     //writers.push_back(new VARTTraceWriter("vart_trace.csv",
     //                  version, creationTime, xrtVersion, toolVersion));
     
-    (db->getStaticInfo()).addOpenedFile("profile_summary.csv", "PROFILE");
-    (db->getStaticInfo()).addOpenedFile("vitis_ai_profile.csv", "VITIS_AI_PROFILE");
-    (db->getStaticInfo()).addOpenedFile("vart_trace.csv", "VP_TRACE");
+    db->addOpenedFile("profile_summary.csv", "PROFILE");
+    db->addOpenedFile("vitis_ai_profile.csv", "VITIS_AI_PROFILE");
+    db->addOpenedFile("vart_trace.csv", "VP_TRACE");
   }
 
   VARTPlugin::~VARTPlugin()

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,7 +34,7 @@ namespace xdp {
 
   void HwEmuPLDeadlockPlugin::updateDevice(void* handle)
   {
-    db->getStaticInfo().addOpenedFile("pl_deadlock_diagnosis.txt", "PL_DEADLOCK_DIAGNOSIS");
+    db->addOpenedFile("pl_deadlock_diagnosis.txt", "PL_DEADLOCK_DIAGNOSIS");
   }
 
   void HwEmuPLDeadlockPlugin::writeAll(bool /*openNewFiles*/)

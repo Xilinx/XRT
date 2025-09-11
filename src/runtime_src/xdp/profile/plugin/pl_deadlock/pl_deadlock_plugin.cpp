@@ -157,7 +157,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(mWriteLock);
     std::string outputFile = "pl_deadlock_diagnosis.txt";
     if (!mFileExists) {
-      db->getStaticInfo().addOpenedFile(outputFile, "PL_DEADLOCK_DIAGNOSIS");
+      db->addOpenedFile(outputFile, "PL_DEADLOCK_DIAGNOSIS");
       mFileExists = true;
     }
     // Don't allocate memory because this application is
