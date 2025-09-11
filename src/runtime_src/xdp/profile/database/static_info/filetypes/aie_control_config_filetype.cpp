@@ -344,7 +344,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-            // Add to existing lists of stream IDs and master/slave
+            // Add to the existing lists of stream IDs and master/slave
             it->stream_ids.push_back(streamId);
             it->is_master_vec.push_back(isMaster);
 
