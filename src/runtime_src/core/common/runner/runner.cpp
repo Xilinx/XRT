@@ -2173,7 +2173,7 @@ class profile
         m_report["cpu"]["latency"] = latency;
 
       if (m_legacy || m_mode == mode::throughput)
-        m_report["cpu"]["througput"] = throughput;
+        m_report["cpu"]["throughput"] = throughput;
 
       if (m_verbose) {
         std::cout << "Elapsed time (us): " << elapsed << "\n";
