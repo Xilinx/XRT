@@ -12,6 +12,7 @@
 #include "core/common/query_requests.h"
 #include "filetypes/aie_control_config_filetype.h"
 #include "filetypes/aie_trace_config_filetype.h"
+#include "filetypes/aie_trace_config_v3_filetype.h"
 
 #include "core/common/api/xclbin_int.h"
 #include "core/include/xrt/detail/xclbin.h"
@@ -62,7 +63,9 @@ namespace xdp::aie {
     // aie_trace_config.json format
     try {
       int majorVersion = aie_project.get("schema_version.major", 1);
-      if (majorVersion == 2)
+      if (majorVersion == 3)
+        return std::make_unique<xdp::aie::AIETraceConfigV3Filetype>(aie_project);
+      else if (majorVersion == 2)
         return std::make_unique<xdp::aie::AIETraceConfigFiletype>(aie_project);
     }
     catch(...) {
@@ -212,6 +215,8 @@ namespace xdp::aie {
 
   /****************************************************************************
    * Get all valid graph names from metadata
+   * NOTE: This is applicable only for aie_trace_config.json format till major v2.
+   *       Use latest version of AIETraceConfigFiletype for v3 and later.
    ***************************************************************************/
   std::vector<std::string>
   getValidGraphs(const boost::property_tree::ptree& aie_meta,
