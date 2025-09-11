@@ -515,7 +515,6 @@ namespace xdp {
     {}
   };
 
-
 } // end namespace xdp
 
 #endif
