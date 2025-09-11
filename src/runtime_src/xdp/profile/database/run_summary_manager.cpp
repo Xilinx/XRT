@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <sstream>
 
+#define XDP_CORE_SOURCE
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/run_summary_manager.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
