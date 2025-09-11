@@ -2676,9 +2676,8 @@ public:
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        if (dtrace) {
+        if (dtrace)
           xrt_core::module_int::dump_dtrace_buffer(m_module);
-	}
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2691,7 +2690,7 @@ public:
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
     static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
     if (dump)
-      xrt_core::module_int::dump_scratchpad_mem(m_module);
+      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
     if (dtrace)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
@@ -2754,8 +2753,8 @@ public:
     // COMPLETED
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
     static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump && m_module)
-      xrt_core::module_int::dump_scratchpad_mem(m_module);
+    if (dump)
+      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
     return std::cv_status::no_timeout;
   }

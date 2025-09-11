@@ -11,6 +11,7 @@
 #include "core/common/message.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "bo_int.h"
 #include "elf_int.h"
@@ -36,6 +37,30 @@
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
+
+// Dumps the content into a file with given size from given offset
+static void
+dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t offset = 0)
+{
+  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+  if (!ofs.is_open())
+    throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+  const char* buf = buf_map + offset;
+  ofs.write(buf, static_cast<std::streamsize>(size));
+}
+
+// Returns the current timestamp in string format
+static std::string
+get_timestamp_str()
+{
+  auto current_time = std::chrono::system_clock::now();
+  std::time_t time = std::chrono::system_clock::to_time_t(current_time);
+  std::stringstream time_stamp;
+  time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+
+  return time_stamp.str();
+}
 }
 
 namespace xrt {
@@ -55,24 +80,6 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     uint32_t m_slot_idx; // index of slot in which these uc's are present
     size_t m_size_per_uc;
     xrt::bo m_uc_log_bo; // log buffer used for uc logging
-
-    void
-    dump_bo(const std::string& filename, size_t offset, size_t size)
-    {
-      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-      if (!ofs.is_open()) {
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
-                                "Failure opening file " + filename + " for writing log!");
-        return;
-      }
-
-      auto buf = m_uc_log_bo.map<char*>() + offset;
-      ofs.write(buf, static_cast<std::streamsize>(size));
-
-      std::stringstream ss;
-      ss << "dumped uc log buffer into file " << filename;
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", ss.str());
-    }
 
     static xrt::bo
     init_and_get_uc_log_bo(const std::shared_ptr<xrt_core::device>& device,
@@ -117,16 +124,11 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
         // dump the log buffer for each uc in a separate file
-        // Add timestamp in file name
-        auto current_time = std::chrono::system_clock::now();
-        std::time_t time = std::chrono::system_clock::to_time_t(current_time);
-        std::stringstream time_stamp;
-        time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
-
+        // Use timestamp, slot index in file name
         for (size_t i = 0; i < m_num_uc; i++) {
           auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
-              + time_stamp.str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
-          dump_bo(file_name, (i * m_size_per_uc), m_size_per_uc);
+              + get_timestamp_str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
+          dump_bo(m_uc_log_bo.map<char*>(), file_name, m_size_per_uc, (i * m_size_per_uc));
         }
       }
       catch (const std::exception& e) {
@@ -144,6 +146,9 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
+  // During preemption, when a hardware context is interrupted L2 memory contents
+  // are saved to a scratchpad memory allocated specifically for that context.
+  xrt::bo m_scratchpad_buf;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
   bool m_elf_flow = false;
@@ -394,6 +399,45 @@ public:
     }
   }
 
+  // Creates scratchpad memory buffer on demand
+  // If buffer is already created, returns the existing one
+  const xrt::bo&
+  get_scratchpad_mem_buf(size_t size_per_col)
+  {
+    if (m_scratchpad_buf)
+      return m_scratchpad_buf;
+
+    try {
+      // create scratchpad memory buffer using this context
+      m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
+                                      size_per_col * m_hdl->get_num_cols()};
+    }
+    catch (...) { /*do nothing*/ }
+
+    return m_scratchpad_buf;
+  }
+
+  void
+  dump_scratchpad_mem()
+  {
+    if (m_scratchpad_buf.size() == 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              "preemption scratchpad memory is not available");
+      return;
+    }
+
+    // sync data from device before dumping into file
+    m_scratchpad_buf.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    std::string dump_file_name =
+        "preemption_scratchpad_mem_" + std::to_string(m_hdl->get_slotidx()) + "_" +
+        get_timestamp_str() + ".bin";
+    dump_bo(m_scratchpad_buf.map<char*>(), dump_file_name, m_scratchpad_buf.size());
+
+    std::string msg {"Dumped scratchpad buffer into file : "};
+    msg.append(dump_file_name);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", msg);
+  }
 };
 
 } // xrt
@@ -447,6 +491,18 @@ bool
 get_elf_flow(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_elf_flow();
+}
+
+const xrt::bo&
+get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col)
+{
+  return hwctx.get_handle()->get_scratchpad_mem_buf(size_per_col);
+}
+
+void
+dump_scratchpad_mem(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->dump_scratchpad_mem();
 }
 
 } // xrt_core::hw_context_int
