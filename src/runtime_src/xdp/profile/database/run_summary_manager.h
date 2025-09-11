@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "xdp/config.h"
+
 namespace xdp {
   constexpr uint64_t HOST_PL_CONTEXT = 0;
 
@@ -61,6 +63,7 @@ namespace xdp {
     // Move assignment
     RunSummaryManager& operator=(RunSummaryManager&& r) = delete;
 
+    XDP_CORE_EXPORT
     void addOpenedFile(const std::string& name, const std::string& type,
 		       uint64_t deviceId);
     std::vector<OpenedFileDescriptor>& getOpenedFiles();
