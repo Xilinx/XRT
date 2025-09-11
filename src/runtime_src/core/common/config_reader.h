@@ -844,6 +844,13 @@ get_aie_profile_settings_interval_us()
   return value ;
 }
 
+inline bool
+get_aie_profile_settings_config_one_partition()
+{
+  static bool value = detail::get_bool_value("AIE_profile_settings.config_one_partition", false) ;
+  return value ;
+}
+
 inline std::string
 get_aie_profile_settings_graph_based_aie_metrics()
 {

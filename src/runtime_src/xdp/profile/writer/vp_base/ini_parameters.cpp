@@ -79,6 +79,9 @@ namespace xdp {
     addParameter("AIE_profile_settings.interval_us",
                  xrt_core::config::get_aie_profile_settings_interval_us(),
                  "Interval for reading AI Engine profile counters (in us)");
+    addParameter("AIE_profile_settings.config_one_partition",
+                 xrt_core::config::get_aie_profile_settings_config_one_partition(),
+                 "Flag for enabling profiling for a specific partition");
     addParameter("AIE_profile_settings.graph_based_aie_metrics",
                  xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics(),
                  "Metric set for profiling AI Engine processor modules per graph");
