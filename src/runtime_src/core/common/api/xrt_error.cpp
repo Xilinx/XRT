@@ -267,7 +267,7 @@ public:
 
     auto fmt = boost::format
       ("%s\n"
-       "Timestamp: %s")
+       "Timestamp: %s: %s")
       % error_code_to_string(m_errcode)
       % error_time_to_string(m_timestamp)
       % m_ex_error_str;
