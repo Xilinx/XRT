@@ -151,8 +151,9 @@ namespace xdp {
       return;
     }
     AIEData.valid = true;
-
-    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->getConfiguredFirstXclbin()))
+    
+    // If there are tiles configured for this xclbin, then we have configured the first matching xclbin and will not configure any upcoming ones
+    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->isConfigured()))
       configuredOnePartition = true;
 
 #ifdef XDP_CLIENT_BUILD

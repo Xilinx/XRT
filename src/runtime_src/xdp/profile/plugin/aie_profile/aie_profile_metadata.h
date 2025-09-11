@@ -103,7 +103,6 @@ class AieProfileMetadata {
     xrt::hw_context hwContext;
     bool useGraphIterator = false;
     uint32_t iterationCount = 0;
-    bool configuredFirstXclbin = false;
     
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, std::string> pairConfigMetrics;
@@ -126,7 +125,7 @@ class AieProfileMetadata {
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal() {return pollingInterval;}
     void checkSettings();
-    bool getConfiguredFirstXclbin() const { return configuredFirstXclbin; }
+    bool isConfigured() const { return configMetrics.size() > 0; }
 
     std::vector<std::string> getSettingsVector(std::string settingsString);
 
