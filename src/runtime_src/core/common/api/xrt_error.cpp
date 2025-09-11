@@ -230,17 +230,6 @@ public:
       // Ignoring for now. Check below for edge if not available
       // query table of zocl doesn't have xocl_errors key
     }
-
-    //Below code will be removed after zocl changes for new format
-    auto errors = xrt_core::device_query<xrt_core::query::error>(device);
-    for (auto& line : errors) {
-      auto ect = xrt_core::query::error::to_value(line);
-      if (XRT_ERROR_CLASS(ect.first) != ecl)
-        continue;
-      if (m_errcode)
-        throw xrt_core::system_error(ERANGE,"Multiple errors for specified error class");
-      std::tie(m_errcode, m_timestamp) = ect;
-    }
   }
 
   error_impl(xrtErrorCode ecode, xrtErrorTime timestamp)
