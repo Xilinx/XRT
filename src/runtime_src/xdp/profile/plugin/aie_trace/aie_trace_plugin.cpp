@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -216,9 +216,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     std::string configFile = "aie_event_runtime_config_" + std::to_string(deviceID) + ".json";
     VPWriter *writer = new AieTraceConfigWriter(configFile.c_str(), deviceID);
     writers.push_back(writer);
-    (db->getStaticInfo())
-        .addOpenedFile(writer->getcurrentFileName(),
-                       "AIE_EVENT_RUNTIME_CONFIG");
+    db->addOpenedFile(writer->getcurrentFileName(),
+                      "AIE_EVENT_RUNTIME_CONFIG",
+		      deviceID);
   }
 
   if (!AIEData.offloadManager)
@@ -290,8 +290,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(),
                                                  deviceName.c_str(), deviceID);
     writers.push_back(tsWriter);
-    db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(),
-                                      "AIE_EVENT_TRACE_TIMESTAMPS");
+    db->addOpenedFile(tsWriter->getcurrentFileName(),
+                      "AIE_EVENT_TRACE_TIMESTAMPS",
+		      deviceID);
 
     // Start the AIE trace timestamps thread
     // NOTE: we purposely start polling before configuring trace events

@@ -206,7 +206,7 @@ namespace xdp {
     std::string outputFile = "aie_debug_" + deviceName + timestamp + ".csv";
     VPWriter* writer = new AIEDebugWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
     writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
+    db->addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
   }
 
   /****************************************************************************
