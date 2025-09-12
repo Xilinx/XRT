@@ -221,4 +221,29 @@ bool AIETraceConfigV3Filetype::matchesKernelPattern(const std::string& function,
     return false;
 }
 
+// =================================================================
+// UNSUPPORTED METHODS - Throw runtime exceptions for V3 format
+// =================================================================
+
+std::vector<tile_type>
+AIETraceConfigV3Filetype::getAIETiles(const std::string& graphName) const
+{
+    throw std::runtime_error("getAIETiles() is not supported in V3 metadata format. "
+                             "Use getTiles() with module_type::core instead.");
+}
+
+std::vector<tile_type>
+AIETraceConfigV3Filetype::getAllAIETiles(const std::string& graphName) const
+{
+    throw std::runtime_error("getAllAIETiles() is not supported in V3 metadata format. "
+                             "Use getTiles() with module_type::core instead.");
+}
+
+std::vector<tile_type>
+AIETraceConfigV3Filetype::getEventTiles(const std::string& graph_name, module_type type) const
+{
+    throw std::runtime_error("getEventTiles() is not supported in V3 metadata format. "
+                             "Use getTiles() with the appropriate module_type instead.");
+}
+
 } // namespace xdp::aie
