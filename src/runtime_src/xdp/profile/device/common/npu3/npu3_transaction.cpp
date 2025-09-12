@@ -78,38 +78,36 @@ namespace xdp::aie {
 
         try {
 #if 1
-            std::ifstream inAsm(getAsmFileName());
-            std::cout << "Open file " << getAsmFileName() << std::endl;
+            //Read ASM file
+            std::string asmFileName = getAsmFileName();
+            if (!std::filesystem::exists(asmFileName))
+                throw std::runtime_error("file:" + asmFileName + " not found\n");
 
-            if (inAsm.is_open()) {  
-                inAsm.seekg(0, std::ios::end);
-                std::streampos fSize = inAsm.tellg();
-                inAsm.seekg(0, std::ios::beg);
-                std::cout << "File size: " << fSize << std::endl;
-                control_code_buf.resize(fSize);
-     
-                inAsm.read(control_code_buf.data(), fSize);
-                std::streamsize bytesRead = inAsm.gcount();
-                if (static_cast<std::size_t>(bytesRead) != static_cast<std::size_t>(fSize)) {
-                   std::cerr << "Read " << bytesRead << " bytes but expected " << fSize
-                                               << " for file " << getAsmFileName() << '\n';
-                   control_code_buf.resize(static_cast<std::size_t>(bytesRead)); // keep only read bytes
-                } else {
-                   std::cout << "ASM file read (" << fSize << " bytes): " << getAsmFileName() << '\n';
-                }
-            } 
-            else {
-                std::cout << "Unable to open file " << getAsmFileName() << std::endl;
-                return false;
+            std::ifstream inAsm(asmFileName, std::ios::in | std::ios::binary);
+            std::cout << "Open file " << asmFileName << std::endl;
+
+            auto file_size = std::filesystem::file_size(asmFileName);
+            control_code_buf.resize(file_size);
+
+            inAsm.read(control_code_buf.data(), file_size);
+            std::streamsize bytesRead = inAsm.gcount();
+            if (static_cast<std::size_t>(bytesRead) != static_cast<std::size_t>(file_size)) {
+                std::cerr << "Read " << bytesRead << " bytes but expected " << file_size
+                                            << " for file " << asmFileName << '\n';
+                control_code_buf.resize(static_cast<std::size_t>(bytesRead)); // keep only read bytes
+            } else {
+                std::cout << "ASM file read (" << file_size << " bytes): " << asmFileName << '\n';
             }
 
+            //Convert ASM to ELF data.
             auto as = aiebu::aiebu_assembler(aiebu::aiebu_assembler::buffer_type::asm_aie4,
                                              control_code_buf, {},  libpaths);
+            
+            //Write elf data to a file
             auto e = as.get_elf();
             std::cout << "Elf size:" << e.size() << std::endl;
-            std::ofstream outElf(getElfFileName());
-            std::ostream_iterator<char> output_iterator(outElf);
-            std::copy(e.begin(), e.end(), output_iterator);
+            std::ofstream outElf(getElfFileName(), std::ios_base::binary);
+            outElf.write(e.data(), e.size());
 #else
             auto check1 = std::getenv("AIEBU_REPO");
             auto check2 = std::getenv("PYTHONPATH");
