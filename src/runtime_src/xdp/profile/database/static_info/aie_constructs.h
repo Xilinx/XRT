@@ -60,9 +60,11 @@ namespace xdp {
     uint8_t  col = 0;
     std::vector<uint8_t> stream_ids;
     std::vector<uint8_t> is_master_vec;
-    std::vector<std::string> port_names;
-    std::vector<std::string> s2mm_names;
-    std::vector<std::string> mm2s_names;
+    // Pre-sized to maximum known port count (NUM_SWITCH_MONITOR_PORTS=8) with default "unused" values
+    std::vector<std::string> port_names{NUM_SWITCH_MONITOR_PORTS, "unused"};
+    // Pre-sized to maximum known channel count (NUM_MEM_CHANNELS=6) with default "unused" values
+    std::vector<std::string> s2mm_names{NUM_MEM_CHANNELS, "unused"};
+    std::vector<std::string> mm2s_names{NUM_MEM_CHANNELS, "unused"};
     uint64_t itr_mem_addr = 0;
     bool     active_core = false;
     bool     active_memory = false;
