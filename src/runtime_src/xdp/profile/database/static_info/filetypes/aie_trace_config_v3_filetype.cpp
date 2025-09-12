@@ -177,50 +177,6 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
     return std::vector<tile_type>(uniqueTiles.begin(), uniqueTiles.end());
 }
 
-// Find all AIE tiles in a graph that use the core (kernel_name = all)
-std::vector<tile_type> 
-AIETraceConfigV3Filetype::getAIETiles(const std::string& graph_name) const
-{   
-    auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping) {
-        xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
-        return {};
-    }
-
-    std::vector<tile_type> tiles;
-    auto rowOffset = getAIETileRowOffset();
-
-    for (auto const &mapping : kernelToTileMapping.get()) {
-        std::string graphStr = mapping.second.get<std::string>("graph", "");
-        if (graphStr.empty())
-            continue; // Skip empty graph names
-        
-        if ((graphStr.find(graph_name) == std::string::npos) && (graph_name.compare("all") != 0))
-            continue; // Skip graphs/subgraphs that do not match the requested graph name
-
-        // Compute isCoreUsed: true if tile type is "aie"
-        std::string tileType = mapping.second.get<std::string>("tile", "");
-        bool isCoreUsed = (tileType == "aie");
-        
-        // Skip tiles that do not use the core
-        if (!isCoreUsed)
-            continue;
-
-        tile_type tile;
-        tile.col = mapping.second.get<uint8_t>("column");
-        tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
-        tile.active_core = isCoreUsed;
-        
-        // Compute isDMAUsed: true if tile has non-empty dmaChannels
-        auto dmaChannelsTree = mapping.second.get_child_optional("dmaChannels");
-        tile.active_memory = (dmaChannelsTree && !dmaChannelsTree.get().empty());
-        
-        tiles.push_back(tile);
-    }
- 
-    return tiles;
-}
-
 // Helper method to match kernel patterns with ordered substring matching
 bool AIETraceConfigV3Filetype::matchesKernelPattern(const std::string& function, const std::string& kernel_name) const
 {

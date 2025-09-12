@@ -28,8 +28,6 @@ class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
                  module_type type, 
                  const std::string& kernel_name = "all") const override;
         
-        std::vector<tile_type> 
-        getAIETiles(const std::string& graph_name) const override;
 
     private:
         // Helper method to match kernel patterns with ordered substring matching
