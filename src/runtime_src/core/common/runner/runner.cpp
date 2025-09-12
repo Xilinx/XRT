@@ -1298,10 +1298,10 @@ public:
     }; // npu_runlist
 
     std::vector<run> m_runs;
-    xrt::queue m_queue;        // Queue that executes the runlists in sequence
     std::exception_ptr m_eptr;
     size_t m_runlist_threshold = default_runlist_threshold;
     std::vector<std::unique_ptr<runlist>> m_runlists;
+    std::unique_ptr<xrt::queue> m_queue;      // Queue that executes the runlists in sequence
     std::vector<xrt::queue::event> m_events;  // Events that signal complettion of a runlist
 
     static std::vector<std::unique_ptr<runlist>>
@@ -1376,6 +1376,7 @@ public:
       : m_runs{create_runs(resources, j.at("runs"))}
       , m_runlist_threshold{runlist_threshold}
       , m_runlists{create_runlists(resources, m_runs, m_runlist_threshold)}
+      , m_queue{m_runlists.size() > 1 ? std::make_unique<xrt::queue>() : nullptr}
     {}
 
     // execution() - create an execution object from existing runs
@@ -1383,6 +1384,7 @@ public:
     execution(const resources& resources, const execution& other)
       : m_runs{create_runs(resources, other.m_runs)}
       , m_runlists{create_runlists(resources, m_runs, other.m_runlist_threshold)}
+      , m_queue{m_runlists.size() > 1 ? std::make_unique<xrt::queue>() : nullptr}
     {}
 
     size_t
@@ -1440,7 +1442,7 @@ public:
         if (iteration > 0)
           m_events[count].wait();
 
-        m_events[count++] = m_queue.enqueue([this, iteration, &runlist] {
+        m_events[count++] = m_queue->enqueue([this, iteration, &runlist] {
           execute_runlist(iteration, runlist.get(), m_eptr);
         });
       }
