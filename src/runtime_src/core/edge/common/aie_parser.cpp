@@ -397,6 +397,10 @@ get_shared_buffers(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx
 
   std::unordered_map<std::string, adf::shared_buffer_config> shared_buffer_configs;
 
+  auto sbuf_tree = aie_meta.get_child_optional("aie_metadata.SharedBufferConfigs");
+  if (!sbuf_tree)
+    return shared_buffer_configs;
+
   for (auto& shared_buffer_node : aie_meta.get_child("aie_metadata.SharedBufferConfigs")) {
     if (shared_buffer_node.second.get<int>("graph_id") != graph_id)
       continue;
