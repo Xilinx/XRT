@@ -124,7 +124,7 @@ namespace xdp {
     // Note: in the future, we could support user-defined tile sets
     auto graphs = metadataReader->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
+      mGraphCoreTilesMap[graph] = metadataReader->getTiles(graph, module_type::core, "all");
     }
 
    // NOTE: AIE Status is not released product on client. Whenever client support is needed,

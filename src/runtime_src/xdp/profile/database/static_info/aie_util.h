@@ -62,11 +62,6 @@ namespace xdp::aie {
                       const std::string& location);
   
   XDP_CORE_EXPORT
-  std::vector<std::string>
-  getValidGraphs(const boost::property_tree::ptree& aie_meta,
-                 const std::string& root);
-
-  XDP_CORE_EXPORT
   bool isInfoVerbosity();
 
   XDP_CORE_EXPORT
