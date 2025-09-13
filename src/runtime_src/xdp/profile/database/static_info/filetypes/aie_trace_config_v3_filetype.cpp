@@ -36,7 +36,7 @@ AIETraceConfigV3Filetype::getValidKernels() const
     std::set<std::string> uniqueKernels; // Use set to avoid duplicates
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-        std::string functionStr = mapping.second.get<std::string>("function");
+        auto functionStr = mapping.second.get<std::string>("function");
         if (functionStr.empty())
             continue;
 
@@ -74,7 +74,7 @@ AIETraceConfigV3Filetype::getValidGraphs() const
     std::set<std::string> uniqueGraphs; // Use set to avoid duplicates
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-        std::string graphStr = mapping.second.get<std::string>("graph");
+        auto graphStr = mapping.second.get<std::string>("graph");
         if (graphStr.empty())
             continue;
 
@@ -120,8 +120,8 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
 
     // Parse all kernel mappings
     for (auto const &mapping : kernelToTileMapping.get()) {
-        std::string graphStr = mapping.second.get<std::string>("graph", "");
-        std::string functionStr = mapping.second.get<std::string>("function", "");
+        auto graphStr = mapping.second.get<std::string>("graph", "");
+        auto functionStr = mapping.second.get<std::string>("function", "");
         
         if (graphStr.empty() || functionStr.empty())
             continue;
@@ -153,8 +153,8 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
             
             // Always add DMA-only tiles at different coordinates (for both core and dma module types)
             if (dmaChannelsTree) {
-                uint8_t coreCol = mapping.second.get<uint8_t>("column");
-                uint8_t coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
+                auto coreCol = mapping.second.get<uint8_t>("column");
+                auto coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
                 
                 for (auto const &channel : dmaChannelsTree.get()) {
                     uint8_t dmaCol = xdp::aie::convertStringToUint8(channel.second.get<std::string>("column"));
@@ -226,21 +226,21 @@ bool AIETraceConfigV3Filetype::matchesKernelPattern(const std::string& function,
 // =================================================================
 
 std::vector<tile_type>
-AIETraceConfigV3Filetype::getAIETiles(const std::string& graphName) const
+AIETraceConfigV3Filetype::getAIETiles(const std::string&) const
 {
     throw std::runtime_error("getAIETiles() is not supported in V3 metadata format. "
                              "Use getTiles() with module_type::core instead.");
 }
 
 std::vector<tile_type>
-AIETraceConfigV3Filetype::getAllAIETiles(const std::string& graphName) const
+AIETraceConfigV3Filetype::getAllAIETiles(const std::string&) const
 {
     throw std::runtime_error("getAllAIETiles() is not supported in V3 metadata format. "
                              "Use getTiles() with module_type::core instead.");
 }
 
 std::vector<tile_type>
-AIETraceConfigV3Filetype::getEventTiles(const std::string& graph_name, module_type type) const
+AIETraceConfigV3Filetype::getEventTiles(const std::string&, module_type) const
 {
     throw std::runtime_error("getEventTiles() is not supported in V3 metadata format. "
                              "Use getTiles() with the appropriate module_type instead.");

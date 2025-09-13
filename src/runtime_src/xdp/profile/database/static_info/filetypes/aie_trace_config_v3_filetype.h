@@ -36,13 +36,13 @@ class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
         // module_type instead. They throw runtime exceptions if called.
         
         std::vector<tile_type>
-        getAIETiles(const std::string& graphName) const override;
+        getAIETiles(const std::string&) const override;
 
         std::vector<tile_type>
-        getAllAIETiles(const std::string& graphName) const override;
+        getAllAIETiles(const std::string&) const override;
 
         std::vector<tile_type>
-        getEventTiles(const std::string& graph_name, module_type type) const override;
+        getEventTiles(const std::string&, module_type) const override;
 
     private:
         // Helper method to match kernel patterns with ordered substring matching
