@@ -89,12 +89,17 @@ configure_file(
 )
 
 configure_file(
+  ${XRT_SOURCE_DIR}/CMake/config/version-slim.h.in
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
+)
+
+configure_file(
   ${XRT_SOURCE_DIR}/CMake/config/version.json.in
   ${PROJECT_BINARY_DIR}/gen/version.json
 )
 
 # xrt component install
-install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
+install(FILES ${PROJECT_BINARY_DIR}/gen/version.h ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
