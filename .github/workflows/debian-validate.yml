@@ -1,0 +1,52 @@
+name: Validate Debian build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - uses: actions/cache@v4
+      with:
+        path: |
+          /home/runner/.ccache
+          /home/runner/.cache/ccache
+        key: debian-validate:${{ matrix.os }}:${{ github.sha }}
+        restore-keys: 'debian-validate:${{ matrix.os }}:'
+    - name: disable man-db trigger # See https://github.com/actions/runner-images/issues/10977
+      run: |
+        echo "set man-db/auto-update false" | sudo debconf-communicate
+        sudo dpkg-reconfigure man-db
+    - name: install deps
+      run: |
+        ln -s build/debian debian
+        sudo apt update
+        sudo apt remove --yes libpython3*-dev # By default github images have python3-dev packages installed, drop them
+        sudo apt install --yes build-essential ccache
+        sudo apt satisfy --yes --no-install-recommends "`perl ./debian/print-build-deps.pl`"
+    - name: build
+      env:
+        CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        CMAKE_C_COMPILER_LAUNCHER: ccache
+      run: dpkg-buildpackage --no-sign -b -j4
+    - name: test
+      continue-on-error: true
+      run: |
+        set -x
+        test ! -f /opt/xilinix/xrt/bin/xclbinutil
+        if pkg-config --exists xrt; then echo "XRT pkg-config file installed: `pkg-config --modversion xrt`"; false; else true; fi
+        sudo dpkg -i ../xrt_*.deb
+        test -f /opt/xilinx/xrt/bin/xclbinutil
+        pkg-config --exists xrt
+        mkdir build-test
+        cd build-test
+        c++ -ohello `pkg-config --cflags --libs xrt` -Wall ../tests/xrt/00_hello/main.cpp
+
+# vim: sts=2 sw=2 et
