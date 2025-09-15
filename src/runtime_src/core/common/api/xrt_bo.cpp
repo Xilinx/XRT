@@ -1702,7 +1702,14 @@ static xrtBufferFlags
 compose_internal_bo_flags(use_type type)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
-  flags.flags = XRT_BO_FLAGS_HOST_ONLY;
+
+  if (type == use_type::debug) {
+    // client use case, create buffer in sram
+    flags.flags = XRT_BO_FLAGS_CACHEABLE;
+  }
+  else
+    flags.flags = XRT_BO_FLAGS_HOST_ONLY;
+
   flags.access = XRT_BO_ACCESS_LOCAL;
   flags.dir = XRT_BO_ACCESS_READ_WRITE;
   flags.use = static_cast<uint32_t>(type);
