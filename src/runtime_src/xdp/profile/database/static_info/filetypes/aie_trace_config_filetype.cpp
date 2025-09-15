@@ -154,6 +154,9 @@ AIETraceConfigFiletype::getMemoryTiles(const std::string& graph_name,
             tile_type tile;
             tile.col = shared_buffer.second.get<uint8_t>("column");
             tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
+            // Ensure vectors are re-sized for direct indexing by channel
+            tile.s2mm_names.resize(NUM_MEM_CHANNELS, "unused");
+            tile.mm2s_names.resize(NUM_MEM_CHANNELS, "unused");
 
             // Store names of DMA channels for reporting purposes
             for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {
