@@ -489,8 +489,8 @@ namespace xdp {
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " port with stream ID of " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
-          // NOTE: Port type on NPU3 is PL and not SOUTH
-          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, PL, streamPortId);
+          // NOTE: For NPU3, there is no SOUTH port type. Hence, monitoring DMA port.
+          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, DMA, streamPortId);
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = channelNum;
