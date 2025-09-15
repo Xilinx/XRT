@@ -51,10 +51,9 @@ fi
 
 COMP_FILE="/usr/share/bash-completion/bash_completion"
 if [ -n "$BASH_VERSION" ] && [ -f "$COMP_FILE" ]; then
-    # Enable autocompletion for the xbutil and xbmgmt commands
+    # Enable autocompletion for xrt-smi commands
     . "$COMP_FILE"
     . "$XILINX_XRT/share/completions/xbutil-bash-completion"
-    . "$XILINX_XRT/share/completions/xbmgmt-bash-completion"
 else
     echo "Autocomplete not enabled for XRT tools"
 fi

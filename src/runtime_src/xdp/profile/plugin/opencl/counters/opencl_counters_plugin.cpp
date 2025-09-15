@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,9 +77,8 @@ namespace xdp {
     XDPPlugin::emulationSetup() ;
 
     char* internalsSummary = getenv("VITIS_KERNEL_PROFILE_FILENAME") ;
-    if (internalsSummary != nullptr) {
-      (db->getStaticInfo()).addOpenedFile(internalsSummary, "KERNEL_PROFILE");
-    }
+    if (internalsSummary != nullptr)
+      db->addOpenedFile(internalsSummary, "KERNEL_PROFILE");
   }
 
   // This function is only called in hardware emulation.  For hardware

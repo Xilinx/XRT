@@ -496,7 +496,7 @@ namespace xdp {
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen, mXrtCoreDevice);
     writers.push_back(aieWriter);
-    db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    db->addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE status thread
     mThreadCtrlMap[handle] = true;
