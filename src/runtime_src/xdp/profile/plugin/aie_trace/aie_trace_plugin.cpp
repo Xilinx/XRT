@@ -226,9 +226,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     std::string configFile = "aie_event_runtime_config_" + std::to_string(deviceID) + ".json";
     configWriter = new AieTraceConfigWriter(configFile.c_str(), deviceID);
     writers.push_back(configWriter);
-    (db->getStaticInfo())
-        .addOpenedFile(configWriter->getcurrentFileName(),
-                       "AIE_EVENT_RUNTIME_CONFIG", deviceID);
+    db->addOpenedFile(configWriter->getcurrentFileName(),
+                      "AIE_EVENT_RUNTIME_CONFIG", deviceID);
   }
 
   if (!AIEData.offloadManager)
@@ -301,8 +300,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
                                                  deviceName.c_str(), deviceID);
     writers.push_back(tsWriter);
     db->addOpenedFile(tsWriter->getcurrentFileName(),
-                      "AIE_EVENT_TRACE_TIMESTAMPS",
-		      deviceID);
+                      "AIE_EVENT_TRACE_TIMESTAMPS", deviceID);
 
     // Start the AIE trace timestamps thread
     // NOTE: we purposely start polling before configuring trace events
