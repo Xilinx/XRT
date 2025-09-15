@@ -1,4 +1,5 @@
 #!/bin/bash
+
 bold=$(tput bold)
 normal=$(tput sgr0)
 red=$(tput setaf 1)
@@ -122,7 +123,7 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -d "$yocto_path" ]; then
+if [ -f "$yocto_path/internal-edf-init-build-env" ]; then
     cd $yocto_path
     source internal-edf-init-build-env
 else
@@ -159,7 +160,6 @@ if MACHINE=amd-cortexa78-mali-common bitbake xrt; then
     # Remove any empty entries and extra spaces
     final_rpms=$(echo $rpm_list | xargs)
 
-
     echo dnf --disablerepo=\"*\" install -y $final_rpms > $yocto_path/rpms/install_xrt.sh
     echo dnf --disablerepo=\"*\" reinstall -y $final_rpms > $yocto_path/rpms/reinstall_xrt.sh
 
@@ -168,4 +168,3 @@ if MACHINE=amd-cortexa78-mali-common bitbake xrt; then
 else
     echo "bitbake xrt failed"
 fi
-

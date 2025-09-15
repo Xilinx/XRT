@@ -198,7 +198,7 @@ auto time = std::time(nullptr);
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
     writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
+    db->addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE", deviceID);
 
     // Start the AIE profiling thread
     AIEData.implementation->startPoll(deviceID);

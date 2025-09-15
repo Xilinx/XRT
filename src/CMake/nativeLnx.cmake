@@ -147,8 +147,12 @@ xrt_add_subdirectory(python)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
-# -- CPack
-include (CMake/cpackLin.cmake)
+# CPack
+# Upstream builds do not use CPack, plus LINUX_VERSION which is
+# used by CPack may not be initialzed properly depending on host
+if (NOT XRT_UPSTREAM)
+   include (CMake/cpackLin.cmake)
+endif() 
 
 if (XRT_ALVEO)
   message("-- XRT Alveo drivers will be bundled with the XRT package")

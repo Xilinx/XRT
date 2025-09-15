@@ -37,7 +37,6 @@
 #include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_uuid.h"
@@ -50,8 +49,6 @@ namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d)
     : db(d)
-    , runSummary(nullptr)
-    , systemDiagram("")
     , softwareEmulationDeviceName("default_sw_emu_device")
     , deallocateAieDevice(nullptr)
   {
@@ -64,9 +61,6 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
-    if (runSummary != nullptr)
-      runSummary->write(false);
-
     for(auto& aieDevice : aieDevices) {
       if (aieDevice.second != nullptr && deallocateAieDevice != nullptr)
         deallocateAieDevice(aieDevice.second);
@@ -239,38 +233,6 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(openCLLock) ;
     softwareEmulationPortBitWidths.push_back(s) ;
-  }
-
-  // ************************************************
-  // ***** Functions related to the run summary *****
-  std::vector<std::pair<std::string, std::string>>&
-  VPStaticDatabase::getOpenedFiles()
-  {
-    std::lock_guard<std::mutex> lock(summaryLock) ;
-    return openedFiles ;
-  }
-
-  void VPStaticDatabase::addOpenedFile(const std::string& name,
-                                       const std::string& type)
-  {
-    {
-      // Protect changes to openedFiles and creation of the run summary.
-      //  The write function, however, needs to query the opened files so
-      //  place the lock inside its own scope.
-      std::lock_guard<std::mutex> lock(summaryLock) ;
-
-      openedFiles.push_back(std::make_pair(name, type)) ;
-
-      if (runSummary == nullptr)
-        runSummary = std::make_unique<VPRunSummaryWriter>("xrt.run_summary", db);
-    }
-    runSummary->write(false) ;
-  }
-
-  std::string VPStaticDatabase::getSystemDiagram()
-  {
-    std::lock_guard<std::mutex> lock(summaryLock) ;
-    return systemDiagram ;
   }
 
   // ***************************************************************
@@ -1675,7 +1637,15 @@ namespace xdp {
     if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
         (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
       hwCtxImplUIDMap[hwCtxImpl] = DEFAULT_PL_DEVICE_ID; // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
+
+      // At this point, also keep track of which xclbin is associated
+      // with this hardware context implementation for the run summary file
+      db->associateContextWithId(DEFAULT_PL_DEVICE_ID, hwCtxImpl);
     } else {
+       // At this point, also keep track of which xclbin is associated
+       // with this hardware context implementation for the run summary file
+       db->associateContextWithId(nextAvailableUID, hwCtxImpl);
+       
        hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
     }
     return hwCtxImplUIDMap[hwCtxImpl];
@@ -1760,27 +1730,6 @@ namespace xdp {
       }
     } catch(...) {
       currentXclbin->name = defaultName;
-    }
-  }
-
-  void VPStaticDatabase::updateSystemDiagram(const char* systemMetadataSection,
-                                             size_t systemMetadataSz)
-  {
-    if (systemMetadataSection == nullptr || systemMetadataSz <= 0)
-      return;
-
-    // For now, also update the System metadata for the run summary.
-    //  TODO: Expand this so that multiple devices and multiple xclbins
-    //  don't overwrite the single system diagram information
-    std::ostringstream buf ;
-    for (size_t index = 0 ; index < systemMetadataSz ; ++index) {
-      buf << std::hex << std::setw(2) << std::setfill('0')
-          << static_cast<unsigned int>(systemMetadataSection[index]);
-    }
-
-    {
-      std::lock_guard<std::mutex> lock(summaryLock) ;
-      systemDiagram = buf.str() ;
     }
   }
 
@@ -2823,7 +2772,7 @@ namespace xdp {
     // Step 5 -> Fill in the details like the name of the xclbin using
     //           the SYSTEM_METADATA section
     setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
-    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
+    db->updateSystemDiagram(systemMetadata.first, systemMetadata.second);
     addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
 
     return true;

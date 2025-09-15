@@ -26,7 +26,7 @@ file(GLOB XDP_DEVICE_COMMON_FILES
 )
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_pc_plugin MODULE ${XDP_AIE_PC_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
+  add_library(xdp_aie_pc_plugin SHARED ${XDP_AIE_PC_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
   add_dependencies(xdp_aie_pc_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_pc_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_pc_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
@@ -35,7 +35,7 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   set_target_properties(xdp_aie_pc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_pc_plugin
-    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} NAMELINK_SKIP
   )
 
 # Else, on edge-aarch64 don't build at all

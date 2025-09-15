@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -40,7 +41,7 @@ namespace xdp {
       // and unregister ourselves from the database
       for (auto w : writers) {
         w->write(false);
-        db->getStaticInfo().addOpenedFile(w->getcurrentFileName(), "VP_TRACE");
+        db->addOpenedFile(w->getcurrentFileName(), "VP_TRACE");
       }
 
       db->unregisterPlugin(this);
@@ -54,7 +55,7 @@ namespace xdp {
     XDPPlugin::writeAll(openNewFiles);
 
     for (auto w : writers) {
-      db->getStaticInfo().addOpenedFile(w->getcurrentFileName(), "VP_TRACE");
+      db->addOpenedFile(w->getcurrentFileName(), "VP_TRACE");
     }
   }
 

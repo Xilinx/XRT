@@ -102,10 +102,9 @@ parse_watch_mode_options(const std::vector<std::string>& elements_filter)
 void 
 smi_watch_mode::
 run_watch_mode(const xrt_core::device* device,
-                               const std::vector<std::string>& elements_filter,
-                               std::ostream& output,
-                               const ReportGenerator& report_generator,
-                               const std::string& report_title)
+               std::ostream& output,
+               const ReportGenerator& report_generator,
+               const std::string& report_title)
 {
   if (!device || !report_generator) {
     output << "Error: Invalid device or report generator provided to watch mode\n";
@@ -123,13 +122,10 @@ run_watch_mode(const xrt_core::device* device,
   signal_handler::reset_interrupt();
   std::string last_report;
   
-  // Filter out watch-specific options for the report generator
-  auto filtered_elements = filter_out_watch_options(elements_filter);
-  
   while (signal_handler::active()) {
     try {
       // Generate current report
-      std::string current_report = report_generator(device, filtered_elements);
+      std::string current_report = report_generator(device);
       
       // Only update display if content has changed
       if (current_report != last_report) {
@@ -157,20 +153,3 @@ run_watch_mode(const xrt_core::device* device,
   // Restore original signal handler
   signal_handler::restore();
 }
-
-std::vector<std::string> 
-smi_watch_mode::
-filter_out_watch_options(const std::vector<std::string>& elements_filter)
-{
-  std::vector<std::string> filtered;
-  filtered.reserve(elements_filter.size());
-  
-  std::copy_if(elements_filter.begin(), elements_filter.end(),
-               std::back_inserter(filtered),
-               [](const std::string& filter) {
-                 return !(filter == "watch" || filter.find("watch=") == 0);
-               });
-  
-  return filtered;
-}
-

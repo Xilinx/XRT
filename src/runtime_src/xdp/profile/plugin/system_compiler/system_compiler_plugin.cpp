@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,8 +27,8 @@ namespace xdp {
     db->registerPlugin(this);
     db->registerInfo(info::system_compiler);
 
-    db->getStaticInfo().addOpenedFile("sc_host_summary.csv", "PROFILE_SUMMARY");
-    db->getStaticInfo().addOpenedFile("sc_trace.csv", "VP_TRACE");
+    db->addOpenedFile("sc_host_summary.csv", "PROFILE_SUMMARY");
+    db->addOpenedFile("sc_trace.csv", "VP_TRACE");
   }
 
   SystemCompilerPlugin::~SystemCompilerPlugin()
