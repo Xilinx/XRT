@@ -1702,7 +1702,24 @@ static xrtBufferFlags
 compose_internal_bo_flags(use_type type)
 {
   xcl_bo_flags flags {0};  // see xrt_mem.h
-  flags.flags = XRT_BO_FLAGS_CACHEABLE;
+
+  // This function is used to create internal buffers
+  // for debug/trace/log use cases.
+  // Sanity check the use_type
+  switch (type) {
+  case use_type::debug :
+    // client use case, create buffer in sram
+    flags.flags = XRT_BO_FLAGS_CACHEABLE;
+    break;
+  case use_type::dtrace :
+  case use_type::uc_debug :
+  case use_type::log :
+    flags.flags = XRT_BO_FLAGS_HOST_ONLY;
+    break;
+  default:
+    throw std::runtime_error("create_bo is called with invalid buffer type\n");
+  }
+
   flags.access = XRT_BO_ACCESS_LOCAL;
   flags.dir = XRT_BO_ACCESS_READ_WRITE;
   flags.use = static_cast<uint32_t>(type);

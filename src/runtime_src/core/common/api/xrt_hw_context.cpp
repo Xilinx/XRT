@@ -238,6 +238,9 @@ public:
     // This trace point measures the time to tear down a hw context on the device
     XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
 
+    // dump uC log buffer before shim hwctx handle is destroyed
+    m_uc_log_buf.reset();
+
     try {
       // finish_flush_device should only be called when the underlying 
       // hw_context_impl is destroyed. The xdp::update_device cannot exist

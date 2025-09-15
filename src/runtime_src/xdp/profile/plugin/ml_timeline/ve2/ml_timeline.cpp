@@ -34,7 +34,7 @@ namespace xdp {
         mBO = xrt_core::bo_int::create_bo(
                 xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl),
                 sz,
-                xrt_core::bo_int::use_type::debug);
+                xrt_core::bo_int::use_type::uc_debug);
       }
       ~ResultBOContainer() {}
 
