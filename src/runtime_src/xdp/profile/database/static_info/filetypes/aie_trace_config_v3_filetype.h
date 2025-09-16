@@ -15,7 +15,7 @@ namespace xdp::aie {
 class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
     public:
         explicit AIETraceConfigV3Filetype(boost::property_tree::ptree& aie_project);
-        ~AIETraceConfigV3Filetype() noexcept {}
+        ~AIETraceConfigV3Filetype() noexcept override = default;
 
         AIETraceConfigV3Filetype(const AIETraceConfigV3Filetype&) = default;
         AIETraceConfigV3Filetype& operator=(const AIETraceConfigV3Filetype&) = default;
