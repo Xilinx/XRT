@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
+#ifdef _DEBUG
+# define XRT_VERBOSE
+#endif
+
 // This application implements XRT runner for recipe and profile.
 //
 // Two modes are supported:
@@ -34,6 +38,8 @@
 #include "xrt/experimental/xrt_message.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/debug.h"
+#include "core/common/error.h"
 #include "core/common/time.h"
 #include "core/common/runner/runner.h"
 
@@ -51,6 +57,10 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#ifdef _WIN32
+# pragma warning (disable: 4702)
+#endif
 
 using json = nlohmann::json;
 namespace sfs = std::filesystem;
@@ -261,6 +271,15 @@ struct script_runner
   {
     std::exception_ptr m_eptr;
     std::thread m_thread;
+    std::string m_tid;
+
+    static std::string
+    to_string(std::thread::id tid)
+    {
+      std::stringstream ss;
+      ss << tid;
+      return ss.str();
+    }
 
     static void
     run(job_queue& queue, std::exception_ptr& eptr)
@@ -270,27 +289,34 @@ struct script_runner
           auto job = queue.get_job();
           if (!job)
             break;
-          
+
+          XRT_DEBUGF("script_runner::worker::run() running job(%s)\n", job->get_id().c_str());
           job->run();
           job->wait();
         }
       }
-      catch (...) {
+      catch (const std::exception& ex) {
+        XRT_DEBUGF("script_runner::worker::run::catch: %s\n", ex.what());
+        xrt_core::send_exception_message(ex.what());
         eptr = std::current_exception();
       }
     }
 
     explicit worker(job_queue& queue)
       : m_thread(worker::run, std::ref(queue), std::ref(m_eptr))
+      , m_tid{to_string(m_thread.get_id())}
     {}
 
     void
     wait()
     {
+      XRT_DEBUGF("-> script_runner::worker::wait() tid(%s)\n", m_tid.c_str());
       m_thread.join();
       if (m_eptr) {
+        XRT_DEBUGF("<- script_runner::worker::wait() tid(%s) rethrow\n", m_tid.c_str());
         std::rethrow_exception(m_eptr);
       }
+      XRT_DEBUGF("<- script_runner::worker::wait() tid(%s)\n", m_tid.c_str());
     }
   }; // worker
 

@@ -17,6 +17,20 @@
 #include "debug.h"
 #include <cstdarg>
 #include <cstdio>
+#include <sstream>
+#include <thread>
+
+namespace {
+
+static std::string
+get_tid()
+{
+  std::ostringstream oss;
+  oss << std::this_thread::get_id();
+  return oss.str();
+}
+
+}
 
 namespace xrt_core {
 
@@ -32,7 +46,7 @@ debugf(const char* format,...)
   debug_lock lk;
   va_list args;
   va_start(args,format);
-  printf("%llu: ",time_ns());
+  printf("%llu (%s): ",time_ns(), get_tid().c_str());
   vprintf(format,args);
   va_end(args);
 }
