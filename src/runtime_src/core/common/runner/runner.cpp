@@ -5,7 +5,7 @@
 #define XRT_API_SOURCE         // in same dll as coreutil
 
 #ifdef _DEBUG
-# define XRT_VERBOSE
+//# define XRT_VERBOSE
 #endif
 
 #include "runner.h"
