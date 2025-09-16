@@ -47,6 +47,9 @@ class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
     private:
         // Helper method to match kernel patterns with ordered substring matching
         bool matchesKernelPattern(const std::string& function, const std::string& kernel_name) const;
+
+        // Helper method to populate DMA channel names from metadata
+        void populateDMAChannelNames(tile_type& tile, const boost::property_tree::ptree& dmaChannels) const;
 };
 
 } // namespace xdp::aie

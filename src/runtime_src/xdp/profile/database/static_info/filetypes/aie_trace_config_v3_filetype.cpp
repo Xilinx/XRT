@@ -26,7 +26,7 @@ AIETraceConfigV3Filetype::getValidKernels() const
 {
     std::vector<std::string> kernels;
 
-    // Grab all kernel to tile mappings
+    // Collect all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping) {
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
@@ -64,7 +64,7 @@ AIETraceConfigV3Filetype::getValidGraphs() const
 {
     std::vector<std::string> graphs;
 
-    // Grab all kernel to tile mappings
+    // Collect all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping) {
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
@@ -108,14 +108,13 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
     
-    // Always return both core and DMA tiles for both core and dma module types
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping) {
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
         return {};
     }
 
-    std::set<tile_type> uniqueTiles; // Use set to handle DMA-only tile uniqueness
+    std::map<std::pair<uint8_t, uint8_t>, tile_type> tileMap; // Use map to handle unique tiles by location
     auto rowOffset = getAIETileRowOffset();
 
     // Parse all kernel mappings
@@ -133,54 +132,65 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
 
         // Check if kernel/function matches using precise pattern matching
         bool foundKernel = (kernel_name == "all") || matchesKernelPattern(functionStr, kernel_name);
+        if (!foundGraph || !foundKernel)
+            continue;
 
-        // Add tile if it matches the criteria
-        if (foundGraph && foundKernel) {
-            // Compute tile properties from metadata
-            std::string tileType = mapping.second.get<std::string>("tile", "");
-            bool isCoreUsed = (tileType == "aie");
-            
-            auto dmaChannelsTree = mapping.second.get_child_optional("dmaChannels");
-            bool isDMAUsed = (dmaChannelsTree && !dmaChannelsTree.get().empty());
-            
-            // Always add core tile (for both core and dma module types)
-            tile_type tile;
-            tile.col = mapping.second.get<uint8_t>("column");
-            tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
-            tile.active_core = isCoreUsed;
-            tile.active_memory = isDMAUsed;
-            uniqueTiles.insert(tile);
-            
-            // Always add DMA-only tiles at different coordinates (for both core and dma module types)
-            if (dmaChannelsTree) {
-                auto coreCol = mapping.second.get<uint8_t>("column");
-                auto coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
-                
-                for (auto const &channel : dmaChannelsTree.get()) {
-                    uint8_t dmaCol = xdp::aie::convertStringToUint8(channel.second.get<std::string>("column"));
-                    uint8_t dmaRow = xdp::aie::convertStringToUint8(channel.second.get<std::string>("row")) + rowOffset;
+        // Get core tile location
+        uint8_t coreCol = mapping.second.get<uint8_t>("column");
+        uint8_t coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
 
-                    // Check if this DMA channel is at a different location than the core
-                    if (dmaCol != coreCol || dmaRow != coreRow) {
+        // Create or get existing core tile
+        auto coreKey = std::make_pair(coreCol, coreRow);
+        if (tileMap.find(coreKey) == tileMap.end()) {
+            tile_type coreTile;
+            coreTile.col = coreCol;
+            coreTile.row = coreRow;
+            coreTile.active_core = (mapping.second.get<std::string>("tile", "") == "aie");
+            coreTile.active_memory = false; // Will be set to true if DMA channels exist
+            tileMap[coreKey] = coreTile;
+        }
+
+        // Process DMA channels
+        auto dmaChannelsTree = mapping.second.get_child_optional("dmaChannels");
+        if (dmaChannelsTree) {
+            for (auto const &channel : dmaChannelsTree.get()) {
+                uint8_t dmaCol = xdp::aie::convertStringToUint8(channel.second.get<std::string>("column"));
+                uint8_t dmaRow = xdp::aie::convertStringToUint8(channel.second.get<std::string>("row")) + rowOffset;
+
+                // If channel matches core tile location, add to core tile
+                if (dmaCol == coreCol && dmaRow == coreRow) {
+                    tileMap[coreKey].active_memory = true;
+                    populateDMAChannelNames(tileMap[coreKey], channel.second);
+                } else {
+                    // Otherwise create/update separate DMA tile
+                    auto dmaKey = std::make_pair(dmaCol, dmaRow);
+                    if (tileMap.find(dmaKey) == tileMap.end()) {
                         tile_type dmaTile;
                         dmaTile.col = dmaCol;
                         dmaTile.row = dmaRow;
                         dmaTile.active_core = false;
                         dmaTile.active_memory = true;
-                        uniqueTiles.insert(dmaTile);
+                        tileMap[dmaKey] = dmaTile;
                     }
+                    populateDMAChannelNames(tileMap[dmaKey], channel.second);
                 }
-            } // end of DMA channels processing
-        } // end of foundGraph && foundKernel
-    } // end of each mapping in kernelToTileMapping
+            }
+        }
+    }
+
+    // Convert map to vector
+    std::vector<tile_type> tiles;
+    for (const auto& pair : tileMap) {
+        tiles.push_back(pair.second);
+    }
     
-    return std::vector<tile_type>(uniqueTiles.begin(), uniqueTiles.end());
+    return tiles;
 }
 
 // Helper method to match kernel patterns with ordered substring matching
 bool AIETraceConfigV3Filetype::matchesKernelPattern(const std::string& function, const std::string& kernel_name) const
 {
-    if (kernel_name == "all" || kernel_name.empty()) {
+    if ((kernel_name == "all") || (kernel_name.empty())) {
         return true;
     }
     
@@ -219,6 +229,27 @@ bool AIETraceConfigV3Filetype::matchesKernelPattern(const std::string& function,
     }
     
     return false;
+}
+
+// Helper method to populate DMA channel names from metadata
+void AIETraceConfigV3Filetype::populateDMAChannelNames(tile_type& tile, const boost::property_tree::ptree& channelNode) const
+{
+    auto portName = channelNode.get<std::string>("portName", "");
+    auto channelNum = channelNode.get<uint8_t>("channel", 0);
+    auto direction = channelNode.get<std::string>("direction", "");
+
+    if (portName.empty() || direction.empty())
+        return;
+
+    if (direction == "s2mm") {
+        if (channelNum < tile.s2mm_names.size()) {
+            tile.s2mm_names[channelNum] = portName;
+        }
+    } else if (direction == "mm2s") {
+        if (channelNum < tile.mm2s_names.size()) {
+            tile.mm2s_names[channelNum] = portName;
+        }
+    }
 }
 
 // =================================================================
