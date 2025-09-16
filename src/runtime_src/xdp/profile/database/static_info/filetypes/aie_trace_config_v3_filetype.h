@@ -17,6 +17,11 @@ class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
         explicit AIETraceConfigV3Filetype(boost::property_tree::ptree& aie_project);
         ~AIETraceConfigV3Filetype() noexcept {}
 
+        AIETraceConfigV3Filetype(const AIETraceConfigV3Filetype&) = default;
+        AIETraceConfigV3Filetype& operator=(const AIETraceConfigV3Filetype&) = default;
+        AIETraceConfigV3Filetype(AIETraceConfigV3Filetype&&) = default;
+        AIETraceConfigV3Filetype& operator=(AIETraceConfigV3Filetype&&) = default;
+
         std::vector<std::string>
         getValidKernels() const override;
 

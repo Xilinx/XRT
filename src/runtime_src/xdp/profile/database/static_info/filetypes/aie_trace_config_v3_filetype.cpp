@@ -136,8 +136,8 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
             continue;
 
         // Get core tile location
-        uint8_t coreCol = mapping.second.get<uint8_t>("column");
-        uint8_t coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
+        auto coreCol = mapping.second.get<uint8_t>("column");
+        auto coreRow = mapping.second.get<uint8_t>("row") + rowOffset;
 
         // Create or get existing core tile
         auto coreKey = std::make_pair(coreCol, coreRow);
