@@ -79,6 +79,8 @@ static const char* const Control_Code_Symbol = "control-code";
 static constexpr uint8_t mangled_prefix_length = 2;
 static constexpr uint8_t decimal_base = 10;
 
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; } //NOLINT
+
 struct buf
 {
   std::vector<uint8_t> m_data;
@@ -1503,7 +1505,7 @@ public:
   size_t
   get_scratch_pad_mem_size() const override
   {
-    constexpr size_t scratchpad_mem_size = 512 * 1024; // 512 KB
+    constexpr size_t scratchpad_mem_size = 512_kb;
     return scratchpad_mem_size;
   }
 

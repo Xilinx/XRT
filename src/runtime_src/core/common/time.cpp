@@ -8,6 +8,8 @@
 #include <chrono>
 #include <cstring>
 #include <ctime>
+#include <iomanip>
+#include <sstream>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
@@ -61,6 +63,26 @@ timestamp(uint64_t epoch)
   time_t rawtime = epoch;
   std::string tmp(ctime(&rawtime));
   return tmp.substr( 0, tmp.length() -1).append(" GMT");
+}
+
+// returns formatted timestamp string that can be concatenated with
+// filename in thread safe and platform independent way
+std::string
+get_timestamp_for_filename()
+{
+  auto current_time = std::chrono::system_clock::now();
+  std::time_t time = std::chrono::system_clock::to_time_t(current_time);
+
+  std::tm tm_buf{};
+  #ifdef _WIN32
+    localtime_s(&tm_buf, &time);
+  #else
+    localtime_r(&time, &tm_buf);
+  #endif
+
+  std::stringstream time_stamp;
+  time_stamp << std::put_time(&tm_buf, "%Y-%m-%d_%H-%M-%S");
+  return time_stamp.str();
 }
 
 ////////////////////////////////////////////////////////////////

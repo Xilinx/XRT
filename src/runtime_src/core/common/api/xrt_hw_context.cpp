@@ -9,6 +9,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/time.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
@@ -48,18 +49,6 @@ dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t of
 
   const char* buf = buf_map + offset;
   ofs.write(buf, static_cast<std::streamsize>(size));
-}
-
-// Returns the current timestamp in string format
-static std::string
-get_timestamp_str()
-{
-  auto current_time = std::chrono::system_clock::now();
-  std::time_t time = std::chrono::system_clock::to_time_t(current_time);
-  std::stringstream time_stamp;
-  time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
-
-  return time_stamp.str();
 }
 }
 
@@ -127,7 +116,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         // Use timestamp, slot index in file name
         for (size_t i = 0; i < m_num_uc; i++) {
           auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
-              + get_timestamp_str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
+              + xrt_core::get_timestamp_for_filename() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
           dump_bo(m_uc_log_bo.map<char*>(), file_name, m_size_per_uc, (i * m_size_per_uc));
         }
       }
@@ -148,6 +137,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
   // During preemption, when a hardware context is interrupted L2 memory contents
   // are saved to a scratchpad memory allocated specifically for that context.
+  std::once_flag m_scratchpad_init_flag; // used for thread safe lazy init of scratchpad
   xrt::bo m_scratchpad_buf;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
@@ -401,18 +391,18 @@ public:
 
   // Creates scratchpad memory buffer on demand
   // If buffer is already created, returns the existing one
+  // std::call_once is used to ensure thread safe lazy initialization
   const xrt::bo&
   get_scratchpad_mem_buf(size_t size_per_col)
   {
-    if (m_scratchpad_buf)
-      return m_scratchpad_buf;
-
-    try {
-      // create scratchpad memory buffer using this context
-      m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
-                                      size_per_col * m_hdl->get_num_cols()};
-    }
-    catch (...) { /*do nothing*/ }
+    std::call_once(m_scratchpad_init_flag, [this, size_per_col] () {
+      try {
+        // create scratchpad memory buffer using this context
+        m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
+                                        size_per_col * m_hdl->get_num_cols()};
+      }
+      catch (...) { /*do nothing*/ }
+    });
 
     return m_scratchpad_buf;
   }
@@ -431,7 +421,7 @@ public:
 
     std::string dump_file_name =
         "preemption_scratchpad_mem_" + std::to_string(m_hdl->get_slotidx()) + "_" +
-        get_timestamp_str() + ".bin";
+        xrt_core::get_timestamp_for_filename() + ".bin";
     dump_bo(m_scratchpad_buf.map<char*>(), dump_file_name, m_scratchpad_buf.size());
 
     std::string msg {"Dumped scratchpad buffer into file : "};

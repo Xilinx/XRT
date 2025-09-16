@@ -61,6 +61,7 @@ get_partition_size(const xrt::hw_context&);
 XRT_CORE_COMMON_EXPORT
 bool
 get_elf_flow(const xrt::hw_context& ctx);
+
 // Get the scratchpad memory buffer for a given hardware context
 const xrt::bo&
 get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
