@@ -80,7 +80,7 @@ AIEControlConfigFiletype::getValidGraphs() const
 {
     std::vector<std::string> graphs;
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-        std::string graphName = graph.second.get<std::string>("name");
+        auto graphName = graph.second.get<std::string>("name");
         graphs.push_back(graphName);
     }
     return graphs;

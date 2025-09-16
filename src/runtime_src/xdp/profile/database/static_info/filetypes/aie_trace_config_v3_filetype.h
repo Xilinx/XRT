@@ -15,7 +15,7 @@ namespace xdp::aie {
 class AIETraceConfigV3Filetype : public AIETraceConfigFiletype {
     public:
         explicit AIETraceConfigV3Filetype(boost::property_tree::ptree& aie_project);
-        ~AIETraceConfigV3Filetype() override = default;
+        ~AIETraceConfigV3Filetype() noexcept {}
 
         std::vector<std::string>
         getValidKernels() const override;
