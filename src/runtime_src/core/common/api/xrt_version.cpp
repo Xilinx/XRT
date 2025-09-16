@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT version APIs as declared in
 // core/include/experimental/xrt_version.h
 #define XRT_API_SOURCE         // exporting xrt_version.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/experimental/xrt_version.h"
-#include "version.h"
+#include "xrt/detail/version.h"
 
 #ifdef major
 # undef major

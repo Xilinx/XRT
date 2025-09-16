@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
-// Local - Include Files
 #include "system.h"
 #include "device.h"
 #include "module_loader.h"
 
-#include "gen/version.h"
-
-
-// System - Include Files
 #include <boost/property_tree/ptree.hpp>
 
 #include <map>
