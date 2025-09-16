@@ -11,8 +11,16 @@
 #include "context.h"
 #include "device.h"
 
+#include <cstdlib>
+#include <memory>
 #include <stack>
+#include <string>
 #include <thread>
+#include <typeinfo>
+
+#if defined(__GNUC__) || defined(__clang__)
+# include <cxxabi.h>
+#endif
 
 namespace xrt::core::hip {
 struct ctx_info
@@ -41,6 +49,25 @@ insert_in_map(map& m, value&& v)
   auto handle = v.get();
   m.add(handle, std::move(v));
   return handle;
+}
+
+template <class T>
+std::string
+get_unmangled_type_name(const T& obj)
+{
+  const char* mangled_name = typeid(obj).name();
+#if defined(__GNUC__) || defined(__clang__)
+  int status = 0;
+  std::unique_ptr<char, decltype(&std::free)> demangled_name(
+    abi::__cxa_demangle(mangled_name, nullptr, nullptr, &status), &std::free
+  );
+  return (status == 0) ? demangled_name.get() : mangled_name;
+#elif defined(_MSC_VER)
+  // MSVC's typeid().name() returns a readable name by default
+  return mangled_name;
+#else
+  return mangled_name;
+#endif
 }
 } // xrt::core::hip
 
