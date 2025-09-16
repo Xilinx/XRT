@@ -146,6 +146,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
+  bool m_elf_flow = false;
 
   void
   create_module_map(const xrt::elf& elf)
@@ -223,6 +224,7 @@ public:
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
+    , m_elf_flow{true}
   {
     create_module_map(elf);
   }
@@ -350,6 +352,12 @@ public:
     throw std::runtime_error("no module found with given kernel name in ctx");
   }
 
+  bool
+  get_elf_flow() const
+  {
+    return m_elf_flow;
+  }
+
   double
   get_aie_freq() const
   {
@@ -433,6 +441,12 @@ size_t
 get_partition_size(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_partition_size();
+}
+
+bool
+get_elf_flow(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_elf_flow();
 }
 
 } // xrt_core::hw_context_int

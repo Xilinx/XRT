@@ -572,12 +572,12 @@ class recipe
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
 
-      // Legacy kernel (alveo)
+      // Legacy kernel (alveo) or elf file was used when the hwctx was constructed.
       kernel(const xrt::hw_context& ctx, std::string name, std::string xname)
         : m_name(std::move(name))
         , m_instance(std::move(xname))
         , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
-        , m_xrt_kernel{xrt::kernel{ctx, m_instance}}
+        , m_xrt_kernel{xrt_core::hw_context_int::get_elf_flow(ctx) ? xrt::ext::kernel{ctx, m_instance} : xrt::kernel{ctx, m_instance}}
       {
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
