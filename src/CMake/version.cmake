@@ -120,4 +120,8 @@ if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32))
     ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
     DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include
     COMPONENT ${XRT_DEV_COMPONENT})
+  install(FILES
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
+    DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include/xrt/detail
+    COMPONENT ${XRT_DEV_COMPONENT})
 endif()
