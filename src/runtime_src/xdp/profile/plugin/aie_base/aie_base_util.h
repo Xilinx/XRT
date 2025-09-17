@@ -111,7 +111,7 @@ namespace xdp::aie {
    * @note    This function currently supports AIE1, AIE2*, and NPU3
    * @param   hwGen integer representing the hardware generation
    * @param   mod module type
-   * @return  number of counters available in the module
+   * @return  number of MM2S channels available in the module
    */
   inline unsigned int getNumMM2SChannels(const int hwGen, xdp::module_type mod)
   {
@@ -139,7 +139,7 @@ namespace xdp::aie {
    * @note    This function currently supports AIE1, AIE2*, and NPU3
    * @param   hwGen integer representing the hardware generation
    * @param   mod module type
-   * @return  number of counters available in the module
+   * @return  number of S2MM channels available in the module
    */
   inline unsigned int getNumS2MMChannels(const int hwGen, xdp::module_type mod)
   {
