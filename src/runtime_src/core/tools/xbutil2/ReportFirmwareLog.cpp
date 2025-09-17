@@ -64,14 +64,14 @@ static void generate_dummy_firmware_log_data(xrt_core::query::firmware_debug_buf
     uint32_t argc = 0;
     
     // Pack all bit fields into a single 64-bit value
-    uint64_t packed = (static_cast<uint64_t>(format) << 0) | 
-                      (static_cast<uint64_t>(0x60) << 1) | 
-                      (static_cast<uint64_t>(level) << 8) | 
-                      (static_cast<uint64_t>(0) << 11) | 
-                      (static_cast<uint64_t>(appn) << 16) | 
-                      (static_cast<uint64_t>(argc) << 24) |
-                      (static_cast<uint64_t>(line) << 32) |
-                      (static_cast<uint64_t>(module) << 48); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    uint64_t packed = (static_cast<uint64_t>(format) << 0) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(0x60) << 1) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(level) << 8) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(0) << 11) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(appn) << 16) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(argc) << 24) |// NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(line) << 32) |// NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+                      (static_cast<uint64_t>(module) << 48); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
     
     // Write header (16 bytes total)
     memcpy(data_ptr + total_size, &timestamp, 8); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
@@ -143,7 +143,7 @@ parse_message(const uint8_t* data_ptr,
       str_len++;
     }
     if (str_len > 0) {
-      return std::string(str_ptr, str_len);
+      return {str_ptr, str_len};
     }
   }
   return "";

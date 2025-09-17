@@ -18,7 +18,7 @@ struct firmware_debug_buffer;
 }
 
 //This is arbitrary for the moment. We can change this once we do real testing with firmware data
-constexpr size_t debug_buffer_size = 64 * 1024 * 1024; // 64MB // NOLINT(readability-magic-numbers)
+constexpr size_t debug_buffer_size = static_cast<size_t>(64) * 1024 * 1024; // 64MB // NOLINT(readability-magic-numbers)
 
 /**
  * @brief Generic watch mode utility for XRT-SMI reports
