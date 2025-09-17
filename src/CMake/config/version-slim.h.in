@@ -1,0 +1,13 @@
+#ifndef _XRT_VERSION_SLIM_H_
+#define _XRT_VERSION_SLIM_H_
+
+/*
+ * This header contains minimal version info needed for xrt/detail/abi.h header
+ */
+
+#define XRT_SLIM_VERSION(major, minor) ((major << 16) + (minor))
+#define XRT_SLIM_VERSION_CODE XRT_SLIM_VERSION(@XRT_VERSION_MAJOR@, @XRT_VERSION_MINOR@)
+#define XRT_SLIM_MAJOR(code) ((code >> 16))
+#define XRT_SLIM_MINOR(code) (code - ((code >> 16) << 16))
+
+#endif

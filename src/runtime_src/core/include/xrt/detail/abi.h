@@ -4,12 +4,9 @@
 #ifndef XRT_DETAIL_ABI_H
 #define XRT_DETAIL_ABI_H
 
-// Generated version.h file is installed into include/xrt/detail/version.h
-// but at build time it is picked up from compile include search path
-#if defined(XRT_BUILD) && !defined(DISABLE_ABI_CHECK)
-# include "version.h"
-#elif !defined(XRT_BUILD)
-# include "xrt/detail/version.h"
+// Use slim version header without datetime fields
+#ifndef DISABLE_ABI_CHECK
+# include "xrt/detail/version-slim.h"
 #endif
 
 #ifdef __cplusplus
@@ -27,9 +24,9 @@ namespace xrt { namespace detail {
 // version of XRT and new version.
 struct abi {
 #ifndef DISABLE_ABI_CHECK
-  const unsigned int major {XRT_MAJOR(XRT_VERSION_CODE)};
-  const unsigned int minor {XRT_MINOR(XRT_VERSION_CODE)};
-  const unsigned int code  {XRT_VERSION_CODE};
+  const unsigned int major {XRT_SLIM_MAJOR(XRT_SLIM_VERSION_CODE)};
+  const unsigned int minor {XRT_SLIM_MINOR(XRT_SLIM_VERSION_CODE)};
+  const unsigned int code  {XRT_SLIM_VERSION_CODE};
 #else
   const unsigned int major {0};
   const unsigned int minor {0};
