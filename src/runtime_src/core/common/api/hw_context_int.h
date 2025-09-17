@@ -56,6 +56,12 @@ get_module(const xrt::hw_context& hwctx, const std::string& kname);
 size_t
 get_partition_size(const xrt::hw_context&);
 
+// get_elf_flow() - Returns true if hwctx was created with elf file/flow
+// Returns false everywhere else
+XRT_CORE_COMMON_EXPORT
+bool
+get_elf_flow(const xrt::hw_context& ctx);
+
 }} // hw_context_int, xrt_core
 
 #endif
