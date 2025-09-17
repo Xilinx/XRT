@@ -50,10 +50,6 @@ else()
   set(XRT_WARN_OPTS -Wall)
 endif()
 
-if (DISABLE_ABI_CHECK)
-  add_compile_options("-DDISABLE_ABI_CHECK")
-endif()
-
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)

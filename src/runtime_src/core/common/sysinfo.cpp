@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
-// Local - Include files
 #include "sysinfo.h"
 #include "detail/sysinfo.h"
 #include "system.h"
 
-// System - Include Files
-#include "gen/version.h"
+#include "xrt/detail/version.h"
 
 namespace xrt_core::sysinfo {
 

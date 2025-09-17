@@ -8,10 +8,6 @@ if (XRT_CCACHE)
   if(CCACHE_PROGRAM)
     set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-
-    # Disable abi compile time checks which renders ccache close to useless
-    message ("***** CCACHE: DISABLING ABI VERSION CHECK ******")
-    add_compile_options("-DDISABLE_ABI_CHECK")
   else()
     message ("***** ccache program not found, ignoring -ccache")
   endif()

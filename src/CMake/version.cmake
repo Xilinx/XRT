@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 # AMD promotion build works from copied sources with no git
 # repository.  The build cannot query git for git metadata.  The
@@ -84,8 +84,13 @@ execute_process(
 string(TIMESTAMP XRT_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
+  ${XRT_SOURCE_DIR}/CMake/config/version-slim.h.in
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
+)
+
+configure_file(
   ${XRT_SOURCE_DIR}/CMake/config/version.h.in
-  ${PROJECT_BINARY_DIR}/gen/version.h
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h
 )
 
 configure_file(
@@ -94,7 +99,9 @@ configure_file(
 )
 
 # xrt component install
-install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
+install(FILES
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h
+  ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/detail
   COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
@@ -108,7 +115,13 @@ endif()
 if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32))
   # Copied over from dkms.cmake. TODO: cleanup
   set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
-  install(FILES ${PROJECT_BINARY_DIR}/gen/version.h
+  install(FILES
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
     DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include
+    COMPONENT ${XRT_DEV_COMPONENT})
+  install(FILES
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-slim.h
+    DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include/xrt/detail
     COMPONENT ${XRT_DEV_COMPONENT})
 endif()

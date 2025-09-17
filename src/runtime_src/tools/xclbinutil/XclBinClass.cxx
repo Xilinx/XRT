@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XclBinClass.h"
 
@@ -22,12 +8,12 @@
 #include "FormattedOutput.h"
 #include "KernelUtilities.h"
 #include "Section.h"
-#include "version.h"                             // Generated include files
 #include "XclBinUtilities.h"
+#include "xrt/detail/version.h"                  // Generated include files
 #include <boost/algorithm/string.hpp>            // boost::split, is_any_of
 #include <boost/property_tree/json_parser.hpp>
+#include <cstdlib>
 #include <random>                                // randomGen 
-#include <stdlib.h>
 
 // Constant data
 static const std::string mirroDataStart("XCLBIN_MIRROR_DATA_START");
