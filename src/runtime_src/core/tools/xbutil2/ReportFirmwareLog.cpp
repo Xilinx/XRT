@@ -131,7 +131,7 @@ parse_field(const field_context& ctx,
 static std::string
 parse_message(const uint8_t* data_ptr,
               size_t msg_offset,
-              size_t argc,
+              size_t /*argc*/,
               size_t buf_size)
 {
   // Always try to read as null-terminated string
