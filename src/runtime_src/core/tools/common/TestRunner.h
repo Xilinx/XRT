@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __TestRunner_h_
-#define __TestRunner_h_
+#ifndef TestRunner_h_
+#define TestRunner_h_
 
 // Local - Include Files
 #include "core/common/query_requests.h"
@@ -27,21 +27,21 @@ namespace xrt_core { class archive; }
 
 class TestRunner : public JSONConfigurable {
   public:
-    virtual boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev) = 0;
+    virtual boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) = 0;
     
     // Overloaded version with archive support for individual test implementations
     // We'll remove the default run implementation once all tests overload this version
     virtual boost::property_tree::ptree 
-    run(std::shared_ptr<xrt_core::device> dev, 
+    run(const std::shared_ptr<xrt_core::device>& dev, 
         const xrt_core::archive* /*archive*/) {
       // Default implementation ignores archive and calls original run method
       return run(dev);
     }
     
-    boost::property_tree::ptree startTest(std::shared_ptr<xrt_core::device> dev, 
+    boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&, 
                                           const xrt_core::archive* archive = nullptr);
     
-    virtual void set_param(const std::string, const std::string) {}
+    virtual void set_param(const std::string&, const std::string&) {}
     bool is_explicit() const { return m_explicit; };
     virtual bool getConfigHidden() const { return is_explicit(); };
     const void set_xclbin_path(std::string path) { m_xclbin = path; };

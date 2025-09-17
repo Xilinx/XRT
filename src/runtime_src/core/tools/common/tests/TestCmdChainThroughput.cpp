@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -17,7 +17,7 @@ TestCmdChainThroughput::TestCmdChainThroughput()
 {}
 
 boost::property_tree::ptree
-TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
+TestCmdChainThroughput::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::cmd_chain_throughput_recipe);
