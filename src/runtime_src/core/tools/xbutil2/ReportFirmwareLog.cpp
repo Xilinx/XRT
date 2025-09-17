@@ -13,10 +13,38 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
+#include <cstring>
 
 using bpt = boost::property_tree::ptree;
 
 namespace xrt_core::tools::xrt_smi {
+
+// Function to generate simple dummy firmware log data for testing
+static void generate_dummy_firmware_log_data(xrt_core::query::firmware_debug_buffer& log_buffer) {
+  static uint64_t counter = 0;  // Ever-increasing counter
+  counter++;
+  
+  auto data_ptr = static_cast<char*>(log_buffer.data);
+  size_t total_size = 0;
+  
+  // Create simple log messages with counter
+  std::vector<std::string> dummy_messages = {
+    (boost::format("INFO: System init complete (cycle %d)\n") % counter).str(),
+    (boost::format("DEBUG: Command 0x%04X processed (iter %d)\n") % (0x1234 + counter) % counter).str(),
+    (boost::format("WARN: Temperature check %d\n") % counter).str(),
+  };
+  
+  for (const auto& msg : dummy_messages) {
+    size_t msg_len = msg.length();
+    if (total_size + msg_len < debug_buffer_size) {
+      memcpy(data_ptr + total_size, msg.c_str(), msg_len);
+      total_size += msg_len;
+    }
+  }
+  
+  log_buffer.size = total_size;
+  log_buffer.abs_offset = counter * total_size;  // Ever-increasing offset
+}
 
 struct field_context {
   const uint8_t* data_ptr;
@@ -112,25 +140,69 @@ parse_log_entry(const uint8_t* data_ptr,
 }
 
 static std::string
-generate_firmware_log_report(const xrt_core::device* dev,
-                             bool is_watch)
+generate_raw_logs(const xrt_core::device* dev,
+                  bool is_watch,
+                  uint64_t& watch_mode_offset)
 {
   std::stringstream ss;
 
-  // Load config once (could be cached in a real implementation)
-  std::string config_path;
   try {
-    config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev, is_watch);
+    // Create and allocate buffer for firmware log data
+    xrt_core::query::firmware_debug_buffer log_buffer;
+    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+
+    // Get raw buffer from device for raw dump
+    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, log_buffer);
+    
+    watch_mode_offset = log_buffer.abs_offset;
+    
+    if (!log_buffer.data) {
+      ss << "No firmware log data available\n";
+      return ss.str();
+    }
+
+    const auto* data_ptr = static_cast<const uint8_t*>(log_buffer.data);
+    size_t buf_size = log_buffer.size;
+
+    // Simply print the raw payload data
+    ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
   } catch (const std::exception& e) {
-    ss << "Error retrieving firmware log config path: " << e.what() << "\n";
-    return ss.str();
+    ss << "Error retrieving raw firmware log data: " << e.what() << "\n";
   }
 
-  firmware_log_config config(config_path);
+  return ss.str();
+}
+
+static std::string
+generate_firmware_log_report(const xrt_core::device* dev,
+                             bool is_watch,
+                             bool use_dummy = false)
+{
+  std::stringstream ss;
+  static uint64_t watch_mode_offset = 0;
 
   try {
-    // Get raw buffer from device
-    xrt_core::query::firmware_debug_buffer log_buffer = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev);
+    // Load config once (could be cached in a real implementation)
+    std::string config_path;
+    config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev);
+    firmware_log_config config(config_path);
+
+    // Create and allocate buffer for firmware log data
+    xrt_core::query::firmware_debug_buffer log_buffer;
+    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+
+    if (use_dummy) 
+    {
+      generate_dummy_firmware_log_data(log_buffer);
+    } 
+    else 
+    {
+    // Get buffer from driver
+      xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, log_buffer);
+    }
+    
+    watch_mode_offset = log_buffer.abs_offset;
+    
     if (!log_buffer.data) {
       ss << "No firmware log data available\n";
       return ss.str();
@@ -162,7 +234,9 @@ generate_firmware_log_report(const xrt_core::device* dev,
     ss << log_table.toString("    ");
   }
   catch (const std::exception& e) {
-    ss << "Error retrieving firmware log data: " << e.what() << "\n";
+    ss << "Error parsing firmware log data: " << e.what() << "\n";
+    ss << "Generating raw firmware log data:\n\n";
+    ss << generate_raw_logs(dev, is_watch, watch_mode_offset);
   }
 
   return ss.str();
@@ -189,10 +263,13 @@ writeReport(const xrt_core::device* device,
             const std::vector<std::string>& elements_filter,
             std::ostream& output) const
 {
+  // Check for dummy option
+  bool use_dummy = std::find(elements_filter.begin(), elements_filter.end(), "dummy") != elements_filter.end();
+  
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    auto report_generator = [](const xrt_core::device* dev) -> std::string {
-      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, true);
+    auto report_generator = [use_dummy](const xrt_core::device* dev) -> std::string {
+      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, true, use_dummy);
     };
     smi_watch_mode::run_watch_mode(device, output, report_generator, "Firmware Log");
     return;
@@ -201,7 +278,7 @@ writeReport(const xrt_core::device* device,
   // Non-watch mode
   output << "Firmware Log Report\n";
   output << "===================\n\n";
-  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, false);
+  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, false, use_dummy);
   output << std::endl;
 }
 

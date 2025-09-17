@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SmiWatchMode.h"
+#include "core/common/query_requests.h"
 #include "core/common/time.h"
 
 // 3rd Party Library - Include Files
@@ -152,4 +153,19 @@ run_watch_mode(const xrt_core::device* device,
   
   // Restore original signal handler
   signal_handler::restore();
+}
+
+std::unique_ptr<std::vector<char>>
+smi_watch_mode::
+allocate_debug_buffer(xrt_core::query::firmware_debug_buffer& log_buffer,
+                      uint64_t abs_offset,
+                      bool b_wait)
+{
+  auto buffer = std::make_unique<std::vector<char>>(debug_buffer_size);
+  log_buffer.abs_offset = abs_offset;
+  log_buffer.data = buffer->data();
+  log_buffer.size = debug_buffer_size;
+  log_buffer.b_wait = b_wait;
+  
+  return buffer;
 }

@@ -30,6 +30,42 @@ struct trace_event {
   uint64_t payload;      // Event payload/arguments
 };
 
+// Function to generate simple dummy event trace data for testing
+static void 
+generate_dummy_event_trace_data(xrt_core::query::firmware_debug_buffer& log_buffer) 
+{
+  static uint64_t counter = 0;  // Ever-increasing counter
+  counter++;
+  
+  // Generate simple trace events using real event IDs from trace_events.json
+  const size_t num_events = 5;
+  auto events = static_cast<trace_event*>(log_buffer.data);
+  
+  // Base timestamp that increases with each call
+  uint64_t base_timestamp = 1000000000ULL + (counter * 10000);
+  
+  // Use real event IDs that exist in trace_events.json and can be parsed by config
+  const uint16_t event_ids[] = {0, 2, 10, 14, 1};
+  const uint64_t payloads[] = {
+    (1ULL << 0) | (6ULL << 4),    // PROCESS_APP_MSG_START: context_id=1, msg_opcode=6
+    (1ULL << 0) | (5ULL << 4),    // CREATE_CONTEXT: context_id=1, priority=5  
+    (0ULL << 0) | (4ULL << 8),    // GATE_AIE2_CLKS: start_col=0, num_cols=4
+    0ULL,                         // SUSPEND: no_args
+    (1ULL << 0) | (6ULL << 4)     // PROCESS_APP_MSG_DONE: context_id=1, msg_opcode=6
+  };
+  
+  // Create event sequence with ever-increasing data
+  for (size_t i = 0; i < num_events; ++i) {
+    events[i].timestamp = base_timestamp + (i * 100);
+    events[i].event_id = event_ids[i];
+    // Add counter to payload to make it ever-increasing while keeping structure
+    events[i].payload = payloads[i] + (counter * 0x100);
+  }
+  
+  log_buffer.size = num_events * sizeof(trace_event);
+  log_buffer.abs_offset = counter * log_buffer.size;  // Ever-increasing offset
+}
+
 // Global event trace configuration instance
 static xrt_core::tools::xrt_smi::event_trace_config* 
 get_event_trace_config(const xrt_core::device* dev) {
@@ -66,8 +102,11 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     event_trace_pt.put("device_version_major", version_info.major);
     event_trace_pt.put("device_version_minor", version_info.minor);
     
+    xrt_core::query::firmware_debug_buffer log_buffer;
+    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, 0, false);
+    
     // Query event trace data from device using specific query struct (like telemetry)
-    auto log_buffer = xrt_core::device_query<xrt_core::query::event_trace_data>(dev);
+    xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
 
     // Parse trace events from buffer
     if (log_buffer.data && log_buffer.size > 0) {
@@ -147,10 +186,43 @@ validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
 }
 
 static std::string
-generate_event_trace_report(const xrt_core::device* dev,
-                            bool is_watch)
+generate_raw_logs(const xrt_core::device* dev,
+                  bool is_watch,
+                  uint64_t& watch_mode_offset)
 {
   std::stringstream ss{};
+  
+  xrt_core::query::firmware_debug_buffer log_buffer;
+  auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+
+  // Always use real device data for raw logs
+  xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
+  
+  watch_mode_offset = log_buffer.abs_offset;
+  
+  ss << boost::format("Event Trace Report (Raw) - %s\n") 
+        % xrt_core::timestamp();
+  ss << "=======================================================\n";
+  ss << "\n";
+
+  if (!log_buffer.data || log_buffer.size == 0) {
+    ss << "No event trace data available\n";
+    return ss.str();
+  }
+
+  // Simply print the raw payload data
+  ss.write(reinterpret_cast<const char*>(log_buffer.data), log_buffer.size);
+  
+  return ss.str();
+}
+
+static std::string
+generate_event_trace_report(const xrt_core::device* dev,
+                            bool is_watch,
+                            bool use_dummy = false)
+{
+  std::stringstream ss{};
+  static uint64_t watch_mode_offset = 0;
   
   try {
     // Get the event trace configuration
@@ -159,8 +231,18 @@ generate_event_trace_report(const xrt_core::device* dev,
     auto version = config->get_file_version();
     validate_version_compatibility(version, dev);
 
-    // Query event trace data from device using specific query struct
-    auto log_buffer = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, is_watch);
+    xrt_core::query::firmware_debug_buffer log_buffer;
+    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+
+    if (use_dummy) 
+    {
+      generate_dummy_event_trace_data(log_buffer);
+    } 
+    else 
+    {
+      xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
+    }
+    watch_mode_offset = log_buffer.abs_offset;
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
           % log_buffer.size % xrt_core::timestamp();
@@ -227,7 +309,16 @@ generate_event_trace_report(const xrt_core::device* dev,
 
   } 
   catch (const std::exception& e) {
-    ss << "Error retrieving event trace data: " << e.what() << "\n";
+    // Fallback: dump raw logs when config is not present
+    try {
+      ss << "Error parsing event trace configuration: " << e.what() << "\n";
+      ss << "Generating raw event trace data:\n\n";
+      ss << generate_raw_logs(dev, is_watch, watch_mode_offset);
+      return ss.str();
+    }
+    catch (const std::exception& inner_e) {
+      ss << "Error retrieving event trace data: " << inner_e.what() << "\n";
+    }
   }
 
   return ss.str();
@@ -240,11 +331,14 @@ writeReport(const xrt_core::device* device,
             const std::vector<std::string>& elements_filter,
             std::ostream& output) const
 {
+  // Check for dummy option
+  bool use_dummy = std::find(elements_filter.begin(), elements_filter.end(), "dummy") != elements_filter.end();
+  
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
-    auto report_generator = [](const xrt_core::device* dev) -> std::string {
-      return generate_event_trace_report(dev, true); 
+    auto report_generator = [use_dummy](const xrt_core::device* dev) -> std::string {
+      return generate_event_trace_report(dev, true, use_dummy); 
     };
 
     smi_watch_mode::run_watch_mode(device, output, report_generator, "Event Trace");
@@ -252,6 +346,6 @@ writeReport(const xrt_core::device* device,
   }
   output << "Event Trace Report\n";
   output << "==================\n\n";
-  output << generate_event_trace_report(device, false);
+  output << generate_event_trace_report(device, false, use_dummy);
   output << std::endl;
 }

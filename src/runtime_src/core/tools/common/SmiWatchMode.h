@@ -6,12 +6,19 @@
 // Please keep external include file dependencies to a minimum
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace xrt_core {
 class device;
+namespace query {
+struct firmware_debug_buffer;
 }
+}
+
+// Standard debug buffer size used for both event trace and firmware log data
+constexpr size_t debug_buffer_size = 64 * 1024 * 1024; // 64MB
 
 /**
  * @brief Generic watch mode utility for XRT-SMI reports
@@ -95,4 +102,30 @@ public:
                  std::ostream& output,
                  const ReportGenerator& report_generator,
                  const std::string& report_title = "Report");
+
+  /**
+   * @brief Allocate and initialize a debug buffer for firmware log/trace data
+   * 
+   * @param log_buffer Reference to firmware_debug_buffer structure to initialize
+   * @param abs_offset Initial absolute offset for the buffer
+   * @param b_wait Whether the driver should wait for new events
+   * @return std::unique_ptr<std::vector<char>> Managed buffer that keeps data alive
+   * 
+   * This utility function provides consistent buffer allocation and initialization
+   * for both event trace and firmware log reports. Uses the standard debug_buffer_size
+   * constant. The returned unique_ptr ensures automatic memory management and should 
+   * be kept alive while using log_buffer.
+   * 
+   * Usage Example:
+   * @code
+   * xrt_core::query::firmware_debug_buffer log_buffer;
+   * auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, 0, false);
+   * // Use log_buffer for device queries...
+   * // buffer automatically cleaned up when going out of scope
+   * @endcode
+   */
+  static std::unique_ptr<std::vector<char>>
+  allocate_debug_buffer(xrt_core::query::firmware_debug_buffer& log_buffer,
+                        uint64_t abs_offset,
+                        bool b_wait);
 };
