@@ -9,7 +9,7 @@
 class TestDMA : public TestRunner {
   public:
     boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
-    void set_param(const std::string& key, const std::string& value);
+    void set_param(const std::string& key, const std::string& value) override;
 
   public:
     TestDMA();

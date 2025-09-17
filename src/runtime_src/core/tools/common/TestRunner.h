@@ -41,7 +41,7 @@ class TestRunner : public JSONConfigurable {
     boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&, 
                                           const xrt_core::archive* archive = nullptr);
     
-    virtual void set_param(const std::string, const std::string) {}
+    virtual void set_param(const std::string&, const std::string&) {}
     bool is_explicit() const { return m_explicit; };
     virtual bool getConfigHidden() const { return is_explicit(); };
     const void set_xclbin_path(std::string path) { m_xclbin = path; };

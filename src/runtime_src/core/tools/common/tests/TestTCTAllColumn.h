@@ -9,7 +9,7 @@
 
 class TestTCTAllColumn : public TestRunner {
   public:
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>& dev);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
 
   public:
     TestTCTAllColumn();

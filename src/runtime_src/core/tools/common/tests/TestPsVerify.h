@@ -8,7 +8,7 @@
 
 class TestPsVerify : public TestRunner {
   public:
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>& dev);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
     void runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptree);
 
   public:
