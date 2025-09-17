@@ -12,6 +12,7 @@
 #include <boost/format.hpp>
 #include <iomanip>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 #include <cstring>
 
@@ -284,38 +285,18 @@ generate_firmware_log_report(const xrt_core::device* dev,
       }
       
       // Map field names to more descriptive column headers
-      std::string header_name;
-      if (field.name == "timestamp") 
-      {
-        header_name = "Timestamp";
-      } 
-      else if (field.name == "format") 
-      {
-        header_name = "Format";
-      } 
-      else if (field.name == "level") 
-      {
-        header_name = "Log Level";
-      } 
-      else if (field.name == "appn") 
-      {
-        header_name = "Application Number";
-      } 
-      else if (field.name == "argc") 
-      {
-        header_name = "Argument Count";
-      } 
-      else if (field.name == "line") 
-      {
-        header_name = "Line Number";
-      } 
-      else if (field.name == "module") 
-      {
-        header_name = "Module ID";
-      } 
-      else {
-        header_name = field.name; // Fallback to original name
-      }
+      static const std::unordered_map<std::string, std::string> field_name_map = {
+        {"timestamp", "Timestamp"},
+        {"format", "Format"},
+        {"level", "Log Level"},
+        {"appn", "Application Number"},
+        {"argc", "Argument Count"},
+        {"line", "Line Number"},
+        {"module", "Module ID"}
+      };
+      
+      auto it_map = field_name_map.find(field.name);
+      std::string header_name = (it_map != field_name_map.end()) ? it_map->second : field.name;
       
       table_headers.push_back({header_name, Table2D::Justification::left});
     }
