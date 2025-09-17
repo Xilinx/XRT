@@ -17,8 +17,8 @@ struct firmware_debug_buffer;
 }
 }
 
-// Standard debug buffer size used for both event trace and firmware log data
-constexpr size_t debug_buffer_size = 64 * 1024 * 1024; // 64MB
+//This is arbitrary for the moment. We can change this once we do real testing with firmware data
+constexpr size_t debug_buffer_size = 64 * 1024 * 1024; // 64MB // NOLINT(readability-magic-numbers)
 
 /**
  * @brief Generic watch mode utility for XRT-SMI reports
@@ -104,28 +104,28 @@ public:
                  const std::string& report_title = "Report");
 
   /**
-   * @brief Allocate and initialize a debug buffer for firmware log/trace data
+   * @brief Setup and initialize a debug buffer for firmware log/trace data
    * 
+   * @param buffer Reference to vector that will be resized to debug_buffer_size
    * @param log_buffer Reference to firmware_debug_buffer structure to initialize
    * @param abs_offset Initial absolute offset for the buffer
    * @param b_wait Whether the driver should wait for new events
-   * @return std::unique_ptr<std::vector<char>> Managed buffer that keeps data alive
    * 
-   * This utility function provides consistent buffer allocation and initialization
+   * This utility function provides consistent buffer setup and initialization
    * for both event trace and firmware log reports. Uses the standard debug_buffer_size
-   * constant. The returned unique_ptr ensures automatic memory management and should 
-   * be kept alive while using log_buffer.
+   * constant. The buffer and log_buffer are passed by reference and configured in-place.
    * 
    * Usage Example:
    * @code
+   * std::vector<char> buffer;
    * xrt_core::query::firmware_debug_buffer log_buffer;
-   * auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, 0, false);
+   * smi_watch_mode::setup_debug_buffer(buffer, log_buffer, 0, false);
    * // Use log_buffer for device queries...
-   * // buffer automatically cleaned up when going out of scope
    * @endcode
    */
-  static std::unique_ptr<std::vector<char>>
-  allocate_debug_buffer(xrt_core::query::firmware_debug_buffer& log_buffer,
-                        uint64_t abs_offset,
-                        bool b_wait);
+  static void
+  setup_debug_buffer(std::vector<char>& buffer,
+                     xrt_core::query::firmware_debug_buffer& log_buffer,
+                     uint64_t abs_offset,
+                     bool b_wait);
 };

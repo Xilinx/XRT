@@ -19,26 +19,74 @@ using bpt = boost::property_tree::ptree;
 
 namespace xrt_core::tools::xrt_smi {
 
-// Function to generate simple dummy firmware log data for testing
+// Function to generate structured dummy firmware log data matching ipu_log_message_header format
 static void generate_dummy_firmware_log_data(xrt_core::query::firmware_debug_buffer& log_buffer) {
   static uint64_t counter = 0;  // Ever-increasing counter
   counter++;
   
-  auto data_ptr = static_cast<char*>(log_buffer.data);
+  auto data_ptr = static_cast<uint8_t*>(log_buffer.data);
   size_t total_size = 0;
   
-  // Create simple log messages with counter
-  std::vector<std::string> dummy_messages = {
-    (boost::format("INFO: System init complete (cycle %d)\n") % counter).str(),
-    (boost::format("DEBUG: Command 0x%04X processed (iter %d)\n") % (0x1234 + counter) % counter).str(),
-    (boost::format("WARN: Temperature check %d\n") % counter).str(),
-  };
+  // Generate 5 entries for testing
+  size_t num_entries = 5; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
   
-  for (const auto& msg : dummy_messages) {
-    size_t msg_len = msg.length();
-    if (total_size + msg_len < debug_buffer_size) {
-      memcpy(data_ptr + total_size, msg.c_str(), msg_len);
-      total_size += msg_len;
+  for (size_t entry = 0; entry < num_entries; ++entry) {
+    // Random timestamp with some ordering
+    uint64_t timestamp = 1000000000ULL + counter * 10000 + entry * 100; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Random format (0 or 1)
+    uint32_t format = (counter + entry) % 2; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Random log level (0-7)
+    uint32_t level = (counter + entry) % 8; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Random application number (1-8)
+    uint32_t appn = 1 + ((counter + entry) % 8); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Random line number (1-8)
+    uint32_t line = 1 + ((counter + entry) % 8); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Random module ID (1-15)
+    uint32_t module = 1 + ((counter + entry * 3) % 15); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Generate string messages instead of hex payloads
+    std::vector<std::string> dummy_messages = {
+      "System initialization complete",
+      "DMA transfer started",
+      "Command queue overflow warning", 
+      "Temperature threshold exceeded",
+      "Memory allocation failed"
+    };
+    
+    std::string message = dummy_messages[entry % dummy_messages.size()]; // NOLINT(readability-magic-numbers) - dummy data for pretty printing
+    
+    // Set argc to 0 since we're using string messages, not hex arguments
+    uint32_t argc = 0;
+    
+    // Pack all bit fields into a single 64-bit value
+    uint64_t packed = (static_cast<uint64_t>(format) << 0) | 
+                      (static_cast<uint64_t>(0x60) << 1) | 
+                      (static_cast<uint64_t>(level) << 8) | 
+                      (static_cast<uint64_t>(0) << 11) | 
+                      (static_cast<uint64_t>(appn) << 16) | 
+                      (static_cast<uint64_t>(argc) << 24) |
+                      (static_cast<uint64_t>(line) << 32) |
+                      (static_cast<uint64_t>(module) << 48); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Write header (16 bytes total)
+    memcpy(data_ptr + total_size, &timestamp, 8); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    total_size += 8; // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    memcpy(data_ptr + total_size, &packed, 8); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    total_size += 8; // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    
+    // Write string message as null-terminated string
+    size_t msg_len = message.length() + 1; // +1 for null terminator
+    memcpy(data_ptr + total_size, message.c_str(), msg_len);
+    total_size += msg_len;
+    
+    // Align to 4-byte boundary
+    while (total_size % 4 != 0) { // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+      data_ptr[total_size++] = 0;
     }
   }
   
@@ -68,10 +116,8 @@ parse_field(const field_context& ctx,
   uint64_t mask = (ctx.bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << ctx.bit_width) - 1);
   uint64_t value = (raw >> lsb) & mask;
 
-  if (ctx.field && ctx.field->format.find("x") != std::string::npos) {
-    return (ctx.bit_width == bits_per_uint64) ? boost::str(boost::format("0x%0" + std::to_string(hex_width_64) + "X") % value) : boost::str(boost::format("0x%08X") % value);
-  } 
-  else if (ctx.field && ctx.field->name == "level") {
+  // For dummy data, display decimal values instead of hex
+  if (ctx.field && ctx.field->name == "level") {
     const auto& enums = config.get_enums();
     auto itr = enums.find(ctx.field->enumeration);
     if (itr != enums.end()) {
@@ -87,15 +133,18 @@ parse_message(const uint8_t* data_ptr,
               size_t argc,
               size_t buf_size)
 {
-  size_t msg_size = argc * sizeof(uint32_t);
-  if (msg_size > 0 && msg_offset + msg_size <= buf_size) {
-    std::ostringstream oss;
-    for (size_t i = 0; i < argc; ++i) {
-      uint32_t msg_val = 0;
-      std::memcpy(&msg_val, data_ptr + msg_offset + i * 4, 4);
-      oss << boost::str(boost::format("0x%08X ") % msg_val);
+  // Always try to read as null-terminated string
+  if (msg_offset < buf_size) {
+    const char* str_ptr = reinterpret_cast<const char*>(data_ptr + msg_offset);
+    // Find the end of the string or buffer boundary
+    size_t max_len = buf_size - msg_offset;
+    size_t str_len = 0;
+    while (str_len < max_len && str_ptr[str_len] != '\0') {
+      str_len++;
     }
-    return oss.str();
+    if (str_len > 0) {
+      return std::string(str_ptr, str_len);
+    }
   }
   return "";
 }
@@ -127,9 +176,16 @@ parse_log_entry(const uint8_t* data_ptr,
       if (field.name == "argc") {
         argc = static_cast<uint32_t>(std::stoul(field_value, nullptr, hex_width_64));
       }
-      entry_data.emplace_back(field_value);
+      
+      // Skip reserved fields when adding to entry data
+      if (field.name.find("reserved") == std::string::npos) {
+        entry_data.emplace_back(field_value);
+      }
     } else {
-      entry_data.emplace_back("-");
+      // Skip reserved fields when adding error placeholder
+      if (field.name.find("reserved") == std::string::npos) {
+        entry_data.emplace_back("-");
+      }
     }
     bit_offset += bit_width;
   }
@@ -144,12 +200,13 @@ generate_raw_logs(const xrt_core::device* dev,
                   bool is_watch,
                   uint64_t& watch_mode_offset)
 {
-  std::stringstream ss;
+  std::stringstream ss{};
 
   try {
-    // Create and allocate buffer for firmware log data
-    xrt_core::query::firmware_debug_buffer log_buffer;
-    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+    // Create and setup buffer for firmware log data
+    std::vector<char> buffer;
+    xrt_core::query::firmware_debug_buffer log_buffer{};
+    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
 
     // Get raw buffer from device for raw dump
     xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, log_buffer);
@@ -178,18 +235,19 @@ generate_firmware_log_report(const xrt_core::device* dev,
                              bool is_watch,
                              bool use_dummy = false)
 {
-  std::stringstream ss;
+  std::stringstream ss{};
   static uint64_t watch_mode_offset = 0;
 
   try {
     // Load config once (could be cached in a real implementation)
-    std::string config_path;
+    std::string config_path{};
     config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev);
     firmware_log_config config(config_path);
 
-    // Create and allocate buffer for firmware log data
-    xrt_core::query::firmware_debug_buffer log_buffer;
-    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+    // Create and setup buffer for firmware log data
+    std::vector<char> buffer;
+    xrt_core::query::firmware_debug_buffer log_buffer{};
+    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
 
     if (use_dummy) 
     {
@@ -216,9 +274,52 @@ generate_firmware_log_report(const xrt_core::device* dev,
     size_t offset = 0;
 
     std::vector<Table2D::HeaderData> table_headers;
-    for (const auto& field : it->second.fields)
-      table_headers.push_back({field.name, Table2D::Justification::left});
-    table_headers.push_back({"message", Table2D::Justification::left});
+    
+    // Create meaningful column headers based on ipu_log_message_header structure
+    // Skip reserved fields and use descriptive names
+    for (const auto& field : it->second.fields) {
+      // Skip reserved fields
+      if (field.name.find("reserved") != std::string::npos) {
+        continue;
+      }
+      
+      // Map field names to more descriptive column headers
+      std::string header_name;
+      if (field.name == "timestamp") 
+      {
+        header_name = "Timestamp";
+      } 
+      else if (field.name == "format") 
+      {
+        header_name = "Format";
+      } 
+      else if (field.name == "level") 
+      {
+        header_name = "Log Level";
+      } 
+      else if (field.name == "appn") 
+      {
+        header_name = "Application Number";
+      } 
+      else if (field.name == "argc") 
+      {
+        header_name = "Argument Count";
+      } 
+      else if (field.name == "line") 
+      {
+        header_name = "Line Number";
+      } 
+      else if (field.name == "module") 
+      {
+        header_name = "Module ID";
+      } 
+      else {
+        header_name = field.name; // Fallback to original name
+      }
+      
+      table_headers.push_back({header_name, Table2D::Justification::left});
+    }
+    table_headers.push_back({"Message", Table2D::Justification::left});
     Table2D log_table(table_headers);
 
     size_t header_size = config.get_header_size();
@@ -226,7 +327,8 @@ generate_firmware_log_report(const xrt_core::device* dev,
     while (offset + header_size <= buf_size) {
       auto entry_data = parse_log_entry(data_ptr, offset, buf_size, config);
       log_table.addEntry(entry_data);
-      size_t msg_size = entry_data.back().size() * sizeof(uint32_t); // Approximate message size
+      
+      size_t msg_size = entry_data.back().size() + 1; // +1 for null terminator
       size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment
       offset += header_size + aligned_msg_size;
     }

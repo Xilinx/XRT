@@ -38,28 +38,28 @@ generate_dummy_event_trace_data(xrt_core::query::firmware_debug_buffer& log_buff
   counter++;
   
   // Generate simple trace events using real event IDs from trace_events.json
-  const size_t num_events = 5;
+  const size_t num_events = 5; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
   auto events = static_cast<trace_event*>(log_buffer.data);
   
   // Base timestamp that increases with each call
-  uint64_t base_timestamp = 1000000000ULL + (counter * 10000);
+  uint64_t base_timestamp = 1000000000ULL + (counter * 10000); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
   
   // Use real event IDs that exist in trace_events.json and can be parsed by config
-  const uint16_t event_ids[] = {0, 2, 10, 14, 1};
-  const uint64_t payloads[] = {
-    (1ULL << 0) | (6ULL << 4),    // PROCESS_APP_MSG_START: context_id=1, msg_opcode=6
-    (1ULL << 0) | (5ULL << 4),    // CREATE_CONTEXT: context_id=1, priority=5  
-    (0ULL << 0) | (4ULL << 8),    // GATE_AIE2_CLKS: start_col=0, num_cols=4
+  const std::vector<uint16_t> event_ids{0, 2, 10, 14, 1}; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  const std::vector<uint64_t> payloads{
+    (1ULL << 0) | (6ULL << 4),    // PROCESS_APP_MSG_START: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    (1ULL << 0) | (5ULL << 4),    // CREATE_CONTEXT: context_id=1, priority=5 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    (0ULL << 0) | (4ULL << 8),    // GATE_AIE2_CLKS: start_col=0, num_cols=4 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
     0ULL,                         // SUSPEND: no_args
-    (1ULL << 0) | (6ULL << 4)     // PROCESS_APP_MSG_DONE: context_id=1, msg_opcode=6
+    (1ULL << 0) | (6ULL << 4)     // PROCESS_APP_MSG_DONE: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
   };
   
   // Create event sequence with ever-increasing data
   for (size_t i = 0; i < num_events; ++i) {
-    events[i].timestamp = base_timestamp + (i * 100);
+    events[i].timestamp = base_timestamp + (i * 100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
     events[i].event_id = event_ids[i];
     // Add counter to payload to make it ever-increasing while keeping structure
-    events[i].payload = payloads[i] + (counter * 0x100);
+    events[i].payload = payloads[i] + (counter * 0x100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
   }
   
   log_buffer.size = num_events * sizeof(trace_event);
@@ -71,7 +71,8 @@ static xrt_core::tools::xrt_smi::event_trace_config*
 get_event_trace_config(const xrt_core::device* dev) {
 
   boost::property_tree::ptree ptree;
-  std::string config = xrt_core::device_query<xrt_core::query::event_trace_config>(dev);
+  std::string config{};
+  config = xrt_core::device_query<xrt_core::query::event_trace_config>(dev);
 
   static xrt_core::tools::xrt_smi::event_trace_config config_obj(config);
   return &config_obj;
@@ -102,8 +103,9 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     event_trace_pt.put("device_version_major", version_info.major);
     event_trace_pt.put("device_version_minor", version_info.minor);
     
-    xrt_core::query::firmware_debug_buffer log_buffer;
-    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, 0, false);
+    std::vector<char> buffer;
+    xrt_core::query::firmware_debug_buffer log_buffer{};
+    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, 0, false);
     
     // Query event trace data from device using specific query struct (like telemetry)
     xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
@@ -176,7 +178,7 @@ validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
 
   auto firmware_version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
   if (version.first != firmware_version.major || version.second != firmware_version.minor) {
-    std::stringstream err;
+    std::stringstream err{};
     err << "Warning: Event trace version mismatch!\n"
         << "  JSON file version: " << version.first << "." << version.second << "\n"
         << "  Firmware version: " << firmware_version.major << "." << firmware_version.minor << "\n"
@@ -192,8 +194,9 @@ generate_raw_logs(const xrt_core::device* dev,
 {
   std::stringstream ss{};
   
-  xrt_core::query::firmware_debug_buffer log_buffer;
-  auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+  std::vector<char> buffer;
+  xrt_core::query::firmware_debug_buffer log_buffer{};
+  smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
 
   // Always use real device data for raw logs
   xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
@@ -211,7 +214,7 @@ generate_raw_logs(const xrt_core::device* dev,
   }
 
   // Simply print the raw payload data
-  ss.write(reinterpret_cast<const char*>(log_buffer.data), log_buffer.size);
+  ss.write(static_cast<const char*>(log_buffer.data), static_cast<std::streamsize>(log_buffer.size));
   
   return ss.str();
 }
@@ -231,8 +234,9 @@ generate_event_trace_report(const xrt_core::device* dev,
     auto version = config->get_file_version();
     validate_version_compatibility(version, dev);
 
-    xrt_core::query::firmware_debug_buffer log_buffer;
-    auto buffer = smi_watch_mode::allocate_debug_buffer(log_buffer, watch_mode_offset, is_watch);
+    std::vector<char> buffer;
+    xrt_core::query::firmware_debug_buffer log_buffer{};
+    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
 
     if (use_dummy) 
     {
