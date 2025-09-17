@@ -20,7 +20,7 @@ TestDF_bandwidth::TestDF_bandwidth()
 {}
 
 boost::property_tree::ptree
-TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
+TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::df_bandwidth_recipe);

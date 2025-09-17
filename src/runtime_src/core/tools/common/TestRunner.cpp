@@ -42,7 +42,7 @@ signal_handler(int signal) {
 }
 
 static void
-runTestInternal(std::shared_ptr<xrt_core::device> dev,
+runTestInternal(const std::shared_ptr<xrt_core::device>& dev,
                 boost::property_tree::ptree& ptree,
                 TestRunner* test,
                 bool& is_thread_running,
@@ -70,7 +70,7 @@ TestRunner::TestRunner (const std::string & test_name,
 }
 
 boost::property_tree::ptree
-TestRunner::startTest(std::shared_ptr<xrt_core::device> dev, const xrt_core::archive* archive)
+TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   XBUtilities::BusyBar busy_bar("Running Test", std::cout);
   busy_bar.start(XBUtilities::is_escape_codes_disabled());

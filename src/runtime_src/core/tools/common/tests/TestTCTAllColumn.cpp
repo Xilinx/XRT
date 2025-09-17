@@ -34,7 +34,7 @@ TestTCTAllColumn::TestTCTAllColumn()
 {}
 
 boost::property_tree::ptree
-TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
+TestTCTAllColumn::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::tct_all_column_recipe);

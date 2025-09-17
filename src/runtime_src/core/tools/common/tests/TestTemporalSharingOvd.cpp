@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -25,7 +25,8 @@ static constexpr size_t queue_len = 25;
 // - dev: Shared pointer to the device
 // Returns:
 // - Property tree containing the test results
-boost::property_tree::ptree TestTemporalSharingOvd::run(std::shared_ptr<xrt_core::device> dev) {
+boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>& dev)
+{
   // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
 

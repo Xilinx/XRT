@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -13,7 +14,7 @@ TestPcieLink::TestPcieLink()
                 "Check if PCIE link is active"){}
 
 boost::property_tree::ptree
-TestPcieLink::run(std::shared_ptr<xrt_core::device> dev)
+TestPcieLink::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   const uint64_t speed     = xrt_core::device_query<xrt_core::query::pcie_link_speed>(dev);

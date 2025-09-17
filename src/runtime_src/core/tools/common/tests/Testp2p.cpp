@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -139,7 +140,7 @@ Testp2p::Testp2p()
                 "bandwidth.xclbin"){}
 
 boost::property_tree::ptree
-Testp2p::run(std::shared_ptr<xrt_core::device> dev)
+Testp2p::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   auto no_dma = xrt_core::device_query_default<xrt_core::query::nodma>(dev, 0);

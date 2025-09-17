@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -27,7 +28,7 @@ TestBandwidthKernel::TestBandwidthKernel()
               "bandwidth.xclbin"){}
 
 boost::property_tree::ptree
-TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
+TestBandwidthKernel::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string name;
@@ -259,7 +260,7 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
 }
 
 void
-TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+TestBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptree)
 {
   xrt::device device(dev);
 

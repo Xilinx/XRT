@@ -19,7 +19,7 @@ TestNPUThroughput::TestNPUThroughput()
 {}
 
 boost::property_tree::ptree
-TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
+TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::throughput_recipe);

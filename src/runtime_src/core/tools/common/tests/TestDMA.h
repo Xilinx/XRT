@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __TestDMA_h_
-#define __TestDMA_h_
+#ifndef TestDMA_h_
+#define TestDMA_h_
 
 #include "tools/common/TestRunner.h"
 
 class TestDMA : public TestRunner {
   public:
-    boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
-    void set_param(const std::string key, const std::string value);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
+    void set_param(const std::string& key, const std::string& value);
 
   public:
     TestDMA();

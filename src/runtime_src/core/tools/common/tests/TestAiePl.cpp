@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -33,7 +34,7 @@ TestAiePl::TestAiePl()
                 "aie_control_config.json"){}
 
 boost::property_tree::ptree
-TestAiePl::run(std::shared_ptr<xrt_core::device> dev)
+TestAiePl::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin", "pl_controller_aie.xclbin");
@@ -229,7 +230,7 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_
 }
 
 void
-TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+TestAiePl::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptree)
 {
   xrt::device device(dev);
 

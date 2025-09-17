@@ -21,14 +21,14 @@ TestNPULatency::TestNPULatency()
 {}
 
 boost::property_tree::ptree
-TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
+TestNPULatency::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
   return ptree;
 }
 
 boost::property_tree::ptree
-TestNPULatency::run(std::shared_ptr<xrt_core::device> dev, const xrt_core::archive* archive)
+TestNPULatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
   

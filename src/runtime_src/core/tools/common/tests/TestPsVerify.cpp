@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -21,7 +22,7 @@ TestPsVerify::TestPsVerify()
                 true){}
 
 boost::property_tree::ptree
-TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)
+TestPsVerify::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
@@ -30,7 +31,7 @@ TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)
 }
 
 void
-TestPsVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+TestPsVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptree)
 {
   xrt::device device(dev);
 

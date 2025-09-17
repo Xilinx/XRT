@@ -19,7 +19,7 @@ TestCmdChainLatency::TestCmdChainLatency()
 {}
 
 boost::property_tree::ptree
-TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
+TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::cmd_chain_latency_recipe);
