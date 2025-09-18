@@ -4423,6 +4423,8 @@ amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
   std::ostringstream oss;
   oss << msg << "\n";
   auto ctx_health = get_ert_ctx_health_data(epkt);
+  if (ctx_health->version != 0) return oss.str();
+
   oss << std::uppercase << std::hex << std::setfill('0');
   oss << "txn_op_idx = 0x" << std::setw(8) << ctx_health->txn_op_idx
     << "\nctx_pc = 0x"<< std::setw(8) << ctx_health->ctx_pc
