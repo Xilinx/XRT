@@ -972,6 +972,13 @@ get_aie_trace_settings_start_layer()
   return value;
 }
 
+inline bool
+get_aie_trace_settings_config_one_partition()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.config_one_partition", false) ;
+  return value ;
+}
+
 inline std::string
 get_aie_trace_settings_graph_based_aie_tile_metrics()
 {
