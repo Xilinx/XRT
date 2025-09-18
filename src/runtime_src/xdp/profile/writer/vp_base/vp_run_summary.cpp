@@ -179,9 +179,9 @@ namespace xdp {
       boost::property_tree::ptree ptSystemDiagrams;
       for (const auto& s : systemDiagrams) {
 	boost::property_tree::ptree ptSystemDiagram;
-	ptSystemDiagram.put("hardware_context", s.contextId);
+	ptSystemDiagram.put("hw_context", s.contextId);
 	ptSystemDiagram.put("payload_16bitEnd", s.systemDiagram.c_str());
-	ptSystemDiagrams.add_child("system_diagram", ptSystemDiagram);
+	ptSystemDiagrams.push_back(std::make_pair("", ptSystemDiagram));
       }
       ptRunSummary.add_child("system_diagrams", ptSystemDiagrams);
     }
