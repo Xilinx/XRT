@@ -116,7 +116,6 @@ run_watch_mode(const xrt_core::device* device,
   signal_handler::setup();
   
   output << "Starting " << report_title << " Watch Mode (Press Ctrl+C to exit)\n";
-  output << "Update interval: 1 second\n";
   output << "=======================================================\n\n";
   output.flush();
   
@@ -144,9 +143,6 @@ run_watch_mode(const xrt_core::device* device,
       output << "Error generating report: " << e.what() << "\n";
       output.flush();
     }
-    
-    // Sleep for 1 second
-    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   
   output << "\n\nWatch mode interrupted by user.\n";

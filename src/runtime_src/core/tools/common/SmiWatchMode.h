@@ -19,7 +19,7 @@ struct firmware_debug_buffer;
 }
 
 //This is arbitrary for the moment. We can change this once we do real testing with firmware data
-constexpr size_t debug_buffer_size = static_cast<size_t>(64) * 1024; // 64KB // NOLINT(readability-magic-numbers)
+constexpr size_t debug_buffer_size = static_cast<size_t>(4) * 1024 * 1024; // 4MB // NOLINT(readability-magic-numbers)
 
 /**
  * @brief RAII wrapper for firmware debug buffer management
@@ -90,10 +90,7 @@ public:
    * @return true if watch mode is requested, false otherwise
    * 
    * Supported formats:
-   * - "watch" - Enable watch mode with default 1 second interval
-   * 
-   * Future extensions could support:
-   * - "watch=<seconds>" - Custom interval (not implemented yet)
+   * - "watch" - Enable watch mode
    * 
    * @note This function only checks for watch mode presence, 
    *       it does not validate or parse other filter options
