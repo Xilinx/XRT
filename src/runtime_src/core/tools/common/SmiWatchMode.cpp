@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SmiWatchMode.h"
+#include "core/common/query_requests.h"
 #include "core/common/time.h"
 
 // 3rd Party Library - Include Files
@@ -115,7 +116,6 @@ run_watch_mode(const xrt_core::device* device,
   signal_handler::setup();
   
   output << "Starting " << report_title << " Watch Mode (Press Ctrl+C to exit)\n";
-  output << "Update interval: 1 second\n";
   output << "=======================================================\n\n";
   output.flush();
   
@@ -143,9 +143,6 @@ run_watch_mode(const xrt_core::device* device,
       output << "Error generating report: " << e.what() << "\n";
       output.flush();
     }
-    
-    // Sleep for 1 second
-    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   
   output << "\n\nWatch mode interrupted by user.\n";
@@ -153,3 +150,9 @@ run_watch_mode(const xrt_core::device* device,
   // Restore original signal handler
   signal_handler::restore();
 }
+
+smi_debug_buffer::
+smi_debug_buffer(uint64_t abs_offset, bool b_wait, size_t size)
+  : buffer(size),
+    log_buffer{abs_offset, buffer.data(), size, b_wait}
+{}

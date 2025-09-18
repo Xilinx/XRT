@@ -3,15 +3,47 @@
 
 #pragma once
 
-// Please keep external include file dependencies to a minimum
+#include "core/common/query_requests.h"
+
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace xrt_core {
 class device;
+namespace query {
+struct firmware_debug_buffer;
 }
+}
+
+//This is arbitrary for the moment. We can change this once we do real testing with firmware data
+constexpr size_t debug_buffer_size = static_cast<size_t>(4) * 1024 * 1024; // 4MB // NOLINT(readability-magic-numbers)
+
+/**
+ * @brief RAII wrapper for firmware debug buffer management
+ * 
+ * Encapsulates buffer allocation and firmware_debug_buffer configuration
+ * with automatic memory management and proper RAII semantics.
+ */
+class smi_debug_buffer {
+private:
+  std::vector<char> buffer;
+  xrt_core::query::firmware_debug_buffer log_buffer;
+
+public:
+  explicit 
+  smi_debug_buffer(uint64_t abs_offset = 0, 
+                   bool b_wait = false, 
+                   size_t size = debug_buffer_size);
+
+  xrt_core::query::firmware_debug_buffer& 
+  get_log_buffer() 
+  { 
+    return log_buffer; 
+  }
+};
 
 /**
  * @brief Generic watch mode utility for XRT-SMI reports
@@ -58,10 +90,7 @@ public:
    * @return true if watch mode is requested, false otherwise
    * 
    * Supported formats:
-   * - "watch" - Enable watch mode with default 1 second interval
-   * 
-   * Future extensions could support:
-   * - "watch=<seconds>" - Custom interval (not implemented yet)
+   * - "watch" - Enable watch mode
    * 
    * @note This function only checks for watch mode presence, 
    *       it does not validate or parse other filter options
