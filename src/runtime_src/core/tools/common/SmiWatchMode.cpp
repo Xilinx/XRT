@@ -157,9 +157,6 @@ run_watch_mode(const xrt_core::device* device,
 
 smi_debug_buffer::
 smi_debug_buffer(uint64_t abs_offset, bool b_wait, size_t size)
-  : buffer(size) {
-  log_buffer.abs_offset = abs_offset;
-  log_buffer.data = buffer.data();
-  log_buffer.size = size;
-  log_buffer.b_wait = b_wait;
-}
+  : buffer(size),
+    log_buffer{abs_offset, buffer.data(), size, b_wait}
+{}
