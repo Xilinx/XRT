@@ -28,7 +28,9 @@ target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_debug_plugin
-         LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} NAMELINK_SKIP)
+install (TARGETS xdp_debug_plugin 
+  RUNTIME DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} ${XRT_NAMELINK_SKIP}
+)
 
 endif()
