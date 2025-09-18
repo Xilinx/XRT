@@ -103,17 +103,15 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     event_trace_pt.put("device_version_major", version_info.major);
     event_trace_pt.put("device_version_minor", version_info.minor);
     
-    std::vector<char> buffer;
-    xrt_core::query::firmware_debug_buffer log_buffer{};
-    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, 0, false);
+    smi_debug_buffer debug_buf(0, false);
     
     // Query event trace data from device using specific query struct (like telemetry)
-    xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
+    xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
 
     // Parse trace events from buffer
-    if (log_buffer.data && log_buffer.size > 0) {
-      size_t event_count = log_buffer.size / sizeof(trace_event);
-      auto events = static_cast<trace_event*>(log_buffer.data);
+    if (debug_buf.get_log_buffer().data && debug_buf.get_log_buffer().size > 0) {
+      size_t event_count = debug_buf.get_log_buffer().size / sizeof(trace_event);
+      auto events = static_cast<trace_event*>(debug_buf.get_log_buffer().data);
       
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
@@ -151,8 +149,8 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       }
       event_trace_pt.add_child("events", events_array);
       event_trace_pt.put("event_count", event_count);
-      event_trace_pt.put("buffer_offset", log_buffer.abs_offset);
-      event_trace_pt.put("buffer_size", log_buffer.size);
+      event_trace_pt.put("buffer_offset", debug_buf.get_log_buffer().abs_offset);
+      event_trace_pt.put("buffer_size", debug_buf.get_log_buffer().size);
     } else {
       event_trace_pt.put("event_count", 0);
       event_trace_pt.put("buffer_offset", 0);
@@ -194,27 +192,25 @@ generate_raw_logs(const xrt_core::device* dev,
 {
   std::stringstream ss{};
   
-  std::vector<char> buffer;
-  xrt_core::query::firmware_debug_buffer log_buffer{};
-  smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
+  smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
   // Always use real device data for raw logs
-  xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
+  xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
   
-  watch_mode_offset = log_buffer.abs_offset;
+  watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
   
   ss << boost::format("Event Trace Report (Raw) - %s\n") 
         % xrt_core::timestamp();
   ss << "=======================================================\n";
   ss << "\n";
 
-  if (!log_buffer.data || log_buffer.size == 0) {
+  if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
     ss << "No event trace data available\n";
     return ss.str();
   }
 
   // Simply print the raw payload data
-  ss.write(static_cast<const char*>(log_buffer.data), static_cast<std::streamsize>(log_buffer.size));
+  ss.write(static_cast<const char*>(debug_buf.get_log_buffer().data), static_cast<std::streamsize>(debug_buf.get_log_buffer().size));
   
   return ss.str();
 }
@@ -234,37 +230,35 @@ generate_event_trace_report(const xrt_core::device* dev,
     auto version = config->get_file_version();
     validate_version_compatibility(version, dev);
 
-    std::vector<char> buffer;
-    xrt_core::query::firmware_debug_buffer log_buffer{};
-    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
+    smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
     if (use_dummy) 
     {
-      generate_dummy_event_trace_data(log_buffer);
+      generate_dummy_event_trace_data(debug_buf.get_log_buffer());
     } 
     else 
     {
-      xrt_core::device_query<xrt_core::query::event_trace_data>(dev, log_buffer);
+      xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
     }
-    watch_mode_offset = log_buffer.abs_offset;
+    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
-          % log_buffer.size % xrt_core::timestamp();
+          % debug_buf.get_log_buffer().size % xrt_core::timestamp();
     ss << "=======================================================\n";
 
     ss << "\n";
 
-    if (!log_buffer.data || log_buffer.size == 0) {
+    if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
       ss << "No event trace data available\n";
       return ss.str();
     }
 
     // Parse trace events from buffer
-    size_t event_count = log_buffer.size / sizeof(trace_event);
-    auto events = static_cast<trace_event*>(log_buffer.data);
+    size_t event_count = debug_buf.get_log_buffer().size / sizeof(trace_event);
+    auto events = static_cast<trace_event*>(debug_buf.get_log_buffer().data);
 
     ss << boost::format("Total Events: %d\n") % event_count;
-    ss << boost::format("Buffer Offset: %d\n\n") % log_buffer.abs_offset;
+    ss << boost::format("Buffer Offset: %d\n\n") % debug_buf.get_log_buffer().abs_offset;
 
     // Create Table2D with headers (enhanced with parsed args)
     const std::vector<Table2D::HeaderData> table_headers = {

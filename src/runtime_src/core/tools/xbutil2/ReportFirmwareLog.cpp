@@ -205,22 +205,20 @@ generate_raw_logs(const xrt_core::device* dev,
 
   try {
     // Create and setup buffer for firmware log data
-    std::vector<char> buffer;
-    xrt_core::query::firmware_debug_buffer log_buffer{};
-    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
+    smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
     // Get raw buffer from device for raw dump
-    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, log_buffer);
+    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
     
-    watch_mode_offset = log_buffer.abs_offset;
+    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
     
-    if (!log_buffer.data) {
+    if (!debug_buf.get_log_buffer().data) {
       ss << "No firmware log data available\n";
       return ss.str();
     }
 
-    const auto* data_ptr = static_cast<const uint8_t*>(log_buffer.data);
-    size_t buf_size = log_buffer.size;
+    const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
+    size_t buf_size = debug_buf.get_log_buffer().size;
 
     // Simply print the raw payload data
     ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
@@ -246,23 +244,21 @@ generate_firmware_log_report(const xrt_core::device* dev,
     firmware_log_config config(config_path);
 
     // Create and setup buffer for firmware log data
-    std::vector<char> buffer;
-    xrt_core::query::firmware_debug_buffer log_buffer{};
-    smi_watch_mode::setup_debug_buffer(buffer, log_buffer, watch_mode_offset, is_watch);
+    smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
     if (use_dummy) 
     {
-      generate_dummy_firmware_log_data(log_buffer);
+      generate_dummy_firmware_log_data(debug_buf.get_log_buffer());
     } 
     else 
     {
     // Get buffer from driver
-      xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, log_buffer);
+      xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
     }
     
-    watch_mode_offset = log_buffer.abs_offset;
+    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
     
-    if (!log_buffer.data) {
+    if (!debug_buf.get_log_buffer().data) {
       ss << "No firmware log data available\n";
       return ss.str();
     }
@@ -270,8 +266,8 @@ generate_firmware_log_report(const xrt_core::device* dev,
     const auto& structures = config.get_structures();
     auto it = structures.find("ipu_log_message_header");
 
-    const auto* data_ptr = static_cast<const uint8_t*>(log_buffer.data);
-    size_t buf_size = log_buffer.size;
+    const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
+    size_t buf_size = debug_buf.get_log_buffer().size;
     size_t offset = 0;
 
     std::vector<Table2D::HeaderData> table_headers;

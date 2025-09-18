@@ -155,16 +155,11 @@ run_watch_mode(const xrt_core::device* device,
   signal_handler::restore();
 }
 
-void
-smi_watch_mode::
-setup_debug_buffer(std::vector<char>& buffer,
-                   xrt_core::query::firmware_debug_buffer& log_buffer,
-                   uint64_t abs_offset,
-                   bool b_wait)
-{
-  buffer.resize(debug_buffer_size);
+smi_debug_buffer::
+smi_debug_buffer(uint64_t abs_offset, bool b_wait, size_t size)
+  : buffer(size) {
   log_buffer.abs_offset = abs_offset;
   log_buffer.data = buffer.data();
-  log_buffer.size = debug_buffer_size;
+  log_buffer.size = size;
   log_buffer.b_wait = b_wait;
 }

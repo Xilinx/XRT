@@ -3,7 +3,8 @@
 
 #pragma once
 
-// Please keep external include file dependencies to a minimum
+#include "core/common/query_requests.h"
+
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -18,7 +19,31 @@ struct firmware_debug_buffer;
 }
 
 //This is arbitrary for the moment. We can change this once we do real testing with firmware data
-constexpr size_t debug_buffer_size = static_cast<size_t>(64) * 1024 * 1024; // 64MB // NOLINT(readability-magic-numbers)
+constexpr size_t debug_buffer_size = static_cast<size_t>(64) * 1024; // 64KB // NOLINT(readability-magic-numbers)
+
+/**
+ * @brief RAII wrapper for firmware debug buffer management
+ * 
+ * Encapsulates buffer allocation and firmware_debug_buffer configuration
+ * with automatic memory management and proper RAII semantics.
+ */
+class smi_debug_buffer {
+private:
+  std::vector<char> buffer;
+  xrt_core::query::firmware_debug_buffer log_buffer;
+
+public:
+  explicit 
+  smi_debug_buffer(uint64_t abs_offset = 0, 
+                   bool b_wait = false, 
+                   size_t size = debug_buffer_size);
+
+  xrt_core::query::firmware_debug_buffer& 
+  get_log_buffer() 
+  { 
+    return log_buffer; 
+  }
+};
 
 /**
  * @brief Generic watch mode utility for XRT-SMI reports
@@ -102,30 +127,4 @@ public:
                  std::ostream& output,
                  const ReportGenerator& report_generator,
                  const std::string& report_title = "Report");
-
-  /**
-   * @brief Setup and initialize a debug buffer for firmware log/trace data
-   * 
-   * @param buffer Reference to vector that will be resized to debug_buffer_size
-   * @param log_buffer Reference to firmware_debug_buffer structure to initialize
-   * @param abs_offset Initial absolute offset for the buffer
-   * @param b_wait Whether the driver should wait for new events
-   * 
-   * This utility function provides consistent buffer setup and initialization
-   * for both event trace and firmware log reports. Uses the standard debug_buffer_size
-   * constant. The buffer and log_buffer are passed by reference and configured in-place.
-   * 
-   * Usage Example:
-   * @code
-   * std::vector<char> buffer;
-   * xrt_core::query::firmware_debug_buffer log_buffer;
-   * smi_watch_mode::setup_debug_buffer(buffer, log_buffer, 0, false);
-   * // Use log_buffer for device queries...
-   * @endcode
-   */
-  static void
-  setup_debug_buffer(std::vector<char>& buffer,
-                     xrt_core::query::firmware_debug_buffer& log_buffer,
-                     uint64_t abs_offset,
-                     bool b_wait);
 };
