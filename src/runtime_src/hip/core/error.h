@@ -11,14 +11,51 @@
 
 namespace xrt::core::hip
 {
+/**
+ * @class error
+ * @brief Handles HIP error management, including last error tracking and thread-local error strings.
+ */
 class error
 {
 public:
-  static error&
+  /**
+   * @brief Get the singleton instance of error manager.
+   * @return Reference to the error instance.
+   */
+  static
+  error&
   instance();
 
-  static const char*
+  /**
+   * @brief Get error name string for a given HIP error code.
+   * @param err HIP error code.
+   * @return Error name string.
+   */
+  static
+  const char*
   get_error_name(hipError_t err);
+
+  /**
+   * @brief Record a thread-local error string for a given HIP error code.
+   * @param err HIP error code.
+   * @param err_str Error string.
+   */
+  void
+  record_local_error(hipError_t err, const std::string& err_str);
+
+  /**
+   * @brief Reset all thread-local error strings.
+   */
+  void
+  reset_local_errors();
+
+  /**
+   * @brief Get the thread-local error string for a given HIP error code.
+   * @param err HIP error code.
+   * @return Error string.
+   */
+  const char*
+  get_local_error_string(hipError_t err);
 
   hipError_t
   peek_last_error()
@@ -39,9 +76,17 @@ public:
   }
 
 protected:
+  /**
+   * @brief Protected constructor for singleton pattern.
+   */
   error();
 
 private:
+  /**
+   * @brief Thread-local map of HIP error codes to error strings.
+   */
+  std::map<hipError_t, std::string> m_local_errors;
+
   hipError_t m_last_error;
 }; // class error
 

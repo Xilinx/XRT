@@ -8,6 +8,8 @@
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
 
+#include "hip/core/error.h"
+
 #include "context.h"
 #include "device.h"
 
@@ -76,20 +78,25 @@ namespace {
 template<typename F> hipError_t
 handle_hip_func_error(const char* func_name, hipError_t default_err, F && f)
 {
+  xrt::core::hip::error::instance().reset_local_errors();
   try {
     std::forward<F>(f)();
     return hipSuccess;
   }
   catch (const xrt::core::hip::hip_exception& ex) {
+    xrt::core::hip::error::instance().record_local_error(ex.value(), ex.what());
     xrt_core::send_exception_message(std::string(func_name) + " - " + ex.what());
     return ex.value();
   }
   catch (const xrt_core::system_error& ex) {
     hipError_t hip_err = xrt::core::hip::system_to_hip_error(ex.value());
+    xrt::core::hip::error::instance().record_local_error(hip_err, ex.what());
     xrt_core::send_exception_message(std::string(func_name) + " - " + ex.what());
     return hip_err;
   }
   catch (const std::exception& ex) {
+    // This is not thrown as hipError_t, that is it is not recorded, record it here.
+    xrt::core::hip::error::instance().record_local_error(default_err, ex.what());
     xrt_core::send_exception_message(std::string(func_name) + " - " + ex.what());
   }
   return default_err;

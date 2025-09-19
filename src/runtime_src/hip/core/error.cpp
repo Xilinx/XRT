@@ -12,35 +12,16 @@ constexpr std::pair<T, const char*> HIP_ERROR_NAME_PAIR(T x, const char* name) {
 
 namespace xrt::core::hip
 {
-//we should override clang-tidy warning by adding NOLINT since hip_error_state is non-const parameter
-thread_local static error* hip_error_state = nullptr; //NOLINT
-
-error::error()
+error::
+error()
   : m_last_error(hipSuccess)
-{
-  if (hip_error_state)
-  {
-    throw std::runtime_error
-      ("Multiple instances of hip error detected, only one per thread\n"
-      "can be loaded at any given time.");
-  }
-  hip_error_state = this;    
-}
+{}
 
 error&
 error::instance()
 {
-  if (!hip_error_state)
-  {
-    thread_local static error err_st;
-  }
-
-  if (hip_error_state)
-  {
-    return *hip_error_state;
-  }
-
-  throw std::runtime_error("error singleton is not loaded");  
+  thread_local static error err_st;
+  return err_st;
 }
 
 //we should override clang-tidy warning by adding NOLINT since hip_error_names is non-const parameter
@@ -127,17 +108,49 @@ static std::map<hipError_t, std::string> hip_error_names = //NOLINT
 };
 
 const char *
-error::get_error_name(hipError_t err)
+error::
+get_error_name(hipError_t err)
 {
   const char *error_name = nullptr;
 
   auto itr = hip_error_names.find(err);
   if (itr != hip_error_names.end())
-  {
     error_name = itr->second.c_str();
-  }
 
   return error_name;
+}
+
+void
+error::
+record_local_error(hipError_t err, const std::string& err_str)
+{
+  auto it = m_local_errors.find(err);
+  if (it != m_local_errors.end()) {
+    it->second += "; ";
+    it->second += err_str;
+  }
+  else {
+    m_local_errors[err] = err_str;
+  }
+}
+
+void
+error::
+reset_local_errors()
+{
+  if (!m_local_errors.empty())
+    m_local_errors.clear();
+}
+
+const char*
+error::
+get_local_error_string(hipError_t err)
+{
+  auto it = m_local_errors.find(err);
+  if (it != m_local_errors.end())
+    return it->second.c_str();
+  else
+    return nullptr;
 }
 
 //////////////////////////////////////////////
@@ -146,7 +159,6 @@ hip_exception::
 hip_exception(hipError_t ec, const char* what)
   : m_code(ec), m_what(what)
 {}
-
 
 hipError_t
 hip_exception::
