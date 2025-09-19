@@ -20,9 +20,7 @@ namespace xrt::core::hip
   static hipError_t
   hip_get_last_error()
   {
-    hipError_t last_error = error::instance().peek_last_error();
-    error::instance().reset_last_error();
-    return last_error;
+    return error::instance().get_last_error();
   }
 
 } // xrt::core::hip
