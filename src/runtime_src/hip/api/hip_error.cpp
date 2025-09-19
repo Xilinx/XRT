@@ -4,6 +4,7 @@
 #include "core/common/error.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
+#include "hip/core/common.h"
 #include "hip/core/device.h"
 #include "hip/core/error.h"
 #include <string>
@@ -85,18 +86,6 @@ hipGetErrorName(hipError_t hipError)
   return error_name;
 }
 
-template<typename F> hipError_t
-handle_hip_error_error(F && f)
-{
-  hipError_t last_error = hipSuccess;
-  try {
-    return f();
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return last_error;
-}
-
 // return last error returned by any HIP API call and resets the stored error code
 hipError_t
 hipExtGetLastError()
@@ -108,13 +97,27 @@ hipExtGetLastError()
 hipError_t
 hipGetLastError(void)
 {
-  return handle_hip_error_error([&] { return xrt::core::hip::hip_get_last_error(); });
+    hipError_t last_err = hipSuccess;
+    auto ret = handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
+      last_err = xrt::core::hip::hip_get_last_error();
+    });
+
+    if (ret == hipSuccess)
+      ret = last_err;
+
+    return ret;
 }
 
 // Return last error returned by any HIP runtime API call.
 hipError_t hipPeekAtLastError()
 {
-  return handle_hip_error_error([&] { return xrt::core::hip::hip_peek_last_error(); });
-}
+    hipError_t last_err = hipSuccess;
+    auto ret = handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
+      last_err = xrt::core::hip::hip_peek_last_error();
+    });
 
-//hipError_t handle_hip_error([&] { xrt::core::hip::hipMemCpy(dst, src, sizeBytes, kind); });
+    if (ret == hipSuccess)
+      ret = last_err;
+
+    return ret;
+}
