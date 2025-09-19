@@ -382,11 +382,11 @@ register_destructor_callbacks (memory::memory_callback_type&& cb)
 
 memory::buffer_object_handle
 image::
-get_buffer_object(device* device)
+get_buffer_object(device* device, memidx_type subidx)
 {
   if (auto boh = get_buffer_object_or_null(device))
     return boh;
-  memory::buffer_object_handle boh = memory::get_buffer_object(device);
+  memory::buffer_object_handle boh = memory::get_buffer_object(device, subidx);
   image_info info;
   populate_image_info(info);
   device->write_buffer(this, 0, get_image_data_offset(), &info);
