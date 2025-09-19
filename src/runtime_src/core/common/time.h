@@ -35,6 +35,14 @@ std::string
 timestamp(uint64_t epoch);
 
 /**
+ * @return formatted timestamp string that can be
+ * used in filename
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_timestamp_for_filename();
+
+/**
  * Simple time guard to accumulate scoped time
  */
 class time_guard

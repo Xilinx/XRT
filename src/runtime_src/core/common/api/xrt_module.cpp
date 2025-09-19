@@ -18,6 +18,7 @@
 
 #include "bo_int.h"
 #include "elf_int.h"
+#include "hw_context_int.h"
 #include "module_int.h"
 #include "core/common/debug.h"
 #include "core/common/dlfcn.h"
@@ -77,6 +78,8 @@ static const char* const Control_Code_Symbol = "control-code";
 // length of "_Z" prefix in mangled names
 static constexpr uint8_t mangled_prefix_length = 2;
 static constexpr uint8_t decimal_base = 10;
+
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; } //NOLINT
 
 struct buf
 {
@@ -613,6 +616,9 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Scratchpad memory is used to store contents of L2 memory
+  // during preemption. So scratchpad memory size is specific
+  // to device.
   virtual size_t
   get_scratch_pad_mem_size() const
   {
@@ -639,12 +645,6 @@ public:
 
   virtual const std::map<std::string, buf>&
   get_ctrlpkt_pm_bufs() const
-  {
-    throw std::runtime_error("Not supported");
-  }
-
-  virtual xrt::bo&
-  get_scratch_pad_mem()
   {
     throw std::runtime_error("Not supported");
   }
@@ -1204,7 +1204,6 @@ class module_elf_aie2p : public module_elf
   // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
   std::map<std::string, xrt::bo> m_pdi_bo_map;
   
-  size_t m_scratch_pad_mem_size = 0;
   size_t m_ctrl_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
 
@@ -1360,10 +1359,7 @@ class module_elf_aie2p : public module_elf
         throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
       auto symname = dynstr->get_data() + dynstr_offset;
 
-      if (!m_scratch_pad_mem_size && (strcmp(symname, Scratch_Pad_Mem_Symbol) == 0)) {
-        m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
-      }
-      else if (!m_ctrl_scratch_pad_mem_size && (strcmp(symname, Control_ScratchPad_Symbol) == 0)) {
+      if (!m_ctrl_scratch_pad_mem_size && (strcmp(symname, Control_ScratchPad_Symbol) == 0)) {
         m_ctrl_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
       }
 
@@ -1509,7 +1505,8 @@ public:
   size_t
   get_scratch_pad_mem_size() const override
   {
-    return m_scratch_pad_mem_size;
+    constexpr size_t scratchpad_mem_size = 512_kb;
+    return scratchpad_mem_size;
   }
 
   size_t
@@ -1938,7 +1935,6 @@ class module_sram : public module_impl
   xrt::bo m_buffer;
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
-  xrt::bo m_scratch_pad_mem;
   xrt::bo m_ctrl_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
@@ -2143,15 +2139,23 @@ class module_sram : public module_impl
     }
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
-      m_scratch_pad_mem = xrt::ext::bo{ m_hwctx, m_parent->get_scratch_pad_mem_size() };
-      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem,
+      const auto& scratchpad_mem =
+          xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, m_parent->get_scratch_pad_mem_size());
+
+      if (!scratchpad_mem)
+        throw std::runtime_error("Failed to get scratchpad buffer from context\n");
+
+      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, scratchpad_mem,
                   xrt_core::patcher::buf_type::preempt_save, m_ctrl_code_id);
-      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem,
+      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, scratchpad_mem,
                   xrt_core::patcher::buf_type::preempt_restore, m_ctrl_code_id);
 
       if (is_dump_preemption_codes()) {
         std::stringstream ss;
-        ss << "patched preemption-codes using scratch_pad_mem at address " << std::hex << m_scratch_pad_mem.address() << " size " << std::hex << m_parent->get_scratch_pad_mem_size();
+        ss << "patched preemption-codes using scratch_pad_mem at address "
+           << std::hex << scratchpad_mem.address()
+           << " size "
+           << std::hex << scratchpad_mem.size();
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
@@ -2648,32 +2652,6 @@ public:
     }
   }
 
-  xrt::bo&
-  get_scratch_pad_mem() override
-  {
-    return m_scratch_pad_mem;
-  }
-
-  void
-  dump_scratchpad_mem()
-  {
-    if (m_scratch_pad_mem.size() == 0) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
-                              "preemption scratchpad memory is not available");
-      return;
-    }
-
-    // sync data from device before dumping into file
-    m_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-    std::string dump_file_name = "preemption_scratchpad_mem" + std::to_string(get_id()) + ".bin";
-    dump_bo(m_scratch_pad_mem, dump_file_name);
-
-    std::string msg {"dumped file "};
-    msg.append(dump_file_name);
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", msg);
-  }
-
   void
   patch(const std::string& argnm, size_t index, const xrt::bo& bo) override
   {
@@ -2889,16 +2867,6 @@ enum ert_cmd_opcode
 get_ert_opcode(const xrt::module& module)
 {
   return module.get_handle()->get_ert_opcode();
-}
-
-void
-dump_scratchpad_mem(const xrt::module& module)
-{
-  auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
-  if (!module_sram)
-    throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
-
-  module_sram->dump_scratchpad_mem();
 }
 
 const std::vector<xrt_core::module_int::kernel_info>&

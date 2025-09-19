@@ -62,6 +62,14 @@ XRT_CORE_COMMON_EXPORT
 bool
 get_elf_flow(const xrt::hw_context& ctx);
 
+// Get the scratchpad memory buffer for a given hardware context
+const xrt::bo&
+get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
+
+// Dump scratch pad mem buffer contents into a file when ini option is enabled
+void
+dump_scratchpad_mem(const xrt::hw_context& hwctx);
+
 }} // hw_context_int, xrt_core
 
 #endif

@@ -107,10 +107,6 @@ sync(const xrt::module&);
 ert_cmd_opcode
 get_ert_opcode(const xrt::module& module);
 
-// Dump scratch pad mem buffer
-void
-dump_scratchpad_mem(const xrt::module& module);
-
 // Returns vector of kernel info extracted from demangled kernel signatures
 // kernel signature eg : DPU(void*, void*, void*)
 // Each kernel info object holds kernel name (DPU), kernel args and kernel properties
