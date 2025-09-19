@@ -1737,8 +1737,8 @@ class profile
     {
       auto file = node.at("file").get<std::string>();
       auto skip = node.value<size_t>("skip", 0);
-      auto bo_begin = node.value("begin", 0);
-      auto bo_end = node.value("end", bo.size());
+      auto bo_begin = node.value<size_t>("begin", 0);
+      auto bo_end = node.value<size_t>("end", bo.size());
       auto data = m_repo->get(file);
       if (skip > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
