@@ -647,29 +647,23 @@ void zocl_free_cma_bo(struct drm_gem_object *obj)
 static void
 zocl_free_imported_bo(struct drm_gem_object *obj)
 {
-	struct drm_zocl_bo *zocl_obj;
-	zocl_obj = to_drm_zocl_bo(obj);
+	struct drm_zocl_bo *zocl_obj = to_drm_zocl_bo(obj);
     if (!zocl_obj)
         return;
 
-    DRM_DEBUG("Freeing imported dma-buf BO\n");
-	printk("[zocl]: %s: Freeing imported dma_buf BO\n", __func__);
+    DRM_DEBUG("Freeing imported BO\n");
 
-	printk("[zocl]: %s: calling dma_buf_unmap_attachment_unlocked()\n", __func__);
     dma_buf_unmap_attachment_unlocked(zocl_obj->attach,
                                           zocl_obj->cma_base.sgt,
                                           DMA_BIDIRECTIONAL);
 
-	printk("[zocl]: %s: calling dma_buf_detach()\n", __func__);
     dma_buf_detach(zocl_obj->dma_buf, zocl_obj->attach);
 
-	printk("[zocl]: %s: calling dma_buf_put()\n", __func__);
     dma_buf_put(zocl_obj->dma_buf);
     zocl_obj->dma_buf = NULL;
+    zocl_obj->attach = NULL;
 
-	printk("[zocl]: %s: calling drm_gem_object_release()\n", __func__);
     drm_gem_object_release(obj);
-	printk("[zocl]: %s: calling kfree(zocl_obj)\n", __func__);
     kfree(zocl_obj);
 }
 
@@ -688,12 +682,9 @@ void zocl_free_bo(struct drm_gem_object *obj)
 		return;
 
 	DRM_DEBUG("Freeing BO\n");
-	printk("[zocl]: %s: Freeing BO\n", __func__);
 	zocl_obj = to_zocl_bo(obj);
 
-	printk("[bs]: %s: checking if its imported\n", __func__);
 	if (is_imported_bo(zocl_obj)) {
-		printk("[zocl]: %s: calling zocl_free_imported_bo()\n", __func__);
 		zocl_free_imported_bo(obj);
 		return;
 	}
@@ -1066,7 +1057,6 @@ static int zocl_iommu_init(struct drm_zocl_dev *zdev,
 	return 0;
 }
 
-/* my own import */
 struct drm_gem_object *
 zocl_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
 {
@@ -1076,7 +1066,6 @@ zocl_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
     struct sg_table *sgt;
 	int ret;
 
-	printk("[zocl]: %s: .gem_prime_import triggered\n", __func__);
 	get_dma_buf(dma_buf);
 
     attach = dma_buf_attach(dma_buf, dev->dev);
@@ -1102,17 +1091,13 @@ zocl_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
     zocl_obj->dma_buf = dma_buf;
 	gobj->resv = dma_buf->resv;
 
-	printk("[zocl]: %s: returning the gem obj\n", __func__);
     return gobj;
 
 fail_unmap:
-	printk("[zocl]: %s: in fail_unmap: calling dma_buf_unmap_attachment_unlocked()\n", __func__);
 	dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
 fail_detach:
-	printk("[zocl]: %s: in fail_detach: calling dma_buf_detach()\n", __func__);
 	dma_buf_detach(dma_buf, attach);
 put_buf:
-	printk("[zocl]: %s: in put_buf: calling dma_buf_put()\n", __func__);
 	dma_buf_put(dma_buf);
 
 	return ERR_PTR(ret);
