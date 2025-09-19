@@ -38,7 +38,7 @@ TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>& dev)
 
     auto report = json::parse(runner.get_report());
     auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-    auto iterations = report["cpu"]["iterations"].get<int>();
+    auto iterations = report["iterations"].get<int>();
 
     // Used buffer in runner is 1GB in size, thus reporting in GB/s
     double bandwidth = (2 * iterations ) / (elapsed_us / 1000000); // NOLINT: Runner reports in microseconds, so conversion is required until request supports timescales

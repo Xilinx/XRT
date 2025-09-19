@@ -2178,6 +2178,7 @@ class profile
         m_report["cpu"]["throughput"] = throughput;
 
       if (m_verbose) {
+        std::cout << "Execution profile: " << m_name << "\n";
         std::cout << "Elapsed time (us): " << elapsed << "\n";
         if (m_legacy || m_mode == mode::latency)
           std::cout << "Average Latency (us): " << latency << "\n";

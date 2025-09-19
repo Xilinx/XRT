@@ -44,7 +44,7 @@ TestAIEReconfigOverhead::run(const std::shared_ptr<xrt_core::device>& dev)
     report = json::parse(runner.get_report());
     auto elapsed_nop = report["cpu"]["elapsed"].get<double>();
 
-    auto iterations = report["cpu"]["iterations"].get<double>(); 
+    auto iterations = report["iterations"].get<double>(); 
     double overhead = (elapsed - elapsed_nop) / (iterations * 1000); //NOLINT conversion to ms 
 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));
