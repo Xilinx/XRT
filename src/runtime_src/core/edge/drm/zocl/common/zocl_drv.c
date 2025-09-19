@@ -52,6 +52,11 @@ static char driver_date[9];
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
 
+#if KERNEL_VERSION(6, 13, 0) > LINUX_VERSION_CODE
+MODULE_IMPORT_NS(DMA_BUF);
+#else
+MODULE_IMPORT_NS("DMA_BUF");
+#endif
 
 int enable_xgq_ert = 1;
 module_param(enable_xgq_ert, int, (S_IRUGO|S_IWUSR));
@@ -638,6 +643,36 @@ void zocl_free_cma_bo(struct drm_gem_object *obj)
 	kfree(zocl_obj);
 }
 
+/* for freeing imported bo */
+static void
+zocl_free_imported_bo(struct drm_gem_object *obj)
+{
+	struct drm_zocl_bo *zocl_obj;
+	zocl_obj = to_drm_zocl_bo(obj);
+    if (!zocl_obj)
+        return;
+
+    DRM_DEBUG("Freeing imported dma-buf BO\n");
+	printk("[zocl]: %s: Freeing imported dma_buf BO\n", __func__);
+
+	printk("[zocl]: %s: calling dma_buf_unmap_attachment_unlocked()\n", __func__);
+    dma_buf_unmap_attachment_unlocked(zocl_obj->attach,
+                                          zocl_obj->cma_base.sgt,
+                                          DMA_BIDIRECTIONAL);
+
+	printk("[zocl]: %s: calling dma_buf_detach()\n", __func__);
+    dma_buf_detach(zocl_obj->dma_buf, zocl_obj->attach);
+
+	printk("[zocl]: %s: calling dma_buf_put()\n", __func__);
+    dma_buf_put(zocl_obj->dma_buf);
+    zocl_obj->dma_buf = NULL;
+
+	printk("[zocl]: %s: calling drm_gem_object_release()\n", __func__);
+    drm_gem_object_release(obj);
+	printk("[zocl]: %s: calling kfree(zocl_obj)\n", __func__);
+    kfree(zocl_obj);
+}
+
 /* This callback function release GEM buffer objects and free memory associated
  * with it. This function is also responsable for free up the memory for BOs.
  *
@@ -653,7 +688,16 @@ void zocl_free_bo(struct drm_gem_object *obj)
 		return;
 
 	DRM_DEBUG("Freeing BO\n");
+	printk("[zocl]: %s: Freeing BO\n", __func__);
 	zocl_obj = to_zocl_bo(obj);
+
+	printk("[bs]: %s: checking if its imported\n", __func__);
+	if (is_imported_bo(zocl_obj)) {
+		printk("[zocl]: %s: calling zocl_free_imported_bo()\n", __func__);
+		zocl_free_imported_bo(obj);
+		return;
+	}
+
 	zdev = obj->dev->dev_private;
 
 	if (!zdev->domain) {
@@ -1022,6 +1066,58 @@ static int zocl_iommu_init(struct drm_zocl_dev *zdev,
 	return 0;
 }
 
+/* my own import */
+struct drm_gem_object *
+zocl_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
+{
+    struct dma_buf_attachment *attach;
+	struct drm_zocl_bo *zocl_obj;
+	struct drm_gem_object *gobj;
+    struct sg_table *sgt;
+	int ret;
+
+	printk("[zocl]: %s: .gem_prime_import triggered\n", __func__);
+	get_dma_buf(dma_buf);
+
+    attach = dma_buf_attach(dma_buf, dev->dev);
+    if (IS_ERR(attach)) {
+        ret = PTR_ERR(attach);
+		goto put_buf;
+	}
+
+    sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
+    if (IS_ERR(sgt)) {
+        ret = PTR_ERR(sgt);
+		goto fail_detach;
+    }
+
+    gobj = dev->driver->gem_prime_import_sg_table(dev, attach, sgt);
+	if (IS_ERR(gobj)) {
+		ret = PTR_ERR(gobj);
+		goto fail_unmap;
+	}
+
+	zocl_obj = to_drm_zocl_bo(gobj);
+	zocl_obj->attach = attach;
+    zocl_obj->dma_buf = dma_buf;
+	gobj->resv = dma_buf->resv;
+
+	printk("[zocl]: %s: returning the gem obj\n", __func__);
+    return gobj;
+
+fail_unmap:
+	printk("[zocl]: %s: in fail_unmap: calling dma_buf_unmap_attachment_unlocked()\n", __func__);
+	dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
+fail_detach:
+	printk("[zocl]: %s: in fail_detach: calling dma_buf_detach()\n", __func__);
+	dma_buf_detach(dma_buf, attach);
+put_buf:
+	printk("[zocl]: %s: in put_buf: calling dma_buf_put()\n", __func__);
+	dma_buf_put(dma_buf);
+
+	return ERR_PTR(ret);
+}
+
 const struct vm_operations_struct zocl_bo_vm_ops = {
 	.fault = zocl_bo_fault,
 	.open  = drm_gem_vm_open,
@@ -1137,7 +1233,7 @@ static struct drm_driver zocl_driver = {
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
         .gem_prime_mmap            = drm_gem_prime_mmap,
 #endif
-	.gem_prime_import          = drm_gem_prime_import,
+	.gem_prime_import          = zocl_gem_prime_import,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	.gem_prime_import_sg_table = drm_gem_dma_prime_import_sg_table,
 #else

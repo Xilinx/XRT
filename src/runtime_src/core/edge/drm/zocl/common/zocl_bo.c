@@ -820,6 +820,8 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 	struct drm_zocl_bo		*bo;
 	dma_addr_t			bus_addr;
 	int				rc = 0;
+	printk("[zocl]: %s: returning from here, now its a no-op\n", __func__);
+	return 0;
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
