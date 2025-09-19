@@ -46,27 +46,30 @@ hipDrvGetErrorString(hipError_t hipError,
                      const char **errorString)
 {
   try {
-    // TODO: return more detailed error string instead of error name
-    *errorString = xrt::core::hip::error::get_error_name(hipError);
+    *errorString = xrt::core::hip::error::instance().get_local_error_string(hipError);
     return hipSuccess;
-  } catch (const std::exception &ex) {
+  }
+  catch (std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
-  return hipErrorInvalidValue;
+  catch (...) {
+    // Does nothing
+  }
+
+  return hipErrorRuntimeOther;
 }
 
 // Return handy text string message to explain the error which occurred.
 const char *
 hipGetErrorString(hipError_t hipError)
 {
-  const char *error_string = nullptr;
   try {
-    // TODO: return more detailed error string instead of error name
-    error_string = xrt::core::hip::error::get_error_name(hipError);
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
+    return xrt::core::hip::error::instance().get_local_error_string(hipError);
   }
-  return error_string;
+  catch(...) {
+    // Does nothing
+  }
+  return nullptr;
 }
 
 // Return hip error as text string form.
