@@ -49,11 +49,13 @@ find_package(Threads REQUIRED)
 # --- Git ---
 find_package(Git)
 
-IF(GIT_FOUND)
-  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
+if(GIT_FOUND)
+  message(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
+elseif(XRT_UPSTREAM)
+  message(STATUS "-- GIT not found, ignored for upstream build")
+else()
+  message(FATAL_ERROR "Looking for GIT - not found")
+endif()
 
 # --- XRT Variables ---
 include (${XRT_SOURCE_DIR}/CMake/xrtVariables.cmake)
