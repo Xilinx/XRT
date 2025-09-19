@@ -7,7 +7,10 @@
 #include "core/common/api/bo.h"
 
 #include "hip/config.h"
+#include "hip/core/device.h"
 #include "hip/hip_runtime_api.h"
+
+#include "xrt/experimental/xrt_error.h"
 
 namespace xrt::core::hip
 {
@@ -57,37 +60,63 @@ public:
   const char*
   get_local_error_string(hipError_t err);
 
+  /**
+   * @brief get async error from XRT and update @m_last_error
+   * @return HIP error code if there was last async error, otherwise
+   *         return hipSuccess
+   */
   hipError_t
-  peek_last_error()
-  {
-    return m_last_error;
-  }
+  get_last_error();
 
-  void
-  reset_last_error()
-  {
-    m_last_error = hipSuccess;
-  }
+  /**
+   * @brief peek async error which returns the last async error
+   *        without updating it. That is if you call this function
+   *        multiple times, and no get_last_error() is called between,
+   *        it will always return the same error.
+   * @return HIP error code if there was last async error, otherwise
+   *         return hipSuccess
+   */
+  hipError_t
+  peek_last_error();
 
-  void
-  set_last_error(hipError_t err)
-  {
-    m_last_error = err;
-  }
-
-protected:
+private:
   /**
    * @brief Protected constructor for singleton pattern.
    */
   error();
 
-private:
   /**
    * @brief Thread-local map of HIP error codes to error strings.
    */
   std::map<hipError_t, std::string> m_local_errors;
 
-  hipError_t m_last_error;
+  /**
+   * @brief update the last async error stored in HIP
+   * @return hip error code if there there is new error got from XRT, hipSuccess otherwise.
+   */
+  hipError_t
+  update_last_error();
+
+  /**
+   * @brief get error string for the last async error
+   * This function is called to get the last async error string
+   * @return Error string for the last async error.
+   */
+  std::string
+  get_last_error_string();
+
+  /**
+   * @struct async_error_info
+   * @brief async error information for a device
+   */
+  struct async_error_info
+  {
+    std::string err_str; // error string
+    xrtErrorTime timestamp; // timestamp for the last error
+  };
+
+  hipError_t m_hip_last_error; // last async HIP error
+  std::map<device_handle, async_error_info> m_xrt_last_errors; // last AIE async xrt error per device
 }; // class error
 
 /**

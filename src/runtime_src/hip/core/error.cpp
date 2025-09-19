@@ -8,8 +8,17 @@ namespace xrt::core::hip
 {
 error::
 error()
-  : m_last_error(hipSuccess)
-{}
+  : m_hip_last_error(hipSuccess)
+{
+  for (const auto& dev_pair : device_cache.get_map()) {
+    auto xrt_err = xrt::error(dev_pair.second->get_xrt_device(), XRT_ERROR_CLASS_AIE);
+    // all error details are reset to empty when HIP is initialized for the application.
+    // hipGetLastError()/hipPeekAtLastError() gets async errors raised only after
+    // application starts.
+    // timestamp is used to know if an error is a new one or not.
+    m_xrt_last_errors[dev_pair.first] = {"", xrt_err.get_timestamp()};
+  }
+}
 
 error&
 error::instance()
@@ -139,11 +148,80 @@ const char*
 error::
 get_local_error_string(hipError_t err)
 {
+  if (err == hipErrorUnknown) {
+    // for unknown error, always gets the latest error string.
+    // get_last_error_string() returns a string object, it is not
+    // persistent, so we need to save it in the map.
+    m_local_errors[hipErrorUnknown] = get_last_error_string();
+    return m_local_errors[hipErrorUnknown].c_str();
+  }
+
   auto it = m_local_errors.find(err);
   if (it != m_local_errors.end())
     return it->second.c_str();
   else
     return nullptr;
+}
+
+hipError_t
+error::
+update_last_error()
+{
+  hipError_t ret_last_error = hipSuccess;
+  for (const auto& dev_pair : device_cache.get_map()) {
+    auto xrt_err = xrt::error(dev_pair.second->get_xrt_device(), XRT_ERROR_CLASS_AIE);
+    if (xrt_err.get_timestamp() != m_xrt_last_errors[dev_pair.first].timestamp) {
+      // only update the error if the error got from the driver is a new one.
+      m_xrt_last_errors[dev_pair.first] = {xrt_err.to_string(), xrt_err.get_timestamp()};
+      if (ret_last_error == hipSuccess)
+        ret_last_error = hipErrorUnknown;
+    } else {
+      // clear error string if no has occurs
+      m_xrt_last_errors[dev_pair.first].err_str = "";
+    }
+  }
+  return ret_last_error;
+}
+
+hipError_t
+error::
+get_last_error()
+{
+  // get last error always clear the saved last async error
+  if (m_hip_last_error != hipSuccess) {
+    m_hip_last_error = hipSuccess;
+    return hipErrorUnknown;
+  }
+
+  // if saved last async error was not empty, get the latest one from XRT
+  return update_last_error();
+}
+
+hipError_t
+error::
+peek_last_error()
+{
+  if (m_hip_last_error != hipSuccess) {
+    return m_hip_last_error;
+  }
+  m_hip_last_error = update_last_error();
+  return m_hip_last_error;
+}
+
+std::string
+error::
+get_last_error_string()
+{
+  std::string err_str;
+  for (const auto& err_pair : m_xrt_last_errors) {
+    if (err_pair.second.err_str.length()) {
+      if (err_str.length())
+        err_str += "; ";
+      err_str += "Device " + std::to_string(err_pair.first) + ": ";
+      err_str += err_pair.second.err_str;
+    }
+  }
+  return err_str;
 }
 
 //////////////////////////////////////////////
