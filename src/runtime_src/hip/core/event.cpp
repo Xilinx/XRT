@@ -65,6 +65,8 @@ bool event::synchronize()
 bool event::wait()
 {
   state event_state = get_state();
+  if (event_state == state::error)
+    throw_hip_error(hipErrorRuntimeOther, "event is in error state");
   if (event_state < state::completed)
   {
     synchronize();
@@ -193,9 +195,21 @@ bool kernel_start::wait()
   state kernel_start_state = get_state();
   if (kernel_start_state == state::running)
   {
-    r.wait();
-    set_state(state::completed);
-    return true;
+    try {
+      r.wait2();
+      set_state(state::completed);
+      return true;
+    }
+    catch (const std::exception& ex) {
+      // catch exception here is to set cmmand state to error.
+      // re-throw errors so that caller can catch and handle it
+      set_state(state::error);
+      throw_hip_error(hipErrorLaunchFailure, ex.what());
+    }
+    catch (...) {
+      set_state(state::error);
+      throw_hip_error(hipErrorLaunchFailure, "Unknown error from kernel wait");
+    }
   }
   else if (kernel_start_state == state::completed)
     return true;
