@@ -820,8 +820,6 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 	struct drm_zocl_bo		*bo;
 	dma_addr_t			bus_addr;
 	int				rc = 0;
-	printk("[zocl]: %s: returning from here, now its a no-op\n", __func__);
-	return 0;
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
@@ -861,9 +859,11 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 	 *       and it works.
 	 */
 	if (args->dir == DRM_ZOCL_SYNC_BO_TO_DEVICE) {
+		printk("[zocl]: %s: calling dma_sync_single_for_device()\n", __func__);
 		dma_sync_single_for_device(dev->dev, bus_addr, args->size,
 		    DMA_TO_DEVICE);
 	} else if (args->dir == DRM_ZOCL_SYNC_BO_FROM_DEVICE) {
+		printk("[zocl]: %s: calling dma_sync_single_for_cpu()\n", __func__);
 		dma_sync_single_for_cpu(dev->dev, bus_addr, args->size,
 		    DMA_FROM_DEVICE);
 	} else
