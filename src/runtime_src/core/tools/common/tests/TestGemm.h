@@ -7,12 +7,10 @@
 #include "tools/common/TestRunner.h"
 #include "xrt/xrt_device.h"
 
-namespace xrt_core { class archive; }
-
 class TestGemm : public TestRunner {
   public:
     boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
-    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
   public:
     TestGemm();
