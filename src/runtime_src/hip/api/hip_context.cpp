@@ -129,7 +129,7 @@ hip_device_primary_ctx_retain(device_handle dev)
 hipError_t
 hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!ctx, "ctx passed is nullptr");
 
     auto handle = xrt::core::hip::hip_ctx_create(flags, device);
@@ -140,7 +140,7 @@ hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
 hipError_t
 hipCtxDestroy(hipCtx_t ctx)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_ctx_destroy(ctx);
   });
 }
@@ -148,7 +148,7 @@ hipCtxDestroy(hipCtx_t ctx)
 hipError_t
 hipCtxGetDevice(hipDevice_t* device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!device, "device passed is nullptr");
 
     *device = static_cast<int>(xrt::core::hip::hip_ctx_get_device());
@@ -158,7 +158,7 @@ hipCtxGetDevice(hipDevice_t* device)
 hipError_t
 hipCtxSetCurrent(hipCtx_t ctx)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_ctx_set_current(ctx);
   });
 }
@@ -166,7 +166,7 @@ hipCtxSetCurrent(hipCtx_t ctx)
 hipError_t
 hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!pctx, "nullptr passed");
 
     auto handle = xrt::core::hip::hip_device_primary_ctx_retain(dev);
@@ -177,7 +177,7 @@ hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
 hipError_t
 hipDevicePrimaryCtxRelease(hipDevice_t dev)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_device_primary_ctx_release(dev);
   });
 }
