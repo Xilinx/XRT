@@ -6,6 +6,7 @@
 
 // Local - Include Files
 #include "core/common/query_requests.h"
+#include "core/common/runner/runner.h"
 #include "JSONConfigurable.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
@@ -21,9 +22,12 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <map>
 
 // Forward declarations
-namespace xrt_core { class archive; }
+namespace xrt_core { 
+  class archive; 
+}
 
 class TestRunner : public JSONConfigurable {
   public:
@@ -61,6 +65,12 @@ class TestRunner : public JSONConfigurable {
     xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_or_elf);
     xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_name, 
       const std::string& elf_path); 
+
+    // Archive helper method for extracting artifacts
+    xrt_core::runner::artifacts_repository 
+    extract_artifacts_from_archive(const xrt_core::archive* archive, 
+                                   const std::vector<std::string>& artifact_names,
+                                   boost::property_tree::ptree& ptree);
 
     std::string m_xclbin;
  

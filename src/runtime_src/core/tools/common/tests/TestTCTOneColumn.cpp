@@ -7,8 +7,8 @@
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_device.h"
-#include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
+#include "core/common/archive.h"
 
 // System - Include Files
 #include <filesystem>
@@ -33,21 +33,31 @@ TestTCTOneColumn::TestTCTOneColumn()
 {}
 
 boost::property_tree::ptree
-TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>& dev)
+TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::tct_one_column_recipe);
-  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::tct_one_column_profile);
-  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::tct_one_column_path);
-  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
-  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
-  auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
+  return ptree;
+}
 
-  try
-  {
-    // Create runner once 
-    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
+boost::property_tree::ptree
+TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  
+  try {
+    std::string recipe_data = archive->data("recipe_tct_one_column.json");
+    std::string profile_data = archive->data("profile_tct_one_column.json"); 
     
+    std::vector<std::string> artifact_names = {
+      "tct_one_col.xclbin", 
+      "tct_1col.elf" 
+    };
+    
+    // Extract artifacts using helper method
+    auto artifacts_repo = extract_artifacts_from_archive(archive, artifact_names, ptree);
+    
+    // Create runner with recipe, profile, and artifacts repository
+    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();
 
@@ -62,8 +72,7 @@ TestTCTOneColumn::run(const std::shared_ptr<xrt_core::device>& dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: %.1f TCT/s") % (samples * throughput)));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
-  catch(const std::exception& e)
-  {
+  catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
   }

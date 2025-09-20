@@ -8,6 +8,7 @@
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_device.h"
 #include "core/common/runner/runner.h"
+#include "core/common/archive.h"
 
 namespace XBU = XBUtilities;
 
@@ -23,18 +24,36 @@ TestGemm::TestGemm()
 {}
 
 boost::property_tree::ptree
-TestGemm::run(const std::shared_ptr<xrt_core::device>& dev)
+TestGemm::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_recipe);
-  std::string profile = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_profile);
-  std::string test = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::gemm_path);
-  auto recipe_path = XBValidateUtils::findPlatformFile(recipe, ptree);
-  auto profile_path = XBValidateUtils::findPlatformFile(profile, ptree);
-  auto test_path = XBValidateUtils::findPlatformFile(test, ptree);
-  try
-  {
-    xrt_core::runner runner(xrt::device(dev), recipe_path, profile_path, std::filesystem::path(test_path));
+  return ptree;
+}
+
+boost::property_tree::ptree
+TestGemm::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  
+  if (archive == nullptr) {
+    XBValidateUtils::logger(ptree, "Info", "No archive provided, using standard GEMM test");
+    return ptree;
+  }
+  
+  try {
+    std::string recipe_data = archive->data("recipe_gemm.json");
+    std::string profile_data = archive->data("profile_gemm.json"); 
+    
+    std::vector<std::string> artifact_names = {
+      "gemm.xclbin", 
+      "gemm.elf" 
+    };
+    
+    // Extract artifacts using helper method
+    auto artifacts_repo = extract_artifacts_from_archive(archive, artifact_names, ptree);
+    
+    // Create runner with recipe, profile, and artifacts repository
+    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();
     const auto bo_result_map = runner.map_buffer("bo_result");
@@ -80,14 +99,9 @@ TestGemm::run(const std::shared_ptr<xrt_core::device>& dev)
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
-  catch(const std::exception& e)
-  {
+  catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
   }
-  //map ouput buffer
-  
-
   return ptree;
 }

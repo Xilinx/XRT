@@ -10,6 +10,7 @@
 class TestCmdChainLatency : public TestRunner {
   public:
     boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
   public:
     TestCmdChainLatency();
