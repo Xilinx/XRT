@@ -11,38 +11,38 @@
 
 namespace xrt::core::hip
 {
-  class error
+class error
+{
+public:
+  static error&
+  instance();
+
+  static const char*
+  get_error_name(hipError_t err);
+
+  hipError_t
+  peek_last_error()
   {
-  public:
-    static error&
-    instance();
+    return m_last_error;
+  }
 
-    static const char*
-    get_error_name(hipError_t err);
+  void
+  reset_last_error()
+  {
+    m_last_error = hipSuccess;
+  }
 
-    hipError_t
-    peek_last_error()
-    {
-      return m_last_error;
-    }
+  void
+  set_last_error(hipError_t err)
+  {
+    m_last_error = err;
+  }
 
-    void
-    reset_last_error()
-    {
-      m_last_error = hipSuccess;
-    }
+protected:
+  error();
 
-    void
-    set_last_error(hipError_t err)
-    {
-      m_last_error = err;
-    }
-
-  protected:
-    error();
-
-  private:
-    hipError_t m_last_error;
-  }; // class error
+private:
+  hipError_t m_last_error;
+}; // class error
 }
 #endif // xrthip_error_h
