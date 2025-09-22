@@ -75,7 +75,7 @@ hip_init(unsigned int flags)
   std::call_once(device_init_flag, xrt::core::hip::device_init);
 }
 
-static size_t
+static int
 hip_get_device_count()
 {
   // Get device count
@@ -83,7 +83,7 @@ hip_get_device_count()
 
   throw_if(count < 1, hipErrorNoDevice, "No valid device available");
 
-  return count;
+  return static_cast<int>(count);
 }
 
 inline bool
@@ -215,7 +215,7 @@ hipInit(unsigned int flags)
 }
 
 hipError_t
-hipGetDeviceCount(size_t* count)
+hipGetDeviceCount(int* count)
 {
   return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
     throw_invalid_value_if(!count, "arg passed is nullptr");
