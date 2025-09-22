@@ -297,7 +297,9 @@ TestRunner::extract_artifacts_from_archive(const xrt_core::archive* archive,
       artifacts_repo[artifact_name] = std::move(artifact_binary);
     }
     catch (const std::exception&) {
-      XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("Required artifact not found: %s") % artifact_name));
+      if (XBUtilities::getVerbose()) {
+        XBValidateUtils::logger(ptree, "Warning", boost::str(boost::format("Artifact not found: %s") % artifact_name));
+      }
     }
   }
   

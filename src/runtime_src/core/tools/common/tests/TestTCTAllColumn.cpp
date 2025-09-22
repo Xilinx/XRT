@@ -50,13 +50,11 @@ TestTCTAllColumn::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_co
     std::string recipe_data = archive->data("recipe_tct_all_column.json");
     std::string profile_data = archive->data("profile_tct_all_column.json"); 
     
-    std::vector<std::string> artifact_names = {
+    // Extract artifacts using helper method
+    auto artifacts_repo = extract_artifacts_from_archive(archive, {
       "tct_all_col.xclbin", 
       "tct_4col.elf" 
-    };
-    
-    // Extract artifacts using helper method
-    auto artifacts_repo = extract_artifacts_from_archive(archive, artifact_names, ptree);
+    }, ptree);
     
     // Create runner with archive data
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);

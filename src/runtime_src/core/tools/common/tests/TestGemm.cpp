@@ -44,13 +44,11 @@ TestGemm::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::arch
     std::string recipe_data = archive->data("recipe_gemm.json");
     std::string profile_data = archive->data("profile_gemm.json"); 
     
-    std::vector<std::string> artifact_names = {
+    // Extract artifacts using helper method
+    auto artifacts_repo = extract_artifacts_from_archive(archive, {
       "gemm.xclbin", 
       "gemm.elf" 
-    };
-    
-    // Extract artifacts using helper method
-    auto artifacts_repo = extract_artifacts_from_archive(archive, artifact_names, ptree);
+    }, ptree);
     
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
