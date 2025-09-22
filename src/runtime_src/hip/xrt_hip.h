@@ -5,6 +5,14 @@
 
 #include "hip/hip_runtime_api.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-pro-type-member-init)
+
+#include <stdint.h>
+
 enum hipModuleDataType {
   hipModuleDataFilePath = 0,
   hipModuleDataBuffer
@@ -18,8 +26,49 @@ struct hipModuleData
                            // parent is null for xclbin creation, parent will point
                            // to xclbin module for elf creation
   void* data;              // pointer to file path or buffer based on type
-  size_t size;             // size of data buffer passed 
+  size_t size;             // size of data buffer passed
 };
+
+// HIP XRT extension
+enum hipXrtExtraInfoId {
+  hipXrtExtraInfoCtrlScratchPad,
+  hipXrtExtraInfoMax,
+};
+
+typedef struct hipXrtInfoExtraHead {
+  uint32_t extraId; // id of the extra info structure
+  uint32_t size; // size of the extra info structure including this header
+  void* info; // pointer to the details of the information
+} hipXrtInfoExtraHead_t;
+
+typedef struct hipXrtInfoCtrlScratchPad {
+  uint64_t ctrlScratchPadHostPtr; // Control scratchpad buffer host pointer,
+                                  // User pass control scratchpad bo initial
+                                  // content to XRT HIP for kernel launch.
+                                  // XRT HIP allocate control scratchpad bo
+                                  // for a run, and returns the host mapping pointer
+                                  // back to user with this field.
+  uint32_t ctrlScratchPadSize; // Control scratchpad buffer size.
+                              // Specified by user to tell the initial control
+                              // scratchpad content length. XRT HIP returns the
+                              // actual control scratchpad bo size back to user.
+  uint32_t syncAfterRun; // Pass by user to tell XRT HIP whether it needs to sync
+                         // after the XRT run is complete.
+} hipXrtInfoCtrlScratchPad_t;
+
+typedef struct hipXrtInfoExtraArray {
+  uint32_t numExtras; // number of extra information elements in the array
+  struct hipXrtInfoExtraHead extras[1]; // extra information elements array
+                                        // use length 1 here to avoid
+                                        // Zero-Sized Array as a Nonstandard Extension warning
+                                        // actual length depends on the @numExtras
+} hipXrtInfoExtraArray_t;
+
+// NOLINTEND(modernize-use-using, cppcoreguidelines-pro-type-member-init)
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif
 

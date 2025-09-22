@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
+#include <iostream>
+
 #include "event.h"
+#include "hip/xrt_hip.h"
 #include "memory.h"
 
 namespace xrt::core::hip {
@@ -175,6 +178,54 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
   }
 }
 
+kernel_start::
+kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra)
+  : kernel_start(s, f, args)
+{
+  if (!extra)
+    return;
+
+  throw_invalid_value_if(!(*extra),
+                         "kernel start cmd creation failed, extra is specified with null pointer.");
+
+  // check for control scratchpad bo requirement
+  auto extra_array = static_cast<hipXrtInfoExtraArray_t*>(*extra);
+  throw_invalid_value_if((!extra_array->numExtras || extra_array->numExtras > 1),
+                         "kernel start cmd creation failed, invalid number of extra information.");
+  struct hipXrtInfoExtraHead *extra_headers = extra_array->extras;
+  for (uint32_t i = 0; i < extra_array->numExtras; i++) {
+    struct hipXrtInfoExtraHead *extra_head = &extra_headers[i];
+
+    throw_invalid_value_if(extra_head->extraId != hipXrtExtraInfoCtrlScratchPad,
+                           "kernel start cmd creation failed, extra Info is not control scratchpad bo.");
+
+    auto ctrl_sp_bo_info = static_cast<hipXrtInfoCtrlScratchPad_t*>(extra_head->info);
+    void* ctrl_sp_host_ptr = reinterpret_cast<void*>(ctrl_sp_bo_info->ctrlScratchPadHostPtr);
+    uint32_t ctrl_sp_size = ctrl_sp_bo_info->ctrlScratchPadSize;
+    throw_invalid_value_if((!ctrl_sp_host_ptr || !ctrl_sp_size),
+			   "kernel start cmd creation failed, invalid control scratchpad bo information.");
+
+    // no control scratchpad bo for the run
+    m_ctrl_scratchpad_bo = r.get_ctrl_scratchpad_bo();
+    throw_invalid_value_if(!m_ctrl_scratchpad_bo,
+			   "kernel start cmd creation failed, control scratchpad bo expected but not allocated for the run.");
+    throw_invalid_value_if(ctrl_sp_bo_info->ctrlScratchPadSize > m_ctrl_scratchpad_bo.size(),
+			   "kernel start cmd creation failed, control scratchpad bo size provided by user is larger than allocated size.");
+
+    // there is control scratchpad bo allocated for the run, return the information to user
+    ctrl_sp_bo_info->ctrlScratchPadHostPtr =  reinterpret_cast<uint64_t>(m_ctrl_scratchpad_bo.map());
+    ctrl_sp_bo_info->ctrlScratchPadSize = m_ctrl_scratchpad_bo.size();
+    if (ctrl_sp_bo_info->syncAfterRun)
+      m_ctrl_scratchpad_bo_sync_rd = true;
+    else
+      m_ctrl_scratchpad_bo_sync_rd = false;
+
+    // sync control scratchpad bo to device before kernel start
+    m_ctrl_scratchpad_bo.write(ctrl_sp_host_ptr, static_cast<size_t>(ctrl_sp_size), 0);
+    m_ctrl_scratchpad_bo.sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
+  }
+}
+
 bool kernel_start::submit()
 {
   state kernel_start_state = get_state();
@@ -197,6 +248,11 @@ bool kernel_start::wait()
   {
     try {
       r.wait2();
+
+      // if control scratchpad bo is required to be synced back to host, do it here
+      if (m_ctrl_scratchpad_bo_sync_rd && m_ctrl_scratchpad_bo)
+        m_ctrl_scratchpad_bo.sync(xclBOSyncDirection::XCL_BO_SYNC_BO_FROM_DEVICE);
+
       set_state(state::completed);
       return true;
     }
