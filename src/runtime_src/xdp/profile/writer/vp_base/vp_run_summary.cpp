@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,10 +45,6 @@ namespace xdp {
   {
   }
 
-  VPRunSummaryWriter::~VPRunSummaryWriter()
-  {
-  }
-
   void VPRunSummaryWriter::switchFiles()
   {
     // Don't actually do anything
@@ -70,8 +66,8 @@ namespace xdp {
 
     // Collect all the files that have been created in this host execution
     //  run and dump their information in the run summary file
-    std::vector<std::pair<std::string, std::string>> files =
-      db->getStaticInfo().getOpenedFiles();
+    auto files = db->getOpenedFiles();
+    auto contexts = db->getContextMapping();
 
     // If there are no files, don't dump anything
     if (files.empty())
@@ -81,7 +77,7 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSchema;
       ptSchema.put("major", "1");
-      ptSchema.put("minor", "4");
+      ptSchema.put("minor", "5");
       ptSchema.put("patch", "0");
       ptRunSummary.add_child("schema_version", ptSchema);
     }
@@ -147,21 +143,47 @@ namespace xdp {
       ptRunSummary.add_child("generation", ptGeneration);
     }
 
+    // A section to associate the individual context IDs with the
+    // xclbin UUIDs in the context.  One of them will be specific to
+    // host + PL.  This section is omitted in the old "loadXclbin"
+    // style of applications.
+    if (!contexts.empty()) {
+      boost::property_tree::ptree ptContexts;
+      for (const auto& c : contexts) {
+        auto id = c.first;
+        auto uuid = c.second;
+
+        boost::property_tree::ptree ptContext;
+        ptContext.put("id", std::to_string(id));
+        ptContext.put("uuid", uuid.to_string());
+        ptContexts.push_back(std::make_pair("", ptContext));
+      }
+      ptRunSummary.add_child("hw_contexts", ptContexts);
+    }
+
     boost::property_tree::ptree ptFiles;
     for (const auto& f : files) {
       boost::property_tree::ptree ptFile;
-      ptFile.put("name", f.first.c_str());
-      ptFile.put("type", f.second.c_str());
+      ptFile.put("name", f.name.c_str());
+      ptFile.put("type", f.type.c_str());
+      if (!contexts.empty())
+        ptFile.put("hw_context", std::to_string(f.contextId));
       ptFiles.push_back(std::make_pair("", ptFile));
     }
     ptRunSummary.add_child("files", ptFiles);
 
     // Add the system diagram information if available
-    std::string systemDiagram = (db->getStaticInfo()).getSystemDiagram();
-    if (systemDiagram != "") {
-      boost::property_tree::ptree ptSystemDiagram;
-      ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str());
-      ptRunSummary.add_child("system_diagram", ptSystemDiagram);
+
+    auto systemDiagrams = db->getSystemDiagrams();
+    if (!systemDiagrams.empty()) {
+      boost::property_tree::ptree ptSystemDiagrams;
+      for (const auto& s : systemDiagrams) {
+	boost::property_tree::ptree ptSystemDiagram;
+	ptSystemDiagram.put("hw_context", s.contextId);
+	ptSystemDiagram.put("payload_16bitEnd", s.systemDiagram.c_str());
+	ptSystemDiagrams.push_back(std::make_pair("", ptSystemDiagram));
+      }
+      ptRunSummary.add_child("system_diagrams", ptSystemDiagrams);
     }
 
     boost::property_tree::write_json(fout, ptRunSummary, true);

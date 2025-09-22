@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __Testp2p_h_
-#define __Testp2p_h_
+#ifndef Testp2p_h_
+#define Testp2p_h_
 
 #include "tools/common/TestRunner.h"
 
 class Testp2p : public TestRunner {
   public:
-    boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
   
   //helper functions
   private:

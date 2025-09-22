@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -21,7 +22,7 @@ TestDMA::TestDMA()
                 "bandwidth.xclbin"){}
 
 boost::property_tree::ptree
-TestDMA::run(std::shared_ptr<xrt_core::device> dev)
+TestDMA::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
@@ -90,7 +91,7 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
  * Pass in custom parameters for dma test
 */
 void 
-TestDMA::set_param(const std::string key, const std::string value)
+TestDMA::set_param(const std::string& key, const std::string& value)
 {
   if(key == "block-size") {
     try {

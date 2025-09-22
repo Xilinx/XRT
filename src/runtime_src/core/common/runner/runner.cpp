@@ -5,7 +5,7 @@
 #define XRT_API_SOURCE         // in same dll as coreutil
 
 #ifdef _DEBUG
-# define XRT_VERBOSE
+//# define XRT_VERBOSE
 #endif
 
 #include "runner.h"
@@ -85,6 +85,12 @@ load_json(const std::string& input)
   }
 
   throw std::runtime_error("Failed to load json, unknown error");
+}
+
+inline void
+insert_json_object(json& dest, const json& src)
+{
+  dest.insert(src.begin(), src.end());
 }
 
 // Lifted from xrt_kernel.cpp
@@ -332,76 +338,6 @@ get(const std::string& path, const artifacts::repo* repo)
 
 } // module_cache
 
-
-// class report - Execution report
-//
-// The report class collects data about a recipe and its execution.
-// The report class has no external API, all data is collected and
-// returned as a json objects and a json tree.
-class report
-{
-public:
-  // Data is organized in sections that result in separate
-  // json objects containing key/value pairs.
-  enum class section_type { xclbin, resources, hwctx, cpu };
-
-private:
-  using report_type = std::map<section_type, json>;
-  report_type m_sections;
-
-  static const std::string&
-  to_string(section_type sect)
-  {
-    static const std::map<section_type, std::string> s2s = {
-      { section_type::xclbin, "xclbin" },
-      { section_type::resources, "resources" },
-      { section_type::hwctx, "hwctx" },
-      { section_type::cpu, "cpu" }
-    };
-
-    return s2s.at(sect);
-  }
-
-  // Return, create if necessary, the json object for a section.
-  json&
-  get_section(section_type sect)
-  {
-    auto& j = m_sections[sect];
-    if (j.is_null())
-      j = m_sections[sect] = json::object();
-
-    return j;
-  }
-  
-public:
-  // e.g. add(cpu, {{"latency", 45.0}})
-  void
-  add(section_type section, const json& j)
-  { 
-    get_section(section).insert(j.begin(), j.end());
-  }
-
-  // Add content of another report object to this
-  // report object.
-  void
-  add(const report& rpt)
-  {
-    for (auto [sec, j] : rpt.m_sections)
-      get_section(sec).insert(j.begin(), j.end());
-  }
-
-  // Convert report to a json std::string
-  std::string
-  to_string() const
-  {
-    json j = json::object();
-    for (const auto& [sec, jsec] : m_sections)
-      j[to_string(sec)] = jsec;
-
-    return j.dump();
-  }
-};
-
 // class recipe - Runner recipe
 class recipe
 {
@@ -457,11 +393,11 @@ class recipe
       return m_program;
     }
 
-    report
+    json
     get_report() const
     {
-      report rpt;
-      rpt.add(report::section_type::xclbin, {{"uuid", m_xclbin.get_uuid().to_string()}});
+      json rpt;
+      rpt["xclbin"]["uuid"] = m_xclbin.get_uuid().to_string();
       return rpt;
     }
   }; // class recipe::header
@@ -605,6 +541,7 @@ class recipe
                              + ") of bo bound to '" + m_name + "', expected "
                              + std::to_string(m_size));
 
+        XRT_DEBUGF("recipe::resources::buffer::bind(0x%p) buffer(%s)\n", bo.address(), m_name.c_str());
         m_xrt_bo = bo;
       }
 
@@ -635,12 +572,12 @@ class recipe
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
 
-      // Legacy kernel (alveo)
+      // Legacy kernel (alveo) or elf file was used when the hwctx was constructed.
       kernel(const xrt::hw_context& ctx, std::string name, std::string xname)
         : m_name(std::move(name))
         , m_instance(std::move(xname))
         , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
-        , m_xrt_kernel{xrt::kernel{ctx, m_instance}}
+        , m_xrt_kernel{xrt_core::hw_context_int::get_elf_flow(ctx) ? xrt::ext::kernel{ctx, m_instance} : xrt::kernel{ctx, m_instance}}
       {
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
@@ -868,24 +805,25 @@ class recipe
       return {nullptr, 0};
     }
 
-    report
+    json
     get_report() const
     {
-      report rpt;
-      rpt.add(report::section_type::resources, {{"buffers", m_buffers.size()}});
-      rpt.add(report::section_type::resources, {{"total_buffer_size",
+      json rpt;
+      rpt["resources"]["buffers"] = m_buffers.size();
+      rpt["resources"]["total_buffer_size"] =
         std::accumulate(m_buffers.begin(), m_buffers.end(), size_t(0), [] (size_t value, const auto& b) {
           if (auto bo = b.second.get_xrt_bo())
             return value + bo.size();
 
           return value;
-        })}});
-      rpt.add(report::section_type::resources, {{"kernels", m_kernels.size()}});
-      rpt.add(report::section_type::hwctx, {{"columns", xrt_core::hw_context_int::get_partition_size(m_hwctx) }});
+        });
+      rpt["resources"]["kernels"] =  m_kernels.size();
+      rpt["resources"]["hwctx_coloumns"] = xrt_core::hw_context_int::get_partition_size(m_hwctx);
       return rpt;
     }
   }; // class recipe::resources
 
+public:
   // class execution - execution section of the recipe
   class execution
   {
@@ -981,9 +919,11 @@ class recipe
       }; // class recipe::execution::run::argument
         
       using run_type = std::variant<xrt::run, xrt_core::cpu::run>;
+      using constant_type = std::variant<int, std::string>;
       std::string m_name;
       run_type m_run;
       std::map<std::string, argument> m_args;
+      std::map<int, constant_type> m_constants;
 
       template <typename ArgType>
       struct set_arg_visitor {
@@ -1033,19 +973,57 @@ class recipe
         return args;
       }
 
+      // Set constant args on a run.
       static void
-      set_constant_args(run_type run, const json& j)
+      set_constant_args(run_type run, const std::map<int, constant_type>& constants)
       {
+        for (auto [argidx, value] : constants) {
+          if (std::holds_alternative<int>(value))
+            std::visit(set_arg_visitor{argidx, std::get<int>(std::move(value))}, run);
+          else if (std::holds_alternative<std::string>(value))
+            std::visit(set_arg_visitor{argidx, std::get<std::string>(std::move(value))}, run);
+        }
+      }
+
+      // Read recipe::runs::constants from json.
+      // Return a map of argidx to constant value.
+      static std::map<int, constant_type>
+      create_constant_args(const json& j)
+      {
+        std::map<int, constant_type> constants;
+
         for (const auto& [name, node] : j.items()) {
           auto argidx = node.at("argidx").get<int>();
           auto type = node.at("type").get<std::string>();
           if (type == "int")
-            std::visit(set_arg_visitor{argidx, node.at("value").get<int>()}, run);
+            constants.emplace(argidx, node.at("value").get<int>());
           else if (type == "string")
-            std::visit(set_arg_visitor{argidx, node.at("value").get<std::string>()}, run);
+            constants.emplace(argidx, node.at("value").get<std::string>());
           else
             throw recipe_error("Unknown constant argument type '" + type + "'");
         }
+
+        return constants;
+      }
+
+      // Create constant args from json and set them on the run
+      static std::map<int, constant_type>
+      create_and_set_constant_args(run_type run, const json& j)
+      {
+        auto constants = create_constant_args(j);
+        set_constant_args(run, constants);
+        return constants;
+      }
+
+      // Set existing constant args on a run.  This function is used
+      // by the run constructor that creates a run from an existing run
+      // Return argument constant map, which is stored as a data member
+      // of the created run.
+      static std::map<int, constant_type>
+      create_and_set_constant_args(run_type run, const std::map<int, constant_type>& other)
+      {
+        set_constant_args(run, other);
+        return other;
       }
 
       static xrt_core::cpu::run
@@ -1083,11 +1061,9 @@ class recipe
         : m_name{j.at("name").get<std::string>()}
         , m_run{create_run(resources, j)}
         , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
+        , m_constants{create_and_set_constant_args(m_run, j.value("constants", json::object()))}
       {
         XRT_DEBUGF("recipe::execution::run(%s)\n", m_name.c_str());
-
-        if (j.contains("constants"))
-          set_constant_args(m_run, j.at("constants"));
       }
 
       // Create a run from another run using argument resources
@@ -1099,7 +1075,10 @@ class recipe
         : m_name{other.m_name}
         , m_run{create_run(resources, other)}
         , m_args{create_and_set_args(resources, m_run, other.m_args)}
-      {}
+        , m_constants{create_and_set_constant_args(m_run, other.m_constants)}
+      {
+        XRT_DEBUGF("recipe::execution::run(other) name(%s)\n", m_name.c_str());
+      }
 
       bool
       is_npu_run() const
@@ -1237,7 +1216,7 @@ class recipe
           for (auto itr = m_rl.rbegin(); itr != m_rl.rend(); ++itr)
             (*itr).wait2();
         }
-      };
+      }; // vrl
 
       // xrt::runlist implementation of NPU runlist
       struct xrl : impl
@@ -1278,14 +1257,14 @@ class recipe
         {
           m_rl.wait();
         }
-      };
+      }; // xrl
 
       std::unique_ptr<impl> m_impl;
       xrt::hw_context m_hwctx;
       size_t m_runlist_threshold;
       uint32_t m_count = 0;
 
-      explicit npu_runlist(xrt::hw_context hwctx, size_t rlt)
+      npu_runlist(xrt::hw_context hwctx, size_t rlt)
         : m_impl(std::make_unique<vrl>())
         , m_hwctx(std::move(hwctx))
         , m_runlist_threshold{rlt}
@@ -1316,15 +1295,14 @@ class recipe
       {
         m_impl->wait();
       }
-    };
+    }; // npu_runlist
 
     std::vector<run> m_runs;
-    xrt::queue m_queue;        // Queue that executes the runlists in sequence
     std::exception_ptr m_eptr;
     size_t m_runlist_threshold = default_runlist_threshold;
     std::vector<std::unique_ptr<runlist>> m_runlists;
+    std::unique_ptr<xrt::queue> m_queue;      // Queue that executes the runlists in sequence
     std::vector<xrt::queue::event> m_events;  // Events that signal complettion of a runlist
-
 
     static std::vector<std::unique_ptr<runlist>>
     create_runlists(const resources& resources, const std::vector<run>& runs, size_t rlt)
@@ -1398,6 +1376,7 @@ class recipe
       : m_runs{create_runs(resources, j.at("runs"))}
       , m_runlist_threshold{runlist_threshold}
       , m_runlists{create_runlists(resources, m_runs, m_runlist_threshold)}
+      , m_queue{m_runlists.size() > 1 ? std::make_unique<xrt::queue>() : nullptr}
     {}
 
     // execution() - create an execution object from existing runs
@@ -1405,6 +1384,7 @@ class recipe
     execution(const resources& resources, const execution& other)
       : m_runs{create_runs(resources, other.m_runs)}
       , m_runlists{create_runlists(resources, m_runs, other.m_runlist_threshold)}
+      , m_queue{m_runlists.size() > 1 ? std::make_unique<xrt::queue>() : nullptr}
     {}
 
     size_t
@@ -1462,7 +1442,7 @@ class recipe
         if (iteration > 0)
           m_events[count].wait();
 
-        m_events[count++] = m_queue.enqueue([this, iteration, &runlist] {
+        m_events[count++] = m_queue->enqueue([this, iteration, &runlist] {
           execute_runlist(iteration, runlist.get(), m_eptr);
         });
       }
@@ -1488,19 +1468,12 @@ class recipe
         std::rethrow_exception(m_eptr);
     }
 
-    void
-    sleep(uint32_t sleep_ms) const
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
-    }
-
-    report
+    json
     get_report() const
     {
-      report rpt;
-      rpt.add(report::section_type::resources, {{"runs", num_runs()}});
-      rpt.add(report::section_type::resources, {{"runlist_threshold", m_runlist_threshold}});
-      rpt.add(report::section_type::resources, {{"runlist", num_runs() >= m_runlist_threshold}});
+      json rpt;
+      rpt["resources"]["runlist_threshold"] = m_runlist_threshold;
+      rpt["resources"]["runlist"] = m_runlist_threshold;
       return rpt;
     }
   }; // class recipe::execution
@@ -1532,6 +1505,18 @@ public:
   {}
 
   recipe(const recipe&) = default;
+
+  execution*
+  get_execution()
+  {
+    return &m_execution;
+  }
+
+  execution
+  clone_execution() const
+  {
+    return {m_resources, m_execution};
+  }
 
   size_t
   num_runs() const
@@ -1578,20 +1563,14 @@ public:
     m_execution.wait();
   }
 
-  void
-  sleep(uint32_t sleep_ms) const
-  {
-    XRT_DEBUGF("recipe::sleep(%d)\n", sleep_ms);
-    m_execution.sleep(sleep_ms);
-  }
-
-  report
+  json
   get_report() const
   {
-    report rpt;
-    rpt.add(m_header.get_report());
-    rpt.add(m_resources.get_report());
-    rpt.add(m_execution.get_report());
+    json rpt = json::object();
+    insert_json_object(rpt, m_header.get_report());
+    insert_json_object(rpt, m_resources.get_report());
+    insert_json_object(rpt, m_execution.get_report());
+    rpt["resources"]["runs"] = num_runs();
     return rpt;
   }
 
@@ -1908,23 +1887,24 @@ class profile
       }
     }
 
-    // Unconditioally bind all resources buffers tothe recipe per json
+    // Unconditioally bind all resources buffers to the recipe
+    // execution.  This function is used for cloned recipe executions.
     void
-    bind(recipe& rr)
+    bind(recipe::execution& re)
     {
       for (auto& [name, node] : m_bindings)
-        rr.bind(name, m_xrt_bos.at(name));
+        re.bind(name, m_xrt_bos.at(name));
     }
 
     // Binding buffers can be re-bound before iterating
     // execution of the recipe.  Re-binding is guarded by 
     // execution::iteration::bind and bindings::rebind
     void
-    rebind(recipe& rr)
+    rebind(recipe::execution& re)
     {
       for (auto& [name, node] : m_bindings)
         if (node.value<bool>("rebind", false))
-          rr.bind(name, m_xrt_bos.at(name));
+          re.bind(name, m_xrt_bos.at(name));
     }
   }; // class profile::bindings
 
@@ -1932,14 +1912,16 @@ class profile
   //
   // {
   //  "execution" : {
-  //    "iterations": 2,   (1)
-  //    "verbose": bool,   (true)
-  //    "validate": bool,  (false)
+  //    "iterations": 2,    (1)
+  //    "verbose": bool,    (true)
+  //    "validate": bool,   (false)
+  //    "mode" : mode       (none)
+  //    "depth": depth      (1)
   //    "iteration" : {
-  //      "bind": false,   (false)
-  //      "init": true,    (false)
-  //      "wait": true,    (false)
-  //      "validate": true (false)
+  //      "bind": false,    (false)
+  //      "init": true,     (false)
+  //      "wait": true,     (false)
+  //      "validate": true  (false)
   //    }
   //  }
   //
@@ -1949,6 +1931,10 @@ class profile
   // - "verbose" can be used to turn off printing of metrics
   // - "validate" enables validation per binding nodes after all
   //   iterations have completed
+  // - "mode" specifies the mode of execution.
+  // - "depth" specifies the depth of the recipe runlist, e.g. how
+  //    many times the runlist should be duplicated. A value of 1
+  //    indicates no duplication.
   //
   // The behavior of an iteration is within the iteration sub-node.
   // - "bind" indicates if buffers should be re-bound to the
@@ -1963,34 +1949,184 @@ class profile
   class execution
   {
     using iteration_node = json;
+
+    // class executor - Manages execution of the profile
+    //
+    // Depending on the execution mode, it may be necessary to clone
+    // the recipe execution section depth number of times.  This class
+    // manages execution of the recipe whether its runs (runlist) is
+    // cloned or not.
+    class executor
+    {
+      profile* m_profile;
+
+      recipe::execution* m_base;
+      std::vector<recipe::execution> m_copies;
+
+      static std::vector<recipe::execution>
+      create_execution_copies(recipe* recipe, size_t depth)
+      {
+        std::vector<recipe::execution> copies;
+        for (size_t i = 1; i < depth; ++i)
+          copies.emplace_back(recipe->clone_execution());
+
+        return copies;
+      }
+      
+    public:
+      executor(profile* profile, recipe* recipe, size_t depth)
+        : m_profile{profile}
+        , m_base{recipe->get_execution()}
+        , m_copies{create_execution_copies(recipe, depth)}
+      {
+        // Bind buffers to the recipe execution objects prior to
+        // executing the recipe. This will bind the buffers which have
+        // binding::bind set to true.
+        bind();
+      }
+
+      void
+      execute_iteration(size_t iteration)
+      {
+        // First iteration, start all
+        if (iteration == 0) {
+          m_base->execute(iteration);
+
+          for (auto& exec : m_copies)
+            exec.execute(iteration);
+
+          return;
+        }
+        
+        // Wait until previous iteration run is done then restart
+        // This operates under the assumption that execution is
+        // sequential and in-order of submission.
+        m_base->wait();
+        m_base->execute(iteration);
+
+        for (auto& exec : m_copies) {
+          exec.wait();
+          exec.execute(iteration);
+        }
+      }
+
+      // Bind buffers to recipe and to recipe::execution copies.
+      void
+      bind()
+      {
+        m_profile->bind(*m_base);
+        for (auto& exec : m_copies)
+          m_profile->bind(exec);
+      }
+
+      // Re-bind buffers to recipe and to recipe::execution copies.
+      void
+      rebind()
+      {
+        m_profile->rebind(*m_base);
+        for (auto& exec : m_copies)
+          m_profile->rebind(exec);
+      }
+
+      // Wait for recipe execution completion and copies
+      void
+      wait()
+      {
+        m_base->wait();
+        for (auto& exec : m_copies)
+          exec.wait();
+      }
+    }; // class profile::execution::executor
+
+    // Mode of execution
+    enum class mode { none, latency, throughput };
+    
     profile* m_profile;
-    size_t m_iterations;
+    std::string m_name;
+    mode m_mode = mode::none;
+    size_t m_depth = 1;
+    executor m_executor;
+    size_t m_iterations = 1;
     iteration_node m_iteration;
-    mutable report m_report;
     bool m_verbose = false;
     bool m_validate = false;
+    bool m_legacy = false;
+    mutable json m_report;
+
+    static mode
+    to_mode(const std::string& mstr)
+    {
+      static const std::map<std::string, mode> mode_map{
+        {"default", mode::none},
+        {"latency", mode::latency},
+        {"throughput", mode::throughput}
+      };
+
+      if (auto itr = mode_map.find(mstr); itr != mode_map.end())
+        return itr->second;
+
+      throw profile_error("bad execution mode: " + mstr);
+    };
+
+    static std::string
+    to_string(mode m)
+    {
+      static const std::map<mode, std::string> mode_map{
+        {mode::none, "default"},
+        {mode::latency, "latency"},
+        {mode::throughput, "throughput"}
+      };
+
+      if (auto itr = mode_map.find(m); itr != mode_map.end())
+        return itr->second;
+
+      throw std::runtime_error("bad execution mode: " + std::to_string(static_cast<int>(m)));
+    }
+
+    static iteration_node
+    get_iteration_node(mode m, const json& j)
+    {
+      if (m == mode::none)
+        return j.value("iteration", json::object());
+
+      // latency and throughput modes do not support iteration node
+      return json::object();
+    }
+
+    static size_t
+    get_depth(mode m, const json& j)
+    {
+      // For throughput, the default depth is 2
+      if (m == mode::throughput)
+        return j.value("depth", 2);
+
+      // Only throughput mode supports depth of recipe
+      return 1;
+    }
 
     void
     execute_iteration(size_t iteration)
     {
       // Bind buffers to recipe if requested.  All buffers are bound
-      // when created, so this is for subsequent iterations only
+      // when created, so this is for subsequent iterations
+      // only. Binding must to through executor which could have clone
+      // the recipe.
       if (iteration > 0 && m_iteration.value("bind", false))
-        m_profile->rebind();
+        m_executor.rebind();
       
       // Initialize buffers if requested.  All buffers are initialized
       // when created, so this is for subsequent iterations only
       if (iteration > 0 && m_iteration.value("init", false))
         m_profile->reinit(iteration);
-      
-      m_profile->execute_recipe(iteration);
+
+      m_executor.execute_iteration(iteration);
 
       // Wait execution to complete if requested
       if (m_iteration.value("wait", false))
-        m_profile->wait_recipe();
+        m_executor.wait();
 
       if (auto sleep_ms = m_iteration.value("sleep", 0))
-        m_profile->sleep_recipe(sleep_ms);
+        m_profile->sleep(sleep_ms);
 
       // Validate if requested (implies wait)
       if (m_iteration.value("validate", false))
@@ -1998,55 +2134,70 @@ class profile
     }
 
   public:
-    execution(profile* pr, const json& j)
+    execution(profile* pr, recipe* rr, const json& j, bool legacy = false)
       : m_profile(pr)
+      , m_name(j.value("name", "default"))
+      , m_mode(to_mode(j.value("mode", "default")))
+      , m_depth(get_depth(m_mode, j))
+      , m_executor{m_profile, rr, m_depth}
       , m_iterations(j.value("iterations", 1))
-      , m_iteration(j.value("iteration", json::object()))
+      , m_iteration(get_iteration_node(m_mode, j))
       , m_verbose(j.value("verbose", true))
       , m_validate(j.value("validate", false))
-    {
-      // Bind buffers to the recipe prior to executing the recipe. This
-      // will bind the buffers which have binding::bind set to true.
-      m_profile->bind();
-    }
+      , m_legacy(legacy)
+    {}
 
     // Execute the profile
     void
     execute()
     {
+      XRT_DEBUGF("execution::execute(%s) depth(%d) mode(%s)\n",  m_name.c_str(), m_depth, to_string(m_mode).c_str());
       unsigned long long time_ns = 0;
       {
         xrt_core::time_guard tg(time_ns);
         for (size_t i = 0; i < m_iterations; ++i)
           execute_iteration(i);
-
-        m_profile->wait_recipe();
-
-        if (m_validate)
-          m_profile->validate();
+        
+        m_executor.wait();
       }
 
-      auto num_runs = m_profile->num_recipe_runs();
+      if (m_validate)
+        m_profile->validate();
 
       // NOLINTBEGIN
       auto elapsed = time_ns / 1000;
-      auto latency = time_ns / (1000 * m_iterations * num_runs);
-      auto throughput = (1000000000 * m_iterations * num_runs) / time_ns;
-      m_report.add(report::section_type::cpu, {{"elapsed", elapsed}});
-      m_report.add(report::section_type::cpu, {{"latency", latency}});
-      m_report.add(report::section_type::cpu, {{"throughput", throughput}});
-      if (m_verbose) {
-        std::cout << "Elapsed time (us): " << elapsed << "\n";
-        std::cout << "Average Latency (us): " << latency << "\n";
-        std::cout << "Average Throughput (op/s): " << throughput << "\n";
-      }
+      auto latency = time_ns / (1000 * m_iterations * m_depth);
+      auto throughput = (1000000000 * m_iterations * m_depth) / time_ns;
       // NOLINTEND
+
+      m_report["cpu"]["elapsed"] = elapsed;
+      if (m_legacy || m_mode == mode::latency)
+        m_report["cpu"]["latency"] = latency;
+
+      if (m_legacy || m_mode == mode::throughput)
+        m_report["cpu"]["throughput"] = throughput;
+
+      if (m_verbose) {
+        std::cout << "Execution profile: " << m_name << "\n";
+        std::cout << "Elapsed time (us): " << elapsed << "\n";
+        if (m_legacy || m_mode == mode::latency)
+          std::cout << "Average Latency (us): " << latency << "\n";
+
+        if (m_legacy || m_mode == mode::throughput)
+          std::cout << "Average Throughput (op/s): " << throughput << "\n";
+      }
     }
 
-    report
+    json
     get_report() const
     {
-      m_report.add(report::section_type::cpu, {{"iterations", m_iterations}});
+      m_report["name"] = m_name;
+      m_report["iterations"] = m_iterations;
+      if (!m_legacy) {
+        m_report["depth"] = m_depth;
+        m_report["mode"] = to_string(m_mode);
+      }
+
       return m_report;
     }
   }; // class profile::execution
@@ -2062,23 +2213,18 @@ private:
   recipe m_recipe;
   bindings m_bindings;
   execution m_execution;
+  std::vector<std::unique_ptr<execution>> m_executions;
 
-  size_t
-  num_recipe_runs() const
+  void
+  bind(recipe::execution& exec)
   {
-    return m_recipe.num_runs();
+    m_bindings.bind(exec);
   }
 
   void
-  bind()
+  rebind(recipe::execution& exec)
   {
-    m_bindings.bind(m_recipe);
-  }
-
-  void
-  rebind()
-  {
-    m_bindings.rebind(m_recipe);
+    m_bindings.bind(exec);
   }
 
   void
@@ -2100,21 +2246,10 @@ private:
   }
 
   void
-  execute_recipe(size_t idx)
+  sleep(uint32_t sleep_ms) const
   {
-    m_recipe.execute(idx);
-  }
-
-  void
-  wait_recipe()
-  {
-    m_recipe.wait();
-  }
-
-  void
-  sleep_recipe(uint32_t time_ms)
-  {
-    m_recipe.sleep(time_ms);
+    XRT_DEBUGF("profile::sleep(%d)\n", sleep_ms);
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   }
 
 private:
@@ -2139,6 +2274,22 @@ private:
     return j.value("/execution/runlist_threshold"_json_pointer, default_runlist_threshold);
   }
 
+  // There is a windows compiler bug here.  This function should not use
+  // std::unique_ptr but rather by-value profile::execution, but that fails
+  // to compile, even as it works as expected with GCC.
+  // static std::vector<xecution>
+  static std::vector<std::unique_ptr<execution>>
+  create_executions(profile* profile, recipe* recipe, const json& j)
+  {
+    //std::vector<execution> executions;
+    std::vector<std::unique_ptr<execution>> executions;
+    for (const auto& [name, node] : j.items())
+      //executions.emplace_back(profile, recipe, node);
+      executions.emplace_back(std::make_unique<execution>(profile, recipe, node));
+
+    return executions;
+  }
+
 public:
   // profile - constructor
   //
@@ -2155,7 +2306,8 @@ public:
     , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
     , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo.get()}
     , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo.get()}
-    , m_execution(this, m_profile_json.value("execution", json::object()))
+    , m_execution(this, &m_recipe, m_profile_json.value("execution", json::object()), true)
+    , m_executions(create_executions(this, &m_recipe, m_profile_json.value("executions", json::object())))
   {}
 
   void
@@ -2167,7 +2319,12 @@ public:
   void
   execute()
   {
-    m_execution.execute();
+    // legacy
+    if (m_executions.empty())
+      m_execution.execute();
+    
+    for (auto& exec : m_executions)
+      exec->execute();
   }
 
   void
@@ -2177,12 +2334,22 @@ public:
     // so a noop here
   }
 
-  report
+  json
   get_report() const
   {
-    report rpt;
-    rpt.add(m_recipe.get_report());
-    rpt.add(m_execution.get_report());
+    json rpt = json::object();
+    insert_json_object(rpt, m_recipe.get_report());
+
+    if (m_executions.empty()) {
+      insert_json_object(rpt, m_execution.get_report());
+      return rpt;
+    }
+    else {
+      rpt["executions"] = json::array();
+      for (auto& exec : m_executions)
+        rpt["executions"].push_back(exec->get_report());
+    }
+
     return rpt;
   }
 
@@ -2268,7 +2435,7 @@ public:
   std::string
   get_report() const override
   {
-    return m_recipe.get_report().to_string();
+    return m_recipe.get_report().dump();
   }
 
   xrt::detail::span<const std::byte>
@@ -2317,7 +2484,7 @@ public:
   std::string
   get_report() const override
   {
-    return m_profile.get_report().to_string();
+    return m_profile.get_report().dump();
   }
 
   xrt::detail::span<const std::byte>

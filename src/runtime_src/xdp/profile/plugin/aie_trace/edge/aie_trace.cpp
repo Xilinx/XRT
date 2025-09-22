@@ -903,11 +903,13 @@ namespace xdp {
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet)) {
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
-            cfgTile->interface_tile_trace_config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+            if (channelNum < tile.mm2s_names.size())
+              cfgTile->interface_tile_trace_config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
           }
           else {
             cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
-            cfgTile->interface_tile_trace_config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+            if (channelNum < tile.s2mm_names.size())
+              cfgTile->interface_tile_trace_config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
           }
         }
       } // interface tiles

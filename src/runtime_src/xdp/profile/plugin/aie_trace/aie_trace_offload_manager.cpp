@@ -173,8 +173,7 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(uint8_t memIndex, uint64_
           io_type::PLIO // offload type
         );
         writers.push_back(writer);
-        db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(),
-                                          "AIE_EVENT_TRACE");
+        db->addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_TRACE", deviceID);
 
         std::stringstream msg;
         msg << "Creating AIE trace file " << fileName << " for device " << deviceID;
@@ -198,8 +197,7 @@ uint64_t AIETraceOffloadManager::checkAndCapToBankSize(uint8_t memIndex, uint64_
           io_type::GMIO // offload type
         );
         writers.push_back(writer);
-        db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(),
-                                          "AIE_EVENT_TRACE");
+        db->addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_TRACE", deviceID);
 
         std::stringstream msg;
         msg << "Creating AIE trace file " << fileName << " for device " << deviceID;

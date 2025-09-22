@@ -17,12 +17,13 @@ file(GLOB OPENCL_DEVICE_OFFLOAD_PLUGIN_FILES
   "${PROFILE_DIR}/writer/device_trace/*.cpp"
 )
 
-add_library(xdp_device_offload_plugin MODULE ${OPENCL_DEVICE_OFFLOAD_PLUGIN_FILES})
+add_library(xdp_device_offload_plugin SHARED ${OPENCL_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl xrt_coreutil)
 target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl xrt_coreutil)
 
 set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_device_offload_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  RUNTIME DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} ${XRT_NAMELINK_SKIP}
 )

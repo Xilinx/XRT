@@ -1,11 +1,8 @@
-/**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- */
-
-#ifndef _XRT_VERSION_H_
-#define _XRT_VERSION_H_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_VERSION_H_
+#define XRT_VERSION_H_
 
 static const char xrt_build_version[] = "@XRT_VERSION_STRING@";
 
@@ -22,14 +19,11 @@ static const char xrt_build_version_date[] = "@XRT_DATE@";
 static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 
 #define XRT_DRIVER_VERSION "@XRT_VERSION_STRING@,@XRT_HASH@"
-
-#define XRT_VERSION(major, minor) ((major << 16) + (minor))
-#define XRT_VERSION_CODE XRT_VERSION(@XRT_VERSION_MAJOR@, @XRT_VERSION_MINOR@)
-#define XRT_MAJOR(code) ((code >> 16))
-#define XRT_MINOR(code) (code - ((code >> 16) << 16))
 #define XRT_PATCH @XRT_VERSION_PATCH@
 #define XRT_HEAD_COMMITS @XRT_HEAD_COMMITS@
 #define XRT_BRANCH_COMMITS @XRT_BRANCH_COMMITS@
+
+#include "xrt/detail/version-slim.h"
 
 #ifdef __cplusplus
 #include <iostream>

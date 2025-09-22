@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,8 +25,10 @@
 
 #include "xdp/config.h"
 #include "xdp/profile/database/dynamic_event_database.h"
+#include "xdp/profile/database/run_summary_manager.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/statistics_database.h"
+#include "xrt/xrt_uuid.h"
 
 namespace xdp {
 
@@ -63,7 +65,14 @@ namespace xdp {
 
     // Additionally, for summary generation, the database must expose
     //  what plugins were loaded and what information is available
-    uint64_t pluginInfo ;
+    uint64_t pluginInfo;
+
+    // A map of all hardware context specific device IDs to the xclbin uuid
+    // associated with that context.
+    std::map<uint64_t, xrt_core::uuid> contextToUUID;
+
+    // Each application run will have a single run summary, managed here.
+    RunSummaryManager runSummary;
 
     // A map of Device SysFs Path to Device Id
     std::map<std::string, uint64_t> devices;
@@ -89,6 +98,27 @@ namespace xdp {
     inline void unregisterPlugin(XDPPlugin* p) { plugins.remove(p) ; }
     inline void registerInfo(uint64_t info)    { pluginInfo |= info ; }
     inline bool infoAvailable(uint64_t info)   { return (pluginInfo&info)!=0; }
+
+    // Functions associated with the context mapping (used by summary writer)
+    inline std::map<uint64_t, xrt_core::uuid>& getContextMapping()
+    { return contextToUUID; }
+
+    XDP_CORE_EXPORT void associateContextWithId(uint64_t contextId, void* handle);
+
+    // Functions that access the Run Summary Manager
+    inline void addOpenedFile(const std::string& name,
+			      const std::string& type,
+			      uint64_t deviceId = 0)
+    { runSummary.addOpenedFile(name, type, deviceId); }
+
+    inline std::vector<OpenedFileDescriptor>& getOpenedFiles()
+    { return runSummary.getOpenedFiles(); }
+
+    inline std::vector<SystemDiagramEntry> getSystemDiagrams()
+    { return runSummary.getSystemDiagrams(); }
+
+    inline void updateSystemDiagram(const char* data, size_t sz)
+    { runSummary.updateSystemDiagram(data, sz, 0); }
 
     XDP_CORE_EXPORT uint64_t addDevice(const std::string&);
     XDP_CORE_EXPORT uint64_t getDeviceId(const std::string&);

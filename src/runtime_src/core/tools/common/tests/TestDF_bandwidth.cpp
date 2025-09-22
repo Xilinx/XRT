@@ -20,7 +20,7 @@ TestDF_bandwidth::TestDF_bandwidth()
 {}
 
 boost::property_tree::ptree
-TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
+TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::df_bandwidth_recipe);
@@ -38,7 +38,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
     auto report = json::parse(runner.get_report());
     auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-    auto iterations = report["cpu"]["iterations"].get<int>();
+    auto iterations = report["iterations"].get<int>();
 
     // Used buffer in runner is 1GB in size, thus reporting in GB/s
     double bandwidth = (2 * iterations ) / (elapsed_us / 1000000); // NOLINT: Runner reports in microseconds, so conversion is required until request supports timescales

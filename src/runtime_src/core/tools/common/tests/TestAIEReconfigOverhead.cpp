@@ -15,7 +15,7 @@ TestAIEReconfigOverhead::TestAIEReconfigOverhead()
 {}
 
 boost::property_tree::ptree
-TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
+TestAIEReconfigOverhead::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string recipe = xrt_core::device_query<xrt_core::query::runner>(dev, xrt_core::query::runner::type::aie_reconfig_overhead_recipe);
@@ -44,7 +44,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
     report = json::parse(runner.get_report());
     auto elapsed_nop = report["cpu"]["elapsed"].get<double>();
 
-    auto iterations = report["cpu"]["iterations"].get<double>(); 
+    auto iterations = report["iterations"].get<double>(); 
     double overhead = (elapsed - elapsed_nop) / (iterations * 1000); //NOLINT conversion to ms 
 
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: %.1f ms") % overhead));

@@ -78,7 +78,12 @@ AIEControlConfigFiletype::getPartitionOverlayStartCols() const {
 std::vector<std::string>
 AIEControlConfigFiletype::getValidGraphs() const
 {
-    return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
+    std::vector<std::string> graphs;
+    for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+        auto graphName = graph.second.get<std::string>("name");
+        graphs.push_back(graphName);
+    }
+    return graphs;
 }
 
 std::vector<std::string>
@@ -344,16 +349,35 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Check if tile was already found
         auto it = std::find_if(tiles.begin(), tiles.end(), compareTileByLoc(tile));
         if (it != tiles.end()) {
-            // Add to existing lists of stream IDs, master/slave, and port names
+            // Add to the existing lists of stream IDs and master/slave
             it->stream_ids.push_back(streamId);
             it->is_master_vec.push_back(isMaster);
-            it->port_names.push_back(name);
+
+            // Use direct indexing by streamId with bounds checking
+            if (streamId < it->port_names.size()) {
+                it->port_names[streamId] = name;
+            } else {
+                xrt_core::message::send(severity_level::info, "XRT",
+                    "Interface tile streamId " + std::to_string(streamId) +
+                    " exceeds maximum ports (" + std::to_string(it->port_names.size()) +
+                    "). Unable to store port name.");
+            }
         }
         else {
-            // Grab first stream ID and add to list of tiles
+            // Add first stream ID and master/slave to vectors
             tile.stream_ids.push_back(streamId);
             tile.is_master_vec.push_back(isMaster);
-            tile.port_names.push_back(name);
+
+            // Set port name at specific index with bounds checking
+            if (streamId < tile.port_names.size()) {
+                tile.port_names[streamId] = name;
+            } else {
+                xrt_core::message::send(severity_level::info, "XRT",
+                    "Interface tile streamId " + std::to_string(streamId) +
+                    " exceeds maximum ports (" + std::to_string(tile.port_names.size()) +
+                    "). Unable to store port name.");
+            }
+
             tile.subtype = type;
             tiles.emplace_back(std::move(tile));
         }
@@ -403,9 +427,6 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = shared_buffer.second.get<uint8_t>("column");
         tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
-        // Ensure vectors are re-sized for direct indexing by channel
-        tile.s2mm_names.resize(NUM_MEM_CHANNELS, "unused");
-        tile.mm2s_names.resize(NUM_MEM_CHANNELS, "unused");
 
         // Store names of DMA channels for reporting purposes
         for (auto& chan : shared_buffer.second.get_child("dmaChannels")) {

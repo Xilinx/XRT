@@ -56,6 +56,20 @@ get_module(const xrt::hw_context& hwctx, const std::string& kname);
 size_t
 get_partition_size(const xrt::hw_context&);
 
+// get_elf_flow() - Returns true if hwctx was created with elf file/flow
+// Returns false everywhere else
+XRT_CORE_COMMON_EXPORT
+bool
+get_elf_flow(const xrt::hw_context& ctx);
+
+// Get the scratchpad memory buffer for a given hardware context
+const xrt::bo&
+get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
+
+// Dump scratch pad mem buffer contents into a file when ini option is enabled
+void
+dump_scratchpad_mem(const xrt::hw_context& hwctx);
+
 }} // hw_context_int, xrt_core
 
 #endif

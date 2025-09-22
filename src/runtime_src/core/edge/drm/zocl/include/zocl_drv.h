@@ -25,6 +25,7 @@
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/dma-buf.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 #include <drm/drm_gem_dma_helper.h>
 #else
@@ -154,6 +155,10 @@ struct drm_zocl_bo {
 	dma_addr_t			phys;
 	size_t				size;
 	int				mem_region;
+
+	/* for prime import/export */
+	struct dma_buf			*dma_buf;
+	struct dma_buf_attachment	*attach;
 };
 
 struct drm_zocl_copy_bo {
@@ -177,6 +182,13 @@ drm_zocl_bo *to_zocl_bo(struct drm_gem_object *bo)
 {
 	return (struct drm_zocl_bo *) bo;
 }
+
+static inline struct drm_zocl_bo *to_drm_zocl_bo(struct drm_gem_object *gobj)
+{
+	return container_of(gobj, struct drm_zocl_bo, cma_base.base);
+}
+
+#define is_imported_bo(zocl_obj) ((zocl_obj)->attach)
 
 static inline bool
 zocl_bo_userptr(const struct drm_zocl_bo *bo)
@@ -257,6 +269,8 @@ void zocl_free_userptr_bo(struct drm_gem_object *obj);
 void zocl_free_host_bo(struct drm_gem_object *obj);
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
+
+struct drm_gem_object *zocl_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf);
 
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);

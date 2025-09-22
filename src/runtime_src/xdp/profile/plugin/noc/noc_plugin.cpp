@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
- * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -54,7 +54,7 @@ namespace xdp {
                                                   deviceName.c_str(),
                                                   index) ;
         writers.push_back(writer);
-        db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
+        db->addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
       } catch (const std::runtime_error &) {
         break;
       }

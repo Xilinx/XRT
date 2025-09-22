@@ -26,8 +26,6 @@ class exception : public std::exception
 
 } // namespace xrt
 
-#else
-# pragma message("Warning: xrt_exception is only implemented for C++")
 #endif // __cplusplus
 
 #endif

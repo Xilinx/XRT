@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,7 +59,7 @@ namespace xdp {
         std::string logFileName =
           xrt_core::config::detail::get_string_value("Debug.xocl_log",
                                                      "xocl.log") ;
-        db->getStaticInfo().addOpenedFile(logFileName, "XOCL_EVENTS") ;
+        db->addOpenedFile(logFileName, "XOCL_EVENTS") ;
       }
     }
     is_write_thread_active = false;
@@ -82,13 +82,13 @@ namespace xdp {
     // For hardware emulation flows, check to see if there is a wdb and wcfg
     char* wdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME") ;
     if (wdbFile != nullptr) {
-      (db->getStaticInfo()).addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
+      db->addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
 
       // Also the wcfg
       std::string configName(wdbFile) ;
       configName = configName.substr(0, configName.rfind('.')) ;
       configName += ".wcfg" ;
-      (db->getStaticInfo()).addOpenedFile(configName, "WAVEFORM_CONFIGURATION");
+      db->addOpenedFile(configName, "WAVEFORM_CONFIGURATION");
     }
   }
 
@@ -158,7 +158,7 @@ namespace xdp {
       for (auto w : writers) {
         bool success = w->write(openNewFiles);
         if (openNewFiles && success)
-          (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type);
+          db->addOpenedFile(w->getcurrentFileName().c_str(), type);
       }
       mtx_writer_list.unlock();
     }

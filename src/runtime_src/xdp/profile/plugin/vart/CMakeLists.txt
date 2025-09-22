@@ -13,11 +13,13 @@ file(GLOB VART_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/vart/*.cpp"
 )
 
-add_library(xdp_vart_plugin MODULE ${VART_PLUGIN_FILES})
+add_library(xdp_vart_plugin SHARED ${VART_PLUGIN_FILES})
 add_dependencies(xdp_vart_plugin xdp_core)
 target_link_libraries(xdp_vart_plugin PRIVATE xdp_core)
 
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_vart_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT})
+  RUNTIME DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} ${XRT_NAMELINK_SKIP}
+)

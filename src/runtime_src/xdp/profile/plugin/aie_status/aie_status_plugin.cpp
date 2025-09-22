@@ -124,7 +124,7 @@ namespace xdp {
     // Note: in the future, we could support user-defined tile sets
     auto graphs = metadataReader->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
+      mGraphCoreTilesMap[graph] = metadataReader->getTiles(graph, module_type::core, "all");
     }
 
    // NOTE: AIE Status is not released product on client. Whenever client support is needed,
@@ -496,7 +496,7 @@ namespace xdp {
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen, mXrtCoreDevice);
     writers.push_back(aieWriter);
-    db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    db->addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE status thread
     mThreadCtrlMap[handle] = true;

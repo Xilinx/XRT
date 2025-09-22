@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -23,7 +23,7 @@ TestVerify::TestVerify()
                 false){}
 
 boost::property_tree::ptree
-TestVerify::run(std::shared_ptr<xrt_core::device> dev)
+TestVerify::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree;
   ptree = get_test_header();

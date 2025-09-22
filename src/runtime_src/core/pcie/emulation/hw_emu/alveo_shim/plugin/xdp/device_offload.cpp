@@ -35,22 +35,19 @@ namespace device_offload {
                                 warning_callbacks) ;
   }
 
-  std::function<void (void*)> update_device_cb ;
+  std::function<void (void*, bool)> update_device_cb ;
   std::function<void (void*)> flush_device_cb ;
 
   void register_callbacks(void* handle)
   {
     using cb_type = void (*)(void*) ;
+    using ud_type = void (*)(void*, bool);
 
     update_device_cb =
-      reinterpret_cast<cb_type>(xrt_core::dlsym(handle, "updateDeviceHWEmu")) ;
-    if (xrt_core::dlerror() != nullptr)
-      update_device_cb = nullptr ;
+      reinterpret_cast<ud_type>(xrt_core::dlsym(handle, "updateDeviceHWEmu")) ;
 
     flush_device_cb =
       reinterpret_cast<cb_type>(xrt_core::dlsym(handle, "flushDeviceHWEmu")) ;
-    if (xrt_core::dlerror() != nullptr)
-      flush_device_cb = nullptr ;
   }
 
   void warning_callbacks()
@@ -63,7 +60,7 @@ namespace device_offload {
   void update_device(void* handle)
   {
     if (device_offload::update_device_cb != nullptr)
-      device_offload::update_device_cb(handle) ;
+      device_offload::update_device_cb(handle, false) ;
   }
 
   void flush_device(void* handle)

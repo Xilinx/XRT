@@ -87,9 +87,16 @@ register_callbacks(void* handle)
 void 
 load()
 {
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  // On Windows client, load AIE profiling from the SDK location
+  static xrt_core::sdk_loader xdp_aie_loader("xdp_aie_profile_plugin",
+                                             register_callbacks,
+                                             warning_callbacks_empty);
+#else
   static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
                                                 register_callbacks,
                                                 warning_callbacks_empty);
+#endif
 }
 
 void
@@ -359,9 +366,16 @@ register_callbacks(void* handle)
 void 
 load()
 {
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  // On Windows client, load AIE trace from the SDK location
+  static xrt_core::sdk_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
+                                                   register_callbacks,
+                                                   warning_callbacks_empty);
+#else
   static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
                                                 register_callbacks,
                                                 warning_callbacks_empty);
+#endif
 }
 
 void 
@@ -410,9 +424,16 @@ register_callbacks(void* handle)
 void
 load()
 {
+#if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
+  // On Windows client, load AIE Halt from the SDK location
+  static xrt_core::sdk_loader xdp_aie_halt_loader("xdp_aie_halt_plugin",
+                                                  register_callbacks,
+                                                  warning_callbacks_empty);
+#else
   static xrt_core::module_loader xdp_aie_halt_loader("xdp_aie_halt_plugin",
                                                      register_callbacks,
                                                      warning_callbacks_empty);
+#endif
 }
 
 void

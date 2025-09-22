@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -13,7 +14,7 @@ TestSCVersion::TestSCVersion()
                 "Check if SC firmware is up-to-date"){}
 
 boost::property_tree::ptree
-TestSCVersion::run(std::shared_ptr<xrt_core::device> dev)
+TestSCVersion::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 

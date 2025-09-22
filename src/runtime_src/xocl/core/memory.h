@@ -654,6 +654,8 @@ private:
 
 class image : public buffer
 {
+  using memidx_type = xclbin::memidx_type;
+
   struct image_info {
     cl_image_format fmt;
     cl_image_desc desc;
@@ -738,8 +740,8 @@ public:
     m_slice_pitch = pitch;
   }
 
-  virtual buffer_object_handle
-  get_buffer_object(device* device);
+  buffer_object_handle
+  get_buffer_object(device* device, memidx_type subidx=-1) override;
 
 private:
 

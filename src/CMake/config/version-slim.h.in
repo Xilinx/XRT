@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_VERSION_SLIM_H_
+#define XRT_VERSION_SLIM_H_
+
+// This header contains minimal version info needed for xrt/detail/abi.h header
+
+#define XRT_VERSION(major, minor) ((major << 16) + (minor))
+#define XRT_VERSION_CODE XRT_VERSION(@XRT_VERSION_MAJOR@, @XRT_VERSION_MINOR@)
+#define XRT_MAJOR(code) ((code >> 16))
+#define XRT_MINOR(code) (code - ((code >> 16) << 16))
+
+#endif

@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_DETAIL_ABI_H
 #define XRT_DETAIL_ABI_H
 
-// Generated version.h file is installed into include/xrt/detail/version.h
-// but at build time it is picked up from compile include search path
-#if defined(XRT_BUILD) && !defined(DISABLE_ABI_CHECK)
-# include "version.h"
-#elif !defined(XRT_BUILD)
-# include "xrt/detail/version.h"
+#if !defined(DISABLE_ABI_CHECK)
+# include "xrt/detail/version-slim.h"
 #endif
 
 #ifdef __cplusplus
@@ -34,7 +30,7 @@ struct abi {
   const unsigned int major {0};
   const unsigned int minor {0};
   const unsigned int code  {0};
-#endif
+#endif  
 };
 
 }} // detail, xrt
