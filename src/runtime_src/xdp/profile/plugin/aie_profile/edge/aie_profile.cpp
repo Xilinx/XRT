@@ -108,36 +108,16 @@ namespace xdp {
   }
 
   void AieProfile_EdgeImpl::updateDevice() {
-      if (!checkAieDevice(metadata->getDeviceID(), metadata->getHandle()))
-        return;
+    if (!checkAieDevice(metadata->getDeviceID(), metadata->getHandle()))
+      return;
 
-      bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
-  
-      if (!runtimeCounters) {
-        std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(metadata->getHandle());
-        auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
-
-        if (counters.empty()) {
-          xrt_core::message::send(severity_level::warning, "XRT", 
-            "AIE Profile Counters were not found for this design. Please specify tile_based_[aie|aie_memory|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
-          (db->getStaticInfo()).setIsAIECounterRead(metadata->getDeviceID(),true);
-          return;
-        }
-        else {
-          XAie_DevInst* aieDevInst =
-            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, metadata->getHandle(), metadata->getDeviceID()));
-
-          for (auto& counter : counters) {
-            tile_type tile;
-            auto payload = getCounterPayload(aieDevInst, tile, module_type::core, counter.column, 
-                                             counter.row, counter.startEvent, "N/A", 0);
-
-            (db->getStaticInfo()).addAIECounter(metadata->getDeviceID(), counter.id, counter.column,
-                counter.row, counter.counterNumber, counter.startEvent, counter.endEvent,
-                counter.resetEvent, payload, counter.clockFreqMhz, counter.module, counter.name);
-          }
-        }
-      }
+    bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
+    if (!runtimeCounters) {
+      // No runtime counters means there were no valid metrics configured for profiling this design. There is nothing to profile, so return early.
+      xrt_core::message::send(severity_level::warning, "XRT", 
+        "No valid metric setting found for this design. Please specify valid tile_based_[aie|aie_memory|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini if you want to configure this design.");
+      return;
+    }
   }
 
   // Get reportable payload specific for this tile and/or counter

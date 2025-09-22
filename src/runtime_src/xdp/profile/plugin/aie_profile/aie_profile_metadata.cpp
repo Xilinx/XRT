@@ -122,7 +122,7 @@ namespace xdp {
       "tile_based_aie_metrics", "tile_based_aie_memory_metrics",
       "tile_based_memory_tile_metrics", "tile_based_interface_tile_metrics",
       "interval_us", "interface_tile_latency", "start_type", "start_iteration",
-      "tile_based_microcontroller_metrics"};
+      "tile_based_microcontroller_metrics", "config_one_partition"};
     const std::map<std::string, std::string> deprecatedSettings {
       {"aie_profile_core_metrics", "AIE_profile_settings.graph_based_aie_metrics or tile_based_aie_metrics"},
       {"aie_profile_memory_metrics", "AIE_profile_settings.graph_based_aie_memory_metrics or tile_based_aie_memory_metrics"},

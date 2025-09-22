@@ -28,6 +28,7 @@ namespace xdp {
 
   private:
     static bool live;
+    static bool configuredOnePartition;
     struct AIEData {
       uint64_t deviceID;
       bool valid;
