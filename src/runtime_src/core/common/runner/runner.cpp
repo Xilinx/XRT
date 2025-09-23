@@ -1719,8 +1719,10 @@ class profile
     // init_buffer_file() - Initialize bo from a content of a file
     //
     // "init": {
-    //   "file": "path", // path to file
-    //   "skip": bytes,  // skip fist bytes of file (optional)
+    //   "file": "path",  // path to file
+    //   "skip": bytes,   // skip fist bytes of file (optional)
+    //   "begin": 0,      // offset to start writing at (optional)
+    //   "end": bo.size() // offset to end writing at (optional)
     // }
     //
     // This function fills all the bytes of the buffer with data
@@ -1735,9 +1737,14 @@ class profile
     {
       auto file = node.at("file").get<std::string>();
       auto skip = node.value<size_t>("skip", 0);
+      auto bo_begin = node.value<size_t>("begin", 0);
+      auto bo_end = node.value<size_t>("end", bo.size());
       auto data = m_repo->get(file);
       if (skip > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
+
+      if (bo_begin > bo_end || bo_end > bo.size())
+        throw profile_error("bad begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = std::string_view{data.data() + skip, data.size() - skip};
@@ -1747,20 +1754,23 @@ class profile
       if (!bo)
         bo = xrt::ext::bo{m_device, data.size()};
 
-      // Copy bytes from file to bo, wrap around file if needed to
-      // fill the bo with data from file.   Copy at offset into
-      // bo based on number of bytes left to copy.  Compute file
-      // data range to copy to bo.
-      auto bo_data = bo.map<char*>();
-      auto bytes = bo.size(); // must fill all bytes of bo
+      // Copy bytes from file to bo starting at optional begin offset.
+      // Wrap around file if needed to fill the bo with data from
+      // file.  Copy at offset into bo based on number of bytes left
+      // to copy.
+      auto bo_data = bo.map<char*>() + bo_begin; // past optional begin
+      auto bo_range_bytes = bo_end - bo_begin;  // default bo.size()
+
+      // Must fill all bytes of bo in [begin, end[ range
+      auto bytes = bo_range_bytes;
       XRT_DEBUGF("profile::bindings::init_buffer_file() copying (%d) bytes from file (%s)\n",
                  bytes, file.c_str());
 
       // This loop wraps around the source data if necessary in order
-      // to fill all bytes of the bo.  The loop adjusts for iteration.
+      // to fill all bytes of the bo range.  The loop adjusts for iteration.
       while (bytes) {
-        auto bo_offset = bo.size() - bytes;
-        auto beg = ((iteration * bo.size()) + (bo_offset)) % data.size();
+        auto bo_offset = bo_range_bytes - bytes; // offset within bo_data
+        auto beg = ((iteration * bo_range_bytes) + (bo_offset)) % data.size();
         auto end = std::min<size_t>(beg + bytes, data.size());
         bytes -= end - beg;
 
@@ -1785,10 +1795,10 @@ class profile
       auto bo_data = bo.map<uint8_t*>();
       auto stride = node.at("stride").get<size_t>();
       auto value = node.at("value").get<uint64_t>();
-      auto begin = node.value("begin", 0);
-      auto end = node.value("end", bo.size());
+      auto bo_begin = node.value("begin", 0);
+      auto bo_end = node.value("end", bo.size());
       arg_range<uint8_t> vr{&value, sizeof(value)};
-      for (size_t offset = begin; offset < end; offset += stride) 
+      for (size_t offset = bo_begin; offset < bo_end; offset += stride) 
         std::copy_n(vr.begin(), std::min<size_t>(bo.size() - offset, vr.size()), bo_data + offset);
     }
 
