@@ -130,6 +130,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   std::map<std::string, xrt::module> m_module_map; // map b/w kernel name and module
+  // No. of cols in the AIE partition managed by this hw ctx
+  // Devices with no AIE will have partition size as 0
   uint32_t m_partition_size = 0;
   cfg_param_type m_cfg_param;
   access_mode m_mode;
@@ -187,10 +189,32 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
+  // Gets partition size from xclbin if AIE partition section is present
+  static uint32_t
+  get_partition_size_from_xclbin(const xrt::xclbin& xclbin)
+  {
+    if (!xclbin)
+      return 0;
+
+    try {
+      auto axlf = xclbin.get_axlf();
+      if (!axlf)
+        return 0;
+
+      // try to get partition size from xclbin AIE_METADATA section
+      auto aie_part = xrt_core::xclbin::get_aie_partition(axlf);
+      return aie_part.ncol;
+    }
+    catch (...) {
+      return 0;
+    }
+  }
+
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
+    , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
     , m_cfg_param(std::move(cfg_param))
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
@@ -200,6 +224,7 @@ public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, access_mode mode)
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
+    , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -270,6 +295,7 @@ public:
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       m_partition_size = part_size;
       create_module_map(elf);
+      m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
       return;
     }
@@ -399,7 +425,7 @@ public:
       try {
         // create scratchpad memory buffer using this context
         m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
-                                        size_per_col * m_hdl->get_num_cols()};
+                                        size_per_col * m_partition_size};
       }
       catch (...) { /*do nothing*/ }
     });
