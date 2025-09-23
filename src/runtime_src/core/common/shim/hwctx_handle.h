@@ -55,12 +55,6 @@ public:
   virtual slot_id
   get_slotidx() const = 0;
 
-  virtual size_t
-  get_num_cols() const
-  {
-    throw xrt_core::error(std::errc::not_supported, __func__);
-  }
-
   // Get number of UCs in the hardware context created
   virtual size_t
   get_num_uc() const
