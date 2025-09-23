@@ -295,6 +295,7 @@ public:
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       m_partition_size = part_size;
       create_module_map(elf);
+      m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
       return;
     }
