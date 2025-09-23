@@ -3350,6 +3350,46 @@ class runlist_impl
     }
   }
 
+  void
+  add_run_helper(xrt::run run)
+  {
+    // Get the potentially throwing action out of the way first
+    auto runidx = m_runlist.size();
+    m_runlist.reserve(runidx + 1);
+    m_bos.reserve(runidx + 1);
+
+    auto execbuf = get_cmd_chain_for_run_at_index(runidx);
+    auto [cmd, pkt] = unpack(execbuf);
+    auto chain_data = get_ert_cmd_chain_data(pkt);
+    
+    auto run_impl = run.get_handle();
+    auto run_cmd = run_impl->get_cmd();
+    auto run_bo = run_cmd->get_exec_bo();
+    auto run_bo_props = run_bo->get_properties();
+
+    auto data_idx = chain_data->command_count;
+    chain_data->data[data_idx] = run_bo_props.kmhdl;
+
+    // Let shim handle binding of run_bo arguments to the command
+    // that cahins the run_bo.  This allows pinning if necessary.
+    // May throw, but so far no state change, so still safe.
+    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); 
+
+    // Once a run object is added to a list it will be in a state that
+    // makes it impossible to add to another list or to same list
+    // twice.  This state is managed by the run object itself by
+    // recording this runlist with the run object, but it doesn't 
+    // proctect against caller manually controlling the run object,
+    // which is undefined behavior.  No exceptions after this point.
+    run_impl->set_runlist(this);  // throws or changes state of run
+
+    // Non throwing state change
+    chain_data->command_count++;
+    pkt->count += sizeof(uint64_t) / word_size; // account for added command
+    m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
+    m_bos.push_back(run_bo);              // ptr noexcept
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3454,41 +3494,19 @@ public:
     if (m_state != state::idle)
       throw xrt_core::error("runlist must be idle before adding run objects, current state: " + state_to_string(m_state));
 
-    // Get the potentially throwing action out of the way first
-    auto runidx = m_runlist.size();
-    m_runlist.reserve(runidx + 1);
-    m_bos.reserve(runidx + 1);
+    // Get XDP init runs registered with the hwctx and add to runlist
+    // if not already added.
+    // These runs initializes AI array for profile/trace data
+    // The list can be empty if profile/trace is not enabled
+    if (m_runlist.empty()) {
+      const auto& xdp_init_runs = xrt_core::hw_context_int::get_xdp_init_runs(m_hwctx);
+      for (const auto& init_run : xdp_init_runs) {
+        add_run_helper(init_run);
+      }
+    }
 
-    auto execbuf = get_cmd_chain_for_run_at_index(runidx);
-    auto [cmd, pkt] = unpack(execbuf);
-    auto chain_data = get_ert_cmd_chain_data(pkt);
-    
-    auto run_impl = run.get_handle();
-    auto run_cmd = run_impl->get_cmd();
-    auto run_bo = run_cmd->get_exec_bo();
-    auto run_bo_props = run_bo->get_properties();
-
-    auto data_idx = chain_data->command_count;
-    chain_data->data[data_idx] = run_bo_props.kmhdl;
-
-    // Let shim handle binding of run_bo arguments to the command
-    // that cahins the run_bo.  This allows pinning if necessary.
-    // May throw, but so far no state change, so still safe.
-    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); 
-
-    // Once a run object is added to a list it will be in a state that
-    // makes it impossible to add to another list or to same list
-    // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't 
-    // proctect against caller manually controlling the run object,
-    // which is undefined behavior.  No exceptions after this point.
-    run_impl->set_runlist(this);  // throws or changes state of run
-
-    // Non throwing state change
-    chain_data->command_count++;
-    pkt->count += sizeof(uint64_t) / word_size; // account for added command
-    m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
-    m_bos.push_back(run_bo);              // ptr noexcept
+    // Now add the original run object
+    add_run_helper(std::move(run));
   }
 
   void
@@ -3499,6 +3517,14 @@ public:
 
     if (m_runlist.empty())
       return;
+
+    // Add XDP exit runs if any at the end of runlist before submitting
+    // These runs collect profile/trace data
+    // The list can be empty if profile/trace is not enabled
+    const auto& xdp_exit_runs = xrt_core::hw_context_int::get_xdp_exit_runs(m_hwctx);
+    for (const auto& exit_run : xdp_exit_runs) {
+      add_run_helper(exit_run);
+    }
 
     // Prep each run object
     for (auto& run : m_runlist)
@@ -3539,6 +3565,20 @@ public:
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
+
+    // Remove any XDP exit runs added during execute
+    // This is done because runlist can be reused
+    // and XDP exit runs should be added at end
+    const auto& xdp_exit_runs = xrt_core::hw_context_int::get_xdp_exit_runs(m_hwctx);
+    if (xdp_exit_runs.size() > 0) {
+      // remove the exit runs from the runlist
+      m_runlist.erase(m_runlist.end() - xdp_exit_runs.size(), m_runlist.end());
+
+      // clear the runlist associated with these exit runs
+      for (auto& run : xdp_exit_runs)
+        run.get_handle()->clear_runlist();
+    }
+
     return std::cv_status::no_timeout;
   }
 

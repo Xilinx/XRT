@@ -12,6 +12,7 @@
 #include "core/common/time.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "bo_int.h"
@@ -152,6 +153,11 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // are saved to a scratchpad memory allocated specifically for that context.
   std::once_flag m_scratchpad_init_flag; // used for thread safe lazy init of scratchpad
   xrt::bo m_scratchpad_buf;
+  // Vector of XDP runs to be added at beginning and end of runlist
+  // These runs initializes/configures AI array and collects the profile/trace data
+  std::vector<xrt::run> m_xdp_init_runs;
+  std::vector<xrt::run> m_xdp_exit_runs;
+
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
   bool m_elf_flow = false;
@@ -465,6 +471,33 @@ public:
     msg.append(dump_file_name);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", msg);
   }
+
+  // Callback Functions for XDP to register init and exit runs
+  // that are added to xrt::runlist at start and end respectively
+  void
+  register_xdp_init_run(const xrt::run& run)
+  {
+    m_xdp_init_runs.push_back(run);
+  }
+
+  void
+  register_xdp_exit_run(const xrt::run& run)
+  {
+    m_xdp_exit_runs.push_back(run);
+  }
+
+  // Functions to get XDP init and exit run vectors
+  const std::vector<xrt::run>&
+  get_xdp_init_runs() const
+  {
+    return m_xdp_init_runs;
+  }
+
+  const std::vector<xrt::run>&
+  get_xdp_exit_runs() const
+  {
+    return m_xdp_exit_runs;
+  }
 };
 
 } // xrt
@@ -530,6 +563,31 @@ void
 dump_scratchpad_mem(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->dump_scratchpad_mem();
+}
+
+void
+register_xdp_init_run(const xrt::hw_context& ctx, const xrt::run& run)
+{
+  ctx.get_handle()->register_xdp_init_run(run);
+}
+
+XRT_CORE_COMMON_EXPORT
+void
+register_xdp_exit_run(const xrt::hw_context& ctx, const xrt::run& run)
+{
+  ctx.get_handle()->register_xdp_exit_run(run);
+}
+
+const std::vector<xrt::run>&
+get_xdp_init_runs(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_xdp_init_runs();
+}
+
+const std::vector<xrt::run>&
+get_xdp_exit_runs(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_xdp_exit_runs();
 }
 
 } // xrt_core::hw_context_int
