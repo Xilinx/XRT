@@ -223,6 +223,13 @@ auto time = std::time(nullptr);
   void AieProfilePlugin::endPollforDevice(void* handle)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPollForDevice.");
+
+    if (!handle)
+      return;
+
+    // Mark the hw_ctx handle as invalid for current plugin
+    (db->getStaticInfo()).onPluginDestroyedForHwCtxImpl(handle);
+    
     if (handleToAIEData.empty())
       return;
 
