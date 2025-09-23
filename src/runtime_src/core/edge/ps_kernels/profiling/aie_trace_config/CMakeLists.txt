@@ -28,10 +28,7 @@ target_link_libraries(aie_trace_config
     xrt_core
     xilinxopencl
     pthread
-    rt
     dl
-    crypt
-    stdc++
     xaiengine
 )
 
