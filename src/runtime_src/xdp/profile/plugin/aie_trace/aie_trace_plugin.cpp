@@ -377,8 +377,9 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   if (!handle)
     return;
 
-  // Mark the hw_ctx handle as invalid for current plugin
-  (db->getStaticInfo()).onPluginDestroyedForHwCtxImpl(handle);
+  // For register_xclbin flow, mark the hw_ctx handle as invalid for current plugin
+  if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
+    (db->getStaticInfo()).unregisterPluginFromHwContext(handle);
 
   auto itr = handleToAIEData.find(handle);
   if (itr == handleToAIEData.end())

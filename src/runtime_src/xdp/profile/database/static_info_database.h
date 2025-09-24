@@ -93,8 +93,20 @@ namespace xdp {
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
     // Map of hwCtxImpl Handle to unique ID to form device UID
-    // pair.first = UID, pair.second = valid/invalid
-    std::map<void*, std::pair<uint64_t, int>> hwCtxImplUIDMap;
+    struct HwContextInfo {
+      uint64_t uid; // deviceID
+      int validityCount; // number of plugins using this context
+      HwContextInfo(uint64_t u = 0, int count = 0) 
+        : uid(u), validityCount(count) {}
+      
+      void incrementValidity() { validityCount++; }
+      void decrementValidity() { 
+        if (validityCount > 0) 
+          validityCount--; 
+      }
+      bool isValid() const { return validityCount > 0; }
+    };
+    std::map<void*, HwContextInfo> hwCtxImplUIDMap;
 
     // Static info can be accessed via any host thread, so we have
     //  fine grained locks on each of the types of data.
@@ -455,11 +467,11 @@ namespace xdp {
     XDP_CORE_EXPORT void saveProfileConfig(std::unique_ptr<const AIEProfileFinalConfig> cfg, uint64_t deviceId) ;
     XDP_CORE_EXPORT const AIEProfileFinalConfig* getProfileConfig(uint64_t deviceId) ;
 
-    void onPluginDestroyedForHwCtxImpl(void* handle) { 
+    void unregisterPluginFromHwContext(void* handle) { 
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
       auto it = hwCtxImplUIDMap.find(handle);
       if (it != hwCtxImplUIDMap.end())
-        it->second.second--; // Mark as invalid for current plugin
+        it->second.decrementValidity(); // Mark as invalid for current plugin
     }
   } ;
 
