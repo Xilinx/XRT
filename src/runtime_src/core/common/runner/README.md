@@ -66,9 +66,8 @@ pair, (2) multi-threaded execution of multiple recipe and profile
 pairs.
 
 To use locally built xrt-runner.exe, it is important that KMD and UMD
-is in sync with what xrt-runner.exe is built from.
+are in sync with what xrt-runner.exe is built from.
 ```
-% xrt-runner.exe --help
 usage: xrt-runner.exe [options]
  [--recipe <recipe.json>] recipe file to run
  [--profile <profile.json>] execution profile
@@ -77,7 +76,8 @@ usage: xrt-runner.exe [options]
  [--threads <number>] number of threads to use when running script (default: #jobs)
  [--dir <path>] directory containing artifacts (default: current dir)
  [--progress] show progress
- [--report] print runner metrics
+ [--asap] process jobs immediately (default: wait for all jobs to initialize)
+ [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'
 
 % xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]
 % xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]
@@ -127,6 +127,10 @@ recipe/profile pair, then the script value takes precedence over the
 command line switch.
 
 Each recipe/profile pair results in the creation of an xrt::runner
-object.  All xrt::runner objects are created and inserted into a work
-queue before execution starts.  Each thread executes work items
+object.  The runner objects are inserted into a work
+queue, and each thread executes work items
 (xrt::runner) from the work queue until the queue is empty.
+By default each thread blocks until the queue has been populated with 
+all initialized jobs.  If `[--asap]` 
+is specified when invoking xrt-runner.exe, jobs are executed as soon as
+possible.

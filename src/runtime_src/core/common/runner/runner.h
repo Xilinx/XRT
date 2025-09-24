@@ -159,7 +159,7 @@ public:
   // The schema of the report is TBD
   XRT_API_EXPORT
   std::string
-  get_report();
+  get_report() const;
 
   // map_buffer() - Get raw buffer data as a span of bytes
   // The buffer is synced from device as part of this call.
