@@ -1630,6 +1630,9 @@ namespace xdp {
           info.incrementValidity(); // increment by 1 since a new plugin is encountered
           return info.uid; // return UID
         }
+        // If we reach here, the entry exists but is invalid (validityCount == 0)
+        // We'll erase it and create a new one below
+        hwCtxImplUIDMap.erase(it);
       }
     }
 
@@ -1641,7 +1644,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
     if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
         (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
-      hwCtxImplUIDMap[hwCtxImpl] = HwContextInfo(DEFAULT_PL_DEVICE_ID, 1); // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
+      hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(DEFAULT_PL_DEVICE_ID, 1)); // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
 
       // At this point, also keep track of which xclbin is associated
       // with this hardware context implementation for the run summary file
@@ -1651,9 +1654,9 @@ namespace xdp {
        // with this hardware context implementation for the run summary file
        db->associateContextWithId(nextAvailableUID, hwCtxImpl);
        
-       hwCtxImplUIDMap[hwCtxImpl] = HwContextInfo(nextAvailableUID++, 1);
+       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
     }
-    return hwCtxImplUIDMap[hwCtxImpl].uid;
+    return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }
 
   uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)

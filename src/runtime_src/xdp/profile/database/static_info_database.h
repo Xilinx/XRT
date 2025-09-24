@@ -92,11 +92,12 @@ namespace xdp {
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
-    // Map of hwCtxImpl Handle to unique ID to form device UID
+    // Map of hwCtxImpl Handle to HwContextInfo struct that defines 
+    // deviceID and validityCount for that handle
     struct HwContextInfo {
       uint64_t uid; // deviceID
       int validityCount; // number of plugins using this context
-      HwContextInfo(uint64_t u = 0, int count = 0) 
+      HwContextInfo(uint64_t u, int count) 
         : uid(u), validityCount(count) {}
       
       void incrementValidity() { validityCount++; }
@@ -468,10 +469,12 @@ namespace xdp {
     XDP_CORE_EXPORT const AIEProfileFinalConfig* getProfileConfig(uint64_t deviceId) ;
 
     void unregisterPluginFromHwContext(void* handle) { 
-      std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
-      auto it = hwCtxImplUIDMap.find(handle);
-      if (it != hwCtxImplUIDMap.end())
-        it->second.decrementValidity(); // Mark as invalid for current plugin
+      if (getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE) {
+        std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+        auto it = hwCtxImplUIDMap.find(handle);
+        if (it != hwCtxImplUIDMap.end())
+          it->second.decrementValidity(); // Mark as invalid for current plugin
+      }
     }
   } ;
 
