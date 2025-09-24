@@ -97,9 +97,16 @@ namespace xdp {
     struct HwContextInfo {
       uint64_t uid; // deviceID
       int validityCount; // number of plugins using this context
-      HwContextInfo(uint64_t u, int count) 
+      explicit HwContextInfo(uint64_t u, int count) 
         : uid(u), validityCount(count) {}
       
+      HwContextInfo() = delete;
+      HwContextInfo(const HwContextInfo&) = delete;
+      HwContextInfo& operator=(const HwContextInfo&) = delete;
+      
+      HwContextInfo(HwContextInfo&&) = default;
+      HwContextInfo& operator=(HwContextInfo&&) = default;
+
       void incrementValidity() { validityCount++; }
       void decrementValidity() { 
         if (validityCount > 0) 
