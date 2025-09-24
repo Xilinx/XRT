@@ -121,8 +121,8 @@ void test_read_pdi(char* pdi, char** data, int* len)
     return;
   }
   *data = (char *)malloc((size_t)BUF_SIZE);
-  *len = fread(*data, 1, BUF_SIZE, fp);
-  fclose(fp);
+  *len = (int)fread(*data, 1, (size_t)BUF_SIZE, fp);
+  fclose(fp); // NOLINT
 }
 
 
