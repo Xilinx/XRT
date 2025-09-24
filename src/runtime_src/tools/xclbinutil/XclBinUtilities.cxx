@@ -1041,7 +1041,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
-#ifndef _WIN32
+// #ifndef _WIN32
 // pdi_transform is only available on Linux
 // pdi_transform is defined in libtransformcdo.a
 extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out, const char* out_file);
@@ -1176,7 +1176,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   // delete the temp dir
   fs::remove_all(tempDir);
 }
-#endif
+// #endif
 
 
 #if (BOOST_VERSION >= 106400)

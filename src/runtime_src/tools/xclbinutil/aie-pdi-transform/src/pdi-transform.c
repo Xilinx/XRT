@@ -27,7 +27,7 @@
 #ifndef _ENABLE_IPU_LX6_
 #include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
+// #include <fcntl.h>
 #include <errno.h>
 
 uint8_t XPdi_Cmd_Match(uint32_t CmdId)
@@ -170,7 +170,12 @@ uint8_t is_bss(uint32_t dst_addr)
 
 uint8_t allZero(void* mem, size_t len)
 {
-  do { if (*((char*)mem++) != 0 ) return 0; } while(--len);
+  // do { if (*((char*)mem++) != 0 ) return 0; } while(--len);
+  char *p = mem;   // cast void* to char*
+  do {
+    if (*p++ != 0)   // increment char* instead of void*
+      return 0;
+  } while (--len);
   return 1;
 }
 //prepare the data zone

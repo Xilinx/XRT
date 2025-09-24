@@ -23,7 +23,7 @@
 /***************************** Include Files *********************************/
 #include <stdio.h>
 #include <string.h>
-#include "printf.h"
+// #include "printf.h"
 #include "cdo_cmd.h"
 #include "load_pdi.h"
 #include "pdi-transform.h"
@@ -32,9 +32,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>  // open, close
+// #include <fcntl.h>  // open, close
 #include <errno.h>
-#include <unistd.h> // for read()
+// #include <unistd.h> // for read()
 
 /************************** Constant Definitions *****************************/
 
@@ -104,6 +104,7 @@ void test_read_pdi(char* pdi, char** data, int* len)
   #define BUF_SIZE (1024*1024)
   *data = NULL;
   *len = 0;
+  /*
   int fd = open(pdi, O_RDONLY | O_CREAT, 0644);
   if (fd ==-1)
   {
@@ -113,6 +114,15 @@ void test_read_pdi(char* pdi, char** data, int* len)
   *data = (char *)malloc((size_t)BUF_SIZE);
   *len = (int)read(fd, *data, (size_t)BUF_SIZE);
   close(fd);
+  */
+  FILE *fp = fopen(pdi, "rb");  // open in binary mode
+  if (fp == NULL) {
+    printf("%s create failed Error Number % d\n", pdi, errno);
+    return;
+  }
+  *data = (char *)malloc((size_t)BUF_SIZE);
+  *len = fread(*data, 1, BUF_SIZE, fp);
+  fclose(fp);
 }
 
 
@@ -122,7 +132,8 @@ FILE* file_pointer;
 // Main entry point for pdi transformation
 // Client should call this API
 // Within the function, XPdi_Compress_Transform is the most important call
-__attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
+// __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
+int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
 {
    if (!out_file || (out_file[0] == '\0')) 
      file_pointer = stdout;
