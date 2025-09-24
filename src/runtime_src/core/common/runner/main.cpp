@@ -265,7 +265,7 @@ public:
   close()
   {
     std::lock_guard lk{m_mutex};
-    XRT_DEBUGF("job_queue::close() m_jobs.size(%d)\n", m_jobs.size())
+    XRT_DEBUGF("job_queue::close() m_jobs.size(%d)\n", m_jobs.size());
     m_stop = true;
     m_work_cv.notify_all();
   }
@@ -335,7 +335,7 @@ struct script_runner
           if (!job)
             break;
 
-          XRT_DEBUGF("script_runner::worker::run_by_value() running job(%s)\n", job->get_id().c_str());
+          XRT_DEBUGF("script_runner::worker::run_by_value() running job(%s)\n", job.get_id().c_str());
           job.run();
           job.wait();
           report.add(job);
