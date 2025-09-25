@@ -123,9 +123,12 @@ class kernel_start : public command
 {
 private:
   std::shared_ptr<function> func;
+  xrt::bo m_ctrl_scratchpad_bo;
+  bool m_ctrl_scratchpad_bo_sync_rd;
   xrt::run r;
 
 public:
+  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra);
   kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args);
   bool submit() override;
   bool wait() override;
