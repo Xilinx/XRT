@@ -227,9 +227,8 @@ auto time = std::time(nullptr);
     if (!handle)
       return;
     
-    // For register_xclbin flow, mark the hw_ctx handle as invalid for current plugin
-    if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
-      (db->getStaticInfo()).unregisterPluginFromHwContext(handle);
+    // mark the hw_ctx handle as invalid for current plugin
+    (db->getStaticInfo()).unregisterPluginFromHwContext(handle);
 
     if (handleToAIEData.empty())
       return;
