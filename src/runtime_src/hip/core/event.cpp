@@ -134,7 +134,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
    */
 
   // create run object and set args
-  r = func->get_run();
+  r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
   int idx = 0;
