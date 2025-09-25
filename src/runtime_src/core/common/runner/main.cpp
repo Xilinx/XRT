@@ -59,7 +59,11 @@
 #include <vector>
 
 #ifdef _WIN32
+# include <windows.h>
+# include <psapi.h>
 # pragma warning (disable: 4702)
+#else
+# include <sys/resource.h>
 #endif
 
 using json = nlohmann::json;
@@ -69,6 +73,26 @@ namespace {
 static bool g_progress = false;   // NOLINT
 static bool g_asap = false;       // NOLINT
 static uint32_t g_iterations = 0; // NOLINT
+
+constexpr double
+to_mb(size_t bytes)
+{
+  return bytes / (1024.0 * 1024.0); // NOLINT
+}
+
+size_t
+get_peak_rss()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc {};
+  GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+  return pmc.PeakWorkingSetSize;
+#else
+  rusage usage_data {};
+  getrusage(RUSAGE_SELF, &usage_data);
+  return size_t(usage_data.ru_maxrss)* 1024; // NOLINT (ru_maxrss is in KB)
+#endif
+}
 
 // Touch up recipe(s)
 // Return parsed / modified json as a json string
@@ -335,14 +359,14 @@ struct script_runner
           if (!job)
             break;
 
-          XRT_DEBUGF("script_runner::worker::run_by_value() running job(%s)\n", job.get_id().c_str());
+          XRT_DEBUGF("script_runner::worker::run() running job(%s)\n", job.get_id().c_str());
           job.run();
           job.wait();
           report.add(job);
         }
       }
       catch (const std::exception& ex) {
-        XRT_DEBUGF("script_runner::worker::run_by_value::catch: %s\n", ex.what());
+        XRT_DEBUGF("script_runner::worker::run::catch: %s\n", ex.what());
         xrt_core::send_exception_message(ex.what());
         eptr = std::current_exception();
       }
@@ -471,6 +495,7 @@ run_script(const std::string& file, const std::string& dir, uint32_t threads,
     auto [real, user, system] = st.get_rusage();
     auto jrpt = runner.get_report();
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+    jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -497,6 +522,7 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
     auto [real, user, system] = st.get_rusage();
     auto jrpt = json::parse(runner.get_report());
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+    jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -604,9 +630,11 @@ main(int argc, char **argv)
   }
   catch (const std::exception& ex) {
     std::cerr << "Error: " << ex.what() << '\n';
+    std::cerr << "Peak memory usage: " << to_mb(get_peak_rss()) << " MB\n";
   }
   catch (...) {
     std::cerr << "Unknown error\n";
+    std::cerr << "Peak memory usage: " << to_mb(get_peak_rss()) << " MB\n";
   }
   return 1;
 
