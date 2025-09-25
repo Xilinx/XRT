@@ -1,6 +1,8 @@
 # CMakeLists.txt in src/
 
-add_compile_options(-Wextra -fvisibility=default)
+if(NOT WIN32)
+  add_compile_options(-Wextra -fvisibility=default)
+endif()
 
 # This builds a static library libtransformcdo, which 
 # includes all the *.c files in lib/
