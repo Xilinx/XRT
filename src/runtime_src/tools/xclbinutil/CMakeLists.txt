@@ -46,15 +46,6 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# --- Git ---
-find_package(Git)
-
-IF(GIT_FOUND)
-  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
-
 # --- XRT Variables ---
 include (${XRT_SOURCE_DIR}/CMake/xrtVariables.cmake)
 include (${XRT_SOURCE_DIR}/CMake/version.cmake)

@@ -65,6 +65,8 @@ bool event::synchronize()
 bool event::wait()
 {
   state event_state = get_state();
+  if (event_state == state::error)
+    throw_hip_error(hipErrorRuntimeOther, "event is in error state");
   if (event_state < state::completed)
   {
     synchronize();
@@ -132,14 +134,13 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
    */
 
   // create run object and set args
-  r = func->get_run();
+  r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
   int idx = 0;
   for (const auto& arg : xrt_core::kernel_int::get_args(k)) {
     // non index args are not supported, this condition will not hit in case of HIP
-    if (arg->index == karg::no_index)
-      throw std::runtime_error("function has invalid argument");
+    throw_invalid_value_if(arg->index == karg::no_index, "function has invalid argument");
 
     if (!args[idx]) {
       // Skip nullptr which is used for ctrlcode, ctrlcode size and ctrlpkt
@@ -155,8 +156,10 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::global: {
         void **bufptr = static_cast<void **>(args[idx]);
         auto hip_mem = memory_database::instance().get_hip_mem_from_addr(*bufptr).first;
-        if (!hip_mem)
-          throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
+        if (!hip_mem) {
+            std::string err_msg = "failed to get memory from arg at index - " + std::to_string(idx);
+	    throw_hip_error(hipErrorInvalidValue, err_msg.c_str());
+	}
 
         r.set_arg(arg->index, hip_mem->get_xrt_bo());
         break;
@@ -165,7 +168,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::local :
       case karg::argtype::stream :
       default :
-        throw std::runtime_error("function has unsupported arg type");
+        throw_hip_error(hipErrorInvalidValue,
+          "function has unsupported arg type");
     }
     idx++;
   }
@@ -191,9 +195,21 @@ bool kernel_start::wait()
   state kernel_start_state = get_state();
   if (kernel_start_state == state::running)
   {
-    r.wait();
-    set_state(state::completed);
-    return true;
+    try {
+      r.wait2();
+      set_state(state::completed);
+      return true;
+    }
+    catch (const std::exception& ex) {
+      // catch exception here is to set cmmand state to error.
+      // re-throw errors so that caller can catch and handle it
+      set_state(state::error);
+      throw_hip_error(hipErrorLaunchFailure, ex.what());
+    }
+    catch (...) {
+      set_state(state::error);
+      throw_hip_error(hipErrorLaunchFailure, "Unknown error from kernel wait");
+    }
   }
   else if (kernel_start_state == state::completed)
     return true;
@@ -226,7 +242,7 @@ bool memory_pool_command::submit()
     break;
 
   default:
-    throw std::runtime_error("Invalid memory pool operation type.");
+    throw_hip_error(hipErrorInvalidValue, "Invalid memory pool operation type.");
     break;
   }
 

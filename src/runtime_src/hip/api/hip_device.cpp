@@ -13,6 +13,11 @@
 #include <mutex>
 #include <string>
 
+#ifdef _WIN32
+// to disable the compiler worning C4996: 'strncpy': This function or variable may be unsafe
+# pragma warning( disable : 4996)
+#endif
+
 // forward declaration
 namespace xrt::core::hip {
 static void
@@ -70,7 +75,7 @@ hip_init(unsigned int flags)
   std::call_once(device_init_flag, xrt::core::hip::device_init);
 }
 
-static size_t
+static int
 hip_get_device_count()
 {
   // Get device count
@@ -78,7 +83,7 @@ hip_get_device_count()
 
   throw_if(count < 1, hipErrorNoDevice, "No valid device available");
 
-  return count;
+  return static_cast<int>(count);
 }
 
 inline bool
@@ -105,15 +110,6 @@ hip_device_get_name(hipDevice_t device)
   return (xrt_core::device_query<xrt_core::query::rom_vbnv>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
 }
 
-static void
-hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
-{
-  throw_invalid_value_if(!props, "arg passed is nullptr");
-  throw_invalid_device_if(check(device), "device requested is not available");
-
-  throw std::runtime_error("Not implemented");
-}
-
 static hipUUID
 hip_device_get_uuid(hipDevice_t device)
 {
@@ -129,12 +125,68 @@ hip_device_get_uuid(hipDevice_t device)
 }
 
 static void
+hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
+{
+  throw_invalid_value_if(!props, "arg passed is nullptr");
+  throw_invalid_device_if(check(device), "device requested is not available");
+
+  hipDeviceProp_t device_props = {};
+  auto device_handle = (device_cache.get_or_error(device))->get_xrt_device().get_handle();
+  // Query PCIe BDF (Bus/Device/Function) information
+  auto uuid = xrt_core::device_query<xrt_core::query::pcie_bdf>(device_handle);
+  // Query device name using rom_vbnv
+  // Copy device name to device_props.name, ensuring no buffer overflow
+  auto name_str = (xrt_core::device_query<xrt_core::query::rom_vbnv>(device_handle));
+  std::strncpy(device_props.name, name_str.c_str(), sizeof(device_props.name));
+  device_props.name[sizeof(device_props.name) - 1] = '\0';
+  // Extract and assign PCI domain, bus, and device IDs from the queried PCIe BDF tuple
+  device_props.pciDomainID = std::get<0>(uuid);
+  device_props.pciBusID = std::get<1>(uuid);
+  device_props.pciDeviceID = std::get<2>(uuid);
+  device_props.canMapHostMemory = 1;
+  device_props.computeMode = 0;
+  device_props.concurrentKernels = 0;
+#if HIP_VERSION >= 60000000
+  device_props.uuid = hip_device_get_uuid(device);
+  // Query if compute preemption is supported
+  device_props.computePreemptionSupported = static_cast<int>(xrt_core::device_query<xrt_core::query::preemption>(device_handle));
+#endif
+  *props = device_props;
+}
+
+static void
 hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
   throw_invalid_value_if(!pi, "arg passed is nullptr");
   throw_invalid_device_if(check(device), "device requested is not available");
 
-  throw std::runtime_error("Not implemented");
+  hipDeviceProp_t prop = {};
+  hip_get_device_properties(&prop, device);
+  switch (attr) {
+    case hipDeviceAttributeCanMapHostMemory:
+      *pi = prop.canMapHostMemory;
+      break;
+    case hipDeviceAttributeComputeMode:
+      *pi = prop.computeMode;
+      break;
+    case  hipDeviceAttributeComputePreemptionSupported:
+      *pi = static_cast<int>(xrt_core::device_query<xrt_core::query::preemption>((device_cache.get_or_error(device))->get_xrt_device().get_handle()));
+      break;
+    case hipDeviceAttributeConcurrentKernels:
+      *pi = prop.concurrentKernels;
+      break;
+    case hipDeviceAttributePciBusId:
+      *pi = prop.pciBusID;
+      break;
+    case hipDeviceAttributePciDeviceId:
+      *pi = prop.pciDeviceID;
+      break;
+    case hipDeviceAttributePciDomainID:
+      *pi = prop.pciDomainID;
+      break;
+    default:
+      throw std::runtime_error("unsupported attribute type");
+  }
 }
 
 // Sets thread default device
@@ -163,9 +215,9 @@ hipInit(unsigned int flags)
 }
 
 hipError_t
-hipGetDeviceCount(size_t* count)
+hipGetDeviceCount(int* count)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!count, "arg passed is nullptr");
     *count = xrt::core::hip::hip_get_device_count();
   });
@@ -174,7 +226,7 @@ hipGetDeviceCount(size_t* count)
 hipError_t
 hipDeviceGet(hipDevice_t* device, int ordinal)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!device, "device is nullptr");
     *device = xrt::core::hip::hip_device_get(ordinal);
   });
@@ -183,7 +235,7 @@ hipDeviceGet(hipDevice_t* device, int ordinal)
 hipError_t
 hipDeviceGetName(char* name, int len, hipDevice_t device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if((!name || len <= 0), "invalid arg");
 
     auto name_str = xrt::core::hip::hip_device_get_name(device);
@@ -219,7 +271,7 @@ hipError_t
 hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 #endif
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_get_device_properties(props, device);
   });
 }
@@ -227,7 +279,7 @@ hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
 hipError_t
 hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!uuid, "arg passed is nullptr");
     *uuid = xrt::core::hip::hip_device_get_uuid(device);
   });
@@ -236,7 +288,7 @@ hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
 hipError_t
 hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
 	xrt::core::hip::hip_device_get_attribute(pi, attr, device);
   });
 }
@@ -244,7 +296,7 @@ hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
 hipError_t
 hipSetDevice(int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_set_device(device);
   });
 }

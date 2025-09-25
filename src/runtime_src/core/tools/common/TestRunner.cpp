@@ -8,6 +8,7 @@
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/archive.h"
+#include "core/common/runner/runner.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/BusyBar.h"
 #include "tools/common/XBUtilities.h"
@@ -42,7 +43,7 @@ signal_handler(int signal) {
 }
 
 static void
-runTestInternal(std::shared_ptr<xrt_core::device> dev,
+runTestInternal(const std::shared_ptr<xrt_core::device>& dev,
                 boost::property_tree::ptree& ptree,
                 TestRunner* test,
                 bool& is_thread_running,
@@ -70,7 +71,7 @@ TestRunner::TestRunner (const std::string & test_name,
 }
 
 boost::property_tree::ptree
-TestRunner::startTest(std::shared_ptr<xrt_core::device> dev, const xrt_core::archive* archive)
+TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   XBUtilities::BusyBar busy_bar("Running Test", std::cout);
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
@@ -279,4 +280,28 @@ TestRunner::get_test_header()
     ptree.put("xclbin", m_xclbin);
     ptree.put("explicit", m_explicit);
     return ptree;
+}
+
+xrt_core::runner::artifacts_repository 
+TestRunner::extract_artifacts_from_archive(const xrt_core::archive* archive, 
+                                           const std::vector<std::string>& artifact_names,
+                                           boost::property_tree::ptree& ptree)
+{
+  xrt_core::runner::artifacts_repository artifacts_repo;
+  
+  for (const auto& artifact_name : artifact_names) {
+    try {
+      std::string artifact_data = archive->data(artifact_name);
+      // Convert string to vector<char> for artifacts_repository
+      std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
+      artifacts_repo[artifact_name] = std::move(artifact_binary);
+    }
+    catch (const std::exception&) {
+      if (XBUtilities::getVerbose()) {
+        XBValidateUtils::logger(ptree, "Warning", boost::str(boost::format("Artifact not found: %s") % artifact_name));
+      }
+    }
+  }
+  
+  return artifacts_repo;
 }

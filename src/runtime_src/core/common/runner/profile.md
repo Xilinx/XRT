@@ -135,10 +135,11 @@ have been specified.
 #### File initialization
 
 ```
-
       "init": {
         "file": "<path or repo key>",
-        "skip": bytes // skip number of bytes in file
+        "skip": bytes    // skip number of bytes in file
+        "begin": offset, // offset to start writing at (default: 0)
+        "end": offset    // offset to end writing at (default: bo.size())
       }
 ```
 File initialization implies that the resource buffer should be
@@ -147,34 +148,36 @@ a key that locates a file on disk or in an artifacts repository used
 during construction of the `xrt::runner`.  If the binding element
 specifies a `size` value, then this size takes precedence over the
 size of the file, otherwise the size of the file will be the size of
-the buffer. The optional `skip` element
-allows skipping first bytes of the file during initialization of the
-buffer.
+the buffer. The optional `skip` element allows skipping first bytes 
+of the file during initialization of the buffer.
 
-All the bytes of a buffer are initialized regardless of the size of the
-`file`.
+The range defined by `[begin, end[` (default: `[0, bo.size()[`) are 
+the bytes of the buffer that will be populated with data from the file.
 
-If the file (minus skip bytes) is smaller than the buffer, then 
-the file wraps around and continues to initialize the buffer.
+All the bytes of the buffer range are initialized regardless of the size 
+of the `file`.
 
-If the file of larger than the buffer then only buffer size bytes
-of the file are used.
+If the file (minus skip bytes) is smaller than the buffer range, then 
+the file wraps around and continues to initialize the buffer range.
+
+If the file is larger than the buffer range then only buffer range
+bytes of the file are used.
 
 If a bindings element specifies `reinit`, then the buffer is
 reinitialized with bytes from the file in each iteration of the
 recipe.  The initialization in an iteration picks up from an offset
 into the file at the point where the previous iteration stopped
 copying.  Again, the file wraps around when end-of-file is reached
-without filling all the bytes of the buffer.
+without filling all the bytes of the buffer range.
 
 #### Strided initialization
 
 ```
       "init": {
-        "stride": 1,    // stride bytes
-        "value": 239,   // value to write at each stride
-        "begin": 0,     // beginning of range to write at
-        "end": 524288   // end of range
+        "stride": 1,     // stride bytes
+        "value": 239,    // value to write at each stride
+        "begin": offset, // offset to start writing at (default: 0)
+        "end": offset    // offset to end writing at (default: bo.size())
       }
 ```
 A buffer can

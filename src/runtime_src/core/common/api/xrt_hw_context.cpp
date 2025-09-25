@@ -9,8 +9,10 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/time.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "bo_int.h"
 #include "elf_int.h"
@@ -36,6 +38,18 @@
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
+
+// Dumps the content into a file with given size from given offset
+static void
+dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t offset = 0)
+{
+  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+  if (!ofs.is_open())
+    throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+  const char* buf = buf_map + offset;
+  ofs.write(buf, static_cast<std::streamsize>(size));
+}
 }
 
 namespace xrt {
@@ -55,24 +69,6 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     uint32_t m_slot_idx; // index of slot in which these uc's are present
     size_t m_size_per_uc;
     xrt::bo m_uc_log_bo; // log buffer used for uc logging
-
-    void
-    dump_bo(const std::string& filename, size_t offset, size_t size)
-    {
-      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-      if (!ofs.is_open()) {
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
-                                "Failure opening file " + filename + " for writing log!");
-        return;
-      }
-
-      auto buf = m_uc_log_bo.map<char*>() + offset;
-      ofs.write(buf, static_cast<std::streamsize>(size));
-
-      std::stringstream ss;
-      ss << "dumped uc log buffer into file " << filename;
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", ss.str());
-    }
 
     static xrt::bo
     init_and_get_uc_log_bo(const std::shared_ptr<xrt_core::device>& device,
@@ -117,16 +113,11 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
         // dump the log buffer for each uc in a separate file
-        // Add timestamp in file name
-        auto current_time = std::chrono::system_clock::now();
-        std::time_t time = std::chrono::system_clock::to_time_t(current_time);
-        std::stringstream time_stamp;
-        time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
-
+        // Use timestamp, slot index in file name
         for (size_t i = 0; i < m_num_uc; i++) {
           auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
-              + time_stamp.str() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
-          dump_bo(file_name, (i * m_size_per_uc), m_size_per_uc);
+              + xrt_core::get_timestamp_for_filename() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
+          dump_bo(m_uc_log_bo.map<char*>(), file_name, m_size_per_uc, (i * m_size_per_uc));
         }
       }
       catch (const std::exception& e) {
@@ -139,13 +130,20 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   std::map<std::string, xrt::module> m_module_map; // map b/w kernel name and module
+  // No. of cols in the AIE partition managed by this hw ctx
+  // Devices with no AIE will have partition size as 0
   uint32_t m_partition_size = 0;
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
+  // During preemption, when a hardware context is interrupted L2 memory contents
+  // are saved to a scratchpad memory allocated specifically for that context.
+  std::once_flag m_scratchpad_init_flag; // used for thread safe lazy init of scratchpad
+  xrt::bo m_scratchpad_buf;
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
+  bool m_elf_flow = false;
 
   void
   create_module_map(const xrt::elf& elf)
@@ -191,10 +189,32 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
+  // Gets partition size from xclbin if AIE partition section is present
+  static uint32_t
+  get_partition_size_from_xclbin(const xrt::xclbin& xclbin)
+  {
+    if (!xclbin)
+      return 0;
+
+    try {
+      auto axlf = xclbin.get_axlf();
+      if (!axlf)
+        return 0;
+
+      // try to get partition size from xclbin AIE_METADATA section
+      auto aie_part = xrt_core::xclbin::get_aie_partition(axlf);
+      return aie_part.ncol;
+    }
+    catch (...) {
+      return 0;
+    }
+  }
+
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
+    , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
     , m_cfg_param(std::move(cfg_param))
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
@@ -204,6 +224,7 @@ public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, access_mode mode)
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
+    , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -223,6 +244,7 @@ public:
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
+    , m_elf_flow{true}
   {
     create_module_map(elf);
   }
@@ -237,6 +259,9 @@ public:
   {
     // This trace point measures the time to tear down a hw context on the device
     XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
+
+    // dump uC log buffer before shim hwctx handle is destroyed
+    m_uc_log_buf.reset();
 
     try {
       // finish_flush_device should only be called when the underlying 
@@ -270,6 +295,7 @@ public:
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       m_partition_size = part_size;
       create_module_map(elf);
+      m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
       return;
     }
@@ -347,6 +373,12 @@ public:
     throw std::runtime_error("no module found with given kernel name in ctx");
   }
 
+  bool
+  get_elf_flow() const
+  {
+    return m_elf_flow;
+  }
+
   double
   get_aie_freq() const
   {
@@ -383,6 +415,45 @@ public:
     }
   }
 
+  // Creates scratchpad memory buffer on demand
+  // If buffer is already created, returns the existing one
+  // std::call_once is used to ensure thread safe lazy initialization
+  const xrt::bo&
+  get_scratchpad_mem_buf(size_t size_per_col)
+  {
+    std::call_once(m_scratchpad_init_flag, [this, size_per_col] () {
+      try {
+        // create scratchpad memory buffer using this context
+        m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
+                                        size_per_col * m_partition_size};
+      }
+      catch (...) { /*do nothing*/ }
+    });
+
+    return m_scratchpad_buf;
+  }
+
+  void
+  dump_scratchpad_mem()
+  {
+    if (m_scratchpad_buf.size() == 0) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
+                              "preemption scratchpad memory is not available");
+      return;
+    }
+
+    // sync data from device before dumping into file
+    m_scratchpad_buf.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    std::string dump_file_name =
+        "preemption_scratchpad_mem_" + std::to_string(m_hdl->get_slotidx()) + "_" +
+        xrt_core::get_timestamp_for_filename() + ".bin";
+    dump_bo(m_scratchpad_buf.map<char*>(), dump_file_name, m_scratchpad_buf.size());
+
+    std::string msg {"Dumped scratchpad buffer into file : "};
+    msg.append(dump_file_name);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", msg);
+  }
 };
 
 } // xrt
@@ -430,6 +501,24 @@ size_t
 get_partition_size(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_partition_size();
+}
+
+bool
+get_elf_flow(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_elf_flow();
+}
+
+const xrt::bo&
+get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col)
+{
+  return hwctx.get_handle()->get_scratchpad_mem_buf(size_per_col);
+}
+
+void
+dump_scratchpad_mem(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->dump_scratchpad_mem();
 }
 
 } // xrt_core::hw_context_int

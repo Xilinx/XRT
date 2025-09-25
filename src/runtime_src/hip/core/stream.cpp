@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
+#include <typeinfo>
+
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
 
@@ -112,17 +114,37 @@ stream::
 await_completion()
 {
   std::lock_guard<std::mutex> lk(m_cmd_lock);
+  uint32_t cmd_id = 0;
+  bool has_failure = false;
   while(!m_cmd_queue.empty()) {
     auto cmd = m_cmd_queue.front();
-    cmd->wait();
+    try {
+      cmd->wait();
+      if (cmd->get_state() != command::state::completed)
+        throw std::runtime_error("execution failed.");
+    }
+    catch (const std::exception &ex) {
+      std::string err_str = "CMD[" + std::to_string(cmd_id) + "]:" + get_unmangled_type_name(*cmd) + ":" + ex.what();
+      xrt::core::hip::error::instance().record_local_error(hipErrorLaunchFailure, err_str);
+      has_failure = true;
+    }
+    catch (...) {
+      std::string err_str = "CMD[" + std::to_string(cmd_id) + "]:" + get_unmangled_type_name(*cmd) + ":unknown exception";
+      xrt::core::hip::error::instance().record_local_error(hipErrorLaunchFailure, err_str);
+      has_failure = true;
+    }
     // kernel_start and copy_buffer cmds needs to be explicitly removed from cache
     // there is no destroy call for them
     if (cmd->get_type() != command::type::event)
       command_cache.remove(cmd.get());
     m_cmd_queue.pop_front();
+    cmd_id++;
   }
   // reset m_top_event as stream completed
   m_top_event = nullptr;
+  // throw launch failure error if there is any command failed to execute.
+  if (has_failure)
+    throw_hip_error(hipErrorLaunchFailure, "Stream execution failed.");
 }
 
 void

@@ -83,9 +83,7 @@ target_link_libraries(xilinxopencl
   xrt_coreutil
   dl
   pthread
-  crypt
   uuid
-  rt
   )
 
   # On linux use xrt_coreutil.a

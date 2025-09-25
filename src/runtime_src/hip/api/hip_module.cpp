@@ -72,7 +72,7 @@ create_module(const hipModuleData* config)
       // data passed is buffer, validity of buffer is checked during xrt::xclbin construction
       return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
     }
-    throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
+    throw_hip_error(hipErrorInvalidValue, "invalid module data type passed");
   }
 
   // elf load
@@ -93,7 +93,9 @@ create_module(const hipModuleData* config)
     // data passed is buffer
     return insert_in_map(module_cache, std::make_shared<module_elf>(hip_xclbin_mod.get(), config->data, config->size));
   }
-  throw xrt_core::system_error(hipErrorInvalidValue, "invalid module data type passed");
+  throw_hip_error(hipErrorInvalidValue, "invalid module data type passed");
+  // Will never reach here, this is to satisfy compiler
+  return nullptr;
 }
 
 
@@ -106,7 +108,7 @@ estimate_elf_size(const void* data)
 
   if (bytes[0] != ELF_HEADER_MAGIC[0] || bytes[1] != ELF_HEADER_MAGIC[1] ||
       bytes[2] != ELF_HEADER_MAGIC[2] || bytes[3] != ELF_HEADER_MAGIC[3])
-    throw std::runtime_error("Invalid ELF magic number");
+    throw_hip_error(hipErrorInvalidValue, "Invalid ELF magic number");
 
   if (bytes[4] == ELFIO::ELFCLASS32) {
     // 32 bit ELF
@@ -121,7 +123,9 @@ estimate_elf_size(const void* data)
                     header->e_phoff + static_cast<ELFIO::Elf64_Off>(header->e_phentsize) * header->e_phnum);
   }
 
-  throw std::runtime_error("Unable to calculate ELF size");
+  throw_hip_error(hipErrorInvalidValue, "Unable to calculate ELF size");
+  // Will never reach here, this is to satisfy compiler
+  return 0;
 }
 
 static module_handle
@@ -163,7 +167,7 @@ hip_module_unload(hipModule_t hmod)
 static void
 hip_func_set_attribute(const void* func, hipFuncAttribute attr, int value)
 {
-  throw std::runtime_error("Not implemented");
+  throw_hip_error(hipErrorNotSupported, "Not implemented");
 }
 } // // xrt::core::hip
 
@@ -175,7 +179,7 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
                       uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
                       void** kernelParams, void** extra)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorLaunchFailure, [&] {
     xrt::core::hip::hip_module_launch_kernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
                                              blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
   });
@@ -184,7 +188,7 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
 hipError_t
 hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_handle_if(!hfunc, "function passed is nullptr");
 
     auto handle = xrt::core::hip::hip_module_get_function(hmod, name);
@@ -195,7 +199,7 @@ hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
 static hipError_t
 hip_module_load_data_helper(hipModule_t* module, const void* image)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_resource_if(!module, "module is nullptr");
 
     // Treat pointer passed has data to full ELF and
@@ -236,7 +240,7 @@ hipModuleLoadData(hipModule_t* module, const void* image)
 hipError_t
 hipModuleLoad(hipModule_t* module, const char* fname)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_resource_if(!module, "module is nullptr");
 
     // Treat fname passed is filepath to full ELF and
@@ -258,7 +262,7 @@ hipModuleLoad(hipModule_t* module, const char* fname)
 hipError_t
 hipModuleUnload(hipModule_t hmod)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_module_unload(hmod);
   });
 }
@@ -266,7 +270,7 @@ hipModuleUnload(hipModule_t hmod)
 hipError_t
 hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     xrt::core::hip::hip_func_set_attribute(func, attr, value);
   });
 }

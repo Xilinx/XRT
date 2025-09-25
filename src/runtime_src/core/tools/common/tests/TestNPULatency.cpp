@@ -21,14 +21,14 @@ TestNPULatency::TestNPULatency()
 {}
 
 boost::property_tree::ptree
-TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
+TestNPULatency::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
   return ptree;
 }
 
 boost::property_tree::ptree
-TestNPULatency::run(std::shared_ptr<xrt_core::device> dev, const xrt_core::archive* archive)
+TestNPULatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
   
@@ -41,26 +41,10 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev, const xrt_core::archi
     std::string recipe_data = archive->data("recipe_latency.json");
     std::string profile_data = archive->data("profile_latency.json"); 
     
-    xrt_core::runner::artifacts_repository artifacts_repo;
-    
-    std::vector<std::string> artifact_names = {
+    auto artifacts_repo = extract_artifacts_from_archive(archive, {
       "validate.xclbin", 
       "nop.elf" 
-    };
-    
-    // Extract available artifacts from archive into repository
-    for (const auto& artifact_name : artifact_names) {
-      try {
-        std::string artifact_data = archive->data(artifact_name);
-        
-        // Convert string to vector<char> for artifacts_repository
-        std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
-        artifacts_repo[artifact_name] = std::move(artifact_binary);
-      }
-      catch (const std::exception&) {
-        XBValidateUtils::logger(ptree, "Error", boost::str(boost::format("Required artifact not found: %s") % artifact_name));
-      }
-    }
+    }, ptree);
     
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);

@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -16,7 +17,7 @@ TestAuxConnection::TestAuxConnection()
                 "Check if auxiliary power is connected"){}
 
 boost::property_tree::ptree
-TestAuxConnection::run(std::shared_ptr<xrt_core::device> dev)
+TestAuxConnection::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };

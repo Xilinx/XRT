@@ -461,7 +461,7 @@ hipMalloc(void** ptr, size_t size)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_malloc(ptr, size);
   });
 }
@@ -475,7 +475,7 @@ hipHostMalloc(void** ptr, size_t size, unsigned int flags)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_host_malloc(ptr, size, flags);
   });
 }
@@ -484,7 +484,7 @@ hipHostMalloc(void** ptr, size_t size, unsigned int flags)
 hipError_t
 hipHostFree(void* ptr)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_host_free(ptr);
   });
 }
@@ -493,7 +493,7 @@ hipHostFree(void* ptr)
 hipError_t
 hipFree(void* ptr)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown,
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory,
     [&] { xrt::core::hip::hip_free(ptr);
   });
 }
@@ -502,7 +502,7 @@ hipFree(void* ptr)
 hipError_t
 hipHostRegister(void* host_ptr, size_t size, unsigned int flags)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_host_register(host_ptr, size, flags);
   });
 }
@@ -511,7 +511,7 @@ hipHostRegister(void* host_ptr, size_t size, unsigned int flags)
 hipError_t
 hipHostUnregister(void* host_ptr)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_host_unregister(host_ptr);
   });
 }
@@ -520,7 +520,7 @@ hipHostUnregister(void* host_ptr)
 hipError_t
 hipHostGetDevicePointer(void** device_ptr, void* host_ptr, unsigned int flags)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_host_get_device_pointer(device_ptr, host_ptr, flags);
   });
 }
@@ -529,7 +529,7 @@ hipHostGetDevicePointer(void** device_ptr, void* host_ptr, unsigned int flags)
 hipError_t
 hipMemcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memcpy(dst, src, size, kind);
   });
 }
@@ -538,7 +538,7 @@ hipMemcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
 hipError_t
 hipMemcpyAsync(void* dst, const void* src, size_t size, hipMemcpyKind kind, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memcpy_async(dst, src, size, kind, stream);
   });
 }
@@ -547,7 +547,7 @@ hipMemcpyAsync(void* dst, const void* src, size_t size, hipMemcpyKind kind, hipS
 hipError_t
 hipMemset(void* dst, int value, size_t size)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memset(dst, value, size);
   });
 }
@@ -555,7 +555,7 @@ hipMemset(void* dst, int value, size_t size)
 hipError_t
 hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream);
   });
 }
@@ -564,7 +564,7 @@ hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t strea
 hipError_t
 hipMemsetAsync(void* dst, int value, size_t size, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memset_async<std::uint8_t>(dst, static_cast<std::uint8_t>(value), size, stream);
   });
 }
@@ -573,7 +573,7 @@ hipMemsetAsync(void* dst, int value, size_t size, hipStream_t stream)
 hipError_t
 hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memset_async<std::uint32_t>(dst, value, count*sizeof(std::uint32_t), stream);
   });
 }
@@ -582,7 +582,7 @@ hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
 hipError_t
 hipMemsetD16Async(void* dst, unsigned short value, size_t count, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream);
   });
 }
@@ -591,7 +591,7 @@ hipMemsetD16Async(void* dst, unsigned short value, size_t count, hipStream_t str
 hipError_t
 hipMemsetD8Async(void* dst, unsigned char value, size_t count, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream);
   });
 }
@@ -600,7 +600,7 @@ hipMemsetD8Async(void* dst, unsigned char value, size_t count, hipStream_t strea
 hipError_t
 hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps*	pool_props)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_pool_create(mem_pool, pool_props);
   });
 }
@@ -609,7 +609,7 @@ hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps*	pool_props)
 hipError_t
 hipMemPoolDestroy(hipMemPool_t mem_pool)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_pool_destroy(mem_pool);
   });
 }
@@ -618,7 +618,7 @@ hipMemPoolDestroy(hipMemPool_t mem_pool)
 hipError_t
 hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_malloc_async(dev_ptr, size, stream);
   });
 }
@@ -627,7 +627,7 @@ hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream)
 hipError_t
 hipFreeAsync(void* dev_ptr, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_free_async(dev_ptr, stream);
   });
 }
@@ -636,7 +636,7 @@ hipFreeAsync(void* dev_ptr, hipStream_t stream)
 hipError_t
 hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_pool_get_attribute(mem_pool, attr, value);
   });
 }
@@ -645,7 +645,7 @@ hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 hipError_t
 hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_pool_set_attribute(mem_pool, attr, value);
   });
 }
@@ -654,7 +654,7 @@ hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value)
 hipError_t
 hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_pool_trim_to(mem_pool, min_bytes_to_hold);
   });
 }
@@ -663,7 +663,7 @@ hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold)
 hipError_t
 hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_mem_prefetch_async(dev_ptr, count, device, stream);
   });
 }
@@ -672,7 +672,7 @@ hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t s
 hipError_t
 hipMallocFromPoolAsync(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_malloc_from_pool_async(dev_ptr, size, mem_pool, stream);
   });
 }
@@ -681,7 +681,7 @@ hipMallocFromPoolAsync(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipSt
 hipError_t
 hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_device_get_default_mempool(mem_pool, device);
   });
 }
@@ -690,7 +690,7 @@ hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device)
 hipError_t
 hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_device_get_mempool(mem_pool, device);
   });
 }
@@ -699,7 +699,7 @@ hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device)
 hipError_t
 hipDeviceSetMemPool(int device, hipMemPool_t mem_pool)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_device_set_mempool(device, mem_pool);
   });
 }

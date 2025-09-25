@@ -69,7 +69,7 @@ static bool hip_event_query(hipEvent_t eve)
 // =========================================================================
 hipError_t hipEventCreate(hipEvent_t* event)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     auto handle = xrt::core::hip::hip_event_create();
@@ -79,7 +79,7 @@ hipError_t hipEventCreate(hipEvent_t* event)
 
 hipError_t hipEventDestroy(hipEvent_t event)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     xrt::core::hip::hip_event_destroy(event);
@@ -88,7 +88,7 @@ hipError_t hipEventDestroy(hipEvent_t event)
 
 hipError_t hipEventSynchronize(hipEvent_t event)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     xrt::core::hip::hip_event_synchronize(event);
@@ -97,7 +97,7 @@ hipError_t hipEventSynchronize(hipEvent_t event)
 
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
     throw_invalid_value_if(!stream, "stream passed is nullptr");
 
@@ -108,7 +108,7 @@ hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream)
 hipError_t hipEventQuery (hipEvent_t event)
 {
   hipError_t err = hipErrorUnknown, ret = hipSuccess;
-  err = handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  err = handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!event, "event passed is nullptr");
 
     if (xrt::core::hip::hip_event_query(event)){
@@ -125,7 +125,7 @@ hipError_t hipEventQuery (hipEvent_t event)
 
 hipError_t hipEventElapsedTime (float *ms, hipEvent_t start, hipEvent_t stop)
 {
-  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+  return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_value_if(!start, "start event passed is nullptr");
     throw_invalid_value_if(!stop, "stop event passed is nullptr");
     throw_invalid_value_if(!ms, "the ms (elapsed time output) passed is nullptr");

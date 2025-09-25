@@ -127,10 +127,6 @@ private:
 
 public:
   kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args);
-  ~kernel_start() override
-  {
-    func->release_run(std::move(r));
-  }
   bool submit() override;
   bool wait() override;
 };

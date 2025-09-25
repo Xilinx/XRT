@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -23,7 +24,7 @@ TestPsPlVerify::TestPsPlVerify()
                 true){}
 
 boost::property_tree::ptree
-TestPsPlVerify::run(std::shared_ptr<xrt_core::device> dev)
+TestPsPlVerify::run(const std::shared_ptr<xrt_core::device>& dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
@@ -32,7 +33,7 @@ TestPsPlVerify::run(std::shared_ptr<xrt_core::device> dev)
 }
 
 void
-TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptree)
 {
   const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);

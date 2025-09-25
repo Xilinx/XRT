@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __TestDF_bandwidth_h_
-#define __TestDF_bandwidth_h_
+#ifndef TestDF_bandwidth_h_
+#define TestDF_bandwidth_h_
 
 #include "tools/common/TestRunner.h"
 #include "xrt/xrt_device.h"
 
 class TestDF_bandwidth : public TestRunner {
   public:
-    boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
+    boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
   public:
     TestDF_bandwidth();

@@ -33,7 +33,9 @@ target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_appdebug_plugin
-         LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} NAMELINK_SKIP)
+  RUNTIME DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT}
+  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR} COMPONENT ${XRT_COMPONENT} ${XRT_NAMELINK_SKIP}
+)
 
 # We also need to copy the python scripts that contain the gdb connection.
 # Only install these files for PCIe device for now, which is native build

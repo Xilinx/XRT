@@ -42,6 +42,7 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
   bool AieProfilePlugin::live = false;
+  bool AieProfilePlugin::configuredOnePartition = false;
 
   AieProfilePlugin::AieProfilePlugin() : XDPPlugin()
   {
@@ -95,7 +96,14 @@ namespace xdp {
     if (!handle)
       return;
 
-    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) {
+    if (!((db->getStaticInfo()).continueXDPConfig(hw_context_flow))) 
+      return;
+
+    // In a multipartition scenario, if the user wants to profile one specific partition
+    // and we have configured one partition, we can skip the rest of them
+    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (configuredOnePartition)) {
+      xrt_core::message::send(severity_level::warning, "XRT", 
+        "AIE Profile: A previous partition has already been configured. Skipping current partition due to 'config_one_partition=true' setting.");
       return;
     }
 
@@ -147,6 +155,10 @@ namespace xdp {
       return;
     }
     AIEData.valid = true;
+    
+    // If there are tiles configured for this xclbin, then we have configured the first matching xclbin and will not configure any upcoming ones
+    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->isConfigured()))
+      configuredOnePartition = true;
 
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
 include_directories(
@@ -32,7 +32,6 @@ target_link_libraries(azure_mpd_plugin
   xrt_coreutil_static
   uuid
   pthread
-  rt
   dl
   curl
   crypto

@@ -79,7 +79,12 @@ AIEControlConfigFiletype::getPartitionOverlayStartCols() const {
 std::vector<std::string>
 AIEControlConfigFiletype::getValidGraphs() const
 {
-    return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
+    std::vector<std::string> graphs;
+    for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+        auto graphName = graph.second.get<std::string>("name");
+        graphs.push_back(graphName);
+    }
+    return graphs;
 }
 
 std::vector<std::string>
