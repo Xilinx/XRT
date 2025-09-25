@@ -107,6 +107,8 @@ namespace xdp {
       HwContextInfo(HwContextInfo&&) = default;
       HwContextInfo& operator=(HwContextInfo&&) = default;
 
+      ~HwContextInfo() = default;
+
       void incrementValidity() { validityCount++; }
       void decrementValidity() { 
         if (validityCount > 0) 
