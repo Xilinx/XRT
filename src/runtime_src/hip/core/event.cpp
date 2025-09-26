@@ -104,6 +104,7 @@ void event::add_dependency(std::shared_ptr<command> cmd)
 kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
   : command(type::kernel_start, std::move(s))
   , func{std::move(f)}
+  , m_ctrl_scratchpad_bo_sync_rd{false}
 {
   auto k = func->get_kernel();
 
