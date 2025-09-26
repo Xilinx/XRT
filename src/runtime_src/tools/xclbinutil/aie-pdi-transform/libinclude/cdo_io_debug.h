@@ -27,6 +27,7 @@ typedef uint32_t TaskHandle_t;
 /************************** Constant Definitions *****************************/
 #include <stdint.h>
 #include "cdo_common.h"
+#include "cdo_cmd.h"
 // #include <printf.h>
 /************************** Function Prototypes ******************************/
 static char* DebugPdi = NULL;

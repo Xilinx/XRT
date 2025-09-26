@@ -115,11 +115,21 @@ void test_read_pdi(char* pdi, char** data, int* len)
   *len = (int)read(fd, *data, (size_t)BUF_SIZE);
   close(fd);
   */
-  FILE *fp = fopen(pdi, "rb");  // open in binary mode
+  FILE *fp = NULL;
+#if defined(_MSC_VER)
+  errno_t err = fopen_s(&fp, pdi, "rb");  // open in binary mode
+  if (err != 0 || fp == NULL) {
+    printf("%s create failed Error Number % d\n", pdi, err);
+    return;
+  }
+#else
+  fp = fopen(pdi, "rb");  // open in binary mode
   if (fp == NULL) {
     printf("%s create failed Error Number % d\n", pdi, errno);
     return;
   }
+#endif
+
   *data = (char *)malloc((size_t)BUF_SIZE);
   *len = (int)fread(*data, 1, (size_t)BUF_SIZE, fp);
   fclose(fp); // NOLINT
