@@ -145,10 +145,15 @@ FILE* file_pointer;
 // __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
 int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
 {
-   if (!out_file || (out_file[0] == '\0')) 
+   if (!out_file || (out_file[0] == '\0')) { 
      file_pointer = stdout;
-   else 
+   } else {
+#if defined(_MSC_VER)
+     fopen_s(&file_pointer, out_file, "a");
+#else
      file_pointer = fopen(out_file, "a");
+#endif
+   }
 
    // Set the file stream to line-buffered mode
    setvbuf(file_pointer, NULL, _IOLBF, 0);
