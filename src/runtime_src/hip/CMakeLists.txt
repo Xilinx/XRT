@@ -31,8 +31,9 @@ else()
 endif()
 
 target_include_directories(xrt_hip
-  PRIVATE
-  ${XRT_SOURCE_DIR}/runtime_src
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
 )
 
 target_link_libraries(xrt_hip
