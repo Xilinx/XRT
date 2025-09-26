@@ -181,7 +181,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 
 kernel_start::
 kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra)
-  : kernel_start(s, f, args)
+  : kernel_start(std::move(s), std::move(f), args)
 {
   if (!extra)
     return;
