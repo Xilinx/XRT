@@ -2,6 +2,8 @@
 
 if(NOT WIN32)
   add_compile_options(-Wextra -fvisibility=default)
+else()
+  add_compile_options(/wd4244)
 endif()
 
 # This builds a static library libtransformcdo, which 

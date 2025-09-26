@@ -78,6 +78,7 @@ static inline void XCdo_IoWrite32(uintptr_t Addr, uint32_t Val)
 	XCdo_Print("WR32: Addr: 0x%lx, Val: 0x%x. PdiOffset =%d\n", (unsigned long)Addr, Val, PdiOffset);
 	IoAssignVar(XCDO_CMD_WRITE);
 	IoAssignVar(Addr);
+	// IoAssignVar((uint32_t)Addr);
 	IoAssignVar(Val);
 }
 
@@ -88,6 +89,7 @@ static inline void XCdo_IoMaskWrite32(uintptr_t Addr, uint32_t Mask,
 		(unsigned long)Addr, Mask, Val, PdiOffset);
 	IoAssignVar(XCDO_CMD_MASK_WRITE);
 	IoAssignVar(Addr);
+	// IoAssignVar((uint32_t)Addr);
 	IoAssignVar(Mask);
 	IoAssignVar(Val);
 }
@@ -101,7 +103,7 @@ static inline uint32_t XCdo_IoRead32(uintptr_t Addr)
 static inline int XCdo_IoMemcpy(void * dest, const void * src,
 		size_t n)
 {
-	XCdo_Print("COPY: Dest: %p, Src: %p, Size: %lu(Bytes) PdiOffset =%d\n",
+	XCdo_Print("COPY: Dest: %p, Src: %p, Size: %zu(Bytes) PdiOffset =%d\n",
 		dest, src, n, PdiOffset);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
 	IoAssignVar((uint64_t)dest);
