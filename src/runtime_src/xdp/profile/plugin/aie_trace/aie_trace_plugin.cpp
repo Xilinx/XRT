@@ -377,13 +377,14 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   if (!handle)
     return;
 
-  auto itr = handleToAIEData.find(handle);
+  // mark the hw_ctx handle as invalid for current plugin  
+  (db->getStaticInfo()).unregisterPluginFromHwContext(handle);
 
+  auto itr = handleToAIEData.find(handle);
   if (itr == handleToAIEData.end())
     return;
 
   auto &AIEData = itr->second;
-
   if (!AIEData.valid)
     return;
 
@@ -394,7 +395,6 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   AIEData.implementation->flushTraceModules();
   if (AIEData.offloadManager)
     AIEData.offloadManager->flushAll(true);
-
 
   XDPPlugin::endWrite();
 
