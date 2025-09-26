@@ -2616,7 +2616,7 @@ wait()
 
 std::string
 runner::
-get_report()
+get_report() const
 {
   return handle->get_report();
 }
