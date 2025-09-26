@@ -29,6 +29,13 @@ const unsigned int clock_freq_mhz = 1250;
 // Bit widths
 const unsigned int stream_bit_width = 64;
 const unsigned int cascade_bit_width = 512;
+// Number of DMA channels
+const unsigned int mm_num_dma_s2mm_channels = 2;
+const unsigned int mm_num_dma_mm2s_channels = 2;
+const unsigned int mem_num_dma_s2mm_channels = 6;
+const unsigned int mem_num_dma_mm2s_channels = 6;
+const unsigned int shim_num_dma_s2mm_channels = 2;
+const unsigned int shim_num_dma_mm2s_channels = 2;
 // Trace events per module/tile
 const unsigned int num_trace_events = 8;
 // Counters per module/tile

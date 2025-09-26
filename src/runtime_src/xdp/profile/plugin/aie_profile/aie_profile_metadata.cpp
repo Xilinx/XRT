@@ -1408,7 +1408,6 @@ namespace xdp {
     if (!isValidLatencyTile(pairTile))
       return false;
 
-    auto tile_key = create_tileKey(pairTile);
     sourceTile = latencyConfigMap.at(create_tileKey(pairTile)).src;
     return true;
   }

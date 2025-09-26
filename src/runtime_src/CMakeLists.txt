@@ -91,9 +91,9 @@ else()
   xrt_add_subdirectory(xocl)
   xrt_add_subdirectory(xrt)
   xrt_add_subdirectory(tools/xclbinutil)
-  xrt_add_subdirectory(xdp)
   xrt_add_subdirectory(tools/scripts)
   xrt_add_subdirectory(core)
+  xrt_add_subdirectory(xdp)
 
   # --- Optional HIP bindings ---
   if (XRT_ENABLE_HIP)
