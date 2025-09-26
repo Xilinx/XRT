@@ -52,11 +52,10 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 
 # Determine the name of the executable
+set(XBMGMT2_NAME "xbmgmt")
 if(WIN32)
-  set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
   set(XRT_LOADER_SCRIPTS "xbmgmt" "xbmgmt.bat")
 else()
-  set(XBMGMT2_NAME "xbmgmt2")
   set(XRT_LOADER_SCRIPTS "xbmgmt")
 endif()
 

@@ -23,7 +23,7 @@ set_tests_properties(xrt-smi PROPERTIES ENVIRONMENT
 
 if (XRT_XRT OR XRT_ALVEO)
   add_test(NAME xbmgmt2
-    COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 examine -r host
+    COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt examine -r host
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
   set_tests_properties(xbmgmt2 PROPERTIES ENVIRONMENT
