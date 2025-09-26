@@ -25,9 +25,35 @@ extern "C"
 
 #include <map>
 #include <sstream>
+#include <cstdlib>
+#include <cstring>
 
 namespace adf
 {
+
+// Flow mode enumeration
+enum Flow {
+    UNKNOWN = 0,
+    HW = 1,
+    HW_EMU = 2
+};
+
+// Function to get the current flow mode
+Flow getFlowMode()
+{
+    static Flow mode = UNKNOWN;
+    static bool initialized = false;
+
+    if (initialized) return mode;
+
+    initialized = true;
+    const char* envVar = std::getenv("XCL_EMULATION_MODE");
+
+    if (!envVar)                                 mode = HW;
+    else if (std::strcmp(envVar, "hw_emu") == 0) mode = HW_EMU;
+
+    return mode;
+}
 
 static constexpr short INVALID_TILE_COORD = 0xFF;
 
@@ -164,45 +190,60 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterEventValueSet: col " << (int)tileLoc.Col
         << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId1 << ", perf counter event value " << (unsigned int)(numBytes / streamWidthInBytes)).str());
 
-    // Counter0 - Measures the clock cycles from the start of the stream until the transfer is complete.
-    driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId0, XAIE_EVENT_COMBO_EVENT_3_PL, XAIE_EVENT_PERF_CNT_1_PL);
-    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col
-        << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId0
-        << ", start event COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[" << eventPortId << "], stop event XAIE_EVENT_PERF_CNT_1_PL ").str());
+    // Check flow mode to determine whether to use enhanced HW-only profiling
+    Flow currentFlow = getFlowMode();
 
-    std::shared_ptr<xaiefal::XAieComboEvent>  comboEvent3 = nullptr;
-    std::vector<XAie_Events>         combo_events;
-    std::vector<XAie_EventComboOps>  combo_opts;
-    std::vector<XAie_Events>         comboConfigedEvents;
-    XAie_Events newStartEvent = XAIE_EVENT_NONE_CORE;
+    if (currentFlow == UNKNOWN) {
+        return errorMsg(err_code::internal_error, "ERROR: event::start_profiling: Unknown mode set for XCL_EMULATION_MODE environment variable.");
+    } else if (currentFlow == HW) {
+        // HW flow: Use enhanced profiling with combo events
+        // Counter0 - Measures the clock cycles from the start of the stream until the transfer is complete.
+        driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId0, XAIE_EVENT_COMBO_EVENT_3_PL, XAIE_EVENT_PERF_CNT_1_PL);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col
+            << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId0
+            << ", start event XAIE_EVENT_COMBO_EVENT_3_PL, stop event XAIE_EVENT_PERF_CNT_1_PL ").str());
 
-    // Set up a combo event using start & count event type
-    comboEvent3 = fal_util::s_pXAieDev->tile(shimColumn, 0).pl().comboEvent(4);
-    int rcCombo = comboEvent3->reserve();
-    if (rcCombo != XAIE_OK)
-      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to reserve combo event resources.");
+        std::shared_ptr<xaiefal::XAieComboEvent>  comboEvent3 = nullptr;
+        std::vector<XAie_Events>         combo_events;
+        std::vector<XAie_EventComboOps>  combo_opts;
+        std::vector<XAie_Events>         comboConfigedEvents;
+        XAie_Events newStartEvent = XAIE_EVENT_NONE_CORE;
 
-    // Set up the combo event with FSM type using 4 events state machine
-    XAie_Events eventA = XAIE_EVENT_USER_EVENT_1_PL;
-    XAie_Events eventB = XAIE_EVENT_USER_EVENT_1_PL;
-    XAie_Events eventC = COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId];
-    XAie_Events eventD = XAIE_EVENT_PERF_CNT_1_PL;
+        // Set up a combo event using start & count event type
+        comboEvent3 = fal_util::s_pXAieDev->tile(shimColumn, 0).pl().comboEvent(4);
+        int rcCombo = comboEvent3->reserve();
+        if (rcCombo != XAIE_OK)
+          return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to reserve combo event resources.");
 
-    combo_events = { eventA, eventB, eventC, eventD };
+        // Set up the combo event with FSM type using 4 events state machine
+        XAie_Events eventA = XAIE_EVENT_USER_EVENT_1_PL;
+        XAie_Events eventB = XAIE_EVENT_USER_EVENT_1_PL;
+        XAie_Events eventC = COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId];
+        XAie_Events eventD = XAIE_EVENT_PERF_CNT_1_PL;
 
-    // This is NO-OP for COMBO3, necessary for FAL & generates COMBO 1 & 2 events as well
-    combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
-    combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
-    combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
+        combo_events = { eventA, eventB, eventC, eventD };
 
-    rcCombo = comboEvent3->setEvents(combo_events, combo_opts);
-    if (rcCombo != XAIE_OK)
-      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to set combo event resources.");
+        // This is NO-OP for COMBO3, necessary for FAL & generates COMBO 1 & 2 events as well
+        combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
+        combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
+        combo_opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
 
-    // Start the combo event 0
-    rcCombo = comboEvent3->start();
-    if (rcCombo != XAIE_OK)
-      return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to start combo event.");
+        rcCombo = comboEvent3->setEvents(combo_events, combo_opts);
+        if (rcCombo != XAIE_OK)
+          return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to set combo event resources.");
+
+        // Start the combo event 0
+        rcCombo = comboEvent3->start();
+        if (rcCombo != XAIE_OK)
+          return errorMsg(err_code::resource_unavailable, "ERROR: event::start_profiling: Failed to start combo event.");
+    } else if (currentFlow == HW_EMU) {
+        // HW_EMU flow: Use original behavior
+        // Counter0 - Measures the clock cycles from the start of the stream until the transfer is complete.
+        driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId0, COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId], XAIE_EVENT_PERF_CNT_1_PL);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col
+            << " row " << (int)tileLoc.Row << ", module XAIE_PL_MOD, counter id " << (int)counterId0
+            << ", start event COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[" << eventPortId << "], stop event XAIE_EVENT_PERF_CNT_1_PL ").str());
+    }
 
     driverStatus |= XAie_PerfCounterControlSet(dev, tileLoc, XAIE_PL_MOD, (u8)counterId1, COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId], COMMON_XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId]);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_PerfCounterControlSet: col " << (int)tileLoc.Col
@@ -215,11 +256,14 @@ err_code profiling::profile_stream_start_to_transfer_complete_cycles(XAie_DevIns
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: event::start_profiling: AIE driver error.");
 
-    //Note: For start_to_bytes_transferred API, user_event_1 is used twice as eventA & eventB to
-    //      to transition the FSM from Idle->State0->State1.
-    //      eventC = Port Running and eventD = stop event (counter event).
-    XAie_EventGenerate(dev, tileLoc, XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_1_PL);
-    XAie_EventGenerate(dev, tileLoc, XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_1_PL);
+    // Only generate user events for HW flow mode
+    if (currentFlow == HW) {
+        //Note: For start_to_bytes_transferred API, user_event_1 is used twice as eventA & eventB to
+        //      to transition the FSM from Idle->State0->State1.
+        //      eventC = Port Running and eventD = stop event (counter event).
+        XAie_EventGenerate(dev, tileLoc, XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_1_PL);
+        XAie_EventGenerate(dev, tileLoc, XAIE_PL_MOD, XAIE_EVENT_USER_EVENT_1_PL);
+    }
 
     return err_code::ok;
 }
