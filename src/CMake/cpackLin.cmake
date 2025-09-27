@@ -58,7 +58,7 @@ set(CPACK_COMPONENT_XRT-DEV_DEPENDS xrt)
 SET(CPACK_RPM_SPEC_MORE_DEFINE "%define __python python3")
 
 if (DEFINED CROSS_COMPILE)
-  set(CPACK_REL_VER ${LINUX_VERSION})
+  set(CPACK_REL_VER "${LINUX_VERSION}")
 elseif (${LINUX_FLAVOR} MATCHES "^centos")
   execute_process(
     COMMAND awk "{print $4}" /etc/redhat-release
@@ -141,7 +141,7 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian|linuxmint)")
       dkms (>= 2.2.0), udev")
   endif()
 
-  if ((${LINUX_FLAVOR} MATCHES "^(ubuntu)") AND (${LINUX_VERSION} STREQUAL "23.10"))
+  if ((${LINUX_FLAVOR} MATCHES "^(ubuntu)") AND ("${LINUX_VERSION}" STREQUAL "23.10"))
     # Workaround for the following class of cpack build failure on Ubuntu 23.10
     # CMake Error at /usr/share/cmake-3.27/Modules/Internal/CPack/CPackDeb.cmake:348 (message):
     #   CPackDeb: dpkg-shlibdeps: 'dpkg-shlibdeps: error: no dependency information
