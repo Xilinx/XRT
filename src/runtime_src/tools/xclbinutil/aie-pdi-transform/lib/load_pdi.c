@@ -142,7 +142,7 @@ static inline int XPdi_Header_Validate(XPdiLoad *PdiLoad)
 
 	if (PdiLoad->PdiLen <= (PDI_IMAGE_HDR_TABLE_OFFSET +
 			sizeof(XilPdi_ImgHdrTbl))) {
-		XCdo_PError("Failed to load Pdi, invalid lenghth, %u, %lu\n\r",
+		XCdo_PError("Failed to load Pdi, invalid lenghth, %u, %zu\n\r",
 				PdiLoad->PdiLen, PDI_IMAGE_HDR_TABLE_OFFSET +
 				sizeof(XilPdi_ImgHdrTbl));
 		return XCDO_INVALID_ARGS;
