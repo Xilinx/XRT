@@ -15,7 +15,7 @@ if [ "$(uname | grep -E '^(windows32|CYGWIN)')" ]; then
 fi
 
 # Working variables
-XRT_PROG=xbmgmt2
+XRT_PROG=xbmgmt
 
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
