@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <iostream>
 
 #include "event.h"
-#include "hip/xrt_hip.h"
+#include "hip/hip_xrt.h"
 #include "memory.h"
 
 namespace xrt::core::hip {

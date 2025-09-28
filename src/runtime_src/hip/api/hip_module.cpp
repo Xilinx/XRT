@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "hip/core/common.h"
 #include "hip/core/event.h"
 #include "hip/core/module.h"
 #include "hip/core/stream.h"
-#include "hip/xrt_hip.h"
+#include "hip/hip_xrt.h"
 
 #include <elfio/elfio.hpp>
 
