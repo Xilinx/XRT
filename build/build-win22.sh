@@ -31,6 +31,8 @@ usage()
     echo "[-prefix]                  CMAKE_INSTALL_PREFIX"
     echo "[-cmake]                   CMAKE executable (default: $CMAKE)"
     echo "[-ext]                     Location of link dependencies (default: $EXT_DIR)"
+    echo "[-hip]                     Enable hip bindings"
+    echo "[-npu]                     Build for NPU only"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
     echo "[-noabi]                   Do compile with ABI version check"
@@ -96,13 +98,13 @@ while [ $# -gt 0 ]; do
 	    shift
 	    ;;
         -hip)
-            cmake_flags+= " -DXRT_ENABLE_HIP=ON"
+            cmake_flags+=" -DXRT_ENABLE_HIP=1"
             shift
             ;;
         -base)
             shift
             base_build=1
-            cmake_flags+= " -DXRT_BASE=1"
+            cmake_flags+=" -DXRT_BASE=1"
             ;;
         -alveo)
             shift

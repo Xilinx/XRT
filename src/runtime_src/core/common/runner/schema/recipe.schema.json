@@ -32,6 +32,11 @@
       "type": "integer",
       "minimum": 0
     },
+    "index": {
+      "$comment": "index value",
+      "type": "integer",
+      "minimum": 0
+    },
     "size": {
       "$comment": "size or offset of a buffer",
       "type": "integer",
@@ -88,7 +93,8 @@
             "properties": {
               "name": { "$ref": "#/$defs/key" },
               "instance": { "type": "string" },
-              "ctrlcode": { "$ref": "#/$defs/path" }
+              "ctrlcode": { "$ref": "#/$defs/path" },
+              "numargs": { "$ref": "#/$defs/index" }
             },
             "additionalProperties": false
           }

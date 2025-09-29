@@ -1,4 +1,4 @@
-PACKAGE_NAME="xrt-xocl"
+PACKAGE_NAME="xrt"
 PACKAGE_VERSION="@XRT_VERSION_STRING@"
 MAKE[0]="cd driver/xocl; make KERNEL_SRC=${kernel_source_dir}; cd ../.."
 CLEAN="cd driver/xocl; make clean KERNEL_SRC=${kernel_source_dir}; cd ../.."

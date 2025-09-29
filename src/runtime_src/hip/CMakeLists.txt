@@ -54,7 +54,15 @@ install(TARGETS xrt_hip
 )
 
 # Release headers
-install (FILES xrt_hip.h
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt
+install (FILES hip_xrt.h
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/hip
   COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+if (WIN32)
+  # Windows: install entire hip include directory
+  install (DIRECTORY ${HIP_INCLUDE_DIR}/hip
+    DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
+    COMPONENT ${XRT_BASE_DEV_COMPONENT}
+  )
+endif()
