@@ -26,7 +26,6 @@ adf::err_code errorMsg(adf::err_code code, std::string msg)
 
 void debugMsg(std::string msg)
 {
-    std::cout << "[ADF DEBUG] " << msg << std::endl;
 }
 
 void infoMsg(std::string msg)
