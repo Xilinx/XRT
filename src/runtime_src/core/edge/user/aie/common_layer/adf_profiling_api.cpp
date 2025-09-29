@@ -44,11 +44,11 @@ Flow getFlowMode()
 
     if (initialized) return mode;
 
-    initialized = true;
     const char* envVar = std::getenv("XCL_EMULATION_MODE");
 
     if (!envVar)                                 mode = HW;
     else if (std::strcmp(envVar, "hw_emu") == 0) mode = HW_EMU;
+    initialized = true;
 
     return mode;
 }
