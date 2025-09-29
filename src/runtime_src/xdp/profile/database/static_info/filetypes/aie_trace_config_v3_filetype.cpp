@@ -157,31 +157,36 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
                 uint8_t dmaCol = xdp::aie::convertStringToUint8(channel.second.get<std::string>("column"));
                 uint8_t dmaRow = static_cast<uint8_t>(xdp::aie::convertStringToUint8(channel.second.get<std::string>("row")) + rowOffset);
 
-                // If channel matches core tile location, add to core tile
-                if (dmaCol == coreCol && dmaRow == coreRow) {
-                    tileMap[coreKey].active_memory = true;
-                    populateDMAChannelNames(tileMap[coreKey], channel.second);
+                auto dmaKey = std::make_pair(dmaCol, dmaRow);
+
+                // Check if a tile already exists for current DMA channel
+                if (tileMap.find(dmaKey) != tileMap.end()) {
+                    // Update existing tile to have DMA activity
+                    tileMap[dmaKey].active_memory = true;
+                    populateDMAChannelNames(tileMap[dmaKey], channel.second);
                 } else {
-                    // Otherwise create/update separate DMA tile
-                    auto dmaKey = std::make_pair(dmaCol, dmaRow);
-                    if (tileMap.find(dmaKey) == tileMap.end()) {
-                        tile_type dmaTile;
-                        dmaTile.col = dmaCol;
-                        dmaTile.row = dmaRow;
-                        dmaTile.active_core = false;
-                        dmaTile.active_memory = true;
-                        tileMap[dmaKey] = dmaTile;
-                    }
+                    // Create new DMA-only tile
+                    tile_type dmaTile;
+                    dmaTile.col = dmaCol;
+                    dmaTile.row = dmaRow;
+                    dmaTile.active_core = false;
+                    dmaTile.active_memory = true;
+                    tileMap[dmaKey] = dmaTile;
                     populateDMAChannelNames(tileMap[dmaKey], channel.second);
                 }
             }
         }
     }
 
-    // Convert map to vector
     std::vector<tile_type> tiles;
     for (const auto& pair : tileMap) {
-        tiles.push_back(pair.second);
+        const tile_type& tile = pair.second;
+
+        if ((type == module_type::core) && tile.active_core) {
+            tiles.push_back(tile);
+        } else if ((type == module_type::dma) && tile.active_memory) {
+            tiles.push_back(tile);
+        }
     }
     
     return tiles;
