@@ -22,8 +22,8 @@ constexpr uint32_t payload_bits_default = 48;
 namespace xrt_core::tools::xrt_smi{
 
 event_trace_config::
-event_trace_config(const nlohmann::json& json_config)
-  : config(json_config),
+event_trace_config(nlohmann::json json_config)
+  : config(std::move(json_config)),
     event_bits(parse_event_bits(config)),
     payload_bits(parse_payload_bits(config)),
     file_major(parse_major_version(config)),

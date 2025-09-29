@@ -85,7 +85,7 @@ get_event_trace_config(const xrt_core::device* dev) {
 }
 
 static void
-validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
+validate_version_compatibility(const std::pair<uint16_t, uint16_t>& /*version*/,
                                const xrt_core::device* device) 
 {
   if (!device) {

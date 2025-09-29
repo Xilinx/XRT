@@ -816,8 +816,8 @@ extract_artifacts_from_archive(const xrt_core::archive* archive,
       std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
       artifacts_repo[artifact_name] = std::move(artifact_binary);
     }
-    catch (const std::exception& e) {
-      //Empty artifact will be ignored by runner
+    catch (const std::exception& /*e*/) {
+      //Empty artifact will be ignored
     }
   }
   return artifacts_repo;
@@ -834,7 +834,7 @@ open_archive(const xrt_core::device* device)
     auto full_archive_path = xrt_core::environment::platform_path(archive_path).string();
     archive = std::make_unique<xrt_core::archive>(full_archive_path);
   } catch (const std::exception& e) {
-    // Continue without archive - this is not a fatal error
+    throw xrt_core::error(std::string("Failed to open archive. ") + e.what());
   }
   
   return archive;

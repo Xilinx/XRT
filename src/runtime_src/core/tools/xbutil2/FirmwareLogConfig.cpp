@@ -7,8 +7,8 @@
 namespace xrt_core::tools::xrt_smi {
 
 firmware_log_config::
-firmware_log_config(const nlohmann::json& json_config)
-  : config(json_config),
+firmware_log_config(nlohmann::json json_config)
+  : config(std::move(json_config)),
     enums(parse_enums(config)),
     structures(parse_structures(config)),
     header_size(calculate_header_size(structures))

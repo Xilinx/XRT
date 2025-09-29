@@ -85,7 +85,7 @@ public:
    * Parses the JSON content directly, populating enums and structures.
    */
     explicit
-    firmware_log_config(const nlohmann::json& json_config); // Initializes using static parse APIs
+    firmware_log_config(nlohmann::json json_config); // Initializes using static parse APIs
 
   /**
    * @brief Get parsed enumerations
