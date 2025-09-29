@@ -31,14 +31,12 @@ extern "C"
 namespace adf
 {
 
-// Flow mode enumeration
 enum Flow {
     UNKNOWN = 0,
     HW = 1,
     HW_EMU = 2
 };
 
-// Function to get the current flow mode
 Flow getFlowMode()
 {
     static Flow mode = UNKNOWN;
