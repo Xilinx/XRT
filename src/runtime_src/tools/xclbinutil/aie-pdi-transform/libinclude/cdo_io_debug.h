@@ -27,8 +27,8 @@ typedef uint32_t TaskHandle_t;
 /************************** Constant Definitions *****************************/
 #include <stdint.h>
 #include "cdo_common.h"
-#include "cdo_cmd.h"
-// #include <printf.h>
+#include "cdo_cmd.h"  // XCDO_CMD_WRITE for clang-tidy check
+
 /************************** Function Prototypes ******************************/
 static char* DebugPdi = NULL;
 static uint32_t MaxLen = 0;

@@ -65,10 +65,7 @@ endif()
 
 # ==-- x c l b i n u t i l --==================================================
 
-# aie-pdi-transform only supports linux build currently
-# if(NOT WIN32)
-  add_subdirectory(aie-pdi-transform)
-# endif()
+add_subdirectory(aie-pdi-transform)
 
 set(XCLBINUTIL_NAME "xclbinutil")
 
@@ -121,9 +118,7 @@ endif()
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
 
 # link the aie-pdi-transform static library
-# if(NOT WIN32)
-   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE transformcdo)
-# endif()
+target_link_libraries(${XCLBINUTIL_NAME} PRIVATE transformcdo)
 
 # Link required windows specific libraries with MinGW
 if(WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
@@ -254,9 +249,7 @@ if (GTEST_FOUND AND NOT XRT_SYSTEM_INSTALL)
   endif()
 
   # link the aie-pdi-transform static library
-  # if(NOT WIN32)
-     target_link_libraries(${UNIT_TEST_NAME} PRIVATE transformcdo)
-  # endif()
+  target_link_libraries(${UNIT_TEST_NAME} PRIVATE transformcdo)
 
   # Add the test
   set(TEST_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${UNIT_TEST_NAME}")

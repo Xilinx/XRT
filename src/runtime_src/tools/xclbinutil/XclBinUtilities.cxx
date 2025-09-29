@@ -1041,8 +1041,8 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
-// #ifndef _WIN32
-// pdi_transform is only available on Linux
+// Note: --transform-pdi is currently only supported on Linux, so the following
+//   API is not called on Windows
 // pdi_transform is defined in libtransformcdo.a
 extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out, const char* out_file);
 
@@ -1176,7 +1176,6 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   // delete the temp dir
   fs::remove_all(tempDir);
 }
-// #endif
 
 
 #if (BOOST_VERSION >= 106400)

@@ -17,9 +17,6 @@ add_library( transformcdo STATIC
     ../lib/pdi_transform.c
 )
 
-# Set C flags
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -fvisibility=default")
-
 target_include_directories(transformcdo PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../libinclude
     ${CMAKE_CURRENT_SOURCE_DIR}
