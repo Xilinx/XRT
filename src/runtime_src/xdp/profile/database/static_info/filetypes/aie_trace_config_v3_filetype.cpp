@@ -182,9 +182,8 @@ AIETraceConfigV3Filetype::getTiles(const std::string& graph_name,
     for (const auto& pair : tileMap) {
         const tile_type& tile = pair.second;
 
-        if ((type == module_type::core) && tile.active_core) {
-            tiles.push_back(tile);
-        } else if ((type == module_type::dma) && tile.active_memory) {
+        if (((type == module_type::core) && tile.active_core) ||
+            ((type == module_type::dma) && tile.active_memory)) {
             tiles.push_back(tile);
         }
     }
