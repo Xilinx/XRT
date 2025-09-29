@@ -34,12 +34,10 @@ TestCmdChainThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const 
     std::string profile_data = archive->data("profile_cmd_chain_throughput.json"); 
     
     // Extract artifacts using helper method
-    auto artifacts_repo = extract_artifacts_from_archive(archive, {
+    auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
       "validate.xclbin", 
       "nop.elf" 
-    }, ptree);
-    
-    // Create runner with recipe, profile, and artifacts repository
+    });    // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();

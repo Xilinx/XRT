@@ -281,27 +281,3 @@ TestRunner::get_test_header()
     ptree.put("explicit", m_explicit);
     return ptree;
 }
-
-xrt_core::runner::artifacts_repository 
-TestRunner::extract_artifacts_from_archive(const xrt_core::archive* archive, 
-                                           const std::vector<std::string>& artifact_names,
-                                           boost::property_tree::ptree& ptree)
-{
-  xrt_core::runner::artifacts_repository artifacts_repo;
-  
-  for (const auto& artifact_name : artifact_names) {
-    try {
-      std::string artifact_data = archive->data(artifact_name);
-      // Convert string to vector<char> for artifacts_repository
-      std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
-      artifacts_repo[artifact_name] = std::move(artifact_binary);
-    }
-    catch (const std::exception&) {
-      if (XBUtilities::getVerbose()) {
-        XBValidateUtils::logger(ptree, "Warning", boost::str(boost::format("Artifact not found: %s") % artifact_name));
-      }
-    }
-  }
-  
-  return artifacts_repo;
-}

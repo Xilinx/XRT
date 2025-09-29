@@ -14,6 +14,7 @@
 #include "common/system.h"
 #include "common/sysinfo.h"
 #include "common/smi.h"
+#include "common/module_loader.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
@@ -25,6 +26,7 @@
 #include <iostream>
 #include <map>
 #include <regex>
+#include <filesystem>
 
 
 #ifdef _WIN32
@@ -798,4 +800,42 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
   catch (...) {
     //no device available
   }
-}// end of namespace XBValidateUtils
+}
+
+xrt_core::runner::artifacts_repository 
+XBUtilities::
+extract_artifacts_from_archive(const xrt_core::archive* archive, 
+                               const std::vector<std::string>& artifact_names)
+{
+  xrt_core::runner::artifacts_repository artifacts_repo;
+  
+  for (const auto& artifact_name : artifact_names) {
+    try {
+      std::string artifact_data = archive->data(artifact_name);
+      // Convert string to vector<char> for artifacts_repository
+      std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
+      artifacts_repo[artifact_name] = std::move(artifact_binary);
+    }
+    catch (const std::exception& e) {
+      //Empty artifact will be ignored by runner
+    }
+  }
+  return artifacts_repo;
+}
+
+std::unique_ptr<xrt_core::archive>
+XBUtilities::
+open_archive(const xrt_core::device* device)
+{
+  std::unique_ptr<xrt_core::archive> archive;
+  
+  try {
+    std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
+    auto full_archive_path = xrt_core::environment::platform_path(archive_path).string();
+    archive = std::make_unique<xrt_core::archive>(full_archive_path);
+  } catch (const std::exception& e) {
+    // Continue without archive - this is not a fatal error
+  }
+  
+  return archive;
+}

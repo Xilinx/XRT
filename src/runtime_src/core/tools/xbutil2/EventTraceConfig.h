@@ -92,7 +92,7 @@ public:
    * to check if the JSON file version matches the device/shim version.
    */
   explicit
-  event_trace_config(const std::string& json_file_path = "trace_events.json");
+  event_trace_config(const nlohmann::json& json_config);
 
   /**
    * @brief Parse a single trace event from raw data

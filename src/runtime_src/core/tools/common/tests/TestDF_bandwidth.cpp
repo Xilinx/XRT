@@ -37,10 +37,10 @@ TestDF_bandwidth::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_co
     std::string profile_data = archive->data("profile_df_bandwidth.json"); 
     
     // Extract artifacts using helper method
-    auto artifacts_repo = extract_artifacts_from_archive(archive, {
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
       "validate_df_bandwidth.xclbin", 
       "df_bw.elf" 
-    }, ptree);
+    });
     
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);

@@ -79,14 +79,13 @@ public:
 
 public:
   /**
-   * @brief Constructor - loads configuration from JSON file
-   * @param json_file_path Path to firmware_log.json file
+   * @brief Constructor - loads configuration from JSON content
+   * @param json_content JSON content as string
    *
-   * Loads and parses the JSON file, populating enums and structures.
-   * Sets valid_ to true if successful, false otherwise.
+   * Parses the JSON content directly, populating enums and structures.
    */
     explicit
-    firmware_log_config(const std::string& json_file_path); // Initializes using static parse APIs
+    firmware_log_config(const nlohmann::json& json_config); // Initializes using static parse APIs
 
   /**
    * @brief Get parsed enumerations
