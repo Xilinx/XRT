@@ -99,6 +99,7 @@ with the control code.
         "name": "k1",
         "instance": "DPU",
         "ctrlcode": "no-ctrl-packet.elf"
+        "numargs": number
       }
     ]
   },
@@ -113,6 +114,15 @@ control code, then only one such kernel instance needs to be listed in
 the resources section.  Listing multiple kernel instances referring to
 the same kernel and using the same control code is not error,
 but is not necessary.
+
+The `numargs` is unused by the xrt::runner class, but is added to
+support using the recipe to create application code invoking a kernel
+with free formed args. For example, `hipLaunchKernel` takes a void**
+array of args, where the length of the array is supposed to exactly
+match the number of arguments to the kernel.  The recipe `runs`
+section itself may not specify all arguments, but a `hip` application
+created from the recipe.json must create an array of all expected
+arguments, where missing args will be populated with a default value.
 
 ### CPU functions
 
