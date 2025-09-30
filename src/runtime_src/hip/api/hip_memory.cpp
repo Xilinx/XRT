@@ -81,7 +81,9 @@ namespace xrt::core::hip
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
     throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer.");
     // coverity[REVERSE_INULL] , preivous function already checks for nullptr
-    throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
+    throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped &&
+                           hip_mem->get_flags() != hipHostRegisterMapped,
+                           "Getting device pointer is valid only for memory created with hipHostMallocMapped/hipHostRegisterMapped flag!");
 
     *device_ptr = nullptr;
     if (hip_mem) {
