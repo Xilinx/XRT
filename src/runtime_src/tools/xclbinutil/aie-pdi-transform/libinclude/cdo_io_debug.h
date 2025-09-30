@@ -27,7 +27,8 @@ typedef uint32_t TaskHandle_t;
 /************************** Constant Definitions *****************************/
 #include <stdint.h>
 #include "cdo_common.h"
-#include <printf.h>
+#include "cdo_cmd.h"  // XCDO_CMD_WRITE for clang-tidy check
+
 /************************** Function Prototypes ******************************/
 static char* DebugPdi = NULL;
 static uint32_t MaxLen = 0;
@@ -101,7 +102,7 @@ static inline uint32_t XCdo_IoRead32(uintptr_t Addr)
 static inline int XCdo_IoMemcpy(void * dest, const void * src,
 		size_t n)
 {
-	XCdo_Print("COPY: Dest: %p, Src: %p, Size: %lu(Bytes) PdiOffset =%d\n",
+	XCdo_Print("COPY: Dest: %p, Src: %p, Size: %zu(Bytes) PdiOffset =%d\n",
 		dest, src, n, PdiOffset);
 	IoAssignVar(XCDO_CMD_DMAWRITE);
 	IoAssignVar((uint64_t)dest);
