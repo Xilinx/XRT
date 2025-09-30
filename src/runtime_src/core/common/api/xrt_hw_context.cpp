@@ -79,6 +79,13 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       auto bo = xrt_core::bo_int::
         create_bo(device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
+      // Log buffers first 8 bytes are used for metadata
+      // So make sure it is initialized with zero's before configuring
+      constexpr size_t metadata_size = 8;
+      char* buf_map = bo.map<char*>();
+      std::memset(buf_map, 0, metadata_size);
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, metadata_size, 0);
+
       // create map with uc index and log buffer size
       std::map<uint32_t, size_t> uc_buf_map;
       for (uint32_t i = 0; i < num_uc; ++i)
