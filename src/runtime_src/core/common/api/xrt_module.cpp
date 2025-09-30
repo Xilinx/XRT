@@ -1979,7 +1979,15 @@ class module_sram : public module_impl
   // In platforms that support Dynamic tracing xrt bo's are
   // created and passed to driver/firmware to hold tracing output
   // written by it.
-  xrt::bo m_dtrace_ctrl_bo;
+  // Below structure holds the info related to dtrace feature
+  struct dtrace_util
+  {
+    using dlhandle = std::unique_ptr<void, decltype(&xrt_core::dlclose)>;
+    dlhandle lib_hdl{nullptr, {}};
+    std::string ctrl_file_path;
+    std::string map_data;
+    xrt::bo ctrl_bo;
+  } m_dtrace;
 
   bool
   inline is_dump_control_codes() const {
@@ -2458,20 +2466,12 @@ class module_sram : public module_impl
     return payload;
   }
 
-  struct dtrace_util
-  {
-    using dlhandle = std::unique_ptr<void, decltype(&xrt_core::dlclose)>;
-    dlhandle lib_hdl{nullptr, {}};
-    std::string ctrl_file_path;
-    std::string map_data;
-  };
-
   // Function that returns true on successful initialization and false otherwise
   // Ideally exceptions should have been used but return status is used as ths
   // exception alternative is not good because in cases of failure dtrace
   // functionality is just a no-op.
-  bool
-  init_dtrace_helper(const module_impl* parent, dtrace_util& dtrace_obj)
+  static bool
+  init_dtrace_helper(const module_impl* parent, dtrace_util& dtrace_obj, uint32_t id)
   {
     // The APIs used for dynamic tracing in future will be checked into
     // AIEBU repo after Telluride related code is made public.
@@ -2501,7 +2501,7 @@ class module_sram : public module_impl
     }
     dtrace_obj.ctrl_file_path = path;
 
-    const auto& data = parent->get_dump_buf(m_ctrl_code_id);
+    const auto& data = parent->get_dump_buf(id);
     if (data.size() == 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "Dump section is empty in ELF");
@@ -2515,8 +2515,7 @@ class module_sram : public module_impl
   void
   initialize_dtrace_buf(const module_impl* parent)
   {
-    dtrace_util dtrace;
-    if (!init_dtrace_helper(parent, dtrace))
+    if (!init_dtrace_helper(parent, m_dtrace, m_ctrl_code_id))
       return; // init failure
 
     // dtrace is enabled and library is opened successfully
@@ -2524,7 +2523,7 @@ class module_sram : public module_impl
     // get_dtrace_col_number, get_dtrace_buffer_size and populate_dtrace_buffer
     using get_dtrace_col_numbers_fun = uint32_t (*)(const char*, const char*, uint32_t*);
     auto get_dtrace_col_numbers = reinterpret_cast<get_dtrace_col_numbers_fun>
-        (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_col_numbers"));
+        (xrt_core::dlsym(m_dtrace.lib_hdl.get(), "get_dtrace_col_numbers"));
     if (!get_dtrace_col_numbers) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
@@ -2532,7 +2531,7 @@ class module_sram : public module_impl
 
     using get_dtrace_buffer_size_fun = void (*)(uint64_t*);
     auto get_dtrace_buffer_size = reinterpret_cast<get_dtrace_buffer_size_fun>
-        (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_buffer_size"));
+        (xrt_core::dlsym(m_dtrace.lib_hdl.get(), "get_dtrace_buffer_size"));
     if (!get_dtrace_buffer_size) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
@@ -2540,7 +2539,7 @@ class module_sram : public module_impl
 
     using populate_dtrace_buffer_fun = void (*)(uint32_t*, uint64_t);
     auto populate_dtrace_buffer = reinterpret_cast<populate_dtrace_buffer_fun>
-       (xrt_core::dlsym(dtrace.lib_hdl.get(), "populate_dtrace_buffer"));
+       (xrt_core::dlsym(m_dtrace.lib_hdl.get(), "populate_dtrace_buffer"));
     if (!populate_dtrace_buffer) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
@@ -2548,7 +2547,7 @@ class module_sram : public module_impl
 
     // using function ptr get dtrace control buffer size
     uint32_t buffers_length = 0;
-    if (get_dtrace_col_numbers(dtrace.ctrl_file_path.c_str(), dtrace.map_data.c_str(),
+    if (get_dtrace_col_numbers(m_dtrace.ctrl_file_path.c_str(), m_dtrace.map_data.c_str(),
                                &buffers_length) != 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "[dtrace] : Failed to get col numbers");
@@ -2580,22 +2579,22 @@ class module_sram : public module_impl
 	total_size += static_cast<size_t>(entry >> shift32);
       }
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
-      m_dtrace_ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
+      m_dtrace.ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
                                                      total_size * sizeof(uint32_t),
                                                      xrt_core::bo_int::use_type::dtrace);
       // fill data by calling dtrace library API
-      populate_dtrace_buffer(m_dtrace_ctrl_bo.map<uint32_t*>(), m_dtrace_ctrl_bo.address());
+      populate_dtrace_buffer(m_dtrace.ctrl_bo.map<uint32_t*>(), m_dtrace.ctrl_bo.address());
 
       // sync dtrace control buffer
-      m_dtrace_ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-      xrt_core::bo_int::config_bo(m_dtrace_ctrl_bo, buf_sizes);
+      xrt_core::bo_int::config_bo(m_dtrace.ctrl_bo, buf_sizes);
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "[dtrace] : dtrace buffers initialized successfully");
     }
     catch (const std::exception &e) {
-      m_dtrace_ctrl_bo = {};
+      m_dtrace.ctrl_bo = {};
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what());
     }
@@ -2671,17 +2670,16 @@ public:
   void
   dump_dtrace_buffer()
   {
-    dtrace_util dtrace;
-    if (!m_dtrace_ctrl_bo || !init_dtrace_helper(m_parent.get(), dtrace))
+    if (!m_dtrace.ctrl_bo) // dtrace is not enabled
       return;
 
     // sync dtrace buffers output from device
-    m_dtrace_ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     // Get function pointer to create result file
     using get_dtrace_result_file_fun = void (*)(const char*);
     auto get_dtrace_result_file = reinterpret_cast<get_dtrace_result_file_fun>
-      (xrt_core::dlsym(dtrace.lib_hdl.get(), "get_dtrace_result_file"));
+      (xrt_core::dlsym(m_dtrace.lib_hdl.get(), "get_dtrace_result_file"));
     if (!get_dtrace_result_file) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", xrt_core::dlerror());
       return;
