@@ -833,8 +833,8 @@ open_archive(const xrt_core::device* device)
     std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
     auto full_archive_path = xrt_core::environment::platform_path(archive_path).string();
     archive = std::make_unique<xrt_core::archive>(full_archive_path);
-  } catch (const std::exception& e) {
-    throw xrt_core::error(std::string("Failed to open archive. ") + e.what());
+  } catch (const std::exception& /*e*/) {
+    // Continue without archive - this is not a fatal error
   }
   
   return archive;
