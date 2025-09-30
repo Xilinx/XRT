@@ -4146,10 +4146,7 @@ struct firmware_debug_buffer {
 
 struct event_trace_version : request 
 {
-  struct result_type {
-    uint16_t major;
-    uint16_t minor;
-  };
+  using result_type = uint32_t;
 
   static const key_type key = key_type::event_trace_version;
 

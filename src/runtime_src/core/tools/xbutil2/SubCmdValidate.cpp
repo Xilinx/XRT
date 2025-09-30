@@ -299,21 +299,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   if (testObjectsToRun.empty())
     throw std::runtime_error("No test given to validate against.");
 
-  // Get archive path from device query and create archive object
-  std::unique_ptr<xrt_core::archive> test_archive;
-  try {
-    std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device.get());
-    auto archive = XBValidateUtils::findPlatformFile(archive_path, ptDevCollectionTestSuite);
-    if (!archive.empty() && std::filesystem::exists(archive)) {
-      test_archive = std::make_unique<xrt_core::archive>(archive);
-      XBU::verbose("Loaded test archive: " + archive);
-    } else {
-      XBU::verbose("Archive path not found or does not exist: " + archive);
-    }
-  } catch (const std::exception& e) {
-    XBU::verbose("Archive not available: " + std::string(e.what()));
-    // Continue without archive - this is not a fatal error
-  }
+  auto test_archive = XBU::open_archive(device.get());
 
   get_platform_info(device, ptDeviceInfo, schemaVersion, std::cout);
   std::cout << "-------------------------------------------------------------------------------" << std::endl;

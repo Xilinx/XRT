@@ -66,12 +66,6 @@ class TestRunner : public JSONConfigurable {
     xrt::kernel get_kernel(const xrt::hw_context& hwctx, const std::string& kernel_name, 
       const std::string& elf_path); 
 
-    // Archive helper method for extracting artifacts
-    xrt_core::runner::artifacts_repository 
-    extract_artifacts_from_archive(const xrt_core::archive* archive, 
-                                   const std::vector<std::string>& artifact_names,
-                                   boost::property_tree::ptree& ptree);
-
     std::string m_xclbin;
  
   //variables
