@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __OO_Preemption_h_
 #define __OO_Preemption_h_
@@ -17,7 +17,6 @@ class OO_Preemption : public OptionOptions {
  private:
   std::string m_device;
   std::string m_action;
-  std::string m_type;
   bool m_help;
 };
 
