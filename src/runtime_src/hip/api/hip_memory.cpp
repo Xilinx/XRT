@@ -96,6 +96,9 @@ namespace xrt::core::hip
   static void
   hip_free(void* ptr)
   {
+    if (!ptr)
+      return;
+
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "Invalid handle.");
 
@@ -106,6 +109,9 @@ namespace xrt::core::hip
   static void
   hip_host_free(void* ptr)
   {
+    if (!ptr)
+      return;
+
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "Invalid handle.");
 
