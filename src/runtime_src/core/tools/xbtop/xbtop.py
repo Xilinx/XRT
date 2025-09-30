@@ -20,7 +20,7 @@ from shutil import get_terminal_size
 import pyxrt
 
 # Local Packages
-import XBUtil
+from _xbtop import XBUtil
 
 # Global Variables
 g_refresh_rate = 0
@@ -31,9 +31,9 @@ g_page_number = 0
 # Initialize the avaible reports
 # Note: Once the report is added to the g_report array, it will automaticaly
 #       be supported.
-from ReportPower import ReportPower
-from ReportMemory import ReportMemory
-from ReportDynamicRegions import ReportDynamicRegions
+from _xbtop.ReportPower import ReportPower
+from _xbtop.ReportMemory import ReportMemory
+from _xbtop.ReportDynamicRegions import ReportDynamicRegions
 
 g_reports = []
 g_reports.append(ReportMemory())

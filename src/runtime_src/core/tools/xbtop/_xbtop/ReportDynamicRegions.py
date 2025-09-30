@@ -8,7 +8,7 @@
 
 import json
 import math
-import XBUtil
+from . import XBUtil
 
 # found in PYTHONPATH
 import pyxrt
