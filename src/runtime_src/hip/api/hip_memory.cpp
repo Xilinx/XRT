@@ -63,7 +63,9 @@ namespace xrt::core::hip
     throw_invalid_device_if(!dev, "empty device for hip malloc.");
     throw_invalid_value_if(!host_ptr, "empty host memory pointer for host memory registration.");
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
+    throw_if(hip_mem != nullptr, hipErrorHostMemoryAlreadyRegistered, "host memory already registered.");
+    hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
     auto host_addr = hip_mem->get_address();
     throw_if(!host_addr, hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister!");
 
