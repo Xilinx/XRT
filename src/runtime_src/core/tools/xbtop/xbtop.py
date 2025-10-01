@@ -267,6 +267,9 @@ if __name__ == '__main__':
     try:
         main()
 
+    except KeyboardInterrupt:
+        pass
+
     except RuntimeError as r:
         print("ERROR: %s" % r)
         exit(1)
