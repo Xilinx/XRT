@@ -709,9 +709,6 @@ struct ert_ctx_health_data_aie4 {
   struct uc_health_info uc_info[];
 };
 
-#define ERT_CTX_HEALTH_DATA_V0  0
-#define ERT_CTX_HEALTH_DATA_V1  1
-
 /**
  * struct ert_ctx_health_data_v1: interpretation of payload for an ert v1 packet 
  *
@@ -723,7 +720,7 @@ struct ert_ctx_health_data_aie4 {
  * If version is 1, we should use this data structure to parse context health data
  * starting from the ert packet payload. And use corresponding data structure based
  * on the npu generation.
-*/
+ */
 struct ert_ctx_health_data_v1 {
   uint32_t version;
   uint32_t npu_gen;
@@ -731,6 +728,26 @@ struct ert_ctx_health_data_v1 {
     struct ert_ctx_health_data_aie2 aie2;
     struct ert_ctx_health_data_aie4 aie4;
   };
+};
+
+/**
+ * Enum for context health data version (between XRT shim and driver).
+ * The version field in ert_ctx_health_data/_v1 will be set by the driver
+ */
+enum ert_ctx_health_data_version {
+  ERT_CTX_HEALTH_DATA_V0 = 0,
+  ERT_CTX_HEALTH_DATA_V1 = 1
+};
+
+/**
+ * Enum for device generation type.
+ * The npu_gen field in ert_ctx_health_data_v1 is set by the driver based on the npu device device:
+ *   NPU_GEN_AIE2 -> for AIE2/AIE2P
+ *   NPU_GEN_AIE4 -> for AIE4/AIE2PS
+ */
+enum npu_gen_type {
+  NPU_GEN_AIE2,
+  NPU_GEN_AIE4
 };
 
 /**
