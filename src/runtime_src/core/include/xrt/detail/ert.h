@@ -625,6 +625,115 @@ struct ert_ctx_health_data {
 };
 
 /**
+ * struct ert_ctx_health_data_aie2: interpretation of payload for an ert v1 packet
+ *                                  which has context health data for npu0
+ *
+ * @txn_op_idx:                 index of last TXN control code executed
+ * @ctx_pc:                     program counter for that context
+ * @fatal_error_type:           the fatal error type if context crashes
+ * @fatal_error_exception_type: LX7 exception type
+ * @fatal_error_exception_pc:   LX7 program counter at the time of the exception
+ * @fatal_error_app_module:     module name where the exception occurred
+ *
+ * Field                       Default value  Comment
+ * txn_op_idx:                 0xFFFFFFFF     there is no txn control code is running or the
+ *                                            last txn control code op idx is not captured
+ * ctx_pc:                     0              context .text program counter is not captured
+ * fatal_error_type:           0              no fatal error or fatal error is not captured
+ * fatal_error_exception_type: 0
+ * fatal_error_exception_pc:   0
+ * fatal_error_app_module:     0
+ *
+ * Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
+ * v1 packet will have the following information for npu0 generation.
+ */
+struct ert_ctx_health_data_aie2 {
+  uint32_t txn_op_idx;
+  uint32_t ctx_pc;
+  uint32_t fatal_error_type;
+  uint32_t fatal_error_exception_type;
+  uint32_t fatal_error_exception_pc;
+  uint32_t fatal_error_app_module;
+};
+
+/**
+ * struct uc_health_info: Health data for each cert
+ *
+ * @uc_idx:            uC index in this context, 0 is the lead
+ * @uc_idle_status:    valid when CERT is CTX_IDEL, represent the reason CERT is idle
+ *                     hsa_lite_status register:
+ *                         bit 0: HSA queue not empty
+ *                         bit 1: preemption save completion
+ *                         bit 2: CERT is idle
+ * @misc_status:       valid when UCCTX_ERROR, represent the reason UC hangs
+ *                         bit 0: uC fw exception
+ *                         bit 1: control code hang
+ * @fw_state:          uC FW state
+ * @page_idx:          page index of the current control code
+ * @offset:            bytes offset inside page
+ * @restore_page:      in case context is preempted, the page index to be executed on resume
+ * @restore_offset:    in case context is preempted, the bytes offset inside restore_page to be executed on resume
+ * @uc_ear:            in case of uC crash, the exception address of uC
+ * @uc_esr:            in case of uC crash, the exception status of uC
+ * @uc_pc:             in case of uC crash, the PC of the current uC
+ */
+struct uc_health_info {
+  uint32_t uc_idx;
+  uint32_t uc_idle_status;
+  uint32_t misc_status;
+  uint32_t fw_state;
+  uint32_t page_idx;
+  uint32_t offset;
+  uint32_t restore_page;
+  uint32_t restore_offset;
+  uint32_t uc_ear;
+  uint32_t uc_esr;
+  uint32_t uc_pc;
+};
+
+/**
+ * struct ert_ctx_health_data_aie4: interpretation of payload for an ert v1 packet 
+ *                                  which has context health data for aie2ps and aie4
+ *
+ * @ctx_state:             context state
+ * @num_ucs:               number of uC reported
+ * @uc_info:               array for health data for each uC in the context.
+ *                         the array size is based on num_certs.
+ *
+ * Once an ert packet completes with state ERT_CMD_STATE_TIMEOUT, the ert
+ * v1 packet will have the following information for aie2ps/aie4 generation.
+ */
+struct ert_ctx_health_data_aie4 {
+  uint32_t ctx_state;
+  uint32_t num_uc;
+  struct uc_health_info uc_info[];
+};
+
+#define ERT_CTX_HEALTH_DATA_V0  0
+#define ERT_CTX_HEALTH_DATA_V1  1
+
+/**
+ * struct ert_ctx_health_data_v1: interpretation of payload for an ert v1 packet 
+ *
+ * @version:               context health data version (1)
+ * @npu_gen:               npu generation
+ * @aie2:                  context health data for npu generation aie2/aie2p
+ * @aie4:                  context health data for npu generation aie2ps/aie4
+ *
+ * If version is 1, we should use this data structure to parse context health data
+ * starting from the ert packet payload. And use corresponding data structure based
+ * on the npu generation.
+*/
+struct ert_ctx_health_data_v1 {
+  uint32_t version;
+  uint32_t npu_gen;
+  union {
+    struct ert_ctx_health_data_aie2 aie2;
+    struct ert_ctx_health_data_aie4 aie4;
+  };
+};
+
+/**
  * ERT command state
  *
  * @ERT_CMD_STATE_NEW:         Set by host before submitting a command to
@@ -1203,7 +1312,7 @@ get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
   return (get_ert_regmap_end(pkt) - get_ert_regmap_begin(pkt)) * sizeof(uint32_t);
 }
 /* ert_ctx_health_data structure is valid only if the ert opcode is START_NPU_* and cmd state is ERT_CMD_STATE_TIMEOUT*/
-static inline struct ert_ctx_health_data*
+static inline const struct ert_ctx_health_data*
 get_ert_ctx_health_data(const struct ert_packet* pkt)
 {
   switch (pkt->opcode) {
@@ -1212,7 +1321,21 @@ get_ert_ctx_health_data(const struct ert_packet* pkt)
   case ERT_START_NPU_PREEMPT:
   case ERT_START_NPU_PREEMPT_ELF:
     if (pkt->state == ERT_CMD_STATE_TIMEOUT)
-      return (struct ert_ctx_health_data*) pkt->data;
+      return (const struct ert_ctx_health_data*) pkt->data;
+  }
+  return NULL;
+}
+
+static inline const struct ert_ctx_health_data_v1*
+get_ert_ctx_health_data_v1(const struct ert_packet* pkt)
+{
+  switch (pkt->opcode) {
+  case ERT_START_CU:
+  case ERT_START_NPU:
+  case ERT_START_NPU_PREEMPT:
+  case ERT_START_NPU_PREEMPT_ELF:
+    if (pkt->state == ERT_CMD_STATE_TIMEOUT)
+      return (const struct ert_ctx_health_data_v1*) pkt->data;
   }
   return NULL;
 }
