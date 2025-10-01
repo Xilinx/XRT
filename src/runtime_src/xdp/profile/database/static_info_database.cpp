@@ -2427,7 +2427,9 @@ namespace xdp {
     bool is_aie_available = false;
     bool is_pl_available  = false;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_METADATA);
+    auto data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_TRACE_METADATA);
+    if (!data.first || !data.second)
+      data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_METADATA);
     if (data.first && data.second)
         is_aie_available = true;
 
