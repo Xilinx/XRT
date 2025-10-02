@@ -2055,6 +2055,7 @@ class profile
     std::string m_name;
     mode m_mode = mode::none;
     size_t m_depth = 1;
+    size_t m_recipe_runs = 1;  // legacy mode throughput calculation
     executor m_executor;
     size_t m_iterations = 1;
     iteration_node m_iteration;
@@ -2149,6 +2150,7 @@ class profile
       , m_name(j.value("name", "default"))
       , m_mode(to_mode(j.value("mode", "default")))
       , m_depth(get_depth(m_mode, j))
+      , m_recipe_runs(rr->num_runs())
       , m_executor{m_profile, rr, m_depth}
       , m_iterations(j.value("iterations", 1))
       , m_iteration(get_iteration_node(m_mode, j))
@@ -2175,9 +2177,15 @@ class profile
         m_profile->validate();
 
       // NOLINTBEGIN
+      // In legacy mode, the number of recipe::runs is used for
+      // throughput and latency calculatons.  In non-legacy mode, the
+      // recipe runs is always considered as one runlist and
+      // calculations are based on the how many times (depth) the
+      // runlist is duplicated.
+      auto depth = m_legacy ? m_recipe_runs : m_depth;
       auto elapsed = time_ns / 1000;
-      auto latency = time_ns / (1000 * m_iterations * m_depth);
-      auto throughput = (1000000000 * m_iterations * m_depth) / time_ns;
+      auto latency = time_ns / (1000 * m_iterations * depth);
+      auto throughput = (1000000000 * m_iterations * depth) / time_ns;
       // NOLINTEND
 
       m_report["cpu"]["elapsed"] = elapsed;
