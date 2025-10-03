@@ -1766,8 +1766,8 @@ class profile
       auto bo_data = bo.map<char*>();
 
       // Pad the bo with 0s outside the [bo_begin, bo_end[ range
-      std::fill(bo_data, bo_data + bo_begin, 0);
-      std::fill(bo_data + bo_end, bo_data + bo.size(), 0);
+      std::fill(bo_data, bo_data + bo_begin, char(0));
+      std::fill(bo_data + bo_end, bo_data + bo.size(), char(0));
 
       // Copy bytes from file to bo starting at optional begin offset.
       // Wrap around file if needed to fill the bo with data from
