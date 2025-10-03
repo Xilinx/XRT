@@ -1672,9 +1672,10 @@ class profile
 
     // Validate a resource buffer per profile.json validate json node
     // "validate": {
-    //   "size": 0,   // unused for now
-    //   "offset": 0, // unused for now
-    //   "file": "gold.bin"
+    //   "file": "gold.bin", // path to file
+    //   "skip": 0,          // skip fist bytes of file (optional)
+    //   "begin": 0,         // bo offset to start validating at (optional)
+    //   "end": bo.size()    // bo offset to start validating at (optional)
     //  }
     void
     validate_buffer(xrt::bo& bo, const validate_node& node, const artifacts::repo* repo)
@@ -1697,19 +1698,27 @@ class profile
         golden_data = std::string_view{golden_data.data() + skip, golden_data.size() - skip};
       }
 
-      // here we could extract offset and size of region to validate
-      
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-      auto bo_data = bo.map<char*>();
+
       if (bo.size() != golden_data.size())
         throw validation_error("Size mismatch during validation");
 
-      if (std::equal(golden_data.data(), golden_data.data() + golden_data.size(), bo_data))
+      // Optional range of bo to validate
+      auto bo_begin = node.value<size_t>("begin", 0);
+      auto bo_end = node.value<size_t>("end", bo.size());
+      if (bo_begin > bo_end || bo_end > bo.size())
+        throw profile_error("bad validate begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
+
+      auto bo_data = bo.map<char*>();
+      auto bo_range_bytes = bo_end - bo_begin;
+
+      XRT_DEBUGF("profile::bindings::validate_buffer() validating bo range [%d,%d[\n", bo_begin, bo_end);
+      if (std::equal(bo_data + bo_begin, bo_data + bo_end, golden_data.data()))
         return;
 
       // Error
-      for (uint64_t i = 0; i < golden_data.size(); ++i) {
-        if (golden_data[i] != bo_data[i])
+      for (uint64_t i = 0; i < bo_range_bytes; ++i) {
+        if (golden_data[i] != bo_data[bo_begin + i])
           throw validation_error
             ("gold[" + std::to_string(i) + "] = " + std::to_string(golden_data[i])
              + " does not match bo value in bo " + std::to_string(bo_data[i]));
@@ -1744,7 +1753,7 @@ class profile
         throw profile_error("bad skip value: " + std::to_string(skip));
 
       if (bo_begin > bo_end || bo_end > bo.size())
-        throw profile_error("bad begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
+        throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = std::string_view{data.data() + skip, data.size() - skip};
@@ -1754,17 +1763,21 @@ class profile
       if (!bo)
         bo = xrt::ext::bo{m_device, data.size()};
 
+      auto bo_data = bo.map<char*>();
+
+      // Pad the bo with 0s outside the [bo_begin, bo_end[ range
+      std::fill(bo_data, bo_data + bo_begin, 0);
+      std::fill(bo_data + bo_end, bo_data + bo.size(), 0);
+
       // Copy bytes from file to bo starting at optional begin offset.
       // Wrap around file if needed to fill the bo with data from
       // file.  Copy at offset into bo based on number of bytes left
       // to copy.
-      auto bo_data = bo.map<char*>() + bo_begin; // past optional begin
+      bo_data += bo_begin; // past optional begin
       auto bo_range_bytes = bo_end - bo_begin;  // default bo.size()
 
       // Must fill all bytes of bo in [begin, end[ range
       auto bytes = bo_range_bytes;
-      XRT_DEBUGF("profile::bindings::init_buffer_file() copying (%d) bytes from file (%s)\n",
-                 bytes, file.c_str());
 
       // This loop wraps around the source data if necessary in order
       // to fill all bytes of the bo range.  The loop adjusts for iteration.
@@ -1774,8 +1787,8 @@ class profile
         auto end = std::min<size_t>(beg + bytes, data.size());
         bytes -= end - beg;
 
-        XRT_DEBUGF("profile::bindings::init_buffer_file() (itr,beg,end,bytes)=(%d,%d,%d,%d)\n",
-                   iteration, beg, end, bytes);
+        XRT_DEBUGF("profile::bindings::init_buffer_file() (itr,beg,end,offset)=(%d,%d,%d,%d)\n",
+                   iteration, beg, end, bo_offset);
     
         std::copy(data.data() + beg, data.data() + end, bo_data + bo_offset);
       }
@@ -2147,7 +2160,7 @@ class profile
   public:
     execution(profile* pr, recipe* rr, const json& j, bool legacy = false)
       : m_profile(pr)
-      , m_name(j.value("name", "default"))
+      , m_name(j.value("name", j.value("mode", "default")))
       , m_mode(to_mode(j.value("mode", "default")))
       , m_depth(get_depth(m_mode, j))
       , m_recipe_runs(rr->num_runs())

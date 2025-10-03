@@ -206,13 +206,21 @@ specified using a `validate` element for the binding.
     {
       "validate": {
         "file": "ofm.bin"
-        "skip": bytes // skip number of bytes in file
+        "skip": bytes    // skip number of bytes in file
+        "begin": offset, // bo offset to start validation at
+        "end": offset,   // bo offset to end validation at
       }
     }
 ```
 
 Validating can be against the content of a file as shown in above
-example, or it can be against another resource from the run recipe, in
+example.  The optional `skip` element allows skipping first bytes 
+of the file prior to validating against buffer data.  The range
+defined by `[begin, end[` (default: `[0, bo.size()[`) are 
+the bytes of the buffer that will be validated against the file
+data.
+
+, or it can be against another resource from the run recipe, in
 which case the validation element must contain a name reference
 instead of a file:
 
