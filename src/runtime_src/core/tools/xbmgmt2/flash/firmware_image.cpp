@@ -301,10 +301,10 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
         if (dtbSection && timestamp == NULL_TIMESTAMP) {
-            dtbbuf = std::shared_ptr<char>(new char[dtbSection->m_sectionSize]);
+            std::vector<char> dtbbuf(dtbSection->m_sectionSize);
             in.seekg(dtbSection->m_sectionOffset);
-            in.read(dtbbuf.get(), dtbSection->m_sectionSize);
-            getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
+            in.read(dtbbuf.data(), dtbSection->m_sectionSize);
+            getUUIDFromDTB(dtbbuf.data(), timestamp, uuids);
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
@@ -317,16 +317,16 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         if (bmcSection == nullptr)
             return;
         // Load entire BMC section.
-        std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+        std::vector<char> bmcbuf(bmcSection->m_sectionSize);
         in.seekg(bmcSection->m_sectionOffset);
-        in.read(bmcbuf.get(), bmcSection->m_sectionSize);
+        in.read(bmcbuf.data(), bmcSection->m_sectionSize);
         if (!in.good())
         {
             std::cout << "Can't read SC section from "<< filename << std::endl;
             return;
         }
-        const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
-        bmcVer = std::move(std::string(bmc->m_version));
+        const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.data());
+        bmcVer = std::string(bmc->m_version);
     }
 }
 
@@ -616,16 +616,16 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                 return;
             }
             // Load entire BMC section.
-            std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+            std::vector<char> bmcbuf(bmcSection->m_sectionSize);
             in_file.seekg(bmcSection->m_sectionOffset);
-            in_file.read(bmcbuf.get(), bmcSection->m_sectionSize);
+            in_file.read(bmcbuf.data(), bmcSection->m_sectionSize);
             if (!in_file.good())
             {
                 this->setstate(failbit);
                 std::cout << "Can't read SC section from "<< file << std::endl;
                 return;
             }
-            const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
+            const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.data());
             // Load data into stream.
             bufsize = bmc->m_size;
             mBuf = new char[bufsize];
@@ -716,16 +716,16 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                     return;
                 }
                 // Load entire MCS section.
-                std::shared_ptr<char> mcsbuf(new char[mcsSection->m_sectionSize]);
+                std::vector<char> mcsbuf(mcsSection->m_sectionSize);
                 in_file.seekg(mcsSection->m_sectionOffset);
-                in_file.read(mcsbuf.get(), mcsSection->m_sectionSize);
+                in_file.read(mcsbuf.data(), mcsSection->m_sectionSize);
                 if (!in_file.good())
                 {
                     this->setstate(failbit);
                     std::cout << "Can't read MCS section from "<< file << std::endl;
                     return;
                 }
-                const struct mcs *mcs = reinterpret_cast<const struct mcs *>(mcsbuf.get());
+                const struct mcs *mcs = reinterpret_cast<const struct mcs *>(mcsbuf.data());
                 // Only two types of MCS supported today
                 unsigned mcsType = (type == MCS_FIRMWARE_PRIMARY) ? MCS_PRIMARY : MCS_SECONDARY;
                 const struct mcs_chunk *c = nullptr;
