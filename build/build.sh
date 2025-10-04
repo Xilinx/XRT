@@ -57,7 +57,7 @@ usage()
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-hip]                      Enable hip bindings"
-    echo "[-disable-werror]           Disable compilation with warnings as error"
+    echo "[-enable-werror]            Enable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
@@ -111,7 +111,7 @@ noert=0
 static_boost=""
 ertbsp=""
 ertfw=""
-werror=1
+werror=0
 alveo_build=0
 npu_build=0
 base_build=0
@@ -194,8 +194,8 @@ while [ $# -gt 0 ]; do
             noctest=1
             shift
             ;;
-        -disable-werror|--disable-werror)
-            werror=0
+        -enable-werror|--enable-werror)
+            werror=1
             shift
             ;;
         -j)
@@ -274,9 +274,9 @@ fi
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
 
-# By default compile with warnings as errors.
+# By default compile without warnings as errors.
 # Update every time CMake is generating makefiles.
-# Disable with '-disable-werror' option.
+# Enable with '-enable-werror' option.
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
