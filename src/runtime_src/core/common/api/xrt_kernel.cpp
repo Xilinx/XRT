@@ -2678,6 +2678,9 @@ public:
       if (cv_status == std::cv_status::timeout) {
         if (dtrace)
           xrt_core::module_int::dump_dtrace_buffer(m_module);
+
+        // dump uc log buffer for timeout case
+        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2694,6 +2697,10 @@ public:
 
     if (dtrace)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
+
+    // Dump uC log buffer for non-completed cases
+    if (state != ERT_CMD_STATE_COMPLETED)
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
 
     return state;
   }
@@ -2732,8 +2739,11 @@ public:
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
-      if (cv_status == std::cv_status::timeout)
+      if (cv_status == std::cv_status::timeout) {
+        // Dump uC log buffer in case of timeout for debugging
+        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return std::cv_status::timeout;
+      }
 
       state = ert_state;
     }
@@ -2747,8 +2757,11 @@ public:
     if (dtrace_enabled && m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
 
-    if (state != ERT_CMD_STATE_COMPLETED)
+    if (state != ERT_CMD_STATE_COMPLETED) {
+      // Dump uC log buffer for non-completed cases
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
       throw_command_error(state);
+    }
 
     // COMPLETED
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
@@ -3534,8 +3547,11 @@ public:
       return std::cv_status::no_timeout;
 
     // Wait throws on error. On timeout just return
-    if (wait(timeout) == std::cv_status::timeout)
+    if (wait(timeout) == std::cv_status::timeout) {
+      // Dump uC log buffer for debug when timeout happens
+      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
       return std::cv_status::timeout;
+    }
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
