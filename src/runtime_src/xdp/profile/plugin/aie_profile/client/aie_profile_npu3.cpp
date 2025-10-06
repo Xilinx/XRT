@@ -78,8 +78,6 @@ namespace xdp {
 
     int counterId = 0;
     bool runtimeCounters = false;
-    // inputs to the DPU kernel
-    std::vector<register_data_t> op_profile_data;
 
     xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
 
@@ -225,7 +223,7 @@ namespace xdp {
 
           // NOTE: NPU3 has unique addressing, so get offsets from driver 
           auto tileOffset = XAie_GetTileAddr(&aieDevInst, row, col);
-          op_profile_data.emplace_back(register_data_t{Regs[i] + tileOffset});
+          op_profile_data.emplace_back((u32)(Regs[i] + tileOffset));
 
           std::vector<uint64_t> values;
           uint8_t absCol = col + startCol;
@@ -339,9 +337,7 @@ namespace xdp {
 
   void AieProfile_NPU3Impl::poll(const uint64_t id)
   {
-    // TODO: polling is not working yet without debug buffer
-    return;
-
+    id;
     if (finishedPoll)
       return;
 
@@ -353,10 +349,12 @@ namespace xdp {
     auto context = metadata->getHwContext();
     xrt::bo resultBO;
     uint32_t* output = nullptr;
-
+    std::map<uint32_t, size_t> activeUCsegmentMap;
+    activeUCsegmentMap[0] = 0x20000;
     try {
       //resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
       resultBO = xrt_core::bo_int::create_bo(context, 0x20000, xrt_core::bo_int::use_type::debug);
+      xrt_core::bo_int::config_bo(resultBO, activeUCsegmentMap);
       output = resultBO.map<uint32_t*>();
       memset(output, 0, 0x20000);
     } 
@@ -367,7 +365,6 @@ namespace xdp {
       return;
     }
 
-    double timestamp = xrt_core::time_ns() / 1.0e6;
    
     std::string tranxName = "AieProfilePoll";
     if (!tranxHandler->initializeTransaction(&aieDevInst, tranxName)) {
@@ -375,23 +372,22 @@ namespace xdp {
                               "Unable to initialize transaction for AIE profile polling.");
       return;
     }
-
+    for (u32 i = 0; i < op_profile_data.size(); i++) {
+      XAie_SaveRegister(&aieDevInst, op_profile_data[i], op_profile_data[i]);
+    }
     if (!tranxHandler->submitTransaction(&aieDevInst, context))
       return;
 
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    output = resultBO.map<uint32_t*>();
 
-    for (uint32_t i = 0; i < op->count; i++) {
+    for (u32 i = 0; i < op_profile_data.size() + 12 * 3; i++) {
       std::stringstream msg;
-      msg << "Counter address/values: 0x" << std::hex << op->data[i].address << ": " << std::dec << output[i];
+      msg << "Counter address/values: " << output[2 * i] << " - " << output[2 * i + 1];
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-      std::vector<uint64_t> values = outputValues[i];
-      values[5] = static_cast<uint64_t>(output[i]); //write pc value
-      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
 
     finishedPoll = true;
-    free(op);
   }
 
   void AieProfile_NPU3Impl::freeResources()

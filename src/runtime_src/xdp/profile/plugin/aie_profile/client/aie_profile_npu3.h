@@ -82,8 +82,7 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
 
       bool finishedPoll = false;
-      read_register_op_t* op;
-      std::size_t op_size;
+      std::vector<u32> op_profile_data;
       XAie_DevInst aieDevInst = {0};
       std::vector<std::vector<uint64_t>> outputValues;
       std::unique_ptr<aie::NPU3Transaction> tranxHandler;
