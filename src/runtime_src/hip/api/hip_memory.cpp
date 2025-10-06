@@ -435,6 +435,7 @@ namespace xrt::core::hip
   static void
   hip_malloc_from_pool_async(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipStream_t stream)
   {
+    throw_invalid_value_if(!dev_ptr, "Invalid dev_ptr.");
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
