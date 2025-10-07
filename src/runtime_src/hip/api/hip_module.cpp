@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
+#include <array>
+
 #include "hip/core/common.h"
 #include "hip/core/event.h"
 #include "hip/core/module.h"
@@ -53,29 +55,67 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   return hip_mod->add_function(std::string{name});
 }
 
+static bool
+hip_module_data_is_elf(const char *data, size_t size)
+{
+  constexpr std::array<unsigned char, 4> elf_header_magic = {0x7f, 'E', 'L', 'F'};
+  if (size < elf_header_magic.size())
+    return false;
+
+  if (!std::memcmp(data, elf_header_magic.data(), elf_header_magic.size()))
+    return true;
+
+  return false;
+}
+
+static bool
+hip_module_file_is_elf(const std::string& file_name)
+{
+  std::ifstream file(file_name, std::ios::in | std::ios::binary);
+  throw_invalid_value_if(!file, "not able to open module file");
+  std::array<char, 4> file_header{};
+  file.read(file_header.data(), file_header.size());
+  throw_invalid_value_if(!file, "failed to read header from module file");
+
+  return hip_module_data_is_elf(file_header.data(), file_header.size());
+}
+
+static module_handle
+hip_create_top_module_config_data(const hipModuleData* config)
+{
+  auto ctx = get_current_context();
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
+
+  if (config->type == hipModuleDataFilePath) {
+    std::string file_name(static_cast<char*>(config->data));
+    if (hip_module_file_is_elf(file_name))
+      return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, file_name));
+
+    return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, file_name));
+  }
+  else if (config->type == hipModuleDataBuffer) {
+    if (hip_module_data_is_elf(static_cast<char*>(config->data), config->size))
+      return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, config->data, config->size));
+
+    return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
+  }
+  throw_hip_error(hipErrorInvalidValue, "invalid module data type passed");
+  // Will never reach here, this is to satisfy compiler
+  return nullptr;
+}
+
 static module_handle
 create_module(const hipModuleData* config)
 {
   // this function can be used to load either xclbin or elf based on parent module
-  // if parent module is null then buffer passed has xclbin data else parent module
-  // will point to xclbin module already loaded and buffer passed will have elf data
+  // if parent module is null then buffer passed has xclbin data or full elf data,
+  // else parent module will point to xclbin module already loaded and buffer passed
+  // will have elf data
 
-  if (!config->parent) {
-    // xclbin load
-    auto ctx = get_current_context();
-    throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
-    // create xclbin module and store it in module map
-    if (config->type == hipModuleDataFilePath) {
-      // data passed is file path
-      return insert_in_map(module_cache,
-                           std::make_shared<module_xclbin>(ctx, std::string{static_cast<char*>(config->data), config->size}));
-    }
-    else if (config->type == hipModuleDataBuffer) {
-      // data passed is buffer, validity of buffer is checked during xrt::xclbin construction
-      return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
-    }
-    throw_hip_error(hipErrorInvalidValue, "invalid module data type passed");
-  }
+  throw_invalid_value_if(!config->data, "empty config data");
+
+  if (!config->parent)
+    return hip_create_top_module_config_data(config);
 
   // elf load
   auto hip_mod = module_cache.get(reinterpret_cast<module_handle>(config->parent));
@@ -101,35 +141,6 @@ create_module(const hipModuleData* config)
 }
 
 
-// Function that estimates ELF size from header
-static size_t
-estimate_elf_size(const void* data)
-{
-  auto bytes = static_cast<const unsigned char*>(data);
-  constexpr std::array<unsigned char, 4> ELF_HEADER_MAGIC = {0x7f, 'E', 'L', 'F'};
-
-  if (bytes[0] != ELF_HEADER_MAGIC[0] || bytes[1] != ELF_HEADER_MAGIC[1] ||
-      bytes[2] != ELF_HEADER_MAGIC[2] || bytes[3] != ELF_HEADER_MAGIC[3])
-    throw_hip_error(hipErrorInvalidValue, "Invalid ELF magic number");
-
-  if (bytes[4] == ELFIO::ELFCLASS32) {
-    // 32 bit ELF
-    auto header = static_cast<const ELFIO::Elf32_Ehdr*>(data);
-    return std::max(header->e_shoff + static_cast<ELFIO::Elf32_Off>(header->e_shentsize) * header->e_shnum,
-                    header->e_phoff + static_cast<ELFIO::Elf32_Off>(header->e_phentsize) * header->e_phnum);
-  }
-  else if (bytes[4] == ELFIO::ELFCLASS64) {
-    // 64 bit ELF
-    auto header = static_cast<const ELFIO::Elf64_Ehdr*>(data);
-    return std::max(header->e_shoff + static_cast<ELFIO::Elf64_Off>(header->e_shentsize) * header->e_shnum,
-                    header->e_phoff + static_cast<ELFIO::Elf64_Off>(header->e_phentsize) * header->e_phnum);
-  }
-
-  throw_hip_error(hipErrorInvalidValue, "Unable to calculate ELF size");
-  // Will never reach here, this is to satisfy compiler
-  return 0;
-}
-
 static module_handle
 create_full_elf_module(const std::string& fname)
 {
@@ -137,15 +148,6 @@ create_full_elf_module(const std::string& fname)
   throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
   // create module and store it in module map
   return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, fname));
-}
-
-static module_handle
-create_full_elf_module(const void* image, size_t size)
-{
-  auto ctx = get_current_context();
-  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
-  // create module and store it in module map
-  return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, image, size));
 }
 
 static module_handle
@@ -204,18 +206,7 @@ hip_module_load_data_helper(hipModule_t* module, const void* image)
   return handle_hip_func_error(__func__, hipErrorRuntimeOther, [&] {
     throw_invalid_resource_if(!module, "module is nullptr");
 
-    // Treat pointer passed has data to full ELF and
-    // try creating full ELF module
-    // if it throws fallback to xclbin + ELF flow
     xrt::core::hip::module_handle handle = nullptr;
-    try {
-      auto estimated_size = xrt::core::hip::estimate_elf_size(image);
-      handle = xrt::core::hip::create_full_elf_module(image, estimated_size);
-      *module = reinterpret_cast<hipModule_t>(handle);
-      return;
-    }
-    catch (...) { /*do nothing*/ }
-
     // image passed to this call is structure hipModuleData object pointer
     auto config_data = static_cast<const hipModuleData*>(image);
     handle = xrt::core::hip::create_module(config_data);
