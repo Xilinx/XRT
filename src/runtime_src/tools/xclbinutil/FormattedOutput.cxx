@@ -913,11 +913,13 @@ reportKernels(std::ostream& _ostream,
   }
   // Print all remaining IPs and the base address
   for (auto& ptIPData : ipLayout) {
+    // m_name is of the form '<kernel name>:<instance name>'	  
     auto sKernelInstance = ptIPData.get<std::string>("m_name");
     auto pos = sKernelInstance.find(':');
     if (pos != std::string::npos){
       auto sKernel = sKernelInstance.substr(0,pos);
       auto sInstance = sKernelInstance.substr(pos+1);
+      // If the kernel name matches one of the kernels in build metadata, do nothing
       if(std::find(kernel_names.begin(), kernel_names.end(), sKernel) == kernel_names.end()) {
         _ostream << boost::format("%s %s\n") % "Kernel:" % sKernel;
         _ostream << "--------------------------\n";
