@@ -232,9 +232,11 @@ namespace xrt::core::hip
   static void
   hip_memset(void* dst, int value, size_t size)
   {
+    throw_invalid_value_if(!dst, "dst is nullptr.");
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
+    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
     throw_invalid_value_if(hip_mem_dst->get_type() == xrt::core::hip::memory_type::invalid,
                            "memory type is invalid for memset.");
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
@@ -270,9 +272,11 @@ namespace xrt::core::hip
   template<typename T> static void
   hip_memset_async(void* dst, T value, size_t size, hipStream_t stream)
   {
+    throw_invalid_value_if(!dst, "dst is nullptr.");
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
+    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
 
     auto element_size = sizeof(T);
@@ -431,6 +435,7 @@ namespace xrt::core::hip
   static void
   hip_malloc_from_pool_async(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipStream_t stream)
   {
+    throw_invalid_value_if(!dev_ptr, "Invalid dev_ptr.");
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 

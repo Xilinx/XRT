@@ -293,9 +293,11 @@ bool memory_pool_command::submit()
   {
   case alloc:
     m_mem_pool->malloc(m_ptr, m_size);
+    set_state(state::completed);
     break;
   case free:
     m_mem_pool->free(m_ptr);
+    set_state(state::completed);
     break;
 
   default:
