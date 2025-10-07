@@ -18,6 +18,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
                          void** kernelParams, void** extra)
 {
   throw_invalid_resource_if(!f, "function is nullptr");
+  throw_invalid_value_if(!kernelParams, "kernel parameters is nullptr");
 
   auto func_hdl = reinterpret_cast<function_handle>(f);
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
@@ -30,6 +31,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   // Revisit if we need to launch multiple times
 
   auto hip_stream = get_stream(hStream);
+  throw_invalid_value_if(!hip_stream, "invalid stream handle.");
   auto s_hdl = hip_stream.get();
   auto cmd_hdl = insert_in_map(command_cache,
                                std::make_shared<kernel_start>(hip_stream,
