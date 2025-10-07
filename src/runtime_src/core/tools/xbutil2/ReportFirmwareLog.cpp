@@ -20,125 +20,82 @@
 #include <fstream>
 #include <memory>
 
+#define IPU_LOG_FORMAT_FULL 0
+
 using bpt = boost::property_tree::ptree;
 namespace XBU = XBUtilities;
 namespace smi = xrt_core::tools::xrt_smi;
 
 namespace xrt_core::tools::xrt_smi {
 
-// Function to generate structured dummy firmware log data matching ipu_log_message_header format
-static void generate_dummy_firmware_log_data(xrt_core::query::firmware_debug_buffer& log_buffer) {
-  static uint64_t counter = 0;  // Ever-increasing counter
-  counter++;
-  
-  auto data_ptr = static_cast<uint8_t*>(log_buffer.data);
-  size_t total_size = 0;
-  
-  // Generate 5 entries for testing
-  size_t num_entries = 5; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  
-  for (size_t entry = 0; entry < num_entries; ++entry) {
-    // Random timestamp with some ordering
-    uint64_t timestamp = 1000000000ULL + counter * 10000 + entry * 100; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Random format (0 or 1)
-    uint32_t format = (counter + entry) % 2; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Random log level (0-7)
-    uint32_t level = (counter + entry) % 8; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Random application number (1-8)
-    uint32_t appn = 1 + ((counter + entry) % 8); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Random line number (1-8)
-    uint32_t line = 1 + ((counter + entry) % 8); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Random module ID (1-15)
-    uint32_t module = 1 + ((counter + entry * 3) % 15); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Generate string messages instead of hex payloads
-    std::vector<std::string> dummy_messages = {
-      "System initialization complete",
-      "DMA transfer started",
-      "Command queue overflow warning", 
-      "Temperature threshold exceeded",
-      "Memory allocation failed"
-    };
-    
-    std::string message = dummy_messages[entry % dummy_messages.size()]; // NOLINT(readability-magic-numbers) - dummy data for pretty printing
-    
-    // Set argc to 0 since we're using string messages, not hex arguments
-    uint32_t argc = 0;
-    
-    // Pack all bit fields into a single 64-bit value
-    uint64_t packed = (static_cast<uint64_t>(format) << 0) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(0x60) << 1) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(level) << 8) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(0) << 11) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(appn) << 16) | // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(argc) << 24) |// NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(line) << 32) |// NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-                      (static_cast<uint64_t>(module) << 48); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Write header (16 bytes total)
-    memcpy(data_ptr + total_size, &timestamp, 8); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    total_size += 8; // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    memcpy(data_ptr + total_size, &packed, 8); // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    total_size += 8; // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    
-    // Write string message as null-terminated string
-    size_t msg_len = message.length() + 1; // +1 for null terminator
-    memcpy(data_ptr + total_size, message.c_str(), msg_len);
-    total_size += msg_len;
-    
-    // Align to 4-byte boundary
-    while (total_size % 4 != 0) { // NOLINT(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-      data_ptr[total_size++] = 0;
-    }
-  }
-  
-  log_buffer.size = total_size;
-  log_buffer.abs_offset = counter * total_size;  // Ever-increasing offset
-}
+firmware_log_parser::
+firmware_log_parser(const firmware_log_config& config) 
+  : m_config(config), 
+    m_header(m_config.get_log_header()),
+    m_header_size(static_cast<uint32_t>(m_config.get_header_size())),
+    m_field_indices(create_field_indices(m_config)),
+    m_columns({
+      {"timestamp", "Timestamp"},
+      {"level", "Log-Level"},
+      {"appn", "App Number "},
+      {"line", "Line Number"},
+      {"module", "Module ID"}
+    })
+  {}
 
-struct field_context {
-  const uint8_t* data_ptr;
-  size_t offset;
-  size_t bit_offset;
-  size_t bit_width;
-  std::shared_ptr<firmware_log_config::field_info> field;
-};
-
-static std::string
-parse_field(const field_context& ctx,
-            const firmware_log_config& config)
+std::unordered_map<std::string, size_t> 
+firmware_log_parser::
+create_field_indices(const firmware_log_config& config)
 {
-  size_t byte_offset = ctx.offset + (ctx.bit_offset / bits_per_byte);
-  size_t end_bit = ctx.bit_offset + ctx.bit_width;
-  size_t end_byte = ctx.offset + ((end_bit + byte_alignment) / bits_per_byte);
-  uint64_t raw = 0;
-  size_t bytes_to_read = end_byte - byte_offset;
-  std::memcpy(&raw, ctx.data_ptr + byte_offset, bytes_to_read);
-  size_t lsb = ctx.bit_offset % bits_per_byte;
-  uint64_t mask = (ctx.bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << ctx.bit_width) - 1);
-  uint64_t value = (raw >> lsb) & mask;
-
-  // For dummy data, display decimal values instead of hex
-  if (ctx.field && ctx.field->name == "level") {
-    const auto& enums = config.get_enums();
-    auto itr = enums.find(ctx.field->enumeration);
-    if (itr != enums.end()) {
-      return std::to_string(value) + ":" + itr->second.get_enumerator_name(static_cast<uint32_t>(value));
-    }
+  std::unordered_map<std::string, size_t> indices;
+  const auto& header_struct = config.get_log_header();
+  for (size_t i = 0; i < header_struct.fields.size(); ++i) {
+    indices[header_struct.fields[i].name] = i;
   }
-  return std::to_string(value);
+  return indices;
 }
 
-static std::string
+uint64_t 
+firmware_log_parser::
+extract_value(const uint8_t* data_ptr, 
+              size_t byte_offset, 
+              size_t bit_offset, 
+              size_t bit_width) const
+{
+  // Read 8 bytes starting from the byte containing our bit field
+  uint64_t raw_data = 0;
+  size_t start_byte = byte_offset + (bit_offset / bits_per_byte);
+  std::memcpy(&raw_data, data_ptr + start_byte, sizeof(uint64_t));
+  
+  // Extract the field: shift right to align, then mask to width
+  size_t shift = bit_offset % bits_per_byte;
+  uint64_t mask = (bit_width == bits_per_uint64) ? ~0ULL : ((1ULL << bit_width) - 1);
+  return (raw_data >> shift) & mask;
+}
+
+std::string 
+firmware_log_parser::
+format_value(const firmware_log_config::field_info& field, 
+             uint64_t value) const
+{
+  std::string field_value = std::to_string(value);
+  
+  // Add enum name if field has enumeration
+  if (!field.enumeration.empty()) {
+    const auto& enums = m_config.get_enums();
+    auto itr = enums.find(field.enumeration);
+    if (itr != enums.end()) {
+      field_value += ":" + itr->second.get_enumerator_name(static_cast<uint32_t>(value));
+    }
+  }
+  return field_value;
+}
+
+std::string 
+firmware_log_parser::
 parse_message(const uint8_t* data_ptr,
               size_t msg_offset,
-              size_t /*argc*/,
-              size_t buf_size)
+              size_t buf_size) const
 {
   // Always try to read as null-terminated string
   if (msg_offset < buf_size) {
@@ -150,56 +107,96 @@ parse_message(const uint8_t* data_ptr,
       str_len++;
     }
     if (str_len > 0) {
-      return {str_ptr, str_len};
+      std::string message{str_ptr, str_len};
+      // Remove trailing newlines
+      message.erase(message.find_last_not_of("\n") + 1);
+      return message;
     }
   }
   return "";
 }
 
-static std::vector<std::string> 
-parse_log_entry(const uint8_t* data_ptr,
-                size_t offset,
-                size_t buf_size,
-                const firmware_log_config& config)
+std::vector<std::string> 
+firmware_log_parser::
+parse_entry(const uint8_t* data_ptr,
+            size_t offset,
+            size_t buf_size) const
 {
-  uint32_t argc = 0;
-  size_t header_size = config.get_header_size();
-  const auto& structures = config.get_structures();
-  auto it = structures.find("ipu_log_message_header");
-  if (it == structures.end()) 
-  {
-    return {}; // Handle error: structure not found
-  }
-
   std::vector<std::string> entry_data;
   size_t bit_offset = 0;
-  for (const auto& field : it->second.fields) 
+  for (const auto& field : m_header.fields) 
   {
-    size_t bit_width = field.width;
-    size_t end_bit = bit_offset + bit_width;
-    if (offset + ((end_bit + byte_alignment) / bits_per_byte) <= offset + header_size) {
-      field_context ctx{data_ptr, offset, bit_offset, bit_width, std::make_shared<firmware_log_config::field_info>(field)};
-      std::string field_value = parse_field(ctx, config);
-      if (field.name == "argc") {
-        argc = static_cast<uint32_t>(std::stoul(field_value, nullptr, hex_width_64));
-      }
-      
-      // Skip reserved fields when adding to entry data
-      if (field.name.find("reserved") == std::string::npos) {
-        entry_data.emplace_back(field_value);
-      }
-    } else {
-      // Skip reserved fields when adding error placeholder
-      if (field.name.find("reserved") == std::string::npos) {
-        entry_data.emplace_back("-");
+    uint64_t value = extract_value(data_ptr, offset, bit_offset, field.width);
+    std::string field_value = format_value(field, value);
+    entry_data.emplace_back(field_value);
+    bit_offset += field.width;
+  }
+  size_t msg_offset = offset + m_header_size;
+  entry_data.emplace_back(parse_message(data_ptr, msg_offset, buf_size));
+  return entry_data;
+}
+
+std::vector<Table2D::HeaderData> 
+firmware_log_parser::
+get_table_headers() const
+{
+  std::vector<Table2D::HeaderData> table_headers;
+  
+  for (const auto& field : m_header.fields) {
+    // Only include fields that are in m_columns
+    auto it_map = m_columns.find(field.name);
+    if (it_map != m_columns.end()) {
+      table_headers.push_back({it_map->second, Table2D::Justification::left});
+    }
+  }
+  table_headers.push_back({"Message", Table2D::Justification::left});
+  return table_headers;
+}
+
+uint32_t 
+firmware_log_parser::
+calculate_entry_size(uint32_t argc, uint32_t format) const
+{
+  uint32_t entry_size = argc;
+  if (format == IPU_LOG_FORMAT_FULL) {
+    // Firmware uses 8-byte alignment to optimize DMA transfers and memory operations.
+    // Each log argument is 4 bytes, so argc*4 = total argument payload size.
+    // Round up to next 8-byte boundary: ((size + 7) / 8) * 8
+    entry_size = ((static_cast<size_t>(argc) * 4 + byte_alignment) / bits_per_byte) * bits_per_byte + m_header_size; 
+  } else {
+    // Concise format: firmware writes byte-by-byte for minimal storage
+    entry_size = argc + m_header_size;
+  }
+  return entry_size;
+}
+
+Table2D 
+firmware_log_parser::
+parse(const uint8_t* data_ptr, size_t buf_size) const
+{
+  Table2D log_table(get_table_headers());
+  size_t offset = 0;
+
+  while (offset + m_header_size <= buf_size) {
+    auto entry_data = parse_entry(data_ptr, offset, buf_size);
+    
+    auto format = std::stoul(entry_data[m_field_indices.at("format")]); 
+    auto argc = std::stoul(entry_data[m_field_indices.at("argc")]);
+    
+    // Only include fields that are in m_columns header fields
+    std::vector<std::string> log_data;
+    for (const auto& field : m_header.fields) {
+      if (m_columns.find(field.name) != m_columns.end()) {
+        log_data.emplace_back(std::move(entry_data[m_field_indices.at(field.name)]));
       }
     }
-    bit_offset += bit_width;
-  }
+    // Add message
+    log_data.emplace_back(std::move(entry_data.back())); 
+    log_table.addEntry(std::move(log_data));
 
-  size_t msg_offset = offset + header_size;
-  entry_data.emplace_back(parse_message(data_ptr, msg_offset, argc, buf_size));
-  return entry_data;
+    offset += calculate_entry_size(argc, format);
+  }
+  return log_table;
 }
 
 static std::string
@@ -238,8 +235,7 @@ generate_raw_logs(const xrt_core::device* dev,
 static std::string
 generate_firmware_log_report(const xrt_core::device* dev,
                              const firmware_log_config& config,
-                             bool is_watch,
-                             bool use_dummy = false)
+                             bool is_watch)
 {
   std::stringstream ss{};
   static uint64_t watch_mode_offset = 0;
@@ -247,69 +243,22 @@ generate_firmware_log_report(const xrt_core::device* dev,
   // Create and setup buffer for firmware log data
   smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
-  if (use_dummy) 
-  {
-    generate_dummy_firmware_log_data(debug_buf.get_log_buffer());
-  } 
-  else 
-  {
   // Get buffer from driver
-    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
-  }
+  xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
   
-  watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+  watch_mode_offset = debug_buf.get_offset();
   
   if (!debug_buf.get_log_buffer().data) {
     ss << "No firmware log data available\n";
     return ss.str();
   }
 
-  const auto& structures = config.get_structures();
-  auto it = structures.find("ipu_log_message_header");
-
-  const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
-  size_t buf_size = debug_buf.get_log_buffer().size;
-  size_t offset = 0;
-
-  std::vector<Table2D::HeaderData> table_headers;
+  // Create parser instance and parse the firmware log buffer
+  firmware_log_parser parser(config);
+  const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_data());
+  size_t buf_size = debug_buf.get_size();
   
-  // Create meaningful column headers based on ipu_log_message_header structure
-  // Skip reserved fields and use descriptive names
-  for (const auto& field : it->second.fields) {
-    // Skip reserved fields
-    if (field.name.find("reserved") != std::string::npos) {
-      continue;
-    }
-    
-    // Map field names to more descriptive column headers
-    static const std::unordered_map<std::string, std::string> field_name_map = {
-      {"timestamp", "Timestamp"},
-      {"format", "Format"},
-      {"level", "Log Level"},
-      {"appn", "Application Number"},
-      {"argc", "Argument Count"},
-      {"line", "Line Number"},
-      {"module", "Module ID"}
-    };
-    
-    auto it_map = field_name_map.find(field.name);
-    std::string header_name = (it_map != field_name_map.end()) ? it_map->second : field.name;
-    
-    table_headers.push_back({header_name, Table2D::Justification::left});
-  }
-  table_headers.push_back({"Message", Table2D::Justification::left});
-  Table2D log_table(table_headers);
-
-  size_t header_size = config.get_header_size();
-
-  while (offset + header_size <= buf_size) {
-    auto entry_data = parse_log_entry(data_ptr, offset, buf_size, config);
-    log_table.addEntry(entry_data);
-    
-    size_t msg_size = entry_data.back().size() + 1; // +1 for null terminator
-    size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment
-    offset += header_size + aligned_msg_size;
-  }
+  Table2D log_table = parser.parse(data_ptr, buf_size);
   ss << "  Firmware Log Information:\n";
   ss << log_table.toString("    ");
   return ss.str();
@@ -336,9 +285,6 @@ writeReport(const xrt_core::device* device,
             const std::vector<std::string>& elements_filter,
             std::ostream& output) const
 {
-  // Check for dummy option
-  bool use_dummy = std::find(elements_filter.begin(), elements_filter.end(), "dummy") != elements_filter.end();
-  
   try {
     auto archive = XBU::open_archive(device);
     auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
@@ -351,8 +297,8 @@ writeReport(const xrt_core::device* device,
     
     // Check for watch mode
     if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-      auto report_generator = [use_dummy, config](const xrt_core::device* dev) -> std::string {
-        return smi::generate_firmware_log_report(dev, config, true, use_dummy);
+      auto report_generator = [config](const xrt_core::device* dev) -> std::string {
+        return smi::generate_firmware_log_report(dev, config, true);
       };
       smi_watch_mode::run_watch_mode(device, output, report_generator, "Firmware Log");
       return;
@@ -361,7 +307,7 @@ writeReport(const xrt_core::device* device,
     // Non-watch mode
     output << "Firmware Log Report\n";
     output << "===================\n\n";
-    output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, config, false, use_dummy);
+    output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, config, false);
   } 
   catch (const std::exception& e) {
     output << "Error loading config from archive: " << e.what() << "\n";

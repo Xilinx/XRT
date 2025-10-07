@@ -118,20 +118,20 @@ generate_raw_logs(const xrt_core::device* dev,
   // Always use real device data for raw logs
   xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
   
-  watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+  watch_mode_offset = debug_buf.get_offset();
   
   ss << boost::format("Event Trace Report (Raw) - %s\n") 
         % xrt_core::timestamp();
   ss << "=======================================================\n";
   ss << "\n";
 
-  if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
+  if (!debug_buf.get_data() || debug_buf.get_size() == 0) {
     ss << "No event trace data available\n";
     return ss.str();
   }
 
   // Simply print the raw payload data
-  ss.write(static_cast<const char*>(debug_buf.get_log_buffer().data), static_cast<std::streamsize>(debug_buf.get_log_buffer().size));
+  ss.write(static_cast<const char*>(debug_buf.get_data()), static_cast<std::streamsize>(debug_buf.get_size()));
   
   return ss.str();
 }
@@ -159,25 +159,25 @@ generate_event_trace_report(const xrt_core::device* dev,
     {
       xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
     }
-    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+    watch_mode_offset = debug_buf.get_offset();
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
-          % debug_buf.get_log_buffer().size % xrt_core::timestamp();
+          % debug_buf.get_size() % xrt_core::timestamp();
     ss << "=======================================================\n";
 
     ss << "\n";
 
-    if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
+    if (!debug_buf.get_data() || debug_buf.get_size() == 0) {
       ss << "No event trace data available\n";
       return ss.str();
     }
 
     // Parse trace events from buffer
-    size_t event_count = debug_buf.get_log_buffer().size / sizeof(trace_event);
-    auto events = static_cast<trace_event*>(debug_buf.get_log_buffer().data);
+    size_t event_count = debug_buf.get_size() / sizeof(trace_event);
+    auto events = static_cast<trace_event*>(debug_buf.get_data());
 
     ss << boost::format("Total Events: %d\n") % event_count;
-    ss << boost::format("Buffer Offset: %d\n\n") % debug_buf.get_log_buffer().abs_offset;
+    ss << boost::format("Buffer Offset: %d\n\n") % debug_buf.get_offset();
 
     // Create Table2D with headers (enhanced with parsed args)
     const std::vector<Table2D::HeaderData> table_headers = {
@@ -259,9 +259,9 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
 
     // Parse trace events from buffer
-    if (debug_buf.get_log_buffer().data && debug_buf.get_log_buffer().size > 0) {
-      size_t event_count = debug_buf.get_log_buffer().size / sizeof(smi::trace_event);
-      auto events = static_cast<smi::trace_event*>(debug_buf.get_log_buffer().data);
+    if (debug_buf.get_data() && debug_buf.get_size() > 0) {
+      size_t event_count = debug_buf.get_size() / sizeof(smi::trace_event);
+      auto events = static_cast<smi::trace_event*>(debug_buf.get_data());
 
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
@@ -299,8 +299,8 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       }
       event_trace_pt.add_child("events", events_array);
       event_trace_pt.put("event_count", event_count);
-      event_trace_pt.put("buffer_offset", debug_buf.get_log_buffer().abs_offset);
-      event_trace_pt.put("buffer_size", debug_buf.get_log_buffer().size);
+      event_trace_pt.put("buffer_offset", debug_buf.get_offset());
+      event_trace_pt.put("buffer_size", debug_buf.get_size());
     } else {
       event_trace_pt.put("event_count", 0);
       event_trace_pt.put("buffer_offset", 0);

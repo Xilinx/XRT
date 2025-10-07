@@ -19,7 +19,7 @@ struct firmware_debug_buffer;
 }
 
 //This is arbitrary for the moment. We can change this once we do real testing with firmware data
-constexpr size_t debug_buffer_size = static_cast<size_t>(4) * 1024 * 1024; // 4MB // NOLINT(readability-magic-numbers)
+constexpr size_t debug_buffer_size = static_cast<size_t>(8) * 1024; // 8KB // NOLINT(readability-magic-numbers)
 
 /**
  * @brief RAII wrapper for firmware debug buffer management
@@ -42,6 +42,24 @@ public:
   get_log_buffer() 
   { 
     return log_buffer; 
+  }
+
+  uint64_t 
+  get_size() const
+  {
+    return log_buffer.size;
+  }
+
+  void*
+  get_data() const
+  {
+    return log_buffer.data;
+  }
+
+  uint64_t
+  get_offset() const
+  {
+    return log_buffer.abs_offset;
   }
 };
 

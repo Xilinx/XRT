@@ -125,6 +125,14 @@ public:
     return header_size; 
   }
 
+  /**
+   * @brief Get the log message header structure
+   * @return Reference to the ipu_log_message_header structure info
+   * @throws std::runtime_error if header structure not found
+   */
+  const structure_info& 
+  get_log_header() const;
+
 private:
   /**
    * @brief Parse the root JSON object
