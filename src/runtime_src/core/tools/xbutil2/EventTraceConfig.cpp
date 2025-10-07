@@ -18,27 +18,12 @@ namespace {
 constexpr uint32_t event_bits_default = 16;
 constexpr uint32_t payload_bits_default = 48;
 
-static nlohmann::json 
-load_json_file(const std::string& json_file_path) 
-{
-  if (json_file_path.empty()) {
-    throw std::runtime_error("JSON file path cannot be empty");
-  }
-  std::ifstream file(json_file_path);
-  if (!file.is_open()) {
-    throw std::runtime_error("Cannot open JSON file: " + json_file_path);
-  }
-  nlohmann::json j;
-  file >> j;
-  return j;
-}
-
 } // End of unnamed namespace
 namespace xrt_core::tools::xrt_smi{
 
 event_trace_config::
-event_trace_config(const std::string& json_file_path)
-  : config(load_json_file(json_file_path)),
+event_trace_config(nlohmann::json json_config)
+  : config(std::move(json_config)),
     event_bits(parse_event_bits(config)),
     payload_bits(parse_payload_bits(config)),
     file_major(parse_major_version(config)),

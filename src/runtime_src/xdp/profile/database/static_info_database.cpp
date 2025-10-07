@@ -1623,9 +1623,17 @@ namespace xdp {
     static uint64_t nextAvailableUID = 1;
     {
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
-      auto it  = hwCtxImplUIDMap.find(hwCtxImpl);
-      if (it != hwCtxImplUIDMap.end())
-        return it->second;
+      auto it = hwCtxImplUIDMap.find(hwCtxImpl);
+      if (it != hwCtxImplUIDMap.end()) {
+        auto& info = it->second;
+        if (info.isValid()) { // check if valid (non-zero)
+          info.incrementValidity(); // increment by 1 since a new plugin is encountered
+          return info.uid; // return UID
+        }
+        // If we reach here, the entry exists but is invalid (validityCount == 0)
+        // We'll erase it and create a new one below
+        hwCtxImplUIDMap.erase(it);
+      }
     }
 
     auto device = util::convertToCoreDevice(hwCtxImpl, true);
@@ -1636,7 +1644,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
     if ((loadedXclbinType == XclbinInfoType::XCLBIN_PL_ONLY) ||
         (loadedXclbinType == XclbinInfoType::XCLBIN_AIE_PL)) {
-      hwCtxImplUIDMap[hwCtxImpl] = DEFAULT_PL_DEVICE_ID; // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
+      hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(DEFAULT_PL_DEVICE_ID, 1)); // For PL_ONLY and AIE_PL xclbins, use 0 deviceId.
 
       // At this point, also keep track of which xclbin is associated
       // with this hardware context implementation for the run summary file
@@ -1646,9 +1654,9 @@ namespace xdp {
        // with this hardware context implementation for the run summary file
        db->associateContextWithId(nextAvailableUID, hwCtxImpl);
        
-       hwCtxImplUIDMap[hwCtxImpl] =  nextAvailableUID++;
+       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
     }
-    return hwCtxImplUIDMap[hwCtxImpl];
+    return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }
 
   uint64_t VPStaticDatabase::getDeviceContextUniqueId(void* handle)
@@ -2419,7 +2427,9 @@ namespace xdp {
     bool is_aie_available = false;
     bool is_pl_available  = false;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_METADATA);
+    auto data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_TRACE_METADATA);
+    if (!data.first || !data.second)
+      data = xrt_core::xclbin_int::get_axlf_section(xclbin, AIE_METADATA);
     if (data.first && data.second)
         is_aie_available = true;
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "hip/core/common.h"
 #include "hip/core/event.h"
 #include "hip/core/module.h"
 #include "hip/core/stream.h"
-#include "hip/xrt_hip.h"
+#include "hip/hip_xrt.h"
 
 #include <elfio/elfio.hpp>
 
@@ -15,7 +15,7 @@ static void
 hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*gridDimY*/,
                          uint32_t /*gridDimZ*/, uint32_t /*blockDimX*/, uint32_t /*blockDimY*/,
                          uint32_t /*blockDimZ*/, uint32_t sharedMemBytes, hipStream_t hStream,
-                         void** kernelParams, void** /*extra*/)
+                         void** kernelParams, void** extra)
 {
   throw_invalid_resource_if(!f, "function is nullptr");
 
@@ -34,7 +34,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   auto cmd_hdl = insert_in_map(command_cache,
                                std::make_shared<kernel_start>(hip_stream,
                                                               hip_func,
-                                                              kernelParams));
+                                                              kernelParams, extra));
   s_hdl->enqueue(command_cache.get(cmd_hdl));
 }
 

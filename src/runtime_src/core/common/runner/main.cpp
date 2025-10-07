@@ -59,7 +59,11 @@
 #include <vector>
 
 #ifdef _WIN32
+# include <windows.h>
+# include <psapi.h>
 # pragma warning (disable: 4702)
+#else
+# include <sys/resource.h>
 #endif
 
 using json = nlohmann::json;
@@ -67,7 +71,28 @@ namespace sfs = std::filesystem;
 
 namespace {
 static bool g_progress = false;   // NOLINT
+static bool g_asap = false;       // NOLINT
 static uint32_t g_iterations = 0; // NOLINT
+
+constexpr double
+to_mb(size_t bytes)
+{
+  return bytes / (1024.0 * 1024.0); // NOLINT
+}
+
+size_t
+get_peak_rss()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc {};
+  GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+  return pmc.PeakWorkingSetSize;
+#else
+  rusage usage_data {};
+  getrusage(RUSAGE_SELF, &usage_data);
+  return size_t(usage_data.ru_maxrss)* 1024; // NOLINT (ru_maxrss is in KB)
+#endif
+}
 
 // Touch up recipe(s)
 // Return parsed / modified json as a json string
@@ -109,6 +134,7 @@ touchup_profile(const std::string& profile, uint32_t iterations)
 }
 
 } // namespace
+
 
 // A job is an xrt::runner associated with specified "id".
 // Constructor throws if recipe/profile are invalid.
@@ -183,43 +209,72 @@ struct job_type
   }
 
   std::string
-  get_report()
+  get_report() const
   {
     return m_runner.get_report();
   }
 };
 
-// A job queue is a vector of jobs.  The jobs are serviced by worker
-// threads popping off next job in the queue.
+struct report_collector
+{
+  json m_report;
+  std::mutex m_mutex;
+
+  report_collector()
+    : m_report(json::object())
+  {}
+
+  void
+  add(const job_type& job)
+  {
+    auto jrpt = json::parse(job.get_report());
+
+    std::lock_guard lk{m_mutex};
+    m_report["jobs"][job.get_id()] = jrpt;
+  }
+
+  json
+  get_report() const
+  {
+    return m_report;
+  }
+};
+
+// A job queue is a vector of jobs.  
 //
-// All jobs in the queue must be added and initialized before any one
-// job can be executed by a worker.
+// The queue accepts new jobs until it is closed.  Workers block until
+// a job is available for execution or until the queue has been closed
+// and the last jobs has been returned.
 //
-// All thread workers must be initialized before any one worker can
-// start executing a job.  This is managed by a latch which must count
-// down to zero through signaling by worker thread after it is ready.
-// The latch synchronizes all threads so that they all start executing
-// after the threads is ready.
+// The queue is disabled until it is explicitly enabled.  This allows
+// for all jobs to be initialized before any one job is returned to
+// a worker.  If enabled up-front jobs are returned as soon as a worker
+// requests a job and one is available.
 class job_queue
 {
   std::mutex m_mutex;
   std::condition_variable m_work_cv;
 
   std::vector<job_type> m_jobs;
-  size_t m_jobidx = 0;
-  bool m_ready = false;
+  bool m_ready = false;  // ready to return jobs
+  bool m_stop = false;   // no longer accepts new jobs
 
 public:
-
-  job_queue() = default;
+  explicit
+  job_queue(size_t jobs) 
+  {
+    // Must not reallocate
+    m_jobs.reserve(jobs);
+  }
+    
 
   // mutex and cv are non-movable, so just create new ones
   job_queue(job_queue&& other)
     : m_jobs(std::move(other.m_jobs))
-    , m_jobidx(other.m_jobidx)
     , m_ready(other.m_ready)
   {}
 
+  // Enable the queue to return jobs as soon as one is available
   void
   enable()
   {
@@ -227,38 +282,48 @@ public:
     m_ready = true;
     m_work_cv.notify_all();
   }
+
+  // Close the queue to new jobs.  This does not prevent
+  // existing jobs from being returned to workers.
+  void
+  close()
+  {
+    std::lock_guard lk{m_mutex};
+    XRT_DEBUGF("job_queue::close() m_jobs.size(%d)\n", m_jobs.size());
+    m_stop = true;
+    m_work_cv.notify_all();
+  }
   
-  // Add a job to the queue
+  // Add a job to the queue if and only if the queue is not closed
   void
   add(job_type&& job)
   {
-    if (m_ready)
-      throw std::runtime_error("Cannot after jobs after queue is lauched");
+    std::lock_guard lk{m_mutex};
+    if (m_stop)
+      throw std::runtime_error("job_queue::add() queue is closed, cannot add jobs");
+
+    if (m_jobs.capacity() == m_jobs.size())
+      throw std::runtime_error("job_queue::add() no room for additional jobs, bad reserve size");
 
     m_jobs.emplace_back(std::move(job));
+    m_work_cv.notify_all();
   }
 
-  // Pop a job off the queue so that the worker can process it
-  job_type*
+  // Return a job directly to caller.  The job is removed from the queue.
+  job_type
   get_job()
   {
     std::unique_lock lk{m_mutex};
-    m_work_cv.wait(lk, [this] { return m_ready; });
-    return (m_jobidx == m_jobs.size())
-      ? nullptr
-      : &m_jobs[m_jobidx++];
-  }
+    m_work_cv.wait(lk, [this] { return (m_ready && !m_jobs.empty()) || m_stop; });
 
-  std::vector<job_type>&
-  get_jobs()
-  {
-    return m_jobs;
-  }
+    if (!m_jobs.empty()) {
+      job_type job{std::move(m_jobs.back())};
+      m_jobs.pop_back();
+      return job;
+    }
 
-  uint32_t
-  num_jobs() const
-  {
-    return static_cast<uint32_t>(m_jobs.size());
+    // queue is empty and closed
+    return {};
   }
 };
 
@@ -281,18 +346,23 @@ struct script_runner
       return ss.str();
     }
 
+    // Thread function which gets job by value, runs the job, waits
+    // for the job to complete, and adds the job report to the
+    // report collector.  This continues until get_job() returns
+    // an empty job which indicates the queue is closed and empty.
     static void
-    run(job_queue& queue, std::exception_ptr& eptr)
+    run(job_queue& queue, report_collector& report, std::exception_ptr& eptr)
     {
       try {
         while(true) {
-          auto job = queue.get_job();
+          auto job = queue.get_job(); // blocking
           if (!job)
             break;
 
-          XRT_DEBUGF("script_runner::worker::run() running job(%s)\n", job->get_id().c_str());
-          job->run();
-          job->wait();
+          XRT_DEBUGF("script_runner::worker::run() running job(%s)\n", job.get_id().c_str());
+          job.run();
+          job.wait();
+          report.add(job);
         }
       }
       catch (const std::exception& ex) {
@@ -302,12 +372,12 @@ struct script_runner
       }
     }
 
-    explicit worker(job_queue& queue)
-      : m_thread(worker::run, std::ref(queue), std::ref(m_eptr))
+    explicit worker(job_queue& queue, report_collector& report)
+      : m_thread(worker::run, std::ref(queue), std::ref(report), std::ref(m_eptr))
       , m_tid{to_string(m_thread.get_id())}
     {}
 
-    void
+  void
     wait()
     {
       XRT_DEBUGF("-> script_runner::worker::wait() tid(%s)\n", m_tid.c_str());
@@ -321,19 +391,22 @@ struct script_runner
   }; // worker
 
   static std::vector<worker>
-  init_workers(uint32_t num_threads, job_queue& queue)
+  init_workers(size_t num_threads, job_queue& queue, report_collector& report)
   {
     std::vector<worker> workers;
     for (; num_threads; --num_threads)
-      workers.emplace_back(queue);
+      workers.emplace_back(queue, report);
 
     return workers;
   }
 
-  static job_queue
+  void
   init_jobs(const xrt::device& device, const json& j, const sfs::path& root)
   {
-    job_queue queue;
+    if (g_asap)
+      // Allow queue to return jobs immediately when initialized
+      m_job_queue.enable();
+
     for (const auto& [k, node] : j.items()) {
       std::string id = node["id"];
       xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
@@ -342,22 +415,29 @@ struct script_runner
       sfs::path profile = root / node["profile"];
       auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
       sfs::path dir = root / node["dir"];
-      queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
+      m_job_queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
     }
-    return queue;
+
+    // The queue is fully initialized with all jobs, if not already
+    // enabled then do so now.
+    m_job_queue.enable();
+
+    // Close the queue to indicate no more jobs will be added
+    m_job_queue.close();
   }
 
   xrt::device m_device;
   job_queue m_job_queue;
+  report_collector m_report;
   std::vector<worker> m_workers;
 
 public:
   explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
-    : m_job_queue{init_jobs(device, script.value("jobs", json::object()), dir)}
-    , m_workers{init_workers(threads ? threads : m_job_queue.num_jobs(), m_job_queue)}
+    : m_job_queue(script.value("jobs", json::object()).size())
+    , m_workers{init_workers(threads ? threads : script.value("jobs", json::object()).size(),
+                             m_job_queue, m_report)}
   {
-    // Not perfect as threads can still be in the process of initializing
-    m_job_queue.enable();
+    init_jobs(device, script.value("jobs", json::object()), dir);
   }
 
   void
@@ -368,14 +448,9 @@ public:
   }
 
   json
-  get_report()
+  get_report() const
   {
-    json rpt = json::object();
-    for (auto& job : m_job_queue.get_jobs()) {
-      auto jrpt = json::parse(job.get_report());
-      rpt["jobs"][job.get_id()] = jrpt;
-    }
-    return rpt;
+    return m_report.get_report();
   }
 };
 
@@ -390,6 +465,7 @@ usage()
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--progress] show progress\n";
+  std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
@@ -419,6 +495,7 @@ run_script(const std::string& file, const std::string& dir, uint32_t threads,
     auto [real, user, system] = st.get_rusage();
     auto jrpt = runner.get_report();
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+    jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -445,6 +522,7 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
     auto [real, user, system] = st.get_rusage();
     auto jrpt = json::parse(runner.get_report());
     jrpt["system"] = { {"real", real.to_sec() }, {"user", user.to_sec() }, {"kernel", system.to_sec()} };
+    jrpt["system"]["peak_memory_mb"] = to_mb(get_peak_rss());
 
     if (report == "-")
       std::cout << jrpt.dump(2) << '\n';
@@ -479,6 +557,11 @@ run(int argc, char* argv[])
     if (arg == "--progress") {
       xrt::ini::set("Runtime.verbosity", static_cast<int>(xrt::message::level::info));
       g_progress = true;
+      continue;
+    }
+
+    if (arg == "--asap") {
+      g_asap = true;
       continue;
     }
 
@@ -523,6 +606,9 @@ run(int argc, char* argv[])
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");
 
+  if (script.empty() && g_asap)
+    throw std::runtime_error("--asap only valid in script mode");
+
   if (script.empty() && (recipe.empty() || profile.empty()))
     throw std::runtime_error("both recipe and profile are required without a script");
 
@@ -544,9 +630,11 @@ main(int argc, char **argv)
   }
   catch (const std::exception& ex) {
     std::cerr << "Error: " << ex.what() << '\n';
+    std::cerr << "Peak memory usage: " << to_mb(get_peak_rss()) << " MB\n";
   }
   catch (...) {
     std::cerr << "Unknown error\n";
+    std::cerr << "Peak memory usage: " << to_mb(get_peak_rss()) << " MB\n";
   }
   return 1;
 

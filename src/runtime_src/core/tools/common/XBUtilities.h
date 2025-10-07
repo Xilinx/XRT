@@ -9,6 +9,8 @@
 // Please keep these to the bare minimum
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
+#include "core/common/archive.h"
+#include "core/common/runner/runner.h"
 
 #include <chrono>
 #include <iostream>
@@ -126,6 +128,19 @@ namespace XBUtilities {
     */
     return (x != 0) && ((x & (x - 1)) == 0);
   }
+
+  /**
+   * Extract artifacts from archive
+   */
+  xrt_core::runner::artifacts_repository 
+  extract_artifacts_from_archive(const xrt_core::archive* archive, 
+                                 const std::vector<std::string>& artifact_names);
+
+  /**
+   * Open archive from device
+   */
+  std::unique_ptr<xrt_core::archive> 
+  open_archive(const xrt_core::device* device);
 
  /*
   * xclbin locking

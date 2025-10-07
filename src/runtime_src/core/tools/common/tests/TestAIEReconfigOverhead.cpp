@@ -32,11 +32,11 @@ TestAIEReconfigOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const
     std::string recipe_noop_data = archive->data("recipe_aie_reconfig_nop.json");
     std::string profile_data = archive->data("profile_aie_reconfig.json"); 
     
-    auto artifacts_repo = extract_artifacts_from_archive(archive, {
+    auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
       "aie_reconfig.xclbin", 
       "aie_reconfig.elf",
       "nop.elf" 
-    }, ptree);
+    });
     
     // Create runner with recipe, profile, and artifacts repository - Run 1
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);

@@ -57,6 +57,12 @@ enum TransformType {
 	CMDDATASPERATE,
 };
 
+#if defined(_MSC_VER)   // MSVC
+#  define ALIGN16 __declspec(align(16))
+#else                   // GCC, Clang
+#  define ALIGN16 __attribute__((aligned(16)))
+#endif
+
 /************************** Variable Definitions *****************************/
 /*
  * Structure to store the PDI extension information.
@@ -89,7 +95,7 @@ typedef struct {
 	uint32_t KekIv[3U]; /**< Kek IV for meta header decryption */
 	uint32_t Rsvd[9U]; /**< Reserved */
 	uint32_t Checksum; /**< Checksum of the image header table */
-} XilPdi_ImgHdrTbl __attribute__ ((aligned(16U)));
+} ALIGN16 XilPdi_ImgHdrTbl;
 
 /*
  * Structure to store the Image header details.
@@ -108,7 +114,7 @@ typedef struct {
 	uint64_t CopyToMemoryAddr; /**< Address at which image is backed up in DDR */
 	uint32_t Rsvd; /**< Reserved */
 	uint32_t Checksum; /**< Checksum of the image header */
-} XilPdi_ImgHdr __attribute__ ((aligned(16U)));
+} ALIGN16 XilPdi_ImgHdr;
 
 /*
  * Structure to store the partition header details.
@@ -136,7 +142,7 @@ typedef struct {
 	uint32_t Reserved[6U]; /**< Reserved */
 	TranformInfo TInfo;
 	uint32_t Checksum; /**< checksum of the partition header */
-} XilPdi_PrtnHdr __attribute__ ((aligned(16U)));
+} ALIGN16 XilPdi_PrtnHdr;
 
 /*****************************************************************************/
 

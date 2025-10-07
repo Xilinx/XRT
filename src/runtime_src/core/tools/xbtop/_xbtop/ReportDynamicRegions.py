@@ -8,7 +8,7 @@
 
 import json
 import math
-import XBUtil
+from . import XBUtil
 
 # found in PYTHONPATH
 import pyxrt
@@ -35,25 +35,21 @@ class ReportDynamicRegions:
     def _print_cu_info(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Compute Usage", start_y)
         table_offset = 1
-        if self._df is None:
+        try:
+            uuid = self._df['dynamic_regions'][0]['xclbin_uuid']
+            cus = self._df['dynamic_regions'][0]['compute_units']
+        except:
             XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
         with lock:
             term.location(3, start_y+table_offset)
-            print("Xclbin UUID: %s" % self._df['dynamic_regions'][0]['xclbin_uuid'])
+            print("Xclbin UUID: %s" % uuid)
             table_offset += 2
 
         header = [     "", "Name", "Base Address", "Usage", "Status", "Type"]
         format = ["right", "left",        "right", "right", "center", "center"]
         data = []
-
-        cus = []
-        try:
-            cus = self._df['dynamic_regions'][0]['compute_units']
-        except:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
 
         # Each page should display however many items a report page can hold
         for i in range(self.report_length):

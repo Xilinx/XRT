@@ -6,23 +6,9 @@
 
 namespace xrt_core::tools::xrt_smi {
 
-static nlohmann::json 
-load_json_config(const std::string& json_file_path) {
-  if (json_file_path.empty()) {
-    throw std::runtime_error("JSON file path cannot be empty");
-  }
-  std::ifstream file(json_file_path);
-  if (!file.is_open()) {
-    throw std::runtime_error("Cannot open JSON file: " + json_file_path);
-  }
-  nlohmann::json j;
-  file >> j;
-  return j;
-}
-
 firmware_log_config::
-firmware_log_config(const std::string& json_file_path)
-  : config(load_json_config(json_file_path)),
+firmware_log_config(nlohmann::json json_config)
+  : config(std::move(json_config)),
     enums(parse_enums(config)),
     structures(parse_structures(config)),
     header_size(calculate_header_size(structures))

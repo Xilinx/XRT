@@ -63,7 +63,9 @@ namespace xrt::core::hip
     throw_invalid_device_if(!dev, "empty device for hip malloc.");
     throw_invalid_value_if(!host_ptr, "empty host memory pointer for host memory registration.");
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
+    throw_if(hip_mem != nullptr, hipErrorHostMemoryAlreadyRegistered, "host memory already registered.");
+    hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
     auto host_addr = hip_mem->get_address();
     throw_if(!host_addr, hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister!");
 
@@ -79,7 +81,9 @@ namespace xrt::core::hip
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
     throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer.");
     // coverity[REVERSE_INULL] , preivous function already checks for nullptr
-    throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
+    throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped &&
+                           hip_mem->get_flags() != hipHostRegisterMapped,
+                           "Getting device pointer is valid only for memory created with hipHostMallocMapped/hipHostRegisterMapped flag!");
 
     *device_ptr = nullptr;
     if (hip_mem) {
@@ -94,6 +98,9 @@ namespace xrt::core::hip
   static void
   hip_free(void* ptr)
   {
+    if (!ptr)
+      return;
+
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "Invalid handle.");
 
@@ -104,6 +111,9 @@ namespace xrt::core::hip
   static void
   hip_host_free(void* ptr)
   {
+    if (!ptr)
+      return;
+
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "Invalid handle.");
 

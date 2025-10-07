@@ -5,6 +5,7 @@
 // Local - Include Files
 #include "TestNPUThroughput.h"
 #include "TestValidateUtilities.h"
+#include "tools/common/XBUtilities.h"
 #include "core/common/runner/runner.h"
 #include "xrt/xrt_device.h"
 #include "core/common/json/nlohmann/json.hpp"
@@ -35,10 +36,10 @@ TestNPUThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_c
     std::string recipe_data = archive->data("recipe_throughput.json");
     std::string profile_data = archive->data("profile_throughput.json"); 
     
-    auto artifacts_repo = extract_artifacts_from_archive(archive, {
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
       "validate.xclbin", 
       "nop.elf" 
-    }, ptree);
+    });
     
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);

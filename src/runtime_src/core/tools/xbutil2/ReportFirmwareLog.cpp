@@ -7,6 +7,8 @@
 #include "core/common/time.h"
 #include "tools/common/SmiWatchMode.h"
 #include "tools/common/Table2D.h"
+#include "tools/common/XBUtilities.h"
+#include "core/common/json/nlohmann/json.hpp"
 
 #include <algorithm>
 #include <boost/format.hpp>
@@ -15,8 +17,12 @@
 #include <unordered_map>
 #include <vector>
 #include <cstring>
+#include <fstream>
+#include <memory>
 
 using bpt = boost::property_tree::ptree;
+namespace XBU = XBUtilities;
+namespace smi = xrt_core::tools::xrt_smi;
 
 namespace xrt_core::tools::xrt_smi {
 
@@ -231,93 +237,81 @@ generate_raw_logs(const xrt_core::device* dev,
 
 static std::string
 generate_firmware_log_report(const xrt_core::device* dev,
+                             const firmware_log_config& config,
                              bool is_watch,
                              bool use_dummy = false)
 {
   std::stringstream ss{};
   static uint64_t watch_mode_offset = 0;
 
-  try {
-    // Load config once (could be cached in a real implementation)
-    std::string config_path{};
-    config_path = xrt_core::device_query<xrt_core::query::firmware_log_config>(dev);
-    firmware_log_config config(config_path);
+  // Create and setup buffer for firmware log data
+  smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
-    // Create and setup buffer for firmware log data
-    smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
-
-    if (use_dummy) 
-    {
-      generate_dummy_firmware_log_data(debug_buf.get_log_buffer());
-    } 
-    else 
-    {
-    // Get buffer from driver
-      xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
-    }
-    
-    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
-    
-    if (!debug_buf.get_log_buffer().data) {
-      ss << "No firmware log data available\n";
-      return ss.str();
-    }
-
-    const auto& structures = config.get_structures();
-    auto it = structures.find("ipu_log_message_header");
-
-    const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
-    size_t buf_size = debug_buf.get_log_buffer().size;
-    size_t offset = 0;
-
-    std::vector<Table2D::HeaderData> table_headers;
-    
-    // Create meaningful column headers based on ipu_log_message_header structure
-    // Skip reserved fields and use descriptive names
-    for (const auto& field : it->second.fields) {
-      // Skip reserved fields
-      if (field.name.find("reserved") != std::string::npos) {
-        continue;
-      }
-      
-      // Map field names to more descriptive column headers
-      static const std::unordered_map<std::string, std::string> field_name_map = {
-        {"timestamp", "Timestamp"},
-        {"format", "Format"},
-        {"level", "Log Level"},
-        {"appn", "Application Number"},
-        {"argc", "Argument Count"},
-        {"line", "Line Number"},
-        {"module", "Module ID"}
-      };
-      
-      auto it_map = field_name_map.find(field.name);
-      std::string header_name = (it_map != field_name_map.end()) ? it_map->second : field.name;
-      
-      table_headers.push_back({header_name, Table2D::Justification::left});
-    }
-    table_headers.push_back({"Message", Table2D::Justification::left});
-    Table2D log_table(table_headers);
-
-    size_t header_size = config.get_header_size();
-
-    while (offset + header_size <= buf_size) {
-      auto entry_data = parse_log_entry(data_ptr, offset, buf_size, config);
-      log_table.addEntry(entry_data);
-      
-      size_t msg_size = entry_data.back().size() + 1; // +1 for null terminator
-      size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment
-      offset += header_size + aligned_msg_size;
-    }
-    ss << "  Firmware Log Information:\n";
-    ss << log_table.toString("    ");
+  if (use_dummy) 
+  {
+    generate_dummy_firmware_log_data(debug_buf.get_log_buffer());
+  } 
+  else 
+  {
+  // Get buffer from driver
+    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
   }
-  catch (const std::exception& e) {
-    ss << "Error parsing firmware log data: " << e.what() << "\n";
-    ss << "Generating raw firmware log data:\n\n";
-    ss << generate_raw_logs(dev, is_watch, watch_mode_offset);
+  
+  watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+  
+  if (!debug_buf.get_log_buffer().data) {
+    ss << "No firmware log data available\n";
+    return ss.str();
   }
 
+  const auto& structures = config.get_structures();
+  auto it = structures.find("ipu_log_message_header");
+
+  const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
+  size_t buf_size = debug_buf.get_log_buffer().size;
+  size_t offset = 0;
+
+  std::vector<Table2D::HeaderData> table_headers;
+  
+  // Create meaningful column headers based on ipu_log_message_header structure
+  // Skip reserved fields and use descriptive names
+  for (const auto& field : it->second.fields) {
+    // Skip reserved fields
+    if (field.name.find("reserved") != std::string::npos) {
+      continue;
+    }
+    
+    // Map field names to more descriptive column headers
+    static const std::unordered_map<std::string, std::string> field_name_map = {
+      {"timestamp", "Timestamp"},
+      {"format", "Format"},
+      {"level", "Log Level"},
+      {"appn", "Application Number"},
+      {"argc", "Argument Count"},
+      {"line", "Line Number"},
+      {"module", "Module ID"}
+    };
+    
+    auto it_map = field_name_map.find(field.name);
+    std::string header_name = (it_map != field_name_map.end()) ? it_map->second : field.name;
+    
+    table_headers.push_back({header_name, Table2D::Justification::left});
+  }
+  table_headers.push_back({"Message", Table2D::Justification::left});
+  Table2D log_table(table_headers);
+
+  size_t header_size = config.get_header_size();
+
+  while (offset + header_size <= buf_size) {
+    auto entry_data = parse_log_entry(data_ptr, offset, buf_size, config);
+    log_table.addEntry(entry_data);
+    
+    size_t msg_size = entry_data.back().size() + 1; // +1 for null terminator
+    size_t aligned_msg_size = ((msg_size + 3) / 4) * 4; // 4-byte alignment
+    offset += header_size + aligned_msg_size;
+  }
+  ss << "  Firmware Log Information:\n";
+  ss << log_table.toString("    ");
   return ss.str();
 }
 
@@ -345,19 +339,48 @@ writeReport(const xrt_core::device* device,
   // Check for dummy option
   bool use_dummy = std::find(elements_filter.begin(), elements_filter.end(), "dummy") != elements_filter.end();
   
-  // Check for watch mode
-  if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    auto report_generator = [use_dummy](const xrt_core::device* dev) -> std::string {
-      return xrt_core::tools::xrt_smi::generate_firmware_log_report(dev, true, use_dummy);
-    };
-    smi_watch_mode::run_watch_mode(device, output, report_generator, "Firmware Log");
+  try {
+    auto archive = XBU::open_archive(device);
+    auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
+    
+    auto& config_data = artifacts_repo["firmware_log.json"];
+    std::string config_content(config_data.begin(), config_data.end());
+    
+    auto json_config = nlohmann::json::parse(config_content);
+    smi::firmware_log_config config(json_config);
+    
+    // Check for watch mode
+    if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
+      auto report_generator = [use_dummy, config](const xrt_core::device* dev) -> std::string {
+        return smi::generate_firmware_log_report(dev, config, true, use_dummy);
+      };
+      smi_watch_mode::run_watch_mode(device, output, report_generator, "Firmware Log");
+      return;
+    }
+
+    // Non-watch mode
+    output << "Firmware Log Report\n";
+    output << "===================\n\n";
+    output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, config, false, use_dummy);
+  } 
+  catch (const std::exception& e) {
+    output << "Error loading config from archive: " << e.what() << "\n";
+    output << "Falling back to raw firmware log data:\n\n";
+    
+    // Generate raw logs when config is not available
+    static uint64_t watch_mode_offset = 0;
+    if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
+      // Create report generator lambda for watch mode with raw logs
+      auto report_generator = [](const xrt_core::device* dev) -> std::string {
+        return smi::generate_raw_logs(dev, true, watch_mode_offset);
+      };
+
+      smi_watch_mode::run_watch_mode(device, output, report_generator, "Event Trace (Raw)");
+      return;
+    }
+    output << smi::generate_raw_logs(device, false, watch_mode_offset);
     return;
   }
-
-  // Non-watch mode
-  output << "Firmware Log Report\n";
-  output << "===================\n\n";
-  output << xrt_core::tools::xrt_smi::generate_firmware_log_report(device, false, use_dummy);
   output << std::endl;
 }
 

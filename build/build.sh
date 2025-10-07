@@ -21,18 +21,22 @@ if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     fi
 fi
 
-
 if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
-    # On ARM64 Ubuntu use GCC version 8 if available since default
-    # (GCC version 7) has random Internal Compiler Issues compiling XRT
-    # C++14 code
-    gcc-8 --version > /dev/null 2>&1
-    status1=$?
-    g++-8 --version > /dev/null 2>&1
-    status2=$?
-    if [[ $status1 == 0 ]] && [[ $status2 == 0 ]]; then
+    # On ARM64 Ubuntu use GCC version 8+, GCC version 7 has
+    # random Internal Compiler Issues compiling XRT C++14 code
+
+    gcc_version=$(gcc --version 2> /dev/null | head -n1 | awk '{print $3}' | cut -d. -f1)
+    gpp_version=$(g++ --version 2> /dev/null | head -n1 | awk '{print $3}' | cut -d. -f1)
+
+    if [[ "$gcc_version" -ge 8 && "$gpp_version" -ge 8 ]]; then
+	export CC=gcc
+	export CXX=g++
+    elif command -v gcc-8 >/dev/null 2>&1 && command -v g++-8 >/dev/null 2>&1; then
 	export CC=gcc-8
 	export CXX=g++-8
+    else
+	echo "Installed gcc/g++ version is < 8 and gcc/g++ 8 is not available, please run xrt_deps.sh"
+	exit 1
     fi
 fi
 
