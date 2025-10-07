@@ -33,7 +33,7 @@ public:
    *               field layouts, and enumeration mappings
    */
   explicit 
-  firmware_log_parser(const firmware_log_config& config);
+  firmware_log_parser(firmware_log_config config);
 
   /**
    * @brief Parse firmware log buffer and generate formatted table
@@ -130,15 +130,15 @@ private:
   calculate_entry_size(uint32_t argc, uint32_t format) const;
 
 private:
-  const firmware_log_config m_config;  
-  const firmware_log_config::structure_info m_header; 
+  firmware_log_config m_config;  
+  firmware_log_config::structure_info m_header; 
   uint32_t m_header_size; // Size of log entry header in bytes
   
   // Field indices computed from config
-  const std::unordered_map<std::string, size_t> m_field_indices;
+  std::unordered_map<std::string, size_t> m_field_indices;
 
   // Column headers mapping for display
-  const std::unordered_map<std::string, std::string> m_columns;
+  std::unordered_map<std::string, std::string> m_columns;
 
   /**
    * @brief Create field indices map from config

@@ -20,8 +20,6 @@
 #include <fstream>
 #include <memory>
 
-#define IPU_LOG_FORMAT_FULL 0
-
 using bpt = boost::property_tree::ptree;
 namespace XBU = XBUtilities;
 namespace smi = xrt_core::tools::xrt_smi;
@@ -29,8 +27,8 @@ namespace smi = xrt_core::tools::xrt_smi;
 namespace xrt_core::tools::xrt_smi {
 
 firmware_log_parser::
-firmware_log_parser(const firmware_log_config& config) 
-  : m_config(config), 
+firmware_log_parser(firmware_log_config config) 
+  : m_config(std::move(config)), 
     m_header(m_config.get_log_header()),
     m_header_size(static_cast<uint32_t>(m_config.get_header_size())),
     m_field_indices(create_field_indices(m_config)),
@@ -158,7 +156,7 @@ firmware_log_parser::
 calculate_entry_size(uint32_t argc, uint32_t format) const
 {
   uint32_t entry_size = argc;
-  if (format == IPU_LOG_FORMAT_FULL) {
+  if (format == 0) {
     // Firmware uses 8-byte alignment to optimize DMA transfers and memory operations.
     // Each log argument is 4 bytes, so argc*4 = total argument payload size.
     // Round up to next 8-byte boundary: ((size + 7) / 8) * 8
@@ -192,7 +190,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     }
     // Add message
     log_data.emplace_back(std::move(entry_data.back())); 
-    log_table.addEntry(std::move(log_data));
+    log_table.addEntry(log_data);
 
     offset += calculate_entry_size(argc, format);
   }
