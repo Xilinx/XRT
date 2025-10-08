@@ -10,6 +10,8 @@
 
 
 # --- PkgConfig ---
+# Force use of system pkg-config to avoid version compatibility issues
+set(PKG_CONFIG_EXECUTABLE "/usr/bin/pkg-config" CACHE FILEPATH "Path to pkg-config executable")
 INCLUDE (FindPkgConfig)
 
 # --- DRM ---
