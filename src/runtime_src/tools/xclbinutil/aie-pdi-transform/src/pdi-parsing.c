@@ -141,7 +141,7 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
    }
 
    // Set the file stream to line-buffered mode
-   setvbuf(file_pointer, NULL, _IOLBF, BUFSIZ);
+   (void)setvbuf(file_pointer, NULL, _IOLBF, BUFSIZ);
 
   int Ret = 0;
   printf("Get pdi file %s, do tranform pdi check and parsing.\n", pdi_file);
@@ -175,10 +175,10 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
   memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   */
-  char *DebugPdi = (char*)malloc(MAX_DEBUG_PDI_LEN);
-  char *DebugTransformPdi = (char*)malloc(MAX_DEBUG_PDI_LEN);
-  memset(DebugPdi, 0, MAX_DEBUG_PDI_LEN);
-  memset(DebugTransformPdi, 0, MAX_DEBUG_PDI_LEN);
+  char *DebugPdi = (char*)malloc((size_t)MAX_DEBUG_PDI_LEN);
+  char *DebugTransformPdi = (char*)malloc((size_t)MAX_DEBUG_PDI_LEN);
+  memset(DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
+  memset(DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   
   SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
   XCdo_Print("\n\nLoad original pdi\n");
