@@ -184,7 +184,8 @@ struct patcher
       ".pdi",
       ".ctrlpkt.pm",
       ".pad",
-      ".dump"
+      ".dump",
+      ".ctrlpkt"
     };
 
     return section_name_array[static_cast<int>(bt)];
@@ -612,6 +613,16 @@ public:
 
   virtual const std::unordered_set<std::string>&
   get_patch_pdis(uint32_t /*id*/) const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Returns map of ctrl pkt buffers map for given id
+  // key : ctrl pkt section name
+  // value : ctrl pkt buffer
+  // Applicable for newer aie2ps/aie4 ELFs
+  virtual const std::map<std::string, buf>&
+  get_ctrlpkt_buf_map(uint32_t /*id*/) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -1586,6 +1597,10 @@ class module_elf_aie2ps : public module_elf
   // key : control code id (grp sec idx), value : vector of column ctrlcodes
   std::map<uint32_t, std::vector<ctrlcode>> m_ctrlcodes_map;
 
+  // map for holding multiple ctrl pkt sections data for each sub kernel
+  // key : control code id (grp sec idx), value : map of ctrl pkt section name and data
+  std::map<uint32_t, std::map<std::string, buf>> m_ctrlpkt_buf_map;
+
   // map to hold .dump section of different sub kernels used for debug/trace
   std::map<uint32_t, buf> m_dump_buf_map;
 
@@ -1715,6 +1730,24 @@ class module_elf_aie2ps : public module_elf
     }
   }
 
+  // Parse the ELF and extract all ctrlpkt sections data
+  // There can be multiple ctrlpkt sections for each sub kernel
+  // store them in map with key as section name and value as section data
+  void
+  initialize_ctrlpkt_bufs()
+  {
+    for (const auto& sec : m_elfio.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrlpkt)) == std::string::npos)
+        continue;
+
+      buf ctrlpkt_buf;
+      ctrlpkt_buf.append_section_data(sec.get());
+      auto grp_idx = m_sec_to_grp_map[sec->get_index()];
+      m_ctrlpkt_buf_map[grp_idx][name] = std::move(ctrlpkt_buf);
+    }
+  }
+
   void
   initialize_arg_patchers(const std::map<uint32_t, std::vector<size_t>>& pad_offsets)
   {
@@ -1767,6 +1800,12 @@ class module_elf_aie2ps : public module_elf
           abs_offset += pad_off_vec[col];
           abs_offset += rela->r_offset;
           buf_type = xrt_core::patcher::buf_type::pad;
+        }
+        else if (patch_sec_name.find(patcher::to_string(xrt_core::patcher::buf_type::ctrlpkt)) != std::string::npos) {
+          // section to patch is ctrlpkt
+          // this section is present in new ELFs
+          abs_offset += rela->r_offset;
+          buf_type = xrt_core::patcher::buf_type::ctrlpkt;
         }
         else {
           // section to patch is ctrlcode
@@ -1844,6 +1883,7 @@ public:
   {
     std::map<uint32_t, std::vector<uint64_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets, ::is_group_elf(xrt_core::elf_int::get_elfio(elf)));
+    initialize_ctrlpkt_bufs();
     initialize_arg_patchers(pad_offsets);
     initialize_dump_buf();
   }
@@ -1862,6 +1902,16 @@ public:
 
     static const std::vector<ctrlcode> empty_vec;
     return empty_vec;
+  }
+
+  const std::map<std::string, buf>&
+  get_ctrlpkt_buf_map(uint32_t id) const override
+  {
+    if (auto it = m_ctrlpkt_buf_map.find(id); it != m_ctrlpkt_buf_map.end())
+      return it->second;
+
+    static const std::map<std::string, buf> empty_map;
+    return empty_map;
   }
 
   const buf&
@@ -1938,6 +1988,12 @@ class module_sram : public module_impl
   xrt::bo m_ctrl_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
+
+  // map of ctrlpkt buffers
+  // This is for ELFs that have multiple ctrlpkt sections (aie2ps/aie4)
+  // key : ctrlpkt section name
+  // value : xrt::bo filled with corresponding section data
+  std::map<std::string, xrt::bo> m_ctrlpkt_bos;
 
   // map of ctrlpkt preemption buffers
   // key : dynamic symbol patch name of ctrlpkt-pm
@@ -2071,6 +2127,16 @@ class module_sram : public module_impl
                             m_ctrl_code_id))
         m_patched_args.insert(sym_name);
       offset += col_data[i].size();
+    }
+
+    // Iterate over all control packets for this sub kernel and
+    // patch it in instruction buffer
+    for (const auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
+      // symbol name will be same as section name without the grp idx
+      auto sym_name = name.substr(0, name.rfind('.'));
+      if (patch_instr_value(m_buffer, sym_name, std::numeric_limits<size_t>::max(), ctrlpktbo.address(),
+                            xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id))
+        m_patched_args.insert(sym_name);
     }
   }
 
@@ -2243,6 +2309,33 @@ class module_sram : public module_impl
     }
   }
 
+  // Create control pkt buffers for all ctrlpkt sections of this sub kernel
+  // These buffer addresses are patched in instruction buffer
+  void
+  create_ctrlpkt_bufs(const module_impl* parent)
+  {
+    const auto& ctrlpkt_map = parent->get_ctrlpkt_buf_map(m_ctrl_code_id);
+    if (ctrlpkt_map.empty())
+      return; // older Elfs have ctrlpkt in pad section
+
+    // Create ctrlpkt bo's for all ctrlpkt sections
+    for (const auto& [name, buf] : ctrlpkt_map) {
+      m_ctrlpkt_bos[name] = xrt::ext::bo{ m_hwctx, buf.size() };
+      fill_bo_with_data(m_ctrlpkt_bos[name], buf);
+    }
+
+    if (is_dump_control_packet()) {
+      for (auto& [name, bo] : m_ctrlpkt_bos) {
+        std::string dump_file_name = name + "_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+    }
+  }
+
   // Create the instruction buffer with all columns data along with pad section
   void
   create_instruction_buffer(const module_impl* parent)
@@ -2296,6 +2389,14 @@ class module_sram : public module_impl
       if (m_parent->patch_it(m_buffer, argnm, index, value, xrt_core::patcher::buf_type::pad,
                              m_ctrl_code_id, m_first_patch))
           patched = true;
+
+      // New Elfs have multiple ctrlpkt sections
+      // Iterate over all ctrlpkt buffers and patch them
+      for (const auto& ctrlpkt : m_ctrlpkt_bos) {
+        if (m_parent->patch_it(ctrlpkt.second, argnm, index, value, xrt_core::patcher::buf_type::ctrlpkt,
+                               m_ctrl_code_id, m_first_patch))
+          patched = true;
+      }
     }
 
     if (patched) {
@@ -2359,6 +2460,20 @@ class module_sram : public module_impl
         std::stringstream ss;
         ss << "dumped file " << dump_file_name;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+
+      for (auto& [name, bo] : m_ctrlpkt_bos) {
+        if (m_first_patch)
+          bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+        if (is_dump_control_packet()) {
+          std::string dump_file_name = name + "_pre_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(bo, dump_file_name);
+
+          std::stringstream ss;
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+        }
       }
     }
     else if (os_abi == Elf_Amd_Aie2p) {
@@ -2627,6 +2742,7 @@ public:
     }
     else if (os_abi == Elf_Amd_Aie2ps || os_abi == Elf_Amd_Aie2ps_group) {
       initialize_dtrace_buf(m_parent.get());
+      create_ctrlpkt_bufs(m_parent.get());
       create_instruction_buffer(m_parent.get());
       fill_column_bo_address(m_parent->get_data(m_ctrl_code_id));
     }
