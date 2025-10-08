@@ -80,6 +80,37 @@ hip_module_file_is_elf(const std::string& file_name)
   return hip_module_data_is_elf(file_header.data(), file_header.size());
 }
 
+template <typename T>
+static module_handle
+hip_create_module_config_param(std::shared_ptr<context> ctx, const std::string &file_name,
+                               uint32_t num_config_params, const hipXrtModuleCfgParam_t *params)
+{
+  throw_invalid_value_if(num_config_params && !params,
+			 "invalid configuration parameters passed");
+  if (!num_config_params)
+    return insert_in_map(module_cache, std::make_shared<T>(std::move(ctx), file_name));
+  std::map<std::string, uint32_t> config_params;
+  for (uint32_t i = 0; i < num_config_params; ++i)
+    config_params[std::string{params[i].name}] = params[i].data;
+  return insert_in_map(module_cache, std::make_shared<T>(std::move(ctx), file_name, config_params));
+}
+
+template <typename T>
+static module_handle
+hip_create_module_config_param(std::shared_ptr<context> ctx, void *data, size_t size,
+                               uint32_t num_config_params, const hipXrtModuleCfgParam_t *params)
+{
+  throw_invalid_value_if(num_config_params && !params,
+			 "invalid configuration parameters passed");
+  if (!num_config_params)
+    return insert_in_map(module_cache, std::make_shared<T>(std::move(ctx), data, size));
+  std::map<std::string, uint32_t> config_params;
+  for (uint32_t i = 0; i < num_config_params; ++i)
+    config_params[std::string{params[i].name}] = params[i].data;
+  return insert_in_map(module_cache, std::make_shared<T>(std::move(ctx), data, size,
+                                                         config_params));
+}
+
 static module_handle
 hip_create_top_module_config_data(const hipModuleData* config)
 {
@@ -87,17 +118,25 @@ hip_create_top_module_config_data(const hipModuleData* config)
   throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
 
   if (config->type == hipModuleDataFilePath) {
-    std::string file_name(static_cast<char*>(config->data));
+    std::string file_name(static_cast<const char*>(config->data));
     if (hip_module_file_is_elf(file_name))
-      return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, file_name));
+      return hip_create_module_config_param<module_full_elf>(std::move(ctx), file_name,
+                                                             config->numCfgParams,
+                                                             config->cfgParams);
 
-    return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, file_name));
+    return hip_create_module_config_param<module_xclbin>(std::move(ctx), file_name,
+                                                         config->numCfgParams,
+                                                         config->cfgParams);
   }
   else if (config->type == hipModuleDataBuffer) {
     if (hip_module_data_is_elf(static_cast<char*>(config->data), config->size))
-      return insert_in_map(module_cache, std::make_shared<module_full_elf>(ctx, config->data, config->size));
+      return hip_create_module_config_param<module_full_elf>(std::move(ctx), config->data,
+                                                             config->size, config->numCfgParams,
+                                                             config->cfgParams);
 
-    return insert_in_map(module_cache, std::make_shared<module_xclbin>(ctx, config->data, config->size));
+    return hip_create_module_config_param<module_xclbin>(std::move(ctx), config->data, config->size,
+                                                         config->numCfgParams,
+                                                         config->cfgParams);
   }
   throw_hip_error(hipErrorInvalidValue, "invalid module data type passed");
   // Will never reach here, this is to satisfy compiler
