@@ -352,6 +352,9 @@ public:
   void
   dump_uc_log_buffer()
   {
+    if (!m_uc_log_buf)
+      return;
+
     m_uc_log_buf->dump();
   }
 
