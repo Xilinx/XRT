@@ -4206,7 +4206,7 @@ struct firmware_log_version : request
 // Firmware log data query - following telemetry pattern
 struct firmware_log_data : request
 {
-  using result_type = bool;
+  using result_type = firmware_debug_buffer;
   static const key_type key = key_type::firmware_log_data;
 
   std::any

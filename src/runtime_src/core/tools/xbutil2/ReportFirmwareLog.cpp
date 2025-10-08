@@ -209,17 +209,17 @@ generate_raw_logs(const xrt_core::device* dev,
     smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
     // Get raw buffer from device for raw dump
-    xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
+    auto data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
     
-    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+    watch_mode_offset = data_buf.abs_offset;
     
-    if (!debug_buf.get_log_buffer().data) {
+    if (!data_buf.data) {
       ss << "No firmware log data available\n";
       return ss.str();
     }
 
-    const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_log_buffer().data);
-    size_t buf_size = debug_buf.get_log_buffer().size;
+    const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+    size_t buf_size = data_buf.size;
 
     // Simply print the raw payload data
     ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
@@ -242,19 +242,21 @@ generate_firmware_log_report(const xrt_core::device* dev,
   smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
 
   // Get buffer from driver
-  xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
+  auto data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
   
-  watch_mode_offset = debug_buf.get_offset();
-  
-  if (!debug_buf.get_log_buffer().data) {
+  watch_mode_offset = data_buf.abs_offset;
+
+  if (!data_buf.data) {
     ss << "No firmware log data available\n";
     return ss.str();
   }
 
   // Create parser instance and parse the firmware log buffer
   firmware_log_parser parser(config);
-  const auto* data_ptr = static_cast<const uint8_t*>(debug_buf.get_data());
-  size_t buf_size = debug_buf.get_size();
+  const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+  size_t buf_size = data_buf.size;
+
+  std::cout<<"Buffer Size: "<<buf_size<<"\n";
   
   Table2D log_table = parser.parse(data_ptr, buf_size);
   ss << "  Firmware Log Information:\n";
@@ -284,6 +286,9 @@ writeReport(const xrt_core::device* device,
             std::ostream& output) const
 {
   try {
+
+    if (std::find(elements_filter.begin(), elements_filter.end(), "raw") != elements_filter.end())
+      throw std::runtime_error("Force raw logs");
     auto archive = XBU::open_archive(device);
     auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
     
