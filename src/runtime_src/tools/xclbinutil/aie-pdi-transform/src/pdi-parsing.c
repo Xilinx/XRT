@@ -141,7 +141,7 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
    }
 
    // Set the file stream to line-buffered mode
-   setvbuf(file_pointer, NULL, _IOLBF, 0);
+   setvbuf(file_pointer, NULL, _IOLBF, BUFSIZ);
 
   int Ret = 0;
   printf("Get pdi file %s, do tranform pdi check and parsing.\n", pdi_file);
@@ -166,15 +166,26 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
   XCdo_Print("Pdi parsing... file = %s; len = %u\n", pdi_file, PdiLoad.PdiLen);
   #define MAX_DEBUG_PDI_LEN (1024*500)
   const uint8_t cmpDmaData = 1;
+  // The default stack size on Windows is 1MB
+  // We should not delcare local variables with large size on the stack
+  // The following code will cause stack overflow on Windows
+  // Instead, we should use malloc to allocate memory on heap
+  /*
   char DebugPdi[MAX_DEBUG_PDI_LEN], DebugTransformPdi[MAX_DEBUG_PDI_LEN];
   memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
   memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
+  */
+  char *DebugPdi = (char*)malloc(MAX_DEBUG_PDI_LEN);
+  char *DebugTransformPdi = (char*)malloc(MAX_DEBUG_PDI_LEN);
+  memset(DebugPdi, 0, MAX_DEBUG_PDI_LEN);
+  memset(DebugTransformPdi, 0, MAX_DEBUG_PDI_LEN);
+  
   SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
   XCdo_Print("\n\nLoad original pdi\n");
   XPdi_Load(&PdiLoad);
   XCdo_Print("Load original pdi done\n");
+  
   SetDebugPdi((uint32_t *)DebugTransformPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
-
   XPdi_Compress_Transform(&PdiLoad, pdi_file_out);
 
   //Verify the data
@@ -189,6 +200,9 @@ int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
       assert(DebugTransformPdi[i] == DebugPdi[i]);
     }
   }
+
+  free(DebugPdi);
+  free(DebugTransformPdi);
 
   printf("\nThe transform PDI check pass!!! Transformed PDI is consistent with traditional PDI\n");
   if (data) free(data);
