@@ -4416,34 +4416,35 @@ what() const noexcept
 static std::string
 aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
 {
+  constexpr auto indent8 = 8;
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
   std::ostringstream oss;
   oss << msg << "\n";
   if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "txn_op_idx = 0x" << std::setw(8) << ctx_health->aie2.txn_op_idx
-      << "\nctx_pc = 0x"<< std::setw(8) << ctx_health->aie2.ctx_pc
-      << "\nfatal_error_type = 0x" << std::setw(8) << ctx_health->aie2.fatal_error_type
-      << "\nfatal_error_exception_type = 0x" << std::setw(8) << ctx_health->aie2.fatal_error_exception_type
-      << "\nfatal_error_exception_pc = 0x" << std::setw(8) << ctx_health->aie2.fatal_error_exception_pc
-      << "\nfatal_error_app_module = 0x" << std::setw(8) << ctx_health->aie2.fatal_error_app_module
+    oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
+      << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
+      << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
+      << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
+      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
+      << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
       << "\n";
   } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "ctx_state = 0x" << std::setw(8) << ctx_health->aie4.ctx_state
-      << "\nnumber of uC reported = "<<std::dec << std::setw(8) << ctx_health->aie4.num_uc;
+    oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
+      << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
-        << "\nuc_idx=0x" << std::setw(8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
-        << "\nuc_idle_status=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].uc_idle_status
-        << "\nmisc_status=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].misc_status
-        << "\nfw_state=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].fw_state
-        << "\npage_idx=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].page_idx
-        << "\noffset=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].offset
-        << "\nrestore_page=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].restore_page
-        << "\nrestore_offset=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].restore_offset
-        << "\nuc_ear=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].uc_ear
-        << "\nuc_esr=0x" << std::setw(8) << ctx_health->aie4.uc_info[i].uc_esr
+        << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
+        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status
+        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status
+        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state
+        << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
+        << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
+        << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
+        << "\nrestore_offset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_offset
+        << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
+        << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
         << "\n";
     }
   }
@@ -4453,6 +4454,7 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
 static std::string
 amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
 {
+  constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
   if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
@@ -4465,12 +4467,12 @@ amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
   auto ctx_health = get_ert_ctx_health_data(epkt);
 
   oss << std::uppercase << std::hex << std::setfill('0');
-  oss << "txn_op_idx = 0x" << std::setw(8) << ctx_health->txn_op_idx
-    << "\nctx_pc = 0x"<< std::setw(8) << ctx_health->ctx_pc
-    << "\nfatal_error_type = 0x" << std::setw(8) << ctx_health->fatal_error_type
-    << "\nfatal_error_exception_type = 0x" << std::setw(8) << ctx_health->fatal_error_exception_type
-    << "\nfatal_error_exception_pc = 0x" << std::setw(8) << ctx_health->fatal_error_exception_pc
-    << "\nfatal_error_app_module = 0x" << std::setw(8) << ctx_health->fatal_error_app_module
+  oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->txn_op_idx
+    << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->ctx_pc
+    << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_type
+    << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_type
+    << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_pc
+    << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->fatal_error_app_module
     << "\n";
   return oss.str();
 }
