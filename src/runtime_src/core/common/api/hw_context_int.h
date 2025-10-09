@@ -8,7 +8,6 @@
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_module.h"
-#include "core/include/xrt/xrt_kernel.h"
 
 #include <cstdint>
 
@@ -70,23 +69,6 @@ get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
 // Dump scratch pad mem buffer contents into a file when ini option is enabled
 void
 dump_scratchpad_mem(const xrt::hw_context& hwctx);
-
-// APIs used by XDP to register init and exit runs
-// These runs will be used to initialize AI array and collect profile/trace data
-// These runs are added to runlist at the beginning and end respectively
-XRT_CORE_COMMON_EXPORT
-void
-register_xdp_init_run(const xrt::hw_context& ctx, const xrt::run& run);
-
-XRT_CORE_COMMON_EXPORT
-void
-register_xdp_exit_run(const xrt::hw_context& ctx, const xrt::run& run);
-
-const std::vector<xrt::run>&
-get_xdp_init_runs(const xrt::hw_context& ctx);
-
-const std::vector<xrt::run>&
-get_xdp_exit_runs(const xrt::hw_context& ctx);
 
 }} // hw_context_int, xrt_core
 

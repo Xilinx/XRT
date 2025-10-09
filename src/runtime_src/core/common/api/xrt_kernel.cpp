@@ -45,6 +45,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
 
@@ -3499,8 +3500,7 @@ public:
     // These runs initializes AI array for profile/trace data
     // The list can be empty if profile/trace is not enabled
     if (m_runlist.empty()) {
-      const auto& xdp_init_runs = xrt_core::hw_context_int::get_xdp_init_runs(m_hwctx);
-      for (const auto& init_run : xdp_init_runs) {
+      for (const auto& init_run : xrt_core::xdp::get_init_runs(m_hwctx.get_handle().get())) {
         add_run_helper(init_run);
       }
     }
@@ -3521,8 +3521,7 @@ public:
     // Add XDP exit runs if any at the end of runlist before submitting
     // These runs collect profile/trace data
     // The list can be empty if profile/trace is not enabled
-    const auto& xdp_exit_runs = xrt_core::hw_context_int::get_xdp_exit_runs(m_hwctx);
-    for (const auto& exit_run : xdp_exit_runs) {
+    for (const auto& exit_run : xrt_core::xdp::get_exit_runs(m_hwctx.get_handle().get())) {
       add_run_helper(exit_run);
     }
 
@@ -3569,7 +3568,7 @@ public:
     // Remove any XDP exit runs added during execute
     // This is done because runlist can be reused
     // and XDP exit runs should be added at end
-    const auto& xdp_exit_runs = xrt_core::hw_context_int::get_xdp_exit_runs(m_hwctx);
+    const auto& xdp_exit_runs = xrt_core::xdp::get_exit_runs(m_hwctx.get_handle().get());
     if (xdp_exit_runs.size() > 0) {
       // remove the exit runs from the runlist
       m_runlist.erase(m_runlist.end() - xdp_exit_runs.size(), m_runlist.end());

@@ -736,4 +736,20 @@ finish_flush_device(void* handle)
 #endif
 }
 
+const std::vector<xrt::run>&
+get_init_runs(void* /*hwctx_impl*/)
+{
+  // placeholder, TODO : XDP to add implementation
+  static std::vector<xrt::run> init_runs;
+  return init_runs;
+}
+
+const std::vector<xrt::run>&
+get_exit_runs(void* /*hwctx_impl*/)
+{
+  // placeholder, TODO : XDP to add implementation
+  static std::vector<xrt::run> exit_runs;
+  return exit_runs;
+}
+
 } // end namespace xrt_core::xdp
