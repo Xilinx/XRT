@@ -6,9 +6,10 @@ env:
   ENV: 'prod'
 
 on:
+  push:
+    branches:
+      - '2025.2'
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *' 
   
 jobs:
   build:
