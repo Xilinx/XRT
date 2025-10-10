@@ -693,7 +693,7 @@ namespace xdp {
           + std::to_string(eventNum));
 
       auto tileOffset = _XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
-      XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, 
+      XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE_NPU3, 
                    edgeEventsValue);
       return;
     }
@@ -722,7 +722,7 @@ namespace xdp {
         + std::to_string(eventNum));
 
     auto tileOffset = _XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
-    XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM, 
+    XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_NPU3, 
                  edgeEventsValue);
   }
 
