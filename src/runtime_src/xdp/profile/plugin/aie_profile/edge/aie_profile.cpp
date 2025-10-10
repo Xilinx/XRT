@@ -440,7 +440,7 @@ namespace xdp {
           uint16_t phyEndEvent   = physicalEventIds.second;
 
           // Get payload for reporting purposes
-          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
+          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, relCol, row, 
                                                startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
