@@ -922,10 +922,16 @@ namespace xdp {
         tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1]);
 
       for (auto& t : tiles) {
+        // Only specify metric set and channel if not already defined
         if (configMetrics[moduleIdx].find(t) == configMetrics[moduleIdx].end()) {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
+          std::cout << "!!!!!!!!!! Setting tile " << t.col << "," << t.row << " with set " 
+                    << metrics[i][1] << " using channel " << configChannel0[t] << std::endl;
+        } else {
+          std::cout << "!!!!!!!!!! Keeping set " << configMetrics[moduleIdx][t] << " using channel " 
+                    << configChannel0[t] << " for tile " << t.col << "," << t.row << std::endl;
         }
         if (metrics[i][1] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
@@ -991,11 +997,9 @@ namespace xdp {
       auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelNum, true, minCol, maxCol);
       
       for (auto& t : tiles) {
-        if (configMetrics[moduleIdx].find(t) == configMetrics[moduleIdx].end()) {
-          configMetrics[moduleIdx][t] = metrics[i][2];
-          configChannel0[t] = channelId0;
-          configChannel1[t] = channelId1;
-        }
+        configMetrics[moduleIdx][t] = metrics[i][2];
+        configChannel0[t] = channelId0;
+        configChannel1[t] = channelId1;
         if (metrics[i][2] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
       }
@@ -1056,11 +1060,9 @@ namespace xdp {
         auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelNum, true, col, col);
         
         for (auto& t : tiles) {
-          if (configMetrics[moduleIdx].find(t) == configMetrics[moduleIdx].end()) {
-            configMetrics[moduleIdx][t] = metrics[i][1];
-            configChannel0[t] = channelId0;
-            configChannel1[t] = channelId1;
-          }
+          configMetrics[moduleIdx][t] = metrics[i][1];
+          configChannel0[t] = channelId0;
+          configChannel1[t] = channelId1;
           if (metrics[i][1] == METRIC_BYTE_COUNT)
             setUserSpecifiedBytes(t, bytes);
         }
