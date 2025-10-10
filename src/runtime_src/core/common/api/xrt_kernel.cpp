@@ -2714,6 +2714,7 @@ public:
     
     switch (opcode) {
     case ERT_START_NPU:
+    case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
@@ -3342,6 +3343,7 @@ class runlist_impl
 
     switch (opcode) {
     case ERT_START_NPU:
+    case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
       throw xrt::runlist::aie_error(run, state, "runlist failed execution");
