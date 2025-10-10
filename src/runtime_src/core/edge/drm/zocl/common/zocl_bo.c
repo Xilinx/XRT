@@ -1319,12 +1319,14 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 	struct resource res_mem;
 	int err;
 
-	mem_np = of_find_node_by_name(NULL, "reserved-memory");
+	mem_np = of_find_node_by_path("/reserved-memory");
 	if(!mem_np)
 		return false;
 
 	/* Traverse through all the child nodes */
 	for (np_it = NULL; (np_it = of_get_next_child(mem_np, np_it)) != NULL;) {
+                if (!of_property_read_bool(np_it, "no-map"))
+                        continue;
 		err = of_address_to_resource(np_it, 0, &res_mem);
 		if (!err) {
 			/* Check the given address and size fall
