@@ -15,28 +15,52 @@ event::event()
 
 void event::record(std::shared_ptr<stream> s)
 {
-  cstream = std::move(s);
   auto ev = std::dynamic_pointer_cast<event>(command_cache.get(static_cast<command_handle>(this)));
   throw_invalid_handle_if(!ev, "event passed is invalid");
-  if (is_recorded()) {
-    // already recorded
-    cstream->erase_cmd(ev);
+  // Do not record the event again if it is being recorded in a stream
+  {
+    std::lock_guard lock(m_state_lock);
+    throw_if((get_state() != state::init) && (get_state() < state::completed),
+             hipErrorIllegalState, "event is being recorded");
+    cstream = std::move(s);
+    // set state to recording, we are going to unhold the lock. As we are going to
+    // call stream fucntions to enqueue the event as next step, which can call event
+    // functions and may need to acquired the lock. The event state will be set to
+    // to recorded in the end of this function after the event is enqueued. Setting
+    // state to recording here is to avoid other threads to record the event again
+    // before the event is enqueued.
+    set_state(state::recording);
   }
-  // update recorded commands list
+  // reset the dependecies of this event as this is new recording
+  {
+    std::lock_guard lock(m_recorded_cmds_lock);
+    m_recorded_commands.clear();
+  }
+  // this will update stream command queue, which will have lock pretection
   cstream->enqueue_event(ev);
-  set_state(state::recorded);
+  {
+    std::lock_guard lock(m_state_lock);
+    // set state to recorded
+    set_state(state::recorded);
+  }
 }
 
-bool event::is_recorded() const
+bool event::is_recorded_no_lock() const
 {
-  //the event is recorded only if the state is not init
-  return get_state() >= command::state::recorded;
+  // event is recorded if it event::record() has been called and no error has been detected
+  return (get_state() >= command::state::recorded);
+}
+
+bool event::is_recorded()
+{
+  std::lock_guard lock(m_state_lock);
+  return is_recorded_no_lock();
 }
 
 bool event::query()
 {
   //This function will return true if all commands in the appropriate stream which specified to hipEventRecord() have completed.
-  std::lock_guard lock(m_mutex_rec_coms);
+  std::lock_guard lock(m_recorded_cmds_lock);
   for (auto& rec_com : m_recorded_commands){
     state command_state = rec_com->get_state();
     if (command_state != state::completed){
@@ -48,35 +72,57 @@ bool event::query()
 
 bool event::synchronize()
 {
-  //wait for commands in recorded list of the event to be completed
-  std::lock_guard rec_lock(m_mutex_rec_coms);
-  for (auto& rec_com : m_recorded_commands) {
-    rec_com->wait();
+  bool dependencies_has_error = false;
+  // check if we are ready to wait for dependencies as recording the event and
+  // event synchronization can be called from different threads.
+  {
+    std::lock_guard lock(m_state_lock);
+    // if event is not recorded, no need to synchronize
+    if (!is_recorded_no_lock())
+      return false;
   }
-  //then the event is considered as completed
-  set_state(state::completed);
+
+  // if event is recorded, wait for dependencies to be completed
+  {
+    std::lock_guard lock(m_recorded_cmds_lock);
+    for (auto& rec_com : m_recorded_commands) {
+      if (rec_com->wait())
+        continue;
+      if (rec_com->get_state() > state::completed) {
+        dependencies_has_error = true;
+        break;
+      }
+    }
+  }
+
+  // update event state after waiting for dependencies
+  {
+    std::lock_guard lock(m_state_lock);
+    if (dependencies_has_error) {
+      set_state(state::error);
+      throw_hip_error(hipErrorLaunchFailure, "event sync failed due to dependencies failure");
+    }
+    set_state(state::completed);
+  }
+
   ctime = std::chrono::system_clock::now();
 
-  //all commands depend on the event start running
-  std::lock_guard ch_lock(m_mutex_chain_coms);
-  for (auto& coms_ch :m_chain_of_commands){
-    coms_ch->submit();
+  //all commands depend on the event start running after the event is completed
+  {
+    std::lock_guard ch_lock(m_chain_cmds_lock);
+    // Remove coms_ch from m_chain_of_commands one by one after submitting
+    for (auto it = m_chain_of_commands.begin(); it != m_chain_of_commands.end(); ) {
+      (*it)->submit();
+      // Remove it after it is successfully submitted
+      it = m_chain_of_commands.erase(it);
+    }
+    return true;
   }
-  return true;
 }
 
 bool event::wait()
 {
-  state event_state = get_state();
-  if (event_state == state::error)
-    throw_hip_error(hipErrorRuntimeOther, "event is in error state");
-  if (event_state < state::completed)
-  {
-    synchronize();
-    set_state(state::completed);
-    return true;
-  }
-  return false;
+  return synchronize();
 }
 
 bool event::submit()
@@ -91,13 +137,13 @@ std::shared_ptr<stream> event::get_stream()
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
 {
-  std::lock_guard lock(m_mutex_chain_coms);
+  std::lock_guard lock(m_chain_cmds_lock);
   m_chain_of_commands.push_back(std::move(cmd));
 }
 
 void event::add_dependency(std::shared_ptr<command> cmd)
 {
-  std::lock_guard lock(m_mutex_rec_coms);
+  std::lock_guard lock(m_recorded_cmds_lock);
   m_recorded_commands.push_back(std::move(cmd));
 }
 
