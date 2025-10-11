@@ -1349,6 +1349,7 @@ get_ert_ctx_health_data_v1(const struct ert_packet* pkt)
   switch (pkt->opcode) {
   case ERT_START_CU:
   case ERT_START_NPU:
+  case ERT_START_DPU:
   case ERT_START_NPU_PREEMPT:
   case ERT_START_NPU_PREEMPT_ELF:
     if (pkt->state == ERT_CMD_STATE_TIMEOUT)
