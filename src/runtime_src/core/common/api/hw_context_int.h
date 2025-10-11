@@ -70,6 +70,10 @@ get_scratchpad_mem_buf(const xrt::hw_context& hwctx, size_t size_per_col);
 void
 dump_scratchpad_mem(const xrt::hw_context& hwctx);
 
+// Dump log buffer contents into a file when ini option is enabled
+void
+dump_uc_log_buffer(const xrt::hw_context& hwctx);
+
 }} // hw_context_int, xrt_core
 
 #endif
