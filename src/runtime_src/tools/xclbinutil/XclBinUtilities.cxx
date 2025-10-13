@@ -1041,8 +1041,6 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
-// Note: --transform-pdi is currently only supported on Linux, so the following
-//   API is not called on Windows
 // pdi_transform is defined in libtransformcdo.a
 extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out, const char* out_file);
 

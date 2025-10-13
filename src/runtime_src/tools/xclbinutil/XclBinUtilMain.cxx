@@ -534,14 +534,8 @@ int main_(int argc, const char** argv) {
 
   // add support for transform-pdi
   // transform the PDIs in AIE_PARTITION sections before writing out the output xclbin
-  if (bTransformPdi) {
-#ifndef _WIN32
+  if (bTransformPdi)
     XUtil::transformAiePartitionPDIs(xclBin);
-#else
-    std::string errMsg = "ERROR: --transform-pdi is only valid on Linux.";
-    throw std::runtime_error(errMsg);
-#endif
-  }
 
   // -- Remove Keys --
   for (const auto &key : keysToRemove)
