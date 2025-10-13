@@ -232,7 +232,7 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 
 	//allocate from default cma if we failed to allocate from zocl attached memory regions
 	if(!phys || !vaddr) {
-		DRM_WARN("Allocating BO from default CMA for invalid or no zocl attached memory regions");
+		DRM_DEBUG("Allocating BO from default CMA for invalid or no zocl attached memory regions");
 		mem_index = -1;
 		vaddr = zocl_dma_alloc(dev->dev, size, &phys, user_flags);
 	}
@@ -1370,7 +1370,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 
 		if (!check_for_reserved_memory(memp->zm_base_addr,
 					       memp->zm_size)) {
-			DRM_INFO("Memory %d is not reserved in device tree."
+			DRM_DEBUG("Memory %d is not reserved in device tree."
 					" Will allocate memory from CMA\n", i);
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
