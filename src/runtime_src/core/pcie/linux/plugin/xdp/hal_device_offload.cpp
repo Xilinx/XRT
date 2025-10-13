@@ -35,17 +35,17 @@ namespace device_offload {
                                     error_function);
   }
 
-  std::function<void (void*)> update_device_cb ;
+  std::function<void (void*, bool)> update_device_cb ;
   std::function<void (void*)> flush_device_cb ;
  
   void register_functions(void* handle)
   {
     typedef void (*ftype)(void*) ;
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
-    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
+    typedef void (*utype)(void*, bool) ;
+    
+    update_device_cb = (utype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
 
     flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushDeviceHAL")) ;
-    if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
   }
 
   void warning_function()
@@ -68,13 +68,12 @@ namespace device_offload {
     }
   }
 
-  void update_device(void* handle)
+  void update_device(void* handle, bool hw_context_flow)
   {
     if (device_offload::update_device_cb != nullptr)
     {
-      device_offload::update_device_cb(handle) ;
+      device_offload::update_device_cb(handle, hw_context_flow) ;
     }
   }
 } // end namespace hal
 } // end namespace xdp
-
