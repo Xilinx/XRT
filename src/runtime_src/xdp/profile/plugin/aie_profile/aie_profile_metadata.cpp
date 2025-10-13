@@ -930,7 +930,8 @@ namespace xdp {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
-        } else {
+        }
+        else {
           xrt_core::message::send(severity_level::warning, "XRT", "Tile " + std::to_string(t.col) + ","
             + std::to_string(t.row) + " is already configured with metric set " + configMetrics[moduleIdx][t]
             + ". Ignoring setting for set " + metrics[i][1] + ".");
