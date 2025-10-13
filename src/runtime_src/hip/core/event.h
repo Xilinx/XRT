@@ -111,17 +111,21 @@ private:
 public:
   event();
   void record(std::shared_ptr<stream> s);
+  void init_wait_event(const std::shared_ptr<stream>& s, const std::shared_ptr<event>& e);
   bool submit() override;
   bool wait() override;
   bool synchronize();
   bool query();
-  std::shared_ptr<stream> get_stream();
+  // check if the stream is used to record this event;
+  bool is_recorded_stream(const stream* s) noexcept;
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
   [[nodiscard]] bool is_recorded();
 
 private:
   [[nodiscard]] bool is_recorded_no_lock() const;
+  void launch_chain_of_commands();
+  bool check_dependencies_update_state(bool wait_for_dependencies);
 };
 
 class kernel_start : public command
