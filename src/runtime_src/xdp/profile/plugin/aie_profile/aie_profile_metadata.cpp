@@ -930,11 +930,10 @@ namespace xdp {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
-          std::cout << "!!!!!!!!!! Setting tile " << t.col << "," << t.row << " with set " 
-                    << metrics[i][1] << " using channel " << configChannel0[t] << std::endl;
         } else {
-          std::cout << "!!!!!!!!!! Keeping set " << configMetrics[moduleIdx][t] << " using channel " 
-                    << configChannel0[t] << " for tile " << t.col << "," << t.row << std::endl;
+          xrt_core::message::send(severity_level::warning, "XRT", "Tile " + std::to_string(t.col) + ","
+            + std::to_string(t.row) + " is already configured with metric set " + configMetrics[moduleIdx][t]
+            + ". Ignoring setting for set " + metrics[i][1] + ".");
         }
         if (metrics[i][1] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
