@@ -923,7 +923,10 @@ namespace xdp {
 
       for (auto& t : tiles) {
         // Only specify metric set and channel if not already defined
-        if (configMetrics[moduleIdx].find(t) == configMetrics[moduleIdx].end()) {
+        auto tileItr = std::find_if(configMetrics[moduleIdx].begin(),
+          configMetrics[moduleIdx].end(), compareTileByLocMap(t));
+
+        if (tileItr == configMetrics[moduleIdx].end()) {
           configMetrics[moduleIdx][t] = metrics[i][1];
           configChannel0[t] = channelId0;
           configChannel1[t] = channelId1;
