@@ -157,7 +157,8 @@ struct patcher
     shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
     control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
     address_64 = 8,                          // patching scheme needed to patch pdi address
-    unknown_symbol_kind = 9
+    control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
+    unknown_symbol_kind = 10
   };
 
   xrt_core::patcher::buf_type m_buf_type = xrt_core::patcher::buf_type::ctrltext;
@@ -290,6 +291,20 @@ private:
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
+  void
+  patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
+  {
+    // This patching scheme is originated from NPU firmware
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
+    // bd_data_ptr is a pointer to the header of the control code
+    uint64_t base_address = (((uint64_t)bd_data_ptr[1] & 0x1FFFFFF) << 32) | bd_data_ptr[2]; // NOLINT
+
+    base_address += patch + ddr_aie_addr_offset;
+    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
+    bd_data_ptr[1] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
+  }
+
   template<typename T>
   void
   patch_it_impl(T base_or_bo, uint64_t new_value, bool first)
@@ -386,6 +401,15 @@ private:
       case symbol_type::shim_dma_48:
         // new_value is a bo address
         patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        if (!first) {
+          // Data in this case is written till 2nd offset of bd_data_ptr
+          // so syncing 3 words
+          sync(3 * sizeof(uint32_t));    // NOLINT
+        }
+        break;
+      case symbol_type::control_packet_57_aie4:
+        // new_value is a bo address
+        patch_ctrl57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written till 2nd offset of bd_data_ptr
           // so syncing 3 words
