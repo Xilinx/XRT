@@ -103,17 +103,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       return bo;
     }
 
-    // may throw
-    uc_log_buffer(const std::shared_ptr<xrt_core::device>& device,
-                  xrt_core::hwctx_handle* ctx_hdl,
-                  size_t size)
-      : m_num_uc(ctx_hdl->get_num_uc())
-      , m_slot_idx(ctx_hdl->get_slotidx())
-      , m_size_per_uc(size)
-      , m_uc_log_bo(init_and_get_uc_log_bo(device, ctx_hdl, size, m_num_uc))
-    {}
-
-    ~uc_log_buffer()
+    void
+    dump()
     {
       try {
         // dump uc log buffer if configured in constructor
@@ -135,6 +126,22 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
                                 std::string{"Failed to dump UC log buffer : "} + e.what());
       }
+    }
+
+    // may throw
+    uc_log_buffer(const std::shared_ptr<xrt_core::device>& device,
+                  xrt_core::hwctx_handle* ctx_hdl,
+                  size_t size)
+      : m_num_uc(ctx_hdl->get_num_uc())
+      , m_slot_idx(ctx_hdl->get_slotidx())
+      , m_size_per_uc(size)
+      , m_uc_log_bo(init_and_get_uc_log_bo(device, ctx_hdl, size, m_num_uc))
+    {}
+
+    ~uc_log_buffer()
+    {
+      // dump the log buffer contents when object is destructed
+      dump();
     }
   };
 
@@ -339,6 +346,18 @@ public:
     return m_core_device;
   }
 
+  // Dump uC log buffer if configured
+  // This function can be called from different object like run, runlist
+  // to dump the log buffer on demand
+  void
+  dump_uc_log_buffer()
+  {
+    if (!m_uc_log_buf)
+      return;
+
+    m_uc_log_buf->dump();
+  }
+
   xrt::uuid
   get_uuid() const
   {
@@ -530,6 +549,12 @@ void
 dump_scratchpad_mem(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->dump_scratchpad_mem();
+}
+
+void
+dump_uc_log_buffer(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->dump_uc_log_buffer();
 }
 
 } // xrt_core::hw_context_int
