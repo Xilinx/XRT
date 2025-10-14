@@ -396,6 +396,9 @@ namespace xdp::aie::profile {
     
     metadata->getSrcTile(currTileLoc, srcTile);
     metadata->getDestTile(currTileLoc, destTile);
+    std::cout << "!!! srcTile.col: " << static_cast<int>(srcTile.col) << std::endl;
+    std::cout << "!!! destTile.col: " << static_cast<int>(srcTile.col) << std::endl;
+
     std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, (srcTile.stream_ids.empty() ? 0 : srcTile.stream_ids[0]));
     
     if (adfAPIBroadcastEventsMap.find(srcDestTileKey) == adfAPIBroadcastEventsMap.end()) {
@@ -467,7 +470,15 @@ namespace xdp::aie::profile {
     if (ret != XAIE_OK)
       return nullptr;
 
-    XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    auto absCol = tile.col + startColShift;
+    auto relCol = tile.col;
+    // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+    // Hence absolute and relative columns are same.
+    // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+    //       hence we should stop adding partition shift to col for passing to XAIE Apis
+    auto xaieCol = (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
+    XAie_LocType tileloc = XAie_TileLoc(xaieCol, tile.row);
 
     // uint8_t status = -1;
     // uint8_t broadcastId  = 10;
@@ -514,11 +525,18 @@ namespace xdp::aie::profile {
       }
 
       // Use the first available core tile to configure the broadcasting
-      uint8_t col = aieCoreTilesVec.begin()->col;
+      uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+      uint8_t relCol = aieCoreTilesVec.begin()->col; 
+      auto absCol    = aieCoreTilesVec.begin()->col + startColShift;
+      // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+      // Hence absolute and relative columns are same.
+      // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+      //       hence we should stop adding partition shift to col for passing to XAIE Apis
+      auto xaieCol   = (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
       uint8_t row = aieCoreTilesVec.begin()->row;
-      auto& xaieTile = aieDevice->tile(col, row);
+      auto& xaieTile = aieDevice->tile(xaieCol, row);
       core = xaieTile.core();
-      loc = XAie_TileLoc(col, row);
+      loc = XAie_TileLoc(xaieCol, row);
     }
 
     auto iterCount = metadata->getIterationCount();
@@ -591,7 +609,15 @@ namespace xdp::aie::profile {
       return;
 
     for (auto &tile : allIntfTiles) {
-      vL.push_back(XAie_TileLoc(tile.col, tile.row));
+      uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+      auto absCol = tile.col + startColShift;
+      auto relCol = tile.col;
+      // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+      // Hence absolute and relative columns are same.
+      // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+      //       hence we should stop adding partition shift to col for passing to XAIE Apis
+      auto xaieCol = (xdp::VPDatabase::Instance()->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
+      vL.push_back(XAie_TileLoc(xaieCol, tile.row));
     }
 
     auto BC = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_PL_MOD);

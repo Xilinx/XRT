@@ -440,8 +440,7 @@ namespace xdp {
 
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
-            // !!! TODO: what col goes here
-            XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            XAie_LocType tileloc = XAie_TileLoc(xaieCol, tile.row);
             //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
             //      to transition the FSM from Idle->State0->State1.
             //      eventC = Port Running and eventD = stop event (counter event).
@@ -533,11 +532,20 @@ namespace xdp {
       if (!aie)
         continue;
 
+      auto absCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                    ? aie->column 
+                    : aie->column + metadata->getPartitionOverlayStartCols().front() ;
+      auto relCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                    ? aie->column - metadata->getPartitionOverlayStartCols().front()
+                    : aie->column ;
+      // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+      // Hence absolute and relative columns are same.
+      // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+      //       hence we should stop adding partition shift to col for passing to XAIE Apis
+      auto xaieCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
+
       std::vector<uint64_t> values;
-      auto writerCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
-                        ? aie->column 
-                        : aie->column + metadata->getPartitionOverlayStartCols().front() /* need to add shift for displaying results*/ ;
-      values.push_back(writerCol);
+      values.push_back(absCol);
       values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
@@ -547,7 +555,7 @@ namespace xdp {
       uint32_t counterValue;
       if (perfCounters.empty()) {
         // Compiler-defined counters
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_LocType tileLocation = XAie_TileLoc(xaieCol, aie->row);
         XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
       }
       else {
@@ -601,7 +609,7 @@ namespace xdp {
         auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
                             : XAIE_MEM_MOD);
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_LocType tileLocation = XAie_TileLoc(xaieCol, aie->row);
         XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
       }
       values.push_back(timerValue);

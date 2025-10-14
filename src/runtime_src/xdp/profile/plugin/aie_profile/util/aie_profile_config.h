@@ -9,6 +9,7 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/database.h"
 
 extern "C" {
 #include <xaiengine.h>
