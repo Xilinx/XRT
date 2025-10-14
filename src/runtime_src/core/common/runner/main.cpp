@@ -70,9 +70,10 @@ using json = nlohmann::json;
 namespace sfs = std::filesystem;
 
 namespace {
-static bool g_progress = false;   // NOLINT
-static bool g_asap = false;       // NOLINT
-static uint32_t g_iterations = 0; // NOLINT
+static bool g_progress = false;    // NOLINT
+static bool g_asap = false;        // NOLINT
+static uint32_t g_iterations = 0;  // NOLINT
+static std::string g_mode = "all"; // NOLINT
 
 constexpr double
 to_mb(size_t bytes)
@@ -104,31 +105,57 @@ touchup_recipe(const std::string& recipe)
   return json.dump();
 }
 
+// Remove profile execution sections based on specified mode
+static void
+filter_mode(json& profile, const std::string& mode)
+{
+  if (mode == "all")
+    return;
+
+  auto& execs = profile["executions"];
+  execs.erase(std::remove_if(execs.begin(), execs.end(),
+                             [mode](const json& exec) {
+                               return exec["mode"] != mode;
+                             }),
+              execs.end());
+}
+
+// Touch up profile(s) with specified iterations
+static void
+touchup_iterations(json& profile, uint32_t iterations)
+{
+  if (iterations)
+    profile["execution"]["iterations"] = iterations;
+
+  for (auto& exec : profile["executions"])
+    exec["iterations"] = iterations;
+}
+
 // Touch up profiles(s)
 // Return parsed / modified json as a json string
 static std::string
-touchup_profile_mt(const std::string& profile, uint32_t iterations)
+touchup_profile_mt(const std::string& profile, const std::string& mode, uint32_t iterations)
 {
   // disable xrt::runner profile verbosity which is unsynchronized
   // with threaded execution
   std::ifstream istr(profile);
   auto json = json::parse(istr);
   json["execution"]["verbose"] = false;
-  
-  // maybe override this profile iterations
-  if (iterations)
-    json["execution"]["iterations"] = iterations;
+
+  filter_mode(json, mode);
+  touchup_iterations(json, iterations);
   
   return json.dump();
 }
 
 static std::string
-touchup_profile(const std::string& profile, uint32_t iterations)
+touchup_profile(const std::string& profile, const std::string& mode, uint32_t iterations)
 {
   std::ifstream istr(profile);
   auto json = json::parse(istr);
-  if (iterations)
-    json["execution"]["iterations"] = iterations;
+
+  filter_mode(json, mode);
+  touchup_iterations(json, iterations);
 
   return json.dump();
 }
@@ -413,7 +440,9 @@ struct script_runner
       sfs::path recipe = root / node["recipe"];
       auto recipe_json_string = touchup_recipe(recipe.string());
       sfs::path profile = root / node["profile"];
-      auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
+      auto iterations = node.value<uint32_t>("iterations", g_iterations);
+      auto mode = node.value<std::string>("mode", g_mode);
+      auto profile_json_string = touchup_profile_mt(profile.string(), mode, iterations);
       sfs::path dir = root / node["dir"];
       m_job_queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
     }
@@ -464,6 +493,7 @@ usage()
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
+  std::cout << " [--mode <latency|throughput>] execute only specified mode (default: all)\n";
   std::cout << " [--progress] show progress\n";
   std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
@@ -475,7 +505,10 @@ usage()
   std::cout << "jobs in the runner script.\n\n";
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
-  std::cout << "sticky for that recipe/profile pair.\n";
+  std::cout << "sticky for that recipe/profile pair.\n\n";
+  std::cout << "Note, [--mode <latency|throughput>] filters execution sections in profile.json such\n";
+  std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
+  std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
 }
 
 // Entry for parsing the runner script file
@@ -513,7 +546,7 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
   xrt_core::systime st;
   xrt::device device{0};
   auto recipe_json_string = touchup_recipe(recipe);
-  auto profile_json_string = touchup_profile(profile, g_iterations);
+  auto profile_json_string = touchup_profile(profile, g_mode, g_iterations);
   xrt_core::runner runner {device, recipe_json_string, profile_json_string, dir};
   runner.execute();
   runner.wait();
@@ -591,6 +624,8 @@ run(int argc, char* argv[])
       profile = arg;
     else if (cur == "--dir" || cur == "-d")
       dir = arg;
+    else if (cur == "--mode" || cur == "-m")
+      g_mode = arg;
     else if (cur == "-f" || cur == "--script")
       script = arg;
     else if (cur == "-t" || cur == "--threads")
