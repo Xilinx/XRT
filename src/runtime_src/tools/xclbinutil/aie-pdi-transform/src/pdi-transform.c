@@ -121,7 +121,8 @@ char* XPdi_Parse_Cmd(XCdoCmd* Cmd, uint32_t* prevId,
 
 uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
 {
-  // pdi_buf points to the beginning address of the cdo image
+  // pdi_buf points to the beginning address of the cdo image in the new pdi
+  // Buf points to the beginning the cdo image in the input (original) pdi
   uint32_t const * Orignal_Buf = Buf;
   char* cur_pdi_buf = pdi_buf;
   static uint32_t prevId = -1;
@@ -252,7 +253,7 @@ void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
   const char* pdi_file = pdi_file_out;
   char* Buf = (char *)PdiLoad->PdiPtr;
   uint32_t len = PdiLoad->PdiLen;
-  FILE * fp = fopen (pdi_file,"w");
+  FILE * fp = fopen (pdi_file,"wb");
   //int fd = open(pdi_file, O_WRONLY | O_CREAT | O_TRUNC);
   if (fp == NULL)
   {
