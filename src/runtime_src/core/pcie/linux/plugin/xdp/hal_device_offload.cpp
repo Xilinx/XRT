@@ -42,10 +42,10 @@ namespace device_offload {
   {
     typedef void (*ftype)(void*) ;
     typedef void (*utype)(void*, bool) ;
-    
-    update_device_cb = (utype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
 
-    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushDeviceHAL")) ;
+    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
+
+    flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDeviceHAL")) ;
   }
 
   void warning_function()
@@ -77,3 +77,4 @@ namespace device_offload {
   }
 } // end namespace hal
 } // end namespace xdp
+
