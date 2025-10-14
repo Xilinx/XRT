@@ -131,6 +131,15 @@ namespace xdp {
                                          const std::string metricSet,
                                          const uint8_t channel)
   {
+    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    auto absCol           = tile.col + startColShift;
+    auto relCol           = tile.col;
+    // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+    // Hence absolute and relative columns are same.
+    // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+    //       hence we should stop adding partition shift to col for passing to XAIE Apis
+    auto xaieCol          = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
+    
     // 1. Profile API specific values
     if (aie::profile::profileAPIMetricSet(metricSet))
       return getAdfProfileAPIPayload(tile, metricSet);
@@ -194,7 +203,7 @@ namespace xdp {
                                  XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
 
     uint32_t maxBDSize = 0;
-    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, column);
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, xaieCol);
     for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;
       XAie_Read32(aieDevInst, tileOffset + offsets[bd], &regValue);
@@ -221,9 +230,16 @@ namespace xdp {
   void AieProfile_EdgeImpl::printTileModStats(xaiefal::XAieDev* aieDevice, 
       const tile_type& tile, XAie_ModuleType mod)
   {
-    auto col = tile.col;
+    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    auto absCol           = tile.col + startColShift;
+    auto relCol           = tile.col;
+    // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+    // Hence absolute and relative columns are same.
+    // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+    //       hence we should stop adding partition shift to col for passing to XAIE Apis
+    auto xaieCol          = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
     auto row = tile.row;
-    auto loc = XAie_TileLoc(col, row);
+    auto loc = XAie_TileLoc(xaieCol, row);
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
                            : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
                            : "interface_tile");
@@ -234,7 +250,7 @@ namespace xdp {
     };
 
     std::stringstream msg;
-    msg << "Resource usage stats for Tile : (" << +col << "," << +row 
+    msg << "Resource usage stats for Tile : (" << +absCol << "," << +row 
         << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
@@ -276,7 +292,13 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
-        auto col         = tile.col + startColShift;
+        auto absCol      = tile.col + startColShift;
+        auto relCol      = tile.col;
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis
+        auto xaieCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol; 
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
@@ -295,15 +317,8 @@ namespace xdp {
             continue;
         }
 
-        // Get the column relative to partition.
-        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
-        // Hence absolute and relative columns are same.
-        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
-        //       hence we should stop adding partition shift to col for passing to XAIE Apis
-        auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
-                          ? col /* startColShift already added */ : tile.col;
-        auto loc        = XAie_TileLoc(relCol, row);
-        auto& xaieTile  = aieDevice->tile(relCol, row);
+        auto loc        = XAie_TileLoc(xaieCol, row);
+        auto& xaieTile  = aieDevice->tile(xaieCol, row);
 
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
@@ -425,6 +440,7 @@ namespace xdp {
 
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
+            // !!! TODO: what col goes here
             XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
             //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
             //      to transition the FSM from Idle->State0->State1.
@@ -440,11 +456,11 @@ namespace xdp {
           uint16_t phyEndEvent   = physicalEventIds.second;
 
           // Get payload for reporting purposes
-          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, relCol, row, 
+          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, xaieCol, row, 
                                                startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, relCol, row, i,
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, xaieCol, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
@@ -452,7 +468,7 @@ namespace xdp {
         } // numFreeCtr
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +absCol 
             << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;

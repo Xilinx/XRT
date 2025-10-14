@@ -172,6 +172,9 @@ namespace xdp::aie::profile {
     if (xdpModType != module_type::shim)
       return nullptr;
 
+    uint8_t startColShift = metadata->getPartitionOverlayStartCols().front();
+    auto absCol           = tile.col + startColShift;
+    
     if ((metricSet == METRIC_LATENCY) && (pcIndex == 0)) {
       bool isSourceTile = true;
       auto pc = configInterfaceLatency(aieDevInst, aieDevice, metadata, xaieModule, xaieModType, xdpModType, 
