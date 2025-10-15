@@ -82,7 +82,7 @@ hip_stream_synchronize(hipStream_t stream)
 static void
 hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
 {
-  throw_invalid_handle_if(flags != 0, "flags should be 0");
+  throw_invalid_value_if(flags != 0, "flags should be 0");
 
   auto hip_wait_stream = get_stream(stream);
   throw_invalid_resource_if(!hip_wait_stream, "stream is invalid");
