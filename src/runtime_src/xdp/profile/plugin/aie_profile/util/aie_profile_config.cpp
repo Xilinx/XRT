@@ -396,9 +396,6 @@ namespace xdp::aie::profile {
     
     metadata->getSrcTile(currTileLoc, srcTile);
     metadata->getDestTile(currTileLoc, destTile);
-    std::cout << "!!! srcTile.col: " << static_cast<int>(srcTile.col) << std::endl;
-    std::cout << "!!! destTile.col: " << static_cast<int>(srcTile.col) << std::endl;
-
     std::string srcDestTileKey = metadata->getSrcDestPairKey(srcTile.col, srcTile.row, (srcTile.stream_ids.empty() ? 0 : srcTile.stream_ids[0]));
     
     if (adfAPIBroadcastEventsMap.find(srcDestTileKey) == adfAPIBroadcastEventsMap.end()) {
