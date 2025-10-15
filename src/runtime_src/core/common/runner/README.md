@@ -75,6 +75,7 @@ usage: xrt-runner.exe [options]
  [--script <script>] runner script, enables multi-threaded execution
  [--threads <number>] number of threads to use when running script (default: #jobs)
  [--dir <path>] directory containing artifacts (default: current dir)
+ [--mode <latency|throughput>] execute only specified mode (default: all)
  [--progress] show progress
  [--asap] process jobs immediately (default: wait for all jobs to initialize)
  [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'
@@ -88,6 +89,10 @@ jobs in the runner script.
 Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.
 If the runner script specifies iterations for a recipe/profile pair, then this value is
 sticky for that recipe/profile pair.
+
+Note, [--mode <latency|throughput>] filters execution sections in profile.json such
+only specified modes are executed. If the runner script specifies a mode for a recipe/profile
+pair, then this value is sticky for that recipe/profile pair.
 ```
 
 ### runner.json
