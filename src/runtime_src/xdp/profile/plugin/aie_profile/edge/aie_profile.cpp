@@ -111,6 +111,12 @@ namespace xdp {
     if (!checkAieDevice(metadata->getDeviceID(), metadata->getHandle()))
       return;
 
+    // Initialize column shift
+    if (!metadata->getPartitionOverlayStartCols().empty())
+      m_startColShift = metadata->getPartitionOverlayStartCols().front();
+    else
+      m_startColShift = 0;
+
     bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
     if (!runtimeCounters) {
       // No runtime counters means there were no valid metrics configured for profiling this design. There is nothing to profile, so return early.
@@ -194,7 +200,7 @@ namespace xdp {
                                  XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
 
     uint32_t maxBDSize = 0;
-    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, column);
+    auto tileOffset = XAie_GetTileAddr(aieDevInst, row, getXAIECol(tile.col));
     for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;
       XAie_Read32(aieDevInst, tileOffset + offsets[bd], &regValue);
@@ -221,9 +227,8 @@ namespace xdp {
   void AieProfile_EdgeImpl::printTileModStats(xaiefal::XAieDev* aieDevice, 
       const tile_type& tile, XAie_ModuleType mod)
   {
-    auto col = tile.col;
     auto row = tile.row;
-    auto loc = XAie_TileLoc(col, row);
+    auto loc = XAie_TileLoc(getXAIECol(tile.col), row);
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
                            : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
                            : "interface_tile");
@@ -232,9 +237,10 @@ namespace xdp {
       XAIEDEV_DEFAULT_GROUP_STATIC,
       XAIEDEV_DEFAULT_GROUP_AVAIL
     };
-
+    
+    auto absCol = tile.col + m_startColShift;
     std::stringstream msg;
-    msg << "Resource usage stats for Tile : (" << +col << "," << +row 
+    msg << "Resource usage stats for Tile : (" << +absCol << "," << +row 
         << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
@@ -276,7 +282,8 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
-        auto col         = tile.col + startColShift;
+        auto absCol      = tile.col + startColShift;
+        auto relCol      = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
@@ -295,15 +302,8 @@ namespace xdp {
             continue;
         }
 
-        // Get the column relative to partition.
-        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
-        // Hence absolute and relative columns are same.
-        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
-        //       hence we should stop adding partition shift to col for passing to XAIE Apis
-        auto relCol     = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
-                          ? col /* startColShift already added */ : tile.col;
-        auto loc        = XAie_TileLoc(relCol, row);
-        auto& xaieTile  = aieDevice->tile(relCol, row);
+        auto loc        = XAie_TileLoc(getXAIECol(tile.col), row);
+        auto& xaieTile  = aieDevice->tile(getXAIECol(tile.col), row);
 
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
@@ -425,7 +425,7 @@ namespace xdp {
 
           // Generate user_event_1 for byte count metric set after configuration
           if ((metricSet == METRIC_BYTE_COUNT) && (i == 1) && !graphItrBroadcastConfigDone) {
-            XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
+            XAie_LocType tileloc = XAie_TileLoc(getXAIECol(tile.col), tile.row);
             //Note: For BYTE_COUNT metric, user_event_1 is used twice as eventA & eventB to
             //      to transition the FSM from Idle->State0->State1.
             //      eventC = Port Running and eventD = stop event (counter event).
@@ -440,11 +440,11 @@ namespace xdp {
           uint16_t phyEndEvent   = physicalEventIds.second;
 
           // Get payload for reporting purposes
-          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
+          uint64_t payload = getCounterPayload(aieDevInst, tileMetric.first, type, getXAIECol(tile.col), row, 
                                                startEvent, metricSet, channel);
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, relCol, row, i,
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, getXAIECol(tile.col), row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName, (tile.stream_ids.empty() ? 0 : tile.stream_ids[0]));
           counterId++;
@@ -452,7 +452,7 @@ namespace xdp {
         } // numFreeCtr
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +absCol 
             << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
@@ -517,11 +517,15 @@ namespace xdp {
       if (!aie)
         continue;
 
+      auto absCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                    ? aie->column 
+                    : aie->column + metadata->getPartitionOverlayStartCols().front() ;
+      auto relCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
+                    ? aie->column - metadata->getPartitionOverlayStartCols().front()
+                    : aie->column ;
+
       std::vector<uint64_t> values;
-      auto writerCol = (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE)
-                        ? aie->column 
-                        : aie->column + metadata->getPartitionOverlayStartCols().front() /* need to add shift for displaying results*/ ;
-      values.push_back(writerCol);
+      values.push_back(absCol);
       values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
@@ -531,7 +535,7 @@ namespace xdp {
       uint32_t counterValue;
       if (perfCounters.empty()) {
         // Compiler-defined counters
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_LocType tileLocation = XAie_TileLoc(getXAIECol(relCol), aie->row);
         XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
       }
       else {
@@ -585,7 +589,7 @@ namespace xdp {
         auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
                             : XAIE_MEM_MOD);
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_LocType tileLocation = XAie_TileLoc(getXAIECol(relCol), aie->row);
         XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
       }
       values.push_back(timerValue);
