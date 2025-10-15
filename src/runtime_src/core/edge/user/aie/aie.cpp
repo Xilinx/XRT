@@ -79,11 +79,19 @@ aie_array(const std::shared_ptr<xrt_core::device>& device)
 
   /* Initialize gmio api instances */
   gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+  std::vector<std::pair<std::string, adf::gmio_config>> logical_name_entries;
   for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
   {
     auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second, m_config);
     p_gmio_api->configure();
     gmio_apis[config_itr->first] = p_gmio_api;
+    gmio_apis[config_itr->second.logicalName] = p_gmio_api;
+    logical_name_entries.emplace_back(config_itr->second.logicalName, config_itr->second);
+  }
+  // Bulk-insert new entries into gmio_configs
+  for (const auto& entry : logical_name_entries)
+  {
+    gmio_configs.emplace(entry.first, entry.second);
   }
   external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get());
 }
@@ -145,11 +153,19 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
 
   /* Initialize gmio api instances */
   gmio_configs = xrt_core::edge::aie::get_gmios(device.get(), hwctx_obj);
+  std::vector<std::pair<std::string, adf::gmio_config>> logical_name_entries;
   for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
   {
     auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second, m_config);
     p_gmio_api->configure();
     gmio_apis[config_itr->first] = p_gmio_api;
+    gmio_apis[config_itr->second.logicalName] = p_gmio_api;
+    logical_name_entries.emplace_back(config_itr->second.logicalName, config_itr->second);
+  }
+  // Bulk-insert new entries into gmio_configs
+  for (const auto& entry : logical_name_entries)
+  {
+    gmio_configs.emplace(entry.first, entry.second);
   }
   external_buffer_configs = xrt_core::edge::aie::get_external_buffers(device.get(), hwctx_obj);
 }
