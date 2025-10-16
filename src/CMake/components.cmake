@@ -98,8 +98,8 @@ if (XRT_ALVEO)
   set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "alveo")
   set (XRT_COMPONENT "alveo")
   set (XRT_DEV_COMPONENT "alveo")
-  set (XRT_BASE_COMPONENT ${XRT_COMPONENT})
-  set (XRT_BASE_DEV_COMPONENT ${XRT_DEV_COMPONENT})
+  set (XRT_BASE_COMPONENT "base")
+  set (XRT_BASE_DEV_COMPONENT "base${XRT_DEV_COMPONENT_SUFFIX}")
 endif(XRT_ALVEO)
 
 # Edge (embedded) builds, build base package and build

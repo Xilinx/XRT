@@ -24,6 +24,11 @@ add_library(azure_mpd_plugin SHARED ""
   $<TARGET_OBJECTS:azure_plugin>
 )
 
+set_target_properties(azure_mpd_plugin PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+)
+
 add_compile_options("-fPIC")
 
 target_link_libraries(azure_mpd_plugin
