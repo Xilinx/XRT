@@ -454,16 +454,18 @@ namespace xrt::core::hip
   }
 
   static void
-  hip_mem_prefetch_async(const void* dev_ptr, size_t count, int device, hipStream_t stream)
+  hip_mem_prefetch_async(const void* dev_ptr, size_t count, int /*device*/, hipStream_t /*stream*/)
   {
-    // device is not required for xrt::bo lookup, only buffer device address is required.
-    (void)device;
-    auto hip_stream = get_stream(stream);
-    throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
-    auto s_hdl = hip_stream.get();
-    auto cmd_hdl = insert_in_map(command_cache,
-                                 std::make_shared<mem_prefetch_command>(hip_stream, dev_ptr, count));
-    s_hdl->enqueue(command_cache.get(cmd_hdl));
+    auto hip_mem_and_off = memory_database::instance().get_hip_mem_from_addr(dev_ptr);
+    auto hip_mem = hip_mem_and_off.first;
+    size_t hip_mem_off = hip_mem_and_off.second;
+    throw_invalid_value_if(!hip_mem, "Invalid prefetch buf address.");
+    throw_invalid_value_if((hip_mem->get_size() < (hip_mem_off + count)),
+                            "Invalid prefetch buf address or size.");
+
+    // The under xrt::bo::sync() behaves the same for both TO_DEVICE or FROM_DEVICE direction.
+    // we pick xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE as input argument here.
+    hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE, count, hip_mem_off);
   }
 } // xrt::core::hip
 
