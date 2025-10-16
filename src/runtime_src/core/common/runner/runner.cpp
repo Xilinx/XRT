@@ -2128,6 +2128,15 @@ class profile
       return 1;
     }
 
+    static size_t
+    get_iterations(const json& j)
+    {
+      if (auto value = j.value("iterations", 1))
+        return value;
+
+      throw profile_error("bad iterations value in profile, must be greater than 0");
+    }
+
     void
     execute_iteration(size_t iteration)
     {
@@ -2165,7 +2174,7 @@ class profile
       , m_depth(get_depth(m_mode, j))
       , m_recipe_runs(rr->num_runs())
       , m_executor{m_profile, rr, m_depth}
-      , m_iterations(j.value("iterations", 1))
+      , m_iterations{get_iterations(j)}
       , m_iteration(get_iteration_node(m_mode, j))
       , m_verbose(j.value("verbose", true))
       , m_validate(j.value("validate", false))
