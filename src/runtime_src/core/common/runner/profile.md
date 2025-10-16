@@ -272,7 +272,7 @@ This section is optional.  If not present, the recipe will execute
 one iteration.
 
 - `iterations` (default: `1`) specifies how many times the recipe
-  should execute.
+  should execute. The specified value must be greater than 0.
 - `verbose` (default: `true`) controls printing of metrics post all
   iterations. By default the profile execution will display to stdout
   elapsed, throughput, and latency computed from running the recipe

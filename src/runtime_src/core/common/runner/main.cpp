@@ -124,8 +124,10 @@ filter_mode(json& profile, const std::string& mode)
 static void
 touchup_iterations(json& profile, uint32_t iterations)
 {
-  if (iterations)
-    profile["execution"]["iterations"] = iterations;
+  if (!iterations)
+    return;
+
+  profile["execution"]["iterations"] = iterations;
 
   for (auto& exec : profile["executions"])
     exec["iterations"] = iterations;
