@@ -314,28 +314,6 @@ bool memory_pool_command::wait()
   return true;
 }
 
-bool mem_prefetch_command::submit()
-{
-  auto hip_mem_and_off = memory_database::instance().get_hip_mem_from_addr(m_dev_ptr);
-  auto hip_mem = hip_mem_and_off.first;
-  size_t hip_mem_off = hip_mem_and_off.second;
-  throw_invalid_value_if(!hip_mem, "Invalid prefetch buf address.");
-  throw_invalid_value_if((hip_mem->get_size() < (hip_mem_off + m_size)),
-                         "Invalid prefetch buf address or size.");
-
-  // The under xrt::bo::sync() behaves the same for both TO_DEVICE or FROM_DEVICE direction.
-  // we pick xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE as input argument here.
-  hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE, m_size, hip_mem_off);
-  set_state(state::completed);
-  return true;
-}
-
-bool mem_prefetch_command::wait()
-{
-  // completed in submit()
-  return true;
-}
-
 // Global map of commands
 xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
 
