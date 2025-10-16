@@ -55,16 +55,5 @@ EXPORTS
   hipMemsetD32Async
   hipMemsetD16Async
   hipMemsetD8Async
-  hipMallocAsync
-  hipFreeAsync
   hipMemcpyAsync
-  hipMemPoolCreate
-  hipMemPoolDestroy
-  hipMemPoolGetAttribute
-  hipMemPoolSetAttribute
   hipMemPrefetchAsync
-  hipMallocFromPoolAsync
-  hipMemPoolTrimTo
-  hipDeviceGetDefaultMemPool
-  hipDeviceGetMemPool
-  hipDeviceSetMemPool
