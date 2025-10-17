@@ -4,6 +4,7 @@
 #ifndef REPORT_EVENT_TRACE_H
 #define REPORT_EVENT_TRACE_H
 
+#include "core/common/query_requests.h"
 #include "tools/common/Report.h"
 #include "EventTraceConfig.h"
 namespace smi = xrt_core::tools::xrt_smi;
@@ -56,8 +57,8 @@ public:
    * - Description: "Log to console firmware event trace information"
    */
   ReportEventTrace() 
-    :  Report("event-trace", "Log to console firmware event trace information", true /*deviceRequired*/),
-       m_watch_mode_offset(0) { };
+    :  Report("event-trace", "Log to console firmware event trace information", true /*deviceRequired*/)
+    {}
 
   /**
    * @brief Generate property tree representation of event trace data
@@ -109,7 +110,7 @@ private:
    * 
    * @note Reset to 0 at the beginning of each writeReport call
    */
-  mutable uint64_t m_watch_mode_offset;
+  mutable uint64_t m_watch_mode_offset{0};
 
   /**
    * @brief Generate raw event trace data dump

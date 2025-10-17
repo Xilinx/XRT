@@ -141,7 +141,7 @@ writeReport(const xrt_core::device* device,
   
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    auto report_generator = [=](const xrt_core::device* dev) -> std::string {
+    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
       return (user_wants_raw || !config) 
         ? generate_raw_logs(dev, true)
         : generate_parsed_logs(dev, *config, true);

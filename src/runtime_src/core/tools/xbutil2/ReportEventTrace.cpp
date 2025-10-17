@@ -3,7 +3,6 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "core/common/query_requests.h"
 #include "core/common/time.h"
 #include "core/common/module_loader.h"
 #include "tools/common/SmiWatchMode.h"
@@ -336,7 +335,7 @@ writeReport(const xrt_core::device* device,
   
   // Check for watch mode
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    auto report_generator = [=](const xrt_core::device* dev) -> std::string {
+    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
       return (user_wants_raw || !config)
         ? generate_raw_logs(dev, true)
         : generate_parsed_logs(dev, *config, true, use_dummy);

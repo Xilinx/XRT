@@ -94,7 +94,7 @@ public:
   const std::unordered_map<std::string, enum_info>& 
   get_enums() const 
   { 
-    return enums;  
+    return m_enums;  
   }
 
   /**
@@ -104,7 +104,7 @@ public:
   const std::unordered_map<std::string, structure_info>& 
   get_structures() const 
   { 
-    return structures; 
+    return m_structures; 
   }
 
   /**
@@ -122,7 +122,7 @@ public:
   size_t 
   get_header_size() const 
   { 
-    return header_size; 
+    return m_header_size; 
   }
 
   /**
@@ -156,10 +156,10 @@ private:
   parse_structures(const nlohmann::json& config);
 
 private:
-  nlohmann::json config; ///< Raw JSON configuration
-  std::unordered_map<std::string, enum_info> enums; ///< Parsed enumerations
-  std::unordered_map<std::string, structure_info> structures; ///< Parsed structures
-  size_t header_size; // Stores the calculated header size
+  nlohmann::json m_config; ///< Raw JSON configuration
+  std::unordered_map<std::string, enum_info> m_enums; ///< Parsed enumerations
+  std::unordered_map<std::string, structure_info> m_structures; ///< Parsed structures
+  size_t m_header_size; // Stores the calculated header size
 };
 
 /**

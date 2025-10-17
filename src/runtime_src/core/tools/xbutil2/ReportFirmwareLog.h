@@ -31,8 +31,8 @@ namespace smi = xrt_core::tools::xrt_smi;
 class ReportFirmwareLog : public Report {
 public:
   ReportFirmwareLog() 
-    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/),
-      m_watch_mode_offset(0) {}
+    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/)
+    {}
 
   // Child methods that need to be implemented from Report base class
 public:
@@ -107,7 +107,7 @@ private:
    * 
    * @note Reset to 0 at the beginning of each writeReport call
    */
-  mutable uint64_t m_watch_mode_offset;
+  mutable uint64_t m_watch_mode_offset{0};
 
   /**
    * @brief Generate raw firmware log data dump

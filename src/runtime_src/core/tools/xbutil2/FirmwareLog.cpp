@@ -9,10 +9,10 @@ namespace xrt_core::tools::xrt_smi {
 
 firmware_log_config::
 firmware_log_config(nlohmann::json json_config)
-  : config(std::move(json_config)),
-    enums(parse_enums(config)),
-    structures(parse_structures(config)),
-    header_size(calculate_header_size(structures))
+  : m_config(std::move(json_config)),
+    m_enums(parse_enums(m_config)),
+    m_structures(parse_structures(m_config)),
+    m_header_size(calculate_header_size(m_structures))
 {}
 
 
@@ -87,8 +87,8 @@ const firmware_log_config::structure_info&
 firmware_log_config::
 get_log_header() const 
 {
-  auto it = structures.find("ipu_log_message_header");
-  if (it == structures.end()) {
+  auto it = m_structures.find("ipu_log_message_header");
+  if (it == m_structures.end()) {
     throw std::runtime_error("ipu_log_message_header structure not found in config");
   }
   return it->second;
