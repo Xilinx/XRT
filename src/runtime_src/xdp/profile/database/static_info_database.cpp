@@ -1212,15 +1212,28 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return 0 ;
 
-    ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
+    ConfigInfo* config = nullptr;
+    if (AppStyle::LOAD_XCLBIN_STYLE == getAppStyle()) {
+      config = deviceInfo[deviceId]->currentConfig() ;
+    } else {
+      if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end())
+        return 0 ;
+      config = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig() ;
+    }
+
     if (!config)
       return 0 ;
 
-    XclbinInfo* xclbin = config->getAieXclbin();
-    if (!xclbin)
-      return 0;
+    // check for aieXclbin
+    if (XclbinInfo* aieXclbin = config->getAieXclbin()) {
+      return aieXclbin->aie.numTracePLIO;
+    }
+    // if aieXclbin is null, check for plXclbin
+    if (XclbinInfo* plXclbin = config->getPlXclbin()) {
+      return plXclbin->aie.numTracePLIO;
+    }
     
-    return xclbin->aie.numTracePLIO ;
+    return 0;
   }
 
   uint64_t VPStaticDatabase::getNumAIETraceStream(uint64_t deviceId)
