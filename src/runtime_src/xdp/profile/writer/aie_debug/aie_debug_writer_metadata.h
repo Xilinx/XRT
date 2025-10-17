@@ -101,6 +101,20 @@ public:
 
 };
 
+/*************************************************************************************
+ NPU3 Registers
+ *************************************************************************************/
+class NPU3WriterUsedRegisters : public WriterUsedRegisters {
+public:
+  NPU3WriterUsedRegisters() {
+    populateRegDataMap();
+  }
+  ~NPU3WriterUsedRegisters() = default;
+
+  void populateRegDataMap();
+
+};
+
 } // end namesapce xdp
 
 #endif
