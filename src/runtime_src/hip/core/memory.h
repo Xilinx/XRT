@@ -108,28 +108,6 @@ namespace xrt::core::hip
     init_xrt_bo();
   };
 
-  // sub_memory
-  class sub_memory : public memory
-  {
-  public:
-
-    // constructor for dummy sub_memory
-    sub_memory(size_t sz = 0)
-      : memory(memory_type::sub, sz)
-    {
-    }
-
-    void
-    init(std::shared_ptr<memory> parent, size_t size, size_t offset)
-    {
-      m_parent = parent;
-      m_bo = xrt::bo(parent->get_xrt_bo(), size, offset);
-    }
-
-  private:
-    std::shared_ptr<memory> m_parent;
-  };
-
   // address_range_key is used for look up hip memory objects via an offseted address
   class address_range_key
   {
@@ -165,7 +143,6 @@ namespace xrt::core::hip
   {
   private:
     addr_map m_addr_map; // address lookup for regular xrt::bo
-    std::map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
     std::mutex m_mutex;
 
   protected:
@@ -184,12 +161,6 @@ namespace xrt::core::hip
 
     void
     remove(uint64_t addr);
-
-    memory_handle
-    insert_sub_mem(std::shared_ptr<sub_memory> sub_mem);
-
-    std::shared_ptr<sub_memory>
-    get_sub_mem_from_handle(memory_handle h);
 
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);

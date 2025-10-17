@@ -161,7 +161,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_addr_map(), m_sub_mem_cache(), m_mutex()
+      : m_addr_map(), m_mutex()
   {
     throw_invalid_value_if(m_memory_database != nullptr,
         "Multiple instances of hip memory_database detected, only one\n"
@@ -186,37 +186,7 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    m_sub_mem_cache.erase(addr);
     m_addr_map.erase(address_range_key(addr, 0));
-  }
-
-  memory_handle
-  memory_database::insert_sub_mem(std::shared_ptr<sub_memory> sub_mem)
-  {
-    std::lock_guard lock(m_mutex);
-
-    // TODO: hip memory allocated from memory pool need to return a valid pointer before
-    //       actual allocation is done and user application may add an offset to this pointer,
-    //       hence the need for returning a handles/addresses which does not overlap
-    //       a more robust handle/pointer creation scheme might be neccessary 
-    static auto curr_start = get_page_aligned_size(0x10000);
-    size_t aligned_size = get_page_aligned_size(sub_mem->get_size());
-    memory_handle h = curr_start;
-    m_sub_mem_cache.insert({h, sub_mem});
-    curr_start += aligned_size;
-    return h;
-  }
-
-  std::shared_ptr<sub_memory>
-  memory_database::get_sub_mem_from_handle(memory_handle h)
-  {
-    std::lock_guard lock(m_mutex);
-
-    auto itr = m_sub_mem_cache.find(h);
-    if (itr != m_sub_mem_cache.end())
-      return itr->second;
-    else
-      return nullptr;
   }
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>

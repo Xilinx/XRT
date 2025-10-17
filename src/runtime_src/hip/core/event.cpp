@@ -287,33 +287,6 @@ bool memcpy_command::wait()
   return true;
 }
 
-bool memory_pool_command::submit()
-{
-  switch (m_type)
-  {
-  case alloc:
-    m_mem_pool->malloc(m_ptr, m_size);
-    set_state(state::completed);
-    break;
-  case free:
-    m_mem_pool->free(m_ptr);
-    set_state(state::completed);
-    break;
-
-  default:
-    throw_hip_error(hipErrorInvalidValue, "Invalid memory pool operation type.");
-    break;
-  }
-
-  return true;
-}
-
-bool memory_pool_command::wait()
-{
-  // no-op
-  return true;
-}
-
 bool mem_prefetch_command::submit()
 {
   auto hip_mem_and_off = memory_database::instance().get_hip_mem_from_addr(m_dev_ptr);
