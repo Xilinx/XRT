@@ -8,6 +8,7 @@ add_library(hip_api_library_objects OBJECT
   hip_memory.cpp
   hip_module.cpp
   hip_stream.cpp
+  hip_graph.cpp
 )
 
 target_include_directories(hip_api_library_objects

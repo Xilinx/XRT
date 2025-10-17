@@ -15,15 +15,15 @@ event::event()
 
 void event::record(std::shared_ptr<stream> s)
 {
-  cstream = std::move(s);
+  m_recorded_stream = std::move(s);
   auto ev = std::dynamic_pointer_cast<event>(command_cache.get(static_cast<command_handle>(this)));
   throw_invalid_handle_if(!ev, "event passed is invalid");
   if (is_recorded()) {
     // already recorded
-    cstream->erase_cmd(ev);
+    m_recorded_stream->erase_cmd(ev);
   }
   // update recorded commands list
-  cstream->enqueue_event(ev);
+  m_recorded_stream->enqueue_event(ev);
   set_state(state::recorded);
 }
 
@@ -86,7 +86,7 @@ bool event::submit()
 
 std::shared_ptr<stream> event::get_stream()
 {
-  return cstream;
+  return m_recorded_stream;
 }
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
@@ -101,8 +101,8 @@ void event::add_dependency(std::shared_ptr<command> cmd)
   m_recorded_commands.push_back(std::move(cmd));
 }
 
-kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
-  : command(type::kernel_start, std::move(s))
+kernel_start::kernel_start(std::shared_ptr<function> f, void** args)
+  : command(type::kernel_start)
   , func{std::move(f)}
   , m_ctrl_scratchpad_bo_sync_rd{false}
 {
@@ -180,8 +180,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 }
 
 kernel_start::
-kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra)
-  : kernel_start(std::move(s), std::move(f), args)
+kernel_start(std::shared_ptr<function> f, void** args, void** extra)
+  : kernel_start(std::move(f), args)
 {
   if (!extra)
     return;
@@ -334,6 +334,38 @@ bool mem_prefetch_command::wait()
 {
   // completed in submit()
   return true;
+}
+
+bool
+kernel_list_start::
+wait()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::running) {
+    m_rl.wait();
+    set_state(state::completed);
+    return true;
+  }
+  else if (kernel_list_start_state == state::completed)
+    return true;
+
+  return false;
+}
+
+bool
+kernel_list_start::
+submit()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::init) {
+    m_rl.execute();
+    set_state(state::running);
+    return true;
+  }
+  else if (kernel_list_start_state == state::running)
+    return true;
+
+  return false;
 }
 
 // Global map of commands
