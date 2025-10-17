@@ -36,8 +36,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   throw_invalid_value_if(!hip_stream, "invalid stream handle.");
   auto s_hdl = hip_stream.get();
   auto cmd_hdl = insert_in_map(command_cache,
-                               std::make_shared<kernel_start>(hip_stream,
-                                                              hip_func,
+                               std::make_shared<kernel_start>(hip_func,
                                                               kernelParams, extra));
   s_hdl->enqueue(command_cache.get(cmd_hdl));
 }
