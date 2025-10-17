@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #ifndef XDP_PLUGIN_ML_TIMELINE_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_IMPL_H
@@ -31,11 +18,13 @@ namespace xdp {
     protected :
       VPDatabase* db = nullptr;
       uint32_t mBufSz;
+      uint32_t mNumBufSegments;
 
     public:
       MLTimelineImpl(VPDatabase* dB, uint32_t sz)
         : db(dB),
-          mBufSz(sz)
+          mBufSz(sz),
+          mNumBufSegments(1)
       {}
 
       MLTimelineImpl() = delete;
