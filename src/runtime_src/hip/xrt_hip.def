@@ -68,3 +68,9 @@ EXPORTS
   hipDeviceGetDefaultMemPool
   hipDeviceGetMemPool
   hipDeviceSetMemPool
+  hipGraphCreate
+  hipGraphAddKernelNode
+  hipGraphInstantiate
+  hipGraphLaunch
+  hipGraphExecDestroy
+  hipGraphDestroy

@@ -9,6 +9,7 @@ add_library(hip_core_library_objects OBJECT
   stream.cpp
   error.cpp
   memory_pool.cpp
+  graph.cpp
 )
 
 target_include_directories(hip_core_library_objects
