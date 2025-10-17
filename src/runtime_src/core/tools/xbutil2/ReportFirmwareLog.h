@@ -5,150 +5,13 @@
 #define REPORT_FIRMWARE_LOG_H
 
 #include "tools/common/Report.h"
-#include "FirmwareLogConfig.h" // Include the header file for firmware_log_config
-#include "tools/common/Table2D.h"
+#include "FirmwareLog.h" // Include the header file for firmware_log_config
 #include <vector>
 #include <string>
 #include <memory>
 #include <unordered_map>
 
-namespace xrt_core::tools::xrt_smi {
-
-// Forward declarations
-class firmware_log_config;
-
-/**
- * @brief Firmware log parser for XRT devices
- * 
- * This class provides an interface for parsing firmware log data.
- * It encapsulates all parsing logic. The parser is configured with a firmware_log_config object
- * that defines the structure and format of the log entries.
- */
-class firmware_log_parser {
-public:
-  /**
-   * @brief Construct a new firmware log parser
-   * 
-   * @param config Firmware log configuration object containing structure definitions,
-   *               field layouts, and enumeration mappings
-   */
-  explicit 
-  firmware_log_parser(firmware_log_config config);
-
-  /**
-   * @brief Parse firmware log buffer and generate formatted table
-   * 
-   * @param data_ptr Pointer to the firmware log data buffer
-   * @param buf_size Total size of the data buffer in bytes
-   * @return Table2D Formatted table containing parsed log entries
-   * 
-   * This method processes the entire firmware log buffer, parsing each entry
-   * according to the configured structure.
-   */
-  Table2D 
-  parse(const uint8_t* data_ptr, size_t buf_size) const;
-
-private:
-  /**
-   * @brief Extract field value from bit-packed firmware log header
-   * 
-   * @param data_ptr Pointer to raw data buffer
-   * @param byte_offset Starting byte offset
-   * @param bit_offset Starting bit offset
-   * @param bit_width Number of bits to extract
-   * @return uint64_t Extracted field value
-   */
-  uint64_t 
-  extract_value(const uint8_t* data_ptr, 
-                size_t byte_offset, 
-                size_t bit_offset, 
-                size_t bit_width) const;
-
-  /**
-   * @brief Format field value with enum resolution if applicable
-   * 
-   * @param field Field information containing name and enumeration
-   * @param value Raw field value
-   * @return std::string Formatted field value with enum name if applicable
-   */
-  std::string 
-  format_value(const firmware_log_config::field_info& field, 
-               uint64_t value) const;
-
-  /**
-   * @brief Parse message data from log entry payload
-   * 
-   * @param data_ptr Pointer to the raw data buffer
-   * @param msg_offset Offset where message data begins
-   * @param argc Argument count field value (unused but kept for compatibility)
-   * @param buf_size Total buffer size for bounds checking
-   * @return std::string Parsed message with trailing newlines removed
-   * 
-   * This method extracts null-terminated string messages from log entries,
-   * with newline cleanup.
-   */
-  std::string 
-  parse_message(const uint8_t* data_ptr, 
-                size_t msg_offset, 
-                size_t buf_size) const;
-
-  /**
-   * @brief Parse a complete log entry (header + message)
-   * 
-   * @param data_ptr Pointer to the raw data buffer
-   * @param offset Offset where log entry begins
-   * @param buf_size Total buffer size for bounds checking
-   * @return std::vector<std::string> Vector of parsed field values and message
-   * 
-   * This method parses a complete log entry by:
-   * 1. Extracting all header fields according to structure definition
-   * 2. Parsing the message payload
-   * 3. Returning organized field data for table display
-   */
-  std::vector<std::string> 
-  parse_entry(const uint8_t* data_ptr, size_t offset, 
-                  size_t buf_size) const;
-
-  /**
-   * @brief Generate table headers based on log structure configuration
-   * 
-   * @return std::vector<Table2D::HeaderData> Vector of table headers with justification
-   * 
-   */
-  std::vector<Table2D::HeaderData> 
-  get_table_headers() const;
-
-  /**
-   * @brief Calculate entry size for buffer traversal
-   * 
-   * @param argc Argument count field value
-   * @param format Log format field value (full vs concise)
-   * @return uint32_t Total size of log entry in bytes
-   * 
-   */
-  uint32_t 
-  calculate_entry_size(uint32_t argc, uint32_t format) const;
-
-private:
-  firmware_log_config m_config;  
-  firmware_log_config::structure_info m_header; 
-  uint32_t m_header_size; // Size of log entry header in bytes
-  
-  // Field indices computed from config
-  std::unordered_map<std::string, size_t> m_field_indices;
-
-  // Column headers mapping for display
-  std::unordered_map<std::string, std::string> m_columns;
-
-  /**
-   * @brief Create field indices map from config
-   */
-  static std::unordered_map<std::string, size_t> 
-  create_field_indices(const firmware_log_config& config);
-};
-
-} // namespace xrt_core::tools::xrt_smi
-
+namespace smi = xrt_core::tools::xrt_smi;
 /**
  * @brief Report for firmware log information
  * 
@@ -168,7 +31,8 @@ private:
 class ReportFirmwareLog : public Report {
 public:
   ReportFirmwareLog() 
-    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/) { };
+    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/),
+      m_watch_mode_offset(0) {}
 
   // Child methods that need to be implemented from Report base class
 public:
@@ -233,6 +97,52 @@ public:
               const std::vector<std::string>& elements_filter,
               std::ostream& output) const override;
 
+private:
+  /**
+   * @brief Watch mode offset for continuous log streaming
+   * 
+   * This member variable tracks the current buffer offset when operating in watch mode.
+   * It ensures that subsequent queries in watch mode continue from where the previous
+   * query left off.
+   * 
+   * @note Reset to 0 at the beginning of each writeReport call
+   */
+  mutable uint64_t m_watch_mode_offset;
+
+  /**
+   * @brief Generate raw firmware log data dump
+   * 
+   * @param dev XRT device to query for raw firmware log buffer
+   * @param is_watch True if operating in watch mode (continuous updates)  
+   * @return std::string Raw binary log data as string
+   * 
+   * This method provides direct access to the raw firmware log buffer
+   * without any parsing or formatting. Used as a fallback when:
+   * - Configuration parsing fails
+   * - User explicitly requests raw output with "--element raw"
+   * 
+   * @note Updates m_watch_mode_offset for continuous streaming
+   */
+  std::string 
+  generate_raw_logs(const xrt_core::device* dev, bool is_watch) const;
+
+  /**
+   * @brief Generate parsed and formatted firmware log report
+   * 
+   * @param dev XRT device to query for firmware log data
+   * @param config Firmware log configuration for parsing structure and enums
+   * @param is_watch True if operating in watch mode (continuous updates)
+   * @return std::string Formatted log table with parsed fields and messages
+   * 
+   * This method retrieves firmware log data from the device and uses the provided
+   * configuration to parse and format it into a human-readable table. 
+   * 
+   * @note Uses firmware_log_parser class for actual parsing logic
+   */
+  std::string 
+  generate_parsed_logs(const xrt_core::device* dev,
+                       const smi::firmware_log_config& config,
+                       bool is_watch) const;
 
 };
 
