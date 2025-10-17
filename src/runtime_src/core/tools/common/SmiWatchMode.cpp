@@ -104,8 +104,7 @@ void
 smi_watch_mode::
 run_watch_mode(const xrt_core::device* device,
                std::ostream& output,
-               const ReportGenerator& report_generator,
-               const std::string& report_title)
+               const ReportGenerator& report_generator)
 {
   if (!device || !report_generator) {
     output << "Error: Invalid device or report generator provided to watch mode\n";
@@ -115,7 +114,7 @@ run_watch_mode(const xrt_core::device* device,
   // Set up signal handler for Ctrl+C
   signal_handler::setup();
   
-  output << "Starting " << report_title << " Watch Mode (Press Ctrl+C to exit)\n";
+  output << "Starting Watch Mode (Press Ctrl+C to exit)\n";
   output << "=======================================================\n\n";
   output.flush();
   

@@ -140,6 +140,5 @@ public:
   static void 
   run_watch_mode(const xrt_core::device* device,
                  std::ostream& output,
-                 const ReportGenerator& report_generator,
-                 const std::string& report_title = "Report");
+                 const ReportGenerator& report_generator);
 };
