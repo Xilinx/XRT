@@ -51,8 +51,7 @@ namespace xdp {
   };
 
   MLTimelineVE2Impl::MLTimelineVE2Impl(VPDatabase*dB, uint32_t sz)
-    : MLTimelineImpl(dB, sz),
-      mNumBufSegments(0)
+    : MLTimelineImpl(dB, sz)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Created ML Timeline Plugin for VE2 Device.");

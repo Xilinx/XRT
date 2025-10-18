@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -31,6 +18,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -40,12 +29,12 @@ namespace xdp {
   {
     public:
       xrt::bo  mBO;
-      ResultBOContainer(void* hwCtxImpl, uint32_t sz)
+      ResultBOContainer(void* hwCtxImpl, uint32_t sz, xrt_core::bo_int::use_type bufType)
       {
         mBO = xrt_core::bo_int::create_bo(
                 xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl),
                 sz,
-                xrt_core::bo_int::use_type::debug);
+                bufType);
       }
       ~ResultBOContainer() {}
 
@@ -74,10 +63,49 @@ namespace xdp {
               "In destructor for ML Timeline Plugin for Client Device.");
   }
 
-  void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl, uint64_t /* devId */)
+  void MLTimelineClientDevImpl::updateDevice(void* hwCtxImpl, uint64_t devId)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineClientDevImpl::updateDevice");
+
+    xrt_core::bo_int::use_type bufType = xrt_core::bo_int::use_type::debug;
+    std::map<uint32_t, size_t> activeUCsegmentMap;
+
+    auto metadataReader = (db->getStaticInfo()).getAIEmetadataReader(devId);
+    if (nullptr == metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+        "AIE Metadata is not found.");
+    }
+    if (metadataReader && 5 < metadataReader->getHardwareGeneration()) {
+      bufType = xrt_core::bo_int::use_type::uc_debug;
+
+      auto activeUCs = metadataReader->getActiveMicroControllers();
+      if (activeUCs.empty()) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "Active Microcontroller info is missing. Configuring ML Timeline buffer for 1 controller.");
+        activeUCs.emplace_back((uint8_t)0, (uint8_t)0);
+      }
+
+      mNumBufSegments = static_cast<uint32_t>(activeUCs.size());
+      /*
+      * For now, each buffer segment is equal sized.
+      */
+      uint32_t alignment = mNumBufSegments * RECORD_TIMER_ENTRY_SZ_IN_BYTES;
+      uint32_t remBytes  = mBufSz % alignment;
+      if (0 != remBytes) {
+        mBufSz -= remBytes;
+      }
+      uint32_t segmentSzInBytes = mBufSz / mNumBufSegments;
+      for (auto const &e : activeUCs) {
+        activeUCsegmentMap[(e.col << 1) + e.index] = segmentSzInBytes;
+      }
+      std::stringstream numSegmentMsg;
+      numSegmentMsg << "ML Timeline buffer will be configured to have " 
+          << mNumBufSegments << " segments, each " 
+          << segmentSzInBytes << " bytes in size." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", numSegmentMsg.str());
+    }
+
     try {
 
       /* Use a container for Debug BO for results to control its lifetime.
@@ -85,7 +113,7 @@ namespace xdp {
        * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
        * can use their own Debug BO to capture their data.
        */
-      mResultBOHolder = std::make_unique<ResultBOContainer>(hwCtxImpl, mBufSz);
+      mResultBOHolder = std::make_unique<ResultBOContainer>(hwCtxImpl, mBufSz, bufType);
       memset(mResultBOHolder->map(), 0, mBufSz);
 
     } catch (std::exception& e) {
@@ -99,6 +127,22 @@ namespace xdp {
     }
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Allocated buffer In MLTimelineClientDevImpl::updateDevice");
+
+    if (metadataReader && 5 < metadataReader->getHardwareGeneration()) {
+      try {
+        xrt_core::bo_int::config_bo(mResultBOHolder->mBO, activeUCsegmentMap);
+      } catch (std::exception& e) {
+        std::stringstream msg;
+        msg << "Unable to configure buffer for active microcontrollers. "
+            << "Cannot get ML Timeline info. "
+            << e.what() << std::endl;
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        mResultBOHolder.reset(nullptr);
+        return;
+      }
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Configuration of ML Timeline buffer done for active microcontrollers.");
+    }
   }
 
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/, uint64_t implId)
@@ -130,6 +174,7 @@ namespace xdp {
     ptHeader.put("id_size", sizeof(uint32_t));
     ptHeader.put("cycle_size", 2*sizeof(uint32_t));
     ptHeader.put("buffer_size", mBufSz);
+    ptHeader.put("num_buffer_segments", mNumBufSegments);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
@@ -144,6 +189,10 @@ namespace xdp {
         << std::hex << mBufSz << std::dec << std::endl;
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
+    uint32_t* currSegmentPtr = ptr;
+    uint32_t  segmentSzInBytes = mBufSz / mNumBufSegments;
+    uint32_t  segmentsRead = 0;
+    uint32_t  numValidEntries = 0;
     if (numEntries <= maxCount) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
@@ -156,17 +205,38 @@ namespace xdp {
         ptr++;
         ts64 |= (*ptr);
         if (0 == ts64 && 0 == id) {
-          // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
-          std::string msgEntries = "Got " + std::to_string(i) + " records in buffer.";
-          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
-          break;
+          segmentsRead++;
+          if (segmentsRead == mNumBufSegments) {
+            // Zero value for Timestamp in cycles (and id too) indicates end of recorded data
+            std::string msgEntries = "Got " + std::to_string(numValidEntries) + " records in buffer.";
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
+            break;
+          } else if (mNumBufSegments > 1) {
+            std::stringstream nxtSegmentMsg;
+            nxtSegmentMsg << " Got both id and timestamp field as ZERO." 
+                 << " Moving to next segment on the buffer."
+                 << " Size of each segment in bytes 0x" << std::hex << segmentSzInBytes << std::dec
+                 << ". Current Segment Address " << std::hex << currSegmentPtr << std::dec;
+
+            ptr = currSegmentPtr + (segmentSzInBytes / sizeof(uint32_t));
+
+            nxtSegmentMsg << ". Next Segment Address " << std::hex << ptr << std::dec 
+                          << "." << std::endl;
+            xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", nxtSegmentMsg.str());
+
+            currSegmentPtr = ptr;
+            continue;
+          } else {
+            break;
+          }
         }
         ptIdTS.put("cycle", ts64);
+        numValidEntries++;
         ptr++;
 
         ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
       }
-    }    
+    }
 
     if (ptRecordTimerTS.empty()) {
       boost::property_tree::ptree ptEmpty;

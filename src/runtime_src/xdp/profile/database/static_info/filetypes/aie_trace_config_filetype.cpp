@@ -249,7 +249,7 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
 std::vector<UCInfo>
 AIETraceConfigFiletype::getActiveMicroControllers() const
 {
-    if (getHardwareGeneration() != 5)
+    if (getHardwareGeneration() < 5)
       return {};
 
     auto activeUCInfo = aie_meta.get_child_optional("Microcontrollers");
