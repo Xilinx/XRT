@@ -120,12 +120,19 @@ filter_mode(json& profile, const std::string& mode)
   if (mode == "all")
     return;
 
+  // Legacy profile nothing to filter
+  if (!profile.contains("executions"))
+    return;
+
   auto& execs = profile["executions"];
   execs.erase(std::remove_if(execs.begin(), execs.end(),
                              [mode](const json& exec) {
-                               return exec["mode"] != mode;
+                               return (!exec.contains("mode") || exec["mode"] != mode);
                              }),
               execs.end());
+
+  if (execs.empty())
+    throw std::runtime_error("No execution profile with mode '" + mode + "'");
 }
 
 // Touch up profile(s) with specified iterations
@@ -507,7 +514,7 @@ usage()
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
-  std::cout << " [--mode <latency|throughput>] execute only specified mode (default: all)\n";
+  std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--progress] show progress\n";
   std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
   std::cout << " [--max-queue-size <number>] maximum number of in-flight commands (default: #jobs)\n";
@@ -523,7 +530,7 @@ usage()
   std::cout << "Note, [--max-queue-size <num>] limits the number of in-flight jobs, implies --asap so\n";
   std::cout << "that jobs can be drained to make room for more jobs.  This option is useful in script\n";
   std::cout << "mode when memory puts a limit to how many jobs can be created simultanously.\n\n";
-  std::cout << "Note, [--mode <latency|throughput>] filters execution sections in profile.json such\n";
+  std::cout << "Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such\n";
   std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
   std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
 }

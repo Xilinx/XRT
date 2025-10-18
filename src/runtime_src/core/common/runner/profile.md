@@ -262,7 +262,7 @@ then the recipe will execute one iteration.
     "verbose": false,      // disable reporting of cpu time
     "validate": true,      // validate after all iterations
     "runlist_threshold": 1 // when to use xrt::runlist
-    "mode": mode           // latency or throughput
+    "mode": mode           // latency, throughput, or validate
     "depth": depth         // clone the recipe runlist
     "iteration" : {
     }
@@ -278,14 +278,16 @@ one iteration.
   elapsed, throughput, and latency computed from running the recipe
   specified number of iterations.
 - `validate` (default: `false`) enables validation per binding
-  elements upon completion of all iterations.
+  elements upon completion of all iterations. If mode is set to
+  validate then this element is implicitly `true` (see details
+  in mode section).
 - `runlist_threshold` (default: `6`) specifies when to
   xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
   list of separate xrt::run objects. A value of `0` disables
   xrt::runlist completely, any other value is used to trigger when to
   use xrt::runlist based on corresponding number of recipe run objects.
 - `mode` (optional) runs the recipe in specified mode. The recipe can
-  be run in latency, or throughput mode (see details below).
+  be run in latency, throughput or validate mode (see details below).
 - `depth` (default: 1 or 2). Specifies how many times the recipe runs should
   be cloned. All `runs` specified in a [recipe](recipe.md#execution) are
   treated as a single runlist.  In `throughput` mode the recipe runlist
@@ -315,6 +317,9 @@ or `throughput`:
   significant to ensure that the hardware is kept busy, a `depth` of
   `1` is really measuring latency but still reported as throughput if
   `mode` is set to throughput.
+- `validate` mode. In validate mode, the runner at a minimum enables
+   validation per binding elements upon completion of specified or
+   default number of iterations.
 
 #### iteration
 The `iteration` sub-element is optional, but if present specifies what
