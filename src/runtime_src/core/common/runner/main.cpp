@@ -46,6 +46,7 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <atomic>
+#include <climits>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -70,10 +71,17 @@ using json = nlohmann::json;
 namespace sfs = std::filesystem;
 
 namespace {
-static bool g_progress = false;    // NOLINT
-static bool g_asap = false;        // NOLINT
-static uint32_t g_iterations = 0;  // NOLINT
-static std::string g_mode = "all"; // NOLINT
+
+// Default option values
+static bool g_progress = false;     // NOLINT
+static bool g_asap = false;         // NOLINT
+static uint32_t g_iterations = 0;   // NOLINT
+static std::string g_mode = "all";  // NOLINT
+
+// Maximum number of jobs the job queue can contain
+// when running in scripted mode.
+// Change with --max-queue-size (see --help)
+static size_t g_max_queue_size = std::numeric_limits<size_t>::max(); // NOLINT
 
 constexpr double
 to_mb(size_t bytes)
@@ -112,12 +120,19 @@ filter_mode(json& profile, const std::string& mode)
   if (mode == "all")
     return;
 
+  // Legacy profile nothing to filter
+  if (!profile.contains("executions"))
+    return;
+
   auto& execs = profile["executions"];
   execs.erase(std::remove_if(execs.begin(), execs.end(),
                              [mode](const json& exec) {
-                               return exec["mode"] != mode;
+                               return (!exec.contains("mode") || exec["mode"] != mode);
                              }),
               execs.end());
+
+  if (execs.empty())
+    throw std::runtime_error("No execution profile with mode '" + mode + "'");
 }
 
 // Touch up profile(s) with specified iterations
@@ -327,12 +342,15 @@ public:
   void
   add(job_type&& job)
   {
-    std::lock_guard lk{m_mutex};
+    std::unique_lock lk{m_mutex};
     if (m_stop)
       throw std::runtime_error("job_queue::add() queue is closed, cannot add jobs");
 
     if (m_jobs.capacity() == m_jobs.size())
       throw std::runtime_error("job_queue::add() no room for additional jobs, bad reserve size");
+
+    // If max queue size is specified, wait until there is room
+    m_work_cv.wait(lk, [this] { return (m_jobs.size() < g_max_queue_size || m_stop); });
 
     m_jobs.emplace_back(std::move(job));
     m_work_cv.notify_all();
@@ -348,6 +366,7 @@ public:
     if (!m_jobs.empty()) {
       job_type job{std::move(m_jobs.back())};
       m_jobs.pop_back();
+      m_work_cv.notify_all(); // notify potentially waiting add()
       return job;
     }
 
@@ -495,20 +514,23 @@ usage()
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
-  std::cout << " [--mode <latency|throughput>] execute only specified mode (default: all)\n";
+  std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--progress] show progress\n";
   std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
+  std::cout << " [--max-queue-size <number>] maximum number of in-flight commands (default: #jobs)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
-  std::cout << "\n";
   std::cout << "Note, [--threads <number>] overrides the default number, where default is the number of\n";
   std::cout << "jobs in the runner script.\n\n";
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
   std::cout << "sticky for that recipe/profile pair.\n\n";
-  std::cout << "Note, [--mode <latency|throughput>] filters execution sections in profile.json such\n";
+  std::cout << "Note, [--max-queue-size <num>] limits the number of in-flight jobs, implies --asap so\n";
+  std::cout << "that jobs can be drained to make room for more jobs.  This option is useful in script\n";
+  std::cout << "mode when memory puts a limit to how many jobs can be created simultanously.\n\n";
+  std::cout << "Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such\n";
   std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
   std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
 }
@@ -634,6 +656,10 @@ run(int argc, char* argv[])
       threads = std::stoi(arg);
     else if (cur == "-i" || cur == "--iterations")
       g_iterations = std::stoi(arg);
+    else if (cur == "--max-queue-size") {
+      g_max_queue_size = std::stoi(arg);
+      g_asap = true;
+    }
     else if (cur == "-r" || cur == "--report")
       report = arg;
     else
