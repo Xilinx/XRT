@@ -2062,7 +2062,7 @@ class profile
     }; // class profile::execution::executor
 
     // Mode of execution
-    enum class mode { none, latency, throughput };
+    enum class mode { none, latency, throughput, validate };
     
     profile* m_profile;
     std::string m_name;
@@ -2083,7 +2083,8 @@ class profile
       static const std::map<std::string, mode> mode_map{
         {"default", mode::none},
         {"latency", mode::latency},
-        {"throughput", mode::throughput}
+        {"throughput", mode::throughput},
+        {"validate", mode::validate}
       };
 
       if (auto itr = mode_map.find(mstr); itr != mode_map.end())
@@ -2098,7 +2099,8 @@ class profile
       static const std::map<mode, std::string> mode_map{
         {mode::none, "default"},
         {mode::latency, "latency"},
-        {mode::throughput, "throughput"}
+        {mode::throughput, "throughput"},
+        {mode::validate, "validate"}
       };
 
       if (auto itr = mode_map.find(m); itr != mode_map.end())
@@ -2110,10 +2112,10 @@ class profile
     static iteration_node
     get_iteration_node(mode m, const json& j)
     {
-      if (m == mode::none)
+      if (m == mode::none || m == mode::validate)
         return j.value("iteration", json::object());
 
-      // latency and throughput modes do not support iteration node
+      // validate and throughput do not support iteration node
       return json::object();
     }
 
@@ -2177,7 +2179,7 @@ class profile
       , m_iterations{get_iterations(j)}
       , m_iteration(get_iteration_node(m_mode, j))
       , m_verbose(j.value("verbose", true))
-      , m_validate(j.value("validate", false))
+      , m_validate(j.value("validate", (m_mode == mode::validate)))
       , m_legacy(legacy)
     {}
 
