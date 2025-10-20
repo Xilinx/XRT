@@ -134,3 +134,24 @@ if (NOT XRT_INSTALL_BIN_DIR STREQUAL XRT_INSTALL_UNWRAPPED_DIR)
     DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
+# FirmwareLog Static Library
+# Create a separate static library for FirmwareLog classes
+set(FIRMWARE_LOG_LIB_NAME "xrt_firmware_log")
+add_library(${FIRMWARE_LOG_LIB_NAME} STATIC FirmwareLog.cpp)
+
+set_target_properties(${FIRMWARE_LOG_LIB_NAME} PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+)
+
+# Install firmware log library
+install(TARGETS ${FIRMWARE_LOG_LIB_NAME}
+  EXPORT xrt-targets
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+
+# Install header to experimental location with renamed filename
+install(FILES FirmwareLog.h
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt/experimental
+  RENAME xrt_firmware_log.h
+  COMPONENT ${XRT_BASE_DEV_COMPONENT})
+
