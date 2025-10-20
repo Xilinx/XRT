@@ -406,33 +406,6 @@ bool memcpy_command::wait()
   return true;
 }
 
-bool memory_pool_command::submit()
-{
-  switch (m_type)
-  {
-  case alloc:
-    m_mem_pool->malloc(m_ptr, m_size);
-    set_state(state::completed);
-    break;
-  case free:
-    m_mem_pool->free(m_ptr);
-    set_state(state::completed);
-    break;
-
-  default:
-    throw_hip_error(hipErrorInvalidValue, "Invalid memory pool operation type.");
-    break;
-  }
-
-  return true;
-}
-
-bool memory_pool_command::wait()
-{
-  // no-op
-  return true;
-}
-
 // Global map of commands
 xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
 

@@ -5,7 +5,6 @@
 
 #include "common.h"
 #include "memory.h"
-#include "memory_pool.h"
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
@@ -41,8 +40,7 @@ public:
   {
     event,
     kernel_start,
-    mem_cpy,
-    mem_pool_op,
+    mem_cpy
   };
 
 protected:
@@ -191,31 +189,6 @@ private:
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
-};
-
-class memory_pool_command : public command
-{
-public:
-  enum memory_pool_command_type : int32_t
-  {
-    alloc = 0,
-    free
-  };
-
-  memory_pool_command(std::shared_ptr<stream> s, memory_pool_command_type type, std::shared_ptr<memory_pool> pool, void* ptr, size_t size)
-    : command(command::type::mem_pool_op, std::move(s)), m_type(type), m_mem_pool(std::move(pool)), m_ptr(ptr), m_size(size)
-  {
-  }
-
-  bool submit() override;
-  bool wait() override;
-
-private:
-  memory_pool_command_type m_type;
-  std::shared_ptr<memory_pool> m_mem_pool;
-  void* m_ptr;
-  size_t m_size;
-  std::future<void> m_handle;
 };
 
 // Global map of commands
