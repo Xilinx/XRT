@@ -75,22 +75,22 @@ usage: xrt-runner.exe [options]
  [--script <script>] runner script, enables multi-threaded execution
  [--threads <number>] number of threads to use when running script (default: #jobs)
  [--dir <path>] directory containing artifacts (default: current dir)
- [--mode <latency|throughput>] execute only specified mode (default: all)
+ [--mode <latency|throughput|validate>] execute only specified mode (default: all)
  [--progress] show progress
- [--asap] process jobs immediately (default: wait for all jobs to initialize)
  [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'
 
 % xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]
 % xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]
 
 Note, [--threads <number>] overrides the default number, where default is the number of
-jobs in the runner script.
+jobs in the runner script.  If the script has many resource heavy jobs then using 
+`--threads` may be necessary to limit how many jobs are created simultanously.
 
 Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.
 If the runner script specifies iterations for a recipe/profile pair, then this value is
 sticky for that recipe/profile pair.
 
-Note, [--mode <latency|throughput>] filters execution sections in profile.json such
+Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such
 only specified modes are executed. If the runner script specifies a mode for a recipe/profile
 pair, then this value is sticky for that recipe/profile pair.
 ```
@@ -135,7 +135,3 @@ Each recipe/profile pair results in the creation of an xrt::runner
 object.  The runner objects are inserted into a work
 queue, and each thread executes work items
 (xrt::runner) from the work queue until the queue is empty.
-By default each thread blocks until the queue has been populated with 
-all initialized jobs.  If `[--asap]` 
-is specified when invoking xrt-runner.exe, jobs are executed as soon as
-possible.
