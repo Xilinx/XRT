@@ -279,12 +279,11 @@ hipModuleLoad(hipModule_t* module, const char* fname)
     // try creating full ELF module
     // if it throws fallback to xclbin + ELF flow
     xrt::core::hip::module_handle handle;
-    try {
+    if (xrt::core::hip::hip_module_file_is_elf(fname)) {
       handle = xrt::core::hip::create_full_elf_module(std::string{fname});
       *module = reinterpret_cast<hipModule_t>(handle);
       return;
     }
-    catch (...) { /*do nothing*/ }
 
     handle = xrt::core::hip::create_xclbin_module(std::string{fname});
     *module = reinterpret_cast<hipModule_t>(handle);
