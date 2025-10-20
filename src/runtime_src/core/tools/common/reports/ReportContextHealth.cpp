@@ -246,7 +246,7 @@ writeReport(const xrt_core::device* device,
       return generate_context_health_report(dev, context_pid_pairs, context_ids);
     };
     
-    smi_watch_mode::run_watch_mode(device, output, report_generator, "Context Health");
+    smi_watch_mode::run_watch_mode(device, output, report_generator);
     return;
   }
   
