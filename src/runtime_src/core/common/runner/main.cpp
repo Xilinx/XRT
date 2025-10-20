@@ -74,14 +74,8 @@ namespace {
 
 // Default option values
 static bool g_progress = false;     // NOLINT
-static bool g_asap = false;         // NOLINT
 static uint32_t g_iterations = 0;   // NOLINT
 static std::string g_mode = "all";  // NOLINT
-
-// Maximum number of jobs the job queue can contain
-// when running in scripted mode.
-// Change with --max-queue-size (see --help)
-static size_t g_max_queue_size = std::numeric_limits<size_t>::max(); // NOLINT
 
 constexpr double
 to_mb(size_t bytes)
@@ -157,7 +151,10 @@ touchup_profile_mt(const std::string& profile, const std::string& mode, uint32_t
   // with threaded execution
   std::ifstream istr(profile);
   auto json = json::parse(istr);
+
   json["execution"]["verbose"] = false;
+  for (auto& exec : json["executions"])
+    exec["verbose"] = false;
 
   filter_mode(json, mode);
   touchup_iterations(json, iterations);
@@ -241,15 +238,9 @@ struct job_type
   {
     m_runner.wait();
 
-    if (g_progress) {
-      auto jrpt = json::parse(get_report());
-      std::stringstream ss;
-      ss << " Elapsed time (us): " << jrpt["cpu"]["elapsed"] << "\n";
-      ss << " Average Latency (us): " << jrpt["cpu"]["latency"] << "\n";
-      ss << " Average Throughput (op/s): " << jrpt["cpu"]["throughput"] << "\n";
+    if (g_progress)
       xrt::message::logf(xrt::message::level::info, "runner",
-                         "(tid:%s) finished xrt::runner for %s:\n%s", get_tid().c_str(), m_id.c_str(), ss.str().c_str());
-    }
+                         "(tid:%s) finished xrt::runner for %s", get_tid().c_str(), m_id.c_str());
   }
 
   std::string
@@ -300,12 +291,14 @@ class job_queue
   std::condition_variable m_work_cv;
 
   std::vector<job_type> m_jobs;
+  size_t m_num_consumers = 0;
   bool m_ready = false;  // ready to return jobs
   bool m_stop = false;   // no longer accepts new jobs
 
 public:
   explicit
-  job_queue(size_t jobs) 
+  job_queue(size_t jobs, size_t threads)
+    : m_num_consumers(threads ? threads : jobs)
   {
     // Must not reallocate
     m_jobs.reserve(jobs);
@@ -315,6 +308,7 @@ public:
   // mutex and cv are non-movable, so just create new ones
   job_queue(job_queue&& other)
     : m_jobs(std::move(other.m_jobs))
+    , m_num_consumers(other.m_num_consumers)
     , m_ready(other.m_ready)
   {}
 
@@ -349,8 +343,8 @@ public:
     if (m_jobs.capacity() == m_jobs.size())
       throw std::runtime_error("job_queue::add() no room for additional jobs, bad reserve size");
 
-    // If max queue size is specified, wait until there is room
-    m_work_cv.wait(lk, [this] { return (m_jobs.size() < g_max_queue_size || m_stop); });
+    // Don't queue more jobs than number of consumers unless explicitly requested.
+    m_work_cv.wait(lk, [this] { return (m_jobs.size() < m_num_consumers || m_stop); });
 
     m_jobs.emplace_back(std::move(job));
     m_work_cv.notify_all();
@@ -448,29 +442,36 @@ struct script_runner
     return workers;
   }
 
+  static job_type
+  init_job(const xrt::device& device, const json& job, const sfs::path& root)
+  {
+    std::string id = job["id"];
+    xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
+    sfs::path recipe = root / job["recipe"];
+    auto recipe_json_string = touchup_recipe(recipe.string());
+    sfs::path profile = root / job["profile"];
+    auto iterations = job.value<uint32_t>("iterations", g_iterations);
+    auto mode = job.value<std::string>("mode", g_mode);
+    auto profile_json_string = touchup_profile_mt(profile.string(), mode, iterations);
+    sfs::path dir = root / job["dir"];
+    return {device, std::move(id), recipe_json_string, profile_json_string, dir.string()};
+  }
+
   void
   init_jobs(const xrt::device& device, const json& j, const sfs::path& root)
   {
-    if (g_asap)
-      // Allow queue to return jobs immediately when initialized
-      m_job_queue.enable();
-
-    for (const auto& [k, node] : j.items()) {
-      std::string id = node["id"];
-      xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
-      sfs::path recipe = root / node["recipe"];
-      auto recipe_json_string = touchup_recipe(recipe.string());
-      sfs::path profile = root / node["profile"];
-      auto iterations = node.value<uint32_t>("iterations", g_iterations);
-      auto mode = node.value<std::string>("mode", g_mode);
-      auto profile_json_string = touchup_profile_mt(profile.string(), mode, iterations);
-      sfs::path dir = root / node["dir"];
-      m_job_queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
-    }
-
-    // The queue is fully initialized with all jobs, if not already
-    // enabled then do so now.
+    // Allow queue to return jobs immediately when initialized
     m_job_queue.enable();
+
+    for (const auto& [k, job] : j.items()) {
+      try {
+        m_job_queue.add(init_job(device, job, root));
+      }
+      catch (const std::exception& ex) {
+        xrt::message::logf(xrt::message::level::info, "runner", "ignoring %s (%s)",
+                           job.value<std::string>("id", "noname").c_str(), ex.what());
+      }
+    }
 
     // Close the queue to indicate no more jobs will be added
     m_job_queue.close();
@@ -483,11 +484,18 @@ struct script_runner
 
 public:
   explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
-    : m_job_queue(script.value("jobs", json::object()).size())
+    : m_job_queue(script.value("jobs", json::object()).size(), threads)
     , m_workers{init_workers(threads ? threads : script.value("jobs", json::object()).size(),
                              m_job_queue, m_report)}
   {
-    init_jobs(device, script.value("jobs", json::object()), dir);
+    try {
+      init_jobs(device, script.value("jobs", json::object()), dir);
+    }
+    catch (const std::exception&) {
+      m_job_queue.close();
+      wait();
+      throw;
+    }
   }
 
   void
@@ -516,8 +524,6 @@ usage()
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--progress] show progress\n";
-  std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
-  std::cout << " [--max-queue-size <number>] maximum number of in-flight commands (default: #jobs)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
@@ -527,9 +533,6 @@ usage()
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
   std::cout << "sticky for that recipe/profile pair.\n\n";
-  std::cout << "Note, [--max-queue-size <num>] limits the number of in-flight jobs, implies --asap so\n";
-  std::cout << "that jobs can be drained to make room for more jobs.  This option is useful in script\n";
-  std::cout << "mode when memory puts a limit to how many jobs can be created simultanously.\n\n";
   std::cout << "Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such\n";
   std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
   std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
@@ -617,11 +620,6 @@ run(int argc, char* argv[])
       continue;
     }
 
-    if (arg == "--asap") {
-      g_asap = true;
-      continue;
-    }
-
     // Special handling to process --report options
     if (arg == "-r" || arg == "--report") {
       // --report
@@ -656,10 +654,6 @@ run(int argc, char* argv[])
       threads = std::stoi(arg);
     else if (cur == "-i" || cur == "--iterations")
       g_iterations = std::stoi(arg);
-    else if (cur == "--max-queue-size") {
-      g_max_queue_size = std::stoi(arg);
-      g_asap = true;
-    }
     else if (cur == "-r" || cur == "--report")
       report = arg;
     else
@@ -668,9 +662,6 @@ run(int argc, char* argv[])
 
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");
-
-  if (script.empty() && g_asap)
-    throw std::runtime_error("--asap only valid in script mode");
 
   if (script.empty() && (recipe.empty() || profile.empty()))
     throw std::runtime_error("both recipe and profile are required without a script");
