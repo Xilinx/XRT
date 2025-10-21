@@ -256,8 +256,8 @@ hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
 #else
 using hipDeviceProp_tR0600 = hipDeviceProp_t;
 
-hipError_t
-hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
+extern "C" hipError_t
+hipGetDevicePropertiesR0600(hipDeviceProp_tR0600 *props, int device)
 {
   return hipErrorNotSupported;
 }
