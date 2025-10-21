@@ -356,11 +356,11 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; memory tiles only)
-      if (graphMetrics[i].size() == 5) {
+      if (graphMetrics[i].size() > 3) {
         try {
           for (auto& e : tiles) {
             configChannel0[e] = aie::convertStringToUint8(graphMetrics[i][3]);
-            configChannel1[e] = aie::convertStringToUint8(graphMetrics[i][4]);
+            configChannel1[e] = aie::convertStringToUint8(graphMetrics[i].back());
           }
         }
         catch (...) {
@@ -398,11 +398,11 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; memory tiles only)
-      if (graphMetrics[i].size() == 5) {
+      if (graphMetrics[i].size() > 3) {
         try {
           for (auto& e : tiles) {
             configChannel0[e] = aie::convertStringToUint8(graphMetrics[i][3]);
-            configChannel1[e] = aie::convertStringToUint8(graphMetrics[i][4]);
+            configChannel1[e] = aie::convertStringToUint8(graphMetrics[i].back());
           }
         }
         catch (...) {
