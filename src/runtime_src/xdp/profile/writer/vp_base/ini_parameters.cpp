@@ -37,7 +37,7 @@ namespace xdp {
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
                  "Generation of hardware SHIM function trace");
     addParameter("device_trace",
-                 replaceCommas(xrt_core::config::get_device_trace()),
+                 xrt_core::config::get_device_trace(),
                  "Collection of data from PL monitors and added to summary and trace");
     addParameter("power_profile", xrt_core::config::get_power_profile(),
                  "Polling of power data during execution of application");
@@ -45,10 +45,10 @@ namespace xdp {
                  xrt_core::config::get_power_profile_interval_ms(),
                  "Interval for reading power data (in ms)");
     addParameter("stall_trace", 
-                  replaceCommas(xrt_core::config::get_stall_trace()),
+                  xrt_core::config::get_stall_trace(),
                  "Enables hardware generation of stalls in compute units");
     addParameter("trace_buffer_size",
-                 replaceCommas(xrt_core::config::get_trace_buffer_size()),
+                 xrt_core::config::get_trace_buffer_size(),
                  "Size of buffer to allocate for trace (memory offload only)");
     addParameter("verbosity", xrt_core::config::get_verbosity(),
                  "Verbosity level");
@@ -76,10 +76,10 @@ namespace xdp {
     addParameter("vitis_ai_profile", xrt_core::config::get_vitis_ai_profile(),
                  "Generation of Vitis AI summary and trace (Vitis AI designs only)");
     addParameter("profiling_directory", 
-                 replaceCommas(xrt_core::config::get_profiling_directory()),
+                 xrt_core::config::get_profiling_directory(),
                  "Path to the directory where all debug/profiling data is saved");
     addParameter("xdp_mode", 
-                 replaceCommas(xrt_core::config::get_xdp_mode()),
+                 xrt_core::config::get_xdp_mode(),
                  "Mode in which design is running (zocl or xdna)");
                  // AIE Profile
     addParameter("AIE_profile_settings.interval_us",
@@ -116,7 +116,7 @@ namespace xdp {
                  replaceCommas(xrt_core::config::get_aie_profile_settings_interface_tile_latency_metrics()),
                  "Metric set for profiling AI Engine interface tiles latency between different graph ports");
     addParameter("AIE_profile_settings.start_type",
-                 replaceCommas(xrt_core::config::get_aie_profile_settings_start_type()),
+                 xrt_core::config::get_aie_profile_settings_start_type(),
                  "Type of delay to use in AI Engine Profiling");
     addParameter("AIE_profile_settings.start_iteration",
                  xrt_core::config::get_aie_profile_settings_start_iteration(),
@@ -124,10 +124,10 @@ namespace xdp {
 
     // AIE Trace
     addParameter("AIE_trace_settings.start_type",
-                 replaceCommas(xrt_core::config::get_aie_trace_settings_start_type()),
+                 xrt_core::config::get_aie_trace_settings_start_type(),
                  "Type of delay to use in AI Engine trace");
     addParameter("AIE_trace_settings.start_time",
-                 replaceCommas(xrt_core::config::get_aie_trace_settings_start_time()),
+                 xrt_core::config::get_aie_trace_settings_start_time(),
                  "Start delay for AI Engine trace");
     addParameter("AIE_trace_settings.start_iteration",
                  xrt_core::config::get_aie_trace_settings_start_iteration(),
@@ -157,7 +157,7 @@ namespace xdp {
                  replaceCommas(xrt_core::config::get_aie_trace_settings_tile_based_interface_tile_metrics()),
                  "Configuration level used for interface tile trace per tile");
     addParameter("AIE_trace_settings.buffer_size",
-                 replaceCommas(xrt_core::config::get_aie_trace_settings_buffer_size()),
+                 xrt_core::config::get_aie_trace_settings_buffer_size(),
                  "Size of buffer to allocate for AI Engine trace");
     addParameter("AIE_trace_settings.periodic_offload",
                  xrt_core::config::get_aie_trace_settings_periodic_offload(),
