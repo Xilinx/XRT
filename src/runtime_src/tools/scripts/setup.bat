@@ -11,5 +11,8 @@ set XILINX_XRT=%~dp0
 
 set PATH=%XILINX_XRT%;%XILINX_XRT%\ext\bin;%PATH%
 
+set PYTHONPATH=%XILINX_XRT%\python;%PYTHONPATH%
+
 echo XILINX_XRT      : %XILINX_XRT%
 echo PATH            : %PATH%
+echo PYTHONPATH      : %PYTHONPATH%
