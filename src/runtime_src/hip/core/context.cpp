@@ -20,6 +20,37 @@ xrt_core::handle_map<context_handle, std::shared_ptr<context>> context_cache; //
 //we should override clang-tidy warning by adding NOLINT since tls_objs is non-const parameter
 thread_local hip_tls_objs tls_objs; //NOLINT
 
+// create primary context on given device if not already present
+// else increment reference count
+// TODO: this function is copied from the old hip_context.cpp, future improvement can be consider to
+// remove HIP context concept. hip context management APIs are deprecated since version 1.9.0, since
+// HIP context itself is widely used inside XRT HIP implementation, keeps the concept here for now,
+// while removing the user APIs implementation.
+static
+context_handle
+primary_ctx_retain_from_device(device_handle dev)
+{
+  auto hip_dev = device_cache.get(dev);
+  throw_invalid_device_if(!hip_dev, "Invalid device");
+
+  auto hip_ctx = hip_dev->get_pri_ctx();
+  // create primary context
+  if (!hip_ctx) {
+    hip_ctx = std::make_shared<context>(hip_dev);
+    hip_dev->set_pri_ctx(hip_ctx);
+  }
+  // ref count of primary context is incremented by pushing on to map with
+  // unqiue handle, using thread id here as primary context is unique per thread
+  auto ctx_hdl =
+      reinterpret_cast<context_handle>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+  context_cache.add(ctx_hdl, std::move(hip_ctx));
+
+  tls_objs.pri_ctx_info.active = true;
+  tls_objs.pri_ctx_info.ctx_hdl = ctx_hdl;
+  tls_objs.dev_hdl = dev;
+  return ctx_hdl;
+}
+
 // returns current context
 // if primary context is active it is current
 // else returns top of ctx stack
@@ -45,7 +76,7 @@ get_current_context()
     return ctx;
 
   // if no active ctx, create primary ctx on active device
-  auto ctx_hdl = hip_device_primary_ctx_retain(tls_objs.dev_hdl);
+  auto ctx_hdl = primary_ctx_retain_from_device(tls_objs.dev_hdl);
   return context_cache.get(ctx_hdl);
 }
 
