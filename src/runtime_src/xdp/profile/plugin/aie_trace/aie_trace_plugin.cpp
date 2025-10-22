@@ -211,9 +211,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     (db->getStaticInfo()).setIsGMIORead(deviceID, true);
   }
 
-  // Check if trace streams are available
+  // Check if trace streams are available TODO
   AIEData.metadata->setNumStreamsPLIO(
-    (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::PLIO));
+      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::PLIO));
   AIEData.metadata->setNumStreamsGMIO(
       (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::GMIO));
 
