@@ -28,6 +28,7 @@ public:
   boost::property_tree::ptree ptree;
 
   boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
+  boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*);
 
   // Constructor to initialize the test runner with a name and description
   TestTemporalSharingOvd()

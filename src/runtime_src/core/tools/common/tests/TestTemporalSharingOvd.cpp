@@ -6,167 +6,99 @@
 #include "TestTemporalSharingOvd.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
-#include "xrt/xrt_bo.h"
-#include "xrt/xrt_device.h"
-#include "xrt/xrt_hw_context.h"
-#include "xrt/xrt_kernel.h"
+#include "core/common/runner/runner.h"
+#include "core/common/json/nlohmann/json.hpp"
+#include "core/common/archive.h"
 #include <thread>
 
+using json = nlohmann::json;
 namespace XBU = XBUtilities;
 
-static constexpr size_t num_kernel_iterations = 30;
-
-// To saturate the hardware. Linux fails to create more than 25 queues due to 
-// instruction buffer space limit
-static constexpr size_t queue_len = 25;
-
-// Method to run the test
-// Parameters:
-// - dev: Shared pointer to the device
-// Returns:
-// - Property tree containing the test results
-boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>& dev)
+boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>&)
 {
-  // Clear any existing "xclbin" entry in the property tree
   ptree.erase("xclbin");
+  return ptree;
+}
 
-  // Query the xclbin name from the device
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::mobilenet_elf);
-  // Find the platform file path for the xclbin
-  auto xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptree);
-
-  // If the xclbin file does not exist, return the property tree
-  if (!std::filesystem::exists(xclbin_path))
-    return ptree;
-
-  // Create an xclbin object
-  xrt::xclbin xclbin;
-  try {
-    // Load the xclbin file
-    xclbin = xrt::xclbin(xclbin_path);
-  }
-  catch (const std::runtime_error& ex) {
-    // Log any runtime error and set the status to failed
-    XBValidateUtils::logger(ptree, "Error", ex.what());
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-
-  // Determine The DPU Kernel Name
-  auto kernelName = XBValidateUtils::get_kernel_name(xclbin, ptree);
-
-  // Create a working device from the provided device
-  auto working_dev = xrt::device(dev);
-  working_dev.register_xclbin(xclbin);
-
-  // Lambda function to run a test case. This will be sent to individual thread to be run.
-  auto runTestcase = [&](TestCase& test) {
-    try {
-      test.run();
-    } catch (const std::exception& ex) {
-      XBValidateUtils::logger(ptree, "Error", ex.what());
-      ptree.put("status", XBValidateUtils::test_token_failed);
-      return;
-    }
-  };
-
-  const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::mobilenet);
-  auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptree);
-
-  if (!std::filesystem::exists(elf_path)) {
-    XBValidateUtils::logger(ptree, "Error", "ELF file not found");
-    ptree.put("status", XBValidateUtils::test_token_failed);
+boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  
+  if (archive == nullptr) {
+    XBValidateUtils::logger(ptree, "Info", "No archive provided, falling back to standard method");
+    return run(dev);
   }
   
-  const auto ifm_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_ifm);
-  auto ifm_file = XBValidateUtils::findPlatformFile(ifm_name, ptree);
-
-  if (!std::filesystem::exists(ifm_file))
-  {
-    XBValidateUtils::logger(ptree, "Error", "Input feature map file not found");
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-
-  const auto param_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::mobilenet_param); 
-  auto param_file = XBValidateUtils::findPlatformFile(param_name, ptree);
-
-  const auto buffer_sizes_name = xrt_core::device_query<xrt_core::query::mobilenet>(dev, xrt_core::query::mobilenet::type::buffer_sizes);
-  auto buffer_sizes_file = XBValidateUtils::findPlatformFile(buffer_sizes_name, ptree);
-
-  if (!std::filesystem::exists(param_file))
-  {
-    XBValidateUtils::logger(ptree, "Error", "Parameter file not found");
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
-  }
-
-  /* Run 1 */
-  std::vector<std::thread> threads;
-  std::vector<TestCase> testcases;
-
-  // Create two test cases and add them to the vector
-  TestParams params(xclbin, working_dev, kernelName, elf_path, ifm_file, param_file, buffer_sizes_file, queue_len, num_kernel_iterations);
-  testcases.emplace_back(params);
-  testcases.emplace_back(params);
-  testcases.emplace_back(params);
-
-  for (auto& testcase : testcases) {
-    try{
-      testcase.initialize();
-    } catch (const std::exception& ex) {
-      XBValidateUtils::logger(ptree, "Error", ex.what());
-      ptree.put("status", XBValidateUtils::test_token_failed);
-      return ptree;
+  try {
+    std::string recipe_data = archive->data("recipe_temporal_sharing_ovd.json");
+    std::string profile_data = archive->data("profile_temporal_sharing_ovd.json"); 
+    
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
+      "validate.xclbin", 
+      "nop.elf" 
+    });
+    
+    // Run parallel temporal sharing test (2 contexts)
+    std::vector<std::thread> threads;
+    std::vector<std::unique_ptr<xrt_core::runner>> runners;
+    std::vector<json> reports;
+    
+    // Create 2 runners for parallel execution
+    for (int i = 0; i < 2; i++) {
+      runners.push_back(std::make_unique<xrt_core::runner>(xrt::device(dev), recipe_data, profile_data, artifacts_repo));
     }
+    
+    // Execute both runners in parallel threads
+    reports.resize(2);
+    for (int i = 0; i < 2; i++) {
+      threads.emplace_back([&runners, &reports, i]() {
+        runners[i]->execute();
+        runners[i]->wait();
+        reports[i] = json::parse(runners[i]->get_report());
+      });
+    }
+    
+    // Wait for both to complete
+    for (auto& t : threads) {
+      t.join();
+    }
+    
+    // Extract elapsed time from parallel execution reports
+    double latencyShared = 0.0;
+    for (const auto& report : reports) {
+      latencyShared = std::max(latencyShared, report["cpu"]["elapsed"].get<double>());
+    }
+    
+    threads.clear();
+    runners.clear();
+    
+    // Run sequential test (1 context)
+    xrt_core::runner sequential_runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
+    sequential_runner.execute();
+    sequential_runner.wait();
+    
+    auto sequential_report = json::parse(sequential_runner.get_report());
+    
+    // Extract elapsed time from sequential execution report
+    double latencySingle = 0.0;
+    latencySingle = sequential_report["cpu"]["elapsed"].get<double>();
+    
+    // Calculate overhead using the same formula as original test
+    int iterations = sequential_report["iterations"];
+    int runs = sequential_report["resources"]["runs"];
+    auto overhead = (latencyShared - 2 * latencySingle) / (iterations * runs);
+    
+    // Log results
+    if(XBU::getVerbose()){
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context duration: %.1f us") % latencySingle));
+      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared multiple context duration: %.1f us") % latencyShared));
+    }
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead archive: %.1f us") % (overhead > 0.0 ? overhead : 0.0)));
+    ptree.put("status", XBValidateUtils::test_token_passed);
   }
-
-  // Measure the latency for running the test cases in parallel
-  auto start = std::chrono::high_resolution_clock::now(); 
-
-  // Create two threads to run the test cases on ctx 1 and ctx 3 
-  // so they do temporal sharing on both wndws and lnx
-  threads.emplace_back(runTestcase, std::ref(testcases[0]));
-  threads.emplace_back(runTestcase, std::ref(testcases[2]));
-
-  for (uint32_t i = 0; i < threads.size(); i++) {
-    threads[i].join();
-  }
-  auto end = std::chrono::high_resolution_clock::now(); 
-  auto latencyShared = std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(end-start).count();
-
-  //Clearing so that the hardware contexts get destroyed and the Run 2 is start afresh
-  testcases.clear();
-  /* End of Run 1 */
-
-  /* Run 2 */
-  // Create a single test case and run it in a single thread
-  TestCase singleHardwareCtxTest(params);
-  try{
-    singleHardwareCtxTest.initialize();
-  } 
-  catch (const std::exception& ex) {
-    XBValidateUtils::logger(ptree, "Error", ex.what());
+  catch(const std::exception& e) {
+    XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
-    return ptree;
   }
-  // Measure the latency for running the test case in a single thread
-  start = std::chrono::high_resolution_clock::now(); 
-  std::thread thr(runTestcase, std::ref(singleHardwareCtxTest));
-
-  thr.join();
-  end = std::chrono::high_resolution_clock::now(); 
-  auto latencySingle =  std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(end-start).count(); 
-  /* End of Run 2 */
-
-  // Log the latencies and the overhead
-  if(XBU::getVerbose()){
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Single context duration: %.1f us") % (latencySingle)));
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared multiple context duration: %.1f us") % (latencyShared)));
-  }
-  auto overhead =  (latencyShared - (2 * latencySingle))/ (num_kernel_iterations * queue_len);
-  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f us") % (overhead > 0.0 ? overhead : 0.0)));
-  ptree.put("status", XBValidateUtils::test_token_passed);
-
   return ptree;
 }
