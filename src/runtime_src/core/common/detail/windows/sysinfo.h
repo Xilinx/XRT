@@ -231,4 +231,21 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("processor", value);
 }
 
+bool
+is_advanced()
+{
+  DWORD value = 0;
+  DWORD bufferSize = sizeof(value);
+  DWORD valueType;
+  LONG result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\IpuMcdmDriver", "XRTSMIAdvanced", RRF_RT_DWORD, &valueType, value, &bufferSize);
+  if ((result == ERROR_SUCCESS) && (valueType == REG_DWORD) && (value == 1))
+    return true;
+
+  LONG result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\Npu2McdmDriver", "XRTSMIAdvanced", RRF_RT_DWORD, &valueType, value, &bufferSize);
+  if ((result == ERROR_SUCCESS) && (valueType == REG_DWORD) && (value == 1))
+    return true;
+
+  return false;
+}
+
 } //xrt_core::sysinfo
