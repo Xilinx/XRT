@@ -1707,13 +1707,19 @@ compose_internal_bo_flags(use_type type)
   // for debug/trace/log use cases.
   // Sanity check the use_type
   switch (type) {
-  case use_type::debug :
+  case use_type::debug:
+  case use_type::instruction:
+  case use_type::preemption:
+  case use_type::pdi:
+  case use_type::scratch_pad:
     // client use case, create buffer in sram
     flags.flags = XRT_BO_FLAGS_CACHEABLE;
     break;
-  case use_type::dtrace :
-  case use_type::uc_debug :
-  case use_type::log :
+  case use_type::ctrlpkt:
+  case use_type::dtrace:
+  case use_type::host_only:
+  case use_type::uc_debug:
+  case use_type::log:
     flags.flags = XRT_BO_FLAGS_HOST_ONLY;
     break;
   default:
