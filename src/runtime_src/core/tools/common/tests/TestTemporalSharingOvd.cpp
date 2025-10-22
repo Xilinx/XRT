@@ -16,7 +16,7 @@ namespace XBU = XBUtilities;
 
 boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>&)
 {
-  ptree.erase("xclbin");
+  boost::property_tree::ptree ptree = get_test_header();
   return ptree;
 }
 
