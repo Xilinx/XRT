@@ -147,7 +147,13 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
-  std::map<std::string, xrt::module> m_module_map; // map b/w kernel name and module
+
+  // map b/w kernel name and Elf
+  // Stores the Elf corresponding to each kernel name it contains.
+  // This map is used for lookup when creating xrt::kernel object
+  // using kernel name.
+  std::map<std::string, xrt::elf> m_elf_map;
+
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
   uint32_t m_partition_size = 0;
@@ -164,20 +170,24 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   bool m_elf_flow = false;
 
   void
-  create_module_map(const xrt::elf& elf)
+  create_elf_map(const xrt::elf& elf)
   {
+    // creating xrt::module object from elf to get kernels info
+    // At present ELF is parsed when we create xrt::module object
+    // TODO : remove module creation once we move all parsing logic
+    // to xrt::elf or xrt::aie::program
     xrt::module module_obj{elf};
 
-    // Store the module in the map against all available kernels in the ELF
-    // This will be useful for module lookup when creating xrt::kernel object
+    // Store the ELF in the map against all available kernels in the it.
+    // This will be useful for ELF lookup when creating xrt::kernel object
     // using kernel name
     const auto& kernels_info = xrt_core::module_int::get_kernels_info(module_obj);
     for (const auto& k_info : kernels_info) {
       auto kernel_name = k_info.props.name;
-      if (m_module_map.find(kernel_name) != m_module_map.end())
+      if (m_elf_map.find(kernel_name) != m_elf_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
-      m_module_map.emplace(std::move(kernel_name), module_obj);
+      m_elf_map.emplace(std::move(kernel_name), elf);
     }
   }
 
@@ -264,7 +274,7 @@ public:
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
     , m_elf_flow{true}
   {
-    create_module_map(elf);
+    create_elf_map(elf);
   }
 
   std::shared_ptr<hw_context_impl>
@@ -312,19 +322,19 @@ public:
     if (!m_hdl) {
       m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
       m_partition_size = part_size;
-      create_module_map(elf);
+      create_elf_map(elf);
       m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
       return;
     }
 
-    // add module only if partition size matches existing configuration
+    // add ELF only if partition size matches existing configuration
     if (m_partition_size != part_size)
       throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-    // Add kernels available in ELF to module map
+    // Add kernels available in ELF to elf map
     // This function throws if kernel with same name is already present
-    create_module_map(elf);
+    create_elf_map(elf);
   }
 
   void
@@ -397,8 +407,8 @@ public:
   xrt::module
   get_module(const std::string& kname) const
   {
-    if (auto itr = m_module_map.find(kname); itr != m_module_map.end())
-      return itr->second;
+    if (auto itr = m_elf_map.find(kname); itr != m_elf_map.end())
+      return xrt::module{itr->second}; // create module from the ELF that has this kernel
 
     throw std::runtime_error("no module found with given kernel name in ctx");
   }
