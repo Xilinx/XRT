@@ -180,7 +180,7 @@ hip_device_get_attribute(int* pi, hipDeviceAttribute_t attr, int device)
       *pi = prop.pciDomainID;
       break;
     default:
-      throw std::runtime_error("unsupported attribute type");
+      throw_hip_error(hipErrorInvalidValue,"unsupported attribute type");
   }
 }
 
