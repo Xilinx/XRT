@@ -165,27 +165,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     return;
   }
   AIEData.valid = true; // initialize struct
-  
-  // Check if trace streams are available TODO
-  AIEData.metadata->setNumStreamsPLIO(
-      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::PLIO));
-  AIEData.metadata->setNumStreamsGMIO(
-      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::GMIO));
-  
-  uint64_t numStreamsPLIO = AIEData.metadata->getNumStreamsPLIO();
-  uint64_t numStreamsGMIO = AIEData.metadata->getNumStreamsGMIO();
-  bool isPLIO = (numStreamsPLIO > 0) ? true : false;
-  bool isGMIO = (numStreamsGMIO > 0) ? true : false;
-  
-  // Check if we've already configured a PLIO partition and current partition also has PLIO
-  // If so, skip this entire partition. GMIO-only partitions are still allowed. This is applicable just for register xclbin flow.
-  if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE && isPLIO && configuredOnePlioPartition) {
-    xrt_core::message::send(severity_level::warning, "XRT",
-      "AIE Trace: PLIO offload is not supported on multiple partitions at once. "
-      "A previous PLIO partition has already been configured. Skipping current PLIO partition.");
-    AIEData.valid = false;
-    return;
-  }
 
   // If there are tiles configured for this xclbin, then we have configured the first matching xclbin and will not configure any upcoming ones
   if ((xrt_core::config::get_aie_trace_settings_config_one_partition()) && !(AIEData.metadata->configMetricsEmpty()))
@@ -230,6 +209,30 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
     }
 
     (db->getStaticInfo()).setIsGMIORead(deviceID, true);
+  }
+
+  // Check if trace streams are available
+  AIEData.metadata->setNumStreamsPLIO(
+    (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::PLIO));
+  AIEData.metadata->setNumStreamsGMIO(
+      (db->getStaticInfo()).getNumAIETraceStream(deviceID, io_type::GMIO));
+
+  uint64_t numStreamsPLIO = AIEData.metadata->getNumStreamsPLIO();
+  uint64_t numStreamsGMIO = AIEData.metadata->getNumStreamsGMIO();
+  bool isPLIO = (numStreamsPLIO > 0) ? true : false;
+  bool isGMIO = (numStreamsGMIO > 0) ? true : false;
+
+  // Check if we've already configured a PLIO partition and current partition also has PLIO
+  // If so, skip this entire partition. GMIO-only partitions are still allowed.
+  // This is applicable only for register xclbin flow.
+  if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE &&
+          isPLIO && !isGMIO && configuredOnePlioPartition) {
+    xrt_core::message::send(severity_level::warning, "XRT",
+      "AIE Trace: PLIO offload is not supported on multiple partitions at once. "
+      "A previous PLIO partition has already been configured. "
+      "Skipping current PLIO partition.");
+    AIEData.valid = false;
+    return;
   }
 
   if ((AIEData.metadata->getNumStreamsPLIO() == 0) && 
