@@ -55,8 +55,9 @@
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
 #endif
 
-namespace
-{
+namespace {
+
+namespace xbi = xrt_core::bo_int;
 
 // Control code is padded to page size, where page size is
 // 0 if no padding is required.   The page size should be
@@ -2192,7 +2193,7 @@ class module_sram : public module_impl
       throw std::runtime_error("Invalid instruction buffer size");
 
     // create bo combined size of all ctrlcodes
-    m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_instr_bo = xbi::create_bo(m_hwctx, sz, xbi::use_type::instruction);
 
     // copy instruction into bo
     fill_bo_with_data(m_instr_bo, instr_buf, false /*don't sync*/);
@@ -2213,10 +2214,10 @@ class module_sram : public module_impl
     auto preempt_restore_data_size = preempt_restore_data.size();
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
-      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      m_preempt_save_bo = xbi::create_bo(m_hwctx, preempt_save_data_size, xbi::use_type::preemption);
       fill_bo_with_data(m_preempt_save_bo, preempt_save_data, false);
 
-      m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      m_preempt_restore_bo = xbi::create_bo(m_hwctx, preempt_restore_data_size, xbi::use_type::preemption);
       fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data, false);
 
       if (is_dump_preemption_codes()) {
@@ -2262,7 +2263,7 @@ class module_sram : public module_impl
     try {
       auto size = m_parent->get_ctrl_scratch_pad_mem_size();
       if (size > 0) {
-        m_ctrl_scratch_pad_mem = xrt::bo{ m_hwctx, size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+        m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, size, xbi::use_type::scratch_pad);
         patch_instr(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem,
                     xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
       }
@@ -2276,7 +2277,7 @@ class module_sram : public module_impl
       if (!pdi_bo) {
         // pdi_bo doesn't exist create it
         const auto& pdi_data = parent->get_pdi(symbol);
-        pdi_bo = xrt::bo{ m_hwctx, pdi_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
+        pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
         fill_bo_with_data(pdi_bo, pdi_data);
       }
       // patch instr buffer with pdi address
@@ -2328,7 +2329,7 @@ class module_sram : public module_impl
     const auto& ctrlpkt_pm_info = parent->get_ctrlpkt_pm_bufs();
 
     for (const auto& [key, buf] : ctrlpkt_pm_info) {
-      m_ctrlpkt_pm_bos[key] = xrt::ext::bo{ m_hwctx, buf.size() };
+      m_ctrlpkt_pm_bos[key] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
       fill_bo_with_data(m_ctrlpkt_pm_bos[key], buf);
     }
   }
@@ -2344,7 +2345,7 @@ class module_sram : public module_impl
 
     // Create ctrlpkt bo's for all ctrlpkt sections
     for (const auto& [name, buf] : ctrlpkt_map) {
-      m_ctrlpkt_bos[name] = xrt::ext::bo{ m_hwctx, buf.size() };
+      m_ctrlpkt_bos[name] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
       fill_bo_with_data(m_ctrlpkt_bos[name], buf);
     }
 
@@ -2375,7 +2376,7 @@ class module_sram : public module_impl
       return;
     }
 
-    m_buffer = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_buffer = xbi::create_bo(m_hwctx, sz, xbi::use_type::instruction);
 
     fill_instruction_buffer(data);
   }
@@ -2718,9 +2719,7 @@ class module_sram : public module_impl
 	total_size += static_cast<size_t>(entry >> shift32);
       }
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
-      m_dtrace.ctrl_bo = xrt_core::bo_int::create_bo(m_hwctx,
-                                                     total_size * sizeof(uint32_t),
-                                                     xrt_core::bo_int::use_type::dtrace);
+      m_dtrace.ctrl_bo = xbi::create_bo(m_hwctx, total_size * sizeof(uint32_t), xbi::use_type::dtrace);
       // fill data by calling dtrace library API
       populate_dtrace_buffer(m_dtrace.ctrl_bo.map<uint32_t*>(), m_dtrace.ctrl_bo.address());
 

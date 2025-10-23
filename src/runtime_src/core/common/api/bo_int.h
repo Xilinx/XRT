@@ -24,13 +24,18 @@ get_offset(const xrt::bo& bo);
 // enum for different buffer use flags
 // This is for internal use only
 enum class use_type {
-  normal = XRT_BO_USE_NORMAL, // Normal usage
-  debug = XRT_BO_USE_DEBUG, // For debug data
-  kmd = XRT_BO_USE_KMD, // Shared with kernel mode driver
-  dtrace = XRT_BO_USE_DTRACE, // For dynamic trace data
-  log = XRT_BO_USE_LOG, // For logging info
-  debug_queue = XRT_BO_USE_DEBUG_QUEUE, // For debug queue data
-  uc_debug = XRT_BO_USE_UC_DEBUG // For microblaze debug data
+  debug       = XRT_BO_USE_DEBUG,       // debug data
+  kmd         = XRT_BO_USE_KMD,         // shared with kernel mode driver
+  dtrace      = XRT_BO_USE_DTRACE,      // dynamic trace data
+  log         = XRT_BO_USE_LOG,         // logging info
+  debug_queue = XRT_BO_USE_DEBUG_QUEUE, // debug queue data
+  uc_debug    = XRT_BO_USE_UC_DEBUG,    // microblaze debug data
+  host_only   = XRT_BO_USE_HOST_ONLY,   // system memory buffer
+  instruction = XRT_BO_USE_INSTRUCTION, // instruction (instructon buffer)
+  preemption  = XRT_BO_USE_PREEMPTION,  // preemption data
+  scratch_pad = XRT_BO_USE_SCRATCH_PAD, // scratch pad data
+  pdi         = XRT_BO_USE_PDI,         // PDI data
+  ctrlpkt     = XRT_BO_USE_CTRLPKT      // control packet
 };
 
 // create_bo() - Create a buffer object within a device for specific use case
