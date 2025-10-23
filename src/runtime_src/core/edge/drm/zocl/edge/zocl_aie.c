@@ -606,6 +606,12 @@ zocl_aie_reset(struct drm_zocl_dev *zdev, void *data, struct drm_file *filp)
 	struct drm_zocl_slot *slot = NULL;
 	struct kds_client *client = filp->driver_priv;
 	slot = get_slot(zdev, client, args->hw_ctx_id);
+        
+        /* For Reset userspace will free fd again.
+         * This fix is required to avaoid CR-1243486 issue */
+        if (slot->aie)
+                --slot->aie->fd_cnt;
+
 	return zocl_aie_slot_reset(slot);
 }
 
