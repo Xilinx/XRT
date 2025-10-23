@@ -55,12 +55,11 @@ namespace {
     }
   }
 
-  bool isHwEmu()
+  static bool is_hw_emulation()
   {
-    const char* envVar = std::getenv("XCL_EMULATION_MODE");
-    if (!envVar) return false;
-    if (std::strcmp(envVar, "hw_emu") == 0) return true;
-    return false;
+    static auto xem = std::getenv("XCL_EMULATION_MODE");
+    static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
+    return hwem;
   }
 } // end anonymous namespace
 
@@ -676,7 +675,7 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
-  if (!isHwEmu()) {
+  if (!is_hw_emulation()) {
     load_once_and_update(
              []() {
               return ((xrt_core::config::get_device_trace() != "off") ||
