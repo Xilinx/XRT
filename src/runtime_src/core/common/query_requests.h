@@ -348,7 +348,9 @@ enum class key_type
   noop,
 
   xocl_errors_ex,
-  xocl_ex_error_code2string
+  xocl_ex_error_code2string,
+
+  aie_coredump
 };
 
 struct pcie_vendor : request
@@ -4370,6 +4372,16 @@ struct read_trace_data : request
   // Get sub device sysfs path
   using result_type = std::vector<uint32_t>; // get value type
   static const key_type key = key_type::read_trace_data;
+
+  virtual std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
+// Used for getting AIE coredump of all tiles within a ctx
+struct aie_coredump : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_coredump;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
