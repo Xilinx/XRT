@@ -7,6 +7,7 @@
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
 #include "core/common/message.h"
+#include <cstring>
 #include <functional>
 #include <sstream>
 
@@ -52,6 +53,14 @@ namespace {
                                 msg.str());
       }
     }
+  }
+
+  bool isHwEmu()
+  {
+    const char* envVar = std::getenv("XCL_EMULATION_MODE");
+    if (!envVar) return false;
+    if (std::strcmp(envVar, "hw_emu") == 0) return true;
+    return false;
   }
 } // end anonymous namespace
 
@@ -667,18 +676,19 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
-  load_once_and_update(
-           []() {
-            return ((xrt_core::config::get_device_trace() != "off") ||
-                    (xrt_core::config::get_device_counters()));
-           },
-           xrt_core::xdp::hal::device_offload::load,
-           xrt_core::xdp::hal::device_offload::update_device,
-           "Failed to load HAL PL trace plugin. Caught exception ",
-           "Failed to setup for HAL PL trace. Caught exception ",
-           handle,
-           hw_context_flow);
-
+  if (!isHwEmu()) {
+    load_once_and_update(
+             []() {
+              return ((xrt_core::config::get_device_trace() != "off") ||
+                      (xrt_core::config::get_device_counters()));
+             },
+             xrt_core::xdp::hal::device_offload::load,
+             xrt_core::xdp::hal::device_offload::update_device,
+             "Failed to load HAL PL trace plugin. Caught exception ",
+             "Failed to setup for HAL PL trace. Caught exception ",
+             handle,
+             hw_context_flow);
+  }
 
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);
