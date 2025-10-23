@@ -30,7 +30,7 @@ enum class use_type {
   log         = XRT_BO_USE_LOG,         // logging info
   debug_queue = XRT_BO_USE_DEBUG_QUEUE, // debug queue data
   uc_debug    = XRT_BO_USE_UC_DEBUG,    // microblaze debug data
-  host_only   = XRT_BO_USE_HOST_ONLY,   // instruction (instructon buffer)
+  host_only   = XRT_BO_USE_HOST_ONLY,   // system memory buffer
   instruction = XRT_BO_USE_INSTRUCTION, // instruction (instructon buffer)
   preemption  = XRT_BO_USE_PREEMPTION,  // preemption data
   scratch_pad = XRT_BO_USE_SCRATCH_PAD, // scratch pad data
