@@ -25,16 +25,16 @@
 // Class representing the TestSpatialSharingOvd test
 class TestTemporalSharingOvd : public TestRunner {
 public:
-  boost::property_tree::ptree ptree;
-
   boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
+  boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, 
+                                  const xrt_core::archive*) override;
 
   // Constructor to initialize the test runner with a name and description
   TestTemporalSharingOvd()
   //For the time, the driver mandates even 4 column hardware contexts to 
   //Occupy all 8 columns. Thus the logic for spatial sharing is implementing temporal sharing.
   //This should be renamed back once the MCDM driver switches to spatial sharing.
-    : TestRunner("temporal-sharing-overhead", "Run Temporal Sharing Overhead Test"), ptree(get_test_header()){}
+    : TestRunner("temporal-sharing-overhead", "Run Temporal Sharing Overhead Test"){}
 };
 
 #endif

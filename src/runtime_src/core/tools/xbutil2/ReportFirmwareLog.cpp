@@ -114,8 +114,8 @@ writeReport(const xrt_core::device* device,
 
   if (std::find(elements_filter.begin(), elements_filter.end(), "status") != elements_filter.end()) {
     auto status = xrt_core::device_query<xrt_core::query::firmware_log_state>(device);
-    output << "Firmware log status: "<<(status.action == 1 ? "enabled" : "disabled");
-    output << "Firmware log level: "<< status.log_level;
+    output << "Firmware log status: "<<(status.action == 1 ? "enabled" : "disabled") <<std::endl;
+    output << "Firmware log level: "<< status.log_level << std::endl;
     return;
   }
   
