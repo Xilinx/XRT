@@ -121,8 +121,7 @@ public:
 
 private:
   [[nodiscard]] bool is_recorded_no_lock() const;
-  void launch_chain_of_commands();
-  bool check_dependencies_update_state(bool wait_for_dependencies);
+  bool check_and_launch_chain(bool wait_for_dependencies);
 };
 
 class kernel_start : public command
