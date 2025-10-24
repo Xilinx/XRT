@@ -177,6 +177,15 @@ public:
   {
     return m_func_name;
   }
+
+  const xrt::hw_context&
+  get_hw_ctx() const
+  {
+    if (m_full_elf_module)
+      return m_full_elf_module->get_hw_context();
+
+    return m_elf_module->get_xclbin_module()->get_hw_context();
+  }
 };
 
 extern xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache;

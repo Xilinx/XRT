@@ -51,3 +51,9 @@ EXPORTS
   hipMemsetD8Async
   hipMemcpyAsync
   hipMemPrefetchAsync
+  hipGraphCreate
+  hipGraphAddKernelNode
+  hipGraphInstantiate
+  hipGraphLaunch
+  hipGraphExecDestroy
+  hipGraphDestroy
