@@ -148,7 +148,10 @@ struct xcl_bo_flags
  * hold instructions for firmware.
  *
  * XRT_BO_USE_SCRATCH_PAD indicates that the buffer will be used as
- * scratch pad memory for firmware.
+ * scratch pad memory to store L2 memory at time of preemption.
+ * 
+ * XRT_BO_USE_CTRL_SCRATCH_PAD indicates that the buffer will be used
+ * to store/retrieve control state information during model execution.
  *
  * XRT_BO_USE_PDI indicates that the buffer will be used to hold
  * PDI data for firmware.
@@ -161,19 +164,20 @@ struct xcl_bo_flags
 // constexpr and using NOLINT block to supress clng-tidy warnings
 
 // NOLINTBEGIN
-#define XRT_BO_USE_UNUSED      0
-#define XRT_BO_USE_DEBUG       1
-#define XRT_BO_USE_KMD         2
-#define XRT_BO_USE_DTRACE      3
-#define XRT_BO_USE_LOG         4
-#define XRT_BO_USE_DEBUG_QUEUE 5
-#define XRT_BO_USE_UC_DEBUG    6
-#define XRT_BO_USE_PREEMPTION  7
-#define XRT_BO_USE_HOST_ONLY   8
-#define XRT_BO_USE_INSTRUCTION 9
-#define XRT_BO_USE_SCRATCH_PAD 10
-#define XRT_BO_USE_PDI         11
-#define XRT_BO_USE_CTRLPKT     12
+#define XRT_BO_USE_UNUSED           0
+#define XRT_BO_USE_DEBUG            1
+#define XRT_BO_USE_KMD              2
+#define XRT_BO_USE_DTRACE           3
+#define XRT_BO_USE_LOG              4
+#define XRT_BO_USE_DEBUG_QUEUE      5
+#define XRT_BO_USE_UC_DEBUG         6
+#define XRT_BO_USE_PREEMPTION       7
+#define XRT_BO_USE_HOST_ONLY        8
+#define XRT_BO_USE_INSTRUCTION      9
+#define XRT_BO_USE_SCRATCH_PAD      10
+#define XRT_BO_USE_CTRL_SCRATCH_PAD 11
+#define XRT_BO_USE_PDI              12
+#define XRT_BO_USE_CTRLPKT          13
 // NOLINTEND
 
 /**
