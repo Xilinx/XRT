@@ -319,7 +319,15 @@ namespace xdp::aie::profile {
           ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
           : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
       XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
-    }                                    
+    }
+#ifndef XDP_CLIENT_BUILD
+    else if (event == XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL) {
+      uint32_t bitMask = aie::isInputSet(type, metricSet)
+          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
+          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
+    }
+#endif
   }
 
   /****************************************************************************
@@ -371,15 +379,29 @@ namespace xdp::aie::profile {
     // since DMA-related events are not defined in those cases
     if ((subtype == io_type::PLIO) || (hwGen == 1)) {
       std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,              XAIE_EVENT_PORT_STALLED_0_PL);
+        XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,                  XAIE_EVENT_PORT_STALLED_0_PL);
       std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_PORT_STALLED_0_PL);
+        XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,      XAIE_EVENT_PORT_STALLED_0_PL);
       std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_PORT_IDLE_0_PL);
+        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,        XAIE_EVENT_PORT_IDLE_0_PL);
       std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_PORT_STALLED_0_PL);
+        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,      XAIE_EVENT_PORT_STALLED_0_PL);
       std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_PORT_IDLE_0_PL);
+        XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,             XAIE_EVENT_PORT_IDLE_0_PL);
+
+      // Applicable only for VE2 ZOCL and XDNA builds
+#ifndef XDP_CLIENT_BUILD
+      std::replace(events.begin(), events.end(),
+        XAIE_EVENT_NOC0_GROUP_DMA_ACTIVITY_PL,             XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(),
+        XAIE_EVENT_NOC0_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(),
+        XAIE_EVENT_NOC0_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_PORT_IDLE_0_PL);
+      std::replace(events.begin(), events.end(),
+        XAIE_EVENT_NOC0_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(),
+        XAIE_EVENT_NOC0_DMA_S2MM_0_STALLED_LOCK_PL,        XAIE_EVENT_PORT_IDLE_0_PL);
+#endif
     }
 
     // Modify events based on channel number
