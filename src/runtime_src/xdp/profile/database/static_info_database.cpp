@@ -41,6 +41,8 @@
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/common/api/hw_context_int.h"
+// !!! TODO: do we need this #include "xrt/xrt_hw_context.h"
+#include "core/common/api/xrt_hw_context.cpp"
 
 constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
 constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
@@ -1604,6 +1606,34 @@ namespace xdp {
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
 
+  void
+  VPStaticDatabase::
+  updateDeviceFromCoreDeviceHwCtxFlow(uint64_t deviceId,
+                                      std::shared_ptr<xrt_core::device> device,
+                                      void* hwCtxImpl,
+                                      bool hw_context_flow,
+                                      bool readAIEMetadata,
+                                      std::unique_ptr<xdp::Device> xdpDevice)
+  {
+    // TODO:: Getting xclbin_uuid should be unified for both Client and VE2.
+    if (isClient() || !(hw_context_flow)) {
+      updateDeviceFromCoreDevice(deviceId, device, readAIEMetadata, std::move(xdpDevice));
+      return;
+    } 
+
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    xrt::uuid new_xclbin_uuid = context.get_xclbin_uuid();
+
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+      return;
+
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+    updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
+  }
+
   xrt::uuid VPStaticDatabase::getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device)
   {
     if (!device) {
@@ -1635,6 +1665,26 @@ namespace xdp {
     }
   }
 
+  xrt::uuid VPStaticDatabase::getXclbinUuidOnDeviceHwCtxFlow(void* hwCtxImpl)
+  {
+    auto device = util::convertToCoreDevice(hwCtxImpl, true);
+    if (!device) {
+      throw std::runtime_error("Invalid device handle - device is null");
+    }
+    if(isClient()) {
+      return device->get_xclbin_uuid();
+    }
+    else if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
+      // This has to be Alveo hardware emulation, which doesn't support
+      // the xclbin_slots query.
+      return device->get_xclbin_uuid();
+    }
+    else {
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+      return context.get_xclbin_uuid();
+    }
+  }
+
   uint64_t VPStaticDatabase::getHwCtxImplUid(void* hwCtxImpl)
   {
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
@@ -1656,7 +1706,7 @@ namespace xdp {
     }
 
     auto device = util::convertToCoreDevice(hwCtxImpl, true);
-    xrt::uuid loadedXclbinUuid   = getXclbinUuidOnDevice(device);
+    xrt::uuid loadedXclbinUuid   = getXclbinUuidOnDeviceHwCtxFlow(hwCtxImpl);
     xrt::xclbin loadedXclbin     = device->get_xclbin(loadedXclbinUuid);
     XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
 
@@ -1697,7 +1747,11 @@ namespace xdp {
     if (!device)
       return false;
 
-    xrt::uuid loadedXclbinUuid = getXclbinUuidOnDevice(device);
+    xrt::uuid loadedXclbinUuid;
+    if (hw_context_flow)
+      loadedXclbinUuid = getXclbinUuidOnDeviceHwCtxFlow(handle);
+    else
+      loadedXclbinUuid = getXclbinUuidOnDevice(device);
     xrt::xclbin loadedXclbin = device->get_xclbin(loadedXclbinUuid);
     XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
 
