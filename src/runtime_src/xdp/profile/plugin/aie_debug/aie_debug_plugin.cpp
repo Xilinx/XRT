@@ -137,7 +137,6 @@ namespace xdp {
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #elif defined(XDP_VE2_BUILD)
-      // TODO: debug plugin is not supported anymore so not changing this to updateDeviceFromCoreDeviceHwCtxFlow
       (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
       std::string deviceName = util::getDeviceName(handle,true);
       if (deviceName != "")

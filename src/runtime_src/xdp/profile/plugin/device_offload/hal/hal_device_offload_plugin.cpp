@@ -190,7 +190,6 @@ namespace xdp {
     // Update the static database with all the information that
     // will be needed later
     if(hw_context_flow)
-    // TODO: are multiple xclbins supported for hal device offload plugin? if yes, change to updateDeviceFromCoreDeviceHwCtxFlow
       db->getStaticInfo().updateDeviceFromCoreDevice(deviceId, device, true, std::make_unique<HalDevice>(device->get_device_handle()));
     else
       db->getStaticInfo().updateDeviceFromHandle(deviceId, std::make_unique<HalDevice>(ownedHandle), userHandle) ;
