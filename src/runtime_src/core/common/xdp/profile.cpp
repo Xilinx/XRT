@@ -55,12 +55,14 @@ namespace {
     }
   }
 
+#if !defined(XDP_CLIENT_BUILD) && !defined(XDP_VE2_BUILD)
   static bool is_hw_emulation()
   {
     static auto xem = std::getenv("XCL_EMULATION_MODE");
     static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
     return hwem;
   }
+#endif
 } // end anonymous namespace
 
 // This file makes the connections between all xrt_coreutil level hooks
