@@ -54,13 +54,15 @@ namespace {
       }
     }
   }
-  
+
+#if !defined(XDP_CLIENT_BUILD) && !defined (XDP_VE2_BUILD)
   static bool is_hw_emulation()
   {
     static auto xem = std::getenv("XCL_EMULATION_MODE");
     static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
     return hwem;
   }
+#endif
   
 } // end anonymous namespace
 
@@ -676,7 +678,7 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
-  if (!::is_hw_emulation()) {
+  if (!is_hw_emulation()) {
     load_once_and_update(
              []() {
               return ((xrt_core::config::get_device_trace() != "off") ||
@@ -689,7 +691,6 @@ update_device(void* handle, bool hw_context_flow)
              handle,
              hw_context_flow);
   }
-
 
   // Avoid warning until we've added support in all plugins
   (void)(hw_context_flow);
