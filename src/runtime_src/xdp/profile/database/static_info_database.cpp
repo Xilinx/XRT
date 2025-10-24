@@ -41,8 +41,6 @@
 #include "core/common/query_requests.h"
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/common/api/hw_context_int.h"
-// !!! TODO: do we need this #include "xrt/xrt_hw_context.h"
-#include "core/common/api/xrt_hw_context.cpp"
 
 constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
 constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
