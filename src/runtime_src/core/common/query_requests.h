@@ -4383,7 +4383,7 @@ struct aie_coredump : request
   using result_type = std::vector<char>;
   static const key_type key = key_type::aie_coredump;
 
-  virtual std::any
+  std::any
   get(const device*, const std::any&) const override = 0;
 };
 } // query
