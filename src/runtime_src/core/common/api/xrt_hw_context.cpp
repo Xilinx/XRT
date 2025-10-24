@@ -9,6 +9,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -494,6 +495,21 @@ public:
     msg.append(dump_file_name);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", msg);
   }
+
+  std::vector<char>
+  get_aie_coredump() const
+  {
+    try {
+      return xrt_core::device_query<xrt_core::query::aie_coredump>(m_core_device,
+                                                                   m_hdl->get_slotidx());
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      throw std::runtime_error("AIE coredump is not supported on this platform");
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error("Failed to get AIE coredump: " + std::string(e.what()));
+    }
+  }
 };
 
 } // xrt
@@ -692,6 +708,13 @@ operator xrt_core::hwctx_handle* () const
 hw_context::
 ~hw_context()
 {}
+
+std::vector<char>
+hw_context::
+get_aie_coredump() const
+{
+  return get_handle()->get_aie_coredump();
+}
 
 } // xrt
 
