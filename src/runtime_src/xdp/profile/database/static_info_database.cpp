@@ -1669,15 +1669,11 @@ namespace xdp {
     if (!device) {
       throw std::runtime_error("Invalid device handle - device is null");
     }
-    if(isClient()) {
+
+    // Client or Alveo HW EMU
+    if (isClient() || (getFlowMode() == HW_EMU && !isEdge() && !isClient())) {
       return device->get_xclbin_uuid();
-    }
-    else if (getFlowMode() == HW_EMU && !isEdge() && !isClient()) {
-      // This has to be Alveo hardware emulation, which doesn't support
-      // the xclbin_slots query.
-      return device->get_xclbin_uuid();
-    }
-    else {
+    } else {
       xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
       return context.get_xclbin_uuid();
     }
