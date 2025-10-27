@@ -204,7 +204,7 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 #endif
 	struct device *mem_dev;
 	struct drm_zocl_bo *bo;
-	unsigned int mem_index;
+	int mem_index;
 	dma_addr_t phys = 0;
 	void* vaddr = NULL;
 
