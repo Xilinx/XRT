@@ -494,15 +494,23 @@ namespace xdp {
           // Record for runtime config file
           config.port_trace_ids[portnum] = channelNum;
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
-          config.port_trace_names[portnum] = tile.port_names.at(portnum);
+          if (streamPortId < tile.port_names.size()) {
+            config.port_trace_names[portnum] = tile.port_names.at(streamPortId);
+            std::string msg = "Interface tile port assignment: portnum=" + std::to_string(portnum) + 
+                            ", streamId=" + std::to_string(streamPortId) + 
+                            ", name=" + tile.port_names.at(streamPortId);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
+          }
           
           if (tile.is_master_vec.at(portnum) == 0) {
             config.mm2s_channels[channelNum] = channel; // Slave or Input Port
-            config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+            if (channelNum < tile.mm2s_names.size())
+              config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
           }
           else {
             config.s2mm_channels[channelNum] = channel; // Master or Output Port
-            config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+            if (channelNum < tile.s2mm_names.size())
+              config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
           }
         }
         else {
