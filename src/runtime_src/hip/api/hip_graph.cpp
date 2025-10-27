@@ -49,9 +49,12 @@ hip_graph_add_kernel_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
   return node_hdl;
 }
 
+// TODO: Implement error reporting and logging for graph instantiation:
+//   - pErrorNode: Pointer to error node if error occured during graph instantiation
+//   - pLogBuffer, bufferSize: log messages about instantiation to the buffer
 static command_handle
-hip_graph_instantiate(hipGraph_t g, hipGraphNode_t *pErrorNode,
-                      char *pLogBuffer, size_t bufferSize)
+hip_graph_instantiate(hipGraph_t g, hipGraphNode_t* /*pErrorNode*/,
+                      char* /*pLogBuffer*/, size_t /*bufferSize*/)
 {
   throw_invalid_resource_if(!g, "graph is nullptr");
 

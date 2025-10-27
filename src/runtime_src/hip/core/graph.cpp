@@ -34,7 +34,7 @@ get_ordered_nodes() const
 
   // Compute indegree and enqueue root nodes
   for (const auto& node : m_node_list) {
-    indegree[node.get()] = node->get_deps_size();
+    indegree[node.get()] = node->get_deps_list().size();
     if (indegree[node.get()] == 0)
       q.push(node);
   }

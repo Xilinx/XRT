@@ -22,7 +22,6 @@ private:
   std::shared_ptr<command> m_cmd;
   std::vector<std::shared_ptr<graph_node>> m_deps_list; // parents
   std::vector<std::weak_ptr<graph_node>> m_children;    // children as weak_ptr to avoid cycles
-  size_t m_deps_size = 0;
 
 public:
   graph_node() = default;
@@ -34,12 +33,6 @@ public:
   get_cmd() const
   {
     return m_cmd;
-  }
-
-  size_t
-  get_deps_size() const
-  {
-    return m_deps_size;
   }
 
   const std::vector<std::shared_ptr<graph_node>>&
@@ -71,7 +64,6 @@ public:
   {
     parent->m_children.push_back(weak_from_this());
     m_deps_list.push_back(std::move(parent));
-    m_deps_size++;
   }
 };
 

@@ -409,6 +409,9 @@ submit()
   if (kernel_list_start_state == state::running)
     return true;
 
+  if (kernel_list_start_state == state::completed)
+    return true;
+
   if (kernel_list_start_state != state::init)
     return false;
 
