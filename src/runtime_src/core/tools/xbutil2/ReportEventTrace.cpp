@@ -35,17 +35,16 @@ generate_raw_logs(const xrt_core::device* dev,
   
   smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
 
-  // Always use real device data for raw logs
-  xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
+  auto data_buf = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
   
-  m_watch_mode_offset = debug_buf.get_offset();
+  m_watch_mode_offset = data_buf.abs_offset;
   
   ss << boost::format("Event Trace Report (Raw) - %s\n") 
         % xrt_core::timestamp();
   ss << "=======================================================\n";
   ss << "\n";
 
-  if (!debug_buf.get_data() || debug_buf.get_size() == 0) {
+  if (!data_buf.data || data_buf.size == 0) {
     ss << "No event trace data available\n";
     return ss.str();
   }
@@ -70,6 +69,7 @@ generate_parsed_logs(const xrt_core::device* dev,
     validate_version_compatibility(version, dev);
 
     smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
+    xrt_core::query::firmware_debug_buffer data_buf{};
 
     if (use_dummy) 
     {
@@ -77,7 +77,7 @@ generate_parsed_logs(const xrt_core::device* dev,
     } 
     else 
     {
-      xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
+      data_buf = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
     }
     m_watch_mode_offset = debug_buf.get_offset();
     
@@ -239,12 +239,12 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     smi_debug_buffer debug_buf(0, false);
     
     // Query event trace data from device using specific query struct (like telemetry)
-    xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
+    auto data_buf = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
 
     // Parse trace events from buffer
-    if (debug_buf.get_data() && debug_buf.get_size() > 0) {
-      size_t event_count = debug_buf.get_size() / sizeof(trace_event);
-      auto events = static_cast<trace_event*>(debug_buf.get_data());
+    if (data_buf.data && data_buf.size > 0) {
+      size_t event_count = data_buf.size / sizeof(trace_event);
+      auto events = static_cast<trace_event*>(data_buf.data);
 
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {

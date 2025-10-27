@@ -4159,7 +4159,7 @@ struct event_trace_version : request
 
 struct event_trace_data : request
 {
-  using result_type = bool;
+  using result_type = firmware_debug_buffer;
   static const key_type key = key_type::event_trace_data;
 
   std::any
