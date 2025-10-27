@@ -55,12 +55,12 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       for (const auto& context : contexts) {
         bpt context_pt;
         context_pt.put("ctx_id"                     ,context.ctx_id);
-        context_pt.put("txn_op_idx"                 ,context.health_data.txn_op_idx);
-        context_pt.put("ctx_pc"                     ,context.health_data.ctx_pc);
-        context_pt.put("fatal_error_type"           ,context.health_data.fatal_error_type);
-        context_pt.put("fatal_error_exception_type" ,context.health_data.fatal_error_exception_type);
-        context_pt.put("fatal_error_exception_pc"   ,context.health_data.fatal_error_exception_pc);
-        context_pt.put("fatal_error_app_module"     ,context.health_data.fatal_error_app_module);
+        context_pt.put("txn_op_idx"                 ,context.health_data_v1.aie2.txn_op_idx);
+        context_pt.put("ctx_pc"                     ,context.health_data_v1.aie2.ctx_pc);
+        context_pt.put("fatal_error_type"           ,context.health_data_v1.aie2.fatal_error_type);
+        context_pt.put("fatal_error_exception_type" ,context.health_data_v1.aie2.fatal_error_exception_type);
+        context_pt.put("fatal_error_exception_pc"   ,context.health_data_v1.aie2.fatal_error_exception_pc);
+        context_pt.put("fatal_error_app_module"     ,context.health_data_v1.aie2.fatal_error_app_module);
         contexts_array.push_back(std::make_pair("", context_pt));
       }
       pid_pt.add_child("contexts", contexts_array);
@@ -207,12 +207,12 @@ generate_context_health_report(const xrt_core::device* dev,
       for (const auto& context : contexts) {
         const std::vector<std::string> entry_data = {
           (boost::format("%d")   % context.ctx_id).str(),
-          (boost::format("0x%x") % context.health_data.txn_op_idx).str(),
-          (boost::format("0x%x") % context.health_data.ctx_pc).str(),
-          (boost::format("0x%x") % context.health_data.fatal_error_type).str(),
-          (boost::format("0x%x") % context.health_data.fatal_error_exception_type).str(),
-          (boost::format("0x%x") % context.health_data.fatal_error_exception_pc).str(),
-          (boost::format("0x%x") % context.health_data.fatal_error_app_module).str()
+          (boost::format("0x%x") % context.health_data_v1.aie2.txn_op_idx).str(),
+          (boost::format("0x%x") % context.health_data_v1.aie2.ctx_pc).str(),
+          (boost::format("0x%x") % context.health_data_v1.aie2.fatal_error_type).str(),
+          (boost::format("0x%x") % context.health_data_v1.aie2.fatal_error_exception_type).str(),
+          (boost::format("0x%x") % context.health_data_v1.aie2.fatal_error_exception_pc).str(),
+          (boost::format("0x%x") % context.health_data_v1.aie2.fatal_error_app_module).str()
         };
         context_table.addEntry(entry_data);
       }
