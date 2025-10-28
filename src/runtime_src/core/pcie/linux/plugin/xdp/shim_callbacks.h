@@ -37,7 +37,7 @@ namespace xdp {
 inline
 void update_device(void* handle, bool hw_context_flow)
 {
-  hal::update_device(handle);
+  hal::update_device(handle, hw_context_flow);
   aie::update_device(handle, hw_context_flow); //trace
   aie::ctr::update_device(handle, hw_context_flow); //profile
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "hip/core/common.h"
 #include "hip/core/event.h"
@@ -82,7 +82,7 @@ hip_stream_synchronize(hipStream_t stream)
 static void
 hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
 {
-  throw_invalid_handle_if(flags != 0, "flags should be 0");
+  throw_invalid_value_if(flags != 0, "flags should be 0");
 
   auto hip_wait_stream = get_stream(stream);
   throw_invalid_resource_if(!hip_wait_stream, "stream is invalid");
@@ -92,24 +92,18 @@ hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
   throw_invalid_resource_if(!hip_event_cmd, "event is invalid");
 
   throw_if(!hip_event_cmd->is_recorded(), hipErrorStreamCaptureIsolation, "Event passed is not recorded");
-  auto hip_event_stream = hip_event_cmd->get_stream();
 
   // check stream on which wait is called is same as stream in which event is enqueued
-  if (hip_wait_stream == hip_event_stream) {
-    hip_wait_stream->record_top_event(hip_event_cmd.get());
+  if (hip_event_cmd->is_recorded_stream(hip_wait_stream.get())) {
+    hip_wait_stream->record_top_event(std::move(hip_event_cmd));
   }
   else {
-    auto wait_stream = hip_wait_stream.get();
+    //auto wait_stream = hip_wait_stream.get();
     // create dummy event and add the event to be waited in its dep list
     auto dummy_event_hdl = static_cast<event*>(
         insert_in_map(command_cache,
                       std::make_shared<event>()));
-    dummy_event_hdl->record(std::move(hip_wait_stream));
-    dummy_event_hdl->add_dependency(hip_event_cmd);
-
-    // enqueue dummy event into wait stream
-    wait_stream->enqueue(command_cache.get(dummy_event_hdl));
-    wait_stream->record_top_event(dummy_event_hdl);
+    dummy_event_hdl->init_wait_event(hip_wait_stream, hip_event_cmd);
   }
 }
 } // // xrt::core::hip

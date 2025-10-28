@@ -18,6 +18,13 @@ enum hipModuleDataType {
   hipModuleDataBuffer
 };
 
+// Hip XRT module configuration parameters which will be passed to XRT hardware
+// context creation
+typedef struct hipXrtModuleCfgParam {
+  const char *name; // name of configuration parameter
+  uint32_t data; // data of configuration parameter
+} hipXrtModuleCfgParam_t;
+
 // structure that represents the config data passed to hipModuleLoadData
 struct hipModuleData
 {
@@ -27,6 +34,9 @@ struct hipModuleData
                            // to xclbin module for elf creation
   void* data;              // pointer to file path or buffer based on type
   size_t size;             // size of data buffer passed
+  uint32_t numCfgParams; // number of HIP XRT configuration parameters which
+                           // will be passed to XRT hardware context creation
+  const hipXrtModuleCfgParam_t *cfgParams; // HIP XRT configuration parameters array
 };
 
 // HIP XRT extension

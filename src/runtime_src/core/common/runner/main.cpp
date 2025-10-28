@@ -46,6 +46,7 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <atomic>
+#include <climits>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -70,9 +71,11 @@ using json = nlohmann::json;
 namespace sfs = std::filesystem;
 
 namespace {
-static bool g_progress = false;   // NOLINT
-static bool g_asap = false;       // NOLINT
-static uint32_t g_iterations = 0; // NOLINT
+
+// Default option values
+static bool g_progress = false;     // NOLINT
+static uint32_t g_iterations = 0;   // NOLINT
+static std::string g_mode = "all";  // NOLINT
 
 constexpr double
 to_mb(size_t bytes)
@@ -104,31 +107,69 @@ touchup_recipe(const std::string& recipe)
   return json.dump();
 }
 
+// Remove profile execution sections based on specified mode
+static void
+filter_mode(json& profile, const std::string& mode)
+{
+  if (mode == "all")
+    return;
+
+  // Legacy profile nothing to filter
+  if (!profile.contains("executions"))
+    return;
+
+  auto& execs = profile["executions"];
+  execs.erase(std::remove_if(execs.begin(), execs.end(),
+                             [mode](const json& exec) {
+                               return (!exec.contains("mode") || exec["mode"] != mode);
+                             }),
+              execs.end());
+
+  if (execs.empty())
+    throw std::runtime_error("No execution profile with mode '" + mode + "'");
+}
+
+// Touch up profile(s) with specified iterations
+static void
+touchup_iterations(json& profile, uint32_t iterations)
+{
+  if (!iterations)
+    return;
+
+  profile["execution"]["iterations"] = iterations;
+
+  for (auto& exec : profile["executions"])
+    exec["iterations"] = iterations;
+}
+
 // Touch up profiles(s)
 // Return parsed / modified json as a json string
 static std::string
-touchup_profile_mt(const std::string& profile, uint32_t iterations)
+touchup_profile_mt(const std::string& profile, const std::string& mode, uint32_t iterations)
 {
   // disable xrt::runner profile verbosity which is unsynchronized
   // with threaded execution
   std::ifstream istr(profile);
   auto json = json::parse(istr);
+
   json["execution"]["verbose"] = false;
-  
-  // maybe override this profile iterations
-  if (iterations)
-    json["execution"]["iterations"] = iterations;
+  for (auto& exec : json["executions"])
+    exec["verbose"] = false;
+
+  filter_mode(json, mode);
+  touchup_iterations(json, iterations);
   
   return json.dump();
 }
 
 static std::string
-touchup_profile(const std::string& profile, uint32_t iterations)
+touchup_profile(const std::string& profile, const std::string& mode, uint32_t iterations)
 {
   std::ifstream istr(profile);
   auto json = json::parse(istr);
-  if (iterations)
-    json["execution"]["iterations"] = iterations;
+
+  filter_mode(json, mode);
+  touchup_iterations(json, iterations);
 
   return json.dump();
 }
@@ -197,15 +238,9 @@ struct job_type
   {
     m_runner.wait();
 
-    if (g_progress) {
-      auto jrpt = json::parse(get_report());
-      std::stringstream ss;
-      ss << " Elapsed time (us): " << jrpt["cpu"]["elapsed"] << "\n";
-      ss << " Average Latency (us): " << jrpt["cpu"]["latency"] << "\n";
-      ss << " Average Throughput (op/s): " << jrpt["cpu"]["throughput"] << "\n";
+    if (g_progress)
       xrt::message::logf(xrt::message::level::info, "runner",
-                         "(tid:%s) finished xrt::runner for %s:\n%s", get_tid().c_str(), m_id.c_str(), ss.str().c_str());
-    }
+                         "(tid:%s) finished xrt::runner for %s", get_tid().c_str(), m_id.c_str());
   }
 
   std::string
@@ -256,12 +291,14 @@ class job_queue
   std::condition_variable m_work_cv;
 
   std::vector<job_type> m_jobs;
+  size_t m_num_consumers = 0;
   bool m_ready = false;  // ready to return jobs
   bool m_stop = false;   // no longer accepts new jobs
 
 public:
   explicit
-  job_queue(size_t jobs) 
+  job_queue(size_t jobs, size_t threads)
+    : m_num_consumers(threads ? threads : jobs)
   {
     // Must not reallocate
     m_jobs.reserve(jobs);
@@ -271,6 +308,7 @@ public:
   // mutex and cv are non-movable, so just create new ones
   job_queue(job_queue&& other)
     : m_jobs(std::move(other.m_jobs))
+    , m_num_consumers(other.m_num_consumers)
     , m_ready(other.m_ready)
   {}
 
@@ -298,12 +336,15 @@ public:
   void
   add(job_type&& job)
   {
-    std::lock_guard lk{m_mutex};
+    std::unique_lock lk{m_mutex};
     if (m_stop)
       throw std::runtime_error("job_queue::add() queue is closed, cannot add jobs");
 
     if (m_jobs.capacity() == m_jobs.size())
       throw std::runtime_error("job_queue::add() no room for additional jobs, bad reserve size");
+
+    // Don't queue more jobs than number of consumers unless explicitly requested.
+    m_work_cv.wait(lk, [this] { return (m_jobs.size() < m_num_consumers || m_stop); });
 
     m_jobs.emplace_back(std::move(job));
     m_work_cv.notify_all();
@@ -319,6 +360,7 @@ public:
     if (!m_jobs.empty()) {
       job_type job{std::move(m_jobs.back())};
       m_jobs.pop_back();
+      m_work_cv.notify_all(); // notify potentially waiting add()
       return job;
     }
 
@@ -400,27 +442,36 @@ struct script_runner
     return workers;
   }
 
+  static job_type
+  init_job(const xrt::device& device, const json& job, const sfs::path& root)
+  {
+    std::string id = job["id"];
+    xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
+    sfs::path recipe = root / job["recipe"];
+    auto recipe_json_string = touchup_recipe(recipe.string());
+    sfs::path profile = root / job["profile"];
+    auto iterations = job.value<uint32_t>("iterations", g_iterations);
+    auto mode = job.value<std::string>("mode", g_mode);
+    auto profile_json_string = touchup_profile_mt(profile.string(), mode, iterations);
+    sfs::path dir = root / job["dir"];
+    return {device, std::move(id), recipe_json_string, profile_json_string, dir.string()};
+  }
+
   void
   init_jobs(const xrt::device& device, const json& j, const sfs::path& root)
   {
-    if (g_asap)
-      // Allow queue to return jobs immediately when initialized
-      m_job_queue.enable();
-
-    for (const auto& [k, node] : j.items()) {
-      std::string id = node["id"];
-      xrt::message::logf(xrt::message::level::info, "runner", "creating xrt::runner for %s", id.c_str());
-      sfs::path recipe = root / node["recipe"];
-      auto recipe_json_string = touchup_recipe(recipe.string());
-      sfs::path profile = root / node["profile"];
-      auto profile_json_string = touchup_profile_mt(profile.string(), node.value<uint32_t>("iterations", g_iterations));
-      sfs::path dir = root / node["dir"];
-      m_job_queue.add(job_type{device, std::move(id), recipe_json_string, profile_json_string, dir.string()});
-    }
-
-    // The queue is fully initialized with all jobs, if not already
-    // enabled then do so now.
+    // Allow queue to return jobs immediately when initialized
     m_job_queue.enable();
+
+    for (const auto& [k, job] : j.items()) {
+      try {
+        m_job_queue.add(init_job(device, job, root));
+      }
+      catch (const std::exception& ex) {
+        xrt::message::logf(xrt::message::level::info, "runner", "ignoring %s (%s)",
+                           job.value<std::string>("id", "noname").c_str(), ex.what());
+      }
+    }
 
     // Close the queue to indicate no more jobs will be added
     m_job_queue.close();
@@ -433,11 +484,18 @@ struct script_runner
 
 public:
   explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
-    : m_job_queue(script.value("jobs", json::object()).size())
+    : m_job_queue(script.value("jobs", json::object()).size(), threads)
     , m_workers{init_workers(threads ? threads : script.value("jobs", json::object()).size(),
                              m_job_queue, m_report)}
   {
-    init_jobs(device, script.value("jobs", json::object()), dir);
+    try {
+      init_jobs(device, script.value("jobs", json::object()), dir);
+    }
+    catch (const std::exception&) {
+      m_job_queue.close();
+      wait();
+      throw;
+    }
   }
 
   void
@@ -464,18 +522,20 @@ usage()
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
+  std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--progress] show progress\n";
-  std::cout << " [--asap] process jobs immediately (default: wait for all jobs to initialize)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
-  std::cout << "\n";
   std::cout << "Note, [--threads <number>] overrides the default number, where default is the number of\n";
   std::cout << "jobs in the runner script.\n\n";
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
-  std::cout << "sticky for that recipe/profile pair.\n";
+  std::cout << "sticky for that recipe/profile pair.\n\n";
+  std::cout << "Note, [--mode <latency|throughput|validate>] filters execution sections in profile.json such\n";
+  std::cout << "only specified modes are executed. If the runner script specifies a mode for a recipe/profile\n";
+  std::cout << "pair, then this value is sticky for that recipe/profile pair.\n";
 }
 
 // Entry for parsing the runner script file
@@ -513,7 +573,7 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
   xrt_core::systime st;
   xrt::device device{0};
   auto recipe_json_string = touchup_recipe(recipe);
-  auto profile_json_string = touchup_profile(profile, g_iterations);
+  auto profile_json_string = touchup_profile(profile, g_mode, g_iterations);
   xrt_core::runner runner {device, recipe_json_string, profile_json_string, dir};
   runner.execute();
   runner.wait();
@@ -560,11 +620,6 @@ run(int argc, char* argv[])
       continue;
     }
 
-    if (arg == "--asap") {
-      g_asap = true;
-      continue;
-    }
-
     // Special handling to process --report options
     if (arg == "-r" || arg == "--report") {
       // --report
@@ -591,6 +646,8 @@ run(int argc, char* argv[])
       profile = arg;
     else if (cur == "--dir" || cur == "-d")
       dir = arg;
+    else if (cur == "--mode" || cur == "-m")
+      g_mode = arg;
     else if (cur == "-f" || cur == "--script")
       script = arg;
     else if (cur == "-t" || cur == "--threads")
@@ -605,9 +662,6 @@ run(int argc, char* argv[])
 
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");
-
-  if (script.empty() && g_asap)
-    throw std::runtime_error("--asap only valid in script mode");
 
   if (script.empty() && (recipe.empty() || profile.empty()))
     throw std::runtime_error("both recipe and profile are required without a script");

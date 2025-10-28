@@ -57,6 +57,12 @@ namespace xdp {
 #else
     pid = static_cast<int>(getpid()) ;
 #endif
+
+    // During initialization, call the utility function isEdge()
+    // just to initialize static variables, so later other functions
+    // will not have to call the xrt::system_linux queries when
+    // they might have been destroyed
+    (void)(isEdge()); 
   }
 
   VPStaticDatabase::~VPStaticDatabase()

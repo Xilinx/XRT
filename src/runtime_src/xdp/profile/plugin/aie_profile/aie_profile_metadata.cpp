@@ -842,7 +842,7 @@ namespace xdp {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; memory tiles only)
+      // Grab channel numbers (if specified)
       if (graphMetrics[i].size() > 3) {
         if (graphMetrics[i][2]==METRIC_BYTE_COUNT) {
           uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
@@ -922,9 +922,20 @@ namespace xdp {
         tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1]);
 
       for (auto& t : tiles) {
-        configMetrics[moduleIdx][t] = metrics[i][1];
-        configChannel0[t] = channelId0;
-        configChannel1[t] = channelId1;
+        // Only specify metric set and channel if not already defined
+        auto tileItr = std::find_if(configMetrics[moduleIdx].begin(),
+          configMetrics[moduleIdx].end(), compareTileByLocMap(t));
+
+        if (tileItr == configMetrics[moduleIdx].end()) {
+          configMetrics[moduleIdx][t] = metrics[i][1];
+          configChannel0[t] = channelId0;
+          configChannel1[t] = channelId1;
+        }
+        else {
+          xrt_core::message::send(severity_level::warning, "XRT", "Tile " + std::to_string(t.col) + ","
+            + std::to_string(t.row) + " is already configured with metric set " + configMetrics[moduleIdx][t]
+            + ". Ignoring setting for set " + metrics[i][1] + ".");
+        }
         if (metrics[i][1] == METRIC_BYTE_COUNT)
           setUserSpecifiedBytes(t, bytes);
       }

@@ -31,6 +31,11 @@ add_library(aws_mpd_plugin SHARED ""
   $<TARGET_OBJECTS:aws_plugin>
 )
 
+set_target_properties(aws_mpd_plugin PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+)
+
 add_compile_options("-fPIC")
 
 if(${INTERNAL_TESTING_FOR_AWS})

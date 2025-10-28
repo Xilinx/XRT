@@ -21,7 +21,7 @@ class stream
 
   std::list<std::shared_ptr<command>> m_cmd_queue;
   std::mutex m_cmd_lock;
-  event* m_top_event{nullptr};
+  std::shared_ptr<event> m_top_event;
 
 public:
   stream() = default;
@@ -69,7 +69,7 @@ public:
   synchronize();
 
   void
-  record_top_event(event* ev);
+  record_top_event(std::shared_ptr<event> ev);
 };
 
 // Global map of streams

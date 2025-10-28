@@ -2678,6 +2678,9 @@ public:
       if (cv_status == std::cv_status::timeout) {
         if (dtrace)
           xrt_core::module_int::dump_dtrace_buffer(m_module);
+
+        // dump uc log buffer for timeout case
+        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2694,6 +2697,10 @@ public:
 
     if (dtrace)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
+
+    // Dump uC log buffer for non-completed cases
+    if (state != ERT_CMD_STATE_COMPLETED)
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
 
     return state;
   }
@@ -2714,6 +2721,7 @@ public:
     
     switch (opcode) {
     case ERT_START_NPU:
+    case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
@@ -2732,8 +2740,11 @@ public:
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
-      if (cv_status == std::cv_status::timeout)
+      if (cv_status == std::cv_status::timeout) {
+        // Dump uC log buffer in case of timeout for debugging
+        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return std::cv_status::timeout;
+      }
 
       state = ert_state;
     }
@@ -2747,8 +2758,11 @@ public:
     if (dtrace_enabled && m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module);
 
-    if (state != ERT_CMD_STATE_COMPLETED)
+    if (state != ERT_CMD_STATE_COMPLETED) {
+      // Dump uC log buffer for non-completed cases
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
       throw_command_error(state);
+    }
 
     // COMPLETED
     m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
@@ -3342,6 +3356,7 @@ class runlist_impl
 
     switch (opcode) {
     case ERT_START_NPU:
+    case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
       throw xrt::runlist::aie_error(run, state, "runlist failed execution");
@@ -3534,8 +3549,11 @@ public:
       return std::cv_status::no_timeout;
 
     // Wait throws on error. On timeout just return
-    if (wait(timeout) == std::cv_status::timeout)
+    if (wait(timeout) == std::cv_status::timeout) {
+      // Dump uC log buffer for debug when timeout happens
+      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
       return std::cv_status::timeout;
+    }
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
@@ -4414,24 +4432,65 @@ what() const noexcept
 }
 
 static std::string
+aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
+{
+  constexpr auto indent8 = 8;
+  auto ctx_health = get_ert_ctx_health_data_v1(epkt);
+  std::ostringstream oss;
+  oss << msg << "\n";
+  if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
+    oss << std::uppercase << std::hex << std::setfill('0');
+    oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
+      << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
+      << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
+      << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
+      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
+      << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
+      << "\n";
+  } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
+    oss << std::uppercase << std::hex << std::setfill('0');
+    oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
+      << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
+    for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
+      oss << "\nuc_info[" << i << "]: "
+        << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
+        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status
+        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status
+        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state
+        << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
+        << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
+        << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
+        << "\nrestore_offset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_offset
+        << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
+        << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
+        << "\n";
+    }
+  }
+  return oss.str();
+}
+
+static std::string
 amend_aie_error_message(const ert_packet* epkt, const std::string& msg)
 {
+  constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
-
+  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
+    return aie_error_message_v1(epkt, msg);
+  else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
+    return msg;
+  //below is for printing V0 exception message
   std::ostringstream oss;
   oss << msg << "\n";
   auto ctx_health = get_ert_ctx_health_data(epkt);
-  if (ctx_health->version != 0) 
-    return oss.str();
 
   oss << std::uppercase << std::hex << std::setfill('0');
-  oss << "txn_op_idx = 0x" << std::setw(8) << ctx_health->txn_op_idx
-    << "\nctx_pc = 0x"<< std::setw(8) << ctx_health->ctx_pc
-    << "\nfatal_error_type = 0x" << std::setw(8) << ctx_health->fatal_error_type
-    << "\nfatal_error_exception_type = 0x" << std::setw(8) << ctx_health->fatal_error_exception_type
-    << "\nfatal_error_exception_pc = 0x" << std::setw(8) << ctx_health->fatal_error_exception_pc
-    << "\nfatal_error_app_module = 0x" << std::setw(8) << ctx_health->fatal_error_app_module
+  oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->txn_op_idx
+    << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->ctx_pc
+    << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_type
+    << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_type
+    << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_pc
+    << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->fatal_error_app_module
     << "\n";
   return oss.str();
 }

@@ -156,22 +156,20 @@ synchronize()
 
   // complete commands in this stream
   await_completion();
-
-  // stream synchronization requires mem pools associated with its device to release all unused memory back to the system. 
-  auto dev_id = get_device()->get_device_id();
-  for (auto& mem_pool : memory_pool_db[dev_id])
-  {
-    if (mem_pool)
-      mem_pool->purge();
-  }
 }
 
 void
 stream::
-record_top_event(event* ev)
+record_top_event(std::shared_ptr<event> ev)
 {
   std::lock_guard<std::mutex> lk(m_cmd_lock);
-  m_top_event = ev;
+
+  // previous top event is added as a dependency to the new top event
+  if (m_top_event) {
+    ev->add_dependency(std::move(m_top_event));
+  }
+
+  m_top_event = std::move(ev);
 }
 
 std::shared_ptr<stream>

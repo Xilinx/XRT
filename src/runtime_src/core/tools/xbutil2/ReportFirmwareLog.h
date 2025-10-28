@@ -5,8 +5,13 @@
 #define REPORT_FIRMWARE_LOG_H
 
 #include "tools/common/Report.h"
-#include "FirmwareLogConfig.h" // Include the header file for firmware_log_config
+#include "FirmwareLog.h" // Include the header file for firmware_log_config
+#include <vector>
+#include <string>
+#include <memory>
+#include <unordered_map>
 
+namespace smi = xrt_core::tools::xrt_smi;
 /**
  * @brief Report for firmware log information
  * 
@@ -26,7 +31,8 @@
 class ReportFirmwareLog : public Report {
 public:
   ReportFirmwareLog() 
-    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/) { };
+    : Report("firmware-log", "Log to console firmware log information", true /*deviceRequired*/)
+    {}
 
   // Child methods that need to be implemented from Report base class
 public:
@@ -91,28 +97,53 @@ public:
               const std::vector<std::string>& elements_filter,
               std::ostream& output) const override;
 
-public:
+private:
   /**
-   * @brief Parse a single firmware log entry
-   *
-   * @param data_ptr Pointer to the firmware log data buffer
-   * @param offset Offset within the buffer to start parsing
-   * @param buf_size Total size of the data buffer
-   * @param config Firmware log configuration object
-   *
-   * @return Vector of strings containing parsed log entry data
-   *
-   * This static method parses a single firmware log entry from the data buffer
-   * and returns the extracted information as a vector of strings. The parsing
-   * is based on the provided configuration object, which defines the structure
-   * of the log entry.
+   * @brief Watch mode offset for continuous log streaming
+   * 
+   * This member variable tracks the current buffer offset when operating in watch mode.
+   * It ensures that subsequent queries in watch mode continue from where the previous
+   * query left off.
+   * 
+   * @note Reset to 0 at the beginning of each writeReport call
    */
-  static 
-  std::vector<std::string> 
-  parse_log_entry(const uint8_t* data_ptr, 
-                  size_t offset, 
-                  size_t buf_size, 
-                  const xrt_core::tools::xrt_smi::firmware_log_config& config);
+  mutable uint64_t m_watch_mode_offset{0};
+
+  /**
+   * @brief Generate raw firmware log data dump
+   * 
+   * @param dev XRT device to query for raw firmware log buffer
+   * @param is_watch True if operating in watch mode (continuous updates)  
+   * @return std::string Raw binary log data as string
+   * 
+   * This method provides direct access to the raw firmware log buffer
+   * without any parsing or formatting. Used as a fallback when:
+   * - Configuration parsing fails
+   * - User explicitly requests raw output with "--element raw"
+   * 
+   * @note Updates m_watch_mode_offset for continuous streaming
+   */
+  std::string 
+  generate_raw_logs(const xrt_core::device* dev, bool is_watch) const;
+
+  /**
+   * @brief Generate parsed and formatted firmware log report
+   * 
+   * @param dev XRT device to query for firmware log data
+   * @param config Firmware log configuration for parsing structure and enums
+   * @param is_watch True if operating in watch mode (continuous updates)
+   * @return std::string Formatted log table with parsed fields and messages
+   * 
+   * This method retrieves firmware log data from the device and uses the provided
+   * configuration to parse and format it into a human-readable table. 
+   * 
+   * @note Uses firmware_log_parser class for actual parsing logic
+   */
+  std::string 
+  generate_parsed_logs(const xrt_core::device* dev,
+                       const smi::firmware_log_config& config,
+                       bool is_watch) const;
+
 };
 
 #endif // REPORT_FIRMWARE_LOG_H

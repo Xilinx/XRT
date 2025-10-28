@@ -773,6 +773,7 @@ reportKernels(std::ostream& _ostream,
   }
 
   boost::property_tree::ptree& ptXclBin = _ptMetaData.get_child("xclbin");
+  std::vector<std::string> kernel_names;
   auto userRegions = XUtil::as_vector<boost::property_tree::ptree>(ptXclBin, "user_regions");
   for (auto& userRegion : userRegions) {
     auto kernels = XUtil::as_vector<boost::property_tree::ptree>(userRegion, "kernels");
@@ -784,6 +785,7 @@ reportKernels(std::ostream& _ostream,
 
       auto sKernel = ptKernel.get<std::string>("name");
       _ostream << boost::format("%s %s\n") % "Kernel:" % sKernel;
+      kernel_names.push_back(sKernel);
 
       auto ports = XUtil::as_vector<boost::property_tree::ptree>(ptKernel, "ports");
       auto arguments = XUtil::as_vector<boost::property_tree::ptree>(ptKernel, "arguments");
@@ -906,6 +908,24 @@ reportKernels(std::ostream& _ostream,
         if (&ptInstance != &instances.back()) {
           _ostream << std::endl;
         }
+      }
+    }
+  }
+  // Print all remaining IPs and the base address
+  for (auto& ptIPData : ipLayout) {
+    // m_name is of the form '<kernel name>:<instance name>'	  
+    auto sKernelInstance = ptIPData.get<std::string>("m_name");
+    auto pos = sKernelInstance.find(':');
+    if (pos != std::string::npos){
+      auto sKernel = sKernelInstance.substr(0,pos);
+      auto sInstance = sKernelInstance.substr(pos+1);
+      // If the kernel name matches one of the kernels in build metadata, do nothing
+      if(std::find(kernel_names.begin(), kernel_names.end(), sKernel) == kernel_names.end()) {
+        _ostream << boost::format("%s %s\n") % "Kernel:" % sKernel;
+        _ostream << "--------------------------\n";
+        _ostream << boost::format("%-16s %s\n") % "Instance:" % sInstance;
+        auto sBaseAddress = ptIPData.get<std::string>("m_base_address");
+        _ostream << boost::format("   %-13s %s\n") % "Base Address:" % sBaseAddress;
       }
     }
   }

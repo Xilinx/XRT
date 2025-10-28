@@ -3,7 +3,6 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "core/common/query_requests.h"
 #include "core/common/time.h"
 #include "core/common/module_loader.h"
 #include "tools/common/SmiWatchMode.h"
@@ -27,129 +26,50 @@ using bpt = boost::property_tree::ptree;
 namespace XBU = XBUtilities;
 namespace smi = xrt_core::tools::xrt_smi;
 
-namespace xrt_core::tools::xrt_smi {
-
-// Event trace data structure (must match device.cpp implementation)
-struct trace_event {
-  uint64_t timestamp;    // Simulated timestamp
-  uint16_t event_id;     // Event ID from trace_events.h
-  uint64_t payload;      // Event payload/arguments
-};
-
-// Function to generate simple dummy event trace data for testing
-static void 
-generate_dummy_event_trace_data(xrt_core::query::firmware_debug_buffer& log_buffer) 
-{
-  static uint64_t counter = 0;  // Ever-increasing counter
-  counter++;
-  
-  // Generate simple trace events using real event IDs from trace_events.json
-  const size_t num_events = 5; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  auto events = static_cast<trace_event*>(log_buffer.data);
-  
-  // Base timestamp that increases with each call
-  uint64_t base_timestamp = 1000000000ULL + (counter * 10000); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  
-  // Use real event IDs that exist in trace_events.json and can be parsed by config
-  const std::vector<uint16_t> event_ids{0, 2, 10, 14, 1}; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  const std::vector<uint64_t> payloads{
-    (1ULL << 0) | (6ULL << 4),    // PROCESS_APP_MSG_START: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    (1ULL << 0) | (5ULL << 4),    // CREATE_CONTEXT: context_id=1, priority=5 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    (0ULL << 0) | (4ULL << 8),    // GATE_AIE2_CLKS: start_col=0, num_cols=4 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    0ULL,                         // SUSPEND: no_args
-    (1ULL << 0) | (6ULL << 4)     // PROCESS_APP_MSG_DONE: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  };
-  
-  // Create event sequence with ever-increasing data
-  for (size_t i = 0; i < num_events; ++i) {
-    events[i].timestamp = base_timestamp + (i * 100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-    events[i].event_id = event_ids[i];
-    // Add counter to payload to make it ever-increasing while keeping structure
-    events[i].payload = payloads[i] + (counter * 0x100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
-  }
-  
-  log_buffer.size = num_events * sizeof(trace_event);
-  log_buffer.abs_offset = counter * log_buffer.size;  // Ever-increasing offset
-}
-
-static xrt_core::tools::xrt_smi::event_trace_config 
-get_event_trace_config(const xrt_core::device* dev) {
-  auto archive = XBU::open_archive(dev);
-  auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
-  
-  auto& config_data = artifacts_repo["trace_events.json"];
-  std::string config_content(config_data.begin(), config_data.end());
-  
-  nlohmann::json json_config = nlohmann::json::parse(config_content);
-  return xrt_core::tools::xrt_smi::event_trace_config(json_config);
-}
-
-static void
-validate_version_compatibility(const std::pair<uint16_t, uint16_t>& /*version*/,
-                               const xrt_core::device* device) 
-{
-  if (!device) {
-    throw std::runtime_error("Warning: Cannot validate event trace version - no device provided");
-  }
-
-  /*
-  TODO : Add version logic based on what driver provides
-  auto firmware_version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
-  if (version.first != firmware_version.major || version.second != firmware_version.minor) {
-    std::stringstream err{};
-    err << "Warning: Event trace version mismatch!\n"
-        << "  JSON file version: " << version.first << "." << version.second << "\n"
-        << "  Firmware version: " << firmware_version.major << "." << firmware_version.minor << "\n"
-        << "  Event parsing may be incorrect or incomplete.";
-    throw std::runtime_error(err.str());
-  }
-  */
-}
-
-static std::string
+std::string
+ReportEventTrace::
 generate_raw_logs(const xrt_core::device* dev,
-                  bool is_watch,
-                  uint64_t& watch_mode_offset)
+                  bool is_watch) const
 {
   std::stringstream ss{};
   
-  smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
+  smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
 
   // Always use real device data for raw logs
   xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
   
-  watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+  m_watch_mode_offset = debug_buf.get_offset();
   
   ss << boost::format("Event Trace Report (Raw) - %s\n") 
         % xrt_core::timestamp();
   ss << "=======================================================\n";
   ss << "\n";
 
-  if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
+  if (!debug_buf.get_data() || debug_buf.get_size() == 0) {
     ss << "No event trace data available\n";
     return ss.str();
   }
 
   // Simply print the raw payload data
-  ss.write(static_cast<const char*>(debug_buf.get_log_buffer().data), static_cast<std::streamsize>(debug_buf.get_log_buffer().size));
+  ss.write(static_cast<const char*>(debug_buf.get_data()), static_cast<std::streamsize>(debug_buf.get_size()));
   
   return ss.str();
 }
 
-static std::string
-generate_event_trace_report(const xrt_core::device* dev,
-                            const event_trace_config& config,
-                            bool is_watch,
-                            bool use_dummy = false)
+std::string
+ReportEventTrace::
+generate_parsed_logs(const xrt_core::device* dev,
+                     const smi::event_trace_config& config,
+                     bool is_watch,
+                     bool use_dummy) const
 {
   std::stringstream ss{};
-  static uint64_t watch_mode_offset = 0;
   
   try {
     auto version = config.get_file_version();
     validate_version_compatibility(version, dev);
 
-    smi_debug_buffer debug_buf(watch_mode_offset, is_watch);
+    smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
 
     if (use_dummy) 
     {
@@ -159,25 +79,25 @@ generate_event_trace_report(const xrt_core::device* dev,
     {
       xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
     }
-    watch_mode_offset = debug_buf.get_log_buffer().abs_offset;
+    m_watch_mode_offset = debug_buf.get_offset();
     
     ss << boost::format("Event Trace Report (Buffer: %d bytes) - %s\n") 
-          % debug_buf.get_log_buffer().size % xrt_core::timestamp();
+          % debug_buf.get_size() % xrt_core::timestamp();
     ss << "=======================================================\n";
 
     ss << "\n";
 
-    if (!debug_buf.get_log_buffer().data || debug_buf.get_log_buffer().size == 0) {
+    if (!debug_buf.get_data() || debug_buf.get_size() == 0) {
       ss << "No event trace data available\n";
       return ss.str();
     }
 
     // Parse trace events from buffer
-    size_t event_count = debug_buf.get_log_buffer().size / sizeof(trace_event);
-    auto events = static_cast<trace_event*>(debug_buf.get_log_buffer().data);
+    size_t event_count = debug_buf.get_size() / sizeof(trace_event);
+    auto events = static_cast<trace_event*>(debug_buf.get_data());
 
     ss << boost::format("Total Events: %d\n") % event_count;
-    ss << boost::format("Buffer Offset: %d\n\n") % debug_buf.get_log_buffer().abs_offset;
+    ss << boost::format("Buffer Offset: %d\n\n") % debug_buf.get_offset();
 
     // Create Table2D with headers (enhanced with parsed args)
     const std::vector<Table2D::HeaderData> table_headers = {
@@ -193,7 +113,7 @@ generate_event_trace_report(const xrt_core::device* dev,
     // Add data rows
     for (size_t i = 0; i < event_count; ++i) {
       // Parse event using JSON-based configuration
-      xrt_core::tools::xrt_smi::event_record record{events[i].timestamp, events[i].event_id, events[i].payload};
+      smi::event_record record{events[i].timestamp, events[i].event_id, events[i].payload};
       auto parsed_event = config.parse_event(record);
 
       // Join categories with pipe separator for backward compatibility
@@ -231,8 +151,64 @@ generate_event_trace_report(const xrt_core::device* dev,
   return ss.str();
 }
 
-} // namespace xrt_core::tools::xrt_smi
+void
+ReportEventTrace::
+generate_dummy_event_trace_data(xrt_core::query::firmware_debug_buffer& log_buffer) const
+{
+  static uint64_t counter = 0;  // Ever-increasing counter
+  counter++;
+  
+  // Generate simple trace events using real event IDs from trace_events.json
+  const size_t num_events = 5; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  auto events = static_cast<trace_event*>(log_buffer.data);
+  
+  // Base timestamp that increases with each call
+  uint64_t base_timestamp = 1000000000ULL + (counter * 10000); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  
+  // Use real event IDs that exist in trace_events.json and can be parsed by config
+  const std::vector<uint16_t> event_ids{0, 2, 10, 14, 1}; // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  const std::vector<uint64_t> payloads{
+    (1ULL << 0) | (6ULL << 4),    // PROCESS_APP_MSG_START: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    (1ULL << 0) | (5ULL << 4),    // CREATE_CONTEXT: context_id=1, priority=5 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    (0ULL << 0) | (4ULL << 8),    // GATE_AIE2_CLKS: start_col=0, num_cols=4 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    0ULL,                         // SUSPEND: no_args
+    (1ULL << 0) | (6ULL << 4)     // PROCESS_APP_MSG_DONE: context_id=1, msg_opcode=6 // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  };
+  
+  // Create event sequence with ever-increasing data
+  for (size_t i = 0; i < num_events; ++i) {
+    events[i].timestamp = base_timestamp + (i * 100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+    events[i].event_id = event_ids[i];
+    // Add counter to payload to make it ever-increasing while keeping structure
+    events[i].payload = payloads[i] + (counter * 0x100); // NOLINT(cppcoreguidelines-avoid-magic-numbers) - dummy data for pretty printing
+  }
+  
+  log_buffer.size = num_events * sizeof(trace_event);
+  log_buffer.abs_offset = counter * log_buffer.size;  // Ever-increasing offset
+}
 
+void
+ReportEventTrace::
+validate_version_compatibility(const std::pair<uint16_t, uint16_t>& /*version*/,
+                               const xrt_core::device* device) const 
+{
+  if (!device) {
+    throw std::runtime_error("Warning: Cannot validate event trace version - no device provided");
+  }
+
+  /*
+  TODO : Add version logic based on what driver provides
+  auto firmware_version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
+  if (version.first != firmware_version.major || version.second != firmware_version.minor) {
+    std::stringstream err{};
+    err << "Warning: Event trace version mismatch!\n"
+        << "  JSON file version: " << version.first << "." << version.second << "\n"
+        << "  Firmware version: " << firmware_version.major << "." << firmware_version.minor << "\n"
+        << "  Event parsing may be incorrect or incomplete.";
+    throw std::runtime_error(err.str());
+  }
+  */
+}
 
 void
 ReportEventTrace::
@@ -251,7 +227,14 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
 
   try {
     // Get the event trace configuration
-    auto config = smi::get_event_trace_config(dev);
+    auto archive = XBU::open_archive(dev);
+    auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
+    
+    auto& config_data = artifacts_repo["trace_events.json"];
+    std::string config_content(config_data.begin(), config_data.end());
+    
+    nlohmann::json json_config = nlohmann::json::parse(config_content);
+    auto config = smi::event_trace_config(json_config);
     
     smi_debug_buffer debug_buf(0, false);
     
@@ -259,16 +242,16 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
     xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
 
     // Parse trace events from buffer
-    if (debug_buf.get_log_buffer().data && debug_buf.get_log_buffer().size > 0) {
-      size_t event_count = debug_buf.get_log_buffer().size / sizeof(smi::trace_event);
-      auto events = static_cast<smi::trace_event*>(debug_buf.get_log_buffer().data);
+    if (debug_buf.get_data() && debug_buf.get_size() > 0) {
+      size_t event_count = debug_buf.get_size() / sizeof(trace_event);
+      auto events = static_cast<trace_event*>(debug_buf.get_data());
 
       bpt events_array{};
       for (size_t i = 0; i < event_count; ++i) {
         // Parse event using json based configuration
-        xrt_core::tools::xrt_smi::event_record record{events[i].timestamp, 
-                            events[i].event_id, 
-                            events[i].payload};
+        smi::event_record record{events[i].timestamp, 
+                                 events[i].event_id, 
+                                 events[i].payload};
 
         auto parsed_event = config.parse_event(record);
 
@@ -299,8 +282,8 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       }
       event_trace_pt.add_child("events", events_array);
       event_trace_pt.put("event_count", event_count);
-      event_trace_pt.put("buffer_offset", debug_buf.get_log_buffer().abs_offset);
-      event_trace_pt.put("buffer_size", debug_buf.get_log_buffer().size);
+      event_trace_pt.put("buffer_offset", debug_buf.get_offset());
+      event_trace_pt.put("buffer_size", debug_buf.get_size());
     } else {
       event_trace_pt.put("event_count", 0);
       event_trace_pt.put("buffer_offset", 0);
@@ -327,40 +310,48 @@ writeReport(const xrt_core::device* device,
   // Check for dummy option
   bool use_dummy = std::find(elements_filter.begin(), elements_filter.end(), "dummy") != elements_filter.end();
   
-  try {
-    // Get the event trace configuration
-    auto config = smi::get_event_trace_config(device);
-    
-    // Check for watch mode
-    if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-      // Create report generator lambda for watch mode
-      auto report_generator = [config, use_dummy](const xrt_core::device* dev) -> std::string {
-        return smi::generate_event_trace_report(dev, config, true, use_dummy);
-      };
-
-      smi_watch_mode::run_watch_mode(device, output, report_generator, "Event Trace");
-      return;
+  // Check if user explicitly requested raw logs
+  bool user_wants_raw = std::find(elements_filter.begin(), elements_filter.end(), "raw") != elements_filter.end();
+  
+  // Try to parse config unless user explicitly wants raw logs
+  std::optional<smi::event_trace_config> config;
+  
+  if (!user_wants_raw) {
+    try {
+      auto archive = XBU::open_archive(device);
+      auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
+      
+      auto& config_data = artifacts_repo["trace_events.json"];
+      std::string config_content(config_data.begin(), config_data.end());
+      
+      auto json_config = nlohmann::json::parse(config_content);
+      config = smi::event_trace_config(json_config);
+    } 
+    catch (const std::exception& e) {
+      output << "Error loading event trace config: " << e.what() << "\n";
+      output << "Falling back to raw event trace data:\n\n";
     }
+  }
+  
+  // Check for watch mode
+  if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
+    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
+      return (user_wants_raw || !config)
+        ? generate_raw_logs(dev, true)
+        : generate_parsed_logs(dev, *config, true, use_dummy);
+    };
+    
+    smi_watch_mode::run_watch_mode(device, output, report_generator);
+    return;
+  }
+
+  // Non-watch mode
+  if (user_wants_raw || !config) {
+    output << generate_raw_logs(device, false);
+  } else {
     output << "Event Trace Report\n";
     output << "==================\n\n";
-    output << smi::generate_event_trace_report(device, config, false, use_dummy);
-    output << std::endl;
+    output << generate_parsed_logs(device, *config, false, use_dummy);
   }
-  catch (const std::exception& e) {
-    output << "Error loading event trace config: " << e.what() << "\n";
-    output << "Falling back to raw event trace data:\n\n";
-    
-    static uint64_t watch_mode_offset = 0;
-    if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-      // Create report generator lambda for watch mode with raw logs
-      auto report_generator = [](const xrt_core::device* dev) -> std::string {
-        return smi::generate_raw_logs(dev, true, watch_mode_offset);
-      };
-
-      smi_watch_mode::run_watch_mode(device, output, report_generator, "Event Trace (Raw)");
-      return;
-    }
-    output << smi::generate_raw_logs(device, false, watch_mode_offset);
-    output << std::endl;
-  }
+  output << std::endl;
 }

@@ -43,6 +43,24 @@ public:
   { 
     return log_buffer; 
   }
+
+  uint64_t 
+  get_size() const
+  {
+    return log_buffer.size;
+  }
+
+  void*
+  get_data() const
+  {
+    return log_buffer.data;
+  }
+
+  uint64_t
+  get_offset() const
+  {
+    return log_buffer.abs_offset;
+  }
 };
 
 /**
@@ -122,6 +140,5 @@ public:
   static void 
   run_watch_mode(const xrt_core::device* device,
                  std::ostream& output,
-                 const ReportGenerator& report_generator,
-                 const std::string& report_title = "Report");
+                 const ReportGenerator& report_generator);
 };

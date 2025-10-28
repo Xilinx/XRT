@@ -29,7 +29,8 @@ enum class buf_type {
   ctrlpkt_pm = 5,      // preemption ctrl pkt
   pad = 6,             // scratchpad/control packet section name for next gen aie devices
   dump = 7,            // dump section containing debug info for trace etc
-  buf_type_count = 8   // total number of buf types
+  ctrlpkt = 8,         // control packet section in aie2ps/aie4 new ELFs
+  buf_type_count = 9   // total number of buf types
 };
 }
 

@@ -18,6 +18,11 @@ add_library(container_mpd_plugin SHARED ""
   $<TARGET_OBJECTS:container_plugin>
 )
 
+set_target_properties(container_mpd_plugin PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+)
+
 add_compile_options("-fPIC")
 
 target_link_libraries(container_mpd_plugin

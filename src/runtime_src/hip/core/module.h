@@ -73,6 +73,12 @@ public:
 
   module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size);
 
+  module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name,
+                const xrt::hw_context::cfg_param_type& cfg_param);
+
+  module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size,
+                const xrt::hw_context::cfg_param_type& cfg_param);
+
   const xrt::hw_context&
   get_hw_context() const
   {
@@ -116,6 +122,12 @@ public:
   module_full_elf(std::shared_ptr<context> ctx, const std::string& file_name);
 
   module_full_elf(std::shared_ptr<context> ctx, const void* data, size_t size);
+
+  module_full_elf(std::shared_ptr<context> ctx, const std::string& file_name,
+                  const xrt::hw_context::cfg_param_type& cfg_param);
+
+  module_full_elf(std::shared_ptr<context> ctx, void* data, size_t size,
+                  const xrt::hw_context::cfg_param_type& cfg_param);
 
   const xrt::hw_context&
   get_hw_context() const

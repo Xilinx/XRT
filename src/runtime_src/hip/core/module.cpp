@@ -39,6 +39,22 @@ module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size)
   , m_xrt_hw_ctx{m_ctx->get_xrt_device(), register_xclbin(m_ctx, m_xrt_xclbin)}
 {}
 
+module_xclbin::
+module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name,
+	      const xrt::hw_context::cfg_param_type& cfg_param)
+  : module{std::move(ctx)}
+  , m_xrt_xclbin{file_name}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), register_xclbin(m_ctx, m_xrt_xclbin), cfg_param}
+{}
+
+module_xclbin::
+module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size,
+	      const xrt::hw_context::cfg_param_type& cfg_param)
+  : module{std::move(ctx)}
+  , m_xrt_xclbin{std::vector<char>{static_cast<char*>(data), static_cast<char*>(data) + size}}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), register_xclbin(m_ctx, m_xrt_xclbin), cfg_param}
+{}
+
 module_elf::
 module_elf(module_xclbin* xclbin_module, const std::string& file_name)
   : module{xclbin_module->get_context()}
@@ -69,6 +85,21 @@ module_full_elf(std::shared_ptr<context> ctx, const void* data, size_t size)
   , m_xrt_hw_ctx{m_ctx->get_xrt_device(), m_xrt_elf}
 {}
 
+module_full_elf::
+module_full_elf(std::shared_ptr<context> ctx, const std::string& file_name,
+                const xrt::hw_context::cfg_param_type& cfg_param)
+  : module{std::move(ctx)}
+  , m_xrt_elf{file_name}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), m_xrt_elf, cfg_param, xrt::hw_context::access_mode::shared}
+{}
+
+module_full_elf::
+module_full_elf(std::shared_ptr<context> ctx, void* data, size_t size,
+                const xrt::hw_context::cfg_param_type& cfg_param)
+  : module{std::move(ctx)}
+  , m_xrt_elf{data, size}
+  , m_xrt_hw_ctx{m_ctx->get_xrt_device(), m_xrt_elf, cfg_param, xrt::hw_context::access_mode::shared}
+{}
 function_handle
 module_elf::
 add_function(const std::string& name)

@@ -5,7 +5,6 @@
 
 #include "common.h"
 #include "memory.h"
-#include "memory_pool.h"
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
@@ -29,6 +28,7 @@ public:
   enum class state : uint8_t
   {
     init,
+    recording,
     recorded,
     running,
     completed,
@@ -40,9 +40,7 @@ public:
   {
     event,
     kernel_start,
-    mem_cpy,
-    mem_pool_op,
-    mem_prefetch
+    mem_cpy
   };
 
 protected:
@@ -101,22 +99,30 @@ public:
 class event : public command
 {
 private:
-  std::mutex m_mutex_rec_coms;
-  std::mutex m_mutex_chain_coms;
+  std::mutex m_state_lock;
+  std::mutex m_recorded_cmds_lock;
+  std::mutex m_chain_cmds_lock;
   std::vector<std::shared_ptr<command>> m_recorded_commands;
   std::vector<std::shared_ptr<command>> m_chain_of_commands;
 
 public:
   event();
   void record(std::shared_ptr<stream> s);
+  void init_wait_event(const std::shared_ptr<stream>& s, const std::shared_ptr<event>& e);
   bool submit() override;
   bool wait() override;
   bool synchronize();
   bool query();
-  [[nodiscard]] bool is_recorded() const;
-  std::shared_ptr<stream> get_stream();
+  // check if the stream is used to record this event;
+  bool is_recorded_stream(const stream* s) noexcept;
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
+  [[nodiscard]] bool is_recorded();
+
+private:
+  [[nodiscard]] bool is_recorded_no_lock() const;
+  void launch_chain_of_commands();
+  bool check_dependencies_update_state(bool wait_for_dependencies);
 };
 
 class kernel_start : public command
@@ -183,46 +189,6 @@ private:
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
-};
-
-class memory_pool_command : public command
-{
-public:
-  enum memory_pool_command_type : int32_t
-  {
-    alloc = 0,
-    free
-  };
-
-  memory_pool_command(std::shared_ptr<stream> s, memory_pool_command_type type, std::shared_ptr<memory_pool> pool, void* ptr, size_t size)
-    : command(command::type::mem_pool_op, std::move(s)), m_type(type), m_mem_pool(std::move(pool)), m_ptr(ptr), m_size(size)
-  {
-  }
-
-  bool submit() override;
-  bool wait() override;
-
-private:
-  memory_pool_command_type m_type;
-  std::shared_ptr<memory_pool> m_mem_pool;
-  void* m_ptr;
-  size_t m_size;
-  std::future<void> m_handle;
-};
-
-class mem_prefetch_command : public command
-{
-public:
-  // sync() always happens in submit()
-  mem_prefetch_command(std::shared_ptr<stream> s, const void* dev_ptr, size_t size)
-    : command(command::type::mem_prefetch, std::move(s)), m_dev_ptr(dev_ptr), m_size(size)
-  {}
-  bool submit() override;
-  bool wait() override;
-
-private:
-  const void* m_dev_ptr;
-  size_t m_size;
 };
 
 // Global map of commands

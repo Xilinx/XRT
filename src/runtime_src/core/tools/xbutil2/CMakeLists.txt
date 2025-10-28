@@ -56,7 +56,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "ReportEventTrace.cpp"
   "EventTraceConfig.cpp"
   "ReportFirmwareLog.cpp"
-  "FirmwareLogConfig.cpp"
+  "FirmwareLog.cpp"
 )
 
 # Merge the files into one collection
