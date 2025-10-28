@@ -148,8 +148,8 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
-          if (portnum < tile.port_names.size())
-            config.port_trace_names[portnum] = tile.port_names.at(portnum);
+          if (streamPortId < tile.port_names.size())
+            config.port_trace_names[portnum] = tile.port_names.at(streamPortId);
 
           if (tile.is_master_vec.at(portnum) == 0)
             config.mm2s_channels[channelNum] = channel;
