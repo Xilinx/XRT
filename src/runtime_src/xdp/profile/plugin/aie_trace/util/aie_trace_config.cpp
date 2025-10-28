@@ -148,13 +148,8 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
-          if (streamPortId < tile.port_names.size()) {
+          if (streamPortId < tile.port_names.size())
             config.port_trace_names[portnum] = tile.port_names.at(streamPortId);
-            std::string msg = "!!! Interface tile port assignment: portnum=" + std::to_string(portnum) + 
-                            ", streamId=" + std::to_string(streamPortId) + 
-                            ", name=" + tile.port_names.at(streamPortId);
-            xrt_core::message::send(severity_level::debug, "XRT", msg);
-          }
 
           if (tile.is_master_vec.at(portnum) == 0)
             config.mm2s_channels[channelNum] = channel;
