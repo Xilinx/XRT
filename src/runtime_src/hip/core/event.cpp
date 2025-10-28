@@ -22,7 +22,7 @@ void event::record(std::shared_ptr<stream> s)
     std::lock_guard lock(m_state_lock);
     throw_if((get_state() != state::init) && (get_state() < state::completed),
              hipErrorIllegalState, "event is being recorded");
-    cstream = std::move(s);
+    m_recorded_stream = std::move(s);
     // set state to recording, we are going to unhold the lock. As we are going to
     // call stream fucntions to enqueue the event as next step, which can call event
     // functions and may need to acquired the lock. The event state will be set to
@@ -38,7 +38,7 @@ void event::record(std::shared_ptr<stream> s)
   }
 
   // this will update stream command queue, which will have lock pretection
-  cstream->enqueue_event(ev);
+  m_recorded_stream->enqueue_event(ev);
   {
     std::lock_guard lock(m_state_lock);
     // set state to recorded
@@ -183,7 +183,7 @@ bool event::submit()
 bool event::is_recorded_stream(const stream* s) noexcept
 {
   std::lock_guard lock(m_state_lock);
-  return (cstream.get() == s);
+  return (m_recorded_stream.get() == s);
 }
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
@@ -198,8 +198,8 @@ void event::add_dependency(std::shared_ptr<command> cmd)
   m_recorded_commands.push_back(std::move(cmd));
 }
 
-kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
-  : command(type::kernel_start, std::move(s))
+kernel_start::kernel_start(std::shared_ptr<function> f, void** args)
+  : command(type::kernel_start)
   , func{std::move(f)}
   , m_ctrl_scratchpad_bo_sync_rd{false}
 {
@@ -277,8 +277,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 }
 
 kernel_start::
-kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra)
-  : kernel_start(std::move(s), std::move(f), args)
+kernel_start(std::shared_ptr<function> f, void** args, void** extra)
+  : kernel_start(std::move(f), args)
 {
   if (!extra)
     return;
@@ -382,6 +382,41 @@ bool memcpy_command::wait()
 {
   m_handle.wait();
   set_state(state::completed);
+  return true;
+}
+
+bool
+kernel_list_start::
+wait()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::completed)
+    return true;
+
+  if (kernel_list_start_state != state::running)
+    return false;
+
+  m_rl.wait();
+  set_state(state::completed);
+  return true;
+}
+
+bool
+kernel_list_start::
+submit()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::running)
+    return true;
+
+  if (kernel_list_start_state == state::completed)
+    return true;
+
+  if (kernel_list_start_state != state::init)
+    return false;
+
+  m_rl.execute();
+  set_state(state::running);
   return true;
 }
 
