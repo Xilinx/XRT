@@ -639,7 +639,13 @@ struct runner : request
     tct_one_column_path,
     tct_all_column_recipe,
     tct_all_column_profile,
-    tct_all_column_path
+    tct_all_column_path,
+    recipe_preemption_noop_4x4,
+    recipe_preemption_noop_4x8,
+    recipe_preemption_memtile_4x4,
+    recipe_preemption_memtile_4x8,
+    profile_preemption,
+    preemption_path
   };
 
   using result_type = std::string;
