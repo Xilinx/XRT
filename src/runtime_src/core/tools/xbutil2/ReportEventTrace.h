@@ -6,14 +6,19 @@
 
 #include "core/common/query_requests.h"
 #include "tools/common/Report.h"
-#include "EventTraceConfig.h"
+#include "EventTrace.h"
+#include <string>
+#include <cstdint>
+#include <vector>
+#include <map>
+
 namespace smi = xrt_core::tools::xrt_smi;
 
 /**
  * @brief Report for firmware event trace information
  * 
- * This report provides comprehensive information about firmware event traces
- * captured from the device. It displays chronological trace events with:
+ * This report provides information about firmware events
+ * captured from the firmware. It displays chronological trace events with:
  * 
  * Event Trace Information:
  * - Timestamp: When the event occurred (in nanoseconds)
@@ -23,38 +28,19 @@ namespace smi = xrt_core::tools::xrt_smi;
  * - Payload: Event-specific data and arguments
  * - Context ID: Associated hardware context (if applicable)
  * 
- * Event Categories Include:
- * - NPU Scheduling: Frame start/done, preemption events
- * - Mailbox: Message processing, context management
- * - Clock/Power: Power gating, clock management
- * - Errors: Async errors, fatal errors
- * - PDI Load: Program download and initialization
- * - L2 Memory: Save/restore operations
- * 
  */
 class ReportEventTrace : public Report {
 public:
   /**
-   * @brief Event trace data structure (must match device.cpp implementation)
-   */
-  struct trace_event {
-    uint64_t timestamp;    // Simulated timestamp
-    uint16_t event_id;     // Event ID from trace_events.h
-    uint64_t payload;      // Event payload/arguments
-  };
-
-  /**
    * @brief Type aliases for compatibility with existing code
    */
   using event_trace_config = xrt_core::tools::xrt_smi::event_trace_config;
-  using event_record = xrt_core::tools::xrt_smi::event_record;
 
   /**
    * @brief Constructor for event trace report
    * 
    * Initializes the report with:
    * - Report name: "event-trace"
-   * - Description: "Log to console firmware event trace information"
    */
   ReportEventTrace() 
     :  Report("event-trace", "Log to console firmware event trace information", true /*deviceRequired*/)
@@ -124,7 +110,7 @@ private:
    * - Configuration parsing fails
    * - User explicitly requests raw output with "--element raw"
    * 
-   * @note Updates m_watch_mode_offset for continuous streaming
+   * @note Follows same pattern as ReportFirmwareLog::generate_raw_logs
    */
   std::string 
   generate_raw_logs(const xrt_core::device* dev, bool is_watch) const;
@@ -136,30 +122,18 @@ private:
    * @param config Event trace configuration for parsing structure and events
    * @param is_watch True if operating in watch mode (continuous updates)
    * @param use_dummy True to use dummy data instead of device data
-   * @return std::string Formatted trace table with parsed events and arguments
+   * @return std::string Formatted trace output with parsed events and arguments
    * 
-   * This method retrieves event trace data from the device and uses the provided
-   * configuration to parse and format it into a human-readable table. 
+   * This method retrieves event trace data from the device and uses an internal
+   * event_trace_parser class to parse and format it into human-readable output.
+   * Similar pattern to ReportFirmwareLog with minimal overhead parsing.
    * 
-   * @note Uses xrt_core::tools::xrt_smi::event_trace_config class for actual parsing logic
+   * @note Uses internal event_trace_parser class for efficient parsing logic
    */
   std::string 
   generate_parsed_logs(const xrt_core::device* dev,
-                      const xrt_core::tools::xrt_smi::event_trace_config& config,
-                      bool is_watch,
-                      bool use_dummy = false) const;
-
-  /**
-   * @brief Generate dummy event trace data for testing
-   * 
-   * @param log_buffer Buffer to fill with dummy trace data
-   * 
-   * This method creates simulated event trace data with realistic event IDs
-   * and payloads for testing purposes. Each call generates unique data
-   * with incrementing counters to simulate real device behavior.
-   */
-  void 
-  generate_dummy_event_trace_data(xrt_core::query::firmware_debug_buffer& log_buffer) const;
+                       const smi::event_trace_config& config,
+                       bool is_watch) const;
 
   /**
    * @brief Validate event trace version compatibility
@@ -173,7 +147,7 @@ private:
    */
   void
   validate_version_compatibility(const std::pair<uint16_t, uint16_t>& version,
-                                const xrt_core::device* device) const;
+                                 const xrt_core::device* device) const;
 };
 
 #endif // REPORT_EVENT_TRACE_H

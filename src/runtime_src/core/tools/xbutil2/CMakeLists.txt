@@ -54,7 +54,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_EventTrace.cpp"
   "OO_FirmwareLog.cpp"
   "ReportEventTrace.cpp"
-  "EventTraceConfig.cpp"
+  "EventTrace.cpp"
   "ReportFirmwareLog.cpp"
   "FirmwareLog.cpp"
 )
