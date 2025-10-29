@@ -24,6 +24,7 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("categories", boost::program_options::value<decltype(m_categories)>(&m_categories), "Category mask to enable categories")
   ;
 
   m_optionsHidden.add_options()
@@ -94,14 +95,6 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if (boost::iequals(m_action, "status")) {
-    // Get the current event trace state
-    const auto event_trace_state = xrt_core::device_query<xrt_core::query::event_trace_state>(device.get());
-    std::cout << "Event Trace Status:\n";
-    std::cout << "  Action: " << (event_trace_state == 1 ? "enabled" : "disabled") << "\n";
-    return;
-  }
-
   XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
 
   auto action_to_int = [](const std::string& action) -> uint32_t {
@@ -109,7 +102,8 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
   };
 
   try {
-    xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), action_to_int(m_action));
+    xrt_core::query::event_trace_state::value_type params{action_to_int(m_action), m_categories};
+    xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), params);
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();

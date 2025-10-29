@@ -4,26 +4,20 @@
 #ifndef EVENT_TRACE_CONFIG_H
 #define EVENT_TRACE_CONFIG_H
 
-#include <cstdint>
+#include "core/common/json/nlohmann/json.hpp"
+
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
-#include "core/common/json/nlohmann/json.hpp"
 
 // Forward declaration for device
 namespace xrt_core { class device; }
 
 namespace xrt_core::tools::xrt_smi{
-/**
- * @brief Raw event record structure
- */
-struct event_record
-{
-  uint64_t timestamp;
-  uint16_t event_id;
-  uint64_t payload;
-};
+
+constexpr uint32_t event_bits_default = 16;
+constexpr uint32_t payload_bits_default = 48;
+constexpr uint32_t timestamp_bytes_default = 8;
 
 /**
  * @brief Configuration loader for firmware event trace data
@@ -40,7 +34,7 @@ public:
   struct event_arg {
     std::string name;           // Argument name (e.g., "context_id")
     uint32_t width;             // Bit width of the argument
-    uint32_t start;             // Starting bit position in payload (calculated)
+    uint32_t start;             // Starting bit position in payload 
     std::string format;         // Display format (e.g., "08x", "d")
     std::string lookup;         // Lookup table name (if any)
     bool signed_field;          // Whether the field is signed
@@ -48,16 +42,16 @@ public:
   };
 
   /**
-   * @brief Category definition from YAML configuration
+   * @brief Category definition from json configuration
    */
   struct category_info {
     std::string name;           // Category name
     std::string description;    // Category description
-    uint32_t id;               // Category bit ID
+    uint32_t id;               // Category ID
   };
 
   /**
-   * @brief Event definition from YAML configuration
+   * @brief Event definition from json configuration
    */
   struct event_info {
     uint16_t id;                           // Event ID (index in events array)
@@ -71,9 +65,18 @@ public:
   };
 
   /**
+   * @brief Input event data for decoding
+   */
+  struct event_data_t {
+    uint64_t timestamp;  // Event timestamp
+    uint16_t event_id;   // Event ID  
+    uint64_t payload;    // Event payload
+  };
+
+  /**
    * @brief Parsed event data from firmware buffer
    */
-  struct parsed_event {
+  struct decoded_event_t {
     uint64_t timestamp;                    // Event timestamp
     uint16_t event_id;                     // Event ID
     std::string name;                      // Event name
@@ -95,12 +98,14 @@ public:
   event_trace_config(nlohmann::json json_config);
 
   /**
-   * @brief Parse a single trace event from raw data
-   * @param record Raw event record
+   * @brief Parse a single trace event from raw values
+   * @param timestamp Event timestamp 
+   * @param event_id Event ID
+   * @param payload Event payload
    * @return Parsed event structure
    */
-  parsed_event
-  parse_event(const event_record& record) const;
+  decoded_event_t
+  decode_event(const event_data_t& event_data) const;
 
   /**
    * @brief Get event name by ID
@@ -111,21 +116,28 @@ public:
   get_event_name(uint16_t event_id) const;
 
   /**
-   * @brief Get event categories by ID
-   * @param event_id Event ID to look up
-   * @return Vector of category names
-   */
-  std::vector<std::string>
-  get_event_categories(uint16_t event_id) const;
-
-  /**
    * @brief Get data format information
    * @return pair of (event_bits, payload_bits)
    */
   std::pair<uint32_t, uint32_t>
   get_data_format() const { 
-    return {event_bits, payload_bits}; 
+    return {m_event_bits, m_payload_bits}; 
   }
+
+  /**
+   * @brief Calculate size of single event based on config
+   * @return Size in bytes for one event
+   */
+  size_t get_event_size() const {
+    return timestamp_bytes_default + (m_event_bits + m_payload_bits) / 8; //NOLINT (cppcoreguidelines-avoid-magic-numbers)
+  }
+
+  /**
+   * @brief Parse single event from buffer at runtime using config sizes
+   * @param buffer_ptr Pointer to event data in buffer
+   */
+  event_data_t 
+  parse_buffer(const uint8_t* buffer_ptr) const;
 
   /**
    * @brief Get JSON file version
@@ -133,56 +145,52 @@ public:
    */
   std::pair<uint16_t, uint16_t>
   get_file_version() const {
-    return {file_major, file_minor};
+    return {m_file_major, m_file_minor};
   }
 
 
 private:
   /**
    * @brief Parse event_bits from JSON data_format
-   * @param config Root JSON object
    * @return event_bits (uint32_t)
    */
-  static uint32_t parse_event_bits(const nlohmann::json& config);
+  uint32_t 
+  parse_event_bits();
 
   /**
    * @brief Parse payload_bits from JSON data_format
-   * @param config Root JSON object
    * @return payload_bits (uint32_t)
    */
-  static uint32_t parse_payload_bits(const nlohmann::json& config);
+  uint32_t 
+  parse_payload_bits();
 
   /**
    * @brief Parse major version from JSON
-   * @param config Root JSON object
    * @return major version (uint16_t)
    */
-  static uint16_t 
-  parse_major_version(const nlohmann::json& config);
+  uint16_t 
+  parse_major_version();
 
   /**
    * @brief Parse minor version from JSON
-   * @param config Root JSON object
    * @return minor version (uint16_t)
    */
-  static uint16_t 
-  parse_minor_version(const nlohmann::json& config);
+  uint16_t 
+  parse_minor_version();
 
   /**
    * @brief Parse lookups section from JSON (optional)
-   * @param config Root JSON object
    * @return code_tables map
    */
-  static std::map<std::string, std::map<uint32_t, std::string>>
-  parse_code_table(const nlohmann::json& config);
+  std::map<std::string, std::map<uint32_t, std::string>>
+  parse_code_table();
 
   /**
    * @brief Parse categories section from JSON
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  static std::map<std::string, category_info>
-  parse_categories(const nlohmann::json& config);
+  std::map<std::string, category_info>
+  parse_categories();
 
   /**
    * @brief Create category info from JSON object
@@ -191,16 +199,15 @@ private:
    * @return category_info structure
    * @throws std::runtime_error if validation fails
    */
-  static category_info
+  category_info
   create_category_info(const nlohmann::json& category);
 
   /**
    * @brief Parse arg_sets section from JSON (optional)
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  static std::map<std::string, std::vector<event_arg>>
-  parse_arg_sets(const nlohmann::json& config, uint32_t payload_bits);
+  std::map<std::string, std::vector<event_arg>>
+  parse_arg_sets();
 
   /**
    * @brief Parse a list of arguments for an arg_set
@@ -209,9 +216,9 @@ private:
    * @return Vector of parsed event_arg structures
    * @throws std::runtime_error if validation fails
    */
-  static std::vector<event_arg>
+  std::vector<event_arg>
   parse_argument_list(const nlohmann::json& arg_list, 
-                      const std::string& arg_set_name, uint32_t payload_bits);
+                      const std::string& arg_set_name);
 
   /**
    * @brief Create event_arg from JSON object
@@ -221,19 +228,17 @@ private:
    * @return event_arg structure
    * @throws std::runtime_error if validation fails
    */
-  static event_arg
-  create_event_arg(const nlohmann::json& arg_data, uint32_t start_position,
+  event_arg
+  create_event_arg(const nlohmann::json& arg_data, 
+                  uint32_t start_position,
                   const std::string& arg_set_name);
 
   /**
    * @brief Parse events section from JSON
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
-  static std::map<uint16_t, event_info>
-  parse_events(const nlohmann::json& config, 
-               const std::map<std::string, category_info>& category_map, 
-               const std::map<std::string, std::vector<event_arg>>& arg_templates);
+  std::map<uint16_t, event_info>
+  parse_events();
 
   /**
    * @brief Create event_info from JSON object
@@ -242,8 +247,8 @@ private:
    * @return event_info structure
    * @throws std::runtime_error if validation fails
    */
-  static event_info
-  create_event_info(const nlohmann::json& event_data, const std::map<std::string, category_info>& category_map, const std::map<std::string, std::vector<event_arg>>& arg_templates);
+  event_info
+  create_event_info(const nlohmann::json& event_data);
 
   /**
    * @brief Parse and validate event categories
@@ -251,8 +256,9 @@ private:
    * @param event Event info to populate
    * @throws std::runtime_error if category references are invalid
    */
-  static void
-  parse_event_categories(const nlohmann::json& event_data, event_info& event, const std::map<std::string, category_info>& category_map);
+  void
+  parse_event_categories(const nlohmann::json& event_data,
+                         event_info& event);
 
   /**
    * @brief Parse event arguments reference
@@ -260,8 +266,9 @@ private:
    * @param event Event info to populate
    * @throws std::runtime_error if arg_set reference is invalid
    */
-  static void
-  parse_event_arguments(const nlohmann::json& event_data, event_info& event, const std::map<std::string, std::vector<event_arg>>& arg_templates);
+  void
+  parse_event_arguments(const nlohmann::json& event_data, 
+                        event_info& event);
 
   /**
    * @brief Extract argument value from payload
@@ -271,7 +278,8 @@ private:
    * @throws std::runtime_error if extraction fails
    */
   std::string
-  extract_arg_value(uint64_t payload, const event_arg& arg) const;
+  extract_arg_value(uint64_t payload, 
+                    const event_arg& arg) const;
 
   /**
    * @brief Format value according to format specification
@@ -280,19 +288,112 @@ private:
    * @return Formatted string
    */
   std::string
-  format_value(uint64_t value, const std::string& format) const;
+  format_value(uint64_t value, 
+              const std::string& format) const;
 
 private:
   // Configuration data
-  nlohmann::json config;
-  uint32_t event_bits;                                     // Event ID bit width
-  uint32_t payload_bits;                                   // Payload bit width
-  uint16_t file_major;                                     // JSON file major version
-  uint16_t file_minor;                                     // JSON file minor version
-  std::map<std::string, std::map<uint32_t, std::string>> code_tables;  // Numeric code to string lookup tables
-  std::map<std::string, category_info> category_map;      // Category name -> info
-  std::map<std::string, std::vector<event_arg>> arg_templates;  // Argument set definitions
-  std::map<uint16_t, event_info> event_map;               // Event ID -> info
+  nlohmann::json m_config;
+  uint32_t m_event_bits;                                     // Event ID bit width
+  uint32_t m_payload_bits;                                   // Payload bit width
+  uint16_t m_file_major;                                     // JSON file major version
+  uint16_t m_file_minor;                                     // JSON file minor version
+  std::map<std::string, std::map<uint32_t, std::string>> m_code_tables;  // Numeric code to string lookup tables
+  std::map<std::string, category_info> m_category_map;      // Category name -> info
+  std::map<std::string, std::vector<event_arg>> m_arg_templates;  // Argument set definitions
+  std::map<uint16_t, event_info> m_event_map;               // Event ID -> info
+};
+
+/**
+ * @brief Event trace parser class for minimal overhead parsing
+ *
+ * This class takes raw binary event trace data and converts it to
+ * human-readable formatted output using configuration-based event definitions.
+ *
+ * - Constructor takes configuration by reference
+ * - Single parse() method processes raw data buffer
+ * 
+ * Usage:
+ * @code
+ * event_trace_parser parser(config);
+ * std::string result = parser.parse(data_ptr, buf_size);
+ * @endcode
+ */
+class event_trace_parser {
+public:
+  using event_data_t = event_trace_config::event_data_t;
+
+  /**
+   * @brief Constructor taking event trace configuration
+   * 
+   * @param config Reference to event trace configuration containing
+   *               event definitions, argument parsing rules, and categories
+   */
+  explicit event_trace_parser(const event_trace_config& config);
+  
+  /**
+   * @brief Parse raw event trace buffer to formatted string
+   * 
+   * @param data_ptr Pointer to raw event trace data buffer
+   * @param buf_size Size of the data buffer in bytes
+   * @return std::string Formatted event trace output with parsed events
+   * 
+   * Processes the raw binary event trace data and converts each event
+   * to a human-readable format including:
+   * - Event index, timestamp, and ID
+   * - Event name from configuration
+   */
+  std::string 
+  parse(const uint8_t* data_ptr, 
+        size_t buf_size) const;
+
+private:
+
+  /**
+   * @brief Format summary header
+   * @param event_count Number of events found
+   * @param buf_size Buffer size in bytes
+   * @return Formatted summary string
+   */
+  std::string 
+  format_summary(size_t event_count, 
+                 size_t buf_size) const;
+
+  /**
+   * @brief Format a single event for output
+   * @param index Event index in the sequence
+   * @param timestamp Event timestamp 
+   * @param event_id Event ID
+   * @param payload Event payload
+   * @return Formatted event string
+   */
+  std::string 
+  format_event(const event_data_t& event_data) const;
+
+  /**
+   * @brief Format table header for trace events
+   * @return Formatted table header string
+   */
+  std::string 
+  format_header() const;
+
+  /**
+   * @brief Format event categories for table display (inline format)
+   * @param categories Vector of category strings
+   * @return Formatted category string without brackets
+   */
+  std::string 
+  format_categories(const std::vector<std::string>& categories) const;
+
+  /**
+   * @brief Format event arguments for table display (inline format)
+   * @param args Map of argument key-value pairs
+   * @return Formatted arguments string without parentheses
+   */
+  std::string 
+  format_arguments(const std::map<std::string, std::string>& args) const;
+
+  const event_trace_config& m_config; ///< Reference to event trace configuration
 };
 
 } // namespace xrt_core::tools::xrt_smi

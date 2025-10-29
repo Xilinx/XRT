@@ -4159,7 +4159,7 @@ struct event_trace_version : request
 
 struct event_trace_data : request
 {
-  using result_type = bool;
+  using result_type = firmware_debug_buffer;
   static const key_type key = key_type::event_trace_data;
 
   std::any
@@ -4173,8 +4173,11 @@ struct event_trace_data : request
 struct event_trace_state : request
 {
   static const key_type key = key_type::event_trace_state;
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t; // put value type
+  struct value_type {
+    uint32_t action;
+    uint32_t categories;
+  };
+  using result_type = value_type;
 
   std::any
   get(const device*) const override = 0;
