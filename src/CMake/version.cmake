@@ -98,6 +98,26 @@ configure_file(
   ${PROJECT_BINARY_DIR}/gen/version.json
 )
 
+set(XRT_RESOURCE_SHARED "")
+set(XRT_RESOURCE_EXEC "")
+if (WIN32)
+  set(XRT_RC_FILETYPE VFT_DLL)
+  configure_file(
+    ${XRT_SOURCE_DIR}/CMake/config/version.rc.in
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-dll.rc
+    @ONLY
+  )
+  set(XRT_RESOURCE_SHARED ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-dll.rc)
+  
+  set(XRT_RC_FILETYPE VFT_APP)
+  configure_file(
+    ${XRT_SOURCE_DIR}/CMake/config/version.rc.in
+    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-app.rc
+    @ONLY
+  )
+  set(XRT_RESOURCE_EXEC ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-app.rc)
+endif(WIN32)
+
 # xrt component install
 install(FILES
   ${PROJECT_BINARY_DIR}/gen/xrt/detail/version.h

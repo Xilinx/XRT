@@ -48,6 +48,7 @@ include_directories(
   )
 
 add_library(xilinxopencl SHARED
+  ${XRT_RESOURCE_SHARED}
   $<TARGET_OBJECTS:xocl>
   ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
   )
