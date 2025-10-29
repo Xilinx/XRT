@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
+#include "core/common/json/nlohmann/json.hpp"
 #include "EventTrace.h"
 
 #include <algorithm>
-#include <fstream>
-#include <iomanip>
-#include <regex>
-#include <set>
-#include <sstream>
-#include <cstring>
-#include "core/common/json/nlohmann/json.hpp"
 #include <boost/format.hpp>
+#include <sstream>
 
 namespace xrt_core::tools::xrt_smi{
 

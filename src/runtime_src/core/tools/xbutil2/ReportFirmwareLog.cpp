@@ -52,7 +52,7 @@ ReportFirmwareLog::generate_parsed_logs(const xrt_core::device* dev,
 
   // Create parser instance and parse the firmware log buffer directly to string
   smi::firmware_log_parser parser(config);
-  const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+  auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
   size_t buf_size = data_buf.size;
 
   ss << parser.parse(data_ptr, buf_size);
@@ -79,7 +79,7 @@ ReportFirmwareLog::generate_raw_logs(const xrt_core::device* dev,
       return ss.str();
     }
 
-    const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+    auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     size_t buf_size = data_buf.size;
 
     // Simply print the raw payload data

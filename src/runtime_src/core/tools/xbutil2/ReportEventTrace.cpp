@@ -3,24 +3,16 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "core/common/time.h"
-#include "core/common/module_loader.h"
+#include "core/common/json/nlohmann/json.hpp"
+#include "ReportEventTrace.h"
 #include "tools/common/SmiWatchMode.h"
 #include "tools/common/XBUtilities.h"
-#include "ReportEventTrace.h"
 
-// 3rd Party Library - Include Files
 #include <algorithm>
-#include <boost/format.hpp>
 #include <cstring>
-#include <utility>
 #include <filesystem>
-#include <iomanip>
-#include <map>
 #include <sstream>
-#include <vector>
-#include <cstring>
-#include "core/common/json/nlohmann/json.hpp"
+#include <utility>
 
 using bpt = boost::property_tree::ptree;
 namespace XBU = XBUtilities;
@@ -44,7 +36,7 @@ generate_raw_logs(const xrt_core::device* dev,
     }
 
     // Simply print the raw payload data
-    const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+    auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     
     ss.write(reinterpret_cast<const char*>(data_ptr), static_cast<std::streamsize>(data_buf.size));
   } 
@@ -79,7 +71,7 @@ generate_parsed_logs(const xrt_core::device* dev,
 
     // Create parser instance and parse the event trace buffer directly to string
     smi::event_trace_parser parser(config);
-    const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+    auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     auto buf_size = data_buf.size;
 
     ss << parser.parse(data_ptr, buf_size);

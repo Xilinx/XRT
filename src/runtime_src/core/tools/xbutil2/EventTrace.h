@@ -4,15 +4,11 @@
 #ifndef EVENT_TRACE_CONFIG_H
 #define EVENT_TRACE_CONFIG_H
 
-#include <cstdint>
-#include <cstring>
+#include "core/common/json/nlohmann/json.hpp"
+
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <boost/format.hpp>
-#include "core/common/json/nlohmann/json.hpp"
 
 // Forward declaration for device
 namespace xrt_core { class device; }

@@ -5,12 +5,12 @@
 #define REPORT_EVENT_TRACE_H
 
 #include "core/common/query_requests.h"
-#include "tools/common/Report.h"
 #include "EventTrace.h"
-#include <string>
-#include <cstdint>
-#include <vector>
+#include "tools/common/Report.h"
+
 #include <map>
+#include <string>
+#include <vector>
 
 namespace smi = xrt_core::tools::xrt_smi;
 
