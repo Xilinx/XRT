@@ -45,9 +45,8 @@ generate_raw_logs(const xrt_core::device* dev,
 
     // Simply print the raw payload data
     const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
-    auto buf_size = data_buf.size;
     
-    ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
+    ss.write(reinterpret_cast<const char*>(data_ptr), static_cast<std::streamsize>(data_buf.size));
   } 
   catch (const std::exception& e) {
     ss << "Error retrieving raw event trace data: " << e.what() << "\n";

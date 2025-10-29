@@ -312,7 +312,7 @@ parse_buffer(const uint8_t* buffer_ptr) const
   uint64_t combined_value = *reinterpret_cast<const uint64_t*>(current_ptr);
   
   // Extract event_id from upper bits
-  uint16_t event_id = static_cast<uint16_t>(combined_value >> m_payload_bits);
+  auto event_id = static_cast<uint16_t>(combined_value >> m_payload_bits);
   
   // Extract payload from lower bits
   uint64_t payload_mask = (1ULL << m_payload_bits) - 1;
