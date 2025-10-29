@@ -125,6 +125,9 @@ writeReport(const xrt_core::device* device,
   if (!user_wants_raw) {
     try {
       auto archive = XBU::open_archive(device);
+      if (!archive) {
+        throw std::runtime_error("Failed to open archive");
+      }
       auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
       
       auto& config_data = artifacts_repo["firmware_log.json"];
@@ -134,8 +137,7 @@ writeReport(const xrt_core::device* device,
       config = smi::firmware_log_config(json_config);
     } 
     catch (const std::exception& e) {
-      output << "Error loading firmware log config: " << e.what() << "\n";
-      output << "Falling back to raw firmware log data:\n\n";
+      output << "Warning : Dumping raw firmware log :  " << e.what() << "\n";
     }
   }
   

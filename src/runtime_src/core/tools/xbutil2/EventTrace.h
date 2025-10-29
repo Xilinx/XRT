@@ -113,20 +113,12 @@ public:
   get_event_name(uint16_t event_id) const;
 
   /**
-   * @brief Get event categories by ID
-   * @param event_id Event ID to look up
-   * @return Vector of category names
-   */
-  std::vector<std::string>
-  get_event_categories(uint16_t event_id) const;
-
-  /**
    * @brief Get data format information
    * @return pair of (event_bits, payload_bits)
    */
   std::pair<uint32_t, uint32_t>
   get_data_format() const { 
-    return {event_bits, payload_bits}; 
+    return {m_event_bits, m_payload_bits}; 
   }
 
   /**
@@ -134,7 +126,7 @@ public:
    * @return Size in bytes for one event
    */
   size_t get_event_size() const {
-    return timestamp_bits_default/8 + (event_bits + payload_bits) / 8; //NOLINT (cppcoreguidelines-avoid-magic-numbers)
+    return timestamp_bits_default/8 + (m_event_bits + m_payload_bits) / 8; //NOLINT (cppcoreguidelines-avoid-magic-numbers)
   }
 
   /**
@@ -155,58 +147,52 @@ public:
    */
   std::pair<uint16_t, uint16_t>
   get_file_version() const {
-    return {file_major, file_minor};
+    return {m_file_major, m_file_minor};
   }
 
 
 private:
   /**
    * @brief Parse event_bits from JSON data_format
-   * @param config Root JSON object
    * @return event_bits (uint32_t)
    */
   uint32_t 
-  parse_event_bits(const nlohmann::json& config);
+  parse_event_bits();
 
   /**
    * @brief Parse payload_bits from JSON data_format
-   * @param config Root JSON object
    * @return payload_bits (uint32_t)
    */
   uint32_t 
-  parse_payload_bits(const nlohmann::json& config);
+  parse_payload_bits();
 
   /**
    * @brief Parse major version from JSON
-   * @param config Root JSON object
    * @return major version (uint16_t)
    */
   uint16_t 
-  parse_major_version(const nlohmann::json& config);
+  parse_major_version();
 
   /**
    * @brief Parse minor version from JSON
-   * @param config Root JSON object
    * @return minor version (uint16_t)
    */
   uint16_t 
-  parse_minor_version(const nlohmann::json& config);
+  parse_minor_version();
 
   /**
    * @brief Parse lookups section from JSON (optional)
-   * @param config Root JSON object
    * @return code_tables map
    */
   std::map<std::string, std::map<uint32_t, std::string>>
-  parse_code_table(const nlohmann::json& config);
+  parse_code_table();
 
   /**
    * @brief Parse categories section from JSON
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   std::map<std::string, category_info>
-  parse_categories(const nlohmann::json& config);
+  parse_categories();
 
   /**
    * @brief Create category info from JSON object
@@ -220,11 +206,10 @@ private:
 
   /**
    * @brief Parse arg_sets section from JSON (optional)
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   std::map<std::string, std::vector<event_arg>>
-  parse_arg_sets(const nlohmann::json& config, uint32_t payload_bits);
+  parse_arg_sets();
 
   /**
    * @brief Parse a list of arguments for an arg_set
@@ -235,8 +220,7 @@ private:
    */
   std::vector<event_arg>
   parse_argument_list(const nlohmann::json& arg_list, 
-                      const std::string& arg_set_name, 
-                      uint32_t payload_bits);
+                      const std::string& arg_set_name);
 
   /**
    * @brief Create event_arg from JSON object
@@ -253,13 +237,10 @@ private:
 
   /**
    * @brief Parse events section from JSON
-   * @param config Root JSON object
    * @throws std::runtime_error if parsing fails
    */
   std::map<uint16_t, event_info>
-  parse_events(const nlohmann::json& config, 
-               const std::map<std::string, category_info>& category_map, 
-               const std::map<std::string, std::vector<event_arg>>& arg_templates);
+  parse_events();
 
   /**
    * @brief Create event_info from JSON object
@@ -269,9 +250,7 @@ private:
    * @throws std::runtime_error if validation fails
    */
   event_info
-  create_event_info(const nlohmann::json& event_data, 
-                    const std::map<std::string, category_info>& category_map, 
-                    const std::map<std::string, std::vector<event_arg>>& arg_templates);
+  create_event_info(const nlohmann::json& event_data);
 
   /**
    * @brief Parse and validate event categories
@@ -280,9 +259,8 @@ private:
    * @throws std::runtime_error if category references are invalid
    */
   void
-  parse_event_categories(const nlohmann::json& event_data, 
-                         event_info& event, const std::map<std::string, 
-                         category_info>& category_map);
+  parse_event_categories(const nlohmann::json& event_data,
+                         event_info& event);
 
   /**
    * @brief Parse event arguments reference
@@ -292,8 +270,7 @@ private:
    */
   void
   parse_event_arguments(const nlohmann::json& event_data, 
-                        event_info& event, 
-                        const std::map<std::string, std::vector<event_arg>>& arg_templates);
+                        event_info& event);
 
   /**
    * @brief Extract argument value from payload
@@ -318,15 +295,15 @@ private:
 
 private:
   // Configuration data
-  nlohmann::json config;
-  uint32_t event_bits;                                     // Event ID bit width
-  uint32_t payload_bits;                                   // Payload bit width
-  uint16_t file_major;                                     // JSON file major version
-  uint16_t file_minor;                                     // JSON file minor version
-  std::map<std::string, std::map<uint32_t, std::string>> code_tables;  // Numeric code to string lookup tables
-  std::map<std::string, category_info> category_map;      // Category name -> info
-  std::map<std::string, std::vector<event_arg>> arg_templates;  // Argument set definitions
-  std::map<uint16_t, event_info> event_map;               // Event ID -> info
+  nlohmann::json m_config;
+  uint32_t m_event_bits;                                     // Event ID bit width
+  uint32_t m_payload_bits;                                   // Payload bit width
+  uint16_t m_file_major;                                     // JSON file major version
+  uint16_t m_file_minor;                                     // JSON file minor version
+  std::map<std::string, std::map<uint32_t, std::string>> m_code_tables;  // Numeric code to string lookup tables
+  std::map<std::string, category_info> m_category_map;      // Category name -> info
+  std::map<std::string, std::vector<event_arg>> m_arg_templates;  // Argument set definitions
+  std::map<uint16_t, event_info> m_event_map;               // Event ID -> info
 };
 
 /**
@@ -391,8 +368,7 @@ private:
    * @return Formatted event string
    */
   std::string 
-  format_event(size_t index, 
-               uint64_t timestamp, 
+  format_event(uint64_t timestamp, 
                uint16_t event_id, 
                uint64_t payload) const;
 

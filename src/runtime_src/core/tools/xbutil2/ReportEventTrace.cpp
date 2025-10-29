@@ -225,6 +225,9 @@ writeReport(const xrt_core::device* device,
   if (!user_wants_raw) {
     try {
       auto archive = XBU::open_archive(device);
+      if (!archive) {
+        throw std::runtime_error("Failed to open archive");
+      }
       auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
       
       auto& config_data = artifacts_repo["trace_events.json"];
@@ -234,8 +237,7 @@ writeReport(const xrt_core::device* device,
       config = smi::event_trace_config(json_config);
     } 
     catch (const std::exception& e) {
-      output << "Error loading event trace config: " << e.what() << "\n";
-      output << "Falling back to raw event trace data:\n\n";
+      output << "Warning : Dumping raw event trace data: " << e.what() << "\n";
     }
   }
   

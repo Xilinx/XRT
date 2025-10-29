@@ -17,24 +17,24 @@ namespace xrt_core::tools::xrt_smi{
 
 event_trace_config::
 event_trace_config(nlohmann::json json_config)
-  : config(std::move(json_config)),
-    event_bits(parse_event_bits(config)),
-    payload_bits(parse_payload_bits(config)),
-    file_major(parse_major_version(config)),
-    file_minor(parse_minor_version(config)),
-    code_tables(parse_code_table(config)),
-    category_map(parse_categories(config)),
-    arg_templates(parse_arg_sets(config, payload_bits)),
-    event_map(parse_events(config, category_map, arg_templates))
+  : m_config(std::move(json_config)),
+    m_event_bits(parse_event_bits()),
+    m_payload_bits(parse_payload_bits()),
+    m_file_major(parse_major_version()),
+    m_file_minor(parse_minor_version()),
+    m_code_tables(parse_code_table()),
+    m_category_map(parse_categories()),
+    m_arg_templates(parse_arg_sets()),
+    m_event_map(parse_events())
 {}
 
 uint32_t event_trace_config::
-parse_event_bits(const nlohmann::json& config) 
+parse_event_bits() 
 {
-  if (!config.contains("data_format") || !config["data_format"].contains("event_bits")) {
+  if (!m_config.contains("data_format") || !m_config["data_format"].contains("event_bits")) {
     return event_bits_default;
   }
-  uint32_t event_bits_val = config["data_format"]["event_bits"].get<uint32_t>();
+  uint32_t event_bits_val = m_config["data_format"]["event_bits"].get<uint32_t>();
   if (event_bits_val == 0) {
     throw std::runtime_error("Event bits must be greater than 0");
   }
@@ -42,12 +42,12 @@ parse_event_bits(const nlohmann::json& config)
 }
 
 uint32_t event_trace_config::
-parse_payload_bits(const nlohmann::json& config) 
+parse_payload_bits() 
 {
-  if (!config.contains("data_format") || !config["data_format"].contains("payload_bits")) {
+  if (!m_config.contains("data_format") || !m_config["data_format"].contains("payload_bits")) {
     return payload_bits_default;
   }
-  uint32_t payload_bits_val = config["data_format"]["payload_bits"].get<uint32_t>();
+  uint32_t payload_bits_val = m_config["data_format"]["payload_bits"].get<uint32_t>();
   if (payload_bits_val == 0) {
     throw std::runtime_error("Payload bits must be greater than 0");
   }
@@ -55,32 +55,32 @@ parse_payload_bits(const nlohmann::json& config)
 }
 
 uint16_t event_trace_config::
-parse_major_version(const nlohmann::json& config) 
+parse_major_version() 
 {
-  if (config.contains("version") && config["version"].contains("major")) {
-    return config["version"]["major"].get<uint16_t>();
+  if (m_config.contains("version") && m_config["version"].contains("major")) {
+    return m_config["version"]["major"].get<uint16_t>();
   }
   return 0;
 }
 
 uint16_t event_trace_config::
-parse_minor_version(const nlohmann::json& config) 
+parse_minor_version() 
 {
-  if (config.contains("version") && config["version"].contains("minor")) {
-    return config["version"]["minor"].get<uint16_t>();
+  if (m_config.contains("version") && m_config["version"].contains("minor")) {
+    return m_config["version"]["minor"].get<uint16_t>();
   }
   return 0;
 }
 
 std::map<std::string, std::map<uint32_t, std::string>>
 event_trace_config::
-parse_code_table(const nlohmann::json& config)
+parse_code_table()
 {
   std::map<std::string, std::map<uint32_t, std::string>> code_tables;
-  if (!config.contains("lookups")) {
+  if (!m_config.contains("lookups")) {
     return code_tables;
   }
-  for (const auto& [lookup_name, lookup_entries] : config["lookups"].items()) {
+  for (const auto& [lookup_name, lookup_entries] : m_config["lookups"].items()) {
     std::map<uint32_t, std::string> lookup_map;
     for (const auto& [key, value] : lookup_entries.items()) {
       lookup_map[std::stoul(key)] = value.get<std::string>();
@@ -92,13 +92,13 @@ parse_code_table(const nlohmann::json& config)
 
 std::map<std::string, event_trace_config::category_info>
 event_trace_config::
-parse_categories(const nlohmann::json& config)
+parse_categories()
 {
   std::map<std::string, category_info> category_map;
-  if (!config.contains("categories")) {
+  if (!m_config.contains("categories")) {
     throw std::runtime_error("Missing required 'categories' section in JSON");
   }
-  for (const auto& category : config["categories"]) {
+  for (const auto& category : m_config["categories"]) {
     if (!category.contains("name")) {
       throw std::runtime_error("Category missing required 'name' field");
     }
@@ -126,16 +126,15 @@ create_category_info(const nlohmann::json& category)
 
 std::map<std::string, std::vector<event_trace_config::event_arg>>
 event_trace_config::
-parse_arg_sets(const nlohmann::json& config, 
-               uint32_t payload_bits)
+parse_arg_sets()
 {
   std::map<std::string, std::vector<event_arg>> arg_templates;
-  if (!config.contains("arg_sets")) {
+  if (!m_config.contains("arg_sets")) {
     return arg_templates;
   }
-  for (auto it = config["arg_sets"].begin(); it != config["arg_sets"].end(); ++it) {
+  for (auto it = m_config["arg_sets"].begin(); it != m_config["arg_sets"].end(); ++it) {
     std::string arg_name = it.key();
-    std::vector<event_arg> args = parse_argument_list(it.value(), arg_name, payload_bits);
+    std::vector<event_arg> args = parse_argument_list(it.value(), arg_name);
     arg_templates[arg_name] = args;
   }
   return arg_templates;
@@ -144,21 +143,20 @@ parse_arg_sets(const nlohmann::json& config,
 std::vector<event_trace_config::event_arg>
 event_trace_config::
 parse_argument_list(const nlohmann::json& arg_list, 
-                    const std::string& arg_set_name, 
-                    uint32_t payload_bits)
+                    const std::string& arg_set_name)
 {
   std::vector<event_arg> args;
   uint32_t start_position = 0;
   for (const auto& arg_data : arg_list) {
     event_arg arg = create_event_arg(arg_data, start_position, arg_set_name);
     start_position += arg.width;
-    if (start_position > payload_bits) {
+    if (start_position > m_payload_bits) {
       throw std::runtime_error("Argument '" 
                                 + arg.name 
                                 + "' in arg_set '" 
                                 + arg_set_name 
                                 + "' exceeds payload bits (" 
-                                + std::to_string(payload_bits) + ")");
+                                + std::to_string(m_payload_bits) + ")");
     }
     args.push_back(arg);
   }
@@ -195,14 +193,12 @@ create_event_arg(const nlohmann::json& arg_data,
 
 std::map<uint16_t, event_trace_config::event_info>
 event_trace_config::
-parse_events(const nlohmann::json& config, 
-             const std::map<std::string, category_info>& category_map, 
-             const std::map<std::string, std::vector<event_arg>>& arg_templates)
+parse_events()
 {
   std::map<uint16_t, event_info> event_map;
-  for (const auto& it : config["events"].items()) {
+  for (const auto& it : m_config["events"].items()) {
     const nlohmann::json& event_data = it.value();
-    event_info event = create_event_info(event_data, category_map, arg_templates);
+    event_info event = create_event_info(event_data);
     event.id = static_cast<uint16_t>(std::stoul(it.key()));
     event_map[event.id] = event;
   }
@@ -211,33 +207,30 @@ parse_events(const nlohmann::json& config,
 
 event_trace_config::event_info
 event_trace_config::
-create_event_info(const nlohmann::json& event_data, 
-                  const std::map<std::string, category_info>& category_map, 
-                  const std::map<std::string, std::vector<event_arg>>& arg_templates)
+create_event_info(const nlohmann::json& event_data)
 {
   event_info event;
   event.name = event_data["name"].get<std::string>();
   event.description = event_data.contains("description") ? 
                       event_data["description"].get<std::string>() : "";
   event.type = "null";
-  parse_event_categories(event_data, event, category_map);
-  parse_event_arguments(event_data, event, arg_templates);
+  parse_event_categories(event_data, event);
+  parse_event_arguments(event_data, event);
   return event;
 }
 
 void
 event_trace_config::
 parse_event_categories(const nlohmann::json& event_data, 
-                       event_info& event, 
-                       const std::map<std::string, category_info>& category_map)
+                       event_info& event)
 {
   uint32_t category_mask = 0;
   if (event_data.contains("categories")) {
     for (const auto& cat_name : event_data["categories"]) {
       std::string cat_name_str = cat_name.get<std::string>();
       event.categories.push_back(cat_name_str);
-      auto cat_it = category_map.find(cat_name_str);
-      if (cat_it == category_map.end()) {
+      auto cat_it = m_category_map.find(cat_name_str);
+      if (cat_it == m_category_map.end()) {
         throw std::runtime_error("Event '" + event.name + "' references unknown category: " + cat_name_str);
       }
       const auto& cat_info = cat_it->second;
@@ -250,13 +243,12 @@ parse_event_categories(const nlohmann::json& event_data,
 void
 event_trace_config::
 parse_event_arguments(const nlohmann::json& event_data, 
-                      event_info& event, 
-                      const std::map<std::string, std::vector<event_arg>>& arg_templates)
+                      event_info& event)
 {
   event.args_name = event_data.contains("args_name") ? event_data["args_name"].get<std::string>() : "";
   if (!event.args_name.empty()) {
-    auto arg_it = arg_templates.find(event.args_name);
-    if (arg_it == arg_templates.end()) {
+    auto arg_it = m_arg_templates.find(event.args_name);
+    if (arg_it == m_arg_templates.end()) {
       throw std::runtime_error("Event '" + event.name + "' references unknown arg_set: " + event.args_name);
     }
     event.args = arg_it->second;
@@ -273,8 +265,8 @@ decode_event(uint64_t timestamp,
   decoded.timestamp = timestamp;
   decoded.event_id = event_id;
   decoded.raw_payload = payload;
-  auto event_it = event_map.find(event_id);
-  if (event_it != event_map.end()) {
+  auto event_it = m_event_map.find(event_id);
+  if (event_it != m_event_map.end()) {
     const event_info& event = event_it->second;
     decoded.name = event.name;
     decoded.description = event.description;
@@ -325,19 +317,11 @@ parse_buffer(const uint8_t* buffer_ptr,
   uint64_t combined_value = *reinterpret_cast<const uint64_t*>(current_ptr);
   
   // Extract event_id from upper bits
-  event_id = static_cast<uint16_t>(combined_value >> payload_bits);
+  event_id = static_cast<uint16_t>(combined_value >> m_payload_bits);
   
   // Extract payload from lower bits
-  uint64_t payload_mask = (1ULL << payload_bits) - 1;
+  uint64_t payload_mask = (1ULL << m_payload_bits) - 1;
   payload = combined_value & payload_mask;
-}
-
-std::vector<std::string>
-event_trace_config::
-get_event_categories(uint16_t event_id) const 
-{
-  auto it = event_map.find(event_id);
-  return it != event_map.end() ? it->second.categories : std::vector<std::string>{"UNKNOWN"};
 }
 
 std::string
@@ -350,8 +334,8 @@ extract_arg_value(uint64_t payload, const event_arg& arg) const
     value |= (~mask);
   }
   if (!arg.lookup.empty()) {
-    auto lookup_it = code_tables.find(arg.lookup);
-    if (lookup_it != code_tables.end()) {
+    auto lookup_it = m_code_tables.find(arg.lookup);
+    if (lookup_it != m_code_tables.end()) {
       auto value_it = lookup_it->second.find(static_cast<uint32_t>(value));
       if (value_it != lookup_it->second.end()) {
         return value_it->second;
@@ -419,7 +403,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     m_config.parse_buffer(current_ptr, timestamp, event_id, payload);
     current_ptr += total_event_size;
     
-    ss << format_event(i, timestamp, event_id, payload);
+    ss << format_event(timestamp, event_id, payload);
   }
 
   return ss.str();
@@ -443,8 +427,7 @@ format_header() const
 
 std::string
 event_trace_parser::
-format_event(size_t index, 
-             uint64_t timestamp, 
+format_event(uint64_t timestamp, 
              uint16_t event_id, 
              uint64_t payload) const
 {
