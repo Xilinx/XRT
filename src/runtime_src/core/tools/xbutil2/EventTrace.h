@@ -21,7 +21,7 @@ namespace xrt_core::tools::xrt_smi{
 
 constexpr uint32_t event_bits_default = 16;
 constexpr uint32_t payload_bits_default = 48;
-constexpr uint32_t timestamp_bits_default = 64;
+constexpr uint32_t timestamp_bytes_default = 8;
 
 /**
  * @brief Configuration loader for firmware event trace data
@@ -69,6 +69,15 @@ public:
   };
 
   /**
+   * @brief Input event data for decoding
+   */
+  struct event_data_t {
+    uint64_t timestamp;  // Event timestamp
+    uint16_t event_id;   // Event ID  
+    uint64_t payload;    // Event payload
+  };
+
+  /**
    * @brief Parsed event data from firmware buffer
    */
   struct decoded_event_t {
@@ -100,9 +109,7 @@ public:
    * @return Parsed event structure
    */
   decoded_event_t
-  decode_event(uint64_t timestamp, 
-               uint16_t event_id, 
-               uint64_t payload) const;
+  decode_event(const event_data_t& event_data) const;
 
   /**
    * @brief Get event name by ID
@@ -126,20 +133,15 @@ public:
    * @return Size in bytes for one event
    */
   size_t get_event_size() const {
-    return timestamp_bits_default/8 + (m_event_bits + m_payload_bits) / 8; //NOLINT (cppcoreguidelines-avoid-magic-numbers)
+    return timestamp_bytes_default + (m_event_bits + m_payload_bits) / 8; //NOLINT (cppcoreguidelines-avoid-magic-numbers)
   }
 
   /**
    * @brief Parse single event from buffer at runtime using config sizes
    * @param buffer_ptr Pointer to event data in buffer
-   * @param timestamp Output parameter for parsed timestamp
-   * @param event_id Output parameter for parsed event ID
-   * @param payload Output parameter for parsed payload
    */
-  void parse_buffer(const uint8_t* buffer_ptr, 
-                    uint64_t& timestamp, 
-                    uint16_t& event_id, 
-                    uint64_t& payload) const;
+  event_data_t 
+  parse_buffer(const uint8_t* buffer_ptr) const;
 
   /**
    * @brief Get JSON file version
@@ -323,6 +325,8 @@ private:
  */
 class event_trace_parser {
 public:
+  using event_data_t = event_trace_config::event_data_t;
+
   /**
    * @brief Constructor taking event trace configuration
    * 
@@ -368,9 +372,7 @@ private:
    * @return Formatted event string
    */
   std::string 
-  format_event(uint64_t timestamp, 
-               uint16_t event_id, 
-               uint64_t payload) const;
+  format_event(const event_data_t& event_data) const;
 
   /**
    * @brief Format table header for trace events

@@ -45,7 +45,7 @@ generate_raw_logs(const xrt_core::device* dev,
 
     // Simply print the raw payload data
     const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
-    size_t buf_size = data_buf.size;
+    auto buf_size = data_buf.size;
     
     ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
   } 
@@ -81,7 +81,7 @@ generate_parsed_logs(const xrt_core::device* dev,
     // Create parser instance and parse the event trace buffer directly to string
     smi::event_trace_parser parser(config);
     const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
-    size_t buf_size = data_buf.size;
+    auto buf_size = data_buf.size;
 
     ss << parser.parse(data_ptr, buf_size);
   } 
@@ -154,17 +154,12 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
       size_t event_count = data_buf.size / total_event_size;
 
       bpt events_array{};
-      const uint8_t* current_ptr = static_cast<const uint8_t*>(data_buf.data);
+      const auto* current_ptr = static_cast<const uint8_t*>(data_buf.data);
       
       for (size_t i = 0; i < event_count; ++i) {
-        // Parse event from buffer using runtime config
-        uint64_t timestamp, payload;
-        uint16_t event_id;
-        config.parse_buffer(current_ptr, timestamp, event_id, payload);
+        // Parse event from buffer and decode using json based configuration
+        auto parsed_event = config.decode_event(config.parse_buffer(current_ptr));
         current_ptr += total_event_size;
-        
-        // Parse event using json based configuration
-        auto parsed_event = config.decode_event(timestamp, event_id, payload);
 
         bpt event_pt;
         event_pt.put("timestamp", parsed_event.timestamp);
@@ -219,6 +214,12 @@ writeReport(const xrt_core::device* device,
 {
   bool user_wants_raw = std::find(elements_filter.begin(), elements_filter.end(), "raw") != elements_filter.end();
   
+  if (std::find(elements_filter.begin(), elements_filter.end(), "status") != elements_filter.end()) {
+    auto status = xrt_core::device_query<xrt_core::query::event_trace_state>(device);
+    output << "Event trace status: "<<(status.action == 1 ? "enabled" : "disabled");
+    output << "Event trace categories: "<< status.categories;
+    return;
+  }
   // Try to parse config unless user explicitly wants raw logs
   std::optional<smi::event_trace_config> config;
 

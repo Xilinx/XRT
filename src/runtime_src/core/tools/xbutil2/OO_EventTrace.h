@@ -17,4 +17,5 @@ private:
   std::string m_device;
   std::string m_action;
   bool m_help;
+  uint32_t m_categories;
 };

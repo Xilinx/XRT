@@ -257,15 +257,13 @@ parse_event_arguments(const nlohmann::json& event_data,
 
 event_trace_config::decoded_event_t
 event_trace_config::
-decode_event(uint64_t timestamp, 
-             uint16_t event_id, 
-             uint64_t payload) const 
+decode_event(const event_data_t& event_data) const 
 {
   decoded_event_t decoded;
-  decoded.timestamp = timestamp;
-  decoded.event_id = event_id;
-  decoded.raw_payload = payload;
-  auto event_it = m_event_map.find(event_id);
+  decoded.timestamp = event_data.timestamp;
+  decoded.event_id = event_data.event_id;
+  decoded.raw_payload = event_data.payload;
+  auto event_it = m_event_map.find(event_data.event_id);
   if (event_it != m_event_map.end()) {
     const event_info& event = event_it->second;
     decoded.name = event.name;
@@ -273,7 +271,7 @@ decode_event(uint64_t timestamp,
     decoded.categories = event.categories;
     for (const auto& arg : event.args) {
       try {
-        std::string value = extract_arg_value(payload, arg);
+        std::string value = extract_arg_value(event_data.payload, arg);
         decoded.args[arg.name] = value;
       } 
       catch (const std::exception& e) {
@@ -282,7 +280,7 @@ decode_event(uint64_t timestamp,
     }
   } else {
     decoded.name = "UNKNOWN";
-    decoded.description = "Unknown event ID: " + std::to_string(event_id);
+    decoded.description = "Unknown event ID: " + std::to_string(event_data.event_id);
     decoded.categories = {"UNKNOWN"};
   }
   return decoded;
@@ -300,28 +298,27 @@ combined = 0x00140094ee0000f
 
 Thus using the same mechanism for extraction
 */
-void
+event_trace_config::event_data_t
 event_trace_config::
-parse_buffer(const uint8_t* buffer_ptr, 
-             uint64_t& timestamp, 
-             uint16_t& event_id, 
-             uint64_t& payload) const
+parse_buffer(const uint8_t* buffer_ptr) const
 {
   const uint8_t* current_ptr = buffer_ptr;
   
   // Parse timestamp (always 8 bytes)
-  timestamp = *reinterpret_cast<const uint64_t*>(current_ptr);
-  current_ptr += 8;
+  uint64_t timestamp = *reinterpret_cast<const uint64_t*>(current_ptr);
+  current_ptr += timestamp_bytes_default;
   
   // Parse combined event_id and payload from single 64-bit value
   uint64_t combined_value = *reinterpret_cast<const uint64_t*>(current_ptr);
   
   // Extract event_id from upper bits
-  event_id = static_cast<uint16_t>(combined_value >> m_payload_bits);
+  uint16_t event_id = static_cast<uint16_t>(combined_value >> m_payload_bits);
   
   // Extract payload from lower bits
   uint64_t payload_mask = (1ULL << m_payload_bits) - 1;
-  payload = combined_value & payload_mask;
+  uint64_t payload = combined_value & payload_mask;
+  
+  return {timestamp, event_id, payload};
 }
 
 std::string
@@ -398,12 +395,10 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
   const uint8_t* current_ptr = data_ptr;
   for (size_t i = 0; i < event_count; ++i) {
     // Parse event from buffer using runtime config
-    uint64_t timestamp, payload;
-    uint16_t event_id;
-    m_config.parse_buffer(current_ptr, timestamp, event_id, payload);
+    auto event_data = m_config.parse_buffer(current_ptr);
     current_ptr += total_event_size;
     
-    ss << format_event(timestamp, event_id, payload);
+    ss << format_event(event_data);
   }
 
   return ss.str();
@@ -427,13 +422,11 @@ format_header() const
 
 std::string
 event_trace_parser::
-format_event(uint64_t timestamp, 
-             uint16_t event_id, 
-             uint64_t payload) const
+format_event(const event_data_t& event_data) const
 {
   std::stringstream ss{};
   
-  auto decoded_event = m_config.decode_event(timestamp, event_id, payload);
+  auto decoded_event = m_config.decode_event(event_data);
 
   // Format categories for table
   std::string categories_str = format_categories(decoded_event.categories);
@@ -446,7 +439,7 @@ format_event(uint64_t timestamp,
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
   
   ss << boost::format("%-20lu %-25s %-25s %-30s\n")//NOLINT (cppcoreguidelines-avoid-magic-numbers) 
-        % timestamp                          // Use parsed timestamp value
+        % event_data.timestamp               // Use parsed timestamp value
         % event_name                         // Use parsed name or UNKNOWN
         % category_display                   // Use parsed categories or UNKNOWN
         % args_str;

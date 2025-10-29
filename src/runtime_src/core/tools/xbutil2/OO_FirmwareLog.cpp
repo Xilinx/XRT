@@ -97,15 +97,6 @@ OO_FirmwareLog::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if (boost::iequals(m_action, "status")) {
-    // Get the current firmware log state
-    const auto log_state = xrt_core::device_query<xrt_core::query::firmware_log_state>(device.get());
-    std::cout << "Firmware Log Status:\n";
-    std::cout << "  Action: " << (log_state.action == 1 ? "enabled" : "disabled") << "\n";
-    std::cout << "  Log Level: " << log_state.log_level << "\n";
-    return;
-  }
-
   XBUtilities::sudo_or_throw("Firmware log configuration requires admin privileges");
 
   auto action_to_int = [](const std::string& action) -> uint32_t {
