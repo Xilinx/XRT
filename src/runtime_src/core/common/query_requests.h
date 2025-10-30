@@ -61,7 +61,6 @@ enum class key_type
   xclbin_name,
   runner,
   elf_name,
-  mobilenet,
 
   dma_threads_raw,
 
@@ -671,7 +670,6 @@ struct xclbin_name : request
     gemm,
     validate_elf,
     gemm_elf,
-    mobilenet_elf,
     preemption_4x4,
     preemption_4x8  
   };
@@ -692,8 +690,6 @@ struct xclbin_name : request
         return "preemption_4x4";
       case type::preemption_4x8:
         return "preemption_4x8";
-      case type::mobilenet_elf:
-        return "mobilenet_elf";
     }
     return "unknown";
   }
@@ -719,8 +715,7 @@ struct elf_name : request
     preemption_noop_4x4,
     preemption_noop_4x8,
     preemption_memtile_4x4,
-    preemption_memtile_4x8, 
-    mobilenet
+    preemption_memtile_4x8
   };
 
   static std::string
@@ -737,8 +732,6 @@ struct elf_name : request
         return "preemption_memtile_4x4";
       case type::preemption_memtile_4x8:
         return "preemption_memtile_4x8";
-      case type::mobilenet:
-        return "mobilenet";
     }
     return "unknown";
   }
@@ -746,36 +739,6 @@ struct elf_name : request
   using result_type = std::string;
   static const key_type key = key_type::elf_name;
   static const char* name() { return "elf_name"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-};
-
-struct mobilenet : request 
-{
-  enum class type {
-    mobilenet_ifm,
-    mobilenet_param,
-    buffer_sizes
-  };
-
-  static std::string
-  enum_to_str(const type& type)
-  {
-    switch (type) {
-      case type::mobilenet_ifm:
-        return "mobilenet_ifm";
-      case type::mobilenet_param:
-        return "mobilenet_param";
-      case type::buffer_sizes:
-        return "buffer_sizes";
-    }
-    return "unknown";
-  }
-
-  using result_type = std::string;
-  static const key_type key = key_type::mobilenet;
-  static const char* name() { return "mobilenet"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
