@@ -165,7 +165,7 @@ smi_hardware_config()
     {{0x1B0B, 0x00}, hardware_type::npu3_B02},
     {{0x1B0C, 0x00}, hardware_type::npu3_B03}
   };
-  // NOLINTEND
+  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 }
 
 smi_hardware_config::hardware_type
