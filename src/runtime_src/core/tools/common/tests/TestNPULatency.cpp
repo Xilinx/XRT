@@ -34,7 +34,7 @@ TestNPULatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core
   boost::property_tree::ptree ptree = get_test_header();
   
   if (archive == nullptr) {
-    XBValidateUtils::logger(ptree, "Info", "No archive provided, using standard latency test");
+    XBValidateUtils::logger(ptree, "Info", "No archive found, skipping test");
     return ptree;
   }
   

@@ -29,6 +29,11 @@ TestCmdChainThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const 
 {
   boost::property_tree::ptree ptree = get_test_header();
 
+  if (archive == nullptr) {
+    XBValidateUtils::logger(ptree, "Info", "No archive found, skipping test");
+    return ptree;
+  }
+
   try {
     std::string recipe_data = archive->data("recipe_cmd_chain_throughput.json");
     std::string profile_data = archive->data("profile_cmd_chain_throughput.json"); 
