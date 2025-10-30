@@ -657,7 +657,7 @@ struct ert_ctx_health_data_aie2 {
 };
 
 /**
- * struct uc_health_info: Health data for each cert
+ * struct ert_uc_health_info: Health data for each cert
  *
  * @uc_idx:            uC index in this context, 0 is the lead
  * @uc_idle_status:    valid when CERT is CTX_IDEL, represent the reason CERT is idle
@@ -677,7 +677,7 @@ struct ert_ctx_health_data_aie2 {
  * @uc_esr:            in case of uC crash, the exception status of uC
  * @uc_pc:             in case of uC crash, the PC of the current uC
  */
-struct uc_health_info {
+struct ert_uc_health_info {
   uint32_t uc_idx;
   uint32_t uc_idle_status;
   uint32_t misc_status;
@@ -706,7 +706,7 @@ struct uc_health_info {
 struct ert_ctx_health_data_aie4 {
   uint32_t ctx_state;
   uint32_t num_uc;
-  struct uc_health_info uc_info[];
+  struct ert_uc_health_info uc_info[];
 };
 
 /**
