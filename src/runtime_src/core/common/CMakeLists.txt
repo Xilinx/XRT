@@ -85,6 +85,7 @@ target_include_directories(core_common_objects
   )
 
 add_library(xrt_coreutil SHARED
+  ${XRT_RESOURCE_SHARED}
   $<TARGET_OBJECTS:core_common_library_objects>
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
