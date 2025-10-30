@@ -151,7 +151,7 @@ instance()
 smi_hardware_config::
 smi_hardware_config()
 {
-  // Initialize the hardware map
+  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers) 
   hardware_map = {
     {{0x1502, 0x00}, hardware_type::phx},
     {{0x17f0, 0x00}, hardware_type::stxA0},
@@ -165,6 +165,7 @@ smi_hardware_config()
     {{0x1B0B, 0x00}, hardware_type::npu3_B02},
     {{0x1B0C, 0x00}, hardware_type::npu3_B03}
   };
+  // NOLINTEND
 }
 
 smi_hardware_config::hardware_type
