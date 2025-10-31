@@ -14,7 +14,8 @@ file(GLOB NATIVE_PLUGIN_FILES
   "${PROFILE_DIR}/writer/native/*.cpp"
 )
 
-add_library(xdp_native_plugin SHARED ${NATIVE_PLUGIN_FILES})
+xrt_configure_version_file(xdp_native_plugin SHARED)
+add_library(xdp_native_plugin SHARED xdp_native_plugin-version.rc ${NATIVE_PLUGIN_FILES})
 add_dependencies(xdp_native_plugin xdp_core xrt_coreutil)
 target_link_libraries(xdp_native_plugin PRIVATE xdp_core xrt_coreutil)
 
