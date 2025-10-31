@@ -35,7 +35,9 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     "${IMPL_DIR}/*.h"
     "${IMPL_DIR}/*.cpp"
   )
-  add_library(xdp_aie_profile_plugin SHARED ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_PROFILE_UTIL_FILES})
+  xrt_configure_version_file(xdp_aie_profile_plugin SHARED)
+  add_library(xdp_aie_profile_plugin SHARED xdp_aie_profile_plugin-version.rc
+    ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_PROFILE_UTIL_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
   target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_CLIENT_BUILD=1 -DXAIE_FEATURE_MSVC)
@@ -54,7 +56,9 @@ elseif (DEFINED XRT_AIE_BUILD AND (NOT XRT_EDGE))
     "${IMPL_DIR}/*.h"
     "${IMPL_DIR}/*.cpp"
   )
-  add_library(xdp_aie_profile_plugin SHARED ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES})
+  xrt_configure_version_file(xdp_aie_profile_plugin SHARED)
+  add_library(xdp_aie_profile_plugin SHARED xdp_aie_profile_plugin-version.rc
+    ${AIE_PROFILE_PLUGIN_FILES} ${AIE_PROFILE_IMPL_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil)
   target_compile_definitions(xdp_aie_profile_plugin PRIVATE XRT_X86_BUILD=1)
