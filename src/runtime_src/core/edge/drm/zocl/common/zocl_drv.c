@@ -109,6 +109,9 @@ static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_d
 
 	for (i = 0; i < num_regions && i < ZOCL_MAX_MEM_REGIONS; i++) {
 		struct device *child_dev;
+		struct device_node *mem_node;
+		struct resource res_mem;
+
 		child_dev = devm_kzalloc(&pdev->dev, sizeof(struct device), GFP_KERNEL);
 		if (!child_dev)
 			return -ENOMEM;
@@ -131,6 +134,17 @@ static int zocl_cma_mem_region_init(struct drm_zocl_dev *zdev, struct platform_d
 
 		zdev->mem_regions[i].dev = child_dev;
 		zdev->mem_regions[i].initialized = true;
+
+		/* Cache the base address and size to avoid repeated device tree parsing */
+		mem_node = of_parse_phandle(pdev->dev.of_node, "memory-region", i);
+		if (mem_node && !of_address_to_resource(mem_node, 0, &res_mem)) {
+			zdev->mem_regions[i].base = res_mem.start;
+			zdev->mem_regions[i].size = resource_size(&res_mem);
+			DRM_DEBUG("CMA region %d: base=0x%llx, size=0x%llx\n",
+				  i, (u64)zdev->mem_regions[i].base,
+				  (u64)zdev->mem_regions[i].size);
+		}
+		of_node_put(mem_node);
 	}
 	platform_set_drvdata(pdev, zdev);
 	return ret;
