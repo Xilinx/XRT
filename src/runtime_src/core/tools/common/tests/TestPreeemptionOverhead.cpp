@@ -21,7 +21,7 @@ using json = nlohmann::json;
 
 static constexpr uint32_t num_of_preemptions = 500;
 
-// Helper function to measure preemption overhead for a given recipe
+// ----- S T A T I C   M E T H O D S -------------------------------------------
 static double
 measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
                             const std::string& recipe_data,
@@ -70,8 +70,6 @@ TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>&)
 boost::property_tree::ptree
 TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
-
-  //new code
   boost::property_tree::ptree ptree = get_test_header();
   ptree.erase("xclbin");
 
