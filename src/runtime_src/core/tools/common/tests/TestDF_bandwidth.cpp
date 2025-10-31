@@ -15,41 +15,6 @@
 using json = nlohmann::json;
 #include <filesystem>
 
-void calculate_bandwidth(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive, boost::property_tree::ptree& ptree)
-{
-  try {
-    std::string recipe_data = archive->data("recipe_df_bandwidth.json");
-    std::string profile_data = archive->data("profile_df_bandwidth.json"); 
-
-    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
-      "validate_df_bandwidth.xclbin", 
-      "df_bw.elf" 
-    });
-
-    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
-    runner.execute();
-    runner.wait();
-
-    auto report = nlohmann::json::parse(runner.get_report());
-    auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-    auto iterations = report["iterations"].get<int>();
-
-    // Used buffer in runner is 1GB in size, thus reporting in GB/s
-    double bandwidth = (2 * iterations ) / (elapsed_us / 1000000); // NOLINT
-
-    ptree.put("bandwidth_gbps", bandwidth);
-
-    if(XBUtilities::getVerbose())
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total duration: %.1fs") % (elapsed_us / 1000000)));
-
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: %.1f GB/s") % bandwidth));
-    ptree.put("status", XBValidateUtils::test_token_passed);
-  } catch(const std::exception& e) {
-    XBValidateUtils::logger(ptree, "Error", e.what());
-    ptree.put("status", XBValidateUtils::test_token_failed);
-  }
-}
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
   : TestRunner("df-bw", "Run bandwidth test on data fabric")

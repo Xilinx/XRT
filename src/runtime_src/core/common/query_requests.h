@@ -640,11 +640,11 @@ struct runner : request
     tct_all_column_recipe,
     tct_all_column_profile,
     tct_all_column_path,
-    recipe_preemption_noop_4x4,
-    recipe_preemption_noop_4x8,
-    recipe_preemption_memtile_4x4,
-    recipe_preemption_memtile_4x8,
-    profile_preemption,
+    preemption_noop_4x4_recipe,
+    preemption_noop_4x8_recipe,
+    preemption_memtile_4x4_recipe,
+    preemption_memtile_4x8_recipe,
+    preemption_profile,
     preemption_path
   };
 

@@ -12,8 +12,6 @@ class TestPreemptionOverhead : public TestRunner {
     boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&) override;
     boost::property_tree::ptree run(const std::shared_ptr<xrt_core::device>&, const xrt_core::archive*) override;
 
-    //double run_preempt_test(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& ptree, int no_of_cols, const std::string& level);
-
   public:
     TestPreemptionOverhead();
 };
