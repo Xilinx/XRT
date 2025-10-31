@@ -348,7 +348,9 @@ enum class key_type
   noop,
 
   xocl_errors_ex,
-  xocl_ex_error_code2string
+  xocl_ex_error_code2string,
+
+  aie_coredump
 };
 
 struct pcie_vendor : request
@@ -2019,6 +2021,7 @@ struct context_health_info : request
     uint64_t ctx_id;
     uint64_t pid;
     ert_ctx_health_data health_data;
+    ert_ctx_health_data_v1 health_data_v1;
   };
   using result_type = std::vector<smi_context_health>;
   static const key_type key = key_type::context_health_info;
@@ -4156,7 +4159,7 @@ struct event_trace_version : request
 
 struct event_trace_data : request
 {
-  using result_type = bool;
+  using result_type = firmware_debug_buffer;
   static const key_type key = key_type::event_trace_data;
 
   std::any
@@ -4170,8 +4173,11 @@ struct event_trace_data : request
 struct event_trace_state : request
 {
   static const key_type key = key_type::event_trace_state;
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t; // put value type
+  struct value_type {
+    uint32_t action;
+    uint32_t categories;
+  };
+  using result_type = value_type;
 
   std::any
   get(const device*) const override = 0;
@@ -4371,6 +4377,16 @@ struct read_trace_data : request
   static const key_type key = key_type::read_trace_data;
 
   virtual std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
+// Used for getting AIE coredump of all tiles within a ctx
+struct aie_coredump : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_coredump;
+
+  std::any
   get(const device*, const std::any&) const override = 0;
 };
 } // query

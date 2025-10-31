@@ -2,12 +2,6 @@
 ; Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 LIBRARY xrt_hip
 EXPORTS
-  hipCtxCreate
-  hipCtxDestroy
-  hipCtxGetDevice
-  hipCtxSetCurrent
-  hipDevicePrimaryCtxRetain
-  hipDevicePrimaryCtxRelease
   hipInit
   hipGetDeviceCount
   hipDeviceGet
@@ -57,3 +51,9 @@ EXPORTS
   hipMemsetD8Async
   hipMemcpyAsync
   hipMemPrefetchAsync
+  hipGraphCreate
+  hipGraphAddKernelNode
+  hipGraphInstantiate
+  hipGraphLaunch
+  hipGraphExecDestroy
+  hipGraphDestroy

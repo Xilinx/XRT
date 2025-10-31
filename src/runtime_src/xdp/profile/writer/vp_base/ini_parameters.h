@@ -22,6 +22,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 namespace xdp {
 
@@ -42,6 +43,14 @@ namespace xdp {
     }
 
     void write(std::ofstream& fout);
+
+    // Helper function: replaces all commas with underscores
+    std::string replaceCommas(const std::string& input) {
+      std::string result = input;
+      std::replace(result.begin(), result.end(), ',', '_');
+      return result;
+    }
+
   } ;
 
 } // end namespace xdp

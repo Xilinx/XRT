@@ -10,7 +10,7 @@ target_include_directories(core_common_runner_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-add_executable(xrt-runner main.cpp)
+add_executable(xrt-runner ${XRT_RESOURCE_EXEC} main.cpp)
 target_link_libraries(xrt-runner PRIVATE xrt_coreutil)
 
 if (NOT WIN32)

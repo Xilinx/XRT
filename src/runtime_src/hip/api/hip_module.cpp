@@ -36,8 +36,7 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   throw_invalid_value_if(!hip_stream, "invalid stream handle.");
   auto s_hdl = hip_stream.get();
   auto cmd_hdl = insert_in_map(command_cache,
-                               std::make_shared<kernel_start>(hip_stream,
-                                                              hip_func,
+                               std::make_shared<kernel_start>(hip_func,
                                                               kernelParams, extra));
   s_hdl->enqueue(command_cache.get(cmd_hdl));
 }
@@ -279,12 +278,11 @@ hipModuleLoad(hipModule_t* module, const char* fname)
     // try creating full ELF module
     // if it throws fallback to xclbin + ELF flow
     xrt::core::hip::module_handle handle;
-    try {
+    if (xrt::core::hip::hip_module_file_is_elf(fname)) {
       handle = xrt::core::hip::create_full_elf_module(std::string{fname});
       *module = reinterpret_cast<hipModule_t>(handle);
       return;
     }
-    catch (...) { /*do nothing*/ }
 
     handle = xrt::core::hip::create_xclbin_module(std::string{fname});
     *module = reinterpret_cast<hipModule_t>(handle);

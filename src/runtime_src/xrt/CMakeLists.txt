@@ -44,6 +44,7 @@ set_source_files_properties(${XRT_XRT_DEVICE_DIR}/hal.cpp PROPERTIES
 endif()
 
 add_library(xrt++ SHARED
+  ${XRT_RESOURCE_SHARED}
   ${XRT_XRT_ALL_SRC_SHARED}
   )
 

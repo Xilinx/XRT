@@ -22,7 +22,7 @@ void event::record(std::shared_ptr<stream> s)
     std::lock_guard lock(m_state_lock);
     throw_if((get_state() != state::init) && (get_state() < state::completed),
              hipErrorIllegalState, "event is being recorded");
-    cstream = std::move(s);
+    m_recorded_stream = std::move(s);
     // set state to recording, we are going to unhold the lock. As we are going to
     // call stream fucntions to enqueue the event as next step, which can call event
     // functions and may need to acquired the lock. The event state will be set to
@@ -38,7 +38,7 @@ void event::record(std::shared_ptr<stream> s)
   }
 
   // this will update stream command queue, which will have lock pretection
-  cstream->enqueue_event(ev);
+  m_recorded_stream->enqueue_event(ev);
   {
     std::lock_guard lock(m_state_lock);
     // set state to recorded
@@ -75,26 +75,40 @@ bool event::is_recorded()
 bool event::query()
 {
   //This function will return true if all commands in the appropriate stream which specified to hipEventRecord() have completed.
-  std::lock_guard lock(m_recorded_cmds_lock);
-  for (auto& rec_com : m_recorded_commands){
-    state command_state = rec_com->get_state();
-    if (command_state != state::completed){
-      return false;
-    }
-  }
-  return true;
+  std::lock_guard lock(m_state_lock);
+  return (get_state() == state::completed);
 }
 
-// check if all dependencies are completed and update event state accordingly
+// check if all dependencies are completed, update event state, and launch chain of commands if all
+// dependencies are completed
 // @input: wait_for_dependencies - if true, wait for dependencies to be completed
-// @return: true if all dependencies are completed and event state is updated, false otherwise
-// Note: This function can throw exception if dependencies have error
-bool event::check_dependencies_update_state(bool wait_for_dependencies)
+// @return: true if all dependencies are completed, false otherwise
+// Note: This function can throw exception if dependencies have error, or launch chain of commands fails
+bool event::check_and_launch_chain(bool wait_for_dependencies)
 {
-  bool dependencies_has_error = false;
-
-  // if event is recorded, wait for dependencies to be completed
+  bool event_is_completed = false;
   {
+    std::lock_guard lock(m_state_lock);
+    auto event_state = get_state();
+    if (!is_recorded_no_lock() || (event_state == state::running && !wait_for_dependencies)) {
+      // if event is not recorded, or event is already running that is event is already checking
+      // dependencies in another thread, and caller doesn't want to wait, return false as we haven't
+      // launched the chain of commands yet. This is in the event submit() case.
+      return false;
+    }
+    if (event_state == state::completed) {
+      event_is_completed = true;
+    }
+    else {
+      // if event is recorded, check all dependencies and mark the event state as running
+      set_state(state::running);
+    }
+  }
+
+  bool dependencies_has_error = false;
+  bool dependencies_completed = true;
+  if (!event_is_completed) {
+    // Check all dependencies
     std::lock_guard lock(m_recorded_cmds_lock);
     for (auto& rec_com : m_recorded_commands) {
       if (wait_for_dependencies)
@@ -107,46 +121,43 @@ bool event::check_dependencies_update_state(bool wait_for_dependencies)
       }
       else {
         // dependency is not completed, return false and no state update
-        return false;
+        dependencies_completed = false;
+        break;
       }
     }
   }
 
-  // update event state after waiting for dependencies
   {
     std::lock_guard lock(m_state_lock);
     if (dependencies_has_error) {
+      // dependencies have error, set event state to error
       set_state(state::error);
       throw_hip_error(hipErrorLaunchFailure, "event sync failed due to dependencies failure");
     }
+    else if (!dependencies_completed) {
+      // dependencies are not completed, return false and no state update
+      set_state(state::recorded);
+      return false;
+    }
     set_state(state::completed);
+    // update event completion time
+    ctime = std::chrono::system_clock::now();
+  }
+
+  //all commands depend on the event start running after the event is completed
+  {
+    std::lock_guard lock(m_chain_cmds_lock);
+    for (auto it = m_chain_of_commands.begin(); it != m_chain_of_commands.end(); ) {
+      (*it)->submit();
+      it = m_chain_of_commands.erase(it);
+    }
   }
   return true;
 }
 
 bool event::synchronize()
 {
-  {
-    std::lock_guard lock(m_state_lock);
-  
-    if (!is_recorded_no_lock())
-      return false;
-    // if event is recorded, check all dependencies and mark the event state as running
-    set_state(state::running);
-  }
-
-
-  if (!check_dependencies_update_state(true)) {
-    // if event is not completed, set state back to recorded and return
-    std::lock_guard lock(m_state_lock);
-    set_state(state::recorded);
-    return false;
-  }
-
-  ctime = std::chrono::system_clock::now();
-  //all commands depend on the event start running after the event is completed
-  launch_chain_of_commands();
-  return true;
+  return check_and_launch_chain(true);
 }
 
 bool event::wait()
@@ -165,37 +176,14 @@ bool event::wait()
 // wait_event2 has two dependencies: wait_event1 and event2
 bool event::submit()
 {
-  {
-    std::lock_guard lock(m_state_lock);
-    auto event_state = get_state();
-    // event is already running, do not submit again to avoid deadlock.
-    if (event_state == state::running)
-      return true;
-
-    if (!is_recorded_no_lock())
-      return false;
-    // if event is recorded, check all dependencies and mark the event state as running
-    set_state(state::running);
-  }
-
-
-  if (!check_dependencies_update_state(false)) {
-    // if there are dependencies not complete, set state back to recorded and return
-    std::lock_guard lock(m_state_lock);
-    set_state(state::recorded);
-    return false;
-  }
-
-  ctime = std::chrono::system_clock::now();
-  //all commands depend on the event start running after the event is completed
-  launch_chain_of_commands();
-  return true;
+  // don't wait for dependencies to complete
+  return check_and_launch_chain(false);
 }
 
 bool event::is_recorded_stream(const stream* s) noexcept
 {
   std::lock_guard lock(m_state_lock);
-  return (cstream.get() == s);
+  return (m_recorded_stream.get() == s);
 }
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
@@ -210,17 +198,8 @@ void event::add_dependency(std::shared_ptr<command> cmd)
   m_recorded_commands.push_back(std::move(cmd));
 }
 
-void event::launch_chain_of_commands()
-{
-  std::lock_guard lock(m_chain_cmds_lock);
-  for (auto it = m_chain_of_commands.begin(); it != m_chain_of_commands.end(); ) {
-    (*it)->submit();
-    it = m_chain_of_commands.erase(it);
-  }
-}
-
-kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
-  : command(type::kernel_start, std::move(s))
+kernel_start::kernel_start(std::shared_ptr<function> f, void** args)
+  : command(type::kernel_start)
   , func{std::move(f)}
   , m_ctrl_scratchpad_bo_sync_rd{false}
 {
@@ -298,8 +277,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 }
 
 kernel_start::
-kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args, void** extra)
-  : kernel_start(std::move(s), std::move(f), args)
+kernel_start(std::shared_ptr<function> f, void** args, void** extra)
+  : kernel_start(std::move(f), args)
 {
   if (!extra)
     return;
@@ -403,6 +382,41 @@ bool memcpy_command::wait()
 {
   m_handle.wait();
   set_state(state::completed);
+  return true;
+}
+
+bool
+kernel_list_start::
+wait()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::completed)
+    return true;
+
+  if (kernel_list_start_state != state::running)
+    return false;
+
+  m_rl.wait();
+  set_state(state::completed);
+  return true;
+}
+
+bool
+kernel_list_start::
+submit()
+{
+  auto kernel_list_start_state = get_state();
+  if (kernel_list_start_state == state::running)
+    return true;
+
+  if (kernel_list_start_state == state::completed)
+    return true;
+
+  if (kernel_list_start_state != state::init)
+    return false;
+
+  m_rl.execute();
+  set_state(state::running);
   return true;
 }
 

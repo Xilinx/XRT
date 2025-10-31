@@ -157,6 +157,7 @@ namespace xdp {
 
     std::string deviceName = util::getDeviceName(hwCtxImpl, true);
 
+    // TODO: should we use updateDeviceFromCoreDeviceHwCtxFlow or updateDeviceFromCoreDevice
     (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
     (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 

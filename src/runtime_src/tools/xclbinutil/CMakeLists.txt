@@ -101,7 +101,7 @@ file(GLOB XCLBINUTIL_MAIN_FILE
 )
 set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
-add_executable(${XCLBINUTIL_NAME} ${XCLBINUTIL_SRCS})
+add_executable(${XCLBINUTIL_NAME} ${XRT_RESOURCE_EXEC} ${XCLBINUTIL_SRCS})
 
 # Signing xclbin images currently is not support on windows
 if(NOT WIN32)

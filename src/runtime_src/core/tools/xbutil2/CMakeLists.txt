@@ -54,7 +54,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_EventTrace.cpp"
   "OO_FirmwareLog.cpp"
   "ReportEventTrace.cpp"
-  "EventTraceConfig.cpp"
+  "EventTrace.cpp"
   "ReportFirmwareLog.cpp"
   "FirmwareLog.cpp"
 )
@@ -70,7 +70,7 @@ else()
   set(XRT_HELPER_SCRIPTS "xrt-smi")
 endif()
 
-add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
+add_executable(${XBUTIL2_NAME} ${XRT_RESOURCE_EXEC} ${XBUTIL_V2_SRCS})
 
 # Determine what functionality should be added
 if (NOT XRT_EDGE OR DEFINED XDNA_VE2)
@@ -81,7 +81,7 @@ endif()
 
 # Static build is a Linux / Ubuntu option only
 if (XRT_STATIC_BUILD)
-  add_executable(${XBUTIL2_NAME}_static ${XBUTIL_V2_SRCS})
+  add_executable(${XBUTIL2_NAME}_static ${XRT_RESOURCE_EXEC} ${XBUTIL_V2_SRCS})
   target_compile_definitions(${XBUTIL2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   target_link_options(${XBUTIL2_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
   # Bypass FindBoost versions and just link explicitly with boost libraries

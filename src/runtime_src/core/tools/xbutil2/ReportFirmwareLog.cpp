@@ -52,7 +52,7 @@ ReportFirmwareLog::generate_parsed_logs(const xrt_core::device* dev,
 
   // Create parser instance and parse the firmware log buffer directly to string
   smi::firmware_log_parser parser(config);
-  const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+  auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
   size_t buf_size = data_buf.size;
 
   ss << parser.parse(data_ptr, buf_size);
@@ -79,7 +79,7 @@ ReportFirmwareLog::generate_raw_logs(const xrt_core::device* dev,
       return ss.str();
     }
 
-    const auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
+    auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     size_t buf_size = data_buf.size;
 
     // Simply print the raw payload data
@@ -125,6 +125,9 @@ writeReport(const xrt_core::device* device,
   if (!user_wants_raw) {
     try {
       auto archive = XBU::open_archive(device);
+      if (!archive) {
+        throw std::runtime_error("Failed to open archive");
+      }
       auto artifacts_repo = XBU::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
       
       auto& config_data = artifacts_repo["firmware_log.json"];
@@ -134,8 +137,7 @@ writeReport(const xrt_core::device* device,
       config = smi::firmware_log_config(json_config);
     } 
     catch (const std::exception& e) {
-      output << "Error loading firmware log config: " << e.what() << "\n";
-      output << "Falling back to raw firmware log data:\n\n";
+      output << "Warning : Dumping raw firmware log :  " << e.what() << "\n";
     }
   }
   

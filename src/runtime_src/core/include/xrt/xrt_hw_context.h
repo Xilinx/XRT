@@ -262,6 +262,15 @@ public:
   access_mode
   get_mode() const;
 
+  /**
+   * get_aie_coredump() - Returns the coredump of AIE Array if available.
+   * Coredump represents memory/register dump of AIE tiles in this ctx.
+   * This function can throw.
+   */
+  XRT_API_EXPORT
+  std::vector<char>
+  get_aie_coredump() const;
+
 public:
   /// @cond
   // Undocumented internal access to low level context handle

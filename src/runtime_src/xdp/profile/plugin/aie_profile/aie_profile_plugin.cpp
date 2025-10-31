@@ -131,7 +131,7 @@ namespace xdp {
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
-        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+        (db->getStaticInfo()).updateDeviceFromCoreDeviceHwCtxFlow(deviceID, device, handle, hw_context_flow);
       else
         (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
 #endif

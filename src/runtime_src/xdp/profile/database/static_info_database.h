@@ -176,6 +176,7 @@ namespace xdp {
 
     XclbinInfoType getXclbinType(xrt::xclbin& xclbin);
     xrt::uuid getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device);
+    xrt::uuid getXclbinUuidOnDeviceHwCtxFlow(void* hwCtxImpl);
 
     // This common private updateDevice functionality takes an xdp::Device
     // pointer to handle any connection to the PL side as necessary.
@@ -324,6 +325,14 @@ namespace xdp {
                                     std::shared_ptr<xrt_core::device> device,
                                     bool readAIEMetadata = true,
                                     std::unique_ptr<xdp::Device> xdpDevice = nullptr);
+
+    XDP_CORE_EXPORT                                    
+    void updateDeviceFromCoreDeviceHwCtxFlow(uint64_t deviceId,
+                                            std::shared_ptr<xrt_core::device> device,
+                                            void* hwCtxImpl,
+                                            bool hw_context_flow = false,
+                                            bool readAIEMetadata = true,
+                                            std::unique_ptr<xdp::Device> xdpDevice = nullptr); 
 
     XDP_CORE_EXPORT
     uint64_t getHwCtxImplUid(void* hwCtxImpl);

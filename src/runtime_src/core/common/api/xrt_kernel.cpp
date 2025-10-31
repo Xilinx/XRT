@@ -1278,6 +1278,8 @@ public:
   { return arg.type; }
 };
 
+namespace xbi = xrt_core::bo_int;
+
 // class buffer_cache - A thread safe cache to hold pre created buffers
 //
 // This class maintains a fixed size pool of reusable buffers to
@@ -1290,6 +1292,7 @@ class buffer_cache
   xrt::hw_context m_hw_ctx;
   std::vector<uint8_t> m_buf_data;
   const std::size_t m_max_cache_size;
+  xbi::use_type m_use_flag;
 
   mutable std::mutex m_mutex;
   mutable std::vector<xrt::bo> m_bo_cache;
@@ -1303,7 +1306,7 @@ class buffer_cache
   }
 
   static std::vector<xrt::bo>
-  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size)
+  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size, xbi::use_type flag)
   {
     if (!cache_size)
       return {};
@@ -1312,17 +1315,18 @@ class buffer_cache
     cache.reserve(cache_size);
 
     for (size_t i = 0; i < cache_size; ++i)
-      cache.push_back(xrt::ext::bo(hwctx, bo_size));
+      cache.push_back(xbi::create_bo(hwctx, bo_size, flag));
     
     return cache;
   }
 
 public:
-  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size)
+  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size, xbi::use_type flag)
     : m_hw_ctx(std::move(ctx))
     , m_buf_data(std::move(data))
     , m_max_cache_size(max_size)
-    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size())}
+    , m_use_flag(flag)
+    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size(), m_use_flag)}
   {}
 
   xrt::bo
@@ -1338,7 +1342,7 @@ public:
     }
 
     if (!bo)
-      bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size()); // create new bo if cache is empty
+      bo = xbi::create_bo(m_hw_ctx, m_buf_data.size(), m_use_flag); // create new bo if cache is empty
 
     fill_bo_with_data(bo, m_buf_data);
     return bo;
@@ -1360,6 +1364,7 @@ public:
 } // namespace
 
 namespace xrt {
+
 // struct kernel_impl - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -1648,7 +1653,8 @@ private:
     size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
 
     // Create and return buffer_cache with calculated pool size
-    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size);
+    // use ctrlpkt flag while creating buffers
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
   }
 
 public:
