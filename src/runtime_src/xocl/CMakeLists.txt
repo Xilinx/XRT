@@ -47,8 +47,9 @@ include_directories(
   ${KHRONOS}/include
   )
 
+xrt_configure_version_file(xilinxopencl SHARED)
 add_library(xilinxopencl SHARED
-  ${XRT_RESOURCE_SHARED}
+  xilinxopencl-version.rc
   $<TARGET_OBJECTS:xocl>
   ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
   )
