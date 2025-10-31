@@ -49,7 +49,7 @@ public:
     std::vector<std::shared_ptr<graph_node>> result;
     for (const auto& wptr : m_children) {
       if (auto sptr = wptr.lock()) {
-        result.push_back(sptr);
+        result.push_back(std::move(sptr));
       }
     }
     return result;

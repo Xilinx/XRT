@@ -92,7 +92,7 @@ init(std::shared_ptr<graph> graph)
       if (last_kl_cmd && last_kl_cmd->get_hw_ctx() && (last_kl_cmd->get_hw_ctx().get_handle() == hw_ctx.get_handle())) {
         last_kl_cmd->add_run(cmd->get_run());
         kernel_to_list_map[node] = last_node;
-        kl_node = last_node;
+        kl_node = std::move(last_node);
       }
     }
 
@@ -124,7 +124,7 @@ init(std::shared_ptr<graph> graph)
       // add that kernel_list_start node as a dependency node.
       auto dep_kl_node = kernel_to_list_map[dep_node];
       if (dep_kl_node != kl_node)
-        kl_node->add_dep_node(dep_kl_node);
+        kl_node->add_dep_node(std::move(dep_kl_node));
     }
   }
 
@@ -134,7 +134,7 @@ init(std::shared_ptr<graph> graph)
 graph_exec::
 graph_exec(std::shared_ptr<graph> graph)
   : command(type::graph_exec)
-  , m_node_exec_list(init(graph))
+  , m_node_exec_list(init(std::move(graph)))
 {}
 
 bool
