@@ -164,6 +164,8 @@ struct zocl_cu_subdev {
 struct zocl_mem_region {
 	struct device 		*dev;
 	bool 			initialized;
+	phys_addr_t		base;        /* Cached CMA base address */
+	resource_size_t		size;        /* Cached CMA size */
 };
 
 struct drm_zocl_dev {

@@ -1283,27 +1283,27 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 /* This function returns cma index if given region is reserved
  * as cma on device tree and tagged in zocl. Else return -1
  */
-static int get_cma_index(struct drm_zocl_dev *zdev, uint64_t start_addr, size_t size)
+static int get_cma_index(struct drm_zocl_dev *zdev, uint64_t mem_start_addr, size_t size)
 {
-	int i, ret;
-	if(!zdev)
+	uint64_t mem_end_addr = mem_start_addr + size;
+	uint64_t cma_start_addr;
+	uint64_t cma_end_addr;
+	int i;
+
+	if (!zdev)
 		return -1;
 
-	for (i = 0; i < zdev->num_regions ; i++) {
-		if (zdev->mem_regions[i].initialized) {
-			struct device* child_dev = zdev->mem_regions[i].dev;
-			struct device_node* mem_node = of_parse_phandle(child_dev->of_node, "memory-region", i);
-			struct resource res_mem;
-			if (!mem_node)
-				continue;
+	for (i = 0; i < zdev->num_regions; i++) {
+		if (!zdev->mem_regions[i].initialized)
+			continue;
 
-			ret = of_address_to_resource(mem_node, 0, &res_mem);
-			if (ret)
-				continue;
+		cma_start_addr = zdev->mem_regions[i].base;
+		cma_end_addr = cma_start_addr + zdev->mem_regions[i].size;
 
-			if (start_addr == res_mem.start &&
-					size == resource_size(&res_mem))
-				return i;
+		/* Check if CMA region is contained within the xclbin memory region */
+		if (cma_start_addr >= mem_start_addr &&
+		    cma_end_addr <= mem_end_addr) {
+			return i;
 		}
 	}
 	return -1;
@@ -1402,10 +1402,11 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 					       memp->zm_size)) {
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			memp->zm_cma_idx = get_cma_index(zdev, memp->zm_base_addr, memp->zm_size);
-			DRM_DEBUG("Memory %d base: 0x%llx is not reserved in device tree."
-					" Will allocate memory from CMA %d\n", i, memp->zm_base_addr, memp->zm_cma_idx);
+			DRM_INFO("Memory 0x%llx is of cma type or not reserved in DTB."
+					" Will allocate memory from CMA %d\n", memp->zm_base_addr, memp->zm_cma_idx);
 			continue;
 		}
+		DRM_INFO("Memory 0x%llx is reserved in DTB.\n", memp->zm_base_addr);
 
                 /* Update the start and end address for the memory manager */
                 if (memp->zm_base_addr < mm_start_addr)
