@@ -37,7 +37,7 @@ measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
     runner.execute();
     runner.wait();
     auto report = json::parse(runner.get_report());
-    baseline_exec_time = report["cpu"]["elapsed"].get<double>();
+    baseline_exec_time = report["cpu"]["elapsed"].get<double>()/report["iterations"].get<int>();
   }
 
   // Run with preemption enabled
@@ -49,7 +49,7 @@ measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
     runner.execute();
     runner.wait();
     auto report = json::parse(runner.get_report());
-    preempt_exec_time = report["cpu"]["elapsed"].get<double>();
+    preempt_exec_time = report["cpu"]["elapsed"].get<double>()/report["iterations"].get<int>();
   }
 
   // Calculate and return overhead per preemption
