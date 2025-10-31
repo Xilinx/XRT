@@ -2,6 +2,14 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 # Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
+# The version.cmake should only be include once in a project
+# otherwise configured files may be overwritten.  This may
+# not be a problem but is better to avoid it.
+if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
+  return()
+endif()
+set(XRT_VERSION_CMAKE_INCLUDED TRUE CACHE INTERNAL "XRT version cmake included")
+
 # AMD promotion build works from copied sources with no git
 # repository.  The build cannot query git for git metadata.  The
 # promotion build has explicitly overwritten config/version.h.in and
@@ -99,6 +107,7 @@ configure_file(
 )
 
 if (WIN32 AND XRT_RC_VERSION)
+  message(STATUS "-- Configuring versioning with version: ${XRT_RC_VERSION}")
   # break up fileversion into 4 components
   string(REPLACE "." ";" XRT_RC_VERSION_LIST ${XRT_RC_VERSION})
   list(LENGTH XRT_RC_VERSION_LIST XRT_RC_VERSION_COUNT)
@@ -111,7 +120,13 @@ if (WIN32 AND XRT_RC_VERSION)
   list(GET XRT_RC_VERSION_LIST 2 XRT_RC_BUILD)
   list(GET XRT_RC_VERSION_LIST 3 XRT_RC_PATCH)
 
+  set(XRT_RC_MAJOR ${XRT_RC_MAJOR} CACHE STRING "Major version for RC file")
+  set(XRT_RC_MINOR ${XRT_RC_MINOR} CACHE STRING "Minor version for RC file")
+  set(XRT_RC_BUILD ${XRT_RC_BUILD} CACHE STRING "Build version for RC file")
+  set(XRT_RC_PATCH ${XRT_RC_PATCH} CACHE STRING "Patch version for RC file")
+
   function(xrt_configure_version_file target_name type)
+    message(STATUS "-- Generating version file for target: ${target_name} of type: ${type}")
     if (type STREQUAL "SHARED")
       set(OriginalFilename ${target_name}.dll)
       set(FileType VFT_DLL)
