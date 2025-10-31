@@ -107,6 +107,7 @@ struct zocl_mem {
 	struct drm_zocl_mm_stat zm_stat;
 	struct list_head	link;
 	struct list_head        zm_list;
+	int			zm_cma_idx;
 };
 
 /*

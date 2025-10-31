@@ -193,7 +193,7 @@ static void* zocl_dma_alloc(struct device *mem_dev, size_t size, dma_addr_t *phy
 }
 
 static struct drm_zocl_bo *
-zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
+zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags, int cma_index)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	int num_regions = zdev->num_regions;
@@ -204,7 +204,6 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 #endif
 	struct device *mem_dev;
 	struct drm_zocl_bo *bo;
-	int mem_index;
 	dma_addr_t phys = 0;
 	void* vaddr = NULL;
 
@@ -219,21 +218,18 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
-	mem_index = GET_MEM_INDEX(user_flags);
-
-	if (num_regions > 0 && mem_index < ZOCL_MAX_MEM_REGIONS) {
-		mem_dev = zdev->mem_regions[mem_index].dev;
+	if (num_regions > 0 && cma_index != -1 && cma_index < ZOCL_MAX_MEM_REGIONS) {
+		mem_dev = zdev->mem_regions[cma_index].dev;
 		if (mem_dev)
 			vaddr = zocl_dma_alloc(mem_dev, size, &phys, user_flags);
 		if (!vaddr)
 			DRM_DEBUG("Failed to allocate from zocl attached memory region %d \n",
-				mem_index);
+				cma_index);
 	}
 
 	//allocate from default cma if we failed to allocate from zocl attached memory regions
 	if(!phys || !vaddr) {
 		DRM_DEBUG("Allocating BO from default CMA for invalid or no zocl attached memory regions");
-		mem_index = -1;
 		vaddr = zocl_dma_alloc(dev->dev, size, &phys, user_flags);
 	}
 
@@ -251,7 +247,7 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size, u32 user_flags)
 	bo->vaddr = vaddr;
 	bo->phys = phys;
 	bo->size = size;
-	bo->mem_region = mem_index;
+	bo->mem_region = cma_index;
 
 	DRM_DEBUG("CMA BO physical_addr %pad size 0x%lx cacheable %d\n",
 		&phys, size, user_flags & ZOCL_BO_FLAGS_CACHEABLE ? 1 : 0);
@@ -286,7 +282,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem,
 	do {
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
 			struct drm_zocl_bo *cma_bo =
-				zocl_create_cma_mem(dev, size, user_flags);
+				zocl_create_cma_mem(dev, size, user_flags, mem->zm_cma_idx);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
@@ -414,7 +410,7 @@ zocl_get_memp_by_mem_data(struct drm_zocl_dev *zdev,
 }
 
 static struct drm_zocl_bo *
-zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
+zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags, int cma_index )
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
 	struct drm_zocl_dev *zdev = dev->dev_private;
@@ -436,7 +432,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (err < 0)
 			goto free;
 	} else if (user_flags & ZOCL_BO_FLAGS_CMA) {
-		bo = zocl_create_cma_mem(dev, size, user_flags);
+		bo = zocl_create_cma_mem(dev, size, user_flags, cma_index);
 	} else {
 		/* We are allocating from a separate mem Index, i.e. PL-DDR or LPDDR */
 		unsigned int mem_index = GET_MEM_INDEX(user_flags);
@@ -511,7 +507,7 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (!(args->flags & ZOCL_BO_FLAGS_SVM))
 		return ERR_PTR(-EINVAL);
 
-	bo = zocl_create_bo(dev, args->size, args->flags);
+	bo = zocl_create_bo(dev, args->size, args->flags, -1);
 	bo->flags |= ZOCL_BO_FLAGS_SVM;
 	bo->mem_index = GET_MEM_INDEX(args->flags);
 
@@ -573,6 +569,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct zocl_mem *mem = NULL;
 	unsigned int mem_index = 0;
 	uint32_t user_flags = args->flags;
+	int cma_index = -1;
 
 	args->flags = zocl_convert_bo_uflags(args->flags);
 
@@ -607,6 +604,9 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		}
 	}
 
+	if(mem)
+		cma_index = mem->zm_cma_idx;
+
 	if (!(args->flags & ZOCL_BO_FLAGS_CACHEABLE)) {
 		/* If cacheable is not set, make sure we set COHERENT. */
 		args->flags |= ZOCL_BO_FLAGS_COHERENT;
@@ -619,7 +619,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		args->flags &= ~ZOCL_BO_FLAGS_CACHEABLE;
 	}
 
-	bo = zocl_create_bo(dev, args->size, args->flags);
+	bo = zocl_create_bo(dev, args->size, args->flags, cma_index);
 	if (IS_ERR(bo)) {
 		DRM_DEBUG("object creation failed\n");
 		return PTR_ERR(bo);
@@ -775,7 +775,7 @@ struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
 					  uint64_t unaligned_size,
 					  unsigned user_flags)
 {
-	return zocl_create_bo(dev, unaligned_size, user_flags);
+	return zocl_create_bo(dev, unaligned_size, user_flags, -1);
 }
 
 int zocl_map_bo_ioctl(struct drm_device *dev,
@@ -1280,6 +1280,35 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 	write_unlock(&zdev->attr_rwlock);
 }
 
+/* This function returns cma index if given region is reserved
+ * as cma on device tree and tagged in zocl. Else return -1
+ */
+static int get_cma_index(struct drm_zocl_dev *zdev, uint64_t start_addr, size_t size)
+{
+	int i, ret;
+	if(!zdev)
+		return -1;
+
+	for (i = 0; i < zdev->num_regions ; i++) {
+		if (zdev->mem_regions[i].initialized) {
+			struct device* child_dev = zdev->mem_regions[i].dev;
+			struct device_node* mem_node = of_parse_phandle(child_dev->of_node, "memory-region", i);
+			struct resource res_mem;
+			if (!mem_node)
+				continue;
+
+			ret = of_address_to_resource(mem_node, 0, &res_mem);
+			if (ret)
+				continue;
+
+			if (start_addr == res_mem.start &&
+					size == resource_size(&res_mem))
+				return i;
+		}
+	}
+	return -1;
+}
+
 /* This function return True if given region is reserved
  * on device tree. Else return False
  */
@@ -1367,12 +1396,14 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 		INIT_LIST_HEAD(&memp->zm_list);
 
 		list_add_tail(&memp->link, &zdev->zm_list_head);
+		memp->zm_cma_idx = -1;
 
 		if (!check_for_reserved_memory(memp->zm_base_addr,
 					       memp->zm_size)) {
-			DRM_DEBUG("Memory %d is not reserved in device tree."
-					" Will allocate memory from CMA\n", i);
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
+			memp->zm_cma_idx = get_cma_index(zdev, memp->zm_base_addr, memp->zm_size);
+			DRM_DEBUG("Memory %d base: 0x%llx is not reserved in device tree."
+					" Will allocate memory from CMA %d\n", i, memp->zm_base_addr, memp->zm_cma_idx);
 			continue;
 		}
 
