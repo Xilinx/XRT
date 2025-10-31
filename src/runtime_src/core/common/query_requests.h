@@ -59,7 +59,6 @@ enum class key_type
   xrt_smi_config,
   xrt_smi_lists,
   xclbin_name,
-  runner,
   elf_name,
   mobilenet,
 
@@ -604,59 +603,6 @@ struct xrt_smi_lists : request
   // formatting of individual items for the vector
   static std::string
   to_string(const std::string& value)
-  {
-    return value;
-  }
-};
-
-struct runner : request
-{
-  enum class type {
-    throughput_recipe,
-    throughput_profile,
-    throughput_path,
-    latency_recipe,
-    latency_profile,
-    latency_path,
-    df_bandwidth_recipe,
-    df_bandwidth_profile,
-    df_bandwidth_path,
-    gemm_recipe,
-    gemm_profile,
-    gemm_path,
-    aie_reconfig_overhead_recipe,
-    aie_reconfig_overhead_nop_recipe,
-    aie_reconfig_overhead_profile,
-    aie_reconfig_overhead_path,
-    cmd_chain_latency_recipe,
-    cmd_chain_latency_profile,
-    cmd_chain_latency_path,
-    cmd_chain_throughput_recipe,
-    cmd_chain_throughput_profile,
-    cmd_chain_throughput_path,
-    tct_one_column_recipe,
-    tct_one_column_profile,
-    tct_one_column_path,
-    tct_all_column_recipe,
-    tct_all_column_profile,
-    tct_all_column_path,
-    preemption_noop_4x4_recipe,
-    preemption_noop_4x8_recipe,
-    preemption_memtile_4x4_recipe,
-    preemption_memtile_4x8_recipe,
-    preemption_profile,
-    preemption_path
-  };
-
-  using result_type = std::string;
-  static const key_type key = key_type::runner;
-  static const char* name() { return "runner"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-
-  static std::string
-  to_string(const result_type& value)
   {
     return value;
   }
