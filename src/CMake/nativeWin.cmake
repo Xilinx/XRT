@@ -50,6 +50,10 @@ if (MSVC)
     /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
     /DEBUG      # instruct linker to create debugging info
     /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /LTCG       # perform whole-program optimization
+    /OPT:REF    # eliminates functions and data that are never referenced
+    /OPT:ICF    # enable COMDAT folding
+    /LTCG       # enable Link time code generation
     )
   if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
     add_link_options(
