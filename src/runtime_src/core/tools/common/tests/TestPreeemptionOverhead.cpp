@@ -22,35 +22,32 @@ using json = nlohmann::json;
 static constexpr uint32_t num_of_preemptions = 500;
 
 // ----- S T A T I C   M E T H O D S -------------------------------------------
+
+
+
 static double
 measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
                             const std::string& recipe_data,
                             const std::string& profile_data,
                             const xrt_core::runner::artifacts_repository& artifacts_repo)
 {
-  // Run without preemption
-  xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(0));
-  
-  double baseline_exec_time = 0;
-  {
+  // Run the test and return the execution time
+  auto measure_exec_time = [&]() -> double {
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();
     auto report = json::parse(runner.get_report());
-    baseline_exec_time = report["cpu"]["elapsed"].get<double>()/report["iterations"].get<int>();
-  }
+    return report["cpu"]["elapsed"].get<double>() / report["iterations"].get<int>();
+  };
+
+  // Run without preemption
+  xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(0));
+  auto baseline_exec_time = measure_exec_time();
 
   // Run with preemption enabled
   xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(1));
   
-  double preempt_exec_time = 0;
-  {
-    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
-    runner.execute();
-    runner.wait();
-    auto report = json::parse(runner.get_report());
-    preempt_exec_time = report["cpu"]["elapsed"].get<double>()/report["iterations"].get<int>();
-  }
+  auto preempt_exec_time = measure_exec_time();
 
   // Calculate and return overhead per preemption
   return (preempt_exec_time - baseline_exec_time) / num_of_preemptions;
@@ -76,6 +73,12 @@ TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const 
   // this test is only for privileged users as it requires enabling/disabling preemption
   if(!xrt_core::is_user_privileged()) {
     XBU::logger(ptree, "Details", "This test requires admin privileges");
+    ptree.put("status", XBU::test_token_skipped);
+    return ptree;
+  }
+
+  if (archive == nullptr) {
+    XBU::logger(ptree, "Info", "No archive found, skipping test");
     ptree.put("status", XBU::test_token_skipped);
     return ptree;
   }
