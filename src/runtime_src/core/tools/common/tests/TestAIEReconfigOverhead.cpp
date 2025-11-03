@@ -27,7 +27,8 @@ TestAIEReconfigOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const
 {
   boost::property_tree::ptree ptree = get_test_header();
   if (archive == nullptr) {
-    XBValidateUtils::logger(ptree, "Info", "No archive found, skipping test");
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
     return ptree;
   }
 

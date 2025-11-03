@@ -78,11 +78,10 @@ TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const 
   }
 
   if (archive == nullptr) {
-    XBU::logger(ptree, "Info", "No archive found, skipping test");
-    ptree.put("status", XBU::test_token_skipped);
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
     return ptree;
   }
-  
   const auto layer_boundary = xrt_core::device_query_default<xq::preemption>(dev.get(), 0);
 
   try {
