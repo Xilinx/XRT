@@ -16,9 +16,34 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <memory>
 
 using bpt = boost::property_tree::ptree;
 using context_health_info = xrt_core::query::context_health_info;
+
+std::unique_ptr<ReportContextHealth>
+ReportContextHealth::
+create_reporter(xrt_core::smi::smi_hardware_config::hardware_type hw_type) const
+{
+  switch (hw_type)
+  {
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
+  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
+    return std::make_unique<ctx_health_npu3>();
+  
+  case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
+  case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
+  case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
+  case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
+  case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+  default:
+    return std::make_unique<ctx_health_strx>();
+  }
+}
 
 void
 ReportContextHealth::
@@ -81,8 +106,9 @@ getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
   pt.add_child("context_health", context_health_pt);
 }
 
-static std::vector<uint64_t> 
-parse_values(const std::string& input) 
+std::vector<uint64_t>
+ReportContextHealth::
+parse_values(const std::string& input) const 
 {
   std::vector<uint64_t> result;
   if (input.empty()) {
@@ -111,10 +137,9 @@ parse_values(const std::string& input)
   return result;
 }
 
-// Helper function to parse context IDs and PIDs and create pairs
-// Usage: ctx_id=1,2,3 pid=100,200,300 creates pairs (1,100), (2,200), (3,300)
-static std::vector<std::pair<uint64_t, uint64_t>> 
-parse_context_pid_pairs(const std::vector<std::string>& elements_filter) 
+std::vector<std::pair<uint64_t, uint64_t>>
+ReportContextHealth::
+parse_context_pid_pairs(const std::vector<std::string>& elements_filter) const 
 {
   std::vector<uint64_t> context_ids;
   std::vector<uint64_t> pids;
@@ -144,8 +169,9 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter)
   return pairs;
 }
 
-static std::vector<uint64_t> 
-parse_context_ids(const std::vector<std::string>& elements_filter) 
+std::vector<uint64_t>
+ReportContextHealth::
+parse_context_ids(const std::vector<std::string>& elements_filter) const 
 {
   for (const auto& element : elements_filter) {
     if (element.find("ctx_id=") == 0) {
@@ -156,10 +182,11 @@ parse_context_ids(const std::vector<std::string>& elements_filter)
   return {};
 }
 
-static std::string
-generate_context_health_report(const xrt_core::device* dev,
-                               const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
-                               const std::vector<uint64_t>& context_ids)
+std::string
+ctx_health_strx::
+generate_report(const xrt_core::device* dev,
+                const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                const std::vector<uint64_t>& context_ids) const
 {
   std::stringstream ss;
 
@@ -228,6 +255,101 @@ generate_context_health_report(const xrt_core::device* dev,
   return ss.str();
 }
 
+std::string
+ctx_health_npu3::
+generate_report(const xrt_core::device* dev,
+                const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                const std::vector<uint64_t>& context_ids) const
+{
+  std::stringstream ss;
+
+  try {
+    std::vector<context_health_info::smi_context_health> context_health_data;
+
+    // If any pid is nonzero, pass pairs
+    bool has_nonzero_pid = std::any_of(context_pid_pairs.begin(), context_pid_pairs.end(), [](const auto& p){ return p.second != 0; });
+    if (!context_pid_pairs.empty() && has_nonzero_pid) {
+      context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev, context_pid_pairs);
+    } else if (!context_ids.empty()) {
+      context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev, context_ids);
+    } else {
+      context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
+    }
+
+    auto context_count = context_health_data.size();
+
+    if (context_count == 0) {
+      ss << "No context health data available\n";
+      return ss.str();
+    }
+
+    // Group contexts by PID
+    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
+    for (const auto& context : context_health_data) {
+      contexts_by_pid[context.pid].push_back(context);
+    }
+
+    for (const auto& [pid, contexts] : contexts_by_pid) {
+      ss << "  NPU3 Context Health Information (PID: " << pid << "):\n";
+
+      // NPU3-specific table headers - AIE4 microcontroller data
+      const std::vector<Table2D::HeaderData> table_headers = {
+        {"Ctx.uC",               Table2D::Justification::left},   // Context ID + uC index
+        {"FW State",             Table2D::Justification::left},   // Firmware state
+        {"uC PC",                Table2D::Justification::left},   // Microcontroller program counter
+        {"Exception Addr",       Table2D::Justification::left},   // uC exception address register
+        {"Exception Status",     Table2D::Justification::left},   // uC exception status register  
+        {"Page.Offset",          Table2D::Justification::left},   // Current page index and offset
+        {"Ctx State",            Table2D::Justification::left}    // Context state
+      };
+      Table2D context_table(table_headers);
+
+      // Add data rows for this PID - NPU3 specific fields using AIE4 structure
+      for (const auto& context : contexts) {
+        // NPU3 uses AIE4 structure which has per-microcontroller data
+        const auto& aie4_data = context.health_data_v1.aie4;
+        
+        if (aie4_data.num_uc == 0) {
+          // No microcontroller data available
+          const std::vector<std::string> entry_data = {
+            (boost::format("%d") % context.ctx_id).str(),
+            "No uC data",
+            "N/A",
+            "N/A", 
+            "N/A",
+            "N/A",
+            (boost::format("0x%x") % aie4_data.ctx_state).str()
+          };
+          context_table.addEntry(entry_data);
+        } else {
+          // Display data for each microcontroller
+          for (uint32_t i = 0; i < aie4_data.num_uc; ++i) {
+            const auto& uc = aie4_data.uc_info[i];
+            const std::vector<std::string> entry_data = {
+              (boost::format("%d.%d") % context.ctx_id % uc.uc_idx).str(),  // Context.uC format
+              (boost::format("0x%x") % uc.fw_state).str(),                  // FW state as status
+              (boost::format("0x%x") % uc.uc_pc).str(),                     // uC PC
+              (boost::format("0x%x") % uc.uc_ear).str(),                    // Exception address as SP
+              (boost::format("0x%x") % uc.uc_esr).str(),                    // Exception status as error code
+              (boost::format("%d.%d") % uc.page_idx % uc.offset).str(),     // Page.offset as module ID
+              (boost::format("0x%x") % aie4_data.ctx_state).str()           // Context state as cycle count
+            };
+            context_table.addEntry(entry_data);
+          }
+        }
+      }
+
+      ss << context_table.toString("    ");
+      ss << "\n";
+    } 
+  }
+  catch (const std::exception& e) {
+    ss << "Error retrieving NPU3 context health data: " << e.what() << "\n";
+  }
+
+  return ss.str();
+}
+
 void
 ReportContextHealth::
 writeReport(const xrt_core::device* device,
@@ -235,6 +357,13 @@ writeReport(const xrt_core::device* device,
             const std::vector<std::string>& elements_filter,
             std::ostream& output) const
 {
+  // Detect hardware type and create appropriate reporter
+  const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
+  xrt_core::smi::smi_hardware_config smi_hrdw;
+  auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+
+  auto reporter = create_reporter(hardware_type);
+
   // Parse context_id/pid pairs from elements_filter
   std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
   std::vector<uint64_t> context_ids = parse_context_ids(elements_filter);
@@ -243,16 +372,23 @@ writeReport(const xrt_core::device* device,
   if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
     // Create report generator lambda for watch mode
     auto report_generator = [&](const xrt_core::device* dev) -> std::string {
-      return generate_context_health_report(dev, context_pid_pairs, context_ids);
+      return reporter->generate_report(dev, context_pid_pairs, context_ids);
     };
     
     smi_watch_mode::run_watch_mode(device, output, report_generator);
     return;
   }
   
-  // Non-watch mode: use the same API but without timestamp
-  output << "Context Health Report\n";
-  output << "=====================\n\n";
-  output << generate_context_health_report(device, context_pid_pairs, context_ids);
+  // Non-watch mode: generate and output the report
+  output << reporter->generate_report(device, context_pid_pairs, context_ids);
   output << std::endl;
+}
+
+std::string
+ReportContextHealth::
+generate_report(const xrt_core::device* /*dev*/,
+                const std::vector<std::pair<uint64_t, uint64_t>>& /*context_pid_pairs*/,
+                const std::vector<uint64_t>& /*context_ids*/) const
+{
+  return "Base ReportContextHealth generate_report called - should be overridden in derived class.\n";
 }
