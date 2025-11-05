@@ -125,6 +125,11 @@ if (XRT_EDGE)
     DESTINATION ${XRT_INSTALL_DIR}/share COMPONENT ${XRT_BASE_COMPONENT})
 endif()
 
+# Deterministic build for xrt-smi
+if (MSVC)
+  target_link_options(${XBUTIL2_NAME} PRIVATE /experimental:deterministic)
+endif()
+
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME}
   RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR} COMPONENT ${XRT_BASE_COMPONENT})
