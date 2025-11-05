@@ -107,6 +107,31 @@ namespace xdp {
 #endif
   }
 
+  bool isVE2XdnaBuild()
+  {
+#ifdef XDP_VE2_BUILD
+    return true;
+#else
+    return false;
+#endif
+  }
+
+  bool isNPU3Build()
+  {
+#ifdef XDP_NPU3_BUILD
+    return true;
+#else
+    return false;
+#endif
+  }
+
+  bool isVaimlSupportedBuild()
+  {
+    // VAI-ML supported builds include Client, NPU3, and VE2 XDNA builds
+    return (isClient() || isNPU3Build() ||
+            (isVE2XdnaBuild() && (xrt_core::config::get_xdp_mode() == "xdna")));
+  }
+
   // Get the size of the physical device memory (in bytes) when running
   // on the PS of Edge boards.  If called on x86 or Windows this should
   // return 0.
