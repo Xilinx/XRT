@@ -76,10 +76,14 @@ ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size)
 static void cu_timer(unsigned long data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 static void cu_timer(struct timer_list *t)
 {
 	struct xrt_cu *xcu = from_timer(xcu, t, timer);
+#else
+static void cu_timer(struct timer_list *t)
+{
+	struct xrt_cu *xcu = timer_container_of(xcu, t, timer);
 #endif
 
 	xcu_dbg(xcu, "%s tick\n", xcu->info.iname);
@@ -93,10 +97,14 @@ static void cu_timer(struct timer_list *t)
 static void cu_stats_timer(unsigned long data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 static void cu_stats_timer(struct timer_list *t)
 {
 	struct xrt_cu *xcu = from_timer(xcu, t, stats.stats_timer);
+#else
+static void cu_stats_timer(struct timer_list *t)
+{
+	struct xrt_cu *xcu = timer_container_of(xcu, t, stats.stats_timer);
 #endif
 	unsigned long   flags;
 
@@ -634,7 +642,11 @@ int xrt_cu_intr_thread(void *data)
 		process_pq(xcu);
 	}
 	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 	del_timer_sync(&xcu->timer);
+#else
+	timer_delete_sync(&xcu->timer);
+#endif
 
 	if (xcu->bad_state)
 		ret = -EBUSY;
@@ -969,8 +981,13 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 	if (xcu->thread && !IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 	del_timer_sync(&xcu->timer);
 	del_timer_sync(&xcu->stats.stats_timer);
+#else
+	timer_delete_sync(&xcu->timer);
+	timer_delete_sync(&xcu->stats.stats_timer);
+#endif
 	return;
 }
 

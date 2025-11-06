@@ -655,10 +655,14 @@ static irqreturn_t mailbox_isr(int irq, void *arg)
 static void chan_timer(unsigned long data)
 {
 	struct mailbox_channel *ch = (struct mailbox_channel *)data;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 static void chan_timer(struct timer_list *t)
 {
 	struct mailbox_channel *ch = from_timer(ch, t, mbc_timer);
+#else
+static void chan_timer(struct timer_list *t)
+{
+	struct mailbox_channel *ch = timer_container_of(ch, t, mbc_timer);
 #endif
 
 	MBX_VERBOSE(ch->mbc_parent, "%s tick", ch_name(ch));
@@ -697,7 +701,11 @@ static void chan_config_timer(struct mailbox_channel *ch)
 		if (on)
 			mod_timer(&ch->mbc_timer, jiffies + MAILBOX_TIMER);
 		else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 			del_timer_sync(&ch->mbc_timer);
+#else
+			timer_delete_sync(&ch->mbc_timer);
+#endif
 	}
 
 	MBX_VERBOSE(mbx, "%s timer is %s", ch_name(ch), on ? "on" : "off");
@@ -1106,7 +1114,11 @@ static void chan_fini(struct mailbox_channel *ch)
 	while ((msg = chan_msg_dequeue(ch, INVALID_MSG_ID)) != NULL)
 		msg_done(msg, -ESHUTDOWN);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 	del_timer_sync(&ch->mbc_timer);
+#else
+	timer_delete_sync(&ch->mbc_timer);
+#endif
 
 	mutex_destroy(&ch->mbc_mutex);
 	mutex_destroy(&ch->sw_chan_mutex);
