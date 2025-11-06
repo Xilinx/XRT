@@ -354,7 +354,7 @@ static void set_vbnv_name(struct platform_device *pdev)
 	if (idcode == 0x04261818)
 		return;
 
-	snprintf(sh_version, sizeof(sh_version), "%lx", idcode);
+	snprintf(sh_version, sizeof(sh_version), "%x", idcode);
 	memset(rom->header.VBNVName, 0, sizeof(rom->header.VBNVName));
 	strncpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
 	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);
