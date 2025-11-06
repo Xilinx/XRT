@@ -14,6 +14,7 @@
 
 #include "core/common/message.h"
 #include "core/common/sysinfo.h"
+#include "core/common/config_reader.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
