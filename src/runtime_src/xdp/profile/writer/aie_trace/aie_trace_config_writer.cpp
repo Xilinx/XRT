@@ -21,11 +21,9 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "core/common/message.h"
 #include "core/common/config_reader.h"
 
 namespace xdp {
-  using severity_level = xrt_core::message::severity_level;
 
   AieTraceConfigWriter::AieTraceConfigWriter(const char* filename,
                uint64_t index) :
