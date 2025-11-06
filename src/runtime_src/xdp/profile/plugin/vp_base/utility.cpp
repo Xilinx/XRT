@@ -127,7 +127,7 @@ namespace xdp {
 
   bool isVaimlSupportedBuild()
   {
-    // VAI-ML supported builds include Client, NPU3, and VE2 XDNA builds
+    // VAIML supported builds include Client, NPU3, and VE2 XDNA builds
     return (isClient() || isNPU3Build() ||
             (isVE2XdnaBuild() && (xrt_core::config::get_xdp_mode() == "xdna")));
   }

@@ -150,8 +150,8 @@ namespace xdp {
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
-            
-            // Only report port names for Vitis AIE flow (not VAI-ML builds)
+
+            // Only report port names for Vitis AIE flow (not VAIML builds)
             if (!xdp::isVaimlSupportedBuild()) {
               bpt::ptree port_trace_names;
               for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
@@ -161,7 +161,7 @@ namespace xdp {
               }
               port_trace_config.add_child("names", port_trace_names);
             }
-            
+
             core_trace_config.add_child("PortTraceConfig", port_trace_config);
           }
 
@@ -182,7 +182,7 @@ namespace xdp {
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
             
-            // Only report channel names for Vitis AIE flow (not VAI-ML builds)
+            // Only report channel names for Vitis AIE flow (not VAIML builds)
             if (!xdp::isVaimlSupportedBuild()) {
               bpt::ptree s2mm_names;
               bpt::ptree mm2s_names;
@@ -354,7 +354,7 @@ namespace xdp {
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
             
-            // Only report port names for Vitis AIE flow (not VAI-ML builds)
+            // Only report port names for Vitis AIE flow (not VAIML builds)
             if (!xdp::isVaimlSupportedBuild()) {
               bpt::ptree port_trace_names;
               for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
@@ -393,7 +393,7 @@ namespace xdp {
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
 
-            // Only report channel names for Vitis AIE flow (not VAI-ML builds)
+            // Only report channel names for Vitis AIE flow (not VAIML builds)
             if ((tile->type == module_type::mem_tile) && (!xdp::isVaimlSupportedBuild())) {
               bpt::ptree s2mm_names;
               bpt::ptree mm2s_names;
