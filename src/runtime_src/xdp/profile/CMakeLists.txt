@@ -30,7 +30,8 @@ file(GLOB XDP_CORE_FILES
   "${PROFILE_DIR}/writer/vp_base/*.cpp"
   )
 
-add_library(xdp_core SHARED ${XDP_CORE_FILES})
+xrt_configure_version_file(xdp_core SHARED)
+add_library(xdp_core SHARED xdp_core-version.rc ${XDP_CORE_FILES})
 add_dependencies(xdp_core xrt_coreutil)
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")

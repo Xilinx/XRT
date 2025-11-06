@@ -2,6 +2,14 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 # Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
+# The version.cmake should only be include once in a project
+# otherwise configured files may be overwritten.  This may
+# not be a problem but is better to avoid it.
+if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
+  return()
+endif()
+set(XRT_VERSION_CMAKE_INCLUDED TRUE CACHE INTERNAL "XRT version cmake included")
+
 # AMD promotion build works from copied sources with no git
 # repository.  The build cannot query git for git metadata.  The
 # promotion build has explicitly overwritten config/version.h.in and
@@ -98,25 +106,48 @@ configure_file(
   ${PROJECT_BINARY_DIR}/gen/version.json
 )
 
-set(XRT_RESOURCE_SHARED "")
-set(XRT_RESOURCE_EXEC "")
-if (WIN32)
-  set(XRT_RC_FILETYPE VFT_DLL)
-  configure_file(
-    ${XRT_SOURCE_DIR}/CMake/config/version.rc.in
-    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-dll.rc
-    @ONLY
-  )
-  set(XRT_RESOURCE_SHARED ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-dll.rc)
-  
-  set(XRT_RC_FILETYPE VFT_APP)
-  configure_file(
-    ${XRT_SOURCE_DIR}/CMake/config/version.rc.in
-    ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-app.rc
-    @ONLY
-  )
-  set(XRT_RESOURCE_EXEC ${PROJECT_BINARY_DIR}/gen/xrt/detail/version-app.rc)
-endif(WIN32)
+if (WIN32 AND XRT_RC_VERSION)
+  message(STATUS "-- Configuring versioning with version: ${XRT_RC_VERSION}")
+  # break up fileversion into 4 components
+  string(REPLACE "." ";" XRT_RC_VERSION_LIST ${XRT_RC_VERSION})
+  list(LENGTH XRT_RC_VERSION_LIST XRT_RC_VERSION_COUNT)
+  if (NOT XRT_RC_VERSION_COUNT EQUAL 4)
+    message(FATAL_ERROR "XRT_RC_VERSION must be in the form of 'major.minor.patch.build'")
+  endif()
+
+  list(GET XRT_RC_VERSION_LIST 0 XRT_RC_MAJOR)
+  list(GET XRT_RC_VERSION_LIST 1 XRT_RC_MINOR)
+  list(GET XRT_RC_VERSION_LIST 2 XRT_RC_BUILD)
+  list(GET XRT_RC_VERSION_LIST 3 XRT_RC_PATCH)
+
+  set(XRT_RC_MAJOR ${XRT_RC_MAJOR} CACHE STRING "Major version for RC file")
+  set(XRT_RC_MINOR ${XRT_RC_MINOR} CACHE STRING "Minor version for RC file")
+  set(XRT_RC_BUILD ${XRT_RC_BUILD} CACHE STRING "Build version for RC file")
+  set(XRT_RC_PATCH ${XRT_RC_PATCH} CACHE STRING "Patch version for RC file")
+
+  function(xrt_configure_version_file target_name type)
+    message(STATUS "-- Generating version file for target: ${target_name} of type: ${type}")
+    if (type STREQUAL "SHARED")
+      set(OriginalFilename ${target_name}.dll)
+      set(FileType VFT_DLL)
+    elseif(type STREQUAL "APP")
+      set(OriginalFilename ${target_name}.exe)
+      set(FileType VFT_APP)
+    else()
+      message(FATAL_ERROR "Unknown file type ${type} for version file configuration")
+    endif()
+
+    configure_file(
+      ${XRT_SOURCE_DIR}/CMake/config/version.rc.in
+      ${CMAKE_CURRENT_BINARY_DIR}/${target_name}-version.rc
+      @ONLY
+      )
+  endfunction()
+else()
+  function(xrt_configure_version_file target_name type)
+    file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/${target_name}-version.rc)
+  endfunction()
+endif()  
 
 # xrt component install
 install(FILES

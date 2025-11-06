@@ -107,6 +107,7 @@ struct zocl_mem {
 	struct drm_zocl_mm_stat zm_stat;
 	struct list_head	link;
 	struct list_head        zm_list;
+	int			zm_cma_idx;
 };
 
 /*
@@ -163,6 +164,8 @@ struct zocl_cu_subdev {
 struct zocl_mem_region {
 	struct device 		*dev;
 	bool 			initialized;
+	phys_addr_t		base;        /* Cached CMA base address */
+	resource_size_t		size;        /* Cached CMA size */
 };
 
 struct drm_zocl_dev {

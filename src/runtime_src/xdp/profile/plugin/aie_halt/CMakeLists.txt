@@ -28,7 +28,8 @@ file(GLOB XDP_DEVICE_COMMON_FILES
 )
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_aie_halt_plugin SHARED ${XDP_AIE_HALT_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
+  xrt_configure_version_file(xdp_aie_halt_plugin SHARED)
+  add_library(xdp_aie_halt_plugin SHARED xdp_aie_halt_plugin-version.rc ${XDP_AIE_HALT_PLUGIN_FILES} ${XDP_DEVICE_COMMON_FILES})
   add_dependencies(xdp_aie_halt_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_halt_plugin PRIVATE xdp_core xrt_coreutil 
                         xaiengine aiebu_library_objects)

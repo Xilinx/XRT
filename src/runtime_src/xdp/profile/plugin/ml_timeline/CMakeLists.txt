@@ -23,7 +23,8 @@ file(GLOB ML_TIMELINE_PLUGIN_FILES
 )
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  add_library(xdp_ml_timeline_plugin SHARED ${ML_TIMELINE_PLUGIN_FILES})
+  xrt_configure_version_file(xdp_ml_timeline_plugin SHARED)
+  add_library(xdp_ml_timeline_plugin SHARED xdp_ml_timeline_plugin-version.rc ${ML_TIMELINE_PLUGIN_FILES})
   add_dependencies(xdp_ml_timeline_plugin xdp_core xrt_coreutil)
 
   target_link_libraries(xdp_ml_timeline_plugin PRIVATE xdp_core xrt_coreutil)

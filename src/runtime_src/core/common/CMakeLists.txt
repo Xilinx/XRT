@@ -84,8 +84,9 @@ target_include_directories(core_common_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
+xrt_configure_version_file(xrt_coreutil SHARED)
 add_library(xrt_coreutil SHARED
-  ${XRT_RESOURCE_SHARED}
+  xrt_coreutil-version.rc
   $<TARGET_OBJECTS:core_common_library_objects>
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>

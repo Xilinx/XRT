@@ -14,7 +14,8 @@ file(GLOB USER_PLUGIN_FILES
   "${PROFILE_DIR}/writer/user/*.cpp"
 )
 
-add_library(xdp_user_plugin SHARED ${USER_PLUGIN_FILES})
+xrt_configure_version_file(xdp_user_plugin SHARED)
+add_library(xdp_user_plugin SHARED xdp_user_plugin-version.rc ${USER_PLUGIN_FILES})
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
 

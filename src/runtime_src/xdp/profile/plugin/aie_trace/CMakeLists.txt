@@ -58,14 +58,16 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
     )
   endif()
 
+  xrt_configure_version_file(xdp_aie_trace_plugin SHARED)
   if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
     file(GLOB AIE_DEVICE_NPU3_FILES "${PROFILE_DIR}/device/common/npu3/*")
-    add_library(xdp_aie_trace_plugin SHARED ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES}
-                ${AIE_TRACE_OFFLOAD_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES}
-                ${AIE_DEVICE_NPU3_FILES})
+    add_library(xdp_aie_trace_plugin SHARED xdp_aie_trace_plugin-version.rc
+                ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} ${AIE_TRACE_OFFLOAD_FILES}
+                ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES} ${AIE_DEVICE_NPU3_FILES})
   else()
-    add_library(xdp_aie_trace_plugin SHARED ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES}
-                ${AIE_TRACE_OFFLOAD_FILES} ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
+    add_library(xdp_aie_trace_plugin SHARED xdp_aie_trace_plugin-version.rc
+                ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES} ${AIE_TRACE_OFFLOAD_FILES}
+                ${AIE_TRACE_UTIL_FILES} ${AIE_DRIVER_COMMON_UTIL_FILES})
   endif()
 
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
@@ -98,7 +100,9 @@ elseif (DEFINED XRT_AIE_BUILD AND (NOT XRT_EDGE))
     "${IMPL_DIR}/*.cpp"
   )
 
-  add_library(xdp_aie_trace_plugin SHARED ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES})
+  xrt_configure_version_file(xdp_aie_trace_plugin SHARED)
+  add_library(xdp_aie_trace_plugin SHARED xdp_aie_trace_plugin-version.rc
+    ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_COMPONENT_FILES})
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_X86_BUILD=1)
