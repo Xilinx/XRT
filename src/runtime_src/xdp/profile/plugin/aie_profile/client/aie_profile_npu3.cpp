@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -62,14 +63,31 @@ namespace xdp {
     memTileStartEvents = aie::profile::getMemoryTileEventSets(hwGen);
     memTileEndEvents = memTileStartEvents;
 
-    //auto context = metadata->getHwContext();
-    //transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Profile Setup");
     tranxHandler = std::make_unique<aie::NPU3Transaction>();
+
+    // Create debug buffer for AIE Profile results
+    auto context = metadata->getHwContext();
+    uint32_t* output = nullptr;
+    std::map<uint32_t, size_t> activeUCsegmentMap;
+    activeUCsegmentMap[0] = 0x20000;
+    try {
+      //resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
+      resultBO = xrt_core::bo_int::create_bo(context, 0x20000, xrt_core::bo_int::use_type::debug);
+      xrt_core::bo_int::config_bo(resultBO, activeUCsegmentMap);
+      output = resultBO.map<uint32_t*>();
+      memset(output, 0, 0x20000);
+    } 
+    catch (std::exception& e) {
+      std::stringstream msg;
+      msg << "Unable to create 128KB buffer for AIE Profile results. Cannot get AIE Profile info. " << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+    }
   }
 
   void AieProfile_NPU3Impl::updateDevice()
   {
     setMetricsSettings(metadata->getDeviceID());
+    generatePollElf();
   }
 
   bool AieProfile_NPU3Impl::setMetricsSettings(const uint64_t deviceId)
@@ -335,9 +353,25 @@ namespace xdp {
     }
   }
 
+  void AieProfile_NPU3Impl::generatePollElf()
+  {
+    auto context = metadata->getHwContext();
+
+    std::string tranxName = "AieProfilePoll";
+    if (!tranxHandler->initializeTransaction(&aieDevInst, tranxName)) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+                              "Unable to initialize transaction for AIE profile polling.");
+      return;
+    }
+    for (u32 i = 0; i < op_profile_data.size(); i++) {
+      XAie_SaveRegister(&aieDevInst, op_profile_data[i], i);
+    }
+    if (!tranxHandler->submitTransaction(&aieDevInst, context))
+      return;
+  }
+
   void AieProfile_NPU3Impl::poll(const uint64_t id)
   {
-    id;
     if (finishedPoll)
       return;
 
@@ -346,45 +380,25 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
     }
 
-    auto context = metadata->getHwContext();
-    xrt::bo resultBO;
-    uint32_t* output = nullptr;
-    std::map<uint32_t, size_t> activeUCsegmentMap;
-    activeUCsegmentMap[0] = 0x20000;
-    try {
-      //resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
-      resultBO = xrt_core::bo_int::create_bo(context, 0x20000, xrt_core::bo_int::use_type::debug);
-      xrt_core::bo_int::config_bo(resultBO, activeUCsegmentMap);
-      output = resultBO.map<uint32_t*>();
-      memset(output, 0, 0x20000);
-    } 
-    catch (std::exception& e) {
-      std::stringstream msg;
-      msg << "Unable to create 128KB buffer for AIE Profile results. Cannot get AIE Profile info. " << e.what() << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-      return;
-    }
-
-   
-    std::string tranxName = "AieProfilePoll";
-    if (!tranxHandler->initializeTransaction(&aieDevInst, tranxName)) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
-                              "Unable to initialize transaction for AIE profile polling.");
-      return;
-    }
-    for (u32 i = 0; i < op_profile_data.size(); i++) {
-      XAie_SaveRegister(&aieDevInst, op_profile_data[i], op_profile_data[i]);
-    }
-    if (!tranxHandler->submitTransaction(&aieDevInst, context))
-      return;
-
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    output = resultBO.map<uint32_t*>();
+    uint32_t* output = resultBO.map<uint32_t*>();
 
+    // Get timestamp in milliseconds
+    double timestamp = xrt_core::time_ns() / 1.0e6;
+
+    //**************************TODO: Remove this after testing ***************************
     for (u32 i = 0; i < op_profile_data.size() + 12 * 3; i++) {
       std::stringstream msg;
       msg << "Counter address/values: " << output[2 * i] << " - " << output[2 * i + 1];
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
+
+    // Process counter values and add to database
+    for (u32 i = 0; i < op_profile_data.size(); i++) {
+      // Update counter value in outputValues and add to database
+      std::vector<uint64_t> values = outputValues[i];
+      values[5] = static_cast<uint64_t>(output[2 * i + 1]); // Write counter value
+      db->getDynamicInfo().addAIESample(id, timestamp, values);
     }
 
     finishedPoll = true;

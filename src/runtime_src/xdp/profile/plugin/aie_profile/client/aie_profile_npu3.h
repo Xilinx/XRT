@@ -13,6 +13,8 @@
 #include "xdp/profile/device/common/npu3/npu3_transaction.h"
 #include "xdp/profile/plugin/aie_base/generations/npu3_registers.h"
 
+#include "xrt/xrt_bo.h"
+
 extern "C" {
 #include <xaiengine.h>
 #include <xaiengine/xaiegbl_params.h>
@@ -41,6 +43,7 @@ namespace xdp {
                                  const module_type& type, const std::string& metricSet,
                                  const uint8_t channel, const XAie_Events startEvent);
    private:
+      void generatePollElf();
       const std::vector<XAie_ModuleType> falModuleTypes = {
         XAIE_CORE_MOD,
         XAIE_MEM_MOD,
@@ -86,6 +89,7 @@ namespace xdp {
       XAie_DevInst aieDevInst = {0};
       std::vector<std::vector<uint64_t>> outputValues;
       std::unique_ptr<aie::NPU3Transaction> tranxHandler;
+      xrt::bo resultBO;
   };
 
 }  // namespace xdp
