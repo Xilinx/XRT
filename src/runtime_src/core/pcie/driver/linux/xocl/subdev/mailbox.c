@@ -2068,7 +2068,7 @@ static struct attribute *mailbox_attrs[] = {
  * format and send to peer through this node.
  */
 static ssize_t mbx_send_raw_pkt(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
 {
 #define MAX_RETRY 6
 	int i;
@@ -2128,7 +2128,7 @@ static ssize_t mbx_send_raw_pkt(struct file *filp, struct kobject *kobj,
 	return count;
 }
 
-static struct bin_attribute bin_attr_raw_pkt_send = {
+static const struct bin_attribute bin_attr_raw_pkt_send = {
 	.attr = {
 		.name = "raw_pkt_send",
 		.mode = 0200
@@ -2139,7 +2139,7 @@ static struct bin_attribute bin_attr_raw_pkt_send = {
 };
 
 static ssize_t mbx_send_body(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
 {
 	struct mailbox *mbx =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -2186,7 +2186,7 @@ static ssize_t mbx_send_body(struct file *filp, struct kobject *kobj,
 	return count;
 }
 
-static struct bin_attribute bin_attr_msg_send_body = {
+static const struct bin_attribute bin_attr_msg_send_body = {
 	.attr = {
 		.name = "msg_send_body",
 		.mode = 0200
@@ -2197,7 +2197,7 @@ static struct bin_attribute bin_attr_msg_send_body = {
 };
 
 static ssize_t mbx_recv_body(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct mailbox *mbx =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -2225,7 +2225,7 @@ fail:
 	return ret;
 }
 
-static struct bin_attribute bin_attr_msg_recv_body = {
+static const struct bin_attribute bin_attr_msg_recv_body = {
 	.attr = {
 		.name = "msg_recv_body",
 		.mode = 0400
@@ -2235,7 +2235,7 @@ static struct bin_attribute bin_attr_msg_recv_body = {
 	.size = 0
 };
 
-static struct bin_attribute *mailbox_bin_attrs[] = {
+static const struct bin_attribute *mailbox_bin_attrs[] = {
 	&bin_attr_raw_pkt_send,
 	&bin_attr_msg_send_body,
 	&bin_attr_msg_recv_body,
