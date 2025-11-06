@@ -128,7 +128,7 @@ static struct attribute *rom_attrs[] = {
 };
 
 static ssize_t raw_show(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
@@ -144,7 +144,7 @@ static ssize_t raw_show(struct file *filp, struct kobject *kobj,
 	return count;
 };
 
-static struct bin_attribute raw_attr = {
+static const struct bin_attribute raw_attr = {
 	.attr = {
 		.name = "raw",
 		.mode = 0400
@@ -154,7 +154,7 @@ static struct bin_attribute raw_attr = {
 	.size = 0
 };
 
-static struct bin_attribute  *rom_bin_attrs[] = {
+static const struct bin_attribute *rom_bin_attrs[] = {
 	&raw_attr,
 	NULL,
 };

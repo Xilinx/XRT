@@ -72,7 +72,7 @@ struct command_queue {
 
 static ssize_t
 ert_cq_debug(struct file *filp, struct kobject *kobj,
-	    struct bin_attribute *attr, char *buf,
+	    const struct bin_attribute *attr, char *buf,
 	    loff_t offset, size_t count)
 {
 	struct command_queue *cmd_queue;
@@ -99,7 +99,7 @@ done:
 	return nread;
 }
 
-static struct bin_attribute cq_attr = {
+static const struct bin_attribute cq_attr = {
 	.attr = {
 		.name ="cq_debug",
 		.mode = 0444
@@ -109,7 +109,7 @@ static struct bin_attribute cq_attr = {
 	.size = 0
 };
 
-static struct bin_attribute *cmd_queue_bin_attrs[] = {
+static const struct bin_attribute *cmd_queue_bin_attrs[] = {
 	&cq_attr,
 	NULL,
 };

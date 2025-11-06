@@ -228,7 +228,7 @@ static DEVICE_ATTR_RO(is_ucu);
 
 static ssize_t
 crc_buf_show(struct file *filp, struct kobject *kobj,
-	     struct bin_attribute *attr, char *buf,
+	     const struct bin_attribute *attr, char *buf,
 	     loff_t offset, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
@@ -275,7 +275,7 @@ static struct attribute *cu_attrs[] = {
 	NULL,
 };
 
-static struct bin_attribute crc_buf_attr = {
+static const struct bin_attribute crc_buf_attr = {
 	.attr = {
 		.name = "crc_buf",
 		.mode = 0444
@@ -285,7 +285,7 @@ static struct bin_attribute crc_buf_attr = {
 	.size = 0,
 };
 
-static struct bin_attribute *cu_bin_attrs[] = {
+static const struct bin_attribute *cu_bin_attrs[] = {
 	&crc_buf_attr,
 	NULL,
 };
