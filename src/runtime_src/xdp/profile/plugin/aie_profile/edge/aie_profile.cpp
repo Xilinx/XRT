@@ -76,8 +76,8 @@ namespace xdp {
   using module_type = xdp::module_type;
   using severity_level = xrt_core::message::severity_level;
 
-  AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      : AieProfileImpl(database, metadata)
+  AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata, uint64_t deviceID)
+      : AieProfileImpl(database, metadata, deviceID)
   {
     auto hwGen = metadata->getHardwareGen();
 
@@ -108,7 +108,7 @@ namespace xdp {
   }
 
   void AieProfile_EdgeImpl::updateDevice() {
-    if (!checkAieDevice(metadata->getDeviceID(), metadata->getHandle()))
+    if (!checkAieDevice(deviceID, metadata->getHandle()))
       return;
 
     // Initialize column shift
@@ -117,7 +117,7 @@ namespace xdp {
     else
       m_startColShift = 0;
 
-    bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
+    bool runtimeCounters = setMetricsSettings(deviceID, metadata->getHandle());
     if (!runtimeCounters) {
       // No runtime counters means there were no valid metrics configured for profiling this design. There is nothing to profile, so return early.
       xrt_core::message::send(severity_level::warning, "XRT", 

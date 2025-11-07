@@ -76,7 +76,7 @@ namespace xdp {
   {
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
-      return itr->second.deviceID;
+      return itr->second.implementation->getDeviceID();
 
     return (db->getStaticInfo()).getDeviceContextUniqueId(handle);
   }
@@ -142,7 +142,6 @@ namespace xdp {
 #endif
     auto& AIEData = handleToAIEData[handle];
 
-    AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     if(AIEData.metadata->aieMetadataEmpty())
     {
@@ -159,13 +158,13 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata, deviceID);
 #elif defined(XRT_X86_BUILD)
-    AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata, deviceID);
 #elif XDP_VE2_BUILD
-    AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata, deviceID);
 #else
-    AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata, deviceID);
 #endif
     auto& implementation = AIEData.implementation;
 

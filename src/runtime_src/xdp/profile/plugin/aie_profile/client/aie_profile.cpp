@@ -40,9 +40,10 @@ namespace xdp {
   using module_type = xdp::module_type;
 
   AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database,
-    std::shared_ptr<AieProfileMetadata> metadata
+    std::shared_ptr<AieProfileMetadata> metadata,
+    uint64_t deviceID
   )
-    : AieProfileImpl(database, metadata)
+    : AieProfileImpl(database, metadata, deviceID)
   {
     auto hwGen = metadata->getHardwareGen();
 
@@ -66,7 +67,7 @@ namespace xdp {
   void
   AieProfile_WinImpl::updateDevice()
   {
-    setMetricsSettings(metadata->getDeviceID());
+    setMetricsSettings(deviceID);
   }
 
   bool
