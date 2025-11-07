@@ -5,6 +5,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/time.h"
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -303,7 +304,7 @@ private:
 
     base_address += patch + ddr_aie_addr_offset;
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
-    bd_data_ptr[1] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
+    bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
   }
 
   template<typename T>
@@ -2827,7 +2828,11 @@ public:
     try {
       // dtrace output is dumped into current working directory
       // output is a python file
-      auto result_file_path = std::filesystem::current_path().string() + "/dtrace_dump_" + std::to_string(get_id()) + ".py";
+      std::string result_file_path = std::filesystem::current_path().string()
+                                   + "/dtrace_dump_"
+                                   + xrt_core::get_timestamp_for_filename()
+                                   + "_" + std::to_string(get_id()) + ".py";
+
       get_dtrace_result_file(result_file_path.c_str());
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",

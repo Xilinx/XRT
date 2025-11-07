@@ -227,7 +227,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   // This is applicable only for register xclbin flow.
   if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE &&
           isPLIO && !isGMIO && configuredOnePlioPartition) {
-    xrt_core::message::send(severity_level::warning, "XRT",
+    xrt_core::message::send(severity_level::critical, "XRT",
       "AIE Trace: PLIO offload is not supported on multiple partitions at once. "
       "A previous PLIO partition has already been configured. "
       "Skipping current PLIO partition.");
@@ -261,7 +261,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
   // uint64_t aieTraceBufSizePLIO = aieTraceBufSize;
   // uint64_t aieTraceBufSizeGMIO = aieTraceBufSize;
-  if (isPLIO) {
+  if (isPLIO && !configuredOnePlioPartition) {
 
     XAie_DevInst* devInst = static_cast<XAie_DevInst*>(AIEData.implementation->setAieDeviceInst(handle, deviceID));
     if(!devInst) {

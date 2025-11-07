@@ -59,7 +59,6 @@ enum class key_type
   xrt_smi_config,
   xrt_smi_lists,
   xclbin_name,
-  runner,
   elf_name,
   mobilenet,
 
@@ -611,53 +610,6 @@ struct xrt_smi_lists : request
   }
 };
 
-struct runner : request
-{
-  enum class type {
-    throughput_recipe,
-    throughput_profile,
-    throughput_path,
-    latency_recipe,
-    latency_profile,
-    latency_path,
-    df_bandwidth_recipe,
-    df_bandwidth_profile,
-    df_bandwidth_path,
-    gemm_recipe,
-    gemm_profile,
-    gemm_path,
-    aie_reconfig_overhead_recipe,
-    aie_reconfig_overhead_nop_recipe,
-    aie_reconfig_overhead_profile,
-    aie_reconfig_overhead_path,
-    cmd_chain_latency_recipe,
-    cmd_chain_latency_profile,
-    cmd_chain_latency_path,
-    cmd_chain_throughput_recipe,
-    cmd_chain_throughput_profile,
-    cmd_chain_throughput_path,
-    tct_one_column_recipe,
-    tct_one_column_profile,
-    tct_one_column_path,
-    tct_all_column_recipe,
-    tct_all_column_profile,
-    tct_all_column_path
-  };
-
-  using result_type = std::string;
-  static const key_type key = key_type::runner;
-  static const char* name() { return "runner"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-
-  static std::string
-  to_string(const result_type& value)
-  {
-    return value;
-  }
-};
-
 /**
  * Used to retrieve the path to an xclbin file required for the
  * current device assuming a valid xclbin "type" is passed. The shim
@@ -668,12 +620,8 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm,
     validate_elf,
-    gemm_elf,
-    mobilenet_elf,
-    preemption_4x4,
-    preemption_4x8  
+    mobilenet_elf
   };
 
   static std::string
@@ -682,16 +630,8 @@ struct xclbin_name : request
     switch (type) {
       case type::validate:
         return "validate";
-      case type::gemm:
-        return "gemm";
       case type::validate_elf:
         return "validate_elf";
-      case type::gemm_elf:
-        return "gemm_elf";
-      case type::preemption_4x4:
-        return "preemption_4x4";
-      case type::preemption_4x8:
-        return "preemption_4x8";
       case type::mobilenet_elf:
         return "mobilenet_elf";
     }
@@ -716,10 +656,6 @@ struct elf_name : request
 {
   enum class type {
     nop,
-    preemption_noop_4x4,
-    preemption_noop_4x8,
-    preemption_memtile_4x4,
-    preemption_memtile_4x8, 
     mobilenet
   };
 
@@ -729,14 +665,6 @@ struct elf_name : request
     switch (type) {
       case type::nop:
         return "nop";
-      case type::preemption_noop_4x4:
-        return "preemption_noop_4x4";
-      case type::preemption_noop_4x8:
-        return "preemption_noop_4x8";
-      case type::preemption_memtile_4x4:
-        return "preemption_memtile_4x4";
-      case type::preemption_memtile_4x8:
-        return "preemption_memtile_4x8";
       case type::mobilenet:
         return "mobilenet";
     }
