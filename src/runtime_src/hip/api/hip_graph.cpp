@@ -4,6 +4,7 @@
 #include "hip/core/common.h"
 #include "hip/core/event.h"
 #include "hip/core/graph.h"
+#include "hip/core/memory.h"
 #include "hip/core/stream.h"
 #include "hip/hip_xrt.h"
 
@@ -40,6 +41,123 @@ hip_graph_add_kernel_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
   auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
 
   // Add dependencies if provided
+  if (pDependencies && numDependencies) {
+    auto node = hip_graph->get_node(node_hdl);
+    for (size_t i = 0; i < numDependencies; ++i)
+      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
+  }
+
+  return node_hdl;
+}
+
+static node_handle
+hip_graph_add_empty_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
+                         size_t numDependencies)
+{
+  throw_invalid_resource_if(!g, "graph is nullptr");
+
+  auto hip_graph = graph_cache.get_or_error(g);
+  throw_invalid_resource_if(!hip_graph, "invalid graph passed");
+
+  // Create an empty command and wrap it in a graph_node
+  auto hip_cmd = std::make_shared<empty_command>();
+  auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
+
+  // Add dependencies if provided
+  if (pDependencies && numDependencies) {
+    auto node = hip_graph->get_node(node_hdl);
+    for (size_t i = 0; i < numDependencies; ++i)
+      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
+  }
+
+  return node_hdl;
+}
+
+static node_handle
+hip_graph_add_memset_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
+                          size_t numDependencies, const hipMemsetParams *pMemsetParams)
+{
+  throw_invalid_resource_if(!g, "graph is nullptr");
+  throw_invalid_value_if(!pMemsetParams, "memset params is nullptr");
+
+  auto hip_graph = graph_cache.get_or_error(g);
+  throw_invalid_resource_if(!hip_graph, "invalid graph passed");
+
+  // Get memory info for the destination pointer
+  auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(pMemsetParams->dst);
+  auto hip_mem_dst = hip_mem_info.first;
+  auto offset = hip_mem_info.second;
+  throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle.");
+  throw_invalid_value_if(hip_mem_dst->get_type() == xrt::core::hip::memory_type::invalid,
+                         "memory type is invalid for memset.");
+
+  // Calculate total size from width, height, and elementSize
+  auto element_size = pMemsetParams->elementSize;
+  auto width = pMemsetParams->width;
+  auto height = pMemsetParams->height > 0 ? pMemsetParams->height : 1;
+  auto total_size = width * height * element_size;
+
+  throw_invalid_value_if(offset + total_size > hip_mem_dst->get_size(), "dst out of bound.");
+
+  // Validate element size
+  throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), "Invalid element type.");
+  throw_invalid_value_if(total_size % element_size != 0, "Invalid size.");
+
+  std::shared_ptr<command> hip_cmd;
+  auto element_count = total_size / element_size;
+
+  // Create appropriate command based on element size
+  switch (element_size) {
+    case 1: {
+      std::vector<std::uint8_t> host_vec(element_count, static_cast<std::uint8_t>(pMemsetParams->value));
+      hip_cmd = std::make_shared<copy_from_host_buffer_command<std::uint8_t>>(
+        hip_mem_dst, std::move(host_vec), total_size, offset);
+      break;
+    }
+    case 2: {
+      std::vector<std::uint16_t> host_vec(element_count, static_cast<std::uint16_t>(pMemsetParams->value));
+      hip_cmd = std::make_shared<copy_from_host_buffer_command<std::uint16_t>>(
+        hip_mem_dst, std::move(host_vec), total_size, offset);
+      break;
+    }
+    case 4: {
+      std::vector<std::uint32_t> host_vec(element_count, static_cast<std::uint32_t>(pMemsetParams->value));
+      hip_cmd = std::make_shared<copy_from_host_buffer_command<std::uint32_t>>(
+        hip_mem_dst, std::move(host_vec), total_size, offset);
+      break;
+    }
+    default:
+      throw_invalid_value_if(true, "Unsupported element size.");
+  }
+
+  auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
+
+  // Add dependencies if provided
+  if (pDependencies && numDependencies) {
+    auto node = hip_graph->get_node(node_hdl);
+    for (size_t i = 0; i < numDependencies; ++i)
+      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
+  }
+
+  return node_hdl;
+}
+
+static node_handle
+hip_graph_add_memcpy_node_1d(hipGraph_t g, const hipGraphNode_t *pDependencies,
+                             size_t numDependencies, void* dst, const void* src,
+                             size_t count, hipMemcpyKind kind)
+{
+  throw_invalid_resource_if(!g, "graph is nullptr");
+  throw_invalid_value_if(!dst, "dst is nullptr");
+  throw_invalid_value_if(!src, "src is nullptr");
+  throw_invalid_value_if(count == 0, "size is 0 for memcpy node");
+
+  auto hip_graph = graph_cache.get_or_error(g);
+  throw_invalid_resource_if(!hip_graph, "invalid graph passed");
+
+  auto hip_cmd = std::make_shared<memcpy_command>(dst, src, count, kind);
+  auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
+
   if (pDependencies && numDependencies) {
     auto node = hip_graph->get_node(node_hdl);
     for (size_t i = 0; i < numDependencies; ++i)
@@ -113,6 +231,52 @@ hipGraphAddKernelNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
                                                             pDependencies,
                                                             numDependencies,
                                                             pNodeParams);
+    *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
+  });
+}
+
+hipError_t
+hipGraphAddEmptyNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                     const hipGraphNode_t *pDependencies, size_t numDependencies)
+{
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    throw_invalid_value_if(!pGraphNode, "Graph Node passed is nullptr");
+    auto handle = xrt::core::hip::hip_graph_add_empty_node(graph,
+                                                           pDependencies,
+                                                           numDependencies);
+    *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
+  });
+}
+
+hipError_t
+hipGraphAddMemsetNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                      const hipGraphNode_t *pDependencies, size_t numDependencies,
+                      const hipMemsetParams *pMemsetParams)
+{
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    throw_invalid_value_if(!pGraphNode, "Graph Node passed is nullptr");
+    auto handle = xrt::core::hip::hip_graph_add_memset_node(graph,
+                                                            pDependencies,
+                                                            numDependencies,
+                                                            pMemsetParams);
+    *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
+  });
+}
+
+hipError_t
+hipGraphAddMemcpyNode1D(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                        const hipGraphNode_t *pDependencies, size_t numDependencies,
+                        void* dst, const void* src, size_t count, hipMemcpyKind kind)
+{
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    throw_invalid_value_if(!pGraphNode, "Graph Node passed is nullptr");
+    auto handle = xrt::core::hip::hip_graph_add_memcpy_node_1d(graph,
+                                                               pDependencies,
+                                                               numDependencies,
+                                                               dst,
+                                                               src,
+                                                               count,
+                                                               kind);
     *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
   });
 }
