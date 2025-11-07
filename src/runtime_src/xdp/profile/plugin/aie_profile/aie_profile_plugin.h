@@ -31,7 +31,6 @@ namespace xdp {
     static bool configuredOnePartition;
     struct AIEData {
       std::unique_ptr<AieProfileImpl> implementation;
-      std::shared_ptr<AieProfileMetadata> metadata;
     };
     std::map<void*, AIEData>  handleToAIEData;
 
