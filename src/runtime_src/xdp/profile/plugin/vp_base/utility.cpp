@@ -117,19 +117,10 @@ namespace xdp {
 #endif
   }
 
-  bool isNPU3Build()
+  bool isXdnaSupportedBuild()
   {
-#ifdef XDP_NPU3_BUILD
-    return true;
-#else
-    return false;
-#endif
-  }
-
-  bool isVaimlSupportedBuild()
-  {
-    // VAIML supported builds include Client, NPU3, and VE2 XDNA builds
-    return (isClient() || isNPU3Build() ||
+    // XDNA supported builds include Client and VE2 XDNA builds
+    return (isClient() ||
             (isVE2XdnaBuild() && (xrt_core::config::get_xdp_mode() == "xdna")));
   }
 

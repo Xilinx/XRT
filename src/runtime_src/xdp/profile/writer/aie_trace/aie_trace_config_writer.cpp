@@ -137,24 +137,24 @@ namespace xdp {
             bpt::ptree port_trace_is_master;
 
             for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-              bpt::ptree port1;
-              bpt::ptree port2;
-              port1.put("", tile->core_trace_config.port_trace_ids[i]);
-              port2.put("", tile->core_trace_config.port_trace_is_master[i]);
-              port_trace_ids.push_back(std::make_pair("", port1));
-              port_trace_is_master.push_back(std::make_pair("", port2));
+              bpt::ptree portIdNode;
+              bpt::ptree portIsMasterNode;
+              portIdNode.put("", tile->core_trace_config.port_trace_ids[i]);
+              portIsMasterNode.put("", tile->core_trace_config.port_trace_is_master[i]);
+              port_trace_ids.push_back(std::make_pair("", portIdNode));
+              port_trace_is_master.push_back(std::make_pair("", portIsMasterNode));
             }
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
 
-            // Only report port names for Vitis AIE flow (not VAIML builds)
-            if (!xdp::isVaimlSupportedBuild()) {
+            // Only report port/channel names for Vitis AIE flow (not XDNA builds)
+            if (!xdp::isXdnaSupportedBuild()) {
               bpt::ptree port_trace_names;
               for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-                bpt::ptree port3;
-                port3.put("", tile->core_trace_config.port_trace_names[i]);
-                port_trace_names.push_back(std::make_pair("", port3));
+                bpt::ptree portNameNode;
+                portNameNode.put("", tile->core_trace_config.port_trace_names[i]);
+                port_trace_names.push_back(std::make_pair("", portNameNode));
               }
               port_trace_config.add_child("names", port_trace_names);
             }
@@ -168,28 +168,28 @@ namespace xdp {
             bpt::ptree mm2s_channels;
 
             for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
-              bpt::ptree chan1;
-              bpt::ptree chan2;
-              chan1.put("", tile->core_trace_config.s2mm_channels[i]);
-              chan2.put("", tile->core_trace_config.mm2s_channels[i]);
-              s2mm_channels.push_back(std::make_pair("", chan1));
-              mm2s_channels.push_back(std::make_pair("", chan2));
+              bpt::ptree s2mmChannelNode;
+              bpt::ptree mm2sChannelNode;
+              s2mmChannelNode.put("", tile->core_trace_config.s2mm_channels[i]);
+              mm2sChannelNode.put("", tile->core_trace_config.mm2s_channels[i]);
+              s2mm_channels.push_back(std::make_pair("", s2mmChannelNode));
+              mm2s_channels.push_back(std::make_pair("", mm2sChannelNode));
             }
             
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
             
-            // Only report channel names for Vitis AIE flow (not VAIML builds)
-            if (!xdp::isVaimlSupportedBuild()) {
+            // Only report port/channel names for Vitis AIE flow (not XDNA builds)
+            if (!xdp::isXdnaSupportedBuild()) {
               bpt::ptree s2mm_names;
               bpt::ptree mm2s_names;
               for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
-                bpt::ptree chan3;
-                bpt::ptree chan4;
-                chan3.put("", tile->core_trace_config.s2mm_names[i]);
-                chan4.put("", tile->core_trace_config.mm2s_names[i]);
-                s2mm_names.push_back(std::make_pair("", chan3));
-                mm2s_names.push_back(std::make_pair("", chan4));
+                bpt::ptree s2mmNameNode;
+                bpt::ptree mm2sNameNode;
+                s2mmNameNode.put("", tile->core_trace_config.s2mm_names[i]);
+                mm2sNameNode.put("", tile->core_trace_config.mm2s_names[i]);
+                s2mm_names.push_back(std::make_pair("", s2mmNameNode));
+                mm2s_names.push_back(std::make_pair("", mm2sNameNode));
               }
               sel_trace_config.add_child("s2mm_names", s2mm_names);
               sel_trace_config.add_child("mm2s_names", mm2s_names);
@@ -340,22 +340,22 @@ namespace xdp {
             bpt::ptree port_trace_is_master;
 
             for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-              bpt::ptree port1;
-              bpt::ptree port2;
-              port1.put("", tile_trace_config.port_trace_ids[i]);
-              port2.put("", tile_trace_config.port_trace_is_master[i]);
-              port_trace_ids.push_back(std::make_pair("", port1));
-              port_trace_is_master.push_back(std::make_pair("", port2));
+              bpt::ptree portIdNode;
+              bpt::ptree portIsMasterNode;
+              portIdNode.put("", tile_trace_config.port_trace_ids[i]);
+              portIsMasterNode.put("", tile_trace_config.port_trace_is_master[i]);
+              port_trace_ids.push_back(std::make_pair("", portIdNode));
+              port_trace_is_master.push_back(std::make_pair("", portIsMasterNode));
             }
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
             
-            // Only report port names for Vitis AIE flow (not VAIML builds)
-            if (!xdp::isVaimlSupportedBuild()) {
+            // Only report port/channel names for Vitis AIE flow (not XDNA builds)
+            if (!xdp::isXdnaSupportedBuild()) {
               bpt::ptree port_trace_names;
               for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-                bpt::ptree port3;
+                bpt::ptree portNameNode;
                 // Defensive check: if port name is empty, construct descriptive name
                 std::string portName = tile_trace_config.port_trace_names[i];
                 if (portName.empty()) {
@@ -363,8 +363,8 @@ namespace xdp {
                   std::string portType = isMaster ? "output_port_" : "input_port_";
                   portName = portType + std::to_string(i);
                 }
-                port3.put("", portName);
-                port_trace_names.push_back(std::make_pair("", port3));
+                portNameNode.put("", portName);
+                port_trace_names.push_back(std::make_pair("", portNameNode));
               }
               port_trace_config.add_child("names", port_trace_names);
             }
@@ -379,28 +379,28 @@ namespace xdp {
             bpt::ptree mm2s_channels;
 
             for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
-              bpt::ptree chan1;
-              bpt::ptree chan2;
-              chan1.put("", tile_trace_config.s2mm_channels[i]);
-              chan2.put("", tile_trace_config.mm2s_channels[i]);
-              s2mm_channels.push_back(std::make_pair("", chan1));
-              mm2s_channels.push_back(std::make_pair("", chan2));
+              bpt::ptree s2mmChannelNode;
+              bpt::ptree mm2sChannelNode;
+              s2mmChannelNode.put("", tile_trace_config.s2mm_channels[i]);
+              mm2sChannelNode.put("", tile_trace_config.mm2s_channels[i]);
+              s2mm_channels.push_back(std::make_pair("", s2mmChannelNode));
+              mm2s_channels.push_back(std::make_pair("", mm2sChannelNode));
             }
             
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
 
-            // Only report channel names for Vitis AIE flow (not VAIML builds)
-            if ((tile->type == module_type::mem_tile) && (!xdp::isVaimlSupportedBuild())) {
+            // Only report port/channel names for Vitis AIE flow (not XDNA builds)
+            if ((tile->type == module_type::mem_tile) && (!xdp::isXdnaSupportedBuild())) {
               bpt::ptree s2mm_names;
               bpt::ptree mm2s_names;
               for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
-                bpt::ptree chan3;
-                bpt::ptree chan4;
-                chan3.put("", tile_trace_config.s2mm_names[i]);
-                chan4.put("", tile_trace_config.mm2s_names[i]);
-                s2mm_names.push_back(std::make_pair("", chan3));
-                mm2s_names.push_back(std::make_pair("", chan4));
+                bpt::ptree s2mmNameNode;
+                bpt::ptree mm2sNameNode;
+                s2mmNameNode.put("", tile_trace_config.s2mm_names[i]);
+                mm2sNameNode.put("", tile_trace_config.mm2s_names[i]);
+                s2mm_names.push_back(std::make_pair("", s2mmNameNode));
+                mm2s_names.push_back(std::make_pair("", mm2sNameNode));
               }
               sel_trace_config.add_child("s2mm_names", s2mm_names);
               sel_trace_config.add_child("mm2s_names", mm2s_names);
