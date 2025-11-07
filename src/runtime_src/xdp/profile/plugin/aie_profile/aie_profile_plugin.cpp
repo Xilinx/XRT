@@ -145,11 +145,9 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     if(AIEData.metadata->aieMetadataEmpty())
     {
-      AIEData.valid = false;
       xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
       return;
     }
-    AIEData.valid = true;
     
     // If there are tiles configured for this xclbin, then we have configured the first matching xclbin and will not configure any upcoming ones
     if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->isConfigured()))
@@ -233,9 +231,6 @@ auto time = std::time(nullptr);
       return;
 
     auto& AIEData = handleToAIEData[handle];
-    if(!AIEData.valid) {
-      return;
-    }
     if (!AIEData.implementation) {
       handleToAIEData.erase(handle);
       return;

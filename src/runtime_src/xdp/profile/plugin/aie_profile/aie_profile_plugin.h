@@ -30,7 +30,6 @@ namespace xdp {
     static bool live;
     static bool configuredOnePartition;
     struct AIEData {
-      bool valid;
       std::unique_ptr<AieProfileImpl> implementation;
       std::shared_ptr<AieProfileMetadata> metadata;
     };
