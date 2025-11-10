@@ -23,7 +23,7 @@ private:
   bool m_watch;
   bool m_status;
   bool m_raw;
-  mutable uint32_t m_watch_mode_offset;
+  mutable uint64_t m_watch_mode_offset;
 
   // Log generation methods for examine functionality
   std::string 

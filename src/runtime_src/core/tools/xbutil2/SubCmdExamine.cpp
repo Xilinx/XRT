@@ -140,7 +140,7 @@ SubCmdExamine::getReportsList(const xrt_core::smi::tuple_vector& reports) const
 }
 
 std::shared_ptr<OptionOptions>
-SubCmdExamine::checkForSubOption(const po::variables_map& vm, const SubCmdExamineOptions& options) const
+SubCmdExamine::checkForSubOption(const po::variables_map& vm) const
 {
   // Check if any of the option options are present
   for (const auto& option : m_optionOptionsCollection) {
@@ -186,7 +186,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     fill_option_values(vm, options);
 
     // Check for OptionOptions first
-    auto optionOption = checkForSubOption(vm, options);
+    auto optionOption = checkForSubOption(vm);
     if (optionOption) {
       optionOption->setGlobalOptions(getGlobalOptions());
       optionOption->execute(_options);

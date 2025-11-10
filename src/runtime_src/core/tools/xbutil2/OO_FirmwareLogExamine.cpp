@@ -117,7 +117,7 @@ OO_FirmwareLogExamine::generate_raw_logs(const xrt_core::device* dev,
     size_t buf_size = data_buf.size;
 
     // Simply print the raw payload data
-    ss.write(reinterpret_cast<const char*>(data_ptr), buf_size);
+    ss.write(reinterpret_cast<const char*>(data_ptr), static_cast<std::streamsize>(buf_size));
   } catch (const std::exception& e) {
     ss << "Error retrieving raw firmware log data: " << e.what() << "\n";
   }
