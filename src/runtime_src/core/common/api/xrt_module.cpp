@@ -304,7 +304,7 @@ private:
 
     base_address += patch + ddr_aie_addr_offset;
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
-    bd_data_ptr[1] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
+    bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
   }
 
   template<typename T>
