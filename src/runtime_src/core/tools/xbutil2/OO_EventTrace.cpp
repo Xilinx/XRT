@@ -18,32 +18,26 @@ namespace po = boost::program_options;
 OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Enable|disable event trace")
     , m_device("")
-    , m_action("")
+    , m_enable(false)
+    , m_disable(false)
     , m_help(false)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("enable", boost::program_options::bool_switch(&m_enable), "Enable event tracing")
+    ("disable", boost::program_options::bool_switch(&m_disable), "Disable event tracing")
     ("categories", boost::program_options::value<decltype(m_categories)>(&m_categories), "Category mask to enable categories")
-  ;
-
-  m_optionsHidden.add_options()
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action), "Action to perform: enable or disable");
-  ;
-
-  m_positionalOptions.
-    add("action", 1 /* max_count */)
   ;
 }
 
 void
 OO_EventTrace::validate_args() const {
-  if(m_action.empty() && !m_help)
-    throw xrt_core::error(std::errc::operation_canceled, "Please specify a action 'enable' or 'disable'");
-  std::vector<std::string> vec_action { "enable", "disable"};
-  if (!m_action.empty() && std::find(vec_action.begin(), vec_action.end(), m_action) == vec_action.end()) {
-    throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("\n'%s' is not a valid action for event trace\n") % m_action));
-  }
+  if(!m_enable && !m_disable && !m_help)
+    throw xrt_core::error(std::errc::operation_canceled, "Please specify an action: --enable or --disable");
+  
+  if(m_enable && m_disable)
+    throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --enable and --disable");
 }
 
 void
@@ -95,19 +89,23 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
+  if (m_enable || m_disable) {
+    // Configuration actions require admin privileges
+    XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
 
-  auto action_to_int = [](const std::string& action) -> uint32_t {
-    return action == "enable" ? 1 : 0;
-  };
+    uint32_t action_value = m_enable ? 1 : 0;
+    std::string action_name = m_enable ? "enable" : "disable";
 
-  try {
-    xrt_core::query::event_trace_state::value_type params{action_to_int(m_action), m_categories};
-    xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), params);
-  }
-  catch(const xrt_core::error& e) {
-    std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
+    try {
+      xrt_core::query::event_trace_state::value_type params{action_value, m_categories};
+      xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), params);
+      std::cout << "Event trace " << action_name << "d successfully\n";
+    }
+    catch(const xrt_core::error& e) {
+      std::cerr << boost::format("\nERROR: %s\n") % e.what();
+      printHelp();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    return;
   }
 }

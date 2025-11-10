@@ -15,7 +15,8 @@ public:
 
 private:
   std::string m_device;
-  std::string m_action;
+  bool m_enable;
+  bool m_disable;
   bool m_help;
   uint32_t m_log_level;
 };

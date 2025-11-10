@@ -7,6 +7,7 @@
 
 #include "tools/common/SubCmd.h"
 #include "tools/common/Report.h"
+#include "tools/common/OptionOptions.h"
 #include "core/common/smi.h"
 
 // 3rd Party Library - Include Files
@@ -28,9 +29,12 @@ struct SubCmdExamineOptions {
 };
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
+  std::vector<std::shared_ptr<OptionOptions>> m_optionOptionsCollection;
 
   void fill_option_values(const boost::program_options::variables_map& vm, SubCmdExamineOptions& options) const;
   std::vector<std::shared_ptr<Report>> getReportsList(const xrt_core::smi::tuple_vector&) const;
+  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm, const SubCmdExamineOptions& options) const;
+  std::vector<std::shared_ptr<OptionOptions>> getOptionOptions(const xrt_core::smi::tuple_vector& options) const;
 
  public:
   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);

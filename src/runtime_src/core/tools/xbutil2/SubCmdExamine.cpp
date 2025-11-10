@@ -11,6 +11,11 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
+// ---- OptionOptions ------
+#include "tools/common/OptionOptions.h"
+#include "OO_FirmwareLogExamine.h"
+#include "OO_EventTraceExamine.h"
+
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/reports/ReportAie.h"
@@ -25,7 +30,6 @@
 #include "tools/common/reports/ReportDynamicRegion.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
 #include "tools/common/reports/ReportElectrical.h"
-#include "tools/xbutil2/ReportEventTrace.h"
 #include "tools/common/reports/ReportFirewall.h"
 #include "tools/common/reports/ReportHost.h"
 #include "tools/common/reports/ReportMailbox.h"
@@ -38,7 +42,6 @@
 #include "tools/common/reports/ReportQspiStatus.h"
 #include "tools/common/reports/ReportTelemetry.h"
 #include "tools/common/reports/ReportThermal.h"
-#include "tools/xbutil2/ReportFirmwareLog.h"
 
 #include <filesystem>
 #include <fstream>
@@ -67,14 +70,12 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportContextHealth>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
-    std::make_shared<ReportEventTrace>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
     std::make_shared<ReportPreemption>(),
     std::make_shared<ReportPsKernels>(),
-    std::make_shared<ReportFirmwareLog>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),
@@ -85,6 +86,12 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportThermal>(),
     std::make_shared<ReportTelemetry>(),
   #endif
+  };
+
+  // OptionOptions collection for examine-specific interactive functionality
+  m_optionOptionsCollection = {
+    {std::make_shared<OO_FirmwareLogExamine>("firmware-log")}, //hidden
+    {std::make_shared<OO_EventTraceExamine>("event-trace")} //hidden
   };
 }
 
@@ -132,6 +139,40 @@ SubCmdExamine::getReportsList(const xrt_core::smi::tuple_vector& reports) const
   return matchedReports;
 }
 
+std::shared_ptr<OptionOptions>
+SubCmdExamine::checkForSubOption(const po::variables_map& vm, const SubCmdExamineOptions& options) const
+{
+  // Check if any of the option options are present
+  for (const auto& option : m_optionOptionsCollection) {
+    if (vm.count(option->getConfigName()) > 0) {
+      return option;
+    }
+  }
+  
+  return nullptr;
+}
+
+std::vector<std::shared_ptr<OptionOptions>>
+SubCmdExamine::getOptionOptions(const xrt_core::smi::tuple_vector& options) const
+{
+  // Vector to store the matched option options
+  std::vector<std::shared_ptr<OptionOptions>> matchedOptionOptions;
+
+  for (const auto& opt : options) {
+    auto it = std::find_if(m_optionOptionsCollection.begin(), m_optionOptionsCollection.end(),
+              [&opt](const std::shared_ptr<OptionOptions>& optionOption) {
+                return std::get<0>(opt) == optionOption->getConfigName() &&
+                       (std::get<2>(opt) != "hidden" || XBU::getAdvance());
+              });
+
+    if (it != m_optionOptionsCollection.end()) {
+      matchedOptionOptions.push_back(*it);
+    }
+  }
+
+  return matchedOptionOptions;
+}
+
 void
 SubCmdExamine::execute(const SubCmdOptions& _options) const
 {
@@ -143,6 +184,16 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   try{
     const auto unrecognized_options = process_arguments(vm, _options, false);
     fill_option_values(vm, options);
+
+    // Check for OptionOptions first
+    auto optionOption = checkForSubOption(vm, options);
+    if (optionOption) {
+      optionOption->setGlobalOptions(getGlobalOptions());
+      optionOption->execute(_options);
+      return;
+    }
+
+
 
     if (!unrecognized_options.empty())
     {
