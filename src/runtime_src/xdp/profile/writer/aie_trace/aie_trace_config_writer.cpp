@@ -31,11 +31,17 @@ namespace xdp {
   }
 
   AieTraceConfigWriter::~AieTraceConfigWriter()
-  {    
+  {
+    if (!isWritten)
+      write(false);
   }
 
   bool AieTraceConfigWriter::write(bool)
   {
+    if (isWritten)
+      return true;
+    isWritten = true;
+
     bpt::ptree pt;
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
@@ -157,7 +163,7 @@ namespace xdp {
             bpt::ptree s2mm_names;
             bpt::ptree mm2s_names;
 
-            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
+            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS_MAX; ++i) {
               bpt::ptree chan1;
               bpt::ptree chan2;
               bpt::ptree chan3;
@@ -345,7 +351,7 @@ namespace xdp {
             bpt::ptree s2mm_channels;
             bpt::ptree mm2s_channels;
 
-            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
+            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS_MAX; ++i) {
               bpt::ptree chan1;
               bpt::ptree chan2;
               chan1.put("", tile_trace_config.s2mm_channels[i]);
