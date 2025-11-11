@@ -332,10 +332,19 @@ namespace xdp {
                                             void* hwCtxImpl,
                                             bool hw_context_flow = false,
                                             bool readAIEMetadata = true,
-                                            std::unique_ptr<xdp::Device> xdpDevice = nullptr); 
+                                            std::unique_ptr<xdp::Device> xdpDevice = nullptr);
+
+    XDP_CORE_EXPORT
+    void updateDeviceFromCoreDeviceElf(uint64_t deviceId,
+                                    std::shared_ptr<xrt_core::device> device,
+                                    bool readAIEMetadata = true,
+                                    std::unique_ptr<xdp::Device> xdpDevice = nullptr);
 
     XDP_CORE_EXPORT
     uint64_t getHwCtxImplUid(void* hwCtxImpl);
+
+    XDP_CORE_EXPORT
+    uint64_t getHwCtxImplUidElf(void* hwCtxImpl);
 
     /* API to assign unique id for Device abstraction/HW Context in XDP
      * For traditional App style using Load Xclbin, this API receives 
