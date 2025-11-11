@@ -38,6 +38,10 @@ if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   target_compile_definitions(xdp_core PRIVATE XDP_CLIENT_BUILD=1)
 endif()
 
+if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+  target_compile_definitions(xdp_core PRIVATE XDP_VE2_BUILD=1)
+endif()
+
 target_link_libraries(xdp_core PRIVATE xrt_coreutil)
 
 set_target_properties(xdp_core PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})

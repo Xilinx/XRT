@@ -5,6 +5,7 @@
 #ifndef UTILITY_DOT_H
 #define UTILITY_DOT_H
 
+#include <cstdint>
 #include <string>
 #include "xdp/config.h"
 
@@ -18,6 +19,8 @@ namespace xdp {
   XDP_CORE_EXPORT std::string getXRTVersion();
   XDP_CORE_EXPORT bool isEdge();
   XDP_CORE_EXPORT bool isClient();
+  XDP_CORE_EXPORT bool isVE2XdnaBuild();
+  XDP_CORE_EXPORT bool isXdnaSupportedBuild();
   XDP_CORE_EXPORT uint64_t getPSMemorySize();
   XDP_CORE_EXPORT uint64_t getAlignedTraceBufSize(uint64_t totalBytes,
                                                   unsigned int numChunks);

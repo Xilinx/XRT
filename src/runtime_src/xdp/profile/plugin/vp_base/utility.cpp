@@ -14,6 +14,7 @@
 
 #include "core/common/message.h"
 #include "core/common/sysinfo.h"
+#include "core/common/config_reader.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -105,6 +106,22 @@ namespace xdp {
 #else
     return false;
 #endif
+  }
+
+  bool isVE2XdnaBuild()
+  {
+#ifdef XDP_VE2_BUILD
+    return true;
+#else
+    return false;
+#endif
+  }
+
+  bool isXdnaSupportedBuild()
+  {
+    // XDNA supported builds include Client and VE2 XDNA builds
+    return (isClient() ||
+            (isVE2XdnaBuild() && (xrt_core::config::get_xdp_mode() == "xdna")));
   }
 
   // Get the size of the physical device memory (in bytes) when running
