@@ -8,6 +8,7 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
