@@ -51,11 +51,11 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_HostMem.cpp"
   "OO_Performance.cpp"
   "OO_Preemption.cpp"
+  "OO_EventTraceExamine.cpp"
   "OO_EventTrace.cpp"
+  "OO_FirmwareLogExamine.cpp"
   "OO_FirmwareLog.cpp"
-  "ReportEventTrace.cpp"
   "EventTrace.cpp"
-  "ReportFirmwareLog.cpp"
   "FirmwareLog.cpp"
 )
 
