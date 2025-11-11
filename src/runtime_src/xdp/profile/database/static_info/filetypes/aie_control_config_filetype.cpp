@@ -366,11 +366,10 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             // For GMIOs, also populate mm2s_names and s2mm_names using channelNum
             if (type == io_type::GMIO) {
                 if (channelNum < NUM_MEM_CHANNELS) {
-                    if (isMaster) {
+                    if (isMaster)
                         it->s2mm_names[channelNum] = name;
-                    } else {
+                    else
                         it->mm2s_names[channelNum] = name;
-                    }
                 }
             }
         }
@@ -392,11 +391,10 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             // For GMIOs, also populate mm2s_names and s2mm_names using channelNum
             if (type == io_type::GMIO) {
                 if (channelNum < NUM_MEM_CHANNELS) {
-                    if (isMaster) {
+                    if (isMaster)
                         tile.s2mm_names[channelNum] = name;
-                    } else {
+                    else
                         tile.mm2s_names[channelNum] = name;
-                    }
                 }
             }
 
