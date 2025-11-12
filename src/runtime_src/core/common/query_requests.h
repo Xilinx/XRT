@@ -620,12 +620,8 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm,
     validate_elf,
-    gemm_elf,
-    mobilenet_elf,
-    preemption_4x4,
-    preemption_4x8  
+    mobilenet_elf
   };
 
   static std::string
@@ -634,16 +630,8 @@ struct xclbin_name : request
     switch (type) {
       case type::validate:
         return "validate";
-      case type::gemm:
-        return "gemm";
       case type::validate_elf:
         return "validate_elf";
-      case type::gemm_elf:
-        return "gemm_elf";
-      case type::preemption_4x4:
-        return "preemption_4x4";
-      case type::preemption_4x8:
-        return "preemption_4x8";
       case type::mobilenet_elf:
         return "mobilenet_elf";
     }
@@ -668,10 +656,6 @@ struct elf_name : request
 {
   enum class type {
     nop,
-    preemption_noop_4x4,
-    preemption_noop_4x8,
-    preemption_memtile_4x4,
-    preemption_memtile_4x8, 
     mobilenet
   };
 
@@ -681,14 +665,6 @@ struct elf_name : request
     switch (type) {
       case type::nop:
         return "nop";
-      case type::preemption_noop_4x4:
-        return "preemption_noop_4x4";
-      case type::preemption_noop_4x8:
-        return "preemption_noop_4x8";
-      case type::preemption_memtile_4x4:
-        return "preemption_memtile_4x4";
-      case type::preemption_memtile_4x8:
-        return "preemption_memtile_4x8";
       case type::mobilenet:
         return "mobilenet";
     }

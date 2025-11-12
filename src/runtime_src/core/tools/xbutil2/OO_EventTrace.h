@@ -4,6 +4,12 @@
 #pragma once
 
 #include "tools/common/OptionOptions.h"
+#include "tools/common/SmiWatchMode.h"
+#include "EventTrace.h"
+#include <optional>
+#include <map>
+#include <string>
+#include <vector>
 
 class OO_EventTrace : public OptionOptions {
 public:
@@ -14,8 +20,31 @@ public:
   explicit OO_EventTrace(const std::string &_longName, bool _isHidden = false);
 
 private:
+  uint32_t 
+  parse_categories(const std::vector<std::string>& categories_list,
+                   const xrt_core::device* device) const;
+
+  std::map<std::string, uint32_t> 
+  get_category_map(const xrt_core::device* device) const;
+
+  std::vector<std::string>
+  mask_to_category_names(uint32_t mask, const xrt_core::device* device) const;
+
+  void
+  handle_list_categories(const xrt_core::device* device) const;
+
+  void
+  handle_status(const xrt_core::device* device) const;
+
+  void
+  handle_config(const xrt_core::device* device) const;
+
+private:
   std::string m_device;
-  std::string m_action;
+  bool m_enable;
+  bool m_disable;
   bool m_help;
-  uint32_t m_categories;
+  bool m_list_categories;
+  bool m_status;
+  std::vector<std::string> m_categories;
 };

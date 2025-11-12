@@ -7,10 +7,12 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenusCore.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -18,34 +20,31 @@ namespace po = boost::program_options;
 OO_FirmwareLog::OO_FirmwareLog( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Enable|disable firmware log")
     , m_device("")
-    , m_action("")
+    , m_enable(false)
+    , m_disable(false)
     , m_help(false)
     , m_log_level(0)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("log-level", boost::program_options::value<decltype(m_log_level)>(&m_log_level), "Log level")
+    ("enable", boost::program_options::bool_switch(&m_enable), "Enable firmware log")
+    ("disable", boost::program_options::bool_switch(&m_disable), "Disable firmware log")
+    ("log-level", boost::program_options::value<decltype(m_log_level)>(&m_log_level), "Log level (for enable action)")
   ;
-
-  m_optionsHidden.add_options()
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action), "Action to perform: enable, disable, status");
-  ;
-
-  m_positionalOptions.
-    add("action", 1 /* max_count */)
   ;
 }
 
 void
 OO_FirmwareLog::validate_args() const {
-  if(m_action.empty() && !m_help)
-    throw xrt_core::error(std::errc::operation_canceled, "Please specify a action 'enable' or 'disable'");
-  std::vector<std::string> vec_action { "enable", "disable" };
-  if (!m_action.empty() && std::find(vec_action.begin(), vec_action.end(), m_action) == vec_action.end()) {
-    throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("\n'%s' is not a valid action for firmware log\n") % m_action));
-  }
+  if(!m_enable && !m_disable && !m_help)
+    throw xrt_core::error(std::errc::operation_canceled, "Please specify an action: --enable or --disable");
+  
+  if(m_enable && m_disable)
+    throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --enable and --disable");
 }
+
+
 
 void
 OO_FirmwareLog::execute(const SubCmdOptions& _options) const
@@ -97,19 +96,23 @@ OO_FirmwareLog::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBUtilities::sudo_or_throw("Firmware log configuration requires admin privileges");
+  if (m_enable || m_disable) {
+    // Configuration actions require admin privileges
+    XBUtilities::sudo_or_throw("Firmware log configuration requires admin privileges");
 
-  auto action_to_int = [](const std::string& action) -> uint32_t {
-    return action == "enable" ? 1 : 0;
-  };
+    uint32_t action_value = m_enable ? 1 : 0;
+    std::string action_name = m_enable ? "enable" : "disable";
 
-  try {
-    xrt_core::query::firmware_log_state::value_type params{action_to_int(m_action), m_log_level};
-    xrt_core::device_update<xrt_core::query::firmware_log_state>(device.get(), params);
-  }
-  catch(const xrt_core::error& e) {
-    std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
+    try {
+      xrt_core::query::firmware_log_state::value_type params{action_value, m_log_level};
+      xrt_core::device_update<xrt_core::query::firmware_log_state>(device.get(), params);
+      std::cout << "Firmware log " << action_name << "d successfully\n";
+    }
+    catch(const xrt_core::error& e) {
+      std::cerr << boost::format("\nERROR: %s\n") % e.what();
+      printHelp();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    return;
   }
 }

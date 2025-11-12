@@ -3,6 +3,7 @@
 
 #include "core/common/json/nlohmann/json.hpp"
 #include "EventTrace.h"
+#include "tools/common/XBUtilities.h"
 
 #include <algorithm>
 #include <boost/format.hpp>
@@ -22,6 +23,31 @@ event_trace_config(nlohmann::json json_config)
     m_arg_templates(parse_arg_sets()),
     m_event_map(parse_events())
 {}
+
+std::optional<event_trace_config>
+event_trace_config::
+load_config(const xrt_core::device* device)
+{
+  if (!device) {
+    return std::nullopt;
+  }
+
+  try {
+    auto archive = XBUtilities::open_archive(device);
+    if (!archive) {
+      return std::nullopt;
+    }
+
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
+    auto& config_data = artifacts_repo["trace_events.json"];
+    std::string config_content(config_data.begin(), config_data.end());
+    
+    auto json_config = nlohmann::json::parse(config_content);
+    return event_trace_config(json_config);
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
 
 uint32_t event_trace_config::
 parse_event_bits() 
