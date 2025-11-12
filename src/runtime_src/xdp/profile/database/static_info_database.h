@@ -338,9 +338,7 @@ namespace xdp {
 
     XDP_CORE_EXPORT
     void updateDeviceFromCoreDeviceElf(uint64_t deviceId,
-                                    std::shared_ptr<xrt_core::device> device,
-                                    bool readAIEMetadata = true,
-                                    std::unique_ptr<xdp::Device> xdpDevice = nullptr);
+                                    std::shared_ptr<xrt_core::device> device);
 
     XDP_CORE_EXPORT
     uint64_t getHwCtxImplUid(void* hwCtxImpl);
