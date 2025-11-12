@@ -26,24 +26,21 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Status|watch event trace data")
+    : OptionOptions(_longName, _isHidden, "Watch event trace data")
     , m_device("")
     , m_help(false)
     , m_watch(false)
-    , m_status(false)
     , m_raw(false)
     , m_watch_mode_offset(0)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("status", boost::program_options::bool_switch(&m_status), "Show event trace status")
     ("watch", boost::program_options::bool_switch(&m_watch), "Watch event trace data continuously")
     ("raw", boost::program_options::bool_switch(&m_raw), "Output raw event trace data (no parsing)")
   ;
 
   m_positionalOptions.
-    add("status", 1 /* max_count */).
     add("watch", 1 /* max_count */)
   ;
 }
@@ -52,9 +49,7 @@ void
 OO_EventTraceExamine::
 validate_args() const {
   // Default behavior is to dump event trace data once
-  // Only explicit actions are --status and --watch
-  if(m_status && m_watch)
-    throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --status and --watch");
+  // Only explicit action is --watch
 }
 
 std::string
@@ -170,19 +165,6 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Handle status action first
-  if (m_status) {
-    try {
-      auto status = xrt_core::device_query<xrt_core::query::event_trace_state>(device.get());
-      std::cout << "Event trace status: " << (status.action == 1 ? "enabled" : "disabled") << "\n";
-      std::cout << "Event trace categories: " << status.categories << "\n";
-    } catch (const std::exception& e) {
-      std::cerr << "Error getting event trace status: " << e.what() << "\n";
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-    return;
-  }
-
   // Handle watch or default dump action
   bool is_watch = m_watch;
   
@@ -190,21 +172,9 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
   std::optional<smi::event_trace_config> config;
 
   if (!m_raw) {
-    try {
-      auto archive = XBUtilities::open_archive(device.get());
-      if (!archive) {
-        throw std::runtime_error("Failed to open archive");
-      }
-      auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"event_trace.json"});
-      
-      auto& config_data = artifacts_repo["event_trace.json"];
-      std::string config_content(config_data.begin(), config_data.end());
-      
-      auto json_config = nlohmann::json::parse(config_content);
-      config = smi::event_trace_config(json_config);
-    } 
-    catch (const std::exception& e) {
-      std::cout << "Warning: Dumping raw event trace: " << e.what() << "\n";
+    config = smi::event_trace_config::load_config(device.get());
+    if (!config) {
+      std::cout << "Warning: Dumping raw event trace: Failed to load configuration\n";
     }
   }
 
