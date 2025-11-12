@@ -21,7 +21,6 @@ private:
   std::string m_device;
   bool m_help;
   bool m_watch;
-  bool m_status;
   bool m_raw;
   mutable uint64_t m_watch_mode_offset;
 

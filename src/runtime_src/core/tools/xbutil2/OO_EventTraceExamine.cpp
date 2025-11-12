@@ -26,24 +26,21 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Status|watch event trace data")
+    : OptionOptions(_longName, _isHidden, "Watch event trace data")
     , m_device("")
     , m_help(false)
     , m_watch(false)
-    , m_status(false)
     , m_raw(false)
     , m_watch_mode_offset(0)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-    ("status", boost::program_options::bool_switch(&m_status), "Show event trace status")
     ("watch", boost::program_options::bool_switch(&m_watch), "Watch event trace data continuously")
     ("raw", boost::program_options::bool_switch(&m_raw), "Output raw event trace data (no parsing)")
   ;
 
   m_positionalOptions.
-    add("status", 1 /* max_count */).
     add("watch", 1 /* max_count */)
   ;
 }
@@ -52,9 +49,7 @@ void
 OO_EventTraceExamine::
 validate_args() const {
   // Default behavior is to dump event trace data once
-  // Only explicit actions are --status and --watch
-  if(m_status && m_watch)
-    throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --status and --watch");
+  // Only explicit action is --watch
 }
 
 std::string
@@ -168,19 +163,6 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Handle status action first
-  if (m_status) {
-    try {
-      auto status = xrt_core::device_query<xrt_core::query::event_trace_state>(device.get());
-      std::cout << "Event trace status: " << (status.action == 1 ? "enabled" : "disabled") << "\n";
-      std::cout << "Event trace categories: " << status.categories << "\n";
-    } catch (const std::exception& e) {
-      std::cerr << "Error getting event trace status: " << e.what() << "\n";
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-    return;
   }
 
   // Handle watch or default dump action
