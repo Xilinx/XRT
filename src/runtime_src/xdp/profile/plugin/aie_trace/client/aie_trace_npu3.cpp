@@ -49,14 +49,14 @@ namespace xdp {
       memoryTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastChId1);
     else
       memoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
-    memoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
+    memoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_7_MEM_TILE;
 
     // Interface tile trace is flushed at end of run
     if (m_trace_start_broadcast)
       interfaceTileTraceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastChId2);
     else
       interfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
-    interfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
+    interfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_7_PL;
 
     xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
 
@@ -195,7 +195,6 @@ namespace xdp {
         }
         else { //core tile
           XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
-          XAie_EventBroadcastUnblockDir(&aieDevInst, loc, XAIE_MEM_MOD,  XAIE_EVENT_SWITCH_A, broadcastId1, XAIE_EVENT_BROADCAST_ALL);
         }
       }
     }
@@ -1123,6 +1122,7 @@ namespace xdp {
       build2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastChId1, traceStartBroadcastChId2, interfaceTileTraceStartEvent);
       xrt_core::message::send(severity_level::info, "XRT", "before XAie_EventGenerate");
       XAie_EventGenerate(&aieDevInst, XAie_TileLoc(startCol, 0), XAIE_PL_MOD,  interfaceTileTraceStartEvent);
+      reset2ChannelBroadcastNetwork(hwCtxImpl, traceStartBroadcastChId1, traceStartBroadcastChId2);
     }
 
     xrt_core::message::send(severity_level::info, "XRT", "before tranxHandler->submitTransaction");
