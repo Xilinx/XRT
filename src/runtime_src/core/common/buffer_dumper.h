@@ -45,7 +45,7 @@ private:
   read_logged_count(uint8_t* chunk);
 
   void
-  dump_chunk_data(size_t chunk_index, size_t start, size_t length);
+  dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
   
   void
   process_chunks();

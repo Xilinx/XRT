@@ -9,6 +9,7 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
+#include "core/include/xrt/deprecated/xrt.h"
 
 #include <cstring>
 #include <stdexcept>
@@ -22,7 +23,7 @@ namespace xrt_core {
     , m_file_streams(m_config.num_chunks)
   {
     for (size_t i = 0; i < m_config.num_chunks; i++) {
-      std::string filename = m_config.dump_file_prefix +
+      std::string filename = m_config.dump_file_prefix + "_" +
                              xrt_core::get_timestamp_for_filename() + "_" +
                              std::to_string(xrt_core::utils::get_pid()) + "_" +
                              std::to_string(i) + ".bin";
@@ -75,9 +76,8 @@ namespace xrt_core {
 
   void
   buffer_dumper::
-  dump_chunk_data(size_t chunk_index, size_t start, size_t length)
+  dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
   {
-    auto chunk = m_config.dump_buffer.map<uint8_t*>() + (chunk_index * m_config.chunk_size);
     std::ofstream& fs = m_file_streams[chunk_index];
     const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
     const size_t bytes_to_end = m_config.chunk_size - start_offset;
@@ -106,7 +106,11 @@ namespace xrt_core {
     
     for (size_t i = 0; i < m_config.num_chunks; i++)
     {
-      uint8_t* chunk = base_ptr + (i * m_config.chunk_size);
+      const size_t chunk_offset = i * m_config.chunk_size;
+      uint8_t* chunk = base_ptr + chunk_offset;
+
+      // First, sync only the metadata to read the logged count
+      m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, m_config.metadata_size, chunk_offset);
 
       size_t logged_count = read_logged_count(chunk);
       size_t& dumped_count = m_dumped_counts[i];
@@ -119,7 +123,20 @@ namespace xrt_core {
 
       if (dumped_count != logged_count) {
         size_t to_dump = logged_count - dumped_count;
-        dump_chunk_data(i, dumped_count, to_dump);
+        const size_t start_offset = (dumped_count % m_data_size) + m_config.metadata_size;
+        const size_t bytes_to_end = m_config.chunk_size - start_offset;
+
+        // Sync only the data range we need to dump
+        if (to_dump <= bytes_to_end) {
+          // Data doesn't wrap, sync contiguous range
+          m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, to_dump, chunk_offset + start_offset);
+        } else {
+          // Data wraps around, sync two ranges
+          m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, bytes_to_end, chunk_offset + start_offset);
+          m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, to_dump - bytes_to_end, chunk_offset + m_config.metadata_size);
+        }
+
+        dump_chunk_data(i, dumped_count, to_dump, chunk);
         dumped_count = logged_count;
       }
     }
