@@ -125,7 +125,7 @@ namespace xdp {
     uint64_t deviceId = 0;
     uint64_t implId   = 0;
     if (xrt_core::hw_context_int::get_elf_flow(hwContext)) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Got ELF Flow");
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "In Full ELF flow");
 
       deviceId = (db->getStaticInfo()).getHwCtxImplUidElf(hwCtxImpl);
       implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
@@ -134,15 +134,15 @@ namespace xdp {
       try {
         deviceName = xrt_core::device_query<xrt_core::query::rom_vbnv>(coreDevice);
       } catch (const xrt_core::query::no_such_key&) {
-        //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Device Name not implemented");
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
       } catch (const std::exception &) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
       }
       (db->getStaticInfo()).updateDeviceFromCoreDeviceElf(deviceId, coreDevice);
       (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+
     } else {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Not ELF flow");       
-  
+      // xclbin flow
       deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
       implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
   

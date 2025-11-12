@@ -78,6 +78,11 @@ namespace xdp {
     mHwCtxImpl = hwCtxImpl;
 
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    if (xrt_core::hw_context_int::get_elf_flow(hwContext)) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "AIE Halt Plugin is not yet supported for Full ELF flow.");
+      return;
+    }
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
     // Only one device for Client Device flow
