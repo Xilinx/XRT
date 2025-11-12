@@ -103,6 +103,15 @@ namespace xdp {
       return;
     }
 
+    if (hw_context_flow) {
+      xrt::hw_context ctx = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      if (xrt_core::hw_context_int::get_elf_flow(ctx)) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+            "AIE Profile is not yet supported for Full ELF flow.");
+        return;
+      }
+    }
+
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)

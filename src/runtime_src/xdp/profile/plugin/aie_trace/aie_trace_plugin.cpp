@@ -112,6 +112,15 @@ void AieTracePluginUnified::updateAIEDevice(void *handle, bool hw_context_flow) 
       "AIE Trace: A previous partition has already been configured. Skipping current partition due to 'config_one_partition=true' setting.");
     return;
   }
+
+  if (hw_context_flow) {
+    xrt::hw_context ctx = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    if (xrt_core::hw_context_int::get_elf_flow(ctx)) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "AIE Event Trace is not yet supported for Full ELF flow.");
+      return;
+    }
+  }
   
   auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
