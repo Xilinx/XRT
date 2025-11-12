@@ -1635,47 +1635,24 @@ namespace xdp {
   void
   VPStaticDatabase::
   updateDeviceFromCoreDeviceElf(uint64_t deviceId,
-                             std::shared_ptr<xrt_core::device> device,
-                             bool /*readAIEMetadata*/,
-                             std::unique_ptr<xdp::Device> /*xdpDevice*/)
+                             std::shared_ptr<xrt_core::device> device)
   {
-    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
-     * in the static data base. So, no need to read the xclbin information again.
-     */
     // For ELF Flow, always reset the device for now
-    //updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
     DeviceInfo* devInfo = nullptr ;
     auto itr = deviceInfo.find(deviceId);
     if (itr == deviceInfo.end()) {
-      // This is the first time this device was loaded with an xclbin
+      // This is the first time this device was loaded with an elf
       deviceInfo[deviceId] = std::make_unique<DeviceInfo>();
       devInfo = deviceInfo[deviceId].get();
       devInfo->deviceId = deviceId;
     } else {
-      // This is a previously used device being reloaded with a new xclbin
+      // This is a previously used device being reloaded with a new elf
       devInfo = itr->second.get();
- /*
-      ConfigInfo *config = devInfo->currentConfig();
-      if (config && (config->type == CONFIG_PL_DEVICE_INTF_ONLY) &&
-          (xclbinType == XCLBIN_PL_ONLY || xclbinType == XCLBIN_AIE_PL)) {
-          std::stringstream errMsg;
-          errMsg << "AIE Trace is not supported if PL xclbin hw_context is created after AIE only xclbin hw_context for device. ";
-          errMsg << "Please update host code to create PL xclbin hw_context before AIE only xclbin hw_context.";
-          xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", errMsg.str());
-          std::abort();
-      }
-      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
-      // It is expected to have AIE type xclbin loaded after PL type.
-      devInfo->cleanCurrentConfig(xclbinType);
- */
     }
+    // Read aie_trace_metadata
     boost::property_tree::ptree aieMetadata;
     std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
-    metadataReader =
-      aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
-    if (!metadataReader)
-      metadataReader =
-        aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
     if (!metadataReader) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                               "AIE metadata read failed!");
@@ -1740,7 +1717,6 @@ namespace xdp {
   {
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
     // before calling this function. So, we don't need to check for validity here.
-    static uint64_t nextAvailableUID = 1;
     {
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
       auto it = hwCtxImplUIDMap.find(hwCtxImpl);
@@ -1772,20 +1748,18 @@ namespace xdp {
     } else {
        // At this point, also keep track of which xclbin is associated
        // with this hardware context implementation for the run summary file
-       db->associateContextWithId(nextAvailableUID, hwCtxImpl);
+       db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
        
-       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
+       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
     }
     return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }
 
   uint64_t VPStaticDatabase::getHwCtxImplUidElf(void* hwCtxImpl)
   {
-    // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
-    // before calling this function. So, we don't need to check for validity here.
-    static uint64_t nextAvailableUID = 1;
+    // Assign XDP internal unique id for HW Ctx Impl
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
     {
-      std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
       auto it = hwCtxImplUIDMap.find(hwCtxImpl);
       if (it != hwCtxImplUIDMap.end()) {
         auto& info = it->second;
@@ -1801,8 +1775,8 @@ namespace xdp {
 
     // At this point, also keep track of which xclbin is associated
     // with this hardware context implementation for the run summary file
-    db->associateContextWithId(nextAvailableUID, hwCtxImpl);       
-    hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
+    db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
+    hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
 
     return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }

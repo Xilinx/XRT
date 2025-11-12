@@ -73,6 +73,8 @@ namespace xdp {
     uint64_t applicationStartTime = 0 ;
     bool aieApplication = false;
 
+    uint64_t nextAieOnlyHwCtxUId = 1;
+
     xdp::AppStyle appStyle = APP_STYLE_NOT_SET;
 
     // ***** OpenCL Information ******
