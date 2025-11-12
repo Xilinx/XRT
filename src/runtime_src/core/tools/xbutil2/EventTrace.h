@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <optional>
 
 // Forward declaration for device
 namespace xrt_core { class device; }
@@ -148,7 +149,24 @@ public:
     return {m_file_major, m_file_minor};
   }
 
+  /**
+   * @brief Get category map 
+   * @return Map of category name to category info
+   */
+  const std::map<std::string, category_info>&
+  get_categories() const {
+    return m_category_map;
+  }
 
+  /**
+   * @brief Load event trace configuration from device
+   * @param device Device to load configuration from
+   * @return Optional event trace config (nullopt if loading fails)
+   */
+  static std::optional<event_trace_config>
+  load_config(const xrt_core::device* device);
+
+private:
 private:
   /**
    * @brief Parse event_bits from JSON data_format

@@ -7,11 +7,14 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenusCore.h"
+#include "core/common/query_requests.h"
+#include "core/common/json/nlohmann/json.hpp"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
+namespace smi = xrt_core::tools::xrt_smi;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -21,20 +24,72 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
     , m_enable(false)
     , m_disable(false)
     , m_help(false)
+    , m_list_categories(false)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
     ("enable", boost::program_options::bool_switch(&m_enable), "Enable event tracing")
     ("disable", boost::program_options::bool_switch(&m_disable), "Disable event tracing")
-    ("categories", boost::program_options::value<decltype(m_categories)>(&m_categories), "Category mask to enable categories")
+    ("list-categories", boost::program_options::bool_switch(&m_list_categories), "List available event trace categories")
+    ("categories", boost::program_options::value<decltype(m_categories)>(&m_categories)->multitoken(), "Space-separated list of category names. Use \"all\" to enable all available categories")
   ;
+}
+
+
+
+uint32_t
+OO_EventTrace::parse_categories(const std::vector<std::string>& categories_list, const xrt_core::device* device) const {
+  if (categories_list.empty()) {
+    return 0;
+  }
+
+  // Handle special case for "all"
+  if (categories_list.size() == 1 && categories_list[0] == "all") {
+    return 0xFFFFFFFF; // Enable all categories
+  }
+
+  uint32_t category_mask = 0;
+  
+  // Get category mappings from config
+  std::map<std::string, uint32_t> category_map = get_category_map(device);
+
+  for (const auto& category_name : categories_list) {
+    auto it = category_map.find(category_name);
+    if (it != category_map.end()) {
+      category_mask |= it->second;
+    } else {
+      // Unknown category, warn the user
+      std::cerr << "Warning: Unknown category '" << category_name << "', ignoring\n";
+    }
+  }
+  return category_mask;
+}
+
+std::map<std::string, uint32_t>
+OO_EventTrace::get_category_map(const xrt_core::device* device) const {
+  std::map<std::string, uint32_t> category_map;
+
+  category_map["ALL"] = 0xFFFFFFFF; //NOLINT
+  
+  // Load categories from config
+  auto config = smi::event_trace_config::load_config(device);
+  
+  if (config.has_value()) {
+    // Get categories from config and convert ID to mask
+    const auto& config_categories = config->get_categories();
+    for (const auto& [name, info] : config_categories) {
+      uint32_t mask = (1U << info.id);
+      category_map[name] = mask;
+    }
+  }
+  return category_map;
 }
 
 void
 OO_EventTrace::validate_args() const {
-  if(!m_enable && !m_disable && !m_help)
-    throw xrt_core::error(std::errc::operation_canceled, "Please specify an action: --enable or --disable");
+  if(!m_enable && !m_disable && !m_help && !m_list_categories)
+    throw xrt_core::error(std::errc::operation_canceled, "Please specify an action: --enable, --disable, or --list-categories");
   
   if(m_enable && m_disable)
     throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --enable and --disable");
@@ -69,6 +124,34 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  if (m_list_categories) {
+    // Find device of interest for listing categories
+    std::shared_ptr<xrt_core::device> device;
+    
+    try {
+      device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true);
+    } catch (const std::runtime_error& e) {
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+
+    try {
+      auto category_map = get_category_map(device.get());
+      if (!category_map.empty()) {
+        std::cout << "Available event trace categories for device " << m_device << ":\n";
+        for (const auto& pair : category_map) {
+          std::cout << "  " << pair.first << "\n";
+        }
+      } else {
+        std::cout << "No categories available for device " << m_device << "\n";
+      }
+    } catch (const std::exception& e) {
+      std::cerr << "Error loading categories: " << e.what() << "\n";
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    return;
+  }
+
   try {
     //validate required arguments
     validate_args(); 
@@ -82,7 +165,7 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
   
   try {
-    device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+    device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -97,9 +180,10 @@ OO_EventTrace::execute(const SubCmdOptions& _options) const
     std::string action_name = m_enable ? "enable" : "disable";
 
     try {
-      xrt_core::query::event_trace_state::value_type params{action_value, m_categories};
+      uint32_t category_mask = parse_categories(m_categories, device.get());
+      xrt_core::query::event_trace_state::value_type params{action_value, category_mask};
       xrt_core::device_update<xrt_core::query::event_trace_state>(device.get(), params);
-      std::cout << "Event trace " << action_name << "d successfully\n";
+      std::cout << "Event trace " << action_name << "d successfully";
     }
     catch(const xrt_core::error& e) {
       std::cerr << boost::format("\nERROR: %s\n") % e.what();

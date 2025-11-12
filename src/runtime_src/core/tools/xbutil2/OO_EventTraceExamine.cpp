@@ -190,21 +190,9 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
   std::optional<smi::event_trace_config> config;
 
   if (!m_raw) {
-    try {
-      auto archive = XBUtilities::open_archive(device.get());
-      if (!archive) {
-        throw std::runtime_error("Failed to open archive");
-      }
-      auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"event_trace.json"});
-      
-      auto& config_data = artifacts_repo["event_trace.json"];
-      std::string config_content(config_data.begin(), config_data.end());
-      
-      auto json_config = nlohmann::json::parse(config_content);
-      config = smi::event_trace_config(json_config);
-    } 
-    catch (const std::exception& e) {
-      std::cout << "Warning: Dumping raw event trace: " << e.what() << "\n";
+    config = smi::event_trace_config::load_config(device.get());
+    if (!config) {
+      std::cout << "Warning: Dumping raw event trace: Failed to load configuration\n";
     }
   }
 
