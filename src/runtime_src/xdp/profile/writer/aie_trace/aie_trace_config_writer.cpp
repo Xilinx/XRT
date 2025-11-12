@@ -390,8 +390,9 @@ namespace xdp {
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
 
+            // Write s2mm_names and mm2s_names for both memory tiles and interface tiles
             // Only report port/channel names for Vitis AIE flow (not XDNA builds)
-            if ((tile->type == module_type::mem_tile) && (!xdp::isXdnaSupportedBuild())) {
+            if (((tile->type == module_type::mem_tile) || (tile->type == module_type::shim)) && (!xdp::isXdnaSupportedBuild())) {
               bpt::ptree s2mm_names;
               bpt::ptree mm2s_names;
               for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
