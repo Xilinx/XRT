@@ -12,6 +12,18 @@
 
 namespace xrt::core::hip {
 
+static inline void
+add_node_dependencies(const std::shared_ptr<graph>& hip_graph, node_handle node_hdl,
+                      const hipGraphNode_t *pDependencies, size_t numDependencies)
+{
+  if (!pDependencies || !numDependencies)
+    return;
+
+  auto node = hip_graph->get_node(node_hdl);
+  for (size_t i = 0; i < numDependencies; ++i)
+    node->add_dep_node(hip_graph->get_node(pDependencies[i]));
+}
+
 static graph_handle
 hip_graph_create(unsigned int flags)
 {
@@ -40,12 +52,7 @@ hip_graph_add_kernel_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
   auto hip_cmd = std::make_shared<kernel_start>(hip_func, pNodeParams->kernelParams);
   auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
 
-  // Add dependencies if provided
-  if (pDependencies && numDependencies) {
-    auto node = hip_graph->get_node(node_hdl);
-    for (size_t i = 0; i < numDependencies; ++i)
-      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
-  }
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
 
   return node_hdl;
 }
@@ -63,12 +70,7 @@ hip_graph_add_empty_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
   auto hip_cmd = std::make_shared<empty_command>();
   auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
 
-  // Add dependencies if provided
-  if (pDependencies && numDependencies) {
-    auto node = hip_graph->get_node(node_hdl);
-    for (size_t i = 0; i < numDependencies; ++i)
-      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
-  }
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
 
   return node_hdl;
 }
@@ -98,9 +100,6 @@ hip_graph_add_memset_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
   auto total_size = width * height * element_size;
 
   throw_invalid_value_if(offset + total_size > hip_mem_dst->get_size(), "dst out of bound.");
-
-  // Validate element size
-  throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), "Invalid element type.");
   throw_invalid_value_if(total_size % element_size != 0, "Invalid size.");
 
   std::shared_ptr<command> hip_cmd;
@@ -132,12 +131,7 @@ hip_graph_add_memset_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
 
   auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
 
-  // Add dependencies if provided
-  if (pDependencies && numDependencies) {
-    auto node = hip_graph->get_node(node_hdl);
-    for (size_t i = 0; i < numDependencies; ++i)
-      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
-  }
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
 
   return node_hdl;
 }
@@ -150,7 +144,7 @@ hip_graph_add_memcpy_node_1d(hipGraph_t g, const hipGraphNode_t *pDependencies,
   throw_invalid_resource_if(!g, "graph is nullptr");
   throw_invalid_value_if(!dst, "dst is nullptr");
   throw_invalid_value_if(!src, "src is nullptr");
-  throw_invalid_value_if(count == 0, "size is 0 for memcpy node");
+  throw_invalid_value_if(!count, "size is 0 for memcpy node");
 
   auto hip_graph = graph_cache.get_or_error(g);
   throw_invalid_resource_if(!hip_graph, "invalid graph passed");
@@ -158,11 +152,7 @@ hip_graph_add_memcpy_node_1d(hipGraph_t g, const hipGraphNode_t *pDependencies,
   auto hip_cmd = std::make_shared<memcpy_command>(dst, src, count, kind);
   auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
 
-  if (pDependencies && numDependencies) {
-    auto node = hip_graph->get_node(node_hdl);
-    for (size_t i = 0; i < numDependencies; ++i)
-      node->add_dep_node(hip_graph->get_node(pDependencies[i]));
-  }
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
 
   return node_hdl;
 }
