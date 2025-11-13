@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <fstream>
+#include <thread>
 #include <regex>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -17,7 +18,159 @@
 #include "TestValidateUtilities.h"
 namespace xq = xrt_core::query;
 
+// Constructor for BO_set
+// BO_set is a collection of all the buffer objects so that the operations on all buffers can be done from a single object
+// Parameters:
+// - device: Reference to the xrt::device object
+// - kernel: Reference to the xrt::kernel object
+BO_set::BO_set(const xrt::device& device, 
+               const BufferSizes& buffer_sizes,
+               const std::string& ifm_file, 
+               const std::string& param_file) 
+  : buffer_sizes(buffer_sizes),
+    bo_ifm      (xrt::ext::bo{device, buffer_sizes.ifm_size}),
+    bo_param    (xrt::ext::bo{device, buffer_sizes.param_size}),
+    bo_ofm      (xrt::ext::bo{device, buffer_sizes.ofm_size}),
+    bo_inter    (xrt::ext::bo{device, buffer_sizes.inter_size}),
+    bo_mc       (xrt::ext::bo{device, buffer_sizes.mc_size})
+{
+  XBValidateUtils::init_buf_bin((int*)bo_ifm.map<int*>(), buffer_sizes.ifm_size, ifm_file);
+  XBValidateUtils::init_buf_bin((int*)bo_param.map<int*>(), buffer_sizes.param_size, param_file);
+}
+
+// Method to synchronize buffer objects to the device
+void BO_set::sync_bos_to_device() {
+  bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+}
+
+
+// Method to set kernel arguments
+// Parameters:
+// - run: Reference to the xrt::run object
+void BO_set::set_kernel_args(xrt::run& run) const {
+  // to-do: replace with XBU::get_opcode() when dpu sequence flow is taken out
+  uint64_t opcode = 3;
+  run.set_arg(0, opcode);
+  run.set_arg(1, 0);
+  run.set_arg(2, 0);
+  run.set_arg(3, bo_ifm);
+  run.set_arg(4, bo_param);
+  run.set_arg(5, bo_ofm);
+  run.set_arg(6, bo_inter);
+  run.set_arg(7, bo_mc);
+}
+
+void 
+TestCase::initialize()
+{
+  hw_ctx = xrt::hw_context(params.device, params.xclbin.get_uuid());
+  // Initialize kernels, buffer objects, and runs
+  for (int j = 0; j < params.queue_len; j++) {
+    xrt::kernel kernel;
+    xrt::elf elf = xrt::elf(params.elf_file);
+    xrt::module mod{elf};
+    kernel = xrt::ext::kernel{hw_ctx, mod, params.kernel_name};
+    BufferSizes buffer_sizes = XBValidateUtils::read_buffer_sizes(params.buffer_sizes_file);
+    auto bos = BO_set(params.device, buffer_sizes, params.ifm_file, params.param_file);
+    bos.sync_bos_to_device();
+    auto run = xrt::run(kernel);
+    bos.set_kernel_args(run);
+    run.start();
+    run.wait2();
+
+    kernels.push_back(kernel);
+    bo_set_list.push_back(bos);
+    run_list.push_back(run);
+  }
+}
+
+// Method to run the test case
+void
+TestCase::run()
+{
+  for (int i = 0; i < params.itr_count; i++) {
+    // Start all runs in the queue so that they run in parallel
+    for (int cnt = 0; cnt < params.queue_len; cnt++) {
+      run_list[cnt].start();
+    }
+    // Wait for all runs in the queue to complete
+    for (int cnt = 0; cnt < params.queue_len; cnt++) {
+      run_list[cnt].wait2();
+    }
+  }
+}
+
 namespace XBValidateUtils{
+
+BufferSizes 
+read_buffer_sizes(const std::string& json_file) {
+  boost::property_tree::ptree root;
+  BufferSizes buffer_sizes {};
+
+  // Read the JSON file into a property tree
+  boost::property_tree::read_json(json_file, root);
+
+  // Extract buffer sizes
+  buffer_sizes.ifm_size = root.get<size_t>("buffer_sizes.ifm_size");
+  buffer_sizes.param_size = root.get<size_t>("buffer_sizes.param_size");
+  buffer_sizes.inter_size = root.get<size_t>("buffer_sizes.inter_size");
+  buffer_sizes.mc_size = root.get<size_t>("buffer_sizes.mc_size");
+  buffer_sizes.ofm_size = root.get<size_t>("buffer_sizes.ofm_size");
+
+  return buffer_sizes;
+}
+
+// Copy values from text files into buff, expecting values are ascii encoded hex
+void 
+init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
+  std::ifstream dpu_stream(dpu_file);
+  if (!dpu_stream.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
+  }
+
+  auto instr = bo_instr.map<int*>();
+  std::string line;
+  while (std::getline(dpu_stream, line)) {
+    if (line.at(0) == '#') {
+      continue;
+    }
+    std::stringstream ss(line);
+    unsigned int word = 0;
+    ss >> std::hex >> word;
+    *(instr++) = word;
+  }
+}
+
+void init_buf_bin(int* buff, size_t bytesize, const std::string &filename) {
+
+  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+
+  if (!ifs.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % filename));
+  }
+  ifs.read(reinterpret_cast<char*>(buff), static_cast<std::streamsize>(bytesize));
+}
+
+size_t 
+get_instr_size(const std::string& dpu_file) {
+  std::ifstream file(dpu_file);
+  if (!file.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
+  }
+  size_t size = 0;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.at(0) != '#') {
+      size++;
+    }
+  }
+  if (size == 0) {
+    throw std::runtime_error("Invalid DPU instruction length");
+  }
+  return size;
+}
 
 /*
  * mini logger to log errors, warnings and details produced by the test cases
