@@ -69,7 +69,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xr
     std::vector<json> reports;
     
     // Get initial frame event count
-    uint64_t initial_frame_events = get_total_frame_events(dev);
+    auto initial_frame_events = get_total_frame_events(dev);
     
     // Create 2 runners for parallel execution
     for (int i = 0; i < 2; i++) {
@@ -92,7 +92,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xr
     }
     
     // Get frame event count after parallel execution
-    uint64_t final_frame_events = get_total_frame_events(dev);
+    auto final_frame_events = get_total_frame_events(dev);
     
     // Extract elapsed time from parallel execution reports
     double latencyShared = 0.0;
@@ -115,10 +115,8 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xr
     // Extract elapsed time from sequential execution report
     double latencySingle = sequential_report["cpu"]["elapsed"].get<double>();
     
-    uint64_t frame_events_diff = final_frame_events - initial_frame_events;
-    double overhead = 0.0;
-    
-    overhead = (latencyShared - 2 * latencySingle) / (frame_events_diff);
+    auto frame_events_diff = final_frame_events - initial_frame_events;
+    auto overhead = (latencyShared - 2 * latencySingle) / (frame_events_diff);
     
     // Log results
     if(XBU::getVerbose()){
@@ -126,7 +124,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xr
       XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Temporally shared multiple context duration: %.1f us") % latencyShared));
       XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Frame events difference: %d") % frame_events_diff));
     }
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead: %.1f us") % overhead));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Overhead per frame event: %.1f us") % overhead));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
