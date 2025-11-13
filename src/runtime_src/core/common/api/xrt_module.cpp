@@ -2159,7 +2159,12 @@ class module_sram : public module_impl
     // patch it in instruction buffer
     for (const auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
       // symbol name will be same as section name without the grp idx
-      auto sym_name = name.substr(0, name.rfind('.'));
+      // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
+      auto dot_pos = name.rfind('.');
+      auto sym_name = (dot_pos != std::string::npos && dot_pos > 0)
+                    ? name.substr(0, dot_pos)
+                    : name;
+
       if (patch_instr_value(m_buffer, sym_name, std::numeric_limits<size_t>::max(), ctrlpktbo.address(),
                             xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id))
         m_patched_args.insert(sym_name);
