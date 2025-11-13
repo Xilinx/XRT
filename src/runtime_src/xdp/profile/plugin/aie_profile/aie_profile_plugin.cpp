@@ -140,7 +140,6 @@ namespace xdp {
 #else
       handleToAIEProfileImpl.erase(handle);
 #endif
-    auto& implementation = handleToAIEProfileImpl[handle];
 
     std::shared_ptr<AieProfileMetadata> metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     if(metadata->aieMetadataEmpty())
@@ -153,6 +152,7 @@ namespace xdp {
     if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (metadata->isConfigured()))
       configuredOnePartition = true;
 
+    std::unique_ptr<AieProfileImpl> implementation;
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     metadata->setHwContext(context);
@@ -176,7 +176,6 @@ namespace xdp {
 
     (db->getStaticInfo()).saveProfileConfig(metadata->createAIEProfileConfig(), deviceID);
 
-
 // Open the writer for this device
 auto time = std::time(nullptr);
 #ifdef _WIN32
@@ -198,8 +197,9 @@ auto time = std::time(nullptr);
     writers.push_back(writer);
     db->addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE", deviceID);
 
+    handleToAIEProfileImpl[handle] = std::move(implementation);
     // Start the AIE profiling thread
-    implementation->startPoll(deviceID);
+    handleToAIEProfileImpl[handle]->startPoll(deviceID);
   }
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
