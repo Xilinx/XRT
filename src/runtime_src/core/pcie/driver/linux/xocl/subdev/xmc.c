@@ -2636,7 +2636,7 @@ static struct attribute *xmc_mini_attrs[] = {
 };
 
 static ssize_t read_temp_by_mem_topology(struct file *filp,
-	struct kobject *kobj, struct bin_attribute *attr, char *buffer,
+	struct kobject *kobj, const struct bin_attribute *attr, char *buffer,
 	loff_t offset, size_t count)
 {
 	u32 nread = 0;
@@ -2685,7 +2685,7 @@ done:
 	return nread;
 }
 
-static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
+static const struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
 	.attr = {
 		.name = "temp_by_mem_topology",
 		.mode = 0444
@@ -2711,7 +2711,7 @@ static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
 #define QSFP_DIAG_READ(PORT) 							\
 static ssize_t qsfp##PORT##_diag_read(                          		\
 	struct file *filp, struct kobject *kobj, 	                        \
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
@@ -2724,7 +2724,7 @@ QSFP_DIAG_READ(2)
 QSFP_DIAG_READ(3)
 
 #define QSFP_DIAG_ATTR(PORT)                                               	\
-static struct bin_attribute bin_attr_qsfp##PORT##_diag = {                 	\
+static const struct bin_attribute bin_attr_qsfp##PORT##_diag = {                 	\
 	.attr = {                                                               \
 		.name = "qsfp" #PORT "_diag",	                        	\
 		.mode = 0444                                                   	\
@@ -2744,7 +2744,7 @@ QSFP_DIAG_ATTR(3);
 #define QSFP_I2C_RW(PORT, RW)							\
 static ssize_t qsfp##PORT##_i2c_##RW(                    			\
 	struct file *filp, struct kobject *kobj, 	                        \
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
@@ -2761,7 +2761,7 @@ QSFP_I2C_PORT(2)
 QSFP_I2C_PORT(3)
 
 #define QSFP_I2C_ATTR(PORT)	                                                \
-static struct bin_attribute bin_attr_qsfp##PORT##_i2c = {                	\
+static const struct bin_attribute bin_attr_qsfp##PORT##_i2c = {                	\
 	.attr = {                                                               \
 		.name = "qsfp" #PORT "_i2c",  					\
 		.mode = 0644                                                    \
@@ -2780,7 +2780,7 @@ QSFP_I2C_ATTR(3);
 #define QSFP_IO_CONFIG_RW(PORT, RW) 						\
 static ssize_t qsfp##PORT##_io_config_##RW(   		                        \
 	struct file *filp, struct kobject *kobj, 	                        \
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
@@ -2797,7 +2797,7 @@ QSFP_IO_CONFIG(2);
 QSFP_IO_CONFIG(3);
 
 #define QSFP_IO_CONFIG_ATTR(PORT)                                               \
-static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
+static const struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
 	.attr = {                                                               \
 		.name = "qsfp" #PORT "_io_config",	                        \
 		.mode = 0644                                                    \
@@ -2811,7 +2811,7 @@ QSFP_IO_CONFIG_ATTR(1);
 QSFP_IO_CONFIG_ATTR(2);
 QSFP_IO_CONFIG_ATTR(3);
 
-static struct bin_attribute *xmc_bin_attrs[] = {
+static const struct bin_attribute *xmc_bin_attrs[] = {
 	&bin_dimm_temp_by_mem_topology_attr,
 	&bin_attr_qsfp0_diag,
 	&bin_attr_qsfp1_diag,
@@ -2834,7 +2834,7 @@ static struct attribute_group xmc_attr_group = {
 };
 
 static ssize_t cmc_image_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -2895,7 +2895,7 @@ static size_t image_write(char **image, size_t sz,
 }
 
 static ssize_t cmc_image_write(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
 {
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -2906,7 +2906,7 @@ static ssize_t cmc_image_write(struct file *filp, struct kobject *kobj,
 	return xmc->mgmt_binary_length ? count : -ENOMEM;
 }
 
-static struct bin_attribute cmc_image_attr = {
+static const struct bin_attribute cmc_image_attr = {
 	.attr = {
 		.name = "cmc_image",
 		.mode = 0600
@@ -2916,12 +2916,12 @@ static struct bin_attribute cmc_image_attr = {
 	.size = 0
 };
 
-static struct bin_attribute *xmc_mini_bin_attrs[] = {
+static const struct bin_attribute *xmc_mini_bin_attrs[] = {
 	&cmc_image_attr,
 	NULL,
 };
 
-static struct attribute_group xmc_mini_attr_group = {
+static const struct attribute_group xmc_mini_attr_group = {
 	.attrs = xmc_mini_attrs,
 	.bin_attrs = xmc_mini_bin_attrs,
 };
