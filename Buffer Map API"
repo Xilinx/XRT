@@ -1,0 +1,1 @@
+The API xrt::bo::map() allows mapping the host-side buffer backing to a user pointer.
