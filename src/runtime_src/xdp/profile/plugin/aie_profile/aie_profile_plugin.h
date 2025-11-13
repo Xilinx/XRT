@@ -29,7 +29,6 @@ namespace xdp {
   private:
     static bool live;
     static bool configuredOnePartition;
-    std::unique_ptr<AieProfileImpl> implementation;
     std::map<void*, std::unique_ptr<AieProfileImpl>>  handleToAIEProfileImpl;
   };
 
