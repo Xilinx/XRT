@@ -15,16 +15,17 @@
 using json = nlohmann::json;
 namespace XBU = XBUtilities;
 
-static uint64_t
+double
+TestTemporalSharingOvd::
 get_total_frame_events(const std::shared_ptr<xrt_core::device>& dev)
 {
-  uint64_t total_frame_events = 0;
+  double total_frame_events = 0;
   try {
     auto telemetry_pt = xrt_core::telemetry::preemption_telemetry_info(dev.get());
     auto telemetry_array = telemetry_pt.get_child("telemetry");
     
     for (const auto& [name, user_task] : telemetry_array) {
-      std::string frame_events_str = user_task.get<std::string>("frame_events");
+      auto frame_events_str = user_task.get<std::string>("frame_events");
       if (frame_events_str != "N/A") {
         total_frame_events += std::stoull(frame_events_str);
       }
@@ -36,7 +37,9 @@ get_total_frame_events(const std::shared_ptr<xrt_core::device>& dev)
   return total_frame_events;
 }
 
-boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xrt_core::device>&)
+boost::property_tree::ptree 
+TestTemporalSharingOvd::
+run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
   return ptree;
