@@ -42,7 +42,8 @@ public:
     kernel_start,
     mem_cpy,
     kernel_list_start,
-    graph_exec
+    graph_exec,
+    empty
   };
 
 protected:
@@ -199,6 +200,27 @@ private:
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
+};
+
+class empty_command : public command
+{
+public:
+  empty_command()
+    : command(type::empty)
+  {}
+
+  bool
+  submit() override
+  {
+    set_state(state::completed);
+    return true;
+  }
+
+  bool
+  wait() override
+  {
+    return true;
+  }
 };
 
 class kernel_list_start : public command
