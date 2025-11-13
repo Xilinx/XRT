@@ -44,7 +44,7 @@ public:
    * elf() - Constructor from raw data
    *
    * @param data
-   *  Raw data of elf
+   *  Raw data of elf 
    *
    * The raw data of the elfcan be deleted after calling the
    * constructor.
@@ -95,6 +95,20 @@ public:
   XRT_API_EXPORT
   xrt::uuid
   get_cfg_uuid() const;
+
+  /**
+   * is_full_elf() - Check if the elf is a full ELF
+   * 
+   * A full ELF can be used as a replacement for xclbin, it contains
+   * all the information required to create a hardware context like
+   * partition size, kernel signatures, etc.
+   *
+   * @return
+   *  True if the elf is a full ELF, false otherwise
+   */
+  XRT_API_EXPORT
+  bool
+  is_full_elf() const;
 };
 
 } // namespace xrt

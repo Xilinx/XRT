@@ -110,6 +110,18 @@ public:
     std::memcpy(&value, data.data(), std::min(data.size(), sizeof(uint32_t)));
     return value;
   }
+
+  bool
+  is_full_elf() const
+  {
+    // A full ELF can be used as a replacement for xclbin, it contains
+    // all the information required to create a hardware context like
+    // partition size, kernel signatures, etc.
+    //
+    // So, if the ELF contains note sections like
+    // .note.xrt.configuration then it is a full ELF.
+    return m_elf.sections[".note.xrt.configuration"] != nullptr;
+  }
 };
 
 } // namespace xrt
@@ -170,6 +182,13 @@ elf::
 get_cfg_uuid() const
 {
   return handle->get_cfg_uuid();
+}
+
+bool
+elf::
+is_full_elf() const
+{
+  return handle->is_full_elf();
 }
 
 } // namespace xrt

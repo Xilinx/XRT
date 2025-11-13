@@ -812,6 +812,16 @@ public:
   {
     throw std::runtime_error("Not supported");
   }
+
+  // function to check if the module is created from a full ELF
+  virtual bool
+  is_full_elf_module() const
+  {
+    // This function is not applicable for child classes
+    // like module_userptr and module_sram
+    // So throwing exception here.
+    throw std::runtime_error("Not Applicable");
+  }
 };
 
 // class module_userptr - Opaque userptr provided by application
@@ -1214,6 +1224,12 @@ public:
 
     throw std::runtime_error(
         std::string{"Unable to get arg patcher for index: " + std::to_string(id)});
+  }
+
+  bool
+  is_full_elf_module() const override
+  {
+    return m_elf.is_full_elf();
   }
 };
 
@@ -3052,6 +3068,12 @@ get_ctrlpkt_data(const xrt::module& module, uint32_t ctrl_code_id)
   catch (...) {
     return {}; // returns empty buffer
   }
+}
+
+bool
+is_full_elf_module(const xrt::module& module)
+{
+  return module.get_handle()->is_full_elf_module();
 }
 
 } // xrt_core::module_int
