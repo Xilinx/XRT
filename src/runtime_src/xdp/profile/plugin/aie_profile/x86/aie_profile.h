@@ -26,7 +26,7 @@ namespace xdp {
   
   class AieProfile_x86Impl : public AieProfileImpl{
     public:
-      AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
+      AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata, uint64_t deviceID);
       ~AieProfile_x86Impl() = default;
 
       void updateDevice();

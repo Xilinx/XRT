@@ -23,7 +23,7 @@ namespace xdp {
     public:
       // AieProfile_VE2Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
       //   : AieProfileImpl(database, metadata){}
-      AieProfile_VE2Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
+      AieProfile_VE2Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata, uint64_t deviceID);
 
       ~AieProfile_VE2Impl() = default;
 
