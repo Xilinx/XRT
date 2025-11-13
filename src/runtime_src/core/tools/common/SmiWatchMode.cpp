@@ -128,13 +128,8 @@ run_watch_mode(const xrt_core::device* device,
       
       // Only update display if content has changed
       if (current_report != last_report) {
-        // Clear screen for better readability - ANSI codes work on most modern terminals
-        output << "\033[2J\033[H";
-        
         output << current_report;
-        output << "\n(Press Ctrl+C to exit watch mode | Last update: " << xrt_core::timestamp() << ")";
         output.flush();
-        
         last_report = current_report;
       }
     } 
