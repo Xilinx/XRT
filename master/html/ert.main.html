@@ -654,11 +654,11 @@ fatal_error_app_module:     0</p>
 v1 packet will have the following information for npu0 generation.</p>
 <dl class="c type">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">uc_health_info</span></span></dt>
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_uc_health_info</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct uc_health_info {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_uc_health_info {
   uint32_t uc_idx;
   uint32_t uc_idle_status;
   uint32_t misc_status;
@@ -714,7 +714,7 @@ bit 1: control code hang</p>
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_ctx_health_data_aie4 {
   uint32_t ctx_state;
-  struct uc_health_info uc_info;
+  struct ert_uc_health_info uc_info;
 };
 </pre></div>
 </div>
