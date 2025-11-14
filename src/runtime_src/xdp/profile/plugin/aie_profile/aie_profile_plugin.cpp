@@ -142,8 +142,7 @@ namespace xdp {
 #endif
 
     std::shared_ptr<AieProfileMetadata> metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
-    if(metadata->aieMetadataEmpty())
-    {
+    if (metadata->aieMetadataEmpty()) {
       xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
       return;
     }
