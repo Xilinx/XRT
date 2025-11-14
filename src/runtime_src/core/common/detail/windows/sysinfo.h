@@ -235,13 +235,13 @@ bool
 is_advanced()
 {
   DWORD value = 0;
-  DWORD bufferSize = sizeof(value);
+  DWORD valueSize = sizeof(value);
   DWORD valueType;
-  LONG result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\IpuMcdmDriver", "XRTSMIAdvanced", RRF_RT_DWORD, &valueType, value, &bufferSize);
+  LONG result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\IpuMcdmDriver", "XRTSMIAdvanced", RRF_RT_REG_DWORD, &valueType, &value, &valueSize);
   if ((result == ERROR_SUCCESS) && (valueType == REG_DWORD) && (value == 1))
     return true;
 
-  LONG result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\Npu2McdmDriver", "XRTSMIAdvanced", RRF_RT_DWORD, &valueType, value, &bufferSize);
+  result = RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\ControlSet001\\Services\\Npu2McdmDriver", "XRTSMIAdvanced", RRF_RT_REG_DWORD, &valueType, &value, &valueSize);
   if ((result == ERROR_SUCCESS) && (valueType == REG_DWORD) && (value == 1))
     return true;
 
