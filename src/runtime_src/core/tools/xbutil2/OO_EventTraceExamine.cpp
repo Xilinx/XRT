@@ -53,10 +53,12 @@ handle_version(const xrt_core::device* device) const {
     
     // Extract version components from 32-bit integer
     // Format: [product][schema][major][minor] - one byte each
+    //NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
     uint8_t product = (version >> 24) & 0xFF;
     uint8_t schema = (version >> 16) & 0xFF;
     uint8_t major = (version >> 8) & 0xFF;
     uint8_t minor = version & 0xFF;
+    //NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     
     std::cout << boost::format("  %-20s : %u\n") % "Product" % static_cast<unsigned>(product);
     std::cout << boost::format("  %-20s : %u\n") % "Schema" % static_cast<unsigned>(schema);
@@ -87,28 +89,32 @@ handle_logging(const xrt_core::device* device) const {
     dump_raw_version(device);
   }
 
-  // Create report generator function
-  auto report_generator = [&, config](const xrt_core::device* dev) -> std::string {
-    return m_raw
-      ? generate_raw_logs(dev, m_watch)
-      : generate_parsed_logs(dev, *config, m_watch);
-  };
-
   if (m_watch) {
-    // Print header once for watch mode (only for parsed data)
-    if (!m_raw) {
+    if (!m_raw && config) {
+      smi::event_trace_parser parser(*config);
       std::cout << add_header();
+      
+      auto report_generator = [this, &parser](const xrt_core::device* dev) -> std::string {
+        return generate_parsed_logs(dev, parser, true);
+      };
+      smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
+    } else {
+      // Raw mode: no parser needed
+      auto report_generator = [this](const xrt_core::device* dev) -> std::string {
+        return generate_raw_logs(dev, true);
+      };
+      smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
     }
-    smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
   } else {
-    // Dump mode
-    if (m_raw) {
+    if (m_raw || !config) {
       std::cout << generate_raw_logs(device, false);
     } else {
       std::cout << "Event Trace Logs\n";
       std::cout << "==================\n\n";
       std::cout << add_header();
-      std::cout << generate_parsed_logs(device, *config, false);
+      
+      smi::event_trace_parser parser(*config);
+      std::cout << generate_parsed_logs(device, parser, false);
     }
   }
 }
@@ -116,7 +122,7 @@ handle_logging(const xrt_core::device* device) const {
 std::string
 OO_EventTraceExamine::
 generate_parsed_logs(const xrt_core::device* dev,
-                    const smi::event_trace_config& config,
+                    const smi::event_trace_parser& parser,
                     bool is_watch) const
 {
   std::stringstream ss{};
@@ -133,11 +139,8 @@ generate_parsed_logs(const xrt_core::device* dev,
       return ss.str();
     }
 
-    // Create parser instance and parse the event trace buffer directly to string
-    smi::event_trace_parser parser(config);
     auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     auto buf_size = data_buf.size;
-
     ss << parser.parse(data_ptr, buf_size);
   } 
   catch (const std::exception& e) {

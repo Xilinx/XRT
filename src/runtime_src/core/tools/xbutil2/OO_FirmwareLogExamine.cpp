@@ -60,10 +60,12 @@ handle_version(const xrt_core::device* device) const {
     
     // Extract version components from 32-bit integer
     // Format: [product][schema][major][minor] - one byte each
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
     uint8_t product = (version >> 24) & 0xFF;
     uint8_t schema = (version >> 16) & 0xFF;
     uint8_t major = (version >> 8) & 0xFF;
     uint8_t minor = version & 0xFF;
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     
     std::cout << boost::format("  %-20s : %u\n") % "Product" % static_cast<unsigned>(product);
     std::cout << boost::format("  %-20s : %u\n") % "Schema" % static_cast<unsigned>(schema);

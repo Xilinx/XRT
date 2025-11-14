@@ -34,7 +34,7 @@ private:
   // Log generation methods for examine functionality
   std::string 
   generate_parsed_logs(const xrt_core::device* dev,
-                       const smi::event_trace_config& config,
+                       const smi::event_trace_parser& parser,
                        bool is_watch) const;
   std::string 
   generate_raw_logs(const xrt_core::device* dev, 
