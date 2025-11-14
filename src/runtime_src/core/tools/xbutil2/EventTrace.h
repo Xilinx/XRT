@@ -389,13 +389,6 @@ private:
   format_event(const event_data_t& event_data) const;
 
   /**
-   * @brief Format table header for trace events
-   * @return Formatted table header string
-   */
-  std::string 
-  format_header() const;
-
-  /**
    * @brief Format event categories for table display (inline format)
    * @param categories Vector of category strings
    * @return Formatted category string without brackets

@@ -8,7 +8,9 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 #include "core/common/json/nlohmann/json.hpp"
+#include "core/common/device.h"
 
 namespace xrt_core::tools::xrt_smi {
 
@@ -86,6 +88,14 @@ public:
    */
     explicit
     firmware_log_config(nlohmann::json json_config); // Initializes using static parse APIs
+
+  /**
+   * @brief Load firmware log configuration from device
+   * @param device Device to load configuration from
+   * @return Optional firmware log config (nullopt if loading fails)
+   */
+  static std::optional<firmware_log_config>
+  load_config(const xrt_core::device* device);
 
   /**
    * @brief Get parsed enumerations
@@ -194,13 +204,14 @@ public:
   std::string
   parse(const uint8_t* data_ptr, size_t buf_size) const;
 
-private:
   /**
    * @brief Get formatted header row as string
    * @return std::string Formatted header row
    */
   std::string
   get_header_row() const;
+
+private:
 
   /**
    * @brief Format a single parsed entry as string

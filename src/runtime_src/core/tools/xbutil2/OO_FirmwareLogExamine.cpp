@@ -16,9 +16,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <iostream>
-#include <sstream>
-#include <memory>
 #include <optional>
+#include <memory>
+#include <sstream>
 #include <stdexcept>
 
 namespace po = boost::program_options;
@@ -32,6 +32,7 @@ OO_FirmwareLogExamine::OO_FirmwareLogExamine( const std::string &_longName, bool
     , m_watch(false)
     , m_status(false)
     , m_raw(false)
+    , m_version(false)
     , m_watch_mode_offset(0)
 {
   m_optionsDescription.add_options()
@@ -40,33 +41,51 @@ OO_FirmwareLogExamine::OO_FirmwareLogExamine( const std::string &_longName, bool
     ("status", boost::program_options::bool_switch(&m_status), "Show firmware log status")
     ("watch", boost::program_options::bool_switch(&m_watch), "Watch firmware log data continuously")
     ("raw", boost::program_options::bool_switch(&m_raw), "Output raw firmware log data (no parsing)")
-  ;
-
-  m_positionalOptions.
-    add("status", 1 /* max_count */).
-    add("watch", 1 /* max_count */)
+    ("payload-version", boost::program_options::bool_switch(&m_version), "Show firmware log version")
   ;
 }
 
 void
 OO_FirmwareLogExamine::validate_args() const {
-  // Default behavior is to dump firmware log data once
-  // Only explicit actions are --status and --watch
   if(m_status && m_watch)
     throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --status and --watch");
 }
 
+void
+OO_FirmwareLogExamine::
+handle_version(const xrt_core::device* device) const {
+  try {
+    // Get firmware log version
+    auto version = xrt_core::device_query<xrt_core::query::firmware_log_version>(device);
+    
+    // Extract version components from 32-bit integer
+    // Format: [product][schema][major][minor] - one byte each
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+    uint8_t product = (version >> 24) & 0xFF;
+    uint8_t schema = (version >> 16) & 0xFF;
+    uint8_t major = (version >> 8) & 0xFF;
+    uint8_t minor = version & 0xFF;
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+    
+    std::cout << boost::format("  %-20s : %u\n") % "Product" % static_cast<unsigned>(product);
+    std::cout << boost::format("  %-20s : %u\n") % "Schema" % static_cast<unsigned>(schema);
+    std::cout << boost::format("  %-20s : %u\n") % "Major" % static_cast<unsigned>(major);
+    std::cout << boost::format("  %-20s : %u\n") % "Minor" % static_cast<unsigned>(minor);
+  } catch (const std::exception& e) {
+    std::cerr << "Error getting payload version: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
 std::string
 OO_FirmwareLogExamine::generate_parsed_logs(const xrt_core::device* dev,
-                                           const smi::firmware_log_config& config,
+                                           const smi::firmware_log_parser& parser,
                                            bool is_watch) const
 {
   std::stringstream ss{};
 
-  // Create and setup buffer for firmware log data
   smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
 
-  // Get buffer from driver
   xrt_core::query::firmware_debug_buffer data_buf{};
   try {
     data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
@@ -84,8 +103,7 @@ OO_FirmwareLogExamine::generate_parsed_logs(const xrt_core::device* dev,
     return ss.str();
   }
 
-  // Create parser instance and parse the firmware log buffer directly to string
-  smi::firmware_log_parser parser(config);
+  // Use the passed parser instance to parse the firmware log buffer directly to string
   auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
   size_t buf_size = data_buf.size;
 
@@ -100,10 +118,9 @@ OO_FirmwareLogExamine::generate_raw_logs(const xrt_core::device* dev,
   std::stringstream ss{};
 
   try {
-    // Create and setup buffer for firmware log data
     smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
 
-    // Get raw buffer from device for raw dump
+    // Get raw buffer from device/firmware for raw dump
     auto data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
     
     m_watch_mode_offset = data_buf.abs_offset;
@@ -116,13 +133,56 @@ OO_FirmwareLogExamine::generate_raw_logs(const xrt_core::device* dev,
     auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     size_t buf_size = data_buf.size;
 
-    // Simply print the raw payload data
     ss.write(reinterpret_cast<const char*>(data_ptr), static_cast<std::streamsize>(buf_size));
   } catch (const std::exception& e) {
     ss << "Error retrieving raw firmware log data: " << e.what() << "\n";
   }
 
   return ss.str();
+}
+
+void
+OO_FirmwareLogExamine::
+handle_logging(const xrt_core::device* device) const {
+  // Try to parse device specific config unless user explicitly wants raw logs
+  std::optional<smi::firmware_log_config> config;
+  if (!m_raw) {
+    try {
+      config = smi::firmware_log_config::load_config(device);
+    } 
+    catch (const std::exception& e) {
+      std::cout << "[Warning]: Dumping raw firmware log: " << e.what() << "\n";
+    }
+  }
+
+  if (m_watch) {
+    if (!m_raw && config) {
+      smi::firmware_log_parser parser(*config);
+      std::cout << parser.get_header_row();
+      
+      auto report_generator = [this, &parser](const xrt_core::device* dev) -> std::string {
+        return generate_parsed_logs(dev, parser, true);
+      };
+      smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
+    } else {
+      // Raw mode: no parser needed
+      auto report_generator = [this](const xrt_core::device* dev) -> std::string {
+        return generate_raw_logs(dev, true);
+      };
+      smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
+    }
+  } else {
+    if (m_raw || !config) {
+      std::cout << generate_raw_logs(device, false);
+    } else {
+      std::cout << "Firmware Log Report\n";
+      std::cout << "===================\n\n";
+      
+      smi::firmware_log_parser parser(*config);
+      std::cout << parser.get_header_row();
+      std::cout << generate_parsed_logs(device, parser, false);
+    }
+  }
 }
 
 void
@@ -134,7 +194,6 @@ OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
   for (auto & aString : _options)
     XBUtilities::verbose(std::string(" ") + aString);
 
-  // Parse sub-command ...
   po::variables_map vm;
 
   try {
@@ -155,7 +214,6 @@ OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    //validate required arguments
     validate_args(); 
   } catch(xrt_core::error& err) {
     std::cout << err.what() << std::endl;
@@ -163,18 +221,15 @@ OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(err.get_code());
   }
 
-  // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
   try {
     device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Handle status action first
   if (m_status) {
     try {
       auto status = xrt_core::device_query<xrt_core::query::firmware_log_state>(device.get());
@@ -187,47 +242,10 @@ OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // Handle watch or default dump action
-  bool is_watch = m_watch;
-  
-  // Try to parse config unless user explicitly wants raw logs
-  std::optional<smi::firmware_log_config> config;
-
-  if (!m_raw) {
-    try {
-      auto archive = XBUtilities::open_archive(device.get());
-      if (!archive) {
-        throw std::runtime_error("Failed to open archive");
-      }
-      auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
-      
-      auto& config_data = artifacts_repo["firmware_log.json"];
-      std::string config_content(config_data.begin(), config_data.end());
-      
-      auto json_config = nlohmann::json::parse(config_content);
-      config = smi::firmware_log_config(json_config);
-    } 
-    catch (const std::exception& e) {
-      std::cout << "Warning: Dumping raw firmware log: " << e.what() << "\n";
-    }
+  if (m_version) {
+    handle_version(device.get());
+    return;
   }
 
-  if (is_watch) {
-    // Watch mode
-    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
-      return (m_raw || !config) 
-        ? generate_raw_logs(dev, true)
-        : generate_parsed_logs(dev, *config, true);
-    };
-    smi_watch_mode::run_watch_mode(device.get(), std::cout, report_generator);
-  } else {
-    // Dump mode
-    if (m_raw || !config) {
-      std::cout << generate_raw_logs(device.get(), false);
-    } else {
-      std::cout << "Firmware Log Report\n";
-      std::cout << "===================\n\n";
-      std::cout << generate_parsed_logs(device.get(), *config, false);
-    }
-  }
+  handle_logging(device.get());
 }

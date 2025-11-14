@@ -23,12 +23,21 @@ private:
   bool m_watch;
   bool m_status;
   bool m_raw;
+  bool m_version;
   mutable uint64_t m_watch_mode_offset;
+
+  // Main logging handler
+  void
+  handle_logging(const xrt_core::device* device) const;
+
+  // Version handler
+  void
+  handle_version(const xrt_core::device* device) const;
 
   // Log generation methods for examine functionality
   std::string 
   generate_parsed_logs(const xrt_core::device* dev,
-                       const smi::firmware_log_config& config,
+                       const smi::firmware_log_parser& parser,
                        bool is_watch) const;
   std::string 
   generate_raw_logs(const xrt_core::device* dev, 

@@ -114,10 +114,6 @@ run_watch_mode(const xrt_core::device* device,
   // Set up signal handler for Ctrl+C
   signal_handler::setup();
   
-  output << "Starting Watch Mode (Press Ctrl+C to exit)\n";
-  output << "=======================================================\n\n";
-  output.flush();
-  
   signal_handler::reset_interrupt();
   std::string last_report;
   

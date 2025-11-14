@@ -29,24 +29,16 @@ event_trace_config::
 load_config(const xrt_core::device* device)
 {
   if (!device) {
-    return std::nullopt;
+    throw std::runtime_error("Invalid device");
   }
 
-  try {
-    auto archive = XBUtilities::open_archive(device);
-    if (!archive) {
-      return std::nullopt;
-    }
-
-    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
-    auto& config_data = artifacts_repo["trace_events.json"];
-    std::string config_content(config_data.begin(), config_data.end());
-    
-    auto json_config = nlohmann::json::parse(config_content);
-    return event_trace_config(json_config);
-  } catch (const std::exception&) {
-    return std::nullopt;
-  }
+  auto archive = XBUtilities::open_archive(device);
+  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
+  auto& config_data = artifacts_repo["trace_events.json"];
+  std::string config_content(config_data.begin(), config_data.end());
+  
+  auto json_config = nlohmann::json::parse(config_content);
+  return event_trace_config(json_config);
 }
 
 uint32_t event_trace_config::
@@ -409,9 +401,6 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
   size_t total_event_size = m_config.get_event_size();
   size_t event_count = buf_size / total_event_size;
   
-  // Add table header
-  ss << format_header();
-  
   // Parse each event dynamically based on config sizes
   const uint8_t* current_ptr = data_ptr;
   for (size_t i = 0; i < event_count; ++i) {
@@ -421,23 +410,6 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     
     ss << format_event(event_data);
   }
-
-  return ss.str();
-}
-
-std::string
-event_trace_parser::
-format_header() const
-{
-  std::stringstream ss{};
-  
-  // Format table header with proper spacing
-  ss << boost::format("%-20s %-25s %-25s %-30s\n") //NOLINT (cppcoreguidelines-avoid-magic-numbers)
-        % "Timestamp" 
-        % "Event Name" 
-        % "Category" 
-        % "Arguments";
-  
   return ss.str();
 }
 
