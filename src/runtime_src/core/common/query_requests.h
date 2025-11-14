@@ -4095,11 +4095,7 @@ struct event_trace_config : request
 // Firmware log version query - following telemetry pattern
 struct firmware_log_version : request 
 {
-  struct result_type {
-    uint16_t major;
-    uint16_t minor;
-  };
-
+  using result_type = uint32_t;
   static const key_type key = key_type::firmware_log_version;
 
   std::any

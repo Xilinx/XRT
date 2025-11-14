@@ -16,6 +16,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <memory>
 #include <optional>
@@ -31,6 +32,7 @@ OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _
     , m_help(false)
     , m_watch(false)
     , m_raw(false)
+    , m_version(false)
     , m_watch_mode_offset(0)
 {
   m_optionsDescription.add_options()
@@ -38,18 +40,77 @@ OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
     ("watch", boost::program_options::bool_switch(&m_watch), "Watch event trace data continuously")
     ("raw", boost::program_options::bool_switch(&m_raw), "Output raw event trace data (no parsing)")
-  ;
-
-  m_positionalOptions.
-    add("watch", 1 /* max_count */)
+    ("payload-version", boost::program_options::bool_switch(&m_version), "Show event trace version")
   ;
 }
 
 void
 OO_EventTraceExamine::
-validate_args() const {
-  // Default behavior is to dump event trace data once
-  // Only explicit action is --watch
+handle_version(const xrt_core::device* device) const {
+  try {
+    // Get event trace version
+    auto version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
+    
+    // Extract version components from 32-bit integer
+    // Format: [product][schema][major][minor] - one byte each
+    uint8_t product = (version >> 24) & 0xFF;
+    uint8_t schema = (version >> 16) & 0xFF;
+    uint8_t major = (version >> 8) & 0xFF;
+    uint8_t minor = version & 0xFF;
+    
+    std::cout << boost::format("  %-20s : %u\n") % "Product" % static_cast<unsigned>(product);
+    std::cout << boost::format("  %-20s : %u\n") % "Schema" % static_cast<unsigned>(schema);
+    std::cout << boost::format("  %-20s : %u\n") % "Major" % static_cast<unsigned>(major);
+    std::cout << boost::format("  %-20s : %u\n") % "Minor" % static_cast<unsigned>(minor);
+  } catch (const std::exception& e) {
+    std::cerr << "Error getting payload version: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+void
+OO_EventTraceExamine::
+handle_logging(const xrt_core::device* device) const {
+  // Load configuration unless raw mode is requested
+  std::optional<smi::event_trace_config> config;
+  if (!m_raw) {
+    try {
+      config = smi::event_trace_config::load_config(device);
+    } catch (const std::exception& e) {
+      std::cerr << "[Error] Configuration loading failed: " << e.what() << std::endl;
+      return;
+    }
+  }
+
+  // Handle raw mode version display
+  if (m_raw) {
+    dump_raw_version(device);
+  }
+
+  // Create report generator function
+  auto report_generator = [&, config](const xrt_core::device* dev) -> std::string {
+    return m_raw
+      ? generate_raw_logs(dev, m_watch)
+      : generate_parsed_logs(dev, *config, m_watch);
+  };
+
+  if (m_watch) {
+    // Print header once for watch mode (only for parsed data)
+    if (!m_raw) {
+      std::cout << add_header();
+    }
+    smi_watch_mode::run_watch_mode(device, std::cout, report_generator);
+  } else {
+    // Dump mode
+    if (m_raw) {
+      std::cout << generate_raw_logs(device, false);
+    } else {
+      std::cout << "Event Trace Logs\n";
+      std::cout << "==================\n\n";
+      std::cout << add_header();
+      std::cout << generate_parsed_logs(device, *config, false);
+    }
+  }
 }
 
 std::string
@@ -116,6 +177,33 @@ generate_raw_logs(const xrt_core::device* dev,
   return ss.str();
 }
 
+std::string
+OO_EventTraceExamine::
+add_header() const
+{
+  std::stringstream ss{};
+  
+  // Format table header with proper spacing
+  ss << boost::format("%-20s %-25s %-25s %-30s\n") //NOLINT (cppcoreguidelines-avoid-magic-numbers)
+        % "Timestamp" 
+        % "Event Name" 
+        % "Category" 
+        % "Arguments";
+  
+  return ss.str();
+}
+
+void
+OO_EventTraceExamine::
+dump_raw_version(const xrt_core::device* device) const
+{
+  auto version = xrt_core::device_query<xrt_core::query::event_trace_version>(device);
+  
+  // Cast version to char* and dump the raw bytes
+  std::string version_str(reinterpret_cast<const char*>(&version), sizeof(version));
+  std::cout << version_str;
+}
+
 void
 OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
 {
@@ -145,18 +233,7 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  try {
-    //validate required arguments
-    validate_args(); 
-  } catch(xrt_core::error& err) {
-    std::cout << err.what() << std::endl;
-    printHelp();
-    throw xrt_core::error(err.get_code());
-  }
-
-  // Find device of interest
   std::shared_ptr<xrt_core::device> device;
-  
   try {
     device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
@@ -165,35 +242,11 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Handle watch or default dump action
-  bool is_watch = m_watch;
-  
-  // Try to parse config unless user explicitly wants raw logs
-  std::optional<smi::event_trace_config> config;
-
-  if (!m_raw) {
-    config = smi::event_trace_config::load_config(device.get());
-    if (!config) {
-      std::cout << "Warning: Dumping raw event trace: Failed to load configuration\n";
-    }
+  if (m_version) {
+    handle_version(device.get());
+    return;
   }
 
-  if (is_watch) {
-    // Watch mode
-    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
-      return (m_raw || !config) 
-        ? generate_raw_logs(dev, true)
-        : generate_parsed_logs(dev, *config, true);
-    };
-    smi_watch_mode::run_watch_mode(device.get(), std::cout, report_generator);
-  } else {
-    // Dump mode
-    if (m_raw || !config) {
-      std::cout << generate_raw_logs(device.get(), false);
-    } else {
-      std::cout << "Event Trace Report\n";
-      std::cout << "==================\n\n";
-      std::cout << generate_parsed_logs(device.get(), *config, false);
-    }
-  }
+  // Handle watch mode or default dump action
+  handle_logging(device.get());
 }
