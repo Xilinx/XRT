@@ -23,6 +23,10 @@ XRT_CORE_COMMON_EXPORT
 void
 get_os_info(boost::property_tree::ptree&);
 
+XRT_CORE_COMMON_EXPORT
+bool
+is_advanced();
+
 }
 
 #endif
