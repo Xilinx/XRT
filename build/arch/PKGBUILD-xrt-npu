@@ -1,0 +1,30 @@
+# Maintainer: Your Name <your@email.com>
+pkgname=xrt-npu
+pkgver=202610.2.21.0
+pkgrel=1
+pkgdesc="Xilinx RunTime - NPU package"
+arch=('x86_64')
+url="https://github.com/Xilinx/XRT"
+license=('Apache-2.0')
+depends=('xrt-base')
+provides=('xrt-npu')
+conflicts=('xrt-npu')
+
+# Set this to your XRT build directory
+: ${XRT_BUILD_DIR:="../Release"}
+
+package() {
+  cd "$srcdir"
+
+  # Extract the tarball directly into the package directory
+  # The tarball should be at $XRT_BUILD_DIR/xrt_*--npu.tar.gz
+  local tarball=$(ls ${XRT_BUILD_DIR}/xrt_*--npu.tar.gz 2>/dev/null | head -1)
+  if [ -z "$tarball" ]; then
+    error "XRT NPU tarball not found in ${XRT_BUILD_DIR}"
+    error "Please build XRT first: cd .. && ./build.sh -npu -opt"
+    return 1
+  fi
+
+  msg2 "Extracting $tarball"
+  tar -xzf "$tarball" -C "$pkgdir"
+}
