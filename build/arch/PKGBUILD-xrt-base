@@ -10,15 +10,15 @@ depends=('boost' 'libdrm' 'ocl-icd' 'protobuf' 'rapidjson' 'python')
 provides=('xrt-base')
 conflicts=('xrt-base')
 
-# Set this to your XRT build directory
+# Set this to your XRT build directory (relative to PKGBUILD location)
 : ${XRT_BUILD_DIR:="../Release"}
 
 package() {
   cd "$srcdir"
 
   # Extract the tarball directly into the package directory
-  # The tarball should be at $XRT_BUILD_DIR/xrt_*--base.tar.gz
-  local tarball=$(ls ${XRT_BUILD_DIR}/xrt_*--base.tar.gz 2>/dev/null | head -1)
+  # The tarball should be at $startdir/$XRT_BUILD_DIR/xrt_*--base.tar.gz
+  local tarball=$(ls $startdir/${XRT_BUILD_DIR}/xrt_*--base.tar.gz 2>/dev/null | head -1)
   if [ -z "$tarball" ]; then
     error "XRT base tarball not found in ${XRT_BUILD_DIR}"
     error "Please build XRT first: cd .. && ./build.sh -npu -opt"
