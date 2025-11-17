@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved
 
 #define XDP_PLUGIN_SOURCE
 
@@ -78,6 +65,11 @@ namespace xdp {
     mHwCtxImpl = hwCtxImpl;
 
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    if (xrt_core::hw_context_int::get_elf_flow(hwContext)) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "AIE Halt Plugin is not yet supported for Full ELF flow.");
+      return;
+    }
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
     // Only one device for Client Device flow
