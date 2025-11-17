@@ -74,9 +74,9 @@ namespace xdp {
 
   uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
   {
-    auto itr = handleToAIEData.find(handle);
-    if (itr != handleToAIEData.end())
-      return itr->second.deviceID;
+    auto itr = handleToAIEProfileImpl.find(handle);
+    if (itr != handleToAIEProfileImpl.end())
+      return itr->second->getDeviceID();
 
     return (db->getStaticInfo()).getDeviceContextUniqueId(handle);
   }
@@ -103,6 +103,15 @@ namespace xdp {
       return;
     }
 
+    if (hw_context_flow) {
+      xrt::hw_context ctx = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      if (xrt_core::hw_context_int::get_elf_flow(ctx)) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+            "AIE Profile is not yet supported for Full ELF flow.");
+        return;
+      }
+    }
+
     auto device = util::convertToCoreDevice(handle, hw_context_flow);
 #if ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
     if (1 == device->get_device_id() && xrt_core::config::get_xdp_mode() == "xdna") {  // Device 0 for xdna(ML) and device 1 for zocl(PL)
@@ -127,49 +136,43 @@ namespace xdp {
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       if ((db->getStaticInfo()).getAppStyle() == xdp::AppStyle::REGISTER_XCLBIN_STYLE)
-        (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceID, device);
+        (db->getStaticInfo()).updateDeviceFromCoreDeviceHwCtxFlow(deviceID, device, handle, hw_context_flow);
       else
         (db->getStaticInfo()).updateDeviceFromHandle(deviceID, nullptr, handle);
 #endif
     }
 
     // Delete old data
-    if (handleToAIEData.find(handle) != handleToAIEData.end())
+    if (handleToAIEProfileImpl.find(handle) != handleToAIEProfileImpl.end())
 #ifdef XDP_CLIENT_BUILD
       return;
 #else
-      handleToAIEData.erase(handle);
+      handleToAIEProfileImpl.erase(handle);
 #endif
-    auto& AIEData = handleToAIEData[handle];
 
-    AIEData.deviceID = deviceID;
-    AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
-    if(AIEData.metadata->aieMetadataEmpty())
-    {
-      AIEData.valid = false;
+    std::shared_ptr<AieProfileMetadata> metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
+    if (metadata->aieMetadataEmpty()) {
       xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
       return;
     }
-    AIEData.valid = true;
     
     // If there are tiles configured for this xclbin, then we have configured the first matching xclbin and will not configure any upcoming ones
-    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (AIEData.metadata->isConfigured()))
+    if ((xrt_core::config::get_aie_profile_settings_config_one_partition()) && (metadata->isConfigured()))
       configuredOnePartition = true;
 
+    std::unique_ptr<AieProfileImpl> implementation;
 #ifdef XDP_CLIENT_BUILD
     xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    AIEData.metadata->setHwContext(context);
-    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+    metadata->setHwContext(context);
+    implementation = std::make_unique<AieProfile_WinImpl>(db, metadata, deviceID);
 #elif defined(XRT_X86_BUILD)
-    AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
+    implementation = std::make_unique<AieProfile_x86Impl>(db, metadata, deviceID);
 #elif XDP_VE2_BUILD
-    AIEData.implementation = std::make_unique<AieProfile_VE2Impl>(db, AIEData.metadata);
+    implementation = std::make_unique<AieProfile_VE2Impl>(db, metadata, deviceID);
 #else
-    AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
+    implementation = std::make_unique<AieProfile_EdgeImpl>(db, metadata, deviceID);
 #endif
-    auto& implementation = AIEData.implementation;
-
-
+    
     // Ensure we only read/configure once per xclbin
     if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
       // Sets up and calls the PS kernel on x86 implementation
@@ -179,8 +182,7 @@ namespace xdp {
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
 
-    (db->getStaticInfo()).saveProfileConfig(AIEData.metadata->createAIEProfileConfig(), deviceID);
-
+    (db->getStaticInfo()).saveProfileConfig(metadata->createAIEProfileConfig(), deviceID);
 
 // Open the writer for this device
 auto time = std::time(nullptr);
@@ -203,21 +205,22 @@ auto time = std::time(nullptr);
     writers.push_back(writer);
     db->addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE", deviceID);
 
+    handleToAIEProfileImpl[handle] = std::move(implementation);
     // Start the AIE profiling thread
-    AIEData.implementation->startPoll(deviceID);
+    handleToAIEProfileImpl[handle]->startPoll(deviceID);
   }
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile writeall.");
 
-    for (const auto& kv : handleToAIEData) {
+    for (const auto& kv : handleToAIEProfileImpl) {
       // End polling thread
       endPollforDevice(kv.first);
     }
 
     XDPPlugin::endWrite();
-    handleToAIEData.clear();
+    handleToAIEProfileImpl.clear();
   }
 
   void AieProfilePlugin::endPollforDevice(void* handle)
@@ -230,24 +233,21 @@ auto time = std::time(nullptr);
     // mark the hw_ctx handle as invalid for current plugin
     (db->getStaticInfo()).unregisterPluginFromHwContext(handle);
 
-    if (handleToAIEData.empty())
+    if (handleToAIEProfileImpl.empty())
       return;
 
-    auto& AIEData = handleToAIEData[handle];
-    if(!AIEData.valid) {
-      return;
-    }
-    if (!AIEData.implementation) {
-      handleToAIEData.erase(handle);
+    auto& implementation = handleToAIEProfileImpl[handle];
+    if (!implementation) {
+      handleToAIEProfileImpl.erase(handle);
       return;
     }
       
     #ifdef XDP_CLIENT_BUILD
-      AIEData.implementation->poll(0);
+      implementation->poll(0);
     #endif
 
-    AIEData.implementation->endPoll();
-    handleToAIEData.erase(handle);
+    implementation->endPoll();
+    handleToAIEProfileImpl.erase(handle);
   }
 
   void AieProfilePlugin::endPoll()
@@ -255,15 +255,15 @@ auto time = std::time(nullptr);
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
 
     #ifdef XDP_CLIENT_BUILD
-      auto& AIEData = handleToAIEData.begin()->second;
-      AIEData.implementation->poll(0);
+      auto& implementation = handleToAIEProfileImpl.begin()->second;
+      implementation->poll(0);
     #endif
     // Ask all threads to end
-    for (auto& p : handleToAIEData) {
-      if (p.second.implementation)
-        p.second.implementation->endPoll();
+    for (auto& p : handleToAIEProfileImpl) {
+      if (p.second)
+        p.second->endPoll();
     }
-    handleToAIEData.clear();
+    handleToAIEProfileImpl.clear();
   }
 
   void AieProfilePlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

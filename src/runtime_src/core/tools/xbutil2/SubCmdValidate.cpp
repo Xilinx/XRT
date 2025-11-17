@@ -325,7 +325,6 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     pretty_print_test_run(ptTest, status, std::cout);
-    ++test_idx;
   }
 
   print_status(status, std::cout);

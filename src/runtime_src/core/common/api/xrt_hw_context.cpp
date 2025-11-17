@@ -9,6 +9,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -76,8 +77,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
                            size_t size_per_uc,
                            size_t num_uc)
     {
-      auto bo = xrt_core::bo_int::
-        create_bo(device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
+      auto bo = xrt_core::bo_int::create_bo(
+          device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
       // Log buffers first 8 bytes are used for metadata
       // So make sure for each uC metadata bytes are initialized with
@@ -464,8 +465,9 @@ public:
     std::call_once(m_scratchpad_init_flag, [this, size_per_col] () {
       try {
         // create scratchpad memory buffer using this context
-        m_scratchpad_buf = xrt::ext::bo{xrt::hw_context(get_shared_ptr()),
-                                        size_per_col * m_partition_size};
+        auto buf_size = size_per_col * m_partition_size;
+        m_scratchpad_buf = xrt_core::bo_int::create_bo(
+            m_core_device, buf_size, xrt_core::bo_int::use_type::scratch_pad);
       }
       catch (...) { /*do nothing*/ }
     });
@@ -493,6 +495,21 @@ public:
     std::string msg {"Dumped scratchpad buffer into file : "};
     msg.append(dump_file_name);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context", msg);
+  }
+
+  std::vector<char>
+  get_aie_coredump() const
+  {
+    try {
+      return xrt_core::device_query<xrt_core::query::aie_coredump>(m_core_device,
+                                                                   m_hdl->get_slotidx());
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      throw std::runtime_error("AIE coredump is not supported on this platform");
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error("Failed to get AIE coredump: " + std::string(e.what()));
+    }
   }
 };
 
@@ -692,6 +709,13 @@ operator xrt_core::hwctx_handle* () const
 hw_context::
 ~hw_context()
 {}
+
+std::vector<char>
+hw_context::
+get_aie_coredump() const
+{
+  return get_handle()->get_aie_coredump();
+}
 
 } // xrt
 

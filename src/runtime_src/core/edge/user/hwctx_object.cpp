@@ -43,6 +43,10 @@ hwctx_object::get_aied() const
 hwctx_object::
 ~hwctx_object()
 {
+#ifdef XRT_ENABLE_AIE
+  // explicitly destroy the aied before destroying the hw context
+  m_aied.reset();
+#endif
   try {
     m_shim->destroy_hw_context(m_slot_idx);
   }

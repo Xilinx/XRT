@@ -223,7 +223,7 @@ namespace xrt::core::hip
     // and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                 std::make_shared<memcpy_command>(hip_stream, dst, src, size, kind));
+                                 std::make_shared<memcpy_command>(dst, src, size, kind));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -263,7 +263,7 @@ namespace xrt::core::hip
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                 std::make_shared<memcpy_command>(hip_stream, dst, src, size, hipMemcpyHostToDevice));
+                                 std::make_shared<memcpy_command>(dst, src, size, hipMemcpyHostToDevice));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -292,7 +292,7 @@ namespace xrt::core::hip
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                 std::make_shared<copy_from_host_buffer_command<T>>(hip_stream, hip_mem_dst, std::move(host_vec), size, offset));
+                                 std::make_shared<copy_from_host_buffer_command<T>>(hip_mem_dst, std::move(host_vec), size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 

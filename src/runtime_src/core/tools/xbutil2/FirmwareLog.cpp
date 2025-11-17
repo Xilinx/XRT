@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstring>
 #include "FirmwareLog.h"
+#include "tools/common/XBUtilities.h"
 
 namespace xrt_core::tools::xrt_smi {
 
@@ -15,6 +16,22 @@ firmware_log_config(nlohmann::json json_config)
     m_header_size(calculate_header_size(m_structures))
 {}
 
+std::optional<firmware_log_config>
+firmware_log_config::
+load_config(const xrt_core::device* device)
+{
+  if (!device) {
+    throw std::runtime_error("Invalid device");
+  }
+
+  auto archive = XBUtilities::open_archive(device);
+  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
+  auto& config_data = artifacts_repo["firmware_log.json"];
+  std::string config_content(config_data.begin(), config_data.end());
+  
+  auto json_config = nlohmann::json::parse(config_content);
+  return firmware_log_config(json_config);
+}
 
 std::unordered_map<std::string, firmware_log_config::enum_info>
 firmware_log_config::
@@ -294,7 +311,6 @@ firmware_log_parser::
 parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::string result;
-  result += get_header_row();
   
   size_t offset = 0;
   while (offset + m_header_size <= buf_size) {

@@ -1212,15 +1212,28 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return 0 ;
 
-    ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
+    ConfigInfo* config = nullptr;
+    if (AppStyle::LOAD_XCLBIN_STYLE == getAppStyle()) {
+      config = deviceInfo[deviceId]->currentConfig() ;
+    } else {
+      if (deviceInfo.find(DEFAULT_PL_DEVICE_ID) == deviceInfo.end())
+        return 0 ;
+      config = deviceInfo[DEFAULT_PL_DEVICE_ID]->currentConfig() ;
+    }
+
     if (!config)
       return 0 ;
 
-    XclbinInfo* xclbin = config->getAieXclbin();
-    if (!xclbin)
-      return 0;
+    // check for aieXclbin
+    if (XclbinInfo* aieXclbin = config->getAieXclbin()) {
+      return aieXclbin->aie.numTracePLIO;
+    }
+    // if aieXclbin is null, check for plXclbin
+    if (XclbinInfo* plXclbin = config->getPlXclbin()) {
+      return plXclbin->aie.numTracePLIO;
+    }
     
-    return xclbin->aie.numTracePLIO ;
+    return 0;
   }
 
   uint64_t VPStaticDatabase::getNumAIETraceStream(uint64_t deviceId)
@@ -1590,7 +1603,69 @@ namespace xdp {
     xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
+  
+  void
+  VPStaticDatabase::
+  updateDeviceFromCoreDeviceHwCtxFlow(uint64_t deviceId,
+                                      std::shared_ptr<xrt_core::device> device,
+                                      void* hwCtxImpl,
+                                      bool hw_context_flow,
+                                      bool readAIEMetadata,
+                                      std::unique_ptr<xdp::Device> xdpDevice)
+  {
+    // TODO:: Getting xclbin_uuid should be unified for both Client and VE2.
+    if (isClient() || !(hw_context_flow)) {
+      updateDeviceFromCoreDevice(deviceId, device, readAIEMetadata, std::move(xdpDevice));
+      return;
+    } 
 
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    xrt::uuid new_xclbin_uuid = context.get_xclbin_uuid();
+
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, xdpDevice.get(), new_xclbin_uuid))
+      return;
+
+    xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
+    updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
+  }
+
+  void
+  VPStaticDatabase::
+  updateDeviceFromCoreDeviceElf(uint64_t deviceId,
+                             std::shared_ptr<xrt_core::device> device)
+  {
+    // For ELF Flow, always reset the device for now
+    DeviceInfo* devInfo = nullptr ;
+    auto itr = deviceInfo.find(deviceId);
+    if (itr == deviceInfo.end()) {
+      // This is the first time this device was loaded with an elf
+      deviceInfo[deviceId] = std::make_unique<DeviceInfo>();
+      devInfo = deviceInfo[deviceId].get();
+      devInfo->deviceId = deviceId;
+    } else {
+      // This is a previously used device being reloaded with a new elf
+      devInfo = itr->second.get();
+    }
+    // Read aie_trace_metadata
+    boost::property_tree::ptree aieMetadata;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
+    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+    if (!metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              "AIE metadata read failed!");
+    } else {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                            "AIE metadata read successfully from disk!");
+      auto hwGen = metadataReader->getHardwareGeneration();
+      devInfo->setAIEGeneration(hwGen);
+      addAIEmetadataReader(deviceId, std::move(metadataReader));
+    }
+    return;  
+  }
+ 
   xrt::uuid VPStaticDatabase::getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device)
   {
     if (!device) {
@@ -1622,11 +1697,26 @@ namespace xdp {
     }
   }
 
+  xrt::uuid VPStaticDatabase::getXclbinUuidOnDeviceHwCtxFlow(void* hwCtxImpl)
+  {
+    auto device = util::convertToCoreDevice(hwCtxImpl, true);
+    if (!device) {
+      throw std::runtime_error("Invalid device handle - device is null");
+    }
+
+    // Client or Alveo HW EMU
+    if (isClient() || (getFlowMode() == HW_EMU && !isEdge() && !isClient())) {
+      return device->get_xclbin_uuid();
+    } else {
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+      return context.get_xclbin_uuid();
+    }
+  }
+
   uint64_t VPStaticDatabase::getHwCtxImplUid(void* hwCtxImpl)
   {
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
     // before calling this function. So, we don't need to check for validity here.
-    static uint64_t nextAvailableUID = 1;
     {
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
       auto it = hwCtxImplUIDMap.find(hwCtxImpl);
@@ -1643,7 +1733,7 @@ namespace xdp {
     }
 
     auto device = util::convertToCoreDevice(hwCtxImpl, true);
-    xrt::uuid loadedXclbinUuid   = getXclbinUuidOnDevice(device);
+    xrt::uuid loadedXclbinUuid = getXclbinUuidOnDeviceHwCtxFlow(hwCtxImpl);
     xrt::xclbin loadedXclbin     = device->get_xclbin(loadedXclbinUuid);
     XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
 
@@ -1658,10 +1748,36 @@ namespace xdp {
     } else {
        // At this point, also keep track of which xclbin is associated
        // with this hardware context implementation for the run summary file
-       db->associateContextWithId(nextAvailableUID, hwCtxImpl);
+       db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
        
-       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
+       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
     }
+    return hwCtxImplUIDMap.at(hwCtxImpl).uid;
+  }
+
+  uint64_t VPStaticDatabase::getHwCtxImplUidElf(void* hwCtxImpl)
+  {
+    // Assign XDP internal unique id for HW Ctx Impl
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+    {
+      auto it = hwCtxImplUIDMap.find(hwCtxImpl);
+      if (it != hwCtxImplUIDMap.end()) {
+        auto& info = it->second;
+        if (info.isValid()) { // check if valid (non-zero)
+          info.incrementValidity(); // increment by 1 since a new plugin is encountered
+          return info.uid; // return UID
+        }
+        // If we reach here, the entry exists but is invalid (validityCount == 0)
+        // We'll erase it and create a new one below
+        hwCtxImplUIDMap.erase(it);
+      }
+    }
+
+    // At this point, also keep track of which xclbin is associated
+    // with this hardware context implementation for the run summary file
+    db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
+    hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
+
     return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }
 
@@ -1684,7 +1800,11 @@ namespace xdp {
     if (!device)
       return false;
 
-    xrt::uuid loadedXclbinUuid = getXclbinUuidOnDevice(device);
+    xrt::uuid loadedXclbinUuid;
+    if (hw_context_flow)
+      loadedXclbinUuid = getXclbinUuidOnDeviceHwCtxFlow(handle);
+    else
+      loadedXclbinUuid = getXclbinUuidOnDevice(device);
     xrt::xclbin loadedXclbin = device->get_xclbin(loadedXclbinUuid);
     XclbinInfoType loadedXclbinType = getXclbinType(loadedXclbin);
 

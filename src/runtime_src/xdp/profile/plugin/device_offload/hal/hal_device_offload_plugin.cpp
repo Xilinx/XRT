@@ -190,7 +190,7 @@ namespace xdp {
     // Update the static database with all the information that
     // will be needed later
     if(hw_context_flow)
-      db->getStaticInfo().updateDeviceFromCoreDevice(deviceId, device, true, std::make_unique<HalDevice>(device->get_device_handle()));
+      db->getStaticInfo().updateDeviceFromCoreDeviceHwCtxFlow(deviceId, device, userHandle, hw_context_flow, true, std::make_unique<HalDevice>(device->get_device_handle()));
     else
       db->getStaticInfo().updateDeviceFromHandle(deviceId, std::make_unique<HalDevice>(ownedHandle), userHandle) ;
 

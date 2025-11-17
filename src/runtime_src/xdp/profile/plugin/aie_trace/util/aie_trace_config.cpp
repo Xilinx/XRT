@@ -148,13 +148,24 @@ namespace xdp::aie::trace {
           // Record for runtime config file
           config.port_trace_ids[portnum] = (tile.subtype == io_type::PLIO) ? portnum : channel;
           config.port_trace_is_master[portnum] = (tile.is_master_vec.at(portnum) != 0);
-          if (portnum < tile.port_names.size())
-            config.port_trace_names[portnum] = tile.port_names.at(portnum);
+          if (tile.subtype == io_type::PLIO) {
+            if (streamPortId < tile.port_names.size())
+              config.port_trace_names[portnum] = tile.port_names.at(streamPortId);
+          } else {
+            if (channel < tile.port_names.size())
+              config.port_trace_names[portnum] = tile.port_names.at(channel);
+          }
 
-          if (tile.is_master_vec.at(portnum) == 0)
+          if (tile.is_master_vec.at(portnum) == 0) {
             config.mm2s_channels[channelNum] = channel;
-          else
+            if (channelNum < tile.mm2s_names.size())
+              config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+          }
+          else {
             config.s2mm_channels[channelNum] = channel;
+            if (channelNum < tile.s2mm_names.size())
+              config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+          }
         }
         else {
           // Memory tiles

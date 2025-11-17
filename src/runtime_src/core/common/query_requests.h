@@ -59,9 +59,7 @@ enum class key_type
   xrt_smi_config,
   xrt_smi_lists,
   xclbin_name,
-  runner,
   elf_name,
-  mobilenet,
 
   dma_threads_raw,
 
@@ -348,7 +346,9 @@ enum class key_type
   noop,
 
   xocl_errors_ex,
-  xocl_ex_error_code2string
+  xocl_ex_error_code2string,
+
+  aie_coredump
 };
 
 struct pcie_vendor : request
@@ -609,53 +609,6 @@ struct xrt_smi_lists : request
   }
 };
 
-struct runner : request
-{
-  enum class type {
-    throughput_recipe,
-    throughput_profile,
-    throughput_path,
-    latency_recipe,
-    latency_profile,
-    latency_path,
-    df_bandwidth_recipe,
-    df_bandwidth_profile,
-    df_bandwidth_path,
-    gemm_recipe,
-    gemm_profile,
-    gemm_path,
-    aie_reconfig_overhead_recipe,
-    aie_reconfig_overhead_nop_recipe,
-    aie_reconfig_overhead_profile,
-    aie_reconfig_overhead_path,
-    cmd_chain_latency_recipe,
-    cmd_chain_latency_profile,
-    cmd_chain_latency_path,
-    cmd_chain_throughput_recipe,
-    cmd_chain_throughput_profile,
-    cmd_chain_throughput_path,
-    tct_one_column_recipe,
-    tct_one_column_profile,
-    tct_one_column_path,
-    tct_all_column_recipe,
-    tct_all_column_profile,
-    tct_all_column_path
-  };
-
-  using result_type = std::string;
-  static const key_type key = key_type::runner;
-  static const char* name() { return "runner"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-
-  static std::string
-  to_string(const result_type& value)
-  {
-    return value;
-  }
-};
-
 /**
  * Used to retrieve the path to an xclbin file required for the
  * current device assuming a valid xclbin "type" is passed. The shim
@@ -666,12 +619,8 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm,
     validate_elf,
-    gemm_elf,
-    mobilenet_elf,
-    preemption_4x4,
-    preemption_4x8  
+    mobilenet_elf
   };
 
   static std::string
@@ -680,16 +629,8 @@ struct xclbin_name : request
     switch (type) {
       case type::validate:
         return "validate";
-      case type::gemm:
-        return "gemm";
       case type::validate_elf:
         return "validate_elf";
-      case type::gemm_elf:
-        return "gemm_elf";
-      case type::preemption_4x4:
-        return "preemption_4x4";
-      case type::preemption_4x8:
-        return "preemption_4x8";
       case type::mobilenet_elf:
         return "mobilenet_elf";
     }
@@ -714,10 +655,6 @@ struct elf_name : request
 {
   enum class type {
     nop,
-    preemption_noop_4x4,
-    preemption_noop_4x8,
-    preemption_memtile_4x4,
-    preemption_memtile_4x8, 
     mobilenet
   };
 
@@ -727,14 +664,6 @@ struct elf_name : request
     switch (type) {
       case type::nop:
         return "nop";
-      case type::preemption_noop_4x4:
-        return "preemption_noop_4x4";
-      case type::preemption_noop_4x8:
-        return "preemption_noop_4x8";
-      case type::preemption_memtile_4x4:
-        return "preemption_memtile_4x4";
-      case type::preemption_memtile_4x8:
-        return "preemption_memtile_4x8";
       case type::mobilenet:
         return "mobilenet";
     }
@@ -744,36 +673,6 @@ struct elf_name : request
   using result_type = std::string;
   static const key_type key = key_type::elf_name;
   static const char* name() { return "elf_name"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-};
-
-struct mobilenet : request 
-{
-  enum class type {
-    mobilenet_ifm,
-    mobilenet_param,
-    buffer_sizes
-  };
-
-  static std::string
-  enum_to_str(const type& type)
-  {
-    switch (type) {
-      case type::mobilenet_ifm:
-        return "mobilenet_ifm";
-      case type::mobilenet_param:
-        return "mobilenet_param";
-      case type::buffer_sizes:
-        return "buffer_sizes";
-    }
-    return "unknown";
-  }
-
-  using result_type = std::string;
-  static const key_type key = key_type::mobilenet;
-  static const char* name() { return "mobilenet"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const override = 0;
@@ -4157,7 +4056,7 @@ struct event_trace_version : request
 
 struct event_trace_data : request
 {
-  using result_type = bool;
+  using result_type = firmware_debug_buffer;
   static const key_type key = key_type::event_trace_data;
 
   std::any
@@ -4171,8 +4070,11 @@ struct event_trace_data : request
 struct event_trace_state : request
 {
   static const key_type key = key_type::event_trace_state;
-  using result_type = uint32_t;  // get value type
-  using value_type = uint32_t; // put value type
+  struct value_type {
+    uint32_t action;
+    uint32_t categories;
+  };
+  using result_type = value_type;
 
   std::any
   get(const device*) const override = 0;
@@ -4193,11 +4095,7 @@ struct event_trace_config : request
 // Firmware log version query - following telemetry pattern
 struct firmware_log_version : request 
 {
-  struct result_type {
-    uint16_t major;
-    uint16_t minor;
-  };
-
+  using result_type = uint32_t;
   static const key_type key = key_type::firmware_log_version;
 
   std::any
@@ -4372,6 +4270,16 @@ struct read_trace_data : request
   static const key_type key = key_type::read_trace_data;
 
   virtual std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
+// Used for getting AIE coredump of all tiles within a ctx
+struct aie_coredump : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_coredump;
+
+  std::any
   get(const device*, const std::any&) const override = 0;
 };
 } // query

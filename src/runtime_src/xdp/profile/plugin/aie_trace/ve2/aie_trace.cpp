@@ -247,6 +247,159 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
+
+    // Configure windowed event trace if layer-based start is enabled
+    if (xrt_core::config::get_aie_trace_settings_start_type() == "layer") {
+      if (!configureWindowedEventTrace(aieDevice)) {
+        std::string msg("Unable to configure AIE windowed event trace");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        return;
+      }
+    }
+  }
+
+  /****************************************************************************
+   * Configure windowed event trace for layer-based triggering
+   ***************************************************************************/
+  bool AieTrace_VE2Impl::configureWindowedEventTrace(xaiefal::XAieDev* aieDevice)
+  {
+    if (!aieDevice || !aieDevInst) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "AIE device not available for windowed trace configuration");
+      return false;
+    }
+
+    void* handle = metadata->getHandle();
+    boost::property_tree::ptree aiePartitionPt = xdp::aie::getAIEPartitionInfo(handle);
+
+    // Get partition information
+    uint8_t startCol = static_cast<uint8_t>(aiePartitionPt.back().second.get<uint64_t>("start_col"));
+    uint8_t numCols  = static_cast<uint8_t>(aiePartitionPt.back().second.get<uint64_t>("num_cols"));
+
+    auto metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader(metadata->getDeviceID());
+    if (!metadataReader) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "AIE metadata reader not available for windowed trace configuration");
+      return false;
+    }
+
+    uint8_t numRows = metadataReader->getNumRows();
+    unsigned int startLayer = xrt_core::config::get_aie_trace_settings_start_layer();
+
+    // Reserve broadcast channels using FAL for trace start synchronization
+    std::vector<XAie_LocType> vL;
+    auto traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+    if (!traceStartBroadcastCh1) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to create broadcast channel 1 for windowed trace");
+      return false;
+    }
+    if (traceStartBroadcastCh1->reserve() != XAIE_OK) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to reserve broadcast channel 1 for windowed trace");
+      return false;
+    }
+
+    auto traceStartBroadcastCh2 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
+    if (!traceStartBroadcastCh2) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to create broadcast channel 2 for windowed trace");
+      return false;
+    }
+    if (traceStartBroadcastCh2->reserve() != XAIE_OK) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to reserve broadcast channel 2 for windowed trace");
+      return false;
+    }
+
+    // Get the reserved broadcast channel IDs
+    const uint8_t traceStartBroadcastChId1 = traceStartBroadcastCh1->getBc();
+    const uint8_t traceStartBroadcastChId2 = traceStartBroadcastCh2->getBc();
+
+    // Reserve and configure performance counter at start column for layer-based triggering
+    XAie_Events perfCounterEvent = XAIE_EVENT_PERF_CNT_0_PL;
+    if (startLayer != UINT_MAX) {
+      auto& shimTile = aieDevice->tile(startCol, 0);
+      auto shim = shimTile.pl();
+
+      auto perfCounter = shim.perfCounter();
+      if (!perfCounter) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Unable to create performance counter for windowed trace");
+        return false;
+      }
+
+      XAie_ModuleType mod = XAIE_PL_MOD;
+      if (perfCounter->initialize(mod, XAIE_EVENT_USER_EVENT_0_PL, mod, XAIE_EVENT_USER_EVENT_0_PL) != XAIE_OK) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Unable to initialize performance counter for windowed trace");
+        return false;
+      }
+
+      if (perfCounter->reserve() != XAIE_OK) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Unable to reserve performance counter for windowed trace");
+        return false;
+      }
+
+      // Get the counter event ID
+      perfCounter->getCounterEvent(mod, perfCounterEvent);
+
+      // Set threshold value to startLayer
+      perfCounter->changeThreshold(startLayer);
+
+      // Start the performance counter
+      if (perfCounter->start() != XAIE_OK) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Unable to start performance counter for windowed trace");
+        return false;
+      }
+    }
+
+
+    // Define trace start events for different module types
+    XAie_Events shimTraceStartEvent = static_cast<XAie_Events>(XAIE_EVENT_BROADCAST_A_0_PL + traceStartBroadcastChId2);
+    XAie_Events memTileTraceStartEvent = static_cast<XAie_Events>(XAIE_EVENT_BROADCAST_0_MEM_TILE + traceStartBroadcastChId1);
+    XAie_Events coreModTraceStartEvent = static_cast<XAie_Events>(XAIE_EVENT_BROADCAST_0_CORE + traceStartBroadcastChId1);
+    XAie_Events memTraceStartEvent = static_cast<XAie_Events>(XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastChId1);
+
+    // Configure trace start events for tiles
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto tile = tileMetric.first;
+      auto col  = tile.col;
+      auto row  = tile.row;
+      auto type = aie::getModuleType(row, metadata->getRowOffset());
+      auto loc  = XAie_TileLoc(col, row);
+
+      if (startLayer != UINT_MAX) {
+        if (type == module_type::shim) {
+          // Configure shim/interface tile trace start
+          if (col == startCol)
+            XAie_TraceStartEvent(aieDevInst, loc, XAIE_PL_MOD, perfCounterEvent);
+          else
+            XAie_TraceStartEvent(aieDevInst, loc, XAIE_PL_MOD, shimTraceStartEvent);
+        }
+        else if (type == module_type::mem_tile) {
+          // Configure memory tile trace start
+          XAie_TraceStartEvent(aieDevInst, loc, XAIE_MEM_MOD, memTileTraceStartEvent);
+        }
+        else if (type == module_type::core) {
+          // Configure core module trace start
+          XAie_TraceStartEvent(aieDevInst, loc, XAIE_CORE_MOD, coreModTraceStartEvent);
+          XAie_TraceStartEvent(aieDevInst, loc, XAIE_MEM_MOD, memTraceStartEvent);
+        }
+      }
+    }
+
+    // Build 2-channel broadcast network for trace start synchronization
+    aie::trace::build2ChannelBroadcastNetwork(aieDevInst, metadata, traceStartBroadcastChId1,
+                                               traceStartBroadcastChId2, perfCounterEvent,
+                                               startCol, numCols, numRows);
+
+    xrt_core::message::send(severity_level::info, "XRT",
+        "Finished AIE windowed trace settings for ve2 using FAL-reserved broadcast channels "
+        + std::to_string(traceStartBroadcastChId1) + " and " + std::to_string(traceStartBroadcastChId2));
+    return true;
   }
 
   /****************************************************************************
@@ -296,7 +449,8 @@ namespace xdp {
     if(compilerOptions.enable_multi_layer) {
 
       aie::trace::timerSyncronization(aieDevInst,aieDevice, metadata, startCol, numCols, numRows);
-      if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()) 
+      if(xrt_core::config::get_aie_trace_settings_trace_start_broadcast()
+         && xrt_core::config::get_aie_trace_settings_start_type() != "layer")
       {
         std::vector<XAie_LocType> vL;
         traceStartBroadcastCh1 = aieDevice->broadcast(vL, XAIE_PL_MOD, XAIE_CORE_MOD);
@@ -667,7 +821,9 @@ namespace xdp {
           traceEndEvent = comboEvents.at(1);
         }
 
-        if(compilerOptions.enable_multi_layer && type == module_type::core && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+        if(compilerOptions.enable_multi_layer && type == module_type::core
+          && xrt_core::config::get_aie_trace_settings_trace_start_broadcast()
+          && xrt_core::config::get_aie_trace_settings_start_type() != "layer")
         {
           traceStartEvent = (XAie_Events) (XAIE_EVENT_BROADCAST_0_MEM + traceStartBroadcastCh1->getBc());
         }
@@ -840,7 +996,9 @@ namespace xdp {
 
         auto shimTrace = shim.traceControl();
 
-        if(col == startCol && compilerOptions.enable_multi_layer && xrt_core::config::get_aie_trace_settings_trace_start_broadcast())
+	if(col == startCol && compilerOptions.enable_multi_layer
+           && xrt_core::config::get_aie_trace_settings_trace_start_broadcast()
+           && xrt_core::config::get_aie_trace_settings_start_type() != "layer")
         {
           if (shimTrace->setCntrEvent(XAIE_EVENT_COMBO_EVENT_0_PL, interfaceTileTraceEndEvent) != XAIE_OK)
             break;
@@ -929,11 +1087,13 @@ namespace xdp {
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet)) {
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
-            cfgTile->interface_tile_trace_config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
+            if (channelNum < tile.mm2s_names.size())
+              cfgTile->interface_tile_trace_config.mm2s_names[channelNum] = tile.mm2s_names.at(channelNum);
           }
           else {
             cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
-            cfgTile->interface_tile_trace_config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
+            if (channelNum < tile.s2mm_names.size())
+              cfgTile->interface_tile_trace_config.s2mm_names[channelNum] = tile.s2mm_names.at(channelNum);
           }
         }
       } // interface tiles

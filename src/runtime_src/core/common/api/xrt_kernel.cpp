@@ -725,7 +725,7 @@ public:
     // Notify shim that any BOs bound to this kernel command are no
     // longer used by the command.
     get_exec_bo()->reset();
-    
+
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(std::move(m_execbuf));
   }
@@ -767,7 +767,7 @@ public:
     // For lazy state update the command must be polled. Polling
     // is a no-op on platforms where command state is live.
     m_hwqueue.poll(this);
-    
+
     auto state = get_state_raw();
     notify(state);  // update command state accordingly
     return state;
@@ -1278,6 +1278,8 @@ public:
   { return arg.type; }
 };
 
+namespace xbi = xrt_core::bo_int;
+
 // class buffer_cache - A thread safe cache to hold pre created buffers
 //
 // This class maintains a fixed size pool of reusable buffers to
@@ -1290,6 +1292,7 @@ class buffer_cache
   xrt::hw_context m_hw_ctx;
   std::vector<uint8_t> m_buf_data;
   const std::size_t m_max_cache_size;
+  xbi::use_type m_use_flag;
 
   mutable std::mutex m_mutex;
   mutable std::vector<xrt::bo> m_bo_cache;
@@ -1303,7 +1306,7 @@ class buffer_cache
   }
 
   static std::vector<xrt::bo>
-  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size)
+  initialize_bo_cache(const xrt::hw_context& hwctx, size_t cache_size, size_t bo_size, xbi::use_type flag)
   {
     if (!cache_size)
       return {};
@@ -1312,17 +1315,18 @@ class buffer_cache
     cache.reserve(cache_size);
 
     for (size_t i = 0; i < cache_size; ++i)
-      cache.push_back(xrt::ext::bo(hwctx, bo_size));
-    
+      cache.push_back(xbi::create_bo(hwctx, bo_size, flag));
+
     return cache;
   }
 
 public:
-  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size)
+  buffer_cache(xrt::hw_context ctx, std::vector<uint8_t>&& data, size_t max_size, xbi::use_type flag)
     : m_hw_ctx(std::move(ctx))
     , m_buf_data(std::move(data))
     , m_max_cache_size(max_size)
-    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size())}
+    , m_use_flag(flag)
+    , m_bo_cache{initialize_bo_cache(m_hw_ctx, m_max_cache_size, m_buf_data.size(), m_use_flag)}
   {}
 
   xrt::bo
@@ -1338,7 +1342,7 @@ public:
     }
 
     if (!bo)
-      bo = xrt::ext::bo(m_hw_ctx, m_buf_data.size()); // create new bo if cache is empty
+      bo = xbi::create_bo(m_hw_ctx, m_buf_data.size(), m_use_flag); // create new bo if cache is empty
 
     fill_bo_with_data(bo, m_buf_data);
     return bo;
@@ -1360,6 +1364,7 @@ public:
 } // namespace
 
 namespace xrt {
+
 // struct kernel_impl - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -1648,7 +1653,8 @@ private:
     size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
 
     // Create and return buffer_cache with calculated pool size
-    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size);
+    // use ctrlpkt flag while creating buffers
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
   }
 
 public:
@@ -2249,7 +2255,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
       // Also, for ELF flow we dont need kernel args info in cmd payload
       // as args are patched at host side, only the first arg(opcode)
       // info is sent in this case and it is written into the command register
-      // map at offset 0x0.   The command count is initialized earlier to 
+      // map at offset 0x0.   The command count is initialized earlier to
       // the size the command register map plus cu masks.
       // opcode is uint64_t so (2 * uint32_t) is the size in payload so
       // subtract register map size and add 2.
@@ -2580,12 +2586,12 @@ public:
   {
     if (m_runlist)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
-    
+
     prep_start();
-    
+
     // log kernel start info
-    // This is in critical path, we need to reduce log overhead 
-    // as much as possible, passing kernel impl pointer instead of 
+    // This is in critical path, we need to reduce log overhead
+    // as much as possible, passing kernel impl pointer instead of
     // constructing args in place
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
@@ -2641,7 +2647,7 @@ public:
   {
     // don't bother if command is done by the time abort is called
     if (cmd->is_done()) {
-      if (cmd->get_state() == ERT_CMD_STATE_NEW) 
+      if (cmd->get_state() == ERT_CMD_STATE_NEW)
        throw xrt_core::error("Cannot abort command that wasn't started");
       return cmd->get_state();
     }
@@ -2718,7 +2724,7 @@ public:
     // The TXN flow can be identified by the kernel type.
     if (opcode == ERT_START_CU && kernel->get_kernel_type() == kernel_type::dpu)
       opcode = ERT_START_NPU;
-    
+
     switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_DPU:
@@ -2801,7 +2807,7 @@ public:
   {
     if (!m_module)
       throw xrt_core::error("No module associated with run object");
-  
+
     return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
   }
 };
@@ -3206,7 +3212,7 @@ class runlist_impl
 
   enum class state { idle, closed, running, error };
   mutable state m_state = state::idle;
-  
+
   xrt::hw_context m_hwctx;
   xrt_core::hw_queue m_hwqueue;
   std::vector<xrt::run> m_runlist;
@@ -3337,7 +3343,7 @@ class runlist_impl
     // For lazy state update the command must be polled. Polling
     // is a no-op on platforms where command state is live.
     m_hwqueue.poll(cmd);
-    
+
     return static_cast<ert_cmd_state>(pkt->state);
   }
 
@@ -3347,6 +3353,7 @@ class runlist_impl
     auto epkt = run.get_ert_packet();
     auto opcode = epkt->opcode;
     auto rhdl = run.get_handle();
+    std::string msg = "runlist failed execution (" + cmd_state_to_string(state) + ")";
 
     // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
     // well as for Alveo.  For Alveo we do not want to throw aie_error.
@@ -3359,9 +3366,9 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
-      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
+      throw xrt::runlist::aie_error(run, state, msg);
     default:
-      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+      throw xrt::runlist::command_error(run, state, msg);
     }
   }
 
@@ -3404,7 +3411,7 @@ class runlist_impl
       // Mark all subsequent commands as aborted. The state of
       // the first incomplete run is not changed.
       abort_runs(first_error_idx + 1, m_runlist.size());
-                 
+
       // Throw command error for first failed command.  The state of
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
@@ -3477,7 +3484,7 @@ public:
     auto execbuf = get_cmd_chain_for_run_at_index(runidx);
     auto [cmd, pkt] = unpack(execbuf);
     auto chain_data = get_ert_cmd_chain_data(pkt);
-    
+
     auto run_impl = run.get_handle();
     auto run_cmd = run_impl->get_cmd();
     auto run_bo = run_cmd->get_exec_bo();
@@ -3489,12 +3496,12 @@ public:
     // Let shim handle binding of run_bo arguments to the command
     // that cahins the run_bo.  This allows pinning if necessary.
     // May throw, but so far no state change, so still safe.
-    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); 
+    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
     // makes it impossible to add to another list or to same list
     // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't 
+    // recording this runlist with the run object, but it doesn't
     // proctect against caller manually controlling the run object,
     // which is undefined behavior.  No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
@@ -3534,7 +3541,7 @@ public:
       m_state = state::running;
       throw;
     }
-        
+
     // The command list is now submitted (running).  It cannot be reset
     // until wait() has been called and state changed to idle or error.
     m_state = state::running;
@@ -3983,7 +3990,7 @@ xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
-    throw std::runtime_error("Invalid kernel context implementation."); 
+    throw std::runtime_error("Invalid kernel context implementation.");
 
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }

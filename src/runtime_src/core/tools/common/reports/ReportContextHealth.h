@@ -4,6 +4,7 @@
 #pragma once
 
 // Please keep external include file dependencies to a minimum
+#include "core/common/smi.h"
 #include "tools/common/Report.h"
 
 /**
@@ -115,4 +116,92 @@ public:
                    const boost::property_tree::ptree& pt, 
                    const std::vector<std::string>& elements_filter, 
                    std::ostream& output) const override;
+
+protected:
+  /**
+   * @brief Virtual function to generate hardware-specific context health report
+   * 
+   * @param dev XRT device to query for context health information
+   * @param context_pid_pairs Vector of context ID and PID pairs
+   * @param context_ids Vector of context IDs for filtering
+   * @return Formatted context health report string
+   * 
+   * This pure virtual function must be implemented by derived classes
+   * to provide hardware-specific context health report generation.
+   */
+  virtual std::string 
+  generate_report(const xrt_core::device* dev,
+                  const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                  const std::vector<uint64_t>& context_ids) const;
+
+private:
+  /**
+   * @brief Create appropriate context health reporter based on hardware type
+   * 
+   * @param hw_type Hardware type detected from the device
+   * @return Unique pointer to the appropriate reporter implementation
+   */
+  std::unique_ptr<ReportContextHealth>
+  create_reporter(xrt_core::smi::smi_hardware_config::hardware_type hw_type) const;
+
+  /**
+   * @brief Parse comma-separated values from input string
+   * 
+   * @param input Input string containing comma-separated values
+   * @return Vector of parsed uint64_t values
+   */
+  std::vector<uint64_t> 
+  parse_values(const std::string& input) const;
+
+  /**
+   * @brief Parse context IDs from filter elements
+   * 
+   * @param elements_filter Vector of filter elements
+   * @return Vector of context IDs
+   */
+  std::vector<uint64_t> 
+  parse_context_ids(const std::vector<std::string>& elements_filter) const;
+
+  /**
+   * @brief Parse context ID and PID pairs from filter elements
+   * 
+   * @param elements_filter Vector of filter elements
+   * @return Vector of context ID and PID pairs
+   */
+  std::vector<std::pair<uint64_t, uint64_t>> 
+  parse_context_pid_pairs(const std::vector<std::string>& elements_filter) const;
+};
+
+/**
+ * @brief Hardware-specific context health report for STRX/KRCK platforms
+ * 
+ * Provides STRX/KRCK specific context health reporting with appropriate
+ * field mappings and table headers for these hardware types.
+ */
+class ctx_health_strx : public ReportContextHealth {
+public:
+  ctx_health_strx() : ReportContextHealth() {}
+
+protected:
+  std::string 
+  generate_report(const xrt_core::device* dev,
+                  const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                  const std::vector<uint64_t>& context_ids) const override;
+};
+
+/**
+ * @brief Hardware-specific context health report for NPU3 platforms
+ * 
+ * Provides NPU3 specific context health reporting with appropriate
+ * field mappings and table headers optimized for NPU3 hardware.
+ */
+class ctx_health_npu3 : public ReportContextHealth {
+public:
+  ctx_health_npu3() : ReportContextHealth() {}
+
+protected:
+  std::string 
+  generate_report(const xrt_core::device* dev,
+                  const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                  const std::vector<uint64_t>& context_ids) const override;
 };

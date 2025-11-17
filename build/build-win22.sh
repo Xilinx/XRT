@@ -175,7 +175,7 @@ if [ $dbg == 1 ]; then
         echo "${cmake_flags[@]}"
         "$CMAKE" -G "Visual Studio 17 2022" -B $BUILDDIR_DOS/WDebug $cmake_flags $BUILDDIR_DOS/../src
     fi
-    "$CMAKE" --build $BUILDDIR_DOS/WDebug --verbose --config Debug
+    "$CMAKE" --build $BUILDDIR_DOS/WDebug --verbose --config Debug --parallel $jcore
     "$CMAKE" --install $BUILDDIR_DOS/WDebug --config Debug --prefix $BUILDDIR_DOS/WDebug/xilinx/xrt
 fi
 
@@ -190,7 +190,7 @@ if [ $release == 1 ]; then
         echo "${cmake_flags[@]}"
         "$CMAKE" -G "Visual Studio 17 2022" -B $BUILDDIR_DOS/WRelease $cmake_flags $BUILDDIR_DOS/../src
     fi
-    "$CMAKE" --build $BUILDDIR_DOS/WRelease --verbose --config Release
+    "$CMAKE" --build $BUILDDIR_DOS/WRelease --verbose --config Release --parallel $jcore
     "$CMAKE" --install $BUILDDIR_DOS/WRelease --verbose --config Release --prefix $BUILDDIR_DOS/WRelease/xilinx/xrt
 
     if [[ $sdk == 1 && $npu_build == 1 ]]; then

@@ -30,6 +30,12 @@ boost::property_tree::ptree
 TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
+
+  if (archive == nullptr) {
+    ptree.put("status", XBValidateUtils::test_token_failed);
+    XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
+    return ptree;
+  }
   
   try {
     std::string recipe_data = archive->data("recipe_cmd_chain_latency.json");

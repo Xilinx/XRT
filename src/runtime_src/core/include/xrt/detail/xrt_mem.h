@@ -70,8 +70,8 @@ struct xcl_bo_flags
       // extension
       uint32_t access : 2;  // [33-32]
       uint32_t dir    : 2;  // [35-34]
-      uint32_t use    : 3;  // [38-36]
-      uint32_t unused : 25; // [63-39]
+      uint32_t use    : 4;  // [39-36]
+      uint32_t unused : 24; // [63-40]
     };
   };
 };
@@ -137,19 +137,47 @@ struct xcl_bo_flags
  * communicate debug data from microblaze back to user
  * space. This type of usage is supported on platforms with
  * microblaze only
+ *
+ * XRT_BO_USE_PREEMPTION indicates that the buffer will be used for
+ * preemption context save/restore.
+ *
+ * XRT_BO_USE_HOST_ONLY indicates that the buffer is allocated in
+ * system memory
+ *
+ * XRT_BO_USE_INSTRUCTION indicates that the buffer will be used to
+ * hold instructions for firmware.
+ *
+ * XRT_BO_USE_SCRATCH_PAD indicates that the buffer will be used as
+ * scratch pad memory to store L2 memory at time of preemption.
+ * 
+ * XRT_BO_USE_CTRL_SCRATCH_PAD indicates that the buffer will be used
+ * to store/retrieve control state information during model execution.
+ *
+ * XRT_BO_USE_PDI indicates that the buffer will be used to hold
+ * PDI data for firmware.
+ *
+ * XRT_BO_USE_CTRLPKT indicates that the buffer will be used to hold
+ * control packets for firmware.
  */
 
 // This file is used in driver as well, so using #define instead of
 // constexpr and using NOLINT block to supress clng-tidy warnings
 
 // NOLINTBEGIN
-#define XRT_BO_USE_NORMAL      0
-#define XRT_BO_USE_DEBUG       1
-#define XRT_BO_USE_KMD         2
-#define XRT_BO_USE_DTRACE      3
-#define XRT_BO_USE_LOG         4
-#define XRT_BO_USE_DEBUG_QUEUE 5
-#define XRT_BO_USE_UC_DEBUG    6
+#define XRT_BO_USE_UNUSED           0
+#define XRT_BO_USE_DEBUG            1
+#define XRT_BO_USE_KMD              2
+#define XRT_BO_USE_DTRACE           3
+#define XRT_BO_USE_LOG              4
+#define XRT_BO_USE_DEBUG_QUEUE      5
+#define XRT_BO_USE_UC_DEBUG         6
+#define XRT_BO_USE_PREEMPTION       7
+#define XRT_BO_USE_HOST_ONLY        8
+#define XRT_BO_USE_INSTRUCTION      9
+#define XRT_BO_USE_SCRATCH_PAD      10
+#define XRT_BO_USE_CTRL_SCRATCH_PAD 11
+#define XRT_BO_USE_PDI              12
+#define XRT_BO_USE_CTRLPKT          13
 // NOLINTEND
 
 /**

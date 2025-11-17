@@ -43,7 +43,9 @@ set_source_files_properties(${XRT_XRT_DEVICE_DIR}/hal.cpp PROPERTIES
   )
 endif()
 
+xrt_configure_version_file(xrt++ SHARED)
 add_library(xrt++ SHARED
+  xrt++-version.rc
   ${XRT_XRT_ALL_SRC_SHARED}
   )
 

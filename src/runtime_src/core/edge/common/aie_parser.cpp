@@ -390,11 +390,6 @@ std::unordered_map<std::string, adf::shared_buffer_config>
 get_shared_buffers(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx_object* hwctx)
 {
   auto start_col = get_start_col(aie_meta, hwctx);
-  std::vector<size_t> addresses;
-  std::vector<int> producer_locks;
-  std::vector<int> consumer_locks;
-
-
   std::unordered_map<std::string, adf::shared_buffer_config> shared_buffer_configs;
 
   auto sbuf_tree = aie_meta.get_child_optional("aie_metadata.SharedBufferConfigs");
@@ -417,19 +412,16 @@ get_shared_buffers(const pt::ptree& aie_meta, int graph_id, const zynqaie::hwctx
     shared_buffer_config.initialized = shared_buffer_node.second.get<bool>("initialized");
 
     for (auto& item : shared_buffer_node.second.get_child("address")) {
-      addresses.push_back(item.second.get_value<size_t>());
+      shared_buffer_config.addr.push_back(item.second.get_value<size_t>());
     }
-    shared_buffer_config.addr = addresses;
 
     for (auto& item : shared_buffer_node.second.get_child("producer_lock_ids")) {
-      producer_locks.push_back(item.second.get_value<size_t>());
+      shared_buffer_config.producerLocks.push_back(item.second.get_value<size_t>());
     }
-    shared_buffer_config.producerLocks = producer_locks;
 
     for (auto& item : shared_buffer_node.second.get_child("consumer_lock_ids")) {
-      consumer_locks.push_back(item.second.get_value<size_t>());
+      shared_buffer_config.consumerLocks.push_back(item.second.get_value<size_t>());
     }
-    shared_buffer_config.consumerLocks = consumer_locks;
 
     shared_buffer_configs[shared_buffer_config.name] = shared_buffer_config;
   }

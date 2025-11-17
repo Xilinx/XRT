@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// version.rc.in - Windows VERSIONINFO resource template for CMake
+#include <winver.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @XRT_RC_MAJOR@,@XRT_RC_MINOR@,@XRT_RC_BUILD@,@XRT_RC_PATCH@
+ PRODUCTVERSION @XRT_RC_MAJOR@,@XRT_RC_MINOR@,@XRT_RC_BUILD@,@XRT_RC_PATCH@
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE @FileType@
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "AMD"
+            VALUE "FileDescription", "AMD XRT User Mode Binary"
+            VALUE "FileVersion", "@XRT_RC_MAJOR@.@XRT_RC_MINOR@.@XRT_RC_BUILD@.@XRT_RC_PATCH@"
+            VALUE "InternalName", "XRT"
+            VALUE "LegalCopyright", "Copyright (C) 2025"
+            VALUE "OriginalFilename", "@OriginalFilename@"
+            VALUE "ProductName", "AMD XRT User Mode Binary"
+            VALUE "ProductVersion", "@XRT_RC_MAJOR@.@XRT_RC_MINOR@.@XRT_RC_BUILD@.@XRT_RC_PATCH@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

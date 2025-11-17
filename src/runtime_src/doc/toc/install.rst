@@ -28,6 +28,12 @@ Steps for RHEL 9.x::
 
         sudo subscription-manager repos --enable "codeready-builder-for-rhel-9-x86_64-rpms"
         sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
+Steps for RHEL 10.x::
+
+        sudo subscription-manager repos --enable "codeready-builder-for-rhel-10-x86_64-rpms"
+        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
 Steps for CENTOS 7.x::
 
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
@@ -38,13 +44,18 @@ Steps for CENTOS 8.x::
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	yum config-manager --set-enabled AppStream
 
-Steps for AlmaLinux 8.x::
+Steps for AlmaLinux 8.x/Rocky 8.x::
 
         sudo dnf config-manager --set-enabled powertools
         sudo dnf config-manager --set-enabled appstream
         sudo dnf install epel-release
 
-Steps for AlmaLinux 9.x::
+Steps for AlmaLinux 9.x/Rocky 9.x::
+
+        sudo dnf config-manager --set-enabled crb
+        sudo dnf install epel-release
+
+Steps for AlmaLinux 10.x/Rocky 10.x::
 
         sudo dnf config-manager --set-enabled crb
         sudo dnf install epel-release
