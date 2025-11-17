@@ -227,11 +227,11 @@ void  main_(int argc, char** argv,
     subCommand->setOptionConfig(configTreeMain);
 
     if (XBU::getAdvance()) {
-      std::cout << "------------------------------------------------------------\n";
-      std::cout << "               DISCLAIMER  (xrt-smi --advanced)             \n";
-      std::cout << "          You are executing a developer/expert command.     \n";
-      std::cout << "                Please do so at your own risk.              \n";
-      std::cout << "------------------------------------------------------------\n";
+      std::cout << "-------------------------------------------------------------------------\n";
+      std::cout << "                    DISCLAIMER  (xrt-smi --advanced)                     \n";
+      std::cout << "You are running a developer command that may change system configuration.\n";
+      std::cout << "                Continue only if you understand the risks.               \n";
+      std::cout << "-------------------------------------------------------------------------\n";
     }
   }
 
