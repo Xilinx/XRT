@@ -28,6 +28,7 @@ namespace xdp {
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
                         const module_type type, const std::string& metricSet);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
+    bool configureWindowedEventTrace(xaiefal::XAieDev* aieDevice);
 
   private:
     typedef XAie_Events EventType;
