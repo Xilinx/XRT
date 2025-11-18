@@ -28,7 +28,21 @@ struct dumper_config
   xrt::bo dump_buffer;
 };
 
-
+/**
+ * buffer_dumper - Asynchronously dumps device buffer contents periodically
+ *
+ * Monitors a device buffer organized into chunks and incrementally writes new
+ * data to timestamped binary files. Each chunk is dumped to a separate file
+ * with its metadata header followed by data payload.
+ *
+ * Key features:
+ * - Takes in metadata as input that explains how to parse the data
+ * - Operates asynchronously as background thread periodically checks for new data
+ * - Granular device-to-host synchronization for efficiency
+ * - Handles circular buffer wrapping within chunks
+ * - Dynamically updates metadata header as data accumulates
+ * - Thread-safe with mutex protection
+ */
 class buffer_dumper
 {
 private:
@@ -46,7 +60,7 @@ private:
 
   void
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
-  
+
   void
   process_chunks();
 

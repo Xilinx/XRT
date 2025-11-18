@@ -3,7 +3,6 @@
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_queue.h
-#include <cstddef>
 #define XRT_API_SOURCE         // exporting xrt_hwcontext.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
@@ -29,6 +28,7 @@
 #include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
+#include <cstddef>
 #include <ctime>
 #include <fstream>
 #include <limits>
@@ -115,7 +115,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_interval_ms = dump_interval_ms;
       config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
       config.dump_buffer = std::move(bo);
-      
+
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
 
@@ -191,7 +191,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     static auto uc_log_enabled = xrt_core::config::get_uc_log();
     if (!uc_log_enabled || !ctx_hdl)
       return nullptr;
- 
+
     try {
       return std::make_unique<uc_log_buffer>(device, ctx_hdl);
     }
