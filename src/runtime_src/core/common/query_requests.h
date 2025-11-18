@@ -348,6 +348,7 @@ enum class key_type
   xocl_errors_ex,
   xocl_ex_error_code2string,
 
+  aie_read,
   aie_coredump
 };
 
@@ -4273,6 +4274,24 @@ struct read_trace_data : request
   get(const device*, const std::any&) const override = 0;
 };
 
+// Used for reading AIE memory of a specific tile within a ctx
+struct aie_read : request
+{
+  struct args {
+    uint64_t  pid;
+    uint32_t  context_id;
+    uint16_t  col;
+    uint16_t  row;
+    uint32_t  offset;
+    uint32_t  size;
+  };
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_read;
+
+  virtual std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
 // Used for getting AIE coredump of all tiles within a ctx
 struct aie_coredump : request
 {
@@ -4280,7 +4299,7 @@ struct aie_coredump : request
   static const key_type key = key_type::aie_coredump;
 
   std::any
-  get(const device*, const std::any&) const override = 0;
+  get(const device*, const std::any&, const std::any&) const override = 0;
 };
 } // query
 

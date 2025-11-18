@@ -466,10 +466,18 @@ read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
   return xdp::native::profiling_wrapper("xrt::aie::device::read_aie_mem",
     [this, &col, row, offset, size, context_id, pid] {
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(offset); // DRC check
-        return get_handle()->read_aie_mem(abs_col, row, offset, size);
+
+        // Use query-based approach similar to aie_coredump
+        xrt_core::query::aie_read::args args;
+        args.pid = static_cast<uint64_t>(pid);
+        args.context_id = context_id;
+        args.col = col;
+        args.row = row;
+        args.offset = offset;
+        args.size = size;
+
+        return xrt_core::device_query<xrt_core::query::aie_read>(get_handle().get(), args);
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("read_aie_mem is not supported on this platform");
@@ -501,10 +509,24 @@ read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
   return xdp::native::profiling_wrapper("xrt::device::read_aie_reg",
     [this, &col, row, reg_addr, context_id, pid] {
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(reg_addr); // DRC check
-        return get_handle()->read_aie_reg(abs_col, row, reg_addr);
+
+        // Use query-based approach similar to aie_coredump
+        xrt_core::query::aie_read::args args;
+        args.pid = static_cast<uint64_t>(pid);
+        args.context_id = context_id;
+        args.col = col;
+        args.row = row;
+        args.offset = reg_addr;
+        args.size = 4; // hardcode 4 as egister is 4 bytes
+
+        auto vec = xrt_core::device_query<xrt_core::query::aie_read>(get_handle().get(), args);
+        if (vec.size() != 4) {
+          throw std::runtime_error("AI engine register read must return 4 bytes");
+        }
+        int32_t value;
+        std::memcpy(&value, vec.data(), sizeof(uint32_t));
+        return value;
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("read_aie_reg is not supported on this platform");
