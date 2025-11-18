@@ -12,6 +12,8 @@
 #include "core/include/xrt/deprecated/xrt.h"
 
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 namespace xrt_core {
@@ -74,25 +76,95 @@ namespace xrt_core {
     return count;
   }
 
+  // Helper function to create hex dump of buffer data for debugging
+  static std::string
+  hex_dump(const uint8_t* data, size_t length, size_t max_bytes = 128)
+  {
+    std::ostringstream oss;
+    size_t dump_length = std::min(length, max_bytes);
+    
+    oss << "\n  Hex dump (first " << dump_length << " of " << length << " bytes):\n  ";
+    
+    for (size_t i = 0; i < dump_length; ++i) {
+      if (i > 0 && i % 16 == 0)
+        oss << "\n  ";
+      oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]) << " ";
+    }
+    
+    if (length > max_bytes)
+      oss << "\n  ... (" << (length - max_bytes) << " more bytes)";
+    
+    return oss.str();
+  }
+
   void
   buffer_dumper::
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
   {
     std::ofstream& fs = m_file_streams[chunk_index];
+    
+    // Check if stream is in good state before writing
+    if (!fs.good()) {
+      throw std::runtime_error("File stream for chunk " + std::to_string(chunk_index) + 
+                               " is in bad state before write");
+    }
+
     const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
     const size_t bytes_to_end = m_config.chunk_size - start_offset;
 
+    // Debug: Log what we're about to write
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
+        "Dumping chunk " + std::to_string(chunk_index) + 
+        ": start=" + std::to_string(start) + 
+        ", length=" + std::to_string(length) +
+        ", start_offset=" + std::to_string(start_offset));
+
     if (length <= bytes_to_end) {
+      // Debug: Show actual buffer contents being written
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
+          "Data to write (contiguous):" + hex_dump(chunk + start_offset, length));
+      
       fs.write(reinterpret_cast<const char*>(chunk + start_offset),
                static_cast<std::streamsize>(length));
+      if (!fs) {
+        throw std::runtime_error("Failed to write " + std::to_string(length) + 
+                                 " bytes to chunk " + std::to_string(chunk_index));
+      }
     } else {
+      // Debug: Show first part data
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
+          "Data to write (first part):" + hex_dump(chunk + start_offset, bytes_to_end));
+      
+      // Write first part
       fs.write(reinterpret_cast<const char*>(chunk + start_offset),
                static_cast<std::streamsize>(bytes_to_end));
+      if (!fs) {
+        throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) + 
+                                 " bytes) to chunk " + std::to_string(chunk_index));
+      }
+      
+      // Debug: Show wrapped part data
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
+          "Data to write (wrapped part):" + hex_dump(chunk + m_config.metadata_size, length - bytes_to_end));
+      
+      // Write wrapped part
       fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
                static_cast<std::streamsize>(length - bytes_to_end));
+      if (!fs) {
+        throw std::runtime_error("Failed to write wrapped part (" + 
+                                 std::to_string(length - bytes_to_end) + 
+                                 " bytes) to chunk " + std::to_string(chunk_index));
+      }
     }
 
     fs.flush();
+    if (!fs) {
+      throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
+    }
+    
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
+        "Successfully wrote " + std::to_string(length) + " bytes to chunk " + 
+        std::to_string(chunk_index));
   }
 
   void
