@@ -557,7 +557,6 @@ struct edge_vendor : request
  * needing to know where to look.
  * This structure can be extended to provide other configurations supporting xrt-smi
  */
-
 struct xrt_smi_config : request 
 {
   enum class type {
