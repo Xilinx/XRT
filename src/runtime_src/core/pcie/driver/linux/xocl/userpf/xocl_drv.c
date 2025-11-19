@@ -7,7 +7,6 @@
  */
 
 #include <linux/aer.h>
-#include <linux/crc32c.h>
 #include <linux/iommu.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -15,6 +14,11 @@
 #include <linux/pci.h>
 #include <linux/random.h>
 #include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+#include <linux/crc32.h>
+#else
+#include <linux/crc32c.h>
+#endif
 
 #include "common.h"
 #include "version.h" /* Generated file. The XRT version the driver works with */
@@ -621,7 +625,11 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->kaddr = (uint64_t)kaddr;
 	mb_conn->paddr = (uint64_t)virt_to_phys(kaddr);
 	get_random_bytes(kaddr, PAGE_SIZE);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+	mb_conn->crc32 = crc32_le(~0, kaddr, PAGE_SIZE);
+#else
 	mb_conn->crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
+#endif
 	mb_conn->version = XCL_MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
@@ -2057,6 +2065,8 @@ MODULE_VERSION(XRT_DRIVER_VERSION);
 MODULE_DESCRIPTION(XOCL_DRIVER_DESC);
 MODULE_AUTHOR("Lizhi Hou <lizhi.hou@xilinx.com>");
 MODULE_LICENSE("GPL v2");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)  || defined(RHEL_9_0_GE)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+MODULE_IMPORT_NS("DMA_BUF");
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)  || defined(RHEL_9_0_GE)
 MODULE_IMPORT_NS(DMA_BUF);
 #endif
