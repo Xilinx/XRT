@@ -70,7 +70,6 @@ else()
       string(CONCAT MP_OPTION "/MP" ${MSVC_PARALLEL_JOBS})
       add_compile_options(${MP_OPTION})
     endif()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /experimental:deterministic")
   else()
     # lots of warnings and all warnings as errors
     # add_compile_options(-Wall -Wextra -pedantic -Werror)
