@@ -54,6 +54,7 @@ if (MSVC)
     /OPT:REF    # eliminates functions and data that are never referenced
     /OPT:ICF    # enable COMDAT folding
     /LTCG       # enable Link time code generation
+    /experimental:deterministic # deterministic build
     )
   if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
     add_link_options(
