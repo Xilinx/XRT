@@ -349,6 +349,7 @@ enum class key_type
   xocl_ex_error_code2string,
 
   aie_read,
+  aie_write,
   aie_coredump
 };
 
@@ -4279,7 +4280,7 @@ struct aie_read : request
 {
   struct args {
     uint64_t  pid;
-    uint32_t  context_id;
+    uint16_t  context_id;
     uint16_t  col;
     uint16_t  row;
     uint32_t  offset;
@@ -4287,6 +4288,24 @@ struct aie_read : request
   };
   using result_type = std::vector<char>;
   static const key_type key = key_type::aie_read;
+
+  virtual std::any
+  get(const device*, const std::any&) const override = 0;
+};
+
+// Used for writing AIE memory/register of a specific tile within a ctx
+struct aie_write : request
+{
+  struct args {
+    uint64_t  pid;
+    uint16_t  context_id;
+    uint16_t  col;
+    uint16_t  row;
+    uint32_t  offset;
+    std::vector<char> data;
+  };
+  using result_type = size_t;  // returns bytes written
+  static const key_type key = key_type::aie_write;
 
   virtual std::any
   get(const device*, const std::any&) const override = 0;
