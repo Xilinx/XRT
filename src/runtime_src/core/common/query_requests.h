@@ -4289,7 +4289,7 @@ struct aie_read : request
   using result_type = std::vector<char>;
   static const key_type key = key_type::aie_read;
 
-  virtual std::any
+  std::any
   get(const device*, const std::any&) const override = 0;
 };
 
@@ -4307,7 +4307,7 @@ struct aie_write : request
   using result_type = size_t;  // returns bytes written
   static const key_type key = key_type::aie_write;
 
-  virtual std::any
+  std::any
   get(const device*, const std::any&) const override = 0;
 };
 
