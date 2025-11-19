@@ -70,7 +70,6 @@ class TestRunner : public JSONConfigurable {
  
   //variables
   private:
-    xrt_core::query::xclbin_name::type m_xclbin_type;
     std::string m_name;
     std::string m_description;
     bool m_explicit;

@@ -254,42 +254,6 @@ validate_binary_file(const std::string& binaryfile)
 }
 
 /*
- * Runs dpu sequence or elf flow for xrt_smi tests
-*/
-std::string
-dpu_or_elf(const std::shared_ptr<xrt_core::device>& dev, const xrt::xclbin& xclbin,
-              boost::property_tree::ptree& ptTest)
-{
-  if (xrt_core::device_query<xrt_core::query::pcie_id>(dev).device_id != 5696) { // device ID for npu3 in decimal
-  // Determine The DPU Kernel Name
-    auto xkernels = xclbin.get_kernels();
-
-    auto itr = std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-      auto name = k.get_name();
-      return name.rfind("DPU",0) == 0; // Starts with "DPU"
-    });
-
-    xrt::xclbin::kernel xkernel;
-    if (itr!=xkernels.end())
-      xkernel = *itr;
-    else {
-      XBValidateUtils::logger(ptTest, "Error", "No kernel with `DPU` found in the xclbin");
-      ptTest.put("status", XBValidateUtils::test_token_failed);
-    }
-    auto kernelName = xkernel.get_name();
-
-    return kernelName;
-  }
-  else {
-  // Elf flow
-    const auto elf_name = xrt_core::device_query<xrt_core::query::elf_name>(dev, xrt_core::query::elf_name::type::nop);
-    auto elf_path = XBValidateUtils::findPlatformFile(elf_name, ptTest);
-
-    return elf_path;
-  }
-}
-
-/*
 * Check if ELF flow is enabled
 */
 bool 
@@ -306,17 +270,6 @@ int
 get_opcode()
 {
   return XBUtilities::getElf() ? 3 : 1;
-}
-
-/*
-* Get the xclbin path
-*/
-std::string 
-get_xclbin_path(const std::shared_ptr<xrt_core::device>& device, xrt_core::query::xclbin_name::type test_type, boost::property_tree::ptree& ptTest)
-{
-  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(device, test_type);
-  std::string xclbin_path = XBValidateUtils::findPlatformFile(xclbin_name, ptTest);
-  return xclbin_path;
 }
 
 /*

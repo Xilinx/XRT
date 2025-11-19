@@ -58,8 +58,6 @@ enum class key_type
   device_class,
   xrt_smi_config,
   xrt_smi_lists,
-  xclbin_name,
-  elf_name,
 
   dma_threads_raw,
 
@@ -609,75 +607,6 @@ struct xrt_smi_lists : request
   {
     return value;
   }
-};
-
-/**
- * Used to retrieve the path to an xclbin file required for the
- * current device assuming a valid xclbin "type" is passed. The shim
- * decides the appropriate path and name to return, absolving XRT of
- * needing to know where to look.
- */
-struct xclbin_name : request
-{
-  enum class type {
-    validate,
-    validate_elf,
-    mobilenet_elf
-  };
-
-  static std::string
-  enum_to_str(const type& type)
-  {
-    switch (type) {
-      case type::validate:
-        return "validate";
-      case type::validate_elf:
-        return "validate_elf";
-      case type::mobilenet_elf:
-        return "mobilenet_elf";
-    }
-    return "unknown";
-  }
-
-  using result_type = std::string;
-  static const key_type key = key_type::xclbin_name;
-  static const char* name() { return "xclbin_name"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
-};
-
-/**
- * Used to retrieve the path to the elf file required for the
- * current device assuming a valid elf "type" is passed. The shim
- * decides the appropriate path and name to return, absolving XRT of
- * needing to know where to look.
- */
-struct elf_name : request
-{
-  enum class type {
-    nop,
-    mobilenet
-  };
-
-  static std::string
-  enum_to_str(const type& type)
-  {
-    switch (type) {
-      case type::nop:
-        return "nop";
-      case type::mobilenet:
-        return "mobilenet";
-    }
-    return "unknown";
-  }
-
-  using result_type = std::string;
-  static const key_type key = key_type::elf_name;
-  static const char* name() { return "elf_name"; }
-
-  virtual std::any
-  get(const device*, const std::any& req_type) const override = 0;
 };
 
 struct device_class : request

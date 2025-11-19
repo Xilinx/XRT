@@ -5,9 +5,9 @@
 # The version.cmake should only be include once in a project
 # otherwise configured files may be overwritten.  This may
 # not be a problem but is better to avoid it.
-if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
-  return()
-endif()
+#if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
+#  return()
+#endif()
 set(XRT_VERSION_CMAKE_INCLUDED TRUE CACHE INTERNAL "XRT version cmake included")
 
 # AMD promotion build works from copied sources with no git
