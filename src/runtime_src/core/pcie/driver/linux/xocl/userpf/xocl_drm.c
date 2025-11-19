@@ -20,7 +20,8 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || \
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) && \
+     (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))) || \
 	defined(RHEL_RELEASE_VERSION)
 #include <linux/pfn_t.h>
 #endif
