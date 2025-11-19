@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef EVENT_TRACE_CONFIG_H
-#define EVENT_TRACE_CONFIG_H
+#ifndef CONFIG_STRIX_H
+#define CONFIG_STRIX_H
 
+#include "EventTraceBase.h"
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <map>
@@ -27,42 +28,25 @@ constexpr uint32_t timestamp_bytes_default = 8;
  * using nlohmann::json and provides methods to parse and interpret 
  * firmware trace events.
  */
-class event_trace_config {
+class config_strix : public event_trace_config {
 public:
   /**
-   * @brief Individual argument definition for an event
+   * @brief STRx argument definition (extends base with width/start)
    */
-  struct event_arg {
-    std::string name;           // Argument name (e.g., "context_id")
-    uint32_t width;             // Bit width of the argument
-    uint32_t start;             // Starting bit position in payload 
-    std::string format;         // Display format (e.g., "08x", "d")
-    std::string lookup;         // Lookup table name (if any)
-    bool signed_field;          // Whether the field is signed
-    std::string description;    // Human-readable description
+  struct event_arg_strix : public event_trace_config::event_arg {
+    uint32_t width;  // Bit width of the argument
+    uint32_t start;  // Starting bit position in payload
   };
 
-  /**
-   * @brief Category definition from json configuration
-   */
-  struct category_info {
-    std::string name;           // Category name
-    std::string description;    // Category description
-    uint32_t id;               // Category ID
-  };
+
 
   /**
-   * @brief Event definition from json configuration
+   * @brief STRx event definition (extends base with args vector)
    */
-  struct event_info {
-    uint16_t id;                           // Event ID (index in events array)
-    std::string name;                      // Event name (e.g., "FRAME_START")
-    std::string description;               // Event description
-    std::vector<std::string> categories;   // Event category names
-    uint32_t category_mask;                // Category bitmask
-    std::string args_name;                 // Argument set name (from arg_sets)
-    std::vector<event_arg> args;           // Resolved event arguments
-    std::string type;                      // Event type (start/done/null)
+  struct event_info_strix : 
+  public event_trace_config::event_info 
+  {
+    std::vector<event_arg_strix> args;  // Resolved event arguments
   };
 
   /**
@@ -75,28 +59,18 @@ public:
   };
 
   /**
-   * @brief Parsed event data from firmware buffer
+   * @brief STRx decoded event (extends base with raw_payload)
    */
-  struct decoded_event_t {
-    uint64_t timestamp;                    // Event timestamp
-    uint16_t event_id;                     // Event ID
-    std::string name;                      // Event name
-    std::string description;               // Event description
-    std::vector<std::string> categories;   // Event categories
-    std::map<std::string, std::string> args; // Parsed arguments (name -> formatted value)
-    uint64_t raw_payload;                  // Raw payload data
+  struct decoded_event_t : public event_trace_config::decoded_event_t {
+    uint64_t raw_payload;  // Raw payload data
   };
 
 public:
   /**
-   * @brief Constructor - loads configuration from JSON file
-   * @param json_file_path Path to trace_events.json file
-   * 
-   * After construction, call validate_version_compatibility() with a device
-   * to check if the JSON file version matches the device/shim version.
+   * @brief Constructor
+   * @param json_config Configuration file
    */
-  explicit
-  event_trace_config(nlohmann::json json_config);
+  config_strix(nlohmann::json json_config);
 
   /**
    * @brief Parse a single trace event from raw values
@@ -150,20 +124,11 @@ public:
   }
 
   /**
-   * @brief Get category map 
-   * @return Map of category name to category info
+   * @brief Load configuration from a device
+   * @param device Device to load from
+   * @return Optional containing config if successful
    */
-  const std::map<std::string, category_info>&
-  get_categories() const {
-    return m_category_map;
-  }
-
-  /**
-   * @brief Load event trace configuration from device
-   * @param device Device to load configuration from
-   * @return Optional event trace config (nullopt if loading fails)
-   */
-  static std::optional<event_trace_config>
+  static std::optional<config_strix>
   load_config(const xrt_core::device* device);
 
 private:
@@ -182,49 +147,13 @@ private:
   uint32_t 
   parse_payload_bits();
 
-  /**
-   * @brief Parse major version from JSON
-   * @return major version (uint16_t)
-   */
-  uint16_t 
-  parse_major_version();
 
-  /**
-   * @brief Parse minor version from JSON
-   * @return minor version (uint16_t)
-   */
-  uint16_t 
-  parse_minor_version();
-
-  /**
-   * @brief Parse lookups section from JSON (optional)
-   * @return code_tables map
-   */
-  std::map<std::string, std::map<uint32_t, std::string>>
-  parse_code_table();
-
-  /**
-   * @brief Parse categories section from JSON
-   * @throws std::runtime_error if parsing fails
-   */
-  std::map<std::string, category_info>
-  parse_categories();
-
-  /**
-   * @brief Create category info from JSON object
-   * @param category JSON object for single category
-   * @param forced_id_categories Set of already used forced IDs
-   * @return category_info structure
-   * @throws std::runtime_error if validation fails
-   */
-  category_info
-  create_category_info(const nlohmann::json& category);
 
   /**
    * @brief Parse arg_sets section from JSON (optional)
    * @throws std::runtime_error if parsing fails
    */
-  std::map<std::string, std::vector<event_arg>>
+  std::map<std::string, std::vector<event_arg_strix>>
   parse_arg_sets();
 
   /**
@@ -234,7 +163,7 @@ private:
    * @return Vector of parsed event_arg structures
    * @throws std::runtime_error if validation fails
    */
-  std::vector<event_arg>
+  std::vector<event_arg_strix>
   parse_argument_list(const nlohmann::json& arg_list, 
                       const std::string& arg_set_name);
 
@@ -246,7 +175,7 @@ private:
    * @return event_arg structure
    * @throws std::runtime_error if validation fails
    */
-  event_arg
+  event_arg_strix
   create_event_arg(const nlohmann::json& arg_data, 
                   uint32_t start_position,
                   const std::string& arg_set_name);
@@ -255,7 +184,7 @@ private:
    * @brief Parse events section from JSON
    * @throws std::runtime_error if parsing fails
    */
-  std::map<uint16_t, event_info>
+  std::map<uint16_t, event_info_strix>
   parse_events();
 
   /**
@@ -265,7 +194,7 @@ private:
    * @return event_info structure
    * @throws std::runtime_error if validation fails
    */
-  event_info
+  event_info_strix
   create_event_info(const nlohmann::json& event_data);
 
   /**
@@ -276,7 +205,7 @@ private:
    */
   void
   parse_event_categories(const nlohmann::json& event_data,
-                         event_info& event);
+                         event_info_strix& event);
 
   /**
    * @brief Parse event arguments reference
@@ -286,7 +215,7 @@ private:
    */
   void
   parse_event_arguments(const nlohmann::json& event_data, 
-                        event_info& event);
+                        event_info_strix& event);
 
   /**
    * @brief Extract argument value from payload
@@ -297,7 +226,7 @@ private:
    */
   std::string
   extract_arg_value(uint64_t payload, 
-                    const event_arg& arg) const;
+                    const event_arg_strix& arg) const;
 
   /**
    * @brief Format value according to format specification
@@ -310,16 +239,11 @@ private:
               const std::string& format) const;
 
 private:
-  // Configuration data
-  nlohmann::json m_config;
+  // STRx-specific configuration data
   uint32_t m_event_bits;                                     // Event ID bit width
   uint32_t m_payload_bits;                                   // Payload bit width
-  uint16_t m_file_major;                                     // JSON file major version
-  uint16_t m_file_minor;                                     // JSON file minor version
-  std::map<std::string, std::map<uint32_t, std::string>> m_code_tables;  // Numeric code to string lookup tables
-  std::map<std::string, category_info> m_category_map;      // Category name -> info
-  std::map<std::string, std::vector<event_arg>> m_arg_templates;  // Argument set definitions
-  std::map<uint16_t, event_info> m_event_map;               // Event ID -> info
+  std::map<std::string, std::vector<event_arg_strix>> m_arg_templates;  // Argument set definitions
+  std::map<uint16_t, event_info_strix> m_event_map;               // Event ID -> info
 };
 
 /**
@@ -337,17 +261,16 @@ private:
  * std::string result = parser.parse(data_ptr, buf_size);
  * @endcode
  */
-class event_trace_parser {
+class parser_strix : public event_trace_parser {
 public:
-  using event_data_t = event_trace_config::event_data_t;
+  using event_data_t = config_strix::event_data_t;
+  using decoded_event_t = config_strix::decoded_event_t;
 
   /**
-   * @brief Constructor taking event trace configuration
-   * 
-   * @param config Reference to event trace configuration containing
-   *               event definitions, argument parsing rules, and categories
+   * @brief Constructor
+   * @param config Event trace configuration
    */
-  explicit event_trace_parser(const event_trace_config& config);
+  explicit parser_strix(const config_strix& config);
   
   /**
    * @brief Parse raw event trace buffer to formatted string
@@ -388,25 +311,10 @@ private:
   std::string 
   format_event(const event_data_t& event_data) const;
 
-  /**
-   * @brief Format event categories for table display (inline format)
-   * @param categories Vector of category strings
-   * @return Formatted category string without brackets
-   */
-  std::string 
-  format_categories(const std::vector<std::string>& categories) const;
-
-  /**
-   * @brief Format event arguments for table display (inline format)
-   * @param args Map of argument key-value pairs
-   * @return Formatted arguments string without parentheses
-   */
-  std::string 
-  format_arguments(const std::map<std::string, std::string>& args) const;
-
-  const event_trace_config& m_config; ///< Reference to event trace configuration
+    // Data members
+  const config_strix& m_config; ///< Reference to event trace configuration
 };
 
 } // namespace xrt_core::tools::xrt_smi
 
-#endif // EVENT_TRACE_CONFIG_H
+#endif // CONFIG_STRIX_H

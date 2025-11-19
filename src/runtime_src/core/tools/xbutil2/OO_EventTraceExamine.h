@@ -5,7 +5,7 @@
 
 #include "core/common/device.h"
 #include "tools/common/OptionOptions.h"
-#include "EventTrace.h"
+#include "EventTrace/EventTraceBase.h"
 
 namespace smi = xrt_core::tools::xrt_smi;
 
@@ -34,7 +34,7 @@ private:
   // Log generation methods for examine functionality
   std::string 
   generate_parsed_logs(const xrt_core::device* dev,
-                       const smi::event_trace_parser& parser,
+                       const std::unique_ptr<smi::event_trace_parser>& parser,
                        bool is_watch) const;
   std::string 
   generate_raw_logs(const xrt_core::device* dev, 

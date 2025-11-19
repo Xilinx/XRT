@@ -55,9 +55,10 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_EventTrace.cpp"
   "OO_FirmwareLogExamine.cpp"
   "OO_FirmwareLog.cpp"
-  "EventTrace.cpp"
   "FirmwareLog.cpp"
 )
+
+add_subdirectory(EventTrace)
 
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})

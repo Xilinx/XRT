@@ -78,15 +78,17 @@ get_category_map(const xrt_core::device* device) const {
   std::map<std::string, uint32_t> category_map;
 
   // Load categories from config
-  auto config = smi::event_trace_config::load_config(device);
-  
-  if (config.has_value()) {
+  try {
+    auto config = smi::event_trace_config::create_from_device(device);
+    
     // Get categories from config and convert ID to mask
     const auto& config_categories = config->get_categories();
     for (const auto& [name, info] : config_categories) {
       uint32_t mask = (1U << info.id);
       category_map[name] = mask;
     }
+  } catch (const std::exception&) {
+    // Config loading failed, return empty map
   }
   return category_map;
 }
