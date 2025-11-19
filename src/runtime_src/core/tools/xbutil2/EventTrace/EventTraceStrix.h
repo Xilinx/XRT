@@ -114,24 +114,6 @@ public:
   event_data_t 
   parse_buffer(const uint8_t* buffer_ptr) const;
 
-  /**
-   * @brief Get JSON file version
-   * @return pair of (major, minor) version from JSON file
-   */
-  std::pair<uint16_t, uint16_t>
-  get_file_version() const {
-    return {m_file_major, m_file_minor};
-  }
-
-  /**
-   * @brief Load configuration from a device
-   * @param device Device to load from
-   * @return Optional containing config if successful
-   */
-  static std::optional<config_strix>
-  load_config(const xrt_core::device* device);
-
-private:
 private:
   /**
    * @brief Parse event_bits from JSON data_format
@@ -270,7 +252,7 @@ public:
    * @brief Constructor
    * @param config Event trace configuration
    */
-  explicit parser_strix(const config_strix& config);
+  explicit parser_strix(config_strix config);
   
   /**
    * @brief Parse raw event trace buffer to formatted string
@@ -286,7 +268,7 @@ public:
    */
   std::string 
   parse(const uint8_t* data_ptr, 
-        size_t buf_size) const;
+        size_t buf_size) const override;
 
 private:
 
@@ -312,7 +294,7 @@ private:
   format_event(const event_data_t& event_data) const;
 
     // Data members
-  const config_strix& m_config; ///< Reference to event trace configuration
+  config_strix m_config; 
 };
 
 } // namespace xrt_core::tools::xrt_smi

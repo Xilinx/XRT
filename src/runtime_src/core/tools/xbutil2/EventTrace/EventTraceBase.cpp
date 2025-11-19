@@ -189,7 +189,8 @@ create_from_device(const xrt_core::device* device)
 
 std::unique_ptr<event_trace_parser>
 event_trace_parser::
-create_from_config(const std::unique_ptr<event_trace_config>& config, const xrt_core::device* device)
+create_from_config(const std::unique_ptr<event_trace_config>& config,
+                   const xrt_core::device* device)
 {
   // Detect device type using same logic as create_from_device
   const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
@@ -197,9 +198,9 @@ create_from_config(const std::unique_ptr<event_trace_config>& config, const xrt_
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
   
   if (is_strix_hardware(hardware_type)) {
-    return std::make_unique<parser_strix>(static_cast<const config_strix&>(*config));
+    return std::make_unique<parser_strix>(dynamic_cast<const config_strix&>(*config));
   } else {
-    return std::make_unique<parser_npu3>(static_cast<const config_npu3&>(*config));
+    return std::make_unique<parser_npu3>(dynamic_cast<const config_npu3&>(*config));
   }
 }
 

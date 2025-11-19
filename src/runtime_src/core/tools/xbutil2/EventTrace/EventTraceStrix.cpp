@@ -21,22 +21,15 @@ config_strix(nlohmann::json json_config)
 {
 }
 
-std::optional<config_strix>
-config_strix::
-load_config(const xrt_core::device* device)
-{
-  auto json_config = load_json_from_device(device);
-  return config_strix(json_config);
-}
-
 uint32_t
 config_strix::
 parse_event_bits() 
 {
-  if (!m_config.contains("data_format") || !m_config["data_format"].contains("event_bits")) {
+  const auto& config = get_config();
+  if (!config.contains("data_format") || !config["data_format"].contains("event_bits")) {
     return event_bits_default;
   }
-  uint32_t event_bits_val = m_config["data_format"]["event_bits"].get<uint32_t>();
+  uint32_t event_bits_val = config["data_format"]["event_bits"].get<uint32_t>();
   if (event_bits_val == 0) {
     throw std::runtime_error("Event bits must be greater than 0");
   }
@@ -47,10 +40,11 @@ uint32_t
 config_strix::
 parse_payload_bits() 
 {
-  if (!m_config.contains("data_format") || !m_config["data_format"].contains("payload_bits")) {
+  const auto& config = get_config();
+  if (!config.contains("data_format") || !config["data_format"].contains("payload_bits")) {
     return payload_bits_default;
   }
-  uint32_t payload_bits_val = m_config["data_format"]["payload_bits"].get<uint32_t>();
+  uint32_t payload_bits_val = config["data_format"]["payload_bits"].get<uint32_t>();
   if (payload_bits_val == 0) {
     throw std::runtime_error("Payload bits must be greater than 0");
   }
@@ -62,10 +56,11 @@ config_strix::
 parse_arg_sets()
 {
   std::map<std::string, std::vector<event_arg_strix>> arg_templates;
-  if (!m_config.contains("arg_sets")) {
+  const auto& config = get_config();
+  if (!config.contains("arg_sets")) {
     return arg_templates;
   }
-  for (auto it = m_config["arg_sets"].begin(); it != m_config["arg_sets"].end(); ++it) {
+  for (auto it = config["arg_sets"].begin(); it != config["arg_sets"].end(); ++it) {
     std::string arg_name = it.key();
     std::vector<event_arg_strix> args = parse_argument_list(it.value(), arg_name);
     arg_templates[arg_name] = args;
@@ -129,7 +124,8 @@ config_strix::
 parse_events()
 {
   std::map<uint16_t, event_info_strix> event_map;
-  for (const auto& it : m_config["events"].items()) {
+  auto config = get_config();
+  for (const auto& it : config["events"].items()) {
     const nlohmann::json& event_data = it.value();
     event_info_strix event = create_event_info(event_data);
     event.id = static_cast<uint16_t>(std::stoul(it.key()));
@@ -162,8 +158,9 @@ parse_event_categories(const nlohmann::json& event_data,
     for (const auto& cat_name : event_data["categories"]) {
       std::string cat_name_str = cat_name.get<std::string>();
       event.categories.push_back(cat_name_str);
-      auto cat_it = m_category_map.find(cat_name_str);
-      if (cat_it == m_category_map.end()) {
+      const auto& category_map = get_category_map();
+      auto cat_it = category_map.find(cat_name_str);
+      if (cat_it == category_map.end()) {
         throw std::runtime_error("Event '" + event.name + "' references unknown category: " + cat_name_str);
       }
       const auto& cat_info = cat_it->second;
@@ -265,8 +262,9 @@ extract_arg_value(uint64_t payload,
     value |= (~mask);
   }
   if (!arg.lookup.empty()) {
-    auto lookup_it = m_code_tables.find(arg.lookup);
-    if (lookup_it != m_code_tables.end()) {
+    const auto& code_tables = get_code_tables();
+    auto lookup_it = code_tables.find(arg.lookup);
+    if (lookup_it != code_tables.end()) {
       auto value_it = lookup_it->second.find(static_cast<uint32_t>(value));
       if (value_it != lookup_it->second.end()) {
         return value_it->second;
@@ -305,8 +303,8 @@ format_value(uint64_t value, const std::string& format) const
 }
 
 parser_strix::
-parser_strix(const config_strix& config) 
-  : m_config(config) {}
+parser_strix(config_strix config) 
+  : m_config(std::move(config)) {}
 
 std::string
 parser_strix::

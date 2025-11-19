@@ -20,23 +20,16 @@ config_npu3(nlohmann::json json_config)
 {
 }
 
-std::optional<config_npu3>
-config_npu3::
-load_config(const xrt_core::device* device)
-{
-  auto json_config = load_json_from_device(device);
-  return config_npu3(json_config);
-}
-
 std::map<std::string, std::vector<config_npu3::event_arg_npu3>>
 config_npu3::
 parse_arg_sets()
 {
   std::map<std::string, std::vector<event_arg_npu3>> arg_templates;
-  if (!m_config.contains("arg_sets")) {
+  const auto& config = get_config();
+  if (!config.contains("arg_sets")) {
     return arg_templates;
   }
-  for (auto it = m_config["arg_sets"].begin(); it != m_config["arg_sets"].end(); ++it) {
+  for (auto it = config["arg_sets"].begin(); it != config["arg_sets"].end(); ++it) {
     std::string arg_name = it.key();
     std::vector<event_arg_npu3> args = parse_argument_list(it.value(), arg_name);
     arg_templates[arg_name] = args;
@@ -88,11 +81,12 @@ config_npu3::
 parse_events()
 {
   std::map<uint16_t, event_info_npu3> event_map;
-  if (!m_config.contains("events")) {
+  auto config = get_config();
+  if (!config.contains("events")) {
     return event_map;
   }
   
-  for (const auto& it : m_config["events"].items()) {
+  for (const auto& it : config["events"].items()) {
     const nlohmann::json& event_data = it.value();
     event_info_npu3 event = create_event_info(event_data);
     event.id = static_cast<uint16_t>(std::stoul(it.key()));
@@ -127,8 +121,9 @@ parse_event_categories(const nlohmann::json& event_data,
     for (const auto& cat_name : event_data["categories"]) {
       std::string cat_name_str = cat_name.get<std::string>();
       event.categories.push_back(cat_name_str);
-      auto cat_it = m_category_map.find(cat_name_str);
-      if (cat_it == m_category_map.end()) {
+      const auto& category_map = get_category_map();
+      auto cat_it = category_map.find(cat_name_str);
+      if (cat_it == category_map.end()) {
         throw std::runtime_error("Event '" + event.name + "' references unknown category: " + cat_name_str);
       }
       const auto& cat_info = cat_it->second;
@@ -161,19 +156,18 @@ parse_buffer(const uint8_t* buffer_ptr) const
   const uint8_t* current_ptr = buffer_ptr;
   
   // Parse timestamp (8 bytes)
-  uint64_t timestamp;
+  uint64_t timestamp = 0;
   std::memcpy(&timestamp, current_ptr, sizeof(uint64_t));
   current_ptr += sizeof(uint64_t);
   
   // Parse magic byte (should be 0xAA)
   uint8_t magic = *current_ptr++;
   if (magic != npu3_magic_byte) {
-    throw std::runtime_error("Invalid NPU3 event magic byte: 0x" + 
-                           (std::ostringstream() << std::hex << static_cast<int>(magic)).str());
+    throw std::runtime_error("Invalid NPU3 event magic byte: 0x" + std::to_string(static_cast<int>(magic)));
   }
   
   // Parse category_id (2 bytes)
-  uint16_t category_id;
+  uint16_t category_id = 0;
   std::memcpy(&category_id, current_ptr, sizeof(uint16_t));
   current_ptr += sizeof(uint16_t);
   
@@ -263,8 +257,9 @@ extract_arg_value(const uint8_t* payload_ptr,
       
       // Check for lookup
       if (!arg.lookup.empty()) {
-        auto lookup_it = m_code_tables.find(arg.lookup);
-        if (lookup_it != m_code_tables.end()) {
+        const auto& code_tables = get_code_tables();
+        auto lookup_it = code_tables.find(arg.lookup);
+        if (lookup_it != code_tables.end()) {
           auto value_it = lookup_it->second.find(static_cast<uint32_t>(value));
           if (value_it != lookup_it->second.end()) {
             ss << value_it->second;
@@ -284,8 +279,9 @@ extract_arg_value(const uint8_t* payload_ptr,
     
     // Check for lookup
     if (!arg.lookup.empty()) {
-      auto lookup_it = m_code_tables.find(arg.lookup);
-      if (lookup_it != m_code_tables.end()) {
+      const auto& code_tables = get_code_tables();
+      auto lookup_it = code_tables.find(arg.lookup);
+      if (lookup_it != code_tables.end()) {
         auto value_it = lookup_it->second.find(static_cast<uint32_t>(value));
         if (value_it != lookup_it->second.end()) {
           return value_it->second;
@@ -304,11 +300,13 @@ size_t
 config_npu3::
 get_type_size(const std::string& type) const
 {
+  //NOLINTBEGIN (cppcoreguidelines-avoid-magic-numbers)
   if (type == "uint8") return 1;
   if (type == "uint16") return 2;
   if (type == "uint32") return 4;
   if (type == "uint64") return 8;
   throw std::runtime_error("Unknown type: " + type);
+  //NOLINTEND (cppcoreguidelines-avoid-magic-numbers)
 }
 
 std::string
@@ -342,8 +340,8 @@ format_value(uint64_t value, const std::string& format) const
 }
 
 parser_npu3::
-parser_npu3(const config_npu3& config)
-  : m_config(config)
+parser_npu3(config_npu3 config)
+  : m_config(std::move(config))
 {
 }
 

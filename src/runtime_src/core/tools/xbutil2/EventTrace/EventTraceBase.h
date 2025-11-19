@@ -88,6 +88,12 @@ public:
    */
   virtual ~event_trace_config() = default;
 
+  // Default copy and move operations
+  event_trace_config(const event_trace_config&) = default;
+  event_trace_config& operator=(const event_trace_config&) = default;
+  event_trace_config(event_trace_config&&) = default;
+  event_trace_config& operator=(event_trace_config&&) = default;
+
 protected:
   /**
    * @brief Constructor
@@ -115,7 +121,37 @@ protected:
   category_info
   create_category_info(const nlohmann::json& category);
 
-protected:
+  // Protected accessors for derived classes
+  const nlohmann::json& 
+  get_config() const 
+  { return m_config; }
+
+  uint16_t 
+  get_file_major() const 
+  { return m_file_major; }
+
+  uint16_t 
+  get_file_minor() const 
+  { return m_file_minor; }
+
+  const std::map<std::string, std::map<uint32_t, std::string>>& 
+  get_code_tables() const 
+  { return m_code_tables; }
+
+  const std::map<std::string, category_info>& 
+  get_category_map() const 
+  { return m_category_map; }
+
+  /**
+   * @brief Get file version
+   * @return pair of (major, minor)
+   */
+  std::pair<uint16_t, uint16_t>
+  get_file_version() const {
+    return {m_file_major, m_file_minor};
+  }
+
+private:
   // Common data members
   nlohmann::json m_config;
   uint16_t m_file_major;
@@ -153,6 +189,12 @@ public:
    * @brief Virtual destructor (public for unique_ptr)
    */
   virtual ~event_trace_parser() = default;
+
+  // Default copy and move operations
+  event_trace_parser(const event_trace_parser&) = default;
+  event_trace_parser& operator=(const event_trace_parser&) = default;
+  event_trace_parser(event_trace_parser&&) = default;
+  event_trace_parser& operator=(event_trace_parser&&) = default;
 
 protected:
   /**

@@ -65,14 +65,6 @@ public:
   explicit config_npu3(nlohmann::json json_config);
 
   /**
-   * @brief Load configuration from a device
-   * @param device Device to load from
-   * @return Optional containing config if successful
-   */
-  static std::optional<config_npu3>
-  load_config(const xrt_core::device* device);
-
-  /**
    * @brief Parse NPU3 event from buffer
    * @param buffer_ptr Pointer to event data
    * @return Event data structure
@@ -104,14 +96,7 @@ public:
   std::optional<event_info_npu3>
   get_event_info(uint16_t event_id) const;
 
-  /**
-   * @brief Get file version
-   * @return pair of (major, minor)
-   */
-  std::pair<uint16_t, uint16_t>
-  get_file_version() const {
-    return {m_file_major, m_file_minor};
-  }
+
 
 private:
   // Parse argument templates from JSON
@@ -171,7 +156,7 @@ public:
    * @param config Event trace configuration
    */
   explicit 
-  parser_npu3(const config_npu3& config);
+  parser_npu3(config_npu3 config);
 
   /**
    * @brief Parse raw event trace buffer
@@ -186,8 +171,7 @@ private:
   // Format decoded event as table row
   std::string format_event(const decoded_event_t& decoded_event) const;
 
-  // Reference to configuration
-  const config_npu3& m_config;
+  config_npu3 m_config;
 };
 
 } // namespace xrt_core::tools::xrt_smi
