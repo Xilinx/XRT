@@ -769,7 +769,7 @@ namespace xdp {
     //       core might be running infinitely.
     if (metadata->getUseUserControl())
       coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-    coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+    coreTraceEndEvent = XAIE_EVENT_USER_EVENT_7_CORE;
 
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
