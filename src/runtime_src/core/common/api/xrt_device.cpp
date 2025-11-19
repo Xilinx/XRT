@@ -570,7 +570,6 @@ write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
 {
   return xdp::native::profiling_wrapper("xrt::device::write_aie_reg",
     [this, &col, row, reg_addr, &reg_val, context_id, pid] {
-      auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
       is_4byte_aligned_or_throw(reg_addr); // DRC check
 
       xrt_core::query::aie_write::args args{};
