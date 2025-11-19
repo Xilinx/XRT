@@ -11,9 +11,9 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 // Forward declaration for device
 namespace xrt_core { class device; }
@@ -165,7 +165,8 @@ public:
    * @return Formatted string
    */
   std::string 
-  parse(const uint8_t* data_ptr, size_t buf_size) const;
+  parse(const uint8_t* data_ptr, 
+        size_t buf_size) const override;
 
 private:
   // Format decoded event as table row

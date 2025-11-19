@@ -4,13 +4,13 @@
 #ifndef EVENT_TRACE_BASE_H
 #define EVENT_TRACE_BASE_H
 
-#include "core/common/json/nlohmann/json.hpp"
 #include "core/common/device.h"
+#include "core/common/json/nlohmann/json.hpp"
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 namespace xrt_core::tools::xrt_smi{
 
@@ -20,7 +20,19 @@ namespace xrt_core::tools::xrt_smi{
  * Provides common functionality shared between STRx and NPU3 implementations.
  */
 class event_trace_config {
+
 public:
+  // Default copy and move operations
+  event_trace_config(const event_trace_config&) = default;
+
+  event_trace_config& 
+  operator=(const event_trace_config&) = default;
+
+  event_trace_config(event_trace_config&&) = default;
+
+  event_trace_config& 
+  operator=(event_trace_config&&) = default;
+
   /**
    * @brief Category definition
    */
@@ -88,18 +100,13 @@ public:
    */
   virtual ~event_trace_config() = default;
 
-  // Default copy and move operations
-  event_trace_config(const event_trace_config&) = default;
-  event_trace_config& operator=(const event_trace_config&) = default;
-  event_trace_config(event_trace_config&&) = default;
-  event_trace_config& operator=(event_trace_config&&) = default;
-
 protected:
   /**
    * @brief Constructor
    * @param json_config Parsed JSON configuration
    */
-  explicit event_trace_config(nlohmann::json json_config);
+  explicit 
+  event_trace_config(nlohmann::json json_config);
 
   /**
    * @brief Load JSON configuration from device
@@ -112,12 +119,16 @@ protected:
   // Common parsing methods
   uint16_t
   parse_major_version();
+
   uint16_t
   parse_minor_version();
+
   std::map<std::string, std::map<uint32_t, std::string>>
   parse_code_table();
+
   std::map<std::string, category_info>
   parse_categories();
+
   category_info
   create_category_info(const nlohmann::json& category);
 
@@ -152,7 +163,7 @@ protected:
   }
 
 private:
-  // Common data members
+  // Members common between strix and npu3
   nlohmann::json m_config;
   uint16_t m_file_major;
   uint16_t m_file_minor;
@@ -174,7 +185,8 @@ public:
    * @return Unique pointer to parser (STRx or NPU3)
    */
   static std::unique_ptr<event_trace_parser>
-  create_from_config(const std::unique_ptr<event_trace_config>& config, const xrt_core::device* device);
+  create_from_config(const std::unique_ptr<event_trace_config>& config, 
+                     const xrt_core::device* device);
 
   /**
    * @brief Parse raw event trace buffer to formatted string (pure virtual)
@@ -183,7 +195,8 @@ public:
    * @return Formatted event trace output with parsed events
    */
   virtual std::string
-  parse(const uint8_t* data_ptr, size_t buf_size) const = 0;
+  parse(const uint8_t* data_ptr, 
+        size_t buf_size) const = 0;
 
   /**
    * @brief Virtual destructor (public for unique_ptr)
@@ -192,9 +205,14 @@ public:
 
   // Default copy and move operations
   event_trace_parser(const event_trace_parser&) = default;
-  event_trace_parser& operator=(const event_trace_parser&) = default;
+
+  event_trace_parser& 
+  operator=(const event_trace_parser&) = default;
+
   event_trace_parser(event_trace_parser&&) = default;
-  event_trace_parser& operator=(event_trace_parser&&) = default;
+
+  event_trace_parser& 
+  operator=(event_trace_parser&&) = default;
 
 protected:
   /**

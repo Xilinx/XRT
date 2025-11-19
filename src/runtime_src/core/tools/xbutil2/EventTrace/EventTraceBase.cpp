@@ -4,12 +4,14 @@
 #include "EventTraceBase.h"
 #include "EventTraceStrix.h"
 #include "EventTraceNpu3.h"
-#include "tools/common/XBUtilities.h"
+
 #include "core/common/smi.h"
 #include "core/common/query_requests.h"
+#include "tools/common/XBUtilities.h"
+
+#include <memory>
 #include <stdexcept>
 #include <sstream>
-#include <memory>
 
 namespace xrt_core::tools::xrt_smi{
 

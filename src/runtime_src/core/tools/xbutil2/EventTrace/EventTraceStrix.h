@@ -8,9 +8,9 @@
 #include "core/common/json/nlohmann/json.hpp"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 // Forward declaration for device
 namespace xrt_core { class device; }
