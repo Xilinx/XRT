@@ -293,7 +293,7 @@ xclAllocBO(size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl)
   if (result)
     throw std::bad_alloc();
 
-  xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
+  xclLog(XRT_DEBUG, "%s: size %lld, flags 0x%x", __func__, info.size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return std::make_unique<buffer_object>(this, info.handle, hwctx_hdl);
