@@ -803,7 +803,20 @@ int shim::dev_init()
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
-    mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
+
+    // Enable AIO only if configured in xrt.ini (Runtime.qdma_aio_enable = true)
+    // Default is false as QDMA streaming services are used now
+    if (xrt_core::config::get_qdma_aio_enable()) {
+        mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
+        if (mAioEnabled) {
+            xrt_logmsg(XRT_INFO, "%s: QDMA AIO enabled (context: %lu, max events: %d)",
+                    __func__, static_cast<unsigned long>(mAioContext), SHIM_QDMA_AIO_EVT_MAX);
+        } else {
+            xrt_logmsg(XRT_WARNING, "%s: Failed to enable QDMA AIO", __func__);
+        }
+    } else {
+        mAioEnabled = false;
+    }
 
     return 0;
 }
