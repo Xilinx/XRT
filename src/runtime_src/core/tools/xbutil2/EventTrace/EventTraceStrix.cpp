@@ -2,7 +2,7 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "core/common/json/nlohmann/json.hpp"
-#include "EventTrace.h"
+#include "EventTraceStrix.h"
 #include "tools/common/XBUtilities.h"
 
 #include <algorithm>
@@ -11,157 +11,72 @@
 
 namespace xrt_core::tools::xrt_smi{
 
-event_trace_config::
-event_trace_config(nlohmann::json json_config)
-  : m_config(std::move(json_config)),
+config_strix::
+config_strix(nlohmann::json json_config)
+  : event_trace_config(json_config),
     m_event_bits(parse_event_bits()),
     m_payload_bits(parse_payload_bits()),
-    m_file_major(parse_major_version()),
-    m_file_minor(parse_minor_version()),
-    m_code_tables(parse_code_table()),
-    m_category_map(parse_categories()),
     m_arg_templates(parse_arg_sets()),
     m_event_map(parse_events())
-{}
-
-std::optional<event_trace_config>
-event_trace_config::
-load_config(const xrt_core::device* device)
 {
-  if (!device) {
-    throw std::runtime_error("Invalid device");
-  }
-
-  auto archive = XBUtilities::open_archive(device);
-  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
-  auto& config_data = artifacts_repo["trace_events.json"];
-  std::string config_content(config_data.begin(), config_data.end());
-  
-  auto json_config = nlohmann::json::parse(config_content);
-  return event_trace_config(json_config);
 }
 
-uint32_t event_trace_config::
+uint32_t
+config_strix::
 parse_event_bits() 
 {
-  if (!m_config.contains("data_format") || !m_config["data_format"].contains("event_bits")) {
+  const auto& config = get_config();
+  if (!config.contains("data_format") || !config["data_format"].contains("event_bits")) {
     return event_bits_default;
   }
-  uint32_t event_bits_val = m_config["data_format"]["event_bits"].get<uint32_t>();
+  uint32_t event_bits_val = config["data_format"]["event_bits"].get<uint32_t>();
   if (event_bits_val == 0) {
     throw std::runtime_error("Event bits must be greater than 0");
   }
   return event_bits_val;
 }
 
-uint32_t event_trace_config::
+uint32_t
+config_strix::
 parse_payload_bits() 
 {
-  if (!m_config.contains("data_format") || !m_config["data_format"].contains("payload_bits")) {
+  const auto& config = get_config();
+  if (!config.contains("data_format") || !config["data_format"].contains("payload_bits")) {
     return payload_bits_default;
   }
-  uint32_t payload_bits_val = m_config["data_format"]["payload_bits"].get<uint32_t>();
+  uint32_t payload_bits_val = config["data_format"]["payload_bits"].get<uint32_t>();
   if (payload_bits_val == 0) {
     throw std::runtime_error("Payload bits must be greater than 0");
   }
   return payload_bits_val;
 }
 
-uint16_t event_trace_config::
-parse_major_version() 
-{
-  if (m_config.contains("version") && m_config["version"].contains("major")) {
-    return m_config["version"]["major"].get<uint16_t>();
-  }
-  return 0;
-}
-
-uint16_t event_trace_config::
-parse_minor_version() 
-{
-  if (m_config.contains("version") && m_config["version"].contains("minor")) {
-    return m_config["version"]["minor"].get<uint16_t>();
-  }
-  return 0;
-}
-
-std::map<std::string, std::map<uint32_t, std::string>>
-event_trace_config::
-parse_code_table()
-{
-  std::map<std::string, std::map<uint32_t, std::string>> code_tables;
-  if (!m_config.contains("lookups")) {
-    return code_tables;
-  }
-  for (const auto& [lookup_name, lookup_entries] : m_config["lookups"].items()) {
-    std::map<uint32_t, std::string> lookup_map;
-    for (const auto& [key, value] : lookup_entries.items()) {
-      lookup_map[std::stoul(key)] = value.get<std::string>();
-    }
-    code_tables[lookup_name] = lookup_map;
-  }
-  return code_tables;
-}
-
-std::map<std::string, event_trace_config::category_info>
-event_trace_config::
-parse_categories()
-{
-  std::map<std::string, category_info> category_map;
-  if (!m_config.contains("categories")) {
-    throw std::runtime_error("Missing required 'categories' section in JSON");
-  }
-  for (const auto& category : m_config["categories"]) {
-    if (!category.contains("name")) {
-      throw std::runtime_error("Category missing required 'name' field");
-    }
-    std::string name = category["name"].get<std::string>();
-    category_info cat_info = create_category_info(category);
-    category_map[name] = cat_info;
-  }
-  return category_map;
-}
-
-event_trace_config::category_info
-event_trace_config::
-create_category_info(const nlohmann::json& category) 
-{
-  category_info cat_info;
-  cat_info.name = category["name"].get<std::string>();
-  cat_info.description = category.contains("description") ? 
-                         category["description"].get<std::string>() : "";
-  if (category.contains("id")) {
-    uint32_t id = category["id"].get<uint32_t>();
-    cat_info.id = id;
-  }
-  return cat_info;
-}
-
-std::map<std::string, std::vector<event_trace_config::event_arg>>
-event_trace_config::
+std::map<std::string, std::vector<config_strix::event_arg_strix>>
+config_strix::
 parse_arg_sets()
 {
-  std::map<std::string, std::vector<event_arg>> arg_templates;
-  if (!m_config.contains("arg_sets")) {
+  std::map<std::string, std::vector<event_arg_strix>> arg_templates;
+  const auto& config = get_config();
+  if (!config.contains("arg_sets")) {
     return arg_templates;
   }
-  for (auto it = m_config["arg_sets"].begin(); it != m_config["arg_sets"].end(); ++it) {
+  for (auto it = config["arg_sets"].begin(); it != config["arg_sets"].end(); ++it) {
     std::string arg_name = it.key();
-    std::vector<event_arg> args = parse_argument_list(it.value(), arg_name);
+    std::vector<event_arg_strix> args = parse_argument_list(it.value(), arg_name);
     arg_templates[arg_name] = args;
   }
   return arg_templates;
 }
 
-std::vector<event_trace_config::event_arg>
-event_trace_config::
+std::vector<config_strix::event_arg_strix>
+config_strix::
 parse_argument_list(const nlohmann::json& arg_list, 
                     const std::string& arg_set_name)
 {
-  std::vector<event_arg> args;
+  std::vector<event_arg_strix> args;
   uint32_t start_position = 0;
   for (const auto& arg_data : arg_list) {
-    event_arg arg = create_event_arg(arg_data, start_position, arg_set_name);
+    event_arg_strix arg = create_event_arg(arg_data, start_position, arg_set_name);
     start_position += arg.width;
     if (start_position > m_payload_bits) {
       throw std::runtime_error("Argument '" 
@@ -176,8 +91,8 @@ parse_argument_list(const nlohmann::json& arg_list,
   return args;
 }
 
-event_trace_config::event_arg
-event_trace_config::
+config_strix::event_arg_strix
+config_strix::
 create_event_arg(const nlohmann::json& arg_data, 
                  uint32_t start_position, 
                  const std::string& arg_set_name) 
@@ -188,7 +103,7 @@ create_event_arg(const nlohmann::json& arg_data,
   if (!arg_data.contains("width")) {
     throw std::runtime_error("Argument in arg_set '" + arg_set_name + "' missing 'width' field");
   }
-  event_arg arg;
+  event_arg_strix arg;
   arg.name = arg_data["name"].get<std::string>();
   arg.width = arg_data["width"].get<uint32_t>();
   arg.start = start_position;
@@ -204,25 +119,26 @@ create_event_arg(const nlohmann::json& arg_data,
   return arg;
 }
 
-std::map<uint16_t, event_trace_config::event_info>
-event_trace_config::
+std::map<uint16_t, config_strix::event_info_strix>
+config_strix::
 parse_events()
 {
-  std::map<uint16_t, event_info> event_map;
-  for (const auto& it : m_config["events"].items()) {
+  std::map<uint16_t, event_info_strix> event_map;
+  auto config = get_config();
+  for (const auto& it : config["events"].items()) {
     const nlohmann::json& event_data = it.value();
-    event_info event = create_event_info(event_data);
+    event_info_strix event = create_event_info(event_data);
     event.id = static_cast<uint16_t>(std::stoul(it.key()));
     event_map[event.id] = event;
   }
   return event_map;
 }
 
-event_trace_config::event_info
-event_trace_config::
+config_strix::event_info_strix
+config_strix::
 create_event_info(const nlohmann::json& event_data)
 {
-  event_info event;
+  event_info_strix event;
   event.name = event_data["name"].get<std::string>();
   event.description = event_data.contains("description") ? 
                       event_data["description"].get<std::string>() : "";
@@ -233,17 +149,18 @@ create_event_info(const nlohmann::json& event_data)
 }
 
 void
-event_trace_config::
+config_strix::
 parse_event_categories(const nlohmann::json& event_data, 
-                       event_info& event)
+                       event_info_strix& event)
 {
   uint32_t category_mask = 0;
   if (event_data.contains("categories")) {
     for (const auto& cat_name : event_data["categories"]) {
       std::string cat_name_str = cat_name.get<std::string>();
       event.categories.push_back(cat_name_str);
-      auto cat_it = m_category_map.find(cat_name_str);
-      if (cat_it == m_category_map.end()) {
+      const auto& category_map = get_category_map();
+      auto cat_it = category_map.find(cat_name_str);
+      if (cat_it == category_map.end()) {
         throw std::runtime_error("Event '" + event.name + "' references unknown category: " + cat_name_str);
       }
       const auto& cat_info = cat_it->second;
@@ -254,9 +171,9 @@ parse_event_categories(const nlohmann::json& event_data,
 }
 
 void
-event_trace_config::
+config_strix::
 parse_event_arguments(const nlohmann::json& event_data, 
-                      event_info& event)
+                      event_info_strix& event)
 {
   event.args_name = event_data.contains("args_name") ? event_data["args_name"].get<std::string>() : "";
   if (!event.args_name.empty()) {
@@ -268,8 +185,8 @@ parse_event_arguments(const nlohmann::json& event_data,
   }
 }
 
-event_trace_config::decoded_event_t
-event_trace_config::
+config_strix::decoded_event_t
+config_strix::
 decode_event(const event_data_t& event_data) const 
 {
   decoded_event_t decoded;
@@ -278,7 +195,7 @@ decode_event(const event_data_t& event_data) const
   decoded.raw_payload = event_data.payload;
   auto event_it = m_event_map.find(event_data.event_id);
   if (event_it != m_event_map.end()) {
-    const event_info& event = event_it->second;
+    const event_info_strix& event = event_it->second;
     decoded.name = event.name;
     decoded.description = event.description;
     decoded.categories = event.categories;
@@ -311,11 +228,11 @@ combined = 0x00140094ee0000f
 
 Thus using the same mechanism for extraction
 */
-event_trace_config::event_data_t
-event_trace_config::
-parse_buffer(const uint8_t* buffer_ptr) const
+config_strix::event_data_t
+config_strix::
+parse_buffer(const uint8_t* data_ptr) const
 {
-  const uint8_t* current_ptr = buffer_ptr;
+  const uint8_t* current_ptr = data_ptr;
   
   // Parse timestamp (always 8 bytes)
   uint64_t timestamp = *reinterpret_cast<const uint64_t*>(current_ptr);
@@ -335,8 +252,9 @@ parse_buffer(const uint8_t* buffer_ptr) const
 }
 
 std::string
-event_trace_config::
-extract_arg_value(uint64_t payload, const event_arg& arg) const 
+config_strix::
+extract_arg_value(uint64_t payload, 
+                  const event_arg_strix& arg) const 
 {
   uint64_t mask = (1ULL << arg.width) - 1;
   uint64_t value = (payload >> arg.start) & mask;
@@ -344,8 +262,9 @@ extract_arg_value(uint64_t payload, const event_arg& arg) const
     value |= (~mask);
   }
   if (!arg.lookup.empty()) {
-    auto lookup_it = m_code_tables.find(arg.lookup);
-    if (lookup_it != m_code_tables.end()) {
+    const auto& code_tables = get_code_tables();
+    auto lookup_it = code_tables.find(arg.lookup);
+    if (lookup_it != code_tables.end()) {
       auto value_it = lookup_it->second.find(static_cast<uint32_t>(value));
       if (value_it != lookup_it->second.end()) {
         return value_it->second;
@@ -357,7 +276,7 @@ extract_arg_value(uint64_t payload, const event_arg& arg) const
 }
 
 std::string
-event_trace_config::
+config_strix::
 format_value(uint64_t value, const std::string& format) const 
 {
   if (format.empty() || format == "d") {
@@ -383,13 +302,13 @@ format_value(uint64_t value, const std::string& format) const
   return oss.str();
 }
 
-event_trace_parser::
-event_trace_parser(const event_trace_config& config) 
-  : m_config(config) {}
+parser_strix::
+parser_strix(config_strix config) 
+  : m_config(std::move(config)) {}
 
-std::string 
-event_trace_parser::
-parse(const uint8_t* data_ptr, size_t buf_size) const 
+std::string
+parser_strix::
+parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::stringstream ss{};
   
@@ -414,7 +333,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 }
 
 std::string
-event_trace_parser::
+parser_strix::
 format_event(const event_data_t& event_data) const
 {
   std::stringstream ss{};
@@ -441,41 +360,7 @@ format_event(const event_data_t& event_data) const
 }
 
 std::string
-event_trace_parser::
-format_categories(const std::vector<std::string>& categories) const
-{
-  if (categories.empty()) {
-    return "";
-  }
-  
-  std::stringstream ss{};
-  for (size_t i = 0; i < categories.size(); ++i) {
-    if (i > 0) ss << "|";
-    ss << categories[i];
-  }
-  return ss.str();
-}
-
-std::string
-event_trace_parser::
-format_arguments(const std::map<std::string, std::string>& args) const
-{
-  if (args.empty()) {
-    return "";
-  }
-  
-  std::stringstream ss{};
-  bool first = true;
-  for (const auto& arg_pair : args) {
-    if (!first) ss << ", ";
-    ss << arg_pair.first << "=" << arg_pair.second;
-    first = false;
-  }
-  return ss.str();
-}
-
-std::string
-event_trace_parser::
+parser_strix::
 format_summary(size_t event_count, size_t buf_size) const
 {
   std::stringstream ss{};

@@ -74,10 +74,10 @@ void
 OO_EventTraceExamine::
 handle_logging(const xrt_core::device* device) const {
   // Load configuration unless raw mode is requested
-  std::optional<smi::event_trace_config> config;
+  std::unique_ptr<smi::event_trace_config> config;
   if (!m_raw) {
     try {
-      config = smi::event_trace_config::load_config(device);
+      config = smi::event_trace_config::create_from_device(device);
     } catch (const std::exception& e) {
       std::cerr << "[Error] Configuration loading failed: " << e.what() << std::endl;
       return;
@@ -91,7 +91,7 @@ handle_logging(const xrt_core::device* device) const {
 
   if (m_watch) {
     if (!m_raw && config) {
-      smi::event_trace_parser parser(*config);
+      auto parser = smi::event_trace_parser::create_from_config(config, device);
       std::cout << add_header();
       
       auto report_generator = [this, &parser](const xrt_core::device* dev) -> std::string {
@@ -113,7 +113,7 @@ handle_logging(const xrt_core::device* device) const {
       std::cout << "==================\n\n";
       std::cout << add_header();
       
-      smi::event_trace_parser parser(*config);
+      auto parser = smi::event_trace_parser::create_from_config(config, device);
       std::cout << generate_parsed_logs(device, parser, false);
     }
   }
@@ -121,8 +121,8 @@ handle_logging(const xrt_core::device* device) const {
 
 std::string
 OO_EventTraceExamine::
-generate_parsed_logs(const xrt_core::device* dev,
-                    const smi::event_trace_parser& parser,
+generate_parsed_logs(const xrt_core::device* device,
+                    const std::unique_ptr<smi::event_trace_parser>& parser,
                     bool is_watch) const
 {
   std::stringstream ss{};
@@ -130,7 +130,7 @@ generate_parsed_logs(const xrt_core::device* dev,
   try {
     smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
     xrt_core::query::firmware_debug_buffer data_buf{};
-    data_buf = xrt_core::device_query<xrt_core::query::event_trace_data>(dev, debug_buf.get_log_buffer());
+    data_buf = xrt_core::device_query<xrt_core::query::event_trace_data>(device, debug_buf.get_log_buffer());
     
     m_watch_mode_offset = data_buf.abs_offset;
 
@@ -141,7 +141,7 @@ generate_parsed_logs(const xrt_core::device* dev,
 
     auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     auto buf_size = data_buf.size;
-    ss << parser.parse(data_ptr, buf_size);
+    ss << parser->parse(data_ptr, buf_size);
   } 
   catch (const std::exception& e) {
     ss << "Error retrieving event trace data: " << e.what() << "\n";
