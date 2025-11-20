@@ -1699,6 +1699,12 @@ private:
                                "xrt::module passed is not created using full ELF");
     }
     else {
+      // In xclbin only flow, module can be null
+      // return empty module in that case as other kernel_impl functions
+      // handle null module
+      if (!mod)
+        return mod;
+
       if (!xrt_core::module_int::is_full_elf_module(mod))
         return mod;
 
