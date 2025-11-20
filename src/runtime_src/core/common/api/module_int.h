@@ -132,6 +132,10 @@ get_ctrl_scratchpad_bo(const xrt::module& module);
 std::vector<uint8_t>
 get_ctrlpkt_data(const xrt::module& module, uint32_t ctrl_code_id);
 
+// Function to check if the module is created from a full ELF
+bool
+is_full_elf_module(const xrt::module& module);
+
 } // xrt_core::module_int
 
 #endif

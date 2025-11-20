@@ -1657,6 +1657,62 @@ private:
     return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
   }
 
+  // Function that checks if hw ctx is created using xcbin/ELF
+  // If is_elf_flow is true, then it checks if hw ctx is created using ELF
+  // and returns the hw ctx
+  // If is_elf_flow is false, then it checks if hw ctx is created using XCLBIN
+  // and returns the hw ctx
+  // Throws exception in other cases
+  static xrt::hw_context
+  check_and_get_hw_context(const xrt::hw_context& ctx, bool is_full_elf_flow)
+  {
+    if (is_full_elf_flow) {
+      if (xrt_core::hw_context_int::get_elf_flow(ctx))
+        return ctx;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::hw_context passed is not created using full ELF");
+    }
+    else {
+      if (!xrt_core::hw_context_int::get_elf_flow(ctx))
+        return ctx;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::hw_context passed is not created using XCLBIN");
+    }
+  }
+
+  // Function that checks if the module is created using full ELF
+  // If is_full_elf_flow is true, then it checks if the module is created using full ELF
+  // and returns the module
+  // If is_full_elf_flow is false, then it checks if the module is created using XCLBIN
+  // and returns the module
+  // Throws exception in other cases
+  static xrt::module
+  check_and_get_module(const xrt::module& mod, bool is_full_elf_flow)
+  {
+    if (is_full_elf_flow) {
+      if (xrt_core::module_int::is_full_elf_module(mod))
+        return mod;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::module passed is not created using full ELF");
+    }
+    else {
+      // In xclbin only flow, module can be null
+      // return empty module in that case as other kernel_impl functions
+      // handle null module
+      if (!mod)
+        return mod;
+
+      if (!xrt_core::module_int::is_full_elf_module(mod))
+        return mod;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::module passed is created using full ELF");
+    }
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1671,9 +1727,9 @@ public:
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
-    , hwctx(std::move(ctx))                                    // hw context
+    , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
     , hwqueue(hwctx)                                           // hw queue
-    , m_module{std::move(mod)}                                 // module if any
+    , m_module(check_and_get_module(mod, false))               // module (not full ELF flow)
     , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -1720,7 +1776,7 @@ public:
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
     , device(std::move(dev))                                            // share ownership
-    , hwctx(std::move(ctx))                                             // hw context
+    , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
     , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
     , properties(get_kernel_info().props)
