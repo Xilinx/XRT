@@ -58,7 +58,8 @@ jobs:
           echo "$CHANGED_FILES"
           if [ -n "$CHANGED_FILES" ]; then
             echo "has_code_changes=true" >> $GITHUB_OUTPUT
-            echo "file_count=$(echo "$CHANGED_FILES" | wc -l)" >> $GITHUB_OUTPUT
+            FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '^' || echo 0)
+            echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
           else
             echo "has_code_changes=false" >> $GITHUB_OUTPUT
             echo "file_count=0" >> $GITHUB_OUTPUT
