@@ -9,6 +9,7 @@
 #include "hip/hip_xrt.h"
 
 #include <iostream>
+#include <memory>
 
 namespace xrt::core::hip {
 
@@ -157,10 +158,60 @@ hip_graph_add_memcpy_node_1d(hipGraph_t g, const hipGraphNode_t *pDependencies,
   return node_hdl;
 }
 
+static node_handle
+hip_graph_add_event_record_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
+                                size_t numDependencies, hipEvent_t event_handle)
+{
+  throw_invalid_resource_if(!g, "graph is nullptr");
+  throw_invalid_value_if(!event_handle, "event is nullptr");
+
+  auto hip_graph = graph_cache.get_or_error(g);
+  throw_invalid_resource_if(!hip_graph, "invalid graph passed");
+
+  auto cmd = command_cache.get(event_handle);
+  throw_invalid_resource_if(!cmd, "invalid event passed");
+
+  auto hip_ev = std::dynamic_pointer_cast<event>(cmd);
+  throw_invalid_resource_if(!hip_ev, "invalid event passed");
+
+  // Create an event_record_command and wrap it in a graph_node
+  auto hip_cmd = std::make_shared<event_record_command>(hip_ev);
+  auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
+
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
+
+  return node_hdl;
+}
+
+static node_handle
+hip_graph_add_event_wait_node(hipGraph_t g, const hipGraphNode_t *pDependencies,
+                              size_t numDependencies, hipEvent_t event_handle)
+{
+  throw_invalid_resource_if(!g, "graph is nullptr");
+  throw_invalid_value_if(!event_handle, "event is nullptr");
+
+  auto hip_graph = graph_cache.get_or_error(g);
+  throw_invalid_resource_if(!hip_graph, "invalid graph passed");
+
+  auto cmd = command_cache.get(event_handle);
+  throw_invalid_resource_if(!cmd, "invalid event passed");
+
+  auto hip_ev = std::dynamic_pointer_cast<event>(cmd);
+  throw_invalid_resource_if(!hip_ev, "invalid event passed");
+
+  // Create an event_wait_command and wrap it in a graph_node
+  auto hip_cmd = std::make_shared<event_wait_command>(hip_ev);
+  auto node_hdl = hip_graph->add_node(std::make_shared<graph_node>(hip_cmd));
+
+  add_node_dependencies(hip_graph, node_hdl, pDependencies, numDependencies);
+
+  return node_hdl;
+}
+
 // TODO: Implement error reporting and logging for graph instantiation:
 //   - pErrorNode: Pointer to error node if error occured during graph instantiation
 //   - pLogBuffer, bufferSize: log messages about instantiation to the buffer
-static command_handle
+static graph_exec_handle
 hip_graph_instantiate(hipGraph_t g, hipGraphNode_t* /*pErrorNode*/,
                       char* /*pLogBuffer*/, size_t /*bufferSize*/)
 {
@@ -169,7 +220,7 @@ hip_graph_instantiate(hipGraph_t g, hipGraphNode_t* /*pErrorNode*/,
   auto hip_graph = graph_cache.get_or_error(g);
   throw_invalid_resource_if(!hip_graph, "invalid graph passed");
 
-  return insert_in_map(command_cache, std::make_shared<graph_exec>(hip_graph));
+  return insert_in_map(graph_exec_cache, std::make_shared<graph_exec>(hip_graph));
 }
 
 static void
@@ -177,8 +228,10 @@ hip_graph_launch(hipGraphExec_t gE, hipStream_t stream)
 {
   throw_invalid_resource_if(!gE, "graph exec is nullptr");
 
-  auto s_hdl = get_stream(stream).get();
-  s_hdl->enqueue(command_cache.get_or_error(gE));
+  auto gE_ptr = graph_exec_cache.get_or_error(gE);
+  throw_invalid_resource_if(!gE_ptr, "invalid graph exec");
+
+  gE_ptr->execute(get_stream(stream));
 }
 
 static void
@@ -186,7 +239,7 @@ hip_graph_exec_destroy(hipGraphExec_t gE)
 {
   throw_invalid_resource_if(!gE, "graph exec is nullptr");
 
-  command_cache.remove(reinterpret_cast<command_handle>(gE));
+  graph_exec_cache.remove(reinterpret_cast<graph_exec_handle>(gE));
 }
 
 static void
@@ -267,6 +320,36 @@ hipGraphAddMemcpyNode1D(hipGraphNode_t *pGraphNode, hipGraph_t graph,
                                                                src,
                                                                count,
                                                                kind);
+    *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
+  });
+}
+
+hipError_t
+hipGraphAddEventRecordNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                           const hipGraphNode_t *pDependencies, size_t numDependencies,
+                           hipEvent_t event)
+{
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    throw_invalid_value_if(!pGraphNode, "Graph Node passed is nullptr");
+    auto handle = xrt::core::hip::hip_graph_add_event_record_node(graph,
+                                                                  pDependencies,
+                                                                  numDependencies,
+                                                                  event);
+    *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
+  });
+}
+
+hipError_t
+hipGraphAddEventWaitNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                        const hipGraphNode_t *pDependencies, size_t numDependencies,
+                        hipEvent_t event)
+{
+  return handle_hip_func_error(__func__, hipErrorUnknown, [&] {
+    throw_invalid_value_if(!pGraphNode, "Graph Node passed is nullptr");
+    auto handle = xrt::core::hip::hip_graph_add_event_wait_node(graph,
+                                                                pDependencies,
+                                                                numDependencies,
+                                                                event);
     *pGraphNode = reinterpret_cast<hipGraphNode_t>(handle);
   });
 }

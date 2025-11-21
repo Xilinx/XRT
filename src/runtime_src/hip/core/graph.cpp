@@ -133,59 +133,54 @@ init(const std::shared_ptr<graph>& graph)
 
 graph_exec::
 graph_exec(const std::shared_ptr<graph>& graph)
-  : command(type::graph_exec)
-  , m_node_exec_list(init(graph))
+  : m_node_exec_list(init(graph))
 {}
 
-bool
+void
 graph_exec::
-wait()
+execute(std::shared_ptr<stream> s)
 {
-  // Wait for all commands in the execution list to complete if state is running
-  auto graph_exec_state = get_state();
-  if (graph_exec_state == state::completed)
-    return true;
+  // Set stream on event_record_command and event_wait_command nodes before enqueuing
+  for (auto& node : m_node_exec_list) {
+    auto cmd = node->get_cmd();
+    if (cmd && cmd->get_type() == command::type::event_record) {
+      auto event_record_cmd = std::dynamic_pointer_cast<event_record_command>(cmd);
+      if (event_record_cmd)
+        event_record_cmd->set_stream(s);
+    }
+    else if (cmd && cmd->get_type() == command::type::event_wait) {
+      auto event_wait_cmd = std::dynamic_pointer_cast<event_wait_command>(cmd);
+      if (event_wait_cmd)
+        event_wait_cmd->set_stream(s);
+    }
+  }
 
-  if (graph_exec_state != state::running)
-    return false;
-
-  if (m_exec_future.valid())
-    m_exec_future.wait();
-
-  for (auto node : m_node_exec_list)
-    node->get_cmd()->wait();
-
-  set_state(state::completed);
-  return true;
-}
-
-bool
-graph_exec::
-submit()
-{
-  // Submit all commands in the execution list if in the initial state
-  auto graph_exec_state = get_state();
-  if (graph_exec_state == state::running)
-    return true;
-
-  if (graph_exec_state != state::init)
-    return false;
-
-  m_exec_future = std::async(std::launch::async, [this]() {
+  // Create async task to enqueue commands to stream
+  auto future = std::async(std::launch::async, [this, s]() {
     for (auto& node : m_node_exec_list) {
-      // Wait for all dependencies to complete before submitting this node
+      // Wait for all dependencies to complete before enqueuing this node
       for (const auto& dep : node->get_deps_list())
         dep->get_cmd()->wait();
 
-      node->get_cmd()->submit();
+      // Enqueue the command to the stream instead of submitting directly
+      auto cmd = node->get_cmd();
+      if (cmd && (cmd->get_type() == command::type::event_record ||
+                  cmd->get_type() == command::type::event_wait))
+        cmd->submit();
+      else
+        s->enqueue(cmd);
     }
   });
 
-  set_state(state::running);
-  return true;
+  // Store the future in the stream so synchronize() can wait for it
+  s->set_graph_exec_future(std::move(future));
 }
 
 // Global map of graph
 // override clang-tidy warning by adding NOLINT since graph_cache is non-const parameter
 xrt_core::handle_map<graph_handle, std::shared_ptr<graph>> graph_cache; // NOLINT
+
+// Global map of graph_exec
+// override clang-tidy warning by adding NOLINT since graph_exec_cache is non-const parameter
+xrt_core::handle_map<graph_exec_handle, std::shared_ptr<graph_exec>> graph_exec_cache; // NOLINT
 }

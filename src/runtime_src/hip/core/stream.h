@@ -6,6 +6,7 @@
 #include "context.h"
 
 #include <list>
+#include <future>
 
 namespace xrt::core::hip {
 
@@ -22,6 +23,7 @@ class stream
   std::list<std::shared_ptr<command>> m_cmd_queue;
   std::mutex m_cmd_lock;
   std::shared_ptr<event> m_top_event;
+  std::future<void> m_graph_exec_future;
 
 public:
   stream() = default;
@@ -70,6 +72,12 @@ public:
 
   void
   record_top_event(std::shared_ptr<event> ev);
+
+  void
+  clear_top_event();
+
+  void
+  set_graph_exec_future(std::future<void> future);
 };
 
 // Global map of streams
