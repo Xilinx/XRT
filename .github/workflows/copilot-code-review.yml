@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+#
+# This workflow enables GitHub Copilot code review functionality for pull requests.
+# 
+# GitHub Copilot for Pull Requests is a feature that provides AI-powered code reviews.
+# This workflow prepares the environment and triggers Copilot reviews when configured.
+#
+# To fully enable Copilot code reviews, repository administrators should:
+# 1. Enable GitHub Copilot for Pull Requests in repository settings
+# 2. Configure Copilot to review pull requests automatically
+# 3. Ensure the repository has GitHub Copilot Enterprise or Business subscription
+#
+# This workflow serves as a foundation for Copilot integration and can be extended
+# with additional AI-powered review tools as needed.
+
+name: Copilot Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - master
+      - '**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  prepare-review:
+    runs-on: ubuntu-latest
+    name: Prepare for Copilot Review
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "PR Author: ${{ github.event.pull_request.user.login }}"
+          echo "Base Branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head Branch: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -E '\.(cpp|c|h|hpp|py|js|ts|java|go|rs)$' || true)
+          echo "Changed code files:"
+          echo "$CHANGED_FILES"
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_code_changes=true" >> $GITHUB_OUTPUT
+            echo "file_count=$(echo "$CHANGED_FILES" | wc -l)" >> $GITHUB_OUTPUT
+          else
+            echo "has_code_changes=false" >> $GITHUB_OUTPUT
+            echo "file_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add review preparation comment
+        if: steps.changed-files.outputs.has_code_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fileCount = '${{ steps.changed-files.outputs.file_count }}';
+            const comment = `🤖 **GitHub Copilot Code Review**
+            
+            This PR is ready for Copilot code review.
+            - **Files with code changes:** ${fileCount}
+            - **Status:** Waiting for Copilot review
+            
+            GitHub Copilot will provide AI-powered suggestions when enabled for this repository.
+            
+            To enable full Copilot code reviews, ensure:
+            - GitHub Copilot Enterprise or Business is configured
+            - Copilot for Pull Requests is enabled in repository settings
+            
+            *This is an automated message from the Copilot Code Review workflow.*`;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Summary
+        run: |
+          echo "### Copilot Code Review Prepared ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PR Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- PR #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Files with code changes: ${{ steps.changed-files.outputs.file_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Ready for Copilot review: ${{ steps.changed-files.outputs.has_code_changes }}" >> $GITHUB_STEP_SUMMARY
