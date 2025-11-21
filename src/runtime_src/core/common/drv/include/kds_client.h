@@ -108,7 +108,7 @@ struct kds_client {
 #define client_stat_read(client, hw_ctx, field)				\
 ({									\
 	struct kds_client_hw_ctx *curr_ctx;				\
-	typeof(((curr_ctx)->stats)->field) res = 0;			\
+	u64 res = 0;							\
 	list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
                 if (curr_ctx->hw_ctx_idx == hw_ctx)			\
 			res = stat_read((curr_ctx)->stats, field);	\

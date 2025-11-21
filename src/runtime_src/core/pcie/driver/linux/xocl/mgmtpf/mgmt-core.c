@@ -12,7 +12,6 @@
  */
 #include "mgmt-core.h"
 
-#include <linux/crc32c.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
 #include <linux/i2c.h>
@@ -20,6 +19,11 @@
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,13,0)
+#include <linux/crc32.h>
+#else
+#include <linux/crc32c.h>
+#endif
 
 #include "version.h"
 #include "xclbin.h"
@@ -886,7 +890,11 @@ static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
 		return false;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,13,0)
+	crc_chk = crc32_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
+#else
 	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
+#endif
 	if (crc_chk != mb_conn->crc32) {
 		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
 		mgmt_info(lro, "failed to get the same CRC\n");

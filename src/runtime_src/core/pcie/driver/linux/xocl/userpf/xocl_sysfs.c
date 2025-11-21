@@ -287,7 +287,7 @@ static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
 kds_cuctx_stat_raw_show(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+        const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
@@ -309,7 +309,7 @@ static struct bin_attribute kds_cuctx_stat_raw_attr = {
 
 static ssize_t
 kds_scuctx_stat_raw_show(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+        const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
@@ -331,7 +331,7 @@ static struct bin_attribute kds_scuctx_stat_raw_attr = {
 
 static ssize_t
 kds_custat_raw_show(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
@@ -364,7 +364,7 @@ static struct bin_attribute kds_custat_raw_attr = {
 
 static ssize_t
 kds_scustat_raw_show(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
@@ -982,7 +982,7 @@ static struct attribute *xocl_persist_attrs[] = {
 };
 
 static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -1020,7 +1020,7 @@ static struct bin_attribute fdt_blob_attr = {
 	.size = 0
 };
 
-static struct bin_attribute  *xocl_bin_attrs[] = {
+static const struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
 	&kds_custat_raw_attr,
 	&kds_scustat_raw_attr,
