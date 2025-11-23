@@ -301,7 +301,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
         if (dtbSection && timestamp == NULL_TIMESTAMP) {
-            dtbbuf = std::shared_ptr<char>(new char[dtbSection->m_sectionSize]);
+            dtbbuf = std::shared_ptr<char[]>(new char[dtbSection->m_sectionSize]);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.get(), dtbSection->m_sectionSize);
             getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
@@ -317,7 +317,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         if (bmcSection == nullptr)
             return;
         // Load entire BMC section.
-        std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+        std::shared_ptr<char[]> bmcbuf(new char[bmcSection->m_sectionSize]);
         in.seekg(bmcSection->m_sectionOffset);
         in.read(bmcbuf.get(), bmcSection->m_sectionSize);
         if (!in.good())
@@ -616,7 +616,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                 return;
             }
             // Load entire BMC section.
-            std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+            std::shared_ptr<char[]> bmcbuf(new char[bmcSection->m_sectionSize]);
             in_file.seekg(bmcSection->m_sectionOffset);
             in_file.read(bmcbuf.get(), bmcSection->m_sectionSize);
             if (!in_file.good())
@@ -716,7 +716,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                     return;
                 }
                 // Load entire MCS section.
-                std::shared_ptr<char> mcsbuf(new char[mcsSection->m_sectionSize]);
+                std::shared_ptr<char[]> mcsbuf(new char[mcsSection->m_sectionSize]);
                 in_file.seekg(mcsSection->m_sectionOffset);
                 in_file.read(mcsbuf.get(), mcsSection->m_sectionSize);
                 if (!in_file.good())

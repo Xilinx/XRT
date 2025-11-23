@@ -51,7 +51,7 @@ public:
     std::string board;
     std::string name;
     std::string file;
-    std::shared_ptr<char> dtbbuf;
+    std::shared_ptr<char[]> dtbbuf;
     uint64_t timestamp;
     std::vector<std::string> uuids;
     std::string bmcVer;
