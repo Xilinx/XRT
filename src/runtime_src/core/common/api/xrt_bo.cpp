@@ -1075,8 +1075,10 @@ alloc_kbuf(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemory
 {
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_kbuf);
   auto handle = alloc_bo(device, sz, flags, grp);
-  auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), sz);
-  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
+  // Query actual allocated size from driver (bo size may be rounded up)
+  auto actual_sz = handle->get_properties().size;
+  auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), actual_sz);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), actual_sz, device.get_hwctx_handle());
   return boh;
 }
 

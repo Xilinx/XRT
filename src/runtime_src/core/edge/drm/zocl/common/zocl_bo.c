@@ -666,6 +666,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	 *       actual size allocated.
 	 */
 	zocl_update_mem_stat(zdev, bo->gem_base.size, 1, bo->mem_index);
+	args->size = bo->size;
 
 	return ret;
 }
