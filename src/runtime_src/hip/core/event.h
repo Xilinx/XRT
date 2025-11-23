@@ -42,8 +42,9 @@ public:
     kernel_start,
     mem_cpy,
     kernel_list_start,
-    graph_exec,
-    empty
+    empty,
+    event_record,
+    event_wait
   };
 
 protected:
@@ -249,6 +250,60 @@ public:
   get_hw_ctx() const
   {
     return m_hw_ctx;
+  }
+};
+
+// Command for recording an event in a graph node
+class event_record_command : public command
+{
+private:
+  std::shared_ptr<event> m_event;
+  std::weak_ptr<stream> m_stream;
+
+public:
+  explicit event_record_command(std::shared_ptr<event> ev)
+    : command(type::event_record)
+    , m_event(std::move(ev))
+  {}
+
+  void set_stream(std::shared_ptr<stream> s)
+  {
+    m_stream = s;
+  }
+
+  bool submit() override;
+
+  bool
+  wait() override
+  {
+    return true;
+  }
+};
+
+// Command for waiting on an event in a graph node
+class event_wait_command : public command
+{
+private:
+  std::shared_ptr<event> m_event;
+  std::weak_ptr<stream> m_stream;
+
+public:
+  explicit event_wait_command(std::shared_ptr<event> ev)
+    : command(type::event_wait)
+    , m_event(std::move(ev))
+  {}
+
+  void set_stream(std::shared_ptr<stream> s)
+  {
+    m_stream = s;
+  }
+
+  bool submit() override;
+
+  bool
+  wait() override
+  {
+    return true;
   }
 };
 
