@@ -1,17 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
-# Support building XRT or its components with local build of Boost libraries. 
+# Support building XRT or its components with local build of Boost libraries.
 # In particular the script runtime_src/tools/script/boost.sh downloads
 # and builds static Boost libraries compiled with fPIC so that they
 # can be used to resolve symbols in XRT dynamic libraries.
+
+# Note: Boost.System became header-only in Boost 1.69, so we only need
+# filesystem and program_options as compiled components for newer Boost versions
+set(BOOST_REQUIRED_COMPONENTS filesystem program_options)
+
 if (DEFINED ENV{XRT_BOOST_INSTALL})
   set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
   set(Boost_USE_STATIC_LIBS ON)
   if(CMAKE_VERSION VERSION_GREATER "3.29")
+    # First try to find Boost to get version
+    find_package(Boost CONFIG
+      HINTS $ENV{XRT_BOOST_INSTALL})
+    # For older Boost (< 1.69), also include system component
+    if(Boost_FOUND AND Boost_VERSION_STRING VERSION_LESS "1.69.0")
+      set(BOOST_REQUIRED_COMPONENTS system ${BOOST_REQUIRED_COMPONENTS})
+    endif()
     find_package(Boost CONFIG
       HINTS $ENV{XRT_BOOST_INSTALL}
-      REQUIRED COMPONENTS system filesystem program_options)
+      REQUIRED COMPONENTS ${BOOST_REQUIRED_COMPONENTS})
   else(CMAKE_VERSION VERSION_GREATER "3.29")
     find_package(Boost
       HINTS $ENV{XRT_BOOST_INSTALL}
@@ -29,8 +41,14 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
 
 else()
   if(CMAKE_VERSION VERSION_GREATER "3.29")
+    # First try to find Boost to get version
+    find_package(Boost CONFIG)
+    # For older Boost (< 1.69), also include system component
+    if(Boost_FOUND AND Boost_VERSION_STRING VERSION_LESS "1.69.0")
+      set(BOOST_REQUIRED_COMPONENTS system ${BOOST_REQUIRED_COMPONENTS})
+    endif()
     find_package(Boost CONFIG
-    REQUIRED COMPONENTS system filesystem program_options)
+      REQUIRED COMPONENTS ${BOOST_REQUIRED_COMPONENTS})
   else(CMAKE_VERSION VERSION_GREATER "3.29")
     find_package(Boost
       REQUIRED COMPONENTS system filesystem program_options)
