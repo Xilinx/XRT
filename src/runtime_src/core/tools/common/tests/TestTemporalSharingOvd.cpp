@@ -60,7 +60,7 @@ boost::property_tree::ptree TestTemporalSharingOvd::run(const std::shared_ptr<xr
     
     auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
       "gemm.xclbin", 
-      "nop.elf" 
+      "gemm.elf" 
     });
     
     // Run parallel temporal sharing test (2 contexts)
