@@ -428,7 +428,7 @@ bool event_record_command::submit()
   throw_invalid_value_if(!s, "stream is not set or has been destroyed for event record command");
 
   // Record the event in the stream
-  m_event->record(s);
+  m_event->record(std::move(s));
   set_state(state::completed);
   return true;
 }
