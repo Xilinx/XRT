@@ -143,12 +143,12 @@ execute(std::shared_ptr<stream> s)
   // Set stream on event_record_command and event_wait_command nodes before enqueuing
   for (auto& node : m_node_exec_list) {
     auto cmd = node->get_cmd();
-    if (cmd && cmd->get_type() == command::type::event_record) {
+    if (cmd->get_type() == command::type::event_record) {
       auto event_record_cmd = std::dynamic_pointer_cast<event_record_command>(cmd);
       if (event_record_cmd)
         event_record_cmd->set_stream(s);
     }
-    else if (cmd && cmd->get_type() == command::type::event_wait) {
+    else if (cmd->get_type() == command::type::event_wait) {
       auto event_wait_cmd = std::dynamic_pointer_cast<event_wait_command>(cmd);
       if (event_wait_cmd)
         event_wait_cmd->set_stream(s);
@@ -164,11 +164,11 @@ execute(std::shared_ptr<stream> s)
 
       // Enqueue the command to the stream instead of submitting directly
       auto cmd = node->get_cmd();
-      if (cmd && (cmd->get_type() == command::type::event_record ||
-                  cmd->get_type() == command::type::event_wait))
+      if (cmd->get_type() == command::type::event_record ||
+          cmd->get_type() == command::type::event_wait)
         cmd->submit();
       else
-        s->enqueue(cmd);
+        s->enqueue(std::move(cmd));
     }
   });
 
