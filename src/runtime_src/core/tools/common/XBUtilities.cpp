@@ -758,9 +758,15 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 {
   boost::property_tree::ptree empty_ptree;
   output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+  auto branch = pt_xrt.get<std::string>("branch", "N/A");
+  auto hash = pt_xrt.get<std::string>("hash", "N/A");
+  auto build_date = pt_xrt.get<std::string>("build_date", "N/A");
+  if (!branch.empty() && !boost::iequals(branch, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Branch" % branch;
+  if (!hash.empty() && !boost::iequals(hash, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Hash" % hash;
+  if (!build_date.empty() && !boost::iequals(build_date, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Hash Date" % build_date;
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
@@ -769,7 +775,8 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     if (!boost::iequals(drv_hash, "N/A")) {
       output << boost::format("  %-20s : %s, %s\n") % drv_name
           % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
-    } else {
+    }
+    else {
       std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
       output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
     }
@@ -785,13 +792,13 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
       if (fw_ver != "N/A")
         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % fw_ver;
 
-      const std::string uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
-      const std::string build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
+      auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
+      auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
 
       if (uc_fw_version != "N/A")
         output << boost::format("  %-20s : %s\n") % "UC Firmware Version" % uc_fw_version;
       if (build_date != "N/A")
-        output << boost::format("  %-20s : %s\n") % "UC Build Date" % build_date;
+        output << boost::format("  %-20s : %s\n") % "UC Build Date" % uc_fw_build_date;
     }
     else
       output << boost::format("  %-20s : %s\n") % "Firmware Version" % fw_ver;
