@@ -154,16 +154,10 @@ config_npu3::
 parse_buffer(const uint8_t* buffer_ptr) const
 {
   const uint8_t* current_ptr = buffer_ptr;
-  
-  // Parse timestamp (8 bytes)
-  uint64_t timestamp = 0;
-  std::memcpy(&timestamp, current_ptr, sizeof(uint64_t));
-  current_ptr += sizeof(uint64_t);
-  
   // Parse magic byte (should be 0xAA)
   uint8_t magic = *current_ptr++;
   if (magic != npu3_magic_byte) {
-    throw std::runtime_error("Invalid NPU3 event magic byte: 0x" + std::to_string(static_cast<int>(magic)));
+    throw std::runtime_error("Invalid event message, corruption detected");
   }
   
   // Parse category_id (2 bytes)
@@ -174,6 +168,10 @@ parse_buffer(const uint8_t* buffer_ptr) const
   // Parse payload_size (1 byte)
   uint8_t payload_size = *current_ptr++;
   
+  // Parse timestamp (8 bytes)
+  uint64_t timestamp = *reinterpret_cast<const uint64_t*>(current_ptr);
+  current_ptr += sizeof(uint64_t);
+
   // Payload pointer
   const uint8_t* payload_ptr = current_ptr;
   
@@ -403,7 +401,7 @@ format_event(const decoded_event_t& decoded_event) const
   std::string event_name = decoded_event.name.empty() ? "UNKNOWN" : decoded_event.name;
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
   
-  ss << boost::format("%-20lu %-25s %-25s %-30s\n")
+  ss << boost::format("%-20lu %-30s %-55s %-30s\n")
         % decoded_event.timestamp
         % event_name
         % category_display

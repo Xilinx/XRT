@@ -93,6 +93,11 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     {std::make_shared<OO_FirmwareLogExamine>("firmware-log")}, //hidden
     {std::make_shared<OO_EventTraceExamine>("event-trace")} //hidden
   };
+
+  for (const auto& option : m_optionOptionsCollection){
+    option->setExecutable(getExecutableName());
+    option->setCommand(getName());
+  }
 }
 
 void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamineOptions& options) const
