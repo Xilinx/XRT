@@ -639,6 +639,18 @@ get_cmdbo_cache()
   return value;
 }
 
+/**
+ * Enable QDMA AIO (Asynchronous I/O) support.
+ * Default is false.
+ * Set to true in xrt.ini to enable AIO if needed.
+ */
+inline bool
+get_qdma_aio_enable()
+{
+  static bool value = detail::get_bool_value("Runtime.qdma_aio_enable", false);
+  return value;
+}
+
 inline std::string
 get_hw_em_driver()
 {

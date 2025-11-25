@@ -149,10 +149,14 @@ static void zocl_irq_intc_remove(struct platform_device *pdev, u32 id)
 	h = &zintc->zei_handler[id];
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
+	/* Free irq only if its not already freed */
+       if (h->zeih_enabled == true)
+               free_irq(h->zeih_irq, h);
+
+
 	h->zeih_cb = NULL;
 	h->zeih_arg = NULL;
 	h->zeih_enabled = false;
-	free_irq(h->zeih_irq, h);
 
 	spin_unlock_irqrestore(&zintc->zei_lock, irqflags);
 }
