@@ -501,9 +501,10 @@ public:
   get_aie_coredump() const
   {
     try {
-      return xrt_core::device_query<xrt_core::query::aie_coredump>(m_core_device,
-                                                                   m_hdl->get_slotidx(),
-                                                                   static_cast<uint64_t>(xrt_core::utils::get_pid()));
+      xrt_core::query::aie_coredump::args args{};
+      args.pid = static_cast<uint64_t>(xrt_core::utils::get_pid());
+      args.context_id = static_cast<uint32_t>(m_hdl->get_slotidx());
+      return xrt_core::device_query<xrt_core::query::aie_coredump>(m_core_device, args);
     }
     catch (const xrt_core::query::no_such_key&) {
       throw std::runtime_error("AIE coredump is not supported on this platform");
