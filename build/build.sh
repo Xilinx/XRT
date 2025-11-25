@@ -59,6 +59,7 @@ usage()
     echo "[-hip]                      Enable hip bindings"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
+    echo "[-cmake-flags <flags>]      Extra flags to pass to CMake"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
@@ -180,6 +181,11 @@ while [ $# -gt 0 ]; do
         -opt)
             dbg=0
             opt=1
+            shift
+            ;;
+        -cmake-flags)
+            shift
+            cmake_flags+=" $1"
             shift
             ;;
         -nocmake)
