@@ -10,8 +10,8 @@
 #include "OO_P2P.h"
 #include "OO_Performance.h"
 #include "OO_Preemption.h"
-#include "OO_EventTrace.h"
-#include "OO_FirmwareLog.h"
+#include "EventTracing/OO_EventTrace.h"
+#include "FirmwareLogging/OO_FirmwareLog.h"
 #include "common/device.h"
 #include "tools/common/XBUtilities.h"
 

@@ -13,7 +13,9 @@ firmware_log_config(nlohmann::json json_config)
   : m_config(std::move(json_config)),
     m_enums(parse_enums(m_config)),
     m_structures(parse_structures(m_config)),
-    m_header_size(calculate_header_size(m_structures))
+    m_message_size(calculate_structure_size(m_structures, "ipu_log_message_header")),
+    m_entry_header_size(calculate_structure_size(m_structures, "ipu_log_ring_entry_header")),
+    m_entry_footer_size(calculate_structure_size(m_structures, "ipu_log_ring_entry_footer"))
 {}
 
 std::optional<firmware_log_config>
@@ -111,16 +113,50 @@ get_log_header() const
   return it->second;
 }
 
+const firmware_log_config::structure_info& 
+firmware_log_config::
+get_entry_header() const 
+{
+  auto it = m_structures.find("ipu_log_ring_entry_header");
+  if (it == m_structures.end()) {
+    throw std::runtime_error("ipu_log_ring_entry_header structure not found in config");
+  }
+  return it->second;
+}
+
+const firmware_log_config::structure_info& 
+firmware_log_config::
+get_entry_footer() const 
+{
+  auto it = m_structures.find("ipu_log_ring_entry_footer");
+  if (it == m_structures.end()) {
+    throw std::runtime_error("ipu_log_ring_entry_footer structure not found in config");
+  }
+  return it->second;
+}
+
 size_t 
 firmware_log_config::
-calculate_header_size(const std::unordered_map<std::string, structure_info>& structures) {
-  auto it = structures.find("ipu_log_message_header");
+calculate_structure_size(const std::unordered_map<std::string, structure_info>& structures,
+                         const std::string& struct_name) {
+  auto it = structures.find(struct_name);
   if (it == structures.end()) {
-    throw std::runtime_error("Config missing ipu_log_message_header structure");
+    throw std::runtime_error("Config missing " + struct_name + " structure");
   }
   size_t size = 0;
   for (const auto& field : it->second.fields) {
-    size += field.width;
+    // Check if field has explicit width (bit-fields) or use type size
+    if (field.width > 0) {
+      size += field.width;
+    } else {
+      // For fields without width, look up type size from map
+      auto type_it = type_to_bits.find(field.type);
+      if (type_it != type_to_bits.end()) {
+        size += type_it->second;
+      } else {
+        throw std::runtime_error("Unknown type: " + field.type);
+      }
+    }
   }
   return (size + byte_alignment) / bits_per_byte; // Convert bit width to byte size
 }
@@ -128,8 +164,10 @@ calculate_header_size(const std::unordered_map<std::string, structure_info>& str
 firmware_log_parser::
 firmware_log_parser(firmware_log_config config) 
   : m_config(std::move(config)), 
-    m_header(m_config.get_log_header()),
-    m_header_size(static_cast<uint32_t>(m_config.get_header_size())),
+    m_message(m_config.get_log_header()),
+    m_entry_header(m_config.get_entry_header()),
+    m_entry_footer(m_config.get_entry_footer()),
+    m_message_size(static_cast<uint32_t>(m_config.get_message_size())),
     m_field_indices(create_field_indices(m_config)),
     m_columns({
       {"timestamp", "Timestamp"},
@@ -233,14 +271,14 @@ parse_entry(const uint8_t* data_ptr,
 {
   std::vector<std::string> entry_data;
   size_t bit_offset = 0;
-  for (const auto& field : m_header.fields) 
+  for (const auto& field : m_message.fields) 
   {
     uint64_t value = extract_value(data_ptr, offset, bit_offset, field.width);
     std::string field_value = format_value(field, value);
     entry_data.emplace_back(field_value);
     bit_offset += field.width;
   }
-  size_t msg_offset = offset + m_header_size;
+  size_t msg_offset = offset + m_message_size;
   entry_data.emplace_back(parse_message(data_ptr, msg_offset, buf_size));
   return entry_data;
 }
@@ -254,10 +292,10 @@ calculate_entry_size(uint32_t argc, uint32_t format) const
     // Firmware uses 8-byte alignment to optimize DMA transfers and memory operations.
     // Each log argument is 4 bytes, so argc*4 = total argument payload size.
     // Round up to next 8-byte boundary: ((size + 7) / 8) * 8
-    entry_size = ((static_cast<size_t>(argc) * 4 + byte_alignment) / bits_per_byte) * bits_per_byte + m_header_size; 
+    entry_size = ((static_cast<size_t>(argc) * 4 + byte_alignment) / bits_per_byte) * bits_per_byte + m_message_size; 
   } else {
     // Concise format: firmware writes byte-by-byte for minimal storage
-    entry_size = argc + m_header_size;
+    entry_size = argc + m_message_size;
   }
   return entry_size;
 }
@@ -269,7 +307,7 @@ get_header_row() const
 {
   std::string result;
   
-  for (const auto& field : m_header.fields) {
+  for (const auto& field : m_message.fields) {
     if (m_columns.find(field.name) != m_columns.end()) {
       const std::string& header_text = m_columns.at(field.name);
       size_t width = m_column_widths.at(field.name);
@@ -290,7 +328,7 @@ firmware_log_parser::
 format_entry_row(const std::vector<std::string>& entry_data) const
 {
   std::string result;
-  for (const auto& field : m_header.fields) {
+  for (const auto& field : m_message.fields) {
     if (m_columns.find(field.name) != m_columns.end()) {
       const std::string& data_text = entry_data[m_field_indices.at(field.name)];
       size_t width = m_column_widths.at(field.name);
@@ -313,17 +351,25 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
   std::string result;
   
   size_t offset = 0;
-  while (offset + m_header_size <= buf_size) {
-    auto entry_data = parse_entry(data_ptr, offset, buf_size);
-    auto format = std::stoul(entry_data[m_field_indices.at("format")]); 
+  size_t entry_header_size = m_config.get_entry_header_size();
+  size_t entry_footer_size = m_config.get_entry_footer_size();
+  size_t total_entry_size = entry_header_size + m_message_size + entry_footer_size;
+  
+  while (offset + total_entry_size <= buf_size) {
+    // Skip entry header
+    size_t msg_offset = offset + entry_header_size;
+    
+    // Parse the actual log message header
+    auto entry_data = parse_entry(data_ptr, msg_offset, buf_size);
+    auto format = std::stoul(entry_data[m_field_indices.at("format")]);
     auto argc = std::stoul(entry_data[m_field_indices.at("argc")]);
     
     result += format_entry_row(entry_data);
     
-    size_t entry_size = calculate_entry_size(argc, format);
-    offset += entry_size;
+    // Calculate total entry size including header/footer
+    size_t payload_size = calculate_entry_size(argc, format);
+    size_t full_entry_size = entry_header_size + payload_size + entry_footer_size;
+    offset += full_entry_size;
   }
   return result;
-}
-
-} // namespace xrt_core::tools::xrt_smi
+}} // namespace xrt_core::tools::xrt_smi

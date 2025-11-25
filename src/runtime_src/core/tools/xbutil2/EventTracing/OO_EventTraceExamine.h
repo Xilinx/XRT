@@ -5,7 +5,7 @@
 
 #include "core/common/device.h"
 #include "tools/common/OptionOptions.h"
-#include "EventTrace/EventTraceBase.h"
+#include "EventTraceBase.h"
 
 namespace smi = xrt_core::tools::xrt_smi;
 
