@@ -4244,7 +4244,7 @@ struct aie_coredump : request
 {
   struct args {
     uint64_t  pid;
-    uint16_t  context_id;
+    uint32_t  context_id;
   };
 
   using result_type = std::vector<char>;
