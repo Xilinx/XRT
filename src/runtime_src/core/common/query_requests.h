@@ -4206,7 +4206,14 @@ struct read_trace_data : request
 // Used for reading AIE memory of a specific tile within a ctx
 struct aie_read : request
 {
+  enum class access_type
+  {
+    reg,
+    mem
+  };
+
   struct args {
+    access_type type;
     uint64_t  pid;
     uint16_t  context_id;
     uint16_t  col;
@@ -4224,7 +4231,14 @@ struct aie_read : request
 // Used for writing AIE memory/register of a specific tile within a ctx
 struct aie_write : request
 {
+  enum class access_type
+  {
+    reg,
+    mem
+  };
+
   struct args {
+    access_type type;
     uint64_t  pid;
     uint16_t  context_id;
     uint16_t  col;
