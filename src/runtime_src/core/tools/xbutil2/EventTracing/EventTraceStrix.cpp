@@ -17,7 +17,9 @@ config_strix(nlohmann::json json_config)
     m_event_bits(parse_event_bits()),
     m_payload_bits(parse_payload_bits()),
     m_arg_templates(parse_arg_sets()),
-    m_event_map(parse_events())
+    m_event_map(parse_events()),
+    m_entry_header_size(parse_structure_size("ring_buffer_entry_header")),
+    m_entry_footer_size(parse_structure_size("ring_buffer_entry_footer"))
 {
 }
 
@@ -49,6 +51,21 @@ parse_payload_bits()
     throw std::runtime_error("Payload bits must be greater than 0");
   }
   return payload_bits_val;
+}
+
+size_t
+config_strix::
+parse_structure_size(const std::string& struct_name)
+{
+  const auto& config = get_config();
+  if (!config.contains("structures") || !config["structures"].contains(struct_name)) {
+    return 0;
+  }
+  const auto& structure = config["structures"][struct_name];
+  if (structure.contains("size")) {
+    return structure["size"].get<size_t>();
+  }
+  return 0;
 }
 
 std::map<std::string, std::vector<config_strix::event_arg_strix>>
@@ -316,18 +333,24 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     return "No event trace data available\n";
   }
 
-  // Calculate total event size from config
-  size_t total_event_size = m_config.get_event_size();
-  size_t event_count = buf_size / total_event_size;
+  // Get entry header and footer sizes
+  size_t entry_header_size = m_config.get_entry_header_size();
+  size_t entry_footer_size = m_config.get_entry_footer_size();
+  size_t event_data_size = m_config.get_event_size();
+  size_t total_entry_size = entry_header_size + event_data_size + entry_footer_size;
   
-  // Parse each event dynamically based on config sizes
-  const uint8_t* current_ptr = data_ptr;
-  for (size_t i = 0; i < event_count; ++i) {
+  // Parse each entry dynamically based on config sizes
+  size_t offset = 0;
+  while (offset + total_entry_size <= buf_size) {
+    // Skip entry header
+    const uint8_t* event_ptr = data_ptr + offset + entry_header_size;
     // Parse event from buffer using runtime config
-    auto event_data = m_config.parse_buffer(current_ptr);
-    current_ptr += total_event_size;
+    auto event_data = m_config.parse_buffer(event_ptr);
     
     ss << format_event(event_data);
+    
+    // Move to next entry (skip header + event + footer)
+    offset += total_entry_size;
   }
   return ss.str();
 }
