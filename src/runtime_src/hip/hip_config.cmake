@@ -2,15 +2,15 @@
 # Copyright (C) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 message("-- Looking for HIP include files...")
-if(NOT WIN32)
+if (NOT WIN32)
   # Determine library architecture for Debian/Ubuntu multiarch systems
   # (x86_64-linux-gnu, aarch64-linux-gnu)
   # CMAKE_LIBRARY_ARCHITECTURE is automatically set by CMake on Debian/Ubuntu
   # For other distros or incomplete toolchains, provide a reasonable fallback
-  if(NOT CMAKE_LIBRARY_ARCHITECTURE)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+  if (NOT CMAKE_LIBRARY_ARCHITECTURE)
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
       set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
       set(CMAKE_LIBRARY_ARCHITECTURE "arm-linux-gnueabihf")
     else()
       set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu")
@@ -90,6 +90,13 @@ else()
     "C:/Program Files/AMD/ROCm/6.2/lib/cmake/hip"
     "C:/Program Files/AMD/ROCm/6.1/lib/cmake/hip"
     "C:/Program Files/AMD/ROCm/5.7/lib/cmake/hip"
+  )
+  # hip-config itself requires these other directories to find its dependencies
+  list(APPEND CMAKE_PREFIX_PATH
+    $ENV{HIP_DIR}
+    "C:/Program Files/AMD/ROCm/6.2"
+    "C:/Program Files/AMD/ROCm/6.1"
+    "C:/Program Files/AMD/ROCm/5.7"
   )
 endif()
 
