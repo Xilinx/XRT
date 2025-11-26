@@ -246,7 +246,7 @@ static struct attribute *ert_ctrl_attrs[] = {
 
 static ssize_t
 cq_bin_show(struct file *filp, struct kobject *kobj,
-	    const struct bin_attribute *attr, char *buf,
+	    BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf,
 	    loff_t offset, size_t count)
 {
 	struct ert_ctrl *ec;
@@ -273,7 +273,7 @@ done:
 	return nread;
 }
 
-static const struct bin_attribute cq_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute cq_attr = {
 	.attr = {
 		.name ="cq_bin",
 		.mode = 0444
@@ -283,7 +283,7 @@ static const struct bin_attribute cq_attr = {
 	.size = 0
 };
 
-static const struct bin_attribute *ert_ctrl_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute *ert_ctrl_bin_attrs[] = {
 	&cq_attr,
 	NULL,
 };

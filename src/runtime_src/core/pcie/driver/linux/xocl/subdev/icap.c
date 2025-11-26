@@ -3779,7 +3779,7 @@ static struct attribute *icap_attrs[] = {
 
 /*- Debug IP_layout-- */
 static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap;
 	struct islot_info *islot = NULL;
@@ -3820,7 +3820,7 @@ static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj
 	
 	return f_nread;
 }
-static const struct bin_attribute debug_ip_layout_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute debug_ip_layout_attr = {
 	.attr = {
 		.name = "debug_ip_layout",
 		.mode = 0444
@@ -3832,7 +3832,7 @@ static const struct bin_attribute debug_ip_layout_attr = {
 
 /* IP layout */
 static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = NULL;
 	struct islot_info *islot = NULL;
@@ -3873,7 +3873,7 @@ static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 	return f_nread;
 }
 
-static const struct bin_attribute ip_layout_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute ip_layout_attr = {
 	.attr = {
 		.name = "ip_layout",
 		.mode = 0444
@@ -3885,7 +3885,7 @@ static const struct bin_attribute ip_layout_attr = {
 
 /* PS kernel */
 static ssize_t icap_read_ps_kernel(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = NULL;
 	struct islot_info *islot = NULL;
@@ -3928,7 +3928,7 @@ static ssize_t icap_read_ps_kernel(struct file *filp, struct kobject *kobj,
 	return f_nread;
 }
 
-static const struct bin_attribute ps_kernel_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute ps_kernel_attr = {
 	.attr = {
 		.name = "ps_kernel",
 		.mode = 0444
@@ -3940,7 +3940,7 @@ static const struct bin_attribute ps_kernel_attr = {
 
 /* -Connectivity-- */
 static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = NULL;
 	struct islot_info *islot = NULL;
@@ -3982,7 +3982,7 @@ static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	return f_nread;
 }
 
-static const struct bin_attribute connectivity_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute connectivity_attr = {
 	.attr = {
 		.name = "connectivity",
 		.mode = 0444
@@ -3994,7 +3994,7 @@ static const struct bin_attribute connectivity_attr = {
 
 /* -Group Connectivity-- */
 static ssize_t icap_read_group_connectivity(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = NULL;
 	struct islot_info *islot = NULL;
@@ -4036,7 +4036,7 @@ static ssize_t icap_read_group_connectivity(struct file *filp, struct kobject *k
 	return f_nread;
 }
 
-static const struct bin_attribute group_connectivity_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute group_connectivity_attr = {
 	.attr = {
 		.name = "group_connectivity",
 		.mode = 0444
@@ -4048,7 +4048,7 @@ static const struct bin_attribute group_connectivity_attr = {
 
 /* -Mem_topology-- */
 static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 	struct islot_info *islot = NULL;
@@ -4112,7 +4112,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 }
 
 
-static const struct bin_attribute mem_topology_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute mem_topology_attr = {
 	.attr = {
 		.name = "mem_topology",
 		.mode = 0444
@@ -4124,7 +4124,7 @@ static const struct bin_attribute mem_topology_attr = {
 
 /* -Group_topology-- */
 static ssize_t icap_read_group_topology(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 	struct islot_info *islot = NULL;
@@ -4188,7 +4188,7 @@ static ssize_t icap_read_group_topology(struct file *filp, struct kobject *kobj,
 	return f_nread;
 }
 
-static const struct bin_attribute group_topology_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute group_topology_attr = {
 	.attr = {
 		.name = "group_topology",
 		.mode = 0444
@@ -4200,7 +4200,7 @@ static const struct bin_attribute group_topology_attr = {
 
 /* -Mem_topology-- */
 static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap = NULL;
 	struct islot_info *islot = NULL;
@@ -4242,7 +4242,7 @@ static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
 }
 
 
-static const struct bin_attribute clock_freq_topology_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute clock_freq_topology_attr = {
 	.attr = {
 		.name = "clock_freq_topology",
 		.mode = 0444
@@ -4253,7 +4253,7 @@ static const struct bin_attribute clock_freq_topology_attr = {
 };
 
 static ssize_t rp_bit_output(struct file *filp, struct kobject *kobj,
-		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+		BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct icap *icap;
 	ssize_t ret = 0;
@@ -4277,7 +4277,7 @@ bail:
 	return ret;
 }
 
-static const struct bin_attribute rp_bit_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute rp_bit_attr = {
 	.attr = {
 		.name = "rp_bit",
 		.mode = 0400
@@ -4286,7 +4286,7 @@ static const struct bin_attribute rp_bit_attr = {
 	.size = 0
 };
 
-static const struct bin_attribute *icap_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute *icap_bin_attrs[] = {
 	&debug_ip_layout_attr,
 	&ip_layout_attr,
 	&ps_kernel_attr,

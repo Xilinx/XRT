@@ -1323,7 +1323,7 @@ static int ert_user_thread(void *data)
 		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
 		process_ert_pq(ert_user, &ert_user->pq_ctrl, &ert_user->rq_ctrl);
 	}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 15, 0)
 	del_timer_sync(&ert_user->timer);
 #else
 	timer_delete_sync(&ert_user->timer);

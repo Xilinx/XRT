@@ -584,7 +584,7 @@ static struct attribute *mgmt_attrs[] = {
 };
 
 static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
@@ -620,7 +620,7 @@ static struct bin_attribute fdt_blob_attr = {
 	.size = 0
 };
 static ssize_t userpf_blob_output(struct file *filp, struct kobject *kobj,
-	const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
@@ -656,7 +656,7 @@ static struct bin_attribute userpf_blob_attr = {
 	.size = 0
 };
 
-static const struct bin_attribute  *mgmt_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute  *mgmt_bin_attrs[] = {
 	&userpf_blob_attr,
 	&fdt_blob_attr,
 	NULL,

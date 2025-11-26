@@ -642,7 +642,7 @@ int xrt_cu_intr_thread(void *data)
 		process_pq(xcu);
 	}
 	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 15, 0)
 	del_timer_sync(&xcu->timer);
 #else
 	timer_delete_sync(&xcu->timer);
@@ -981,7 +981,7 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 	if (xcu->thread && !IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 15, 0)
 	del_timer_sync(&xcu->timer);
 	del_timer_sync(&xcu->stats.stats_timer);
 #else

@@ -73,6 +73,12 @@
 #endif
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+# define BIN_ATTRIBUTE_CONST const
+#else
+# define BIN_ATTRIBUTE_CONST
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
 #endif
