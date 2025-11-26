@@ -108,6 +108,26 @@ public:
   }
 
   /**
+   * @brief Get the entry header size
+   * @return Entry header size in bytes
+   */
+  size_t 
+  get_entry_header_size() const 
+  { 
+    return m_entry_header_size; 
+  }
+
+  /**
+   * @brief Get the entry footer size
+   * @return Entry footer size in bytes
+   */
+  size_t 
+  get_entry_footer_size() const 
+  { 
+    return m_entry_footer_size; 
+  }
+
+  /**
    * @brief Parse single event from buffer at runtime using config sizes
    * @param buffer_ptr Pointer to event data in buffer
    */
@@ -129,7 +149,13 @@ private:
   uint32_t 
   parse_payload_bits();
 
-
+  /**
+   * @brief Parse structure size from JSON structures section
+   * @param struct_name Name of structure to get size for
+   * @return Size in bytes, or 0 if not found
+   */
+  size_t
+  parse_structure_size(const std::string& struct_name);
 
   /**
    * @brief Parse arg_sets section from JSON (optional)
@@ -226,6 +252,8 @@ private:
   uint32_t m_payload_bits;                                   // Payload bit width
   std::map<std::string, std::vector<event_arg_strix>> m_arg_templates;  // Argument set definitions
   std::map<uint16_t, event_info_strix> m_event_map;               // Event ID -> info
+  size_t m_entry_header_size;                                // Entry header size in bytes
+  size_t m_entry_footer_size;                                // Entry footer size in bytes
 };
 
 /**
