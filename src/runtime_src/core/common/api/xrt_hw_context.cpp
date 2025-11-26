@@ -42,6 +42,9 @@
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
 
+constexpr std::size_t
+operator""_mb(unsigned long long v) { return 1024u * 1024u * v; }
+
 // Dumps the content into a file with given size from given offset
 static void
 dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t offset = 0)
@@ -79,7 +82,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     {
       // parameters for uc log buffer dumper
       // tweak dump interval, size_per_uc based on experiments
-      constexpr size_t size_per_uc = 2 * 1024 * 1024;
+      constexpr size_t size_per_uc = 2_mb;
       constexpr size_t dump_interval_ms = 3;
       constexpr size_t metadata_size = 32;
       constexpr size_t count_offset = 0;
@@ -106,7 +109,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       xrt_core::bo_int::config_bo(bo, uc_buf_map, ctx_hdl);
 
       // create buffer dumper object to dump the log buffer contents
-      xrt_core::dumper_config config;
+      xrt_core::buffer_dumper::config config;
       config.chunk_size = size_per_uc;
       config.metadata_size = metadata_size;
       config.count_offset = count_offset;

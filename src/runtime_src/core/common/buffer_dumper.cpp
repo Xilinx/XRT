@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
-#define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
-#define XRT_API_SOURCE         // in same dll as coreutil
-#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
 #include "buffer_dumper.h"
-
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
-#include "core/include/xrt/deprecated/xrt.h"
 
 #include <cstring>
 #include <stdexcept>
@@ -17,8 +12,8 @@
 namespace xrt_core {
 
 buffer_dumper::
-buffer_dumper(dumper_config config)
-  : m_config(std::move(config))
+buffer_dumper(config cfg)
+  : m_config(std::move(cfg))
   , m_data_size(m_config.chunk_size - m_config.metadata_size)
   , m_dumped_counts(m_config.num_chunks, 0)
   , m_file_streams(m_config.num_chunks)
@@ -43,28 +38,17 @@ buffer_dumper(dumper_config config)
 buffer_dumper::
 ~buffer_dumper()
 {
-  m_stop_thread = true;
-  m_cv.notify_one();
-
-  if (m_dump_thread.joinable()) {
-    m_dump_thread.join();
-  }
-
   // Flush the remaining data
   // catch exceptions to avoid throwing in destructor
   try {
+    m_stop_thread = true;
+    m_cv.notify_one();
+    m_dump_thread.join();
     flush();
   }
   catch (const std::exception& e) {
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "buffer_dumper",
-        std::string{"Failed to flush dump buffer: "} + e.what());
-  }
-
-  for (auto& fs : m_file_streams) {
-    if (fs.is_open()) {
-      fs.flush();
-      fs.close();
-    }
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+        std::string{"Error during cleanup: "} + e.what());
   }
 }
 
@@ -142,7 +126,7 @@ void
 buffer_dumper::
 process_chunks()
 {
-  std::lock_guard<std::mutex> lock(m_dump_mutex);
+  std::lock_guard lock(m_dump_mutex);
 
   // Map buffer once for all chunks
   auto* base_ptr = m_config.dump_buffer.map<uint8_t*>();
@@ -161,7 +145,7 @@ process_chunks()
     size_t dumped_wrap = dumped_count / m_data_size;
 
     if (logged_count > dumped_count && logged_wrap > dumped_wrap)
-      throw std::runtime_error("Overwrite detected in chunk : " + std::to_string(i) +
+      throw std::runtime_error("Overwrite detected in chunk: " + std::to_string(i) +
                                ", dump buffer corrupted.");
 
     if (dumped_count != logged_count) {
@@ -192,7 +176,7 @@ dumping_loop()
   while (!m_stop_thread) {
     try {
       {
-        std::unique_lock<std::mutex> lock(m_dump_mutex);
+        std::unique_lock lock(m_dump_mutex);
         m_cv.wait_for(lock, std::chrono::milliseconds(m_config.dump_interval_ms),
                       [this] { return m_stop_thread.load(); });
       }

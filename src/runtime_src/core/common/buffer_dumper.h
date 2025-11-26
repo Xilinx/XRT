@@ -16,18 +16,6 @@
 
 namespace xrt_core {
 
-struct dumper_config
-{
-  size_t chunk_size = 0;
-  size_t metadata_size = 0;
-  size_t count_offset = 0;
-  size_t count_size = 0;
-  size_t num_chunks = 0;
-  size_t dump_interval_ms = 0;
-  std::string dump_file_prefix;
-  xrt::bo dump_buffer;
-};
-
 /**
  * buffer_dumper - Asynchronously dumps device buffer contents periodically
  *
@@ -45,8 +33,23 @@ struct dumper_config
  */
 class buffer_dumper
 {
+public:
+  // Configuration struct for buffer dumper behavior and layout
+  struct config
+  {
+    size_t chunk_size = 0;            // Total chunk size (metadata + data)
+    size_t metadata_size = 0;         // Metadata header size
+    size_t count_offset = 0;          // Offset of count field in metadata
+    size_t count_size = 0;            // Count field size
+    size_t num_chunks = 0;            // Number of chunks to monitor
+    size_t dump_interval_ms = 0;      // Polling interval in ms
+    std::string dump_file_prefix;     // Output file prefix
+    xrt::bo dump_buffer;              // xrt buffer object to dump
+  };
+
+
 private:
-  dumper_config m_config;
+  config m_config;
   size_t m_data_size = 0;
   std::vector<size_t> m_dumped_counts;
   std::thread m_dump_thread;
@@ -67,9 +70,9 @@ private:
   void
   dumping_loop();
 
-public :
+public:
   explicit
-  buffer_dumper(dumper_config config);
+  buffer_dumper(config cfg);
 
   ~buffer_dumper();
 
