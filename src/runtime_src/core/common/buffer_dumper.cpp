@@ -124,17 +124,15 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
 
 void
 buffer_dumper::
-process_chunks()
+process_chunks_no_lock()
 {
-  std::lock_guard lock(m_dump_mutex);
-
   // Map buffer once for all chunks
-  auto* base_ptr = m_config.dump_buffer.map<uint8_t*>();
+  auto base_ptr = m_config.dump_buffer.map<uint8_t*>();
 
   for (size_t i = 0; i < m_config.num_chunks; i++)
   {
     const size_t chunk_offset = i * m_config.chunk_size;
-    uint8_t* chunk = base_ptr + chunk_offset;
+    auto chunk = base_ptr + chunk_offset;
 
     // sync only the metadata for the current chunk to read the logged count
     m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, m_config.metadata_size, chunk_offset);
@@ -157,7 +155,8 @@ process_chunks()
       if (to_dump <= bytes_to_end) {
         // Data doesn't wrap, sync contiguous range
         m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, to_dump, chunk_offset + start_offset);
-      } else {
+      }
+      else {
         // Data wraps around, sync two ranges
         m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, bytes_to_end, chunk_offset + start_offset);
         m_config.dump_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE, to_dump - bytes_to_end, chunk_offset + m_config.metadata_size);
@@ -171,18 +170,24 @@ process_chunks()
 
 void
 buffer_dumper::
+process_chunks()
+{
+  std::lock_guard lock(m_dump_mutex);
+  process_chunks_no_lock();
+}
+
+void
+buffer_dumper::
 dumping_loop()
 {
   while (!m_stop_thread) {
     try {
-      {
-        std::unique_lock lock(m_dump_mutex);
-        m_cv.wait_for(lock, std::chrono::milliseconds(m_config.dump_interval_ms),
-                      [this] { return m_stop_thread.load(); });
-      }
+      std::unique_lock lock(m_dump_mutex);
+      m_cv.wait_for(lock, std::chrono::milliseconds(m_config.dump_interval_ms),
+                    [this] { return m_stop_thread.load(); });
 
       if (!m_stop_thread)
-        process_chunks();
+        process_chunks_no_lock();
     }
     catch (const std::exception& e) {
       // Log error but keep thread running

@@ -58,22 +58,33 @@ private:
   std::condition_variable m_cv;
   std::vector<std::ofstream> m_file_streams;
 
+  // Read the logged count from chunk metadata
   size_t
   read_logged_count(uint8_t* chunk);
 
+  // Write chunk data to file (metadata header + new data payload)
   void
   dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk);
 
+  // Process all chunks without acquiring lock (caller must hold m_dump_mutex)
+  void
+  process_chunks_no_lock();
+
+  // Process all chunks with lock acquisition
   void
   process_chunks();
 
+  // Background thread function that periodically checks for new data
   void
   dumping_loop();
 
 public:
+  // Reads configuration and opens files for dumping
+  // Starts background dumping thread
   explicit
   buffer_dumper(config cfg);
 
+  // Stop background thread and flush remaining data
   ~buffer_dumper();
 
   // Delete copy and move operations
@@ -82,6 +93,7 @@ public:
   buffer_dumper& operator=(const buffer_dumper&) = delete;
   buffer_dumper& operator=(buffer_dumper&&) = delete;
 
+  // Synchronously flush all pending data
   void
   flush();
 };

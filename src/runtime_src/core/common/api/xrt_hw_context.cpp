@@ -83,7 +83,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // parameters for uc log buffer dumper
       // tweak dump interval, size_per_uc based on experiments
       constexpr size_t size_per_uc = 2_mb;
-      constexpr size_t dump_interval_ms = 3;
+      constexpr size_t dump_interval_ms = 50;
       constexpr size_t metadata_size = 32;
       constexpr size_t count_offset = 0;
       constexpr size_t count_size = 8;
@@ -280,13 +280,13 @@ public:
     m_uc_log_buf.reset();
 
     try {
-      // finish_flush_device should only be called when the underlying 
+      // finish_flush_device should only be called when the underlying
       // hw_context_impl is destroyed. The xdp::update_device cannot exist
       // in the hw_context_impl constructor because an existing
       // shared pointer must already exist to call get_shared_ptr(),
       // which is not true at that time.
       xrt_core::xdp::finish_flush_device(this);
-      
+
       // Reset within scope of dtor for trace point to measure time to reset
       m_hdl.reset();
     }
@@ -531,7 +531,7 @@ xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl)
 {
   if (!hwctx_impl)
-    throw std::runtime_error("Invalid hardware context implementation."); 
+    throw std::runtime_error("Invalid hardware context implementation.");
 
   auto impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
   return xrt::hw_context(impl_ptr->get_shared_ptr());
@@ -585,7 +585,7 @@ post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
 {
   // Update device is called with a raw pointer to dyanamically
   // link to callbacks that exist in XDP via a C-style interface
-  // The create_hw_context_from_implementation function is then 
+  // The create_hw_context_from_implementation function is then
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get(), true);
   handle->get_usage_logger()->log_hw_ctx_info(handle.get());
