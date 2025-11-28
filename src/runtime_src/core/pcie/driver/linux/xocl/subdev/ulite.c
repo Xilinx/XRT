@@ -286,7 +286,7 @@ static int ulite_thread(void *data)
 
 	while (atomic_read(&pdata->console_opened) && !kthread_should_stop()) {
 		ulite_worker(port);
-		/* 115200bps / 9bits * 2 sampling rate 
+		/* 115200bps / 9bits * 2 sampling rate
 		 * 25600Hz, we should sleep less than 40us
 		 */
 		usleep_range(30, 40);
@@ -382,7 +382,7 @@ static void ulite_shutdown(struct uart_port *port)
 	mutex_unlock(&pdata->lock);
 }
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 1, 0)) || defined(RHEL_9_2_GE)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)) || defined(RHEL_9_2_GE)
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
 			      const struct ktermios *old)
 #else
@@ -549,7 +549,7 @@ static int ulite_probe(struct platform_device *pdev)
 	for (id = 0; id < ULITE_NR_UARTS; id++)
 		if (ulite_ports[id].mapbase == 0)
 			break;
-	
+
 	if (id >= ULITE_NR_UARTS) {
 		dev_err(&pdev->dev, "%s%i too large\n", ULITE_NAME, id);
 		ret = -EINVAL;
