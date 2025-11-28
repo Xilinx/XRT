@@ -551,7 +551,7 @@ void xocl_close_drm_render_fds(pid_t pid)
     fdt = files_fdtable(task->files);
 
     for (fd = 0; fd < fdt->max_fds; fd++) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,220)
 		rcu_read_lock();
 		file = files_lookup_fd_raw(current->files, fd);
 		rcu_read_unlock();

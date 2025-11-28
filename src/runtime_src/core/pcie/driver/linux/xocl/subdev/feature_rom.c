@@ -128,7 +128,7 @@ static struct attribute *rom_attrs[] = {
 };
 
 static ssize_t raw_show(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
@@ -144,7 +144,7 @@ static ssize_t raw_show(struct file *filp, struct kobject *kobj,
 	return count;
 };
 
-static struct bin_attribute raw_attr = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute raw_attr = {
 	.attr = {
 		.name = "raw",
 		.mode = 0400
@@ -154,7 +154,7 @@ static struct bin_attribute raw_attr = {
 	.size = 0
 };
 
-static struct bin_attribute  *rom_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute *rom_bin_attrs[] = {
 	&raw_attr,
 	NULL,
 };
@@ -354,7 +354,7 @@ static void set_vbnv_name(struct platform_device *pdev)
 	if (idcode == 0x04261818)
 		return;
 
-	snprintf(sh_version, sizeof(sh_version), "%lx", idcode);
+	snprintf(sh_version, sizeof(sh_version), "%x", idcode);
 	memset(rom->header.VBNVName, 0, sizeof(rom->header.VBNVName));
 	strncpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
 	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);

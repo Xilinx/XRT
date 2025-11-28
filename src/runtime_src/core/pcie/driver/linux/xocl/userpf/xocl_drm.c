@@ -20,7 +20,8 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || \
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) && \
+     (LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0))) || \
 	defined(RHEL_RELEASE_VERSION)
 #include <linux/pfn_t.h>
 #endif
@@ -292,7 +293,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	 * kernel support is dropped.
 	 */
 	if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
-#ifdef RHEL_RELEASE_VERSION
+#if defined(RHEL_RELEASE_VERSION) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0))
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 #if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
@@ -307,7 +308,8 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 /*  vm_insert_page does not allow driver to insert anonymous pages.
  *  Instead, we call vm_insert_mixed.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || defined(RHEL_RELEASE_VERSION)
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) && \
+     (LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0))) || defined(RHEL_RELEASE_VERSION)
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
 #if defined(RHEL_RELEASE_VERSION)
@@ -324,7 +326,11 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #endif
 #endif
 #else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+		ret = vmf_insert_mixed(vma, vmf_address, page_to_pfn(xobj->pages[page_offset]));
+#else
 		ret = vm_insert_mixed(vma, vmf_address, page_to_pfn(xobj->pages[page_offset]));
+#endif
 #endif
 	} else {
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
@@ -561,7 +567,9 @@ static struct drm_driver mm_drm_driver = {
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0)
 	.date				= driver_date,
+#endif
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(RHEL_8_5_GE)

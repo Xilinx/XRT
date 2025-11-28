@@ -60,7 +60,7 @@ struct cu_stats {
 
 #define stat_read(statp, field)					\
 ({								\
-	typeof((statp)->field) res = 0;				\
+	u64 res = 0;						\
 	unsigned int _cpu;					\
 	for_each_possible_cpu(_cpu)				\
 		res += per_cpu_ptr((statp), _cpu)->field;	\
