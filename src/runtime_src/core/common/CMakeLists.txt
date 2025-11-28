@@ -34,6 +34,7 @@ endif()
 
 add_library(core_common_library_objects OBJECT
   archive.cpp
+  buffer_dumper.cpp
   config_reader.cpp
   debug.cpp
   debug_ip.cpp
