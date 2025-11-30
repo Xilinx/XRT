@@ -188,7 +188,7 @@ static ssize_t reset_store(struct device *dev,
 static DEVICE_ATTR_WO(reset);
 
 static ssize_t image_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct xocl_ert *ert =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -249,7 +249,7 @@ static size_t _image_write(char **image, size_t sz,
 }
 
 static ssize_t image_write(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
 {
 	struct xocl_ert *ert =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -271,7 +271,7 @@ static struct bin_attribute ert_image_attr = {
 	.size = 0
 };
 
-static struct bin_attribute *ert_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute *ert_bin_attrs[] = {
 	&ert_image_attr,
 	NULL,
 };

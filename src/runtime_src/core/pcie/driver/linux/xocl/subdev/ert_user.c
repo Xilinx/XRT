@@ -645,10 +645,14 @@ static void ert_free_cmd(struct xrt_ert_command *ecmd)
 static void ert_timer(unsigned long data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 static void ert_timer(struct timer_list *t)
 {
 	struct xocl_ert_user *ert_user = from_timer(ert_user, t, timer);
+#else
+static void ert_timer(struct timer_list *t)
+{
+	struct xocl_ert_user *ert_user = timer_container_of(ert_user, t, timer);
 #endif
 
 	atomic_inc(&ert_user->tick);
@@ -1319,7 +1323,11 @@ static int ert_user_thread(void *data)
 		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
 		process_ert_pq(ert_user, &ert_user->pq_ctrl, &ert_user->rq_ctrl);
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 15, 0)
 	del_timer_sync(&ert_user->timer);
+#else
+	timer_delete_sync(&ert_user->timer);
+#endif
 
 	if (!ert_user->bad_state)
 		ret = -EBUSY;
