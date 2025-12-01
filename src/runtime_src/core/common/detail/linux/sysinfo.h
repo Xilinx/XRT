@@ -127,4 +127,10 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("processor", processor_name());
 }
 
+bool
+is_advanced()
+{
+  return true; //TODO: implement Linux side
+}
+
 } //xrt_core::sysinfo
