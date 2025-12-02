@@ -79,6 +79,14 @@
 # define BIN_ATTRIBUTE_CONST
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
+# define XOCL_IDA_ALLOC_RANGE ida_simple_get
+# define XOCL_IDA_FREE ida_simple_remove
+#else
+# define XOCL_IDA_ALLOC_RANGE ida_alloc_range
+# define XOCL_IDA_FREE ida_free
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
 #endif
