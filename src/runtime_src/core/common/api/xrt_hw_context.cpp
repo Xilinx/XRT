@@ -7,6 +7,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 
+#include "core/common/buffer_dumper.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
@@ -27,6 +28,7 @@
 #include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
+#include <cstddef>
 #include <ctime>
 #include <fstream>
 #include <limits>
@@ -39,6 +41,9 @@
 
 namespace {
 static constexpr double hz_per_mhz = 1'000'000.0;
+
+constexpr std::size_t
+operator""_mb(unsigned long long v) { return 1024u * 1024u * v; }
 
 // Dumps the content into a file with given size from given offset
 static void
@@ -68,22 +73,26 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   {
     size_t m_num_uc; // number of uc's
     uint32_t m_slot_idx; // index of slot in which these uc's are present
-    size_t m_size_per_uc;
-    xrt::bo m_uc_log_bo; // log buffer used for uc logging
+    std::unique_ptr<xrt_core::buffer_dumper> m_uc_log_bo_dumper;
 
-    static xrt::bo
-    init_and_get_uc_log_bo(const std::shared_ptr<xrt_core::device>& device,
-                           xrt_core::hwctx_handle* ctx_hdl,
-                           size_t size_per_uc,
-                           size_t num_uc)
+    static std::unique_ptr<xrt_core::buffer_dumper>
+    init_uc_log_bo_dumper(const std::shared_ptr<xrt_core::device>& device,
+                          xrt_core::hwctx_handle* ctx_hdl,
+                          size_t num_uc)
     {
+      // parameters for uc log buffer dumper
+      // tweak dump interval, size_per_uc based on experiments
+      constexpr size_t size_per_uc = 2_mb;
+      constexpr size_t dump_interval_ms = 50;
+      constexpr size_t metadata_size = 32;
+      constexpr size_t count_offset = 0;
+      constexpr size_t count_size = 8;
+
       auto bo = xrt_core::bo_int::create_bo(
           device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
-      // Log buffers first 8 bytes are used for metadata
       // So make sure for each uC metadata bytes are initialized with
       // zero's before configuring
-      constexpr size_t metadata_size = 8;
       char* buf_map = bo.map<char*>();
       if (!buf_map)
         throw std::runtime_error("Failed to map uc log buffer");
@@ -96,53 +105,35 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
         uc_buf_map[i] = size_per_uc;
       }
 
-      xrt_core::bo_int::config_bo(bo, uc_buf_map, ctx_hdl); // configure the log buffer
+      // configure the log buffer
+      xrt_core::bo_int::config_bo(bo, uc_buf_map, ctx_hdl);
 
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
-                              "uC log buffer initialized successfully");
+      // create buffer dumper object to dump the log buffer contents
+      xrt_core::buffer_dumper::config config;
+      config.chunk_size = size_per_uc;
+      config.metadata_size = metadata_size;
+      config.count_offset = count_offset;
+      config.count_size = count_size;
+      config.num_chunks = num_uc;
+      config.dump_interval_ms = dump_interval_ms;
+      config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
+      config.dump_buffer = std::move(bo);
 
-      return bo;
-    }
-
-    void
-    dump()
-    {
-      try {
-        // dump uc log buffer if configured in constructor
-        if (!m_uc_log_bo)
-          return;
-
-        // sync the log buffer
-        m_uc_log_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-        // dump the log buffer for each uc in a separate file
-        // Use timestamp, slot index in file name
-        for (size_t i = 0; i < m_num_uc; i++) {
-          auto file_name = "uc_log_" + std::to_string(xrt_core::utils::get_pid()) + "_"
-              + xrt_core::get_timestamp_for_filename() + "_" + std::to_string(m_slot_idx) + "_" + std::to_string(i) + ".bin";
-          dump_bo(m_uc_log_bo.map<char*>(), file_name, m_size_per_uc, (i * m_size_per_uc));
-        }
-      }
-      catch (const std::exception& e) {
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
-                                std::string{"Failed to dump UC log buffer : "} + e.what());
-      }
+      return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
 
     // may throw
     uc_log_buffer(const std::shared_ptr<xrt_core::device>& device,
-                  xrt_core::hwctx_handle* ctx_hdl,
-                  size_t size)
+                  xrt_core::hwctx_handle* ctx_hdl)
       : m_num_uc(ctx_hdl->get_num_uc())
       , m_slot_idx(ctx_hdl->get_slotidx())
-      , m_size_per_uc(size)
-      , m_uc_log_bo(init_and_get_uc_log_bo(device, ctx_hdl, size, m_num_uc))
+      , m_uc_log_bo_dumper(init_uc_log_bo_dumper(device, ctx_hdl, m_num_uc))
     {}
 
-    ~uc_log_buffer()
+    void
+    dump()
     {
-      // dump the log buffer contents when object is destructed
-      dump();
+      m_uc_log_bo_dumper->flush();
     }
   };
 
@@ -192,24 +183,20 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }
   }
 
-  // Initializes uc log buffer, configures it by splitting the buffer
-  // equally among available columns
+  // Initializes uc log buffer
+  // Creates log buffer and starts a thread to dump the log buffer contents
+  // periodically per column to a file
   static std::unique_ptr<uc_log_buffer>
   init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
   {
     // Create uc log buffer only if ini option is enabled
     // If enabled, but not supported then this function returns nullptr
-    static auto uc_log_buf_size = xrt_core::config::get_log_buffer_size_per_uc();
-    if (!uc_log_buf_size || !ctx_hdl)
+    static auto uc_log_enabled = xrt_core::config::get_uc_log();
+    if (!uc_log_enabled || !ctx_hdl)
       return nullptr;
 
-    // We get size of single uc but we create one buffer for all uc's
-    // and split it uc needs buffer that is 32 Byte aligned
-    constexpr std::size_t alignment = 32;
-    // round up size to be 32 Byte aligned
-    size_t uc_aligned_size = (uc_log_buf_size + alignment - 1) & ~(alignment - 1);
     try {
-      return std::make_unique<uc_log_buffer>(device, ctx_hdl, uc_aligned_size);
+      return std::make_unique<uc_log_buffer>(device, ctx_hdl);
     }
     catch (const std::exception& e) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
@@ -293,13 +280,13 @@ public:
     m_uc_log_buf.reset();
 
     try {
-      // finish_flush_device should only be called when the underlying 
+      // finish_flush_device should only be called when the underlying
       // hw_context_impl is destroyed. The xdp::update_device cannot exist
       // in the hw_context_impl constructor because an existing
       // shared pointer must already exist to call get_shared_ptr(),
       // which is not true at that time.
       xrt_core::xdp::finish_flush_device(this);
-      
+
       // Reset within scope of dtor for trace point to measure time to reset
       m_hdl.reset();
     }
@@ -544,7 +531,7 @@ xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl)
 {
   if (!hwctx_impl)
-    throw std::runtime_error("Invalid hardware context implementation."); 
+    throw std::runtime_error("Invalid hardware context implementation.");
 
   auto impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
   return xrt::hw_context(impl_ptr->get_shared_ptr());
@@ -598,7 +585,7 @@ post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
 {
   // Update device is called with a raw pointer to dyanamically
   // link to callbacks that exist in XDP via a C-style interface
-  // The create_hw_context_from_implementation function is then 
+  // The create_hw_context_from_implementation function is then
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get(), true);
   handle->get_usage_logger()->log_hw_ctx_info(handle.get());
