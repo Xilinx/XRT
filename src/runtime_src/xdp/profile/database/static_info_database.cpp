@@ -1635,7 +1635,7 @@ namespace xdp {
   void
   VPStaticDatabase::
   updateDeviceFromCoreDeviceElf(uint64_t deviceId,
-                             std::shared_ptr<xrt_core::device> device)
+                                std::shared_ptr<xrt_core::device> /*device*/)
   {
     // For ELF Flow, always reset the device for now
     DeviceInfo* devInfo = nullptr ;
