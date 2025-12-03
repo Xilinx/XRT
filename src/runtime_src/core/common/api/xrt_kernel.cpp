@@ -867,6 +867,7 @@ public:
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
       m_managed = (m_callbacks && !m_callbacks->empty());
+      m_done = false;
     }
 
     try {
@@ -874,15 +875,12 @@ public:
         m_hwqueue.managed_start(this);
       else
         m_hwqueue.unmanaged_start(this);
-
-      {
-        // Mark as in-progress only after successful start
-        std::lock_guard<std::mutex> lk(m_mutex);
-        m_done = false;
-      }
     }
     catch (...) {
-      // Start failed - m_done remains true, command can be retried
+      // Start failed, m_done remains true
+      // command can be retried if needed
+      std::lock_guard<std::mutex> lk(m_mutex);
+      m_done = true;
       throw;
     }
   }
