@@ -80,6 +80,16 @@ get_enumerator_value(const std::string& name) const {
   return it != enumerator_to_value.end() ? it->second : 0;
 }
 
+const firmware_log_config::structure_info& 
+firmware_log_config::
+get_log_header() const {
+  auto it = structures.find("ipu_log_message_header");
+  if (it == structures.end()) {
+    throw std::runtime_error("ipu_log_message_header structure not found in config");
+  }
+  return it->second;
+}
+
 size_t 
 firmware_log_config::
 calculate_header_size(const std::map<std::string, structure_info>& structures) {

@@ -82,6 +82,18 @@ namespace xdp {
 
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesBytesTx;
       std::vector<std::shared_ptr<xaiefal::XAieBroadcast>> bcResourcesLatency;
+
+      uint8_t m_startColShift = 0;
+
+      // Helper: convert relative column to XAIE column
+      inline uint8_t getXAIECol(uint8_t relCol) const {
+        auto absCol = relCol + m_startColShift;
+        // For loadxclbin flow currently XRT creates partition of whole device from 0th column.
+        // Hence absolute and relative columns are same.
+        // TODO: For loadxclbin flow XRT will start creating partition of the specified columns,
+        //       hence we should stop adding partition shift to col for passing to XAIE Apis
+        return (db->getStaticInfo().getAppStyle() == xdp::AppStyle::LOAD_XCLBIN_STYLE) ? absCol : relCol;
+      }
   };
 }   
 

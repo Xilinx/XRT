@@ -5,7 +5,6 @@ normal=$(tput sgr0)
 red=$(tput setaf 1)
 
 ABS_PATH=$(pwd)
-yocto_path="$ABS_PATH/yocto/edf/ve2"
 XRT_REPO_DIR=`readlink -f ${ABS_PATH}/..`
 SETTINGS_FILE="$ABS_PATH/yocto.build"
 
@@ -21,7 +20,8 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -clean, clean                   Remove build directories"
+    echo "          -clean, clean                   Remove build directories, Specify architecture"
+    echo "          -aarch [vek385|vrk160]          Specify architecture (required)"
     echo ""
 }
 
@@ -29,6 +29,25 @@ usage_and_exit()
 {
     usage
     exit $1
+}
+
+set_architecture_params()
+{
+    case $ARCH in
+        vek385)
+            yocto_path="$ABS_PATH/yocto/edf/vek385"
+            MACHINE="amd-cortexa78-mali-common"
+            RPM_ARCH_DIR="amd_cortexa78_mali_common"
+            ;;
+        vrk160)
+            yocto_path="$ABS_PATH/yocto/edf/vrk160"
+            MACHINE="amd-cortexa72-common"
+            RPM_ARCH_DIR="amd_cortexa72_common"
+            ;;
+        *)
+            error "Invalid architecture: $ARCH. Supported architectures: vek385, vrk160"
+            ;;
+    esac
 }
 
 install_repo()
@@ -79,30 +98,45 @@ install_recipes()
 }
 
 clean=0
+ARCH=""
 while [ $# -gt 0 ]; do
-	case $1 in
-		-help )
-			usage_and_exit 0
-			;;
-		-clean | clean )
-			clean=1
-			;;
-		--* | -* )
-			error "Unregognized option: $1"
-			;;
-		* )
-			error "Unregognized option: $1"
-			;;
-	esac
-	shift
+    case $1 in
+        -help )
+            usage_and_exit 0
+            ;;
+        -clean | clean )
+            clean=1
+            ;;
+        -aarch )
+            shift
+            ARCH="$1"
+            ;;
+        --* | -* )
+            error "Unregognized option: $1"
+            ;;
+        * )
+            error "Unregognized option: $1"
+            ;;
+    esac
+    shift
 done
 
 if [[ $clean == 1 ]]; then
-    echo "/bin/rm -rf $ABS_PATH/yocto"
-    /bin/rm -rf $ABS_PATH/yocto
+    set_architecture_params
+    echo "Cleaning architecture: $ARCH"
+    echo "/bin/rm -rf $yocto_path"
+    /bin/rm -rf "$yocto_path"
     /bin/rm -rf $ABS_PATH/.repo
-    exit 0
+    exit 0       
 fi
+
+# Check if architecture is specified for build
+if [[ -z "$ARCH" ]]; then
+    error "Architecture not specified. Use -aarch [vek385|vrk160]"
+fi
+
+# Set architecture-specific parameters
+set_architecture_params
 
 if [ -f $SETTINGS_FILE  ]; then
     echo "source YOCTO Manifest from local file"
@@ -123,9 +157,9 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -f "$yocto_path/internal-edf-init-build-env" ]; then
+if [ -f "$yocto_path/edf-init-build-env" ]; then
     cd $yocto_path
-    source internal-edf-init-build-env
+    source edf-init-build-env
 else
     git submodule update --init --recursive --force
     mkdir -p $yocto_path
@@ -135,19 +169,19 @@ else
     yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-    source internal-edf-init-build-env
+    source edf-init-build-env
     install_recipes
 fi
 
-if MACHINE=amd-cortexa78-mali-common bitbake xrt; then
+if MACHINE=$MACHINE bitbake xrt; then
     echo "bitbake xrt succeeded."
 
     rm -rf "$yocto_path/rpms"
     mkdir -p "$yocto_path/rpms"
 
     cp -rf "$yocto_path/build/tmp/deploy/rpm/cortexa72_cortexa53/xrt-"* "$yocto_path/rpms/"
-    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/zocl-"* "$yocto_path/rpms/"
-    cp -rf "$yocto_path/build/tmp/deploy/rpm/amd_cortexa78_mali_common/kernel-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/$RPM_ARCH_DIR/zocl-"* "$yocto_path/rpms/"
+    cp -rf "$yocto_path/build/tmp/deploy/rpm/$RPM_ARCH_DIR/kernel-"* "$yocto_path/rpms/"
 
     cd $yocto_path/rpms
     echo "Creating $yocto_path/rpms/install_xrt.sh"
