@@ -4206,7 +4206,14 @@ struct read_trace_data : request
 // Used for reading AIE memory of a specific tile within a ctx
 struct aie_read : request
 {
+  enum class access_type
+  {
+    reg,
+    mem
+  };
+
   struct args {
+    access_type type;
     uint64_t  pid;
     uint16_t  context_id;
     uint16_t  col;
@@ -4224,7 +4231,14 @@ struct aie_read : request
 // Used for writing AIE memory/register of a specific tile within a ctx
 struct aie_write : request
 {
+  enum class access_type
+  {
+    reg,
+    mem
+  };
+
   struct args {
+    access_type type;
     uint64_t  pid;
     uint16_t  context_id;
     uint16_t  col;
@@ -4242,11 +4256,16 @@ struct aie_write : request
 // Used for getting AIE coredump of all tiles within a ctx
 struct aie_coredump : request
 {
+  struct args {
+    uint64_t  pid;
+    uint32_t  context_id;
+  };
+
   using result_type = std::vector<char>;
   static const key_type key = key_type::aie_coredump;
 
   std::any
-  get(const device*, const std::any&, const std::any&) const override = 0;
+  get(const device*, const std::any&) const override = 0;
 };
 } // query
 

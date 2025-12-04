@@ -13,8 +13,8 @@
 
 // ---- OptionOptions ------
 #include "tools/common/OptionOptions.h"
-#include "OO_FirmwareLogExamine.h"
-#include "OO_EventTraceExamine.h"
+#include "FirmwareLogging/OO_FirmwareLogExamine.h"
+#include "EventTracing/OO_EventTraceExamine.h"
 
 // ---- Reports ------
 #include "tools/common/Report.h"

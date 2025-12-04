@@ -79,6 +79,17 @@ public:
     std::vector<field_info> fields;
   };
 
+  // Map of C type names to their bit widths
+  inline static const 
+  std::unordered_map<std::string, size_t> type_to_bits = 
+  { //NOLINTBEGIN (cpp)
+    {"uint8_t", 8},
+    {"uint16_t", 16},
+    {"uint32_t", 32},
+    {"uint64_t", 64}
+    //NOLINTEND
+  };
+
 public:
   /**
    * @brief Constructor - loads configuration from JSON content
@@ -118,21 +129,43 @@ public:
   }
 
   /**
-   * @brief Calculate the header size based on the ipu_log_message_header structure
+   * @brief Calculate structure size from field definitions
    * @param structures Map of structure name to StructureInfo
-   * @return Calculated header size in bytes
+   * @param struct_name Name of the structure to calculate size for
+   * @return Calculated structure size in bytes
    */
-  size_t 
-  calculate_header_size(const std::unordered_map<std::string, structure_info>& structures);
+  static size_t 
+  calculate_structure_size(const std::unordered_map<std::string, structure_info>& structures,
+                           const std::string& struct_name);
 
   /**
-   * @brief Get the calculated header size
-   * @return Header size in bytes
+   * @brief Get the message size
+   * @return Message header size in bytes
    */
   size_t 
-  get_header_size() const 
+  get_message_size() const 
   { 
-    return m_header_size; 
+    return m_message_size; 
+  }
+
+  /**
+   * @brief Get the entry header size
+   * @return Entry header size in bytes
+   */
+  size_t 
+  get_entry_header_size() const 
+  { 
+    return m_entry_header_size; 
+  }
+
+  /**
+   * @brief Get the entry footer size
+   * @return Entry footer size in bytes
+   */
+  size_t 
+  get_entry_footer_size() const 
+  { 
+    return m_entry_footer_size; 
   }
 
   /**
@@ -142,6 +175,22 @@ public:
    */
   const structure_info& 
   get_log_header() const;
+
+  /**
+   * @brief Get the entry header structure
+   * @return Reference to the ipu_log_ring_entry_header structure info
+   * @throws std::runtime_error if structure not found
+   */
+  const structure_info& 
+  get_entry_header() const;
+
+  /**
+   * @brief Get the entry footer structure
+   * @return Reference to the ipu_log_ring_entry_footer structure info
+   * @throws std::runtime_error if structure not found
+   */
+  const structure_info& 
+  get_entry_footer() const;
 
 private:
   /**
@@ -169,7 +218,9 @@ private:
   nlohmann::json m_config; ///< Raw JSON configuration
   std::unordered_map<std::string, enum_info> m_enums; ///< Parsed enumerations
   std::unordered_map<std::string, structure_info> m_structures; ///< Parsed structures
-  size_t m_header_size; // Stores the calculated header size
+  size_t m_message_size; // Stores the calculated message header size
+  size_t m_entry_header_size; // Stores entry header size
+  size_t m_entry_footer_size; // Stores entry footer size
 };
 
 /**
@@ -297,8 +348,10 @@ private:
 
 private:
   firmware_log_config m_config;  
-  firmware_log_config::structure_info m_header; 
-  uint32_t m_header_size; // Size of log entry header in bytes
+  const firmware_log_config::structure_info& m_message;
+  const firmware_log_config::structure_info& m_entry_header;
+  const firmware_log_config::structure_info& m_entry_footer;
+  uint32_t m_message_size; // Size of log message header in bytes
   
   // Field indices computed from config
   std::unordered_map<std::string, size_t> m_field_indices;

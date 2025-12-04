@@ -469,6 +469,7 @@ read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
         is_4byte_aligned_or_throw(offset); // DRC check
 
         xrt_core::query::aie_read::args args{};
+        args.type = xrt_core::query::aie_read::access_type::mem;
         args.pid = static_cast<uint64_t>(pid);
         args.context_id = context_id;
         args.col = col;
@@ -502,6 +503,7 @@ write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
         is_4byte_aligned_or_throw(offset); // DRC check
 
         xrt_core::query::aie_write::args args{};
+        args.type = xrt_core::query::aie_write::access_type::mem;
         args.pid = static_cast<uint64_t>(pid);
         args.context_id = context_id;
         args.col = col;
@@ -535,6 +537,7 @@ read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
         is_4byte_aligned_or_throw(reg_addr); // DRC check
 
         xrt_core::query::aie_read::args args{};
+        args.type = xrt_core::query::aie_read::access_type::reg;
         args.pid = static_cast<uint64_t>(pid);
         args.context_id = context_id;
         args.col = col;
@@ -573,6 +576,7 @@ write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
       is_4byte_aligned_or_throw(reg_addr); // DRC check
 
       xrt_core::query::aie_write::args args{};
+      args.type = xrt_core::query::aie_write::access_type::reg;
       args.pid = static_cast<uint64_t>(pid);
       args.context_id = context_id;
       args.col = col;

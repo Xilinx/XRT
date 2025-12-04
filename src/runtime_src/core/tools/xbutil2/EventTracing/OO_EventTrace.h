@@ -5,7 +5,7 @@
 
 #include "tools/common/OptionOptions.h"
 #include "tools/common/SmiWatchMode.h"
-#include "EventTrace/EventTraceBase.h"
+#include "EventTraceBase.h"
 #include <optional>
 #include <map>
 #include <string>
