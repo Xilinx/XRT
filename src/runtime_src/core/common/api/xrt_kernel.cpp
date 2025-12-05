@@ -869,10 +869,20 @@ public:
       m_managed = (m_callbacks && !m_callbacks->empty());
       m_done = false;
     }
-    if (m_managed)
-      m_hwqueue.managed_start(this);
-    else
-      m_hwqueue.unmanaged_start(this);
+
+    try {
+      if (m_managed)
+        m_hwqueue.managed_start(this);
+      else
+        m_hwqueue.unmanaged_start(this);
+    }
+    catch (...) {
+      // Start failed, m_done remains true
+      // command can be retried if needed
+      std::lock_guard<std::mutex> lk(m_mutex);
+      m_done = true;
+      throw;
+    }
   }
 
   // Wait for command completion
