@@ -34,6 +34,14 @@ get_os_info(boost::property_tree::ptree& pt)
   xrt_core::sysinfo::detail::get_os_info(pt);
 }
 
+boost::property_tree::ptree
+get_os_info()
+{
+  boost::property_tree::ptree pt;
+  get_os_info(pt);
+  return pt;
+}
+
 bool
 is_advanced()
 {
