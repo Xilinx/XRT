@@ -758,6 +758,7 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 {
   boost::property_tree::ptree empty_ptree;
   output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+
   auto branch = pt_xrt.get<std::string>("branch", "N/A");
   auto hash = pt_xrt.get<std::string>("hash", "N/A");
   auto build_date = pt_xrt.get<std::string>("build_date", "N/A");
@@ -767,26 +768,33 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     output << boost::format("  %-20s : %s\n") % "Hash" % hash;
   if (!build_date.empty() && !boost::iequals(build_date, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Hash Date" % build_date;
+
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
-    std::string drv_name = driver.get<std::string>("name", "N/A");
-    std::string drv_hash = driver.get<std::string>("hash", "N/A");
-    if (!boost::iequals(drv_hash, "N/A")) {
-      output << boost::format("  %-20s : %s, %s\n") % drv_name
-          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+    auto drv_name = driver.get<std::string>("name", "N/A");
+    auto drv_hash = driver.get<std::string>("hash", "N/A");
+    auto drv_ver = driver.get<std::string>("version", "N/A");
+
+    // If driver is in-tree then use OS kernel version
+    if (drv_ver == "unknown" || drv_ver == "N/A") {
+      static auto pt_os = xrt_core::sysinfo::get_os_info();
+      drv_ver = pt_os.get<std::string>("release", "N/A");
     }
-    else {
-      std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
-      output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
-    }
+
+    if (drv_hash == "unknown" || drv_hash == "N/A")
+      output << boost::format("  %-20s : %s\n") % drv_name % drv_ver;
+    else
+      output << boost::format("  %-20s : %s, %s\n") % drv_name % drv_ver % drv_hash;
   }
 
+  if (available_devices.empty())
+    return;
+
   try {
-    if (!available_devices.empty()) {
     const boost::property_tree::ptree& dev = available_devices.begin()->second;
-    const std::string fw_ver = dev.get<std::string>("firmware_version", "N/A");
-    const std::string device_class = dev.get<std::string>("device_class", "");
+    auto fw_ver = dev.get<std::string>("firmware_version", "N/A");
+    auto device_class = dev.get<std::string>("device_class", "");
 
     if (device_class == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen)) {
       if (fw_ver != "N/A")
@@ -797,12 +805,11 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 
       if (uc_fw_version != "N/A")
         output << boost::format("  %-20s : %s\n") % "UC Firmware Version" % uc_fw_version;
-      if (build_date != "N/A")
+      if (uc_fw_build_date != "N/A")
         output << boost::format("  %-20s : %s\n") % "UC Build Date" % uc_fw_build_date;
     }
     else
       output << boost::format("  %-20s : %s\n") % "Firmware Version" % fw_ver;
-    }  
   }
   catch (...) {
     //no device available
