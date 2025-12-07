@@ -4,6 +4,7 @@
 if (NOT WIN32)
   set(XRT_SETUP_SCRIPTS
     setup.sh
+    setup.fish
     setup.csh)
 
   set(XRT_LOADER_SCRIPTS
@@ -23,7 +24,7 @@ else()
 
 endif(NOT WIN32)
 
-if (XRT_BASE) 
+if (XRT_BASE)
   # Do not install loader or setup scripts if installing into system default
   if (NOT XRT_INSTALL_BIN_DIR STREQUAL XRT_INSTALL_UNWRAPPED_DIR)
     install (PROGRAMS ${XRT_LOADER_SCRIPTS}
