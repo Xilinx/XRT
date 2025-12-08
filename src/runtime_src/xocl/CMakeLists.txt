@@ -93,12 +93,24 @@ target_link_libraries(xilinxopencl
 
 endif ()
 
-install(TARGETS xilinxopencl xilinxopencl_static
+# Install shared library with export to xrt-targets
+install(TARGETS xilinxopencl
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+# Install static library - exclude from xrt-targets export in yocto builds
+# to avoid find_package(XRT) failures when static libs are not in sysroot
+if(XRT_YOCTO)
+  install(TARGETS xilinxopencl_static
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+else()
+  install(TARGETS xilinxopencl_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()
 
 set(CL_DEST_DIR ${XRT_INSTALL_INCLUDE_DIR}/)
 if(XRT_EDGE)
