@@ -101,9 +101,9 @@ install(TARGETS xilinxopencl
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
 
-# Install static library - exclude from xrt-targets export in edge builds
+# Install static library - exclude from xrt-targets export in yocto builds
 # to avoid find_package(XRT) failures when static libs are not in sysroot
-if(XRT_EDGE)
+if(XRT_YOCTO)
   install(TARGETS xilinxopencl_static
     ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
 else()

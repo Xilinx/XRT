@@ -59,6 +59,12 @@ endif()
 # symbolic component names are explicitly named depending on the
 # package being built.
 
+# Additional CMake flags:
+# - XRT_YOCTO:
+#    Indicates a Yocto build environment where static libraries should be
+#    excluded from xrt-targets export to avoid find_package(XRT) failures
+#    when static libs are not present in the sysroot.
+
 # BASE builds a deployment and development package of everything
 # enabled by XRT_BASE.
 if (XRT_BASE)
