@@ -226,9 +226,8 @@ struct job_type
   void
   run()
   {
-    if (g_progress)
-      xrt::message::logf(xrt::message::level::info, "runner",
-                         "(tid:%s) executing xrt::runner for %s", get_tid().c_str(), m_id.c_str());
+    xrt::message::logf(xrt::message::level::info, "runner",
+                       "(tid:%s) executing xrt::runner for %s", get_tid().c_str(), m_id.c_str());
 
     m_runner.execute();
   }
@@ -238,9 +237,8 @@ struct job_type
   {
     m_runner.wait();
 
-    if (g_progress)
-      xrt::message::logf(xrt::message::level::info, "runner",
-                         "(tid:%s) finished xrt::runner for %s", get_tid().c_str(), m_id.c_str());
+    xrt::message::logf(xrt::message::level::info, "runner",
+                       "(tid:%s) finished xrt::runner for %s", get_tid().c_str(), m_id.c_str());
   }
 
   std::string
@@ -523,7 +521,8 @@ usage()
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
-  std::cout << " [--progress] show progress\n";
+  std::cout << " [--verbose <val>] set XRT verbosity level to specified value (default: 0)\n";
+  std::cout << " [--progress] show progress (same as --verbose 6)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
   std::cout << "% xrt-runner.exe --recipe recipe.json --profile profile.json [--iterations <num>] [--dir <path>]\n";
@@ -597,9 +596,6 @@ run_single(const std::string& recipe, const std::string& profile, const std::str
 static void
 run(int argc, char* argv[])
 {
-  // set verbosity level off
-  xrt::ini::set("Runtime.verbosity", 0);
-  
   std::vector<std::string> args(argv + 1, argv + argc);
   std::string cur;
   std::string recipe;
@@ -607,6 +603,7 @@ run(int argc, char* argv[])
   std::string dir = ".";
   std::string script;
   uint32_t threads = 0;
+  uint32_t verbosity = 0;
   std::string report;
   for (auto& arg : args) {
     if (arg == "--help" || arg == "-h" || arg == "-help") {
@@ -615,7 +612,7 @@ run(int argc, char* argv[])
     }
 
     if (arg == "--progress") {
-      xrt::ini::set("Runtime.verbosity", static_cast<int>(xrt::message::level::info));
+      verbosity = std::max(verbosity, static_cast<uint32_t>(xrt::message::level::info));
       g_progress = true;
       continue;
     }
@@ -656,6 +653,8 @@ run(int argc, char* argv[])
       g_iterations = std::stoi(arg);
     else if (cur == "-r" || cur == "--report")
       report = arg;
+    else if (cur == "-v" || cur == "--verbose")
+      verbosity = std::max<uint32_t>(verbosity, std::stoi(arg));
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
@@ -668,6 +667,9 @@ run(int argc, char* argv[])
 
   if (threads && script.empty())
     throw std::runtime_error("threads can only be used with script");
+
+  // set verbosity level off or to specified value 
+  xrt::ini::set("Runtime.verbosity", verbosity);
 
   if (!script.empty())
     run_script(script, dir, threads, report);
