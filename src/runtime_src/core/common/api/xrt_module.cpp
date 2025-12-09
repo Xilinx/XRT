@@ -1385,9 +1385,9 @@ class module_elf_aie2p : public module_elf
   void
   initialize_arg_patchers()
   {
-    const auto& dynsym = m_elfio.sections[".dynsym"];
-    const auto& dynstr = m_elfio.sections[".dynstr"];
-    const auto& dynsec = m_elfio.sections[".rela.dyn"];
+    auto dynsym = m_elfio.sections[".dynsym"];
+    auto dynstr = m_elfio.sections[".dynstr"];
+    auto dynsec = m_elfio.sections[".rela.dyn"];
 
     if (!dynsym || !dynstr || !dynsec)
       return;
@@ -1790,9 +1790,9 @@ class module_elf_aie2ps : public module_elf
   void
   initialize_arg_patchers(const std::map<uint32_t, std::vector<size_t>>& pad_offsets)
   {
-    const auto& dynsym = m_elfio.sections[".dynsym"];
-    const auto& dynstr = m_elfio.sections[".dynstr"];
-    const auto& dynsec = m_elfio.sections[".rela.dyn"];
+    auto dynsym = m_elfio.sections[".dynsym"];
+    auto dynstr = m_elfio.sections[".dynstr"];
+    auto dynsec = m_elfio.sections[".rela.dyn"];
 
     if (!dynsym || !dynstr || !dynsec)
       return;
