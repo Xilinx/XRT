@@ -2,6 +2,9 @@
 // Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "core/common/debug.h"
+#include "core/common/module_loader.h"
+
+#include <dlfcn.h>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
