@@ -1868,8 +1868,8 @@ class module_elf_aie2ps : public module_elf
       }
 
       // Construct the patcher for the argument with the symbol name
-      patcher::symbol_type patch_scheme;
-      uint32_t add_end_addr;
+      patcher::symbol_type patch_scheme = patcher::symbol_type::unknown_symbol_kind;
+      uint32_t add_end_addr = 0;
       auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
       if (abi_version != 1) {
         add_end_addr = rela->r_addend;
