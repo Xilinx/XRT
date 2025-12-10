@@ -1339,8 +1339,6 @@ class module_elf_aie2p : public module_elf
     if (!dynsym || !dynstr || !dynsec)
       return;
 
-    auto name = dynsec->get_name();
-
     // Iterate over all relocations and construct a patcher for each
     // relocation that refers to a symbol in the .dynsym section.
     auto begin = reinterpret_cast<const ELFIO::Elf32_Rela*>(dynsec->get_data());
@@ -1352,13 +1350,13 @@ class module_elf_aie2p : public module_elf
       auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
       if (dynsym_offset >= dynsym->get_size())
         throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
-      auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
 
+      auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
       auto dynstr_offset = sym->st_name;
       if (dynstr_offset >= dynstr->get_size())
         throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
-      auto symname = dynstr->get_data() + dynstr_offset;
 
+      auto symname = dynstr->get_data() + dynstr_offset;
       if (!m_ctrl_scratch_pad_mem_size && (strcmp(symname, Control_ScratchPad_Symbol) == 0)) {
         m_ctrl_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
       }
@@ -1370,7 +1368,7 @@ class module_elf_aie2p : public module_elf
       }
 
       // Get control code section referenced by the symbol, col, and page
-      auto section = m_elfio.sections[sym->st_shndx];
+      const auto& section = m_elfio.sections[sym->st_shndx];
       if (!section)
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
@@ -1411,8 +1409,7 @@ class module_elf_aie2p : public module_elf
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
-        auto& patcher = search->second;
-        patcher.m_ctrlcode_patchinfo.emplace_back(pi);
+        search->second.m_ctrlcode_patchinfo.emplace_back(pi);
       }
       else
         m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
@@ -1720,105 +1717,105 @@ class module_elf_aie2ps : public module_elf
   {
     auto dynsym = m_elfio.sections[".dynsym"];
     auto dynstr = m_elfio.sections[".dynstr"];
+    auto dynsec = m_elfio.sections[".rela.dyn"];
 
-    for (const auto& sec : m_elfio.sections) {
-      auto name = sec->get_name();
-      if (name.find(".rela.dyn") == std::string::npos)
-        continue;
+    if (!dynsym || !dynstr || !dynsec)
+      return;
 
-      // Iterate over all relocations and construct a patcher for each
-      // relocation that refers to a symbol in the .dynsym section.
-      auto begin = reinterpret_cast<const ELFIO::Elf32_Rela*>(sec->get_data());
-      auto end = begin + sec->get_size() / sizeof(const ELFIO::Elf32_Rela);
-      for (auto rela = begin; rela != end; ++rela) {
-        auto symidx = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_sym(rela->r_info);
+    // Iterate over all relocations and construct a patcher for each
+    // relocation that refers to a symbol in the .dynsym section.
+    auto begin = reinterpret_cast<const ELFIO::Elf32_Rela*>(dynsec->get_data());
+    auto end = begin + dynsec->get_size() / sizeof(const ELFIO::Elf32_Rela);
 
-        auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
-        if (dynsym_offset >= dynsym->get_size())
-          throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
-        auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
-        auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
+    for (auto rela = begin; rela != end; ++rela) {
+      auto symidx = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_sym(rela->r_info);
 
-        auto dynstr_offset = sym->st_name;
-        if (dynstr_offset >= dynstr->get_size())
-          throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
-        auto symname = dynstr->get_data() + dynstr_offset;
-        std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+      auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
+      if (dynsym_offset >= dynsym->get_size())
+        throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
 
-        // patching can be done to ctrlcode or ctrlpkt section
-        auto patch_sec = m_elfio.sections[sym->st_shndx];
-        if (!patch_sec)
-          throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
+      auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+      auto type = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_type(rela->r_info);
 
-        auto patch_sec_name = patch_sec->get_name();
-        auto [col, page] = get_column_and_page(patch_sec_name);
-        auto sec_idx = patch_sec->get_index();
-        auto grp_idx = m_sec_to_grp_map[sec_idx];
-        if (m_ctrlcodes_map.find(grp_idx) == m_ctrlcodes_map.end())
-          throw std::runtime_error(std::string{"Unable to fetch ctrlcode to patch for given symbol: "} + argnm);
-        auto ctrlcodes = m_ctrlcodes_map[grp_idx];
+      auto dynstr_offset = sym->st_name;
+      if (dynstr_offset >= dynstr->get_size())
+        throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
 
-        size_t abs_offset = 0;
-        xrt_core::patcher::buf_type buf_type = xrt_core::patcher::buf_type::buf_type_count;
-        if (patch_sec_name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) != std::string::npos) {
-          auto pad_off_vec = pad_offsets.at(grp_idx);
-          for (uint32_t i = 0; i < col; ++i)
-            abs_offset += ctrlcodes[i].size();
-          abs_offset += pad_off_vec[col];
-          abs_offset += rela->r_offset;
-          buf_type = xrt_core::patcher::buf_type::pad;
-        }
-        else {
-          // section to patch is ctrlcode
-          // Get control code section referenced by the symbol, col, and page
-          auto column_ctrlcode_size = ctrlcodes.at(col).size();
-          auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16??
-          if (sec_offset >= column_ctrlcode_size)
-            throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
-          // The control code for all columns will be represented as one
-          // contiguous buffer object.  The patcher will need to know
-          // the offset into the buffer object for the particular column
-          // and page being patched.  Past first [0, col) columns plus
-          // page offset within column and the relocation offset within
-          // the page.
-          for (uint32_t i = 0; i < col; ++i)
-            abs_offset += ctrlcodes.at(i).size();
-          abs_offset += sec_offset;
-          buf_type = xrt_core::patcher::buf_type::ctrltext;
-        }
+      auto symname = dynstr->get_data() + dynstr_offset;
+      std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
-        // Construct the patcher for the argument with the symbol name
-        patcher::symbol_type patch_scheme;
-        uint32_t add_end_addr;
-        auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
-        if (abi_version != 1) {
-          add_end_addr = rela->r_addend;
-          patch_scheme = static_cast<patcher::symbol_type>(type);
-        }
-        else {
-          // rela addend have offset to base_bo_addr info along with schema
-          add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
-          patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
-        }
+      // patching can be done to ctrlcode or ctrlpkt section
+      const auto& patch_sec = m_elfio.sections[sym->st_shndx];
+      if (!patch_sec)
+        throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
-        // using grp_idx in identifying key string for patching as there can be
-        // multiple sub kernels and each group can hold one sub kernel
-        auto key_string = generate_key_string(argnm, buf_type);
-        // One arg may need to be patched at multiple offsets of control code
-        // arg2patcher map contains a key & value pair of arg & patcher object
-        // patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
-        // this vector size would be equal to number of places which needs patching
-        // On first occurrence of arg, Create a new patcher object and
-        // Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
-        // On all further occurences of arg, add patch_info structure to existing vector
-        auto search = m_arg2patcher[grp_idx].find(key_string);
-        if (search != m_arg2patcher[grp_idx].end()) {
-          auto& patcher = search->second;
-          patcher.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
-        }
-        else
-          m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
+      auto patch_sec_name = patch_sec->get_name();
+      auto [col, page] = get_column_and_page(patch_sec_name);
+      auto sec_idx = patch_sec->get_index();
+      auto grp_idx = m_sec_to_grp_map[sec_idx];
+      if (m_ctrlcodes_map.find(grp_idx) == m_ctrlcodes_map.end())
+        throw std::runtime_error(std::string{"Unable to fetch ctrlcode to patch for given symbol: "} + argnm);
+
+      const auto& ctrlcodes = m_ctrlcodes_map[grp_idx];
+      size_t abs_offset = 0;
+      xrt_core::patcher::buf_type buf_type = xrt_core::patcher::buf_type::buf_type_count;
+      if (patch_sec_name.find(patcher::to_string(xrt_core::patcher::buf_type::pad)) != std::string::npos) {
+        const auto& pad_off_vec = pad_offsets.at(grp_idx);
+        for (uint32_t i = 0; i < col; ++i)
+          abs_offset += ctrlcodes[i].size();
+        abs_offset += pad_off_vec[col];
+        abs_offset += rela->r_offset;
+        buf_type = xrt_core::patcher::buf_type::pad;
       }
+      else {
+        // section to patch is ctrlcode
+        // Get control code section referenced by the symbol, col, and page
+        auto column_ctrlcode_size = ctrlcodes.at(col).size();
+        auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16??
+        if (sec_offset >= column_ctrlcode_size)
+          throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
+        // The control code for all columns will be represented as one
+        // contiguous buffer object.  The patcher will need to know
+        // the offset into the buffer object for the particular column
+        // and page being patched.  Past first [0, col) columns plus
+        // page offset within column and the relocation offset within
+        // the page.
+        for (uint32_t i = 0; i < col; ++i)
+          abs_offset += ctrlcodes.at(i).size();
+        abs_offset += sec_offset;
+        buf_type = xrt_core::patcher::buf_type::ctrltext;
+      }
+
+      // Construct the patcher for the argument with the symbol name
+      patcher::symbol_type patch_scheme = patcher::symbol_type::unknown_symbol_kind;
+      uint32_t add_end_addr = 0;
+      auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
+      if (abi_version != 1) {
+        add_end_addr = rela->r_addend;
+        patch_scheme = static_cast<patcher::symbol_type>(type);
+      }
+      else {
+        // rela addend have offset to base_bo_addr info along with schema
+        add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
+        patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+      }
+
+      // using grp_idx in identifying key string for patching as there can be
+      // multiple sub kernels and each group can hold one sub kernel
+      auto key_string = generate_key_string(argnm, buf_type);
+      // One arg may need to be patched at multiple offsets of control code
+      // arg2patcher map contains a key & value pair of arg & patcher object
+      // patcher object uses m_ctrlcode_patchinfo vector to store multiple offsets
+      // this vector size would be equal to number of places which needs patching
+      // On first occurrence of arg, Create a new patcher object and
+      // Initialize the m_ctrlcode_patchinfo vector of the single patch_info structure
+      // On all further occurences of arg, add patch_info structure to existing vector
+      auto search = m_arg2patcher[grp_idx].find(key_string);
+      if (search != m_arg2patcher[grp_idx].end()) {
+        search->second.m_ctrlcode_patchinfo.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
+      }
+      else
+        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
     }
   }
 
