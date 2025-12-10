@@ -1368,7 +1368,7 @@ class module_elf_aie2p : public module_elf
       }
 
       // Get control code section referenced by the symbol, col, and page
-      const auto& section = m_elfio.sections[sym->st_shndx];
+      auto section = m_elfio.sections[sym->st_shndx];
       if (!section)
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
@@ -1745,7 +1745,7 @@ class module_elf_aie2ps : public module_elf
       std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
       // patching can be done to ctrlcode or ctrlpkt section
-      const auto& patch_sec = m_elfio.sections[sym->st_shndx];
+      auto patch_sec = m_elfio.sections[sym->st_shndx];
       if (!patch_sec)
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
