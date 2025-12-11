@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
-
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XCL_DRIVER_DLL_EXPORT  // in same dll as xrt_bo.h
+#define XRT_API_SOURCE         // in same dll as api
 #include "buffer_dumper.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
