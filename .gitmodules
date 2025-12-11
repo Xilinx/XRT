@@ -18,3 +18,6 @@
 [submodule "src/runtime_src/core/tools/xbtracer/Detours"]
 	path = src/runtime_src/core/tools/xbtracer/Detours
 	url = https://github.com/microsoft/Detours.git
+[submodule "src/runtime_src/xdp"]
+	path = src/runtime_src/xdp
+	url = https://github.com/Xilinx/XDP.git
