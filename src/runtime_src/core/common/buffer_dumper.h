@@ -2,6 +2,7 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrtcore_util_buffer_dumper_h_
 #define xrtcore_util_buffer_dumper_h_
+#include "core/include/xrt/xrt_bo.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -11,8 +12,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "core/include/xrt/xrt_bo.h"
 
 namespace xrt_core {
 
