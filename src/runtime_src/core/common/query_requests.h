@@ -1847,8 +1847,7 @@ struct context_health_info : request
   struct smi_context_health {
     uint64_t ctx_id;
     uint64_t pid;
-    ert_ctx_health_data health_data;
-    ert_ctx_health_data_v1 health_data_v1;
+    std::vector<char> health_data_raw; 
   };
   using result_type = std::vector<smi_context_health>;
   static const key_type key = key_type::context_health_info;
