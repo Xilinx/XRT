@@ -11,6 +11,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/archive.h"
 #include "core/common/runner/runner.h"
+#include "core/common/smi.h"
 
 #include <chrono>
 #include <iostream>
@@ -135,6 +136,9 @@ namespace XBUtilities {
   xrt_core::runner::artifacts_repository 
   extract_artifacts_from_archive(const xrt_core::archive* archive, 
                                  const std::vector<std::string>& artifact_names);
+
+  bool
+  is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type);
 
   /**
    * Open archive from device
