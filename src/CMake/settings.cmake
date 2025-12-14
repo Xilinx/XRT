@@ -60,13 +60,16 @@ set(XRT_VERSION_RELEASE 202610)
 set(XRT_VERSION_MAJOR 2)
 set(XRT_VERSION_MINOR 21)
 
-if (XRT_VERSION_PATCH)
-  set(XRT_VERSION_PATCH ${XRT_VERSION_PATCH})
+# Upstream builds cannot set XRT_VERSION_PATCH directory as it is
+# reset by project(xrt).  Instead upstream builds sets
+# XRT_BUILD_NUMBER which is then used here
+if (XRT_BUILD_NUMBER)
+   set(XRT_VERSION_PATCH ${XRT_BUILD_NUMBER})
 elseif (DEFINED ENV{XRT_VERSION_PATCH})
   set(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})
 else()
   set(XRT_VERSION_PATCH 0)
-endif(XRT_VERSION_PATCH)
+endif()
 
 # Also update cache to set version for external plug-in .so
 set(XRT_SOVERSION ${XRT_VERSION_MAJOR} CACHE INTERNAL "")
