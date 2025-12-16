@@ -920,16 +920,16 @@ namespace xdp {
         else {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
-          size_t channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
+          auto channelNum = aie::getChannelNumberFromEvent(memoryEvents.at(0));
           if (channelNum >= 0) {
             if (aie::isInputSet(type, metricSet)) {
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
-              if (channelNum < tile.mm2s_names.size())
+              if (static_cast<size_t>(channelNum) < tile.mm2s_names.size())
                 cfgTile->core_trace_config.mm2s_names[0] = tile.mm2s_names.at(channelNum);
             }
             else {
               cfgTile->core_trace_config.s2mm_channels[0] = channelNum;
-              if (channelNum < tile.s2mm_names.size())
+              if (static_cast<size_t>(channelNum) < tile.s2mm_names.size())
                 cfgTile->core_trace_config.s2mm_names[0] = tile.s2mm_names.at(channelNum);
             }
           }
