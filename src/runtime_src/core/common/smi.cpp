@@ -158,6 +158,7 @@ smi_hardware_config()
     {{0x17f0, 0x10}, hardware_type::stxB0},
     {{0x17f0, 0x11}, hardware_type::stxH},
     {{0x17f0, 0x20}, hardware_type::krk1},
+    {{0x17f1, 0x00}, hardware_type::npu3_f0}, //deprecated
     {{0x17f1, 0x10}, hardware_type::npu3_f1}, 
     {{0x17f2, 0x10}, hardware_type::npu3_f2}, 
     {{0x17f3, 0x10}, hardware_type::npu3_f3},
