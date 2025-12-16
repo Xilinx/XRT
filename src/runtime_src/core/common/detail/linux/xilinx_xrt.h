@@ -31,21 +31,11 @@ namespace sfs = std::filesystem;
 sfs::path
 xilinx_xrt()
 {
-  Dl_info info {};
-  if (dladdr(reinterpret_cast<void*>(&xilinx_xrt), &info) == 0 || !info.dli_fname)
-    return sfs::path(XRT_INSTALL_PREFIX);
-
-  if (std::string(info.dli_fname).find("libxrt_coreutil") == std::string::npos)
-    return sfs::path(XRT_INSTALL_PREFIX);
-
-  try {
-    // Relocatable path based on install location of this DSO
-    sfs::path so_path(sfs::canonical(info.dli_fname)); // /.../lib/libxrt_coreutil.so
-    return so_path.parent_path().parent_path();
-  }
-  catch (const std::exception&) {
-    return sfs::path(XRT_INSTALL_PREFIX);
-  }
+  // This returns CMAKE_INSTALL_PREFIX.  The internal default cmake
+  // install path is /opt/xilinx/xrt, for upstreaming most likely /usr.
+  // In relocatable installs XILINX_XRT should be set and this function
+  // will not be called.
+  return sfs::path(XRT_INSTALL_PREFIX);
 }
 
 // platform_repo_path() - Get candidate paths for platform repository data
