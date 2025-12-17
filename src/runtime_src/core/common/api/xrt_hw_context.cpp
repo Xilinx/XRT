@@ -500,6 +500,14 @@ public:
       throw std::runtime_error("Failed to get AIE coredump: " + std::string(e.what()));
     }
   }
+
+  // Returns map of kernel names to their corresponding elf files
+  // registered with this hardware context
+  const std::map<std::string, xrt::elf>&
+  get_elf_map() const
+  {
+    return m_elf_map;
+  }
 };
 
 } // xrt
@@ -571,6 +579,12 @@ void
 dump_uc_log_buffer(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->dump_uc_log_buffer();
+}
+
+const std::map<std::string, xrt::elf>&
+get_elf_map(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_elf_map();
 }
 
 } // xrt_core::hw_context_int
