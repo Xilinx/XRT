@@ -18,7 +18,7 @@
 namespace XBU = XBUtilities;
 
 static constexpr uint32_t num_of_cores_strix = 32;
-constexpr uint32_t num_of_cores_npu3 = 12;
+constexpr size_t num_of_cores_npu3 = 12;
 static constexpr uint32_t total_ops_strix = 196608; //192K OPs
 constexpr uint64_t total_ops_npu3 = 2097152; // 2,097,152 OPs
 
@@ -119,7 +119,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
 
     xrt_core::bo_int::config_bo(bo, buf_map);
 
-    for(int i=0; i < 100; i++) {
+    for(int i=0; i < 100; i++) { //NOLINT
     run.start();
     run.wait2();
     }
@@ -127,7 +127,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
     
     // Calculate TOPS
-    uint64_t total_cycle_count = 0;
+    double total_cycle_count = 0.0;
     // Read cycle counts from debug buffer for all cores
     for(uint8_t i = 1; i <= num_of_cores_npu3*2; i=i+2) { //read every other register
       uint32_t cycle_count = *reinterpret_cast<uint32_t*>(buf_result + i * sizeof(uint32_t));
@@ -146,9 +146,9 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     
     // Calculate average cycle count per core
     double cycle_count_per_core = static_cast<double>(total_cycle_count) / num_of_cores_npu3;
-    double aieclk_period_ns = (1.0 / aie_clk) * 1000.0;
-    double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * aieclk_period_ns);
-    double tops_per_core = gops_per_core / 1e12;
+    double aieclk_period_ns = (1.0 / aie_clk) * 1000.0; //NOLINT
+    double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * aieclk_period_ns); //NOLINT
+    double tops_per_core = gops_per_core / 1e12; //NOLINT
     
     // Total TOPS for all cores
     double aie4_tops_all_cores = tops_per_core * num_of_cores_npu3;
