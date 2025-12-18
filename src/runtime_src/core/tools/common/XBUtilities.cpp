@@ -843,11 +843,14 @@ open_archive(const xrt_core::device* device)
   
   try {
     std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
-    auto full_archive_path = xrt_core::environment::platform_path(archive_path).string();
+    if (archive_path.empty()) {
+      // If shim does not provide an archive path (e.g. alveo shim), ignore the error
+      return nullptr;
+    }
+    std::string full_archive_path = xrt_core::environment::platform_path(archive_path).string();
     archive = std::make_unique<xrt_core::archive>(full_archive_path);
-  } catch (const std::exception& /*e*/) {
-    // Continue without archive - this is not a fatal error
+  } catch (const std::exception& e) {
+    std::cerr << "Error opening archive: " << e.what() << std::endl;
   }
-  
   return archive;
 }
