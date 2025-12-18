@@ -31,9 +31,9 @@ OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _
     , m_device("")
     , m_help(false)
     , m_watch(false)
-    , m_status(false)
     , m_raw(false)
     , m_version(false)
+    , m_status(false)
     , m_watch_mode_offset(0)
 {
   m_optionsDescription.add_options()

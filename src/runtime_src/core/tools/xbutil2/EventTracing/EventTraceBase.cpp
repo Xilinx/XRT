@@ -236,7 +236,7 @@ mask_to_category_names(uint32_t mask, const xrt_core::device* device) {
   }
   
   if (mask == 0xFFFFFFFF) { // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)  
-    category_names.push_back("ALL");
+    category_names.emplace_back("ALL");
     return category_names;
   }
   

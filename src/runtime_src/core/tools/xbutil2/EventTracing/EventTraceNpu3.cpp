@@ -389,7 +389,10 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
       
       // Advance pointer: RBE header(8) + payload_words*8 + RBE footer(8)
       // payload_words includes both event header (12 bytes) and event payload
-      size_t entry_size = npu3_rbe_header_bytes + (event_data.payload_words * 8) + npu3_rbe_footer_bytes;
+      size_t entry_size = npu3_rbe_header_bytes 
+                          + (event_data.payload_words * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+                          + npu3_rbe_footer_bytes; 
+
       current_ptr += entry_size;
       
     } catch (const std::exception& e) {
