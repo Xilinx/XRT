@@ -332,13 +332,12 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             continue;
 
         // Make sure stream/channel number is as specified
-        // NOTE1: For PLIO, we use the SOUTH location only
-        // NOTE2: For GMIO, we use DMA channel number or south location
+        // NOTE1: For PLIO, we use the SOUTH location
+        // NOTE2: For GMIO, we use DMA channel number
         if (specifiedId >= 0) {
           if ((type == io_type::PLIO) && (specifiedId != streamId))
             continue;
-          if ((type == io_type::GMIO) && (specifiedId != channelNum)
-              && (specifiedId != streamId))
+          if ((type == io_type::GMIO) && (specifiedId != channelNum))
             continue;
         }
 
