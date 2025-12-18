@@ -8,6 +8,7 @@
 #include "core/common/time.h"
 #include "tools/common/SmiWatchMode.h"
 #include "tools/common/Table2D.h"
+#include "tools/common/XBUtilities.h"
 
 // 3rd Party Library - Include Files
 #include <algorithm>
@@ -20,30 +21,6 @@
 
 using bpt = boost::property_tree::ptree;
 using context_health_info = xrt_core::query::context_health_info;
-
-std::unique_ptr<ReportContextHealth>
-ReportContextHealth::
-create_reporter(xrt_core::smi::smi_hardware_config::hardware_type hw_type) const
-{
-  switch (hw_type)
-  {
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
-  case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
-    return std::make_unique<ctx_health_npu3>();
-  
-  case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
-  case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
-  case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
-  case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
-  case xrt_core::smi::smi_hardware_config::hardware_type::phx:
-  default:
-    return std::make_unique<ctx_health_strx>();
-  }
-}
 
 void
 ReportContextHealth::
@@ -365,7 +342,11 @@ writeReport(const xrt_core::device* device,
   xrt_core::smi::smi_hardware_config smi_hrdw;
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
 
-  auto reporter = create_reporter(hardware_type);
+  std::unique_ptr<ReportContextHealth> reporter;
+  if (XBUtilities::is_strix_hardware(hardware_type))
+    reporter = std::make_unique<ctx_health_strx>();
+  else
+    reporter = std::make_unique<ctx_health_npu3>();
 
   // Parse context_id/pid pairs from elements_filter
   std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);

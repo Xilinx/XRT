@@ -851,3 +851,28 @@ open_archive(const xrt_core::device* device)
   
   return archive;
 }
+
+// Helper function to determine if hardware type is STRX or NPU3
+bool
+XBUtilities::
+is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
+{
+  switch (hw_type) {
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
+    case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
+    case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+      return true;
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
+      return false;
+    default:
+      throw std::runtime_error("Unsupported hardware type");
+  }
+}
