@@ -17,9 +17,7 @@ config_strix(nlohmann::json json_config)
     m_event_bits(parse_event_bits()),
     m_payload_bits(parse_payload_bits()),
     m_arg_templates(parse_arg_sets()),
-    m_event_map(parse_events()),
-    m_entry_header_size(parse_structure_size("ring_buffer_entry_header")),
-    m_entry_footer_size(parse_structure_size("ring_buffer_entry_footer"))
+    m_event_map(parse_events())
 {
 }
 
@@ -51,21 +49,6 @@ parse_payload_bits()
     throw std::runtime_error("Payload bits must be greater than 0");
   }
   return payload_bits_val;
-}
-
-size_t
-config_strix::
-parse_structure_size(const std::string& struct_name)
-{
-  const auto& config = get_config();
-  if (!config.contains("structures") || !config["structures"].contains(struct_name)) {
-    return 0;
-  }
-  const auto& structure = config["structures"][struct_name];
-  if (structure.contains("size")) {
-    return structure["size"].get<size_t>();
-  }
-  return 0;
 }
 
 std::map<std::string, std::vector<config_strix::event_arg_strix>>

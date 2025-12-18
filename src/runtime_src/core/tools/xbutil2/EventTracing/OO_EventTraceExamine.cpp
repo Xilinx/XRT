@@ -27,10 +27,11 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Watch event trace data")
+    : OptionOptions(_longName, _isHidden, "Status|watch event trace data")
     , m_device("")
     , m_help(false)
     , m_watch(false)
+    , m_status(false)
     , m_raw(false)
     , m_version(false)
     , m_watch_mode_offset(0)
@@ -38,6 +39,7 @@ OO_EventTraceExamine::OO_EventTraceExamine( const std::string &_longName, bool _
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("status", boost::program_options::bool_switch(&m_status), "Show event trace status")
     ("watch", boost::program_options::bool_switch(&m_watch), "Watch event trace data continuously")
     ("raw", boost::program_options::bool_switch(&m_raw), "Output raw event trace data (no parsing)")
     ("payload-version", boost::program_options::bool_switch(&m_version), "Show event trace version")
@@ -66,6 +68,30 @@ handle_version(const xrt_core::device* device) const {
     std::cout << boost::format("  %-20s : %u\n") % "Minor" % static_cast<unsigned>(minor);
   } catch (const std::exception& e) {
     std::cerr << "Error getting payload version: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+void
+OO_EventTraceExamine::
+handle_status(const xrt_core::device* device) const {
+  try {
+    auto status = xrt_core::device_query<xrt_core::query::event_trace_state>(device);
+    std::cout << "Event trace status: " << (status.action == 1 ? "enabled" : "disabled") << "\n"; //NOLINT
+    
+    auto category_names = smi::event_trace_config::mask_to_category_names(status.categories, device);
+    if (!category_names.empty()) {
+      std::cout << "Event trace categories: ";
+      for (size_t i = 0; i < category_names.size(); ++i) { //NOLINT
+        if (i > 0) std::cout << ", "; //NOLINT
+        std::cout << category_names[i];
+      }
+      std::cout << "\n";
+    } else {
+      std::cout << "Event trace categories: none\n";
+    }
+  } catch (const std::exception& e) {
+    std::cerr << "Error getting event trace status: " << e.what() << "\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
 }
@@ -247,6 +273,11 @@ OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
 
   if (m_version) {
     handle_version(device.get());
+    return;
+  }
+
+  if (m_status) {
+    handle_status(device.get());
     return;
   }
 

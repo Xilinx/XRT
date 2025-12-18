@@ -25,14 +25,12 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
     , m_disable(false)
     , m_help(false)
     , m_list_categories(false)
-    , m_status(false)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
     ("enable", boost::program_options::bool_switch(&m_enable), "Enable event tracing")
     ("disable", boost::program_options::bool_switch(&m_disable), "Disable event tracing")
-    ("status", boost::program_options::bool_switch(&m_status), "Show event trace status")
     ("list-categories", boost::program_options::bool_switch(&m_list_categories), "List available event trace categories")
     ("categories", boost::program_options::value<decltype(m_categories)>(&m_categories)->multitoken(), 
                    "Space-separated list of category names. Use \"all\" to enable all available categories")
@@ -58,7 +56,7 @@ parse_categories(const std::vector<std::string>& categories_list,
   uint32_t category_mask = 0;
   
   // Get category mappings from config
-  std::map<std::string, uint32_t> category_map = get_category_map(device);
+  std::map<std::string, uint32_t> category_map = smi::event_trace_config::get_category_map(device);
 
   for (const auto& category_name : categories_list) {
     auto it = category_map.find(category_name);
@@ -72,57 +70,11 @@ parse_categories(const std::vector<std::string>& categories_list,
   return category_mask;
 }
 
-std::map<std::string, uint32_t>
-OO_EventTrace::
-get_category_map(const xrt_core::device* device) const {
-  std::map<std::string, uint32_t> category_map;
-
-  // Load categories from config
-  try {
-    auto config = smi::event_trace_config::create_from_device(device);
-    
-    // Get categories from config and convert ID to mask
-    const auto& config_categories = config->get_categories();
-    for (const auto& [name, info] : config_categories) {
-      uint32_t mask = (1U << info.id);
-      category_map[name] = mask;
-    }
-  } catch (const std::exception&) {
-    // Config loading failed, return empty map
-  }
-  return category_map;
-}
-
-std::vector<std::string>
-OO_EventTrace::
-mask_to_category_names(uint32_t mask, const xrt_core::device* device) const {
-  std::vector<std::string> category_names;
-  
-  if (mask == 0) {
-    return category_names; // Empty list for no categories
-  }
-  
-  if (mask == 0xFFFFFFFF) { // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)  
-    category_names.push_back("ALL");
-    return category_names;
-  }
-  
-  auto category_map = get_category_map(device);
-  
-  for (const auto& [name, category_mask] : category_map) {
-    if (mask & category_mask) {
-      category_names.push_back(name);
-    }
-  }
-  
-  return category_names;
-}
-
 void
 OO_EventTrace::
 handle_list_categories(const xrt_core::device* device) const {
   try {
-    auto category_map = get_category_map(device);
+    auto category_map = smi::event_trace_config::get_category_map(device);
     if (!category_map.empty()) {
       std::cout << "Available event trace categories for device " << m_device << ":\n";
       for (const auto& pair : category_map) {
@@ -139,33 +91,9 @@ handle_list_categories(const xrt_core::device* device) const {
 
 void
 OO_EventTrace::
-handle_status(const xrt_core::device* device) const {
-  try {
-    auto status = xrt_core::device_query<xrt_core::query::event_trace_state>(device);
-    std::cout << "Event trace status: " << (status.action == 1 ? "enabled" : "disabled") << "\n"; //NOLINT
-    
-    auto category_names = mask_to_category_names(status.categories, device);
-    if (!category_names.empty()) {
-      std::cout << "Event trace categories: ";
-      for (size_t i = 0; i < category_names.size(); ++i) { //NOLINT
-        if (i > 0) std::cout << ", "; //NOLINT
-        std::cout << category_names[i];
-      }
-      std::cout << "\n";
-    } else {
-      std::cout << "Event trace categories: none\n";
-    }
-  } catch (const std::exception& e) {
-    std::cerr << "Error getting event trace status: " << e.what() << "\n";
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-}
-
-void
-OO_EventTrace::
 handle_config(const xrt_core::device* device) const {
   // Configuration actions require admin privileges
-  XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
+  // XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
 
   uint32_t action_value = m_enable ? 1 : 0;
   std::string action_name = m_enable ? "enable" : "disable";
@@ -189,10 +117,9 @@ validate_args() const {
   if(!m_enable 
      && !m_disable 
      && !m_help 
-     && !m_list_categories 
-     && !m_status)
+     && !m_list_categories)
     throw xrt_core::error(std::errc::operation_canceled, 
-          "Please specify an action: --enable, --disable, --status, or --list-categories");
+          "Please specify an action: --enable, --disable, or --list-categories");
   
   if(m_enable && m_disable)
     throw xrt_core::error(std::errc::operation_canceled, "Cannot specify both --enable and --disable");
@@ -251,10 +178,6 @@ execute(const SubCmdOptions& _options) const
     return;
   }
 
-  if (m_status) {
-    handle_status(device.get());
-    return;
-  }
   if (m_enable || m_disable) {
     handle_config(device.get());
     return;
