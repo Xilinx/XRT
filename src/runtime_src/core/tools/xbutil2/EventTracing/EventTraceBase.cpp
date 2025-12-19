@@ -5,7 +5,6 @@
 #include "EventTraceStrix.h"
 #include "EventTraceNpu3.h"
 
-#include "core/common/smi.h"
 #include "core/common/query_requests.h"
 #include "tools/common/XBUtilities.h"
 
@@ -163,29 +162,6 @@ format_arguments(const std::map<std::string, std::string>& args) const
   return ss.str();
 }
 
-// Helper function to determine if hardware type is STRx
-static bool
-is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
-{
-  switch (hw_type) {
-    case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
-    case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
-    case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
-    case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
-    case xrt_core::smi::smi_hardware_config::hardware_type::phx:
-      return true;
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
-    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
-      return false;
-    default:
-      throw std::runtime_error("Unsupported hardware type for event trace");
-  }
-}
-
 std::unique_ptr<event_trace_config>
 event_trace_config::
 create_from_device(const xrt_core::device* device)
@@ -199,7 +175,7 @@ create_from_device(const xrt_core::device* device)
   smi::smi_hardware_config smi_hrdw;
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
 
-  if (is_strix_hardware(hardware_type))
+  if (XBUtilities::is_strix_hardware(hardware_type))
     return std::make_unique<config_strix>(json_config);
   else
     return std::make_unique<config_npu3>(json_config);
@@ -261,7 +237,7 @@ create_from_config(const std::unique_ptr<event_trace_config>& config,
   xrt_core::smi::smi_hardware_config smi_hrdw;
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
   
-  if (is_strix_hardware(hardware_type)) {
+  if (XBUtilities::is_strix_hardware(hardware_type)) {
     return std::make_unique<parser_strix>(dynamic_cast<const config_strix&>(*config));
   } else {
     return std::make_unique<parser_npu3>(dynamic_cast<const config_npu3&>(*config));

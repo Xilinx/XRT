@@ -11,6 +11,7 @@
 #include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
 #include "core/common/archive.h"
+#include "core/common/smi.h"
 
 namespace XBU = XBValidateUtils;
 namespace xq = xrt_core::query;
@@ -22,9 +23,6 @@ using json = nlohmann::json;
 static constexpr uint32_t num_of_preemptions = 500;
 
 // ----- S T A T I C   M E T H O D S -------------------------------------------
-
-
-
 static double
 measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
                             const std::string& recipe_data,
@@ -53,35 +51,9 @@ measure_preemption_overhead(const std::shared_ptr<xrt_core::device>& dev,
   return (preempt_exec_time - baseline_exec_time) / num_of_preemptions;
 }
 
-TestPreemptionOverhead::TestPreemptionOverhead()
-  : TestRunner("preemption-overhead", "Measure preemption overhead at noop and memtile levels")
-{}
-
-boost::property_tree::ptree
-TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>&)
+void static
+run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive, boost::property_tree::ptree& ptree)
 {
-  boost::property_tree::ptree ptree = get_test_header();
-  return ptree;
-}
-
-boost::property_tree::ptree
-TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
-{
-  boost::property_tree::ptree ptree = get_test_header();
-  ptree.erase("xclbin");
-
-  // this test is only for privileged users as it requires enabling/disabling preemption
-  if(!xrt_core::is_user_privileged()) {
-    XBU::logger(ptree, "Details", "This test requires admin privileges");
-    ptree.put("status", XBU::test_token_skipped);
-    return ptree;
-  }
-
-  if (archive == nullptr) {
-    ptree.put("status", XBValidateUtils::test_token_failed);
-    XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
-    return ptree;
-  }
   const auto layer_boundary = xrt_core::device_query_default<xq::preemption>(dev.get(), 0);
 
   try {
@@ -123,6 +95,83 @@ TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const 
   xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
 
   ptree.put("status", XBU::test_token_passed);
+}
+
+void static
+run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive, boost::property_tree::ptree& ptree)
+{
+  const auto layer_boundary = xrt_core::device_query_default<xq::preemption>(dev.get(), 0);
+
+  try {
+    std::string recipe_4x1_memtile_data = archive->data("recipe_preemption_memtile_4x1.json");
+    std::string recipe_4x3_memtile_data = archive->data("recipe_preemption_memtile_4x3.json");
+    std::string profile_data = archive->data("profile_preemption.json"); 
+
+    
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
+      "preemption_memtile_4x1.elf",
+      "preemption_memtile_4x3.elf",
+    });
+
+    // Measure preemption overhead for all 4 recipes
+    auto overhead_memtile_4x1 = measure_preemption_overhead(dev, recipe_4x1_memtile_data, profile_data, artifacts_repo);
+    XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead for 4x%d is %.1f us") % "memtile" % 1 % overhead_memtile_4x1));
+
+    auto overhead_memtile_4x3 = measure_preemption_overhead(dev, recipe_4x3_memtile_data, profile_data, artifacts_repo);
+    XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead for 4x%d is %.1f us") % "memtile" % 3 % overhead_memtile_4x3));
+  }
+  catch(const std::exception& e) {
+    XBValidateUtils::logger(ptree, "Error", e.what());
+    ptree.put("status", XBValidateUtils::test_token_failed);
+  }
+
+  // Restore the original preemption state
+  xrt_core::device_update<xq::preemption>(dev.get(), static_cast<uint32_t>(layer_boundary));
+
+  ptree.put("status", XBU::test_token_passed);
+}
+
+TestPreemptionOverhead::TestPreemptionOverhead()
+  : TestRunner("preemption-overhead", "Measure preemption overhead at noop and memtile levels")
+{}
+
+boost::property_tree::ptree
+TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>&)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  return ptree;
+}
+
+boost::property_tree::ptree
+TestPreemptionOverhead::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+{
+  boost::property_tree::ptree ptree = get_test_header();
+  ptree.erase("xclbin");
+
+  // this test is only for privileged users as it requires enabling/disabling preemption
+  if(!xrt_core::is_user_privileged()) {
+    XBU::logger(ptree, "Details", "This test requires admin privileges");
+    ptree.put("status", XBU::test_token_skipped);
+    return ptree;
+  }
   
+  if (archive == nullptr) {
+    XBU::logger(ptree, "Error", "No archive found, skipping test");
+    ptree.put("status", XBU::test_token_failed);
+    return ptree;
+  }
+
+  // Determine the hardware type
+  using query = xrt_core::query::pcie_id;
+  auto pcie_id = xrt_core::device_query<query>(dev);
+
+  xrt_core::smi::smi_hardware_config smi_hrdw;
+  auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+
+  if (XBUtilities::is_strix_hardware(hardware_type))
+    run_strix(dev, archive, ptree);
+  else
+    run_npu3(dev, archive, ptree);
+
   return ptree;
 }
