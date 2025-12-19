@@ -96,6 +96,43 @@ public:
   }
 
   /**
+   * @brief Get category map from device (static utility)
+   * @param device Device to query
+   * @return Map of category name to mask
+   */
+  static std::map<std::string, uint32_t>
+  get_category_map(const xrt_core::device* device);
+
+  /**
+   * @brief Convert category mask to category names (static utility)
+   * @param mask Category mask to decode
+   * @param device Device to query for category definitions
+   * @return Vector of category names
+   */
+  static std::vector<std::string>
+  mask_to_category_names(uint32_t mask, const xrt_core::device* device);
+
+  /**
+   * @brief Get the entry header size
+   * @return Entry header size in bytes
+   */
+  size_t 
+  get_entry_header_size() const 
+  { 
+    return m_entry_header_size; 
+  }
+
+  /**
+   * @brief Get the entry footer size
+   * @return Entry footer size in bytes
+   */
+  size_t 
+  get_entry_footer_size() const 
+  { 
+    return m_entry_footer_size; 
+  }
+
+  /**
    * @brief Virtual destructor (public for unique_ptr)
    */
   virtual ~event_trace_config() = default;
@@ -131,6 +168,14 @@ protected:
 
   category_info
   create_category_info(const nlohmann::json& category);
+
+  /**
+   * @brief Parse structure size from JSON structures section
+   * @param struct_name Name of structure to get size for
+   * @return Size in bytes, or 0 if not found
+   */
+  size_t
+  parse_structure_size(const std::string& struct_name);
 
   // Protected accessors for derived classes
   const nlohmann::json& 
@@ -169,6 +214,8 @@ private:
   uint16_t m_file_minor;
   std::map<std::string, std::map<uint32_t, std::string>> m_code_tables;
   std::map<std::string, category_info> m_category_map;
+  size_t m_entry_header_size;                                // Entry header size in bytes
+  size_t m_entry_footer_size;                                // Entry footer size in bytes
 };
 
 /**

@@ -85,20 +85,11 @@ OO_FirmwareLogExamine::generate_parsed_logs(const xrt_core::device* dev,
   std::stringstream ss{};
 
   smi_debug_buffer debug_buf(m_watch_mode_offset, is_watch);
-
-  xrt_core::query::firmware_debug_buffer data_buf{};
-  try {
-    data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
-  } 
-  catch (const std::exception& e) {
-    ss << "Error retrieving firmware log data: " << e.what() << "\n";
-    m_watch_mode_offset = 0;
-    return ss.str();
-  }
+  auto data_buf = xrt_core::device_query<xrt_core::query::firmware_log_data>(dev, debug_buf.get_log_buffer());
   
   m_watch_mode_offset = data_buf.abs_offset;
 
-  if (!data_buf.data) {
+  if (!data_buf.data || data_buf.size == 0) {
     ss << "No firmware log data available\n";
     return ss.str();
   }

@@ -20,7 +20,9 @@ event_trace_config(nlohmann::json json_config)
     m_file_major(parse_major_version()),
     m_file_minor(parse_minor_version()),
     m_code_tables(parse_code_table()),
-    m_category_map(parse_categories())
+    m_category_map(parse_categories()),
+    m_entry_header_size(parse_structure_size("ring_buffer_entry_header")),
+    m_entry_footer_size(parse_structure_size("ring_buffer_entry_footer"))
 {
 }
 
@@ -111,6 +113,20 @@ create_category_info(const nlohmann::json& category)
   return cat_info;
 }
 
+size_t
+event_trace_config::
+parse_structure_size(const std::string& struct_name)
+{
+  if (!m_config.contains("structures") || !m_config["structures"].contains(struct_name)) {
+    return 0;
+  }
+  const auto& structure = m_config["structures"][struct_name];
+  if (structure.contains("size")) {
+    return structure["size"].get<size_t>();
+  }
+  return 0;
+}
+
 // Parser base implementation
 std::string
 event_trace_parser::
@@ -163,6 +179,52 @@ create_from_device(const xrt_core::device* device)
     return std::make_unique<config_strix>(json_config);
   else
     return std::make_unique<config_npu3>(json_config);
+}
+
+std::map<std::string, uint32_t>
+event_trace_config::
+get_category_map(const xrt_core::device* device) {
+  std::map<std::string, uint32_t> category_map;
+
+  // Load categories from config
+  try {
+    auto config = create_from_device(device);
+    
+    // Get categories from config and convert ID to mask
+    const auto& config_categories = config->get_categories();
+    for (const auto& [name, info] : config_categories) {
+      uint32_t mask = (1U << info.id);
+      category_map[name] = mask;
+    }
+  } catch (const std::exception&) {
+    // Config loading failed, return empty map
+  }
+  return category_map;
+}
+
+std::vector<std::string>
+event_trace_config::
+mask_to_category_names(uint32_t mask, const xrt_core::device* device) {
+  std::vector<std::string> category_names;
+  
+  if (mask == 0) {
+    return category_names; // Empty list for no categories
+  }
+  
+  if (mask == 0xFFFFFFFF) { // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)  
+    category_names.emplace_back("ALL");
+    return category_names;
+  }
+  
+  auto category_map = get_category_map(device);
+  
+  for (const auto& [name, category_mask] : category_map) {
+    if (mask & category_mask) {
+      category_names.push_back(name);
+    }
+  }
+  
+  return category_names;
 }
 
 std::unique_ptr<event_trace_parser>

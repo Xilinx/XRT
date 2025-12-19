@@ -20,9 +20,12 @@ namespace xrt_core { class device; }
 
 namespace xrt_core::tools::xrt_smi{
 
-constexpr uint8_t npu3_magic_byte = 0xAA;
-constexpr size_t npu3_timestamp_bytes = 8;
-constexpr size_t npu3_header_bytes = 12; // timestamp(8) + magic(1) + category_id(2) + payload_size(1)
+constexpr uint8_t npu3_rbe_header_magic = 0xCA; // NOLINT This is hardcoded. Ideally this should come from the config json. TODO: remove this once this is a part of json
+constexpr uint8_t npu3_rbe_footer_magic = 0xBA; // NOLINT This is hardcoded. Ideally this should come from the config json. TODO: remove this once this is a part of json
+constexpr size_t npu3_rbe_header_bytes = 8;  // NOLINT RBE header: magic(1) + payload_words(2) + seq_num(2) + reserved(3)
+constexpr size_t npu3_event_header_bytes = 12; // NOLINT Event header: timestamp(8) + unique_id(4)
+constexpr size_t npu3_rbe_footer_bytes = 8;  // NOLINT RBE footer: reserved(3) + seq_num(2) + payload_words(2) + magic(1)
+
 
 /**
  * @brief NPU3-specific event trace configuration
@@ -52,9 +55,10 @@ public:
    */
   struct event_data_t {
     uint64_t timestamp;
-    uint16_t category_id;
+    uint32_t event_id;         // unique_id from event header
     const uint8_t* payload_ptr;
-    uint8_t payload_size;
+    uint16_t payload_words;    // number of 64-bit words (from RBE header)
+    uint16_t sequence_number;  // sequence number (from RBE header)
   };
 
 public:
