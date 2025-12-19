@@ -196,9 +196,9 @@ struct patcher
 
   inline static uint64_t get_ddr_aie_addr_offset()
   {
-    //This patching scheme is originated from NPU firmware
+    // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
-    static const char* xemtarget = std::getenv("XCL_EMULATION_DEVICE_TARGET");
+    static const char* xemtarget = std::getenv("XCL_EMULATION_DEVICE_TARGET"); // NOLINT
     static const bool is_npu3_snl = xemtarget && (std::strcmp(xemtarget, "npu3_snl") == 0);
     if (is_npu3_snl)
       return 0;
@@ -254,7 +254,7 @@ private:
       ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
       bd_data_ptr[1];
 
-    base_address += patch + get_ddr_aie_addr_offset();  //2G offset (or 0 offset for emulation device)
+    base_address += patch + get_ddr_aie_addr_offset();  // 2G offset (or 0 offset for emulation device)
     bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
     bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
   }
