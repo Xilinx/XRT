@@ -92,9 +92,6 @@ handle_list_categories(const xrt_core::device* device) const {
 void
 OO_EventTrace::
 handle_config(const xrt_core::device* device) const {
-  // Configuration actions require admin privileges
-  XBUtilities::sudo_or_throw("Event trace configuration requires admin privileges");
-
   uint32_t action_value = m_enable ? 1 : 0;
   std::string action_name = m_enable ? "enable" : "disable";
 

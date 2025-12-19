@@ -115,35 +115,21 @@ run_watch_mode(const xrt_core::device* device,
   signal_handler::setup();
   
   signal_handler::reset_interrupt();
-  std::string last_report;
   
   while (signal_handler::active()) {
     try {
       // Generate current report
-      std::string current_report = report_generator(device);
-      
-      // Only update display if content has changed
-      if (current_report != last_report) {
-        output << current_report;
-        output.flush();
-        last_report = current_report;
-      }
+      output << report_generator(device);
+      output.flush();
     } 
     catch (const std::exception& e) {
       output << "Error generating report: " << e.what() << "\n";
       output.flush();
-      break;
-    }
-    catch (const xrt_core::system_error& e) {
-      output << "Error generating report: " << e.what() << " (Code: " << e.get_code() << ")\n";
-      output.flush();
-      break;
+      signal_handler::restore();
+      return;
     }
   }
-  
   output << "\n\nWatch mode interrupted by user.\n";
-  
-  // Restore original signal handler
   signal_handler::restore();
 }
 
