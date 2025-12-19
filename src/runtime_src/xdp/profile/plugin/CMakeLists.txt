@@ -16,8 +16,11 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(native)
   add_subdirectory(user)
   add_subdirectory(ml_timeline)
-  add_subdirectory(aie_trace)
-  add_subdirectory(aie_profile)
+
+  if (NOT XRT_EMU)
+    add_subdirectory(aie_trace)
+    add_subdirectory(aie_profile)
+  endif()
 
   if (WIN32)
     add_subdirectory(aie_halt)
