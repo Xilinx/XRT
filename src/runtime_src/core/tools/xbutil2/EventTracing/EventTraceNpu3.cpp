@@ -154,28 +154,41 @@ config_npu3::
 parse_buffer(const uint8_t* buffer_ptr) const
 {
   const uint8_t* current_ptr = buffer_ptr;
-  // Parse magic byte (should be 0xAA)
-  uint8_t magic = *current_ptr++;
-  if (magic != npu3_magic_byte) {
-    throw std::runtime_error("Invalid event message, corruption detected");
+  
+  // Parse RBE Header (8 bytes)
+  uint8_t rbe_header_magic = *current_ptr++;
+  if (rbe_header_magic != npu3_rbe_header_magic) {
+    throw std::runtime_error("Invalid RBE header magic: expected 0xCA, got 0x" + 
+                           std::to_string(rbe_header_magic));
   }
   
-  // Parse category_id (2 bytes)
-  uint16_t category_id = 0;
-  std::memcpy(&category_id, current_ptr, sizeof(uint16_t));
+  uint16_t payload_words = 0;
+  std::memcpy(&payload_words, current_ptr, sizeof(uint16_t));
   current_ptr += sizeof(uint16_t);
   
-  // Parse payload_size (1 byte)
-  uint8_t payload_size = *current_ptr++;
+  uint16_t sequence_number = 0;
+  std::memcpy(&sequence_number, current_ptr, sizeof(uint16_t));
+  current_ptr += sizeof(uint16_t);
   
-  // Parse timestamp (8 bytes)
-  uint64_t timestamp = *reinterpret_cast<const uint64_t*>(current_ptr);
+  // Skip reserved bytes (3 bytes)
+  current_ptr += 3;
+  
+  // Parse Event Trace Header (12 bytes)
+  uint64_t timestamp = 0;
+  std::memcpy(&timestamp, current_ptr, sizeof(uint64_t));
   current_ptr += sizeof(uint64_t);
-
-  // Payload pointer
+  
+  uint32_t event_id = 0;
+  std::memcpy(&event_id, current_ptr, sizeof(uint32_t));
+  current_ptr += sizeof(uint32_t);
+  
+  // Event payload pointer (starts after event header)
   const uint8_t* payload_ptr = current_ptr;
   
-  return {timestamp, category_id, payload_ptr, payload_size};
+  // Note: RBE footer validation could be added here if needed
+  // Footer is at: buffer_ptr + 8 (RBE header) + (payload_words * 8)
+  
+  return {timestamp, event_id, payload_ptr, payload_words, sequence_number};
 }
 
 config_npu3::decoded_event_t
@@ -184,9 +197,9 @@ decode_event(const event_data_t& event_data) const
 {
   decoded_event_t decoded;
   decoded.timestamp = event_data.timestamp;
-  decoded.event_id = event_data.category_id;
+  decoded.event_id = static_cast<uint16_t>(event_data.event_id);
   
-  auto event_it = m_event_map.find(event_data.category_id);
+  auto event_it = m_event_map.find(static_cast<uint16_t>(event_data.event_id));
   if (event_it != m_event_map.end()) {
     const event_info_npu3& event = event_it->second;
     decoded.name = event.name;
@@ -205,7 +218,7 @@ decode_event(const event_data_t& event_data) const
     }
   } else {
     decoded.name = "UNKNOWN";
-    decoded.description = "Unknown event ID: " + std::to_string(event_data.category_id);
+    decoded.description = "Unknown event ID: " + std::to_string(event_data.event_id);
     decoded.categories = {"UNKNOWN"};
   }
   
@@ -358,8 +371,9 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
   
   // Parse each variable-size event
   while (current_ptr < end_ptr) {
-    // Check if we have enough bytes for minimum event header
-    if (current_ptr + npu3_header_bytes > end_ptr) {
+    // Check if we have enough bytes for minimum entry (RBE header + event header + RBE footer)
+    size_t min_entry_size = npu3_rbe_header_bytes + npu3_event_header_bytes + npu3_rbe_footer_bytes;
+    if (current_ptr + min_entry_size > end_ptr) {
       break;  // Not enough data for another event
     }
     
@@ -373,8 +387,13 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
       // Format output
       ss << format_event(decoded_event);
       
-      // Advance pointer: header(12) + payload_size
-      current_ptr += npu3_header_bytes + event_data.payload_size;
+      // Advance pointer: RBE header(8) + payload_words*8 + RBE footer(8)
+      // payload_words includes both event header (12 bytes) and event payload
+      size_t entry_size = npu3_rbe_header_bytes 
+                          + (event_data.payload_words * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+                          + npu3_rbe_footer_bytes; 
+
+      current_ptr += entry_size;
       
     } catch (const std::exception& e) {
       ss << "Error parsing event: " << e.what() << "\n";

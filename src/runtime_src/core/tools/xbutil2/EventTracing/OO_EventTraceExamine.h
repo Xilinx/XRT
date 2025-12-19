@@ -22,11 +22,15 @@ private:
   bool m_watch;
   bool m_raw;
   bool m_version;
+  bool m_status;
   mutable uint64_t m_watch_mode_offset;
 
   // Handler methods for different modes
   void
   handle_version(const xrt_core::device* device) const;
+
+  void
+  handle_status(const xrt_core::device* device) const;
 
   void
   handle_logging(const xrt_core::device* device) const;
