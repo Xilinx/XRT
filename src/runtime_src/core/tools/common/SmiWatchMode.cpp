@@ -132,6 +132,12 @@ run_watch_mode(const xrt_core::device* device,
     catch (const std::exception& e) {
       output << "Error generating report: " << e.what() << "\n";
       output.flush();
+      break;
+    }
+    catch (const xrt_core::system_error& e) {
+      output << "Error generating report: " << e.what() << " (Code: " << e.get_code() << ")\n";
+      output.flush();
+      break;
     }
   }
   
