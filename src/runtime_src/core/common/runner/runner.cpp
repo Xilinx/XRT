@@ -1193,19 +1193,10 @@ public:
         void
         execute(size_t iteration) override
         {
-          // First iteration, just start all runs
-          if (iteration == 0) {
-            for (auto& run : m_rl)
-              run.start();
-
-            return;
-          }
-
-          // Wait until previous iteration run is done
-          for (auto& run : m_rl) {
-            run.wait2();
+          // It is the responsibility of the caller to ensure that
+          // previous iteration is complete before starting next
+          for (auto& run : m_rl)
             run.start();
-          }
         }
 
         void
@@ -1245,10 +1236,8 @@ public:
         void
         execute(size_t iteration) override
         {
-          // Wait until previous iteration is done
-          if (iteration > 0)
-            m_rl.wait();
-          
+          // It is the responsibility of the caller to ensure that
+          // previous iteration is complete before starting next
           m_rl.execute();
         }
 
