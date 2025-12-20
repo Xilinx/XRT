@@ -289,14 +289,14 @@ class job_queue
   std::condition_variable m_work_cv;
 
   std::vector<job_type> m_jobs;
-  size_t m_num_consumers = 0;
+  size_t m_max_pending_jobs = 0;
   bool m_ready = false;  // ready to return jobs
   bool m_stop = false;   // no longer accepts new jobs
 
 public:
   explicit
-  job_queue(size_t jobs, size_t threads)
-    : m_num_consumers(threads ? threads : jobs)
+  job_queue(size_t jobs, size_t threads, size_t pending_job_limit)
+    : m_max_pending_jobs{pending_job_limit ? pending_job_limit : (threads ? threads : jobs)}
   {
     // Must not reallocate
     m_jobs.reserve(jobs);
@@ -306,7 +306,7 @@ public:
   // mutex and cv are non-movable, so just create new ones
   job_queue(job_queue&& other)
     : m_jobs(std::move(other.m_jobs))
-    , m_num_consumers(other.m_num_consumers)
+    , m_max_pending_jobs(other.m_max_pending_jobs)
     , m_ready(other.m_ready)
   {}
 
@@ -341,8 +341,8 @@ public:
     if (m_jobs.capacity() == m_jobs.size())
       throw std::runtime_error("job_queue::add() no room for additional jobs, bad reserve size");
 
-    // Don't queue more jobs than number of consumers unless explicitly requested.
-    m_work_cv.wait(lk, [this] { return (m_jobs.size() < m_num_consumers || m_stop); });
+    // Don't queue more jobs than pending size limit
+    m_work_cv.wait(lk, [this] { return (m_jobs.size() < m_max_pending_jobs || m_stop); });
 
     m_jobs.emplace_back(std::move(job));
     m_work_cv.notify_all();
@@ -481,8 +481,10 @@ struct script_runner
   std::vector<worker> m_workers;
 
 public:
-  explicit script_runner(const xrt::device& device, const json& script, uint32_t threads, const std::string& dir)
-    : m_job_queue(script.value("jobs", json::object()).size(), threads)
+  explicit script_runner(const xrt::device& device, const json& script,
+                         uint32_t threads, uint32_t pending_job_limit,
+                         const std::string& dir)
+    : m_job_queue(script.value("jobs", json::object()).size(), threads, pending_job_limit)
     , m_workers{init_workers(threads ? threads : script.value("jobs", json::object()).size(),
                              m_job_queue, m_report)}
   {
@@ -519,6 +521,7 @@ usage()
   std::cout << " [--iterations <number>] override all profile iterations\n";
   std::cout << " [--script <script>] runner script, enables multi-threaded execution\n";
   std::cout << " [--threads <number>] number of threads to use when running script (default: #jobs)\n";
+  std::cout << " [--queue-limit <number>] max jobs in job queue running script (default: threads or jobs)\n";
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--verbose <val>] set XRT verbosity level to specified value (default: 0)\n";
@@ -529,6 +532,8 @@ usage()
   std::cout << "% xrt-runner.exe --script runner.json [--threads <num>] [--iterations <num>] [--dir <path>]\n";
   std::cout << "Note, [--threads <number>] overrides the default number, where default is the number of\n";
   std::cout << "jobs in the runner script.\n\n";
+  std::cout << "Note, [--queue-limit <num>] sets the maximum number of pending jobs when running in\n";
+  std::cout << "script mode.  If not set, the max number is set to 2 * number of threads used.\n";
   std::cout << "Note, [--iterations <num>] overrides iterations in profile.json, but not in runner script.\n";
   std::cout << "If the runner script specifies iterations for a recipe/profile pair, then this value is\n";
   std::cout << "sticky for that recipe/profile pair.\n\n";
@@ -539,7 +544,8 @@ usage()
 
 // Entry for parsing the runner script file
 static void
-run_script(const std::string& file, const std::string& dir, uint32_t threads,
+run_script(const std::string& file, const std::string& dir,
+           uint32_t threads, uint32_t pending_job_limit,
            const std::string& report)
 {
   std::ifstream istr(file);
@@ -547,7 +553,7 @@ run_script(const std::string& file, const std::string& dir, uint32_t threads,
 
   xrt_core::systime st;
   xrt::device device{0};
-  script_runner runner{device, script, threads, dir};
+  script_runner runner{device, script, threads, pending_job_limit, dir};
   runner.wait();
 
   if (!report.empty()) {
@@ -603,6 +609,7 @@ run(int argc, char* argv[])
   std::string dir = ".";
   std::string script;
   uint32_t threads = 0;
+  uint32_t max_pending_jobs = 0;
   uint32_t verbosity = 0;
   std::string report;
   for (auto& arg : args) {
@@ -649,6 +656,8 @@ run(int argc, char* argv[])
       script = arg;
     else if (cur == "-t" || cur == "--threads")
       threads = std::stoi(arg);
+    else if (cur == "-l" || cur == "--queue-limit")
+      max_pending_jobs = std::stoi(arg);
     else if (cur == "-i" || cur == "--iterations")
       g_iterations = std::stoi(arg);
     else if (cur == "-r" || cur == "--report")
@@ -672,7 +681,7 @@ run(int argc, char* argv[])
   xrt::ini::set("Runtime.verbosity", verbosity);
 
   if (!script.empty())
-    run_script(script, dir, threads, report);
+    run_script(script, dir, threads, max_pending_jobs, report);
   else
     run_single(recipe, profile, dir, report);
 }
