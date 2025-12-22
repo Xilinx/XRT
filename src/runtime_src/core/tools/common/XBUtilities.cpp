@@ -15,6 +15,7 @@
 #include "common/sysinfo.h"
 #include "common/smi.h"
 #include "common/module_loader.h"
+#include "xrt/detail/version.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
@@ -835,6 +836,35 @@ extract_artifacts_from_archive(const xrt_core::archive* archive,
   return artifacts_repo;
 }
 
+void
+XBUtilities::
+report_missing_archive(const xrt_core::device* device)
+{
+  try {
+    std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
+    std::string xrt_version = XRT_VERSION_STRING;
+    std::string install_path = get_archive_install_path(xrt_version);
+    
+    // Extract archive name from archive path (e.g., "amdxdna/bins/xrt_smi_phx.a" -> "xrt_smi_phx.a")
+    std::filesystem::path arch_path(archive_path);
+    std::string archive_name = arch_path.filename().string();
+    
+    XBUtilities::warning(boost::str(boost::format(
+      "Archive not found: %s\n"
+      "To install the required archive, run:\n"
+      "  smi_install_archive.sh %s %s\n"
+      "Or download manually from:\n"
+      "  https://github.com/Xilinx/VTD/tree/main/archive\n"
+      "And place it in: %s/")
+      % archive_path
+      % archive_name
+      % xrt_version
+      % install_path));
+  } catch (...) {
+    XBUtilities::warning("Archive not found. Some features may be unavailable.");
+  }
+}
+
 std::unique_ptr<xrt_core::archive>
 XBUtilities::
 open_archive(const xrt_core::device* device)
@@ -849,8 +879,8 @@ open_archive(const xrt_core::device* device)
     }
     std::string full_archive_path = xrt_core::environment::platform_path(archive_path).string();
     archive = std::make_unique<xrt_core::archive>(full_archive_path);
-  } catch (const std::exception& e) {
-    std::cerr << "Error opening archive: " << e.what() << std::endl;
+  } catch (const std::exception&) {
+    report_missing_archive(device);
   }
   return archive;
 }
@@ -878,4 +908,15 @@ is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
     default:
       throw std::runtime_error("Unsupported hardware type");
   }
+}
+
+std::string
+XBUtilities::
+get_archive_install_path(const std::string& xrt_version)
+{
+  const char* home = std::getenv("HOME");
+  if (!home || !*home)
+    throw std::runtime_error("HOME environment variable is not set");
+  
+  return std::string(home) + "/.local/share/xrt/" + xrt_version + "/amdxdna/bins";
 }
