@@ -29,6 +29,7 @@
 #include "shim_ve2/xdna_aie_array.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_base/aie_nop_util.h"
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_logger_ve2.h"
 #include "xdp/profile/device/aie_trace/ve2/aie_trace_offload_ve2.h"
 #include "xdp/profile/device/pl_device_intf.h"
@@ -86,6 +87,10 @@ AIETraceOffload::~AIETraceOffload()
 
 bool AIETraceOffload::initReadTrace()
 {
+  // Submit nop.elf to initialize AIE array before BD configuration
+  if (!aie::submitNopElf(deviceHandle))
+    return false;
+
   buffers.clear();
   buffers.resize(numStream);
 
