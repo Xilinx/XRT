@@ -32,7 +32,7 @@
 
 #ifdef _WIN32
 
-# pragma warning( disable : 4189 4100 )
+# pragma warning( disable : 4189 4100 4996)
 # pragma comment(lib, "Ws2_32.lib")
 /* need to link the lib for the following to work */
 # define be32toh ntohl
