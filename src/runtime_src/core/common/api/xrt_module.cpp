@@ -196,7 +196,7 @@ struct patcher
 
   inline static uint64_t get_ddr_aie_addr_offset()
   {
-    // This patching scheme is originated from NPU firmware
+    // on npu3 emulation platform, there is no ddr offset needed for AIE shim tile
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
     static const char* xemtarget = std::getenv("XCL_EMULATION_DEVICE_TARGET"); // NOLINT
     static const bool is_npu3_snl = xemtarget && (std::strcmp(xemtarget, "npu3_snl") == 0);
