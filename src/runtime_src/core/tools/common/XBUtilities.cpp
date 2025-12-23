@@ -15,7 +15,7 @@
 #include "common/sysinfo.h"
 #include "common/smi.h"
 #include "common/module_loader.h"
-#include "xrt/detail/version.h"
+#include "xrt/detail/version-slim.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
