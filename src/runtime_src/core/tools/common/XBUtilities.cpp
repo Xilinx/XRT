@@ -865,14 +865,14 @@ std::unique_ptr<xrt_core::archive>
 XBUtilities::
 open_archive(const xrt_core::device* device)
 {
+  // Archives only applicable to Ryzen devices
+  if (xrt_core::device_query<xrt_core::query::device_class>(device) == xrt_core::query::device_class::type::alveo)
+    return nullptr;
+
   std::unique_ptr<xrt_core::archive> archive;
   
   try {
     std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
-    if (archive_path.empty()) {
-      // If shim does not provide an archive path (e.g. alveo shim), ignore the error
-      return nullptr;
-    }
     std::string full_archive_path = xrt_core::environment::platform_path(archive_path).string();
     archive = std::make_unique<xrt_core::archive>(full_archive_path);
   } catch (const std::exception& e) {
