@@ -74,11 +74,10 @@ if (XRT_STATIC_BUILD)
   target_link_options(${XBMGMT2_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
   target_compile_definitions(${XBMGMT2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   # Bypass FindBoost versions and just link explicitly with boost libraries
-  # The -static link option will pick the static libraries. 
+  # The -static link option will pick the static libraries.
   target_link_libraries(${XBMGMT2_NAME}_static
     PRIVATE
     xrt_coreutil_static
-    boost_system
     boost_program_options
     -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
     uuid
@@ -93,10 +92,9 @@ target_link_libraries(${XBMGMT2_NAME}
   PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   )
-  
+
 # Add the supporting libraries
 if(WIN32)
   target_link_libraries(${XBMGMT2_NAME} PRIVATE ws2_32)
