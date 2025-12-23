@@ -107,6 +107,23 @@ namespace XBUtilities {
   std::string
   parse_clock_id(const std::string& id);
 
+  /**
+   * get_archive_install_path() - Get the default installation path for amdxdna archives
+   *
+   * @xrt_version: XRT version string (e.g., "2.21.0")
+   * Return: Default installation path for archives
+   */
+  std::string
+  get_archive_install_path(const std::string& xrt_version);
+
+  /**
+   * report_missing_archive() - Display helpful message when archive is not found
+   *
+   * @device: Device for which archive is missing
+   */
+  void
+  report_missing_archive(const xrt_core::device* device);
+
 
   std::string
   string_to_UUID(std::string str);

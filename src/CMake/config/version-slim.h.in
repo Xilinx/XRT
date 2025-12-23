@@ -10,4 +10,5 @@
 #define XRT_MAJOR(code) ((code >> 16))
 #define XRT_MINOR(code) (code - ((code >> 16) << 16))
 
+static const char xrt_build_version[] = "@XRT_VERSION_STRING@";
 #endif
