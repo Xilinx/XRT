@@ -264,7 +264,7 @@ public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::elf& elf,
                   cfg_param_type cfg_param, access_mode mode)
     : m_core_device{std::move(device)}
-    , m_partition_size{xrt_core::elf_int::get_partition_size(elf)}
+    , m_partition_size{elf.get_partition_size()}
     , m_cfg_param{std::move(cfg_param)}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
@@ -313,7 +313,7 @@ public:
   void
   add_config(const xrt::elf& elf)
   {
-    auto part_size = xrt_core::elf_int::get_partition_size(elf);
+    auto part_size = elf.get_partition_size();
 
     // create hw ctx handle if not already created
     if (!m_hdl) {

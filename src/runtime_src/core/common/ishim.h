@@ -143,7 +143,7 @@ struct ishim
   virtual std::unique_ptr<fence_handle>
   create_fence(xrt::fence::access_mode)
   { throw not_supported_error{__func__}; }
-  
+
   virtual std::unique_ptr<fence_handle>
   import_fence(pid_t, shared_handle::export_handle)
   { throw not_supported_error{__func__}; }
@@ -175,7 +175,7 @@ struct ishim
   create_hw_context(const xrt::elf& elf,
                     const xrt::hw_context::cfg_param_type& cfg,
                     xrt::hw_context::access_mode mode) const
-  { return create_hw_context(elf_int::get_partition_size(elf), cfg, mode); }
+  { return create_hw_context(elf.get_partition_size(), cfg, mode); }
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims

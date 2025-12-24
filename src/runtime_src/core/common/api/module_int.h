@@ -15,25 +15,6 @@
 
 #include <string>
 
-namespace xrt_core::patcher {
-// enum with different buffer types that supports patching
-// Some of the internal shim tests use this enum, so moving it to header
-// Ideal place for this enum would be in a header that has patching logic
-// TODO: Move this when patching logic is added to aiebu 
-enum class buf_type {
-  ctrltext = 0,        // control code
-  ctrldata = 1,        // control packet
-  preempt_save = 2,    // preempt_save
-  preempt_restore = 3, // preempt_restore
-  pdi = 4,             // pdi
-  ctrlpkt_pm = 5,      // preemption ctrl pkt
-  pad = 6,             // scratchpad/control packet section name for next gen aie devices
-  dump = 7,            // dump section containing debug info for trace etc
-  ctrlpkt = 8,         // control packet section in aie2ps/aie4 new ELFs
-  buf_type_count = 9   // total number of buf types
-};
-}
-
 namespace xrt_core::module_int {
 struct kernel_info {
   std::vector<xrt_core::xclbin::kernel_argument> args;
