@@ -99,8 +99,11 @@ namespace xdp {
               return;
 
       // Submit nop.elf before configuring profile
-      if (!aie::submitNopElf(metadata->getHandle()))
+      if (!aie::submitNopElf(metadata->getHandle())) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Failed to submit nop.elf. AIE profile configuration will not proceed.");
         return;
+      }
 
       bool runtimeCounters = setMetricsSettings(deviceID, metadata->getHandle());
   

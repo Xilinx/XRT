@@ -88,8 +88,11 @@ AIETraceOffload::~AIETraceOffload()
 bool AIETraceOffload::initReadTrace()
 {
   // Submit nop.elf to initialize AIE array before BD configuration
-  if (!aie::submitNopElf(deviceHandle))
+  if (!aie::submitNopElf(deviceHandle)) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "Failed to submit nop.elf. AIE trace configuration will not proceed.");
     return false;
+  }
 
   buffers.clear();
   buffers.resize(numStream);
