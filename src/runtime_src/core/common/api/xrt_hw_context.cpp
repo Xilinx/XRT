@@ -177,7 +177,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
-      m_elf_map.emplace{kernel_name, elf};
+      m_elf_map.emplace(kernel_name, elf);
     }
   }
 

@@ -139,10 +139,10 @@ demangle(const std::string& mangled)
 // kernel signature has name followed by args
 // kernel signature - name(argtype, argtype ...)
 // eg : DPU(char*, char*, char*)
-static std::vector<xarg>
+static std::vector<xrt::xarg>
 construct_kernel_args(const std::string& signature)
 {
-  std::vector<xarg> args;
+  std::vector<xrt::xarg> args;
 
   size_t start_pos = signature.find('(');
   size_t end_pos = signature.find(')', start_pos);
@@ -159,21 +159,21 @@ construct_kernel_args(const std::string& signature)
   size_t count = 0;
   size_t offset = 0;
   for (const std::string& str : argstrings) {
-    xarg arg;
+    xrt::xarg arg;
     arg.name = "argv" + std::to_string(count);
     arg.hosttype = "no-type";
     arg.port = "no-port";
     arg.index = count;
     arg.offset = offset;
-    arg.dir = xarg::direction::input;
+    arg.dir = xrt::xarg::direction::input;
     // if arg has pointer(*) in its name (eg: char*, void*) it is of type global otherwise scalar
     arg.type = (str.find('*') != std::string::npos)
-      ? xarg::argtype::global
-      : xarg::argtype::scalar;
+      ? xrt::xarg::argtype::global
+      : xrt::xarg::argtype::scalar;
 
     // At present only global args are supported
     // TODO : Add support for scalar args in ELF flow
-    if (arg.type == xarg::argtype::scalar)
+    if (arg.type == xrt::xarg::argtype::scalar)
       throw std::runtime_error("scalar args are not yet supported for this kind of kernel");
     else {
       // global arg
@@ -183,7 +183,7 @@ construct_kernel_args(const std::string& signature)
       offset += global_arg_size;
     }
 
-    args.emplace_back(arg);
+    args.emplace_back(std::move(arg));
     count++;
   }
   return args;
@@ -251,7 +251,7 @@ class elf::kernel_impl
   // Using kernel_argument, kernel_properties from xclbin codebase
   // as xrt::kernel_impl uses it most of the places, hard to decouple it
   // TODO : Remove this once ELF flow is stable
-  std::vector<xarg> m_args;
+  std::vector<xrt::xarg> m_args;
   xrt_core::xclbin::kernel_properties m_properties;
   std::vector<elf::kernel::instance> m_instances;
 
@@ -267,12 +267,12 @@ class elf::kernel_impl
 
 public:
   explicit
-  kernel_impl(std::string name, std::vector<xarg> args,
+  kernel_impl(std::string name, std::vector<xrt::xarg> args,
               std::vector<elf::kernel::instance> instances)
     : m_name{std::move(name)}
     , m_args{std::move(args)}
-    , m_instances{std::move(instances)}
     , m_properties{construct_properties(m_name)}
+    , m_instances{std::move(instances)}
   {}
 
   std::string
@@ -287,7 +287,7 @@ public:
     return m_instances;
   }
 
-  std::vector<xarg>
+  std::vector<xrt::xarg>
   get_args() const
   {
     return m_args;
@@ -302,12 +302,12 @@ public:
   elf::kernel::data_type
   get_arg_data_type(size_t index) const
   {
-    return (m_args[index].type == xarg::argtype::global)
+    return (m_args[index].type == xrt::xarg::argtype::global)
       ? elf::kernel::data_type::global
       : elf::kernel::data_type::scalar;
   }
 
-  std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
+  std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
   get_properties_and_args() const
   {
     return {m_properties, m_args};
@@ -658,11 +658,11 @@ class elf_aie2p : public elf_impl
         auto name = sec->get_name();
 
         if (name.find(save_pattern) != std::string::npos) {
-          m_save_buf_map[grp_id].append_section_data(sec.get());
+          m_save_buf_map[grp_id].append_section_data(sec);
           has_save = true;
         }
         else if (name.find(restore_pattern) != std::string::npos) {
-          m_restore_buf_map[grp_id].append_section_data(sec.get());
+          m_restore_buf_map[grp_id].append_section_data(sec);
           has_restore = true;
         }
       }
@@ -954,8 +954,8 @@ public:
     if (auto entry = m_kernel_to_subkernels_map.find(name); entry != m_kernel_to_subkernels_map.end()) {
       if (entry->second.size() == 1) {
         auto key = name + *(entry->second.begin());
-        auto it = m_kname_to_id_map.find(key);
-        if (it == m_kname_to_id_map.end())
+        auto it = m_kernel_name_to_id_map.find(key);
+        if (it == m_kernel_name_to_id_map.end())
           throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
 
         auto id = it->second;
@@ -1078,11 +1078,11 @@ class elf_aie2ps : public elf_impl
 
         if (name.find(ctrltext_pattern) != std::string::npos) {
           auto [col, page] = get_column_and_page(name);
-          ctrl_map[id][col][page].ctrltext = sec.get();
+          ctrl_map[id][col][page].ctrltext = sec;
         }
         else if (name.find(ctrldata_pattern) != std::string::npos) {
           auto [col, page] = get_column_and_page(name);
-          ctrl_map[id][col][page].ctrldata = sec.get();
+          ctrl_map[id][col][page].ctrldata = sec;
         }
       }
     }
@@ -1120,7 +1120,7 @@ class elf_aie2ps : public elf_impl
         if (name.find(pad_pattern) == std::string::npos)
           continue;
         auto [col, page] = get_column_and_page(name);
-        m_ctrlcodes_map[id][col].append_section_data(sec.get());
+        m_ctrlcodes_map[id][col].append_section_data(sec);
       }
     }
   }
@@ -1349,8 +1349,8 @@ public:
     if (auto entry = m_kernel_to_subkernels_map.find(name); entry != m_kernel_to_subkernels_map.end()) {
       if (entry->second.size() == 1) {
         auto key = name + *(entry->second.begin());
-        auto it = m_kname_to_id_map.find(key);
-        if (it == m_kname_to_id_map.end())
+        auto it = m_kernel_name_to_id_map.find(key);
+        if (it == m_kernel_name_to_id_map.end())
           throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
 
         auto id = it->second;
@@ -1524,8 +1524,8 @@ get_name() const
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::elf_int {
 
-std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
-get_kernel_properties_and_args(std::shared_ptr<elf_impl> elf_impl,
+std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
+get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name)
 {
   auto kernels = elf_impl->get_kernels();

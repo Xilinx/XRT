@@ -8,7 +8,6 @@
 #include "xcl_graph.h"
 #include "xrt.h"
 
-#include "core/common/api/elf_int.h"
 #include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/graph_handle.h"
 #include "core/common/shim/hwctx_handle.h"
