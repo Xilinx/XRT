@@ -73,7 +73,7 @@ install_recipes()
     if [ $? != 0 ]; then
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
-        echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS -DXRT_EDGE=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
+        echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS -DXRT_EDGE=1 -DXRT_YOCTO=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
 	echo 'DEPENDS += " systemtap"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
@@ -157,9 +157,9 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -f "$yocto_path/internal-edf-init-build-env" ]; then
+if [ -f "$yocto_path/edf-init-build-env" ]; then
     cd $yocto_path
-    source internal-edf-init-build-env
+    source edf-init-build-env
 else
     git submodule update --init --recursive --force
     mkdir -p $yocto_path
@@ -169,7 +169,7 @@ else
     yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-    source internal-edf-init-build-env
+    source edf-init-build-env
     install_recipes
 fi
 

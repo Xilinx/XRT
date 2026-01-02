@@ -1632,6 +1632,40 @@ namespace xdp {
     updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), isClient(), readAIEMetadata);
   }
 
+  void
+  VPStaticDatabase::
+  updateDeviceFromCoreDeviceElf(uint64_t deviceId,
+                                std::shared_ptr<xrt_core::device> /*device*/)
+  {
+    // For ELF Flow, always reset the device for now
+    DeviceInfo* devInfo = nullptr ;
+    auto itr = deviceInfo.find(deviceId);
+    if (itr == deviceInfo.end()) {
+      // This is the first time this device was loaded with an elf
+      deviceInfo[deviceId] = std::make_unique<DeviceInfo>();
+      devInfo = deviceInfo[deviceId].get();
+      devInfo->deviceId = deviceId;
+    } else {
+      // This is a previously used device being reloaded with a new elf
+      devInfo = itr->second.get();
+    }
+    // Read aie_trace_metadata
+    boost::property_tree::ptree aieMetadata;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
+    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+    if (!metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              "AIE metadata read failed!");
+    } else {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                            "AIE metadata read successfully from disk!");
+      auto hwGen = metadataReader->getHardwareGeneration();
+      devInfo->setAIEGeneration(hwGen);
+      addAIEmetadataReader(deviceId, std::move(metadataReader));
+    }
+    return;  
+  }
+ 
   xrt::uuid VPStaticDatabase::getXclbinUuidOnDevice(std::shared_ptr<xrt_core::device> device)
   {
     if (!device) {
@@ -1683,7 +1717,6 @@ namespace xdp {
   {
     // NOTE: XDP plugins checks for validity of the hwContex Implementation handle
     // before calling this function. So, we don't need to check for validity here.
-    static uint64_t nextAvailableUID = 1;
     {
       std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
       auto it = hwCtxImplUIDMap.find(hwCtxImpl);
@@ -1715,10 +1748,36 @@ namespace xdp {
     } else {
        // At this point, also keep track of which xclbin is associated
        // with this hardware context implementation for the run summary file
-       db->associateContextWithId(nextAvailableUID, hwCtxImpl);
+       db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
        
-       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAvailableUID++, 1));
+       hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
     }
+    return hwCtxImplUIDMap.at(hwCtxImpl).uid;
+  }
+
+  uint64_t VPStaticDatabase::getHwCtxImplUidElf(void* hwCtxImpl)
+  {
+    // Assign XDP internal unique id for HW Ctx Impl
+    std::lock_guard<std::mutex> lock(hwCtxImplUIDMapLock);
+    {
+      auto it = hwCtxImplUIDMap.find(hwCtxImpl);
+      if (it != hwCtxImplUIDMap.end()) {
+        auto& info = it->second;
+        if (info.isValid()) { // check if valid (non-zero)
+          info.incrementValidity(); // increment by 1 since a new plugin is encountered
+          return info.uid; // return UID
+        }
+        // If we reach here, the entry exists but is invalid (validityCount == 0)
+        // We'll erase it and create a new one below
+        hwCtxImplUIDMap.erase(it);
+      }
+    }
+
+    // At this point, also keep track of which xclbin is associated
+    // with this hardware context implementation for the run summary file
+    db->associateContextWithId(nextAieOnlyHwCtxUId, hwCtxImpl);
+    hwCtxImplUIDMap.emplace(hwCtxImpl, HwContextInfo(nextAieOnlyHwCtxUId++, 1));
+
     return hwCtxImplUIDMap.at(hwCtxImpl).uid;
   }
 

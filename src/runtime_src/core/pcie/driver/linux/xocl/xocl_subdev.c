@@ -167,7 +167,7 @@ static int __xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 		return -EEXIST;
 	}
 
-	subdev->inst = ida_simple_get(&subdev_inst_ida,
+	subdev->inst = XOCL_IDA_ALLOC_RANGE(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
 			((sdev_info->id + 1) << MINORBITS) - 1,
 			GFP_KERNEL);
@@ -425,7 +425,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
 	}
-	ida_simple_remove(&subdev_inst_ida, subdev->inst);
+	XOCL_IDA_FREE(&subdev_inst_ida, subdev->inst);
 	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
 }
 
@@ -1928,7 +1928,7 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 
-	core->dev_minor = ida_simple_get(&xocl_dev_minor_ida,
+	core->dev_minor = XOCL_IDA_ALLOC_RANGE(&xocl_dev_minor_ida,
 		0, 0, GFP_KERNEL);
 
 	if (core->dev_minor < 0) {
@@ -1945,7 +1945,7 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 
 	if (core->dev_minor != XOCL_INVALID_MINOR) {
-		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
+		XOCL_IDA_FREE(&xocl_dev_minor_ida, core->dev_minor);
 		core->dev_minor = XOCL_INVALID_MINOR;
 	}
 }

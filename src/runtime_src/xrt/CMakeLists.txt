@@ -67,9 +67,20 @@ if (NOT WIN32)
   set_target_properties(xrt++_static PROPERTIES OUTPUT_NAME "xrt++")
 endif()
 
-install(TARGETS xrt++ xrt++_static
+install(TARGETS xrt++
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+# Install static library - exclude from xrt-targets export in yocto builds
+# to avoid find_package(XRT) failures when static libs are not in sysroot
+if(XRT_YOCTO)
+  install(TARGETS xrt++_static
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+else()
+  install(TARGETS xrt++_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()

@@ -34,6 +34,7 @@ endif()
 
 add_library(core_common_library_objects OBJECT
   archive.cpp
+  buffer_dumper.cpp
   config_reader.cpp
   debug.cpp
   debug_ip.cpp
@@ -70,6 +71,7 @@ target_include_directories(core_common_library_objects
 
 set_property(SOURCE module_loader.cpp APPEND PROPERTY COMPILE_DEFINITIONS
   XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
+  XRT_VERSION_STRING="${XRT_VERSION_STRING}"
   XRT_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
   XRT_LIB_DIR="${CMAKE_INSTALL_LIBDIR}"
   )
@@ -152,8 +154,20 @@ if (NOT WIN32)
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
 endif()
 ################################################################
-install(TARGETS xrt_coreutil xrt_coreutil_static
+# Install shared library with export to xrt-targets
+install(TARGETS xrt_coreutil
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+
+# Install static library - exclude from xrt-targets export in yocto builds
+# to avoid find_package(XRT) failures when static libs are not in sysroot
+if(XRT_YOCTO)
+  install(TARGETS xrt_coreutil_static
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+else()
+  install(TARGETS xrt_coreutil_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()

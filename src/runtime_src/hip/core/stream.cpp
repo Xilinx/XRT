@@ -154,6 +154,9 @@ synchronize()
   // synchronize among streams in this ctx
   synchronize_streams();
 
+  if (m_graph_exec_future.valid())
+    m_graph_exec_future.wait();
+
   // complete commands in this stream
   await_completion();
 }
@@ -170,6 +173,21 @@ record_top_event(std::shared_ptr<event> ev)
   }
 
   m_top_event = std::move(ev);
+}
+
+void
+stream::
+set_graph_exec_future(std::future<void> future)
+{
+  m_graph_exec_future = std::move(future);
+}
+
+void
+stream::
+clear_top_event()
+{
+  std::lock_guard<std::mutex> lk(m_cmd_lock);
+  m_top_event = nullptr;
 }
 
 std::shared_ptr<stream>

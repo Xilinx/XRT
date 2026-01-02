@@ -44,12 +44,20 @@ if (MSVC)
     /Qspectre     # compile with the Spectre mitigations switch
     /ZH:SHA_256   # enable secure source code hashing
     /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    $<$<NOT:$<CONFIG:Debug>>:/GL>  # enable whole program optimization
     )
   add_link_options(
     /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
     /DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib       # Hybrid CRT
+    $<$<CONFIG:Debug>:/INCREMENTAL>            # enable incremental linking for debug builds
+    $<$<CONFIG:Debug>:/LTCG:OFF>               # disable link time code generation for debug builds
+    $<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>  # disable incremental linking for release builds
+    $<$<NOT:$<CONFIG:Debug>>:/LTCG>            # enable link time code generation for release builds
+    $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>         # enable COMDAT folding
+    $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>         # eliminates functions and data that are never referenced
     /DEBUG      # instruct linker to create debugging info
     /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /experimental:deterministic # deterministic build
     )
   if (NOT ${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
     add_link_options(

@@ -114,39 +114,22 @@ run_watch_mode(const xrt_core::device* device,
   // Set up signal handler for Ctrl+C
   signal_handler::setup();
   
-  output << "Starting Watch Mode (Press Ctrl+C to exit)\n";
-  output << "=======================================================\n\n";
-  output.flush();
-  
   signal_handler::reset_interrupt();
-  std::string last_report;
   
   while (signal_handler::active()) {
     try {
       // Generate current report
-      std::string current_report = report_generator(device);
-      
-      // Only update display if content has changed
-      if (current_report != last_report) {
-        // Clear screen for better readability - ANSI codes work on most modern terminals
-        output << "\033[2J\033[H";
-        
-        output << current_report;
-        output << "\n(Press Ctrl+C to exit watch mode | Last update: " << xrt_core::timestamp() << ")";
-        output.flush();
-        
-        last_report = current_report;
-      }
+      output << report_generator(device);
+      output.flush();
     } 
     catch (const std::exception& e) {
       output << "Error generating report: " << e.what() << "\n";
       output.flush();
+      signal_handler::restore();
+      return;
     }
   }
-  
   output << "\n\nWatch mode interrupted by user.\n";
-  
-  // Restore original signal handler
   signal_handler::restore();
 }
 

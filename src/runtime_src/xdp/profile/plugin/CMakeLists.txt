@@ -20,7 +20,13 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(aie_trace)
   #add_subdirectory(aie_debug)
 
+  if (NOT XRT_EMU)
+    add_subdirectory(aie_trace)
+    add_subdirectory(aie_profile)
+  endif()
+
   if (WIN32)
+    add_subdirectory(aie_halt)
     add_subdirectory(aie_pc)
   endif()
 

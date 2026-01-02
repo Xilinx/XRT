@@ -61,4 +61,4 @@ Example
     xrt::ini::set("Runtime.verbosity", 5);
 
 
-For a complete list of currently supported xrt.ini keys, default value, and valid key values please refer `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/xrtini.html?#tpi1504034339424__section_tnh_pks_rx>`_
+For a complete list of currently supported xrt.ini keys, default value, and valid key values please refer `Vitis Application Acceleration Development Flow Documentation <https://docs.amd.com/r/en-US/ug1702-vitis-accelerated-reference/xrt.ini-File>`_

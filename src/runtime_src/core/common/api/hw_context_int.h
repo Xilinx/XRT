@@ -36,12 +36,12 @@ set_exclusive(xrt::hw_context& ctx);
 
 // Allows the creation of the hardware context from a void pointer
 // to the hardware context implementation. We use a void pointer
-// because we need to dynamically link to the callbacks that exist in 
-// XDP with a C-style interface. Additionally, we do not want to 
+// because we need to dynamically link to the callbacks that exist in
+// XDP with a C-style interface. Additionally, we do not want to
 // expose the hardware_context implementation class. This is used by
 // XDP plugins in order to initialize when the user creates
 // a hardware context in their host
-XRT_CORE_COMMON_EXPORT 
+XRT_CORE_COMMON_EXPORT
 xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl);
 
@@ -52,7 +52,7 @@ xrt::module
 get_module(const xrt::hw_context& hwctx, const std::string& kname);
 
 // Get the partition size (number of columns).  May not be available
-// in xclbin mode.    
+// in xclbin mode.
 size_t
 get_partition_size(const xrt::hw_context&);
 
@@ -73,6 +73,14 @@ dump_scratchpad_mem(const xrt::hw_context& hwctx);
 // Dump log buffer contents into a file when ini option is enabled
 void
 dump_uc_log_buffer(const xrt::hw_context& hwctx);
+
+// Returns map of kernel names to their corresponding elf files
+// registered with the hardware context.
+// This is used by XDP to get the ELF files registered with
+// the hardware context.
+XRT_CORE_COMMON_EXPORT
+const std::map<std::string, xrt::elf>&
+get_elf_map(const xrt::hw_context& hwctx);
 
 }} // hw_context_int, xrt_core
 

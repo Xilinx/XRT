@@ -5,18 +5,20 @@
 # The version.cmake should only be include once in a project
 # otherwise configured files may be overwritten.  This may
 # not be a problem but is better to avoid it.
-if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
-  return()
-endif()
+#if (DEFINED XRT_VERSION_CMAKE_INCLUDED)
+#  return()
+#endif()
 set(XRT_VERSION_CMAKE_INCLUDED TRUE CACHE INTERNAL "XRT version cmake included")
 
 # AMD promotion build works from copied sources with no git
 # repository.  The build cannot query git for git metadata.  The
 # promotion build has explicitly overwritten config/version.h.in and
 # config/version.json.in with pre-generated ones.
-if (DEFINED ENV{DK_ROOT})
+if (DEFINED ENV{DK_ROOT} OR XRT_UPSTREAM)
 
-message("-- Skipping Git metadata")
+  message("-- Skipping Git metadata")
+  set (XRT_HEAD_COMMITS 0)
+  set (XRT_BRANCH_COMMITS 0)
 
 else (DEFINED ENV{DK_ROOT})
 
@@ -79,17 +81,20 @@ execute_process(
 )
 string(REPLACE "\n" "," XRT_MODIFIED_FILES "${XRT_MODIFIED_FILES}")
 
-endif(DEFINED ENV{DK_ROOT})
+endif(DEFINED ENV{DK_ROOT} OR XRT_UPSTREAM)
 
-# Get the build date RFC format
-execute_process(
-  COMMAND date -R
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  OUTPUT_VARIABLE XRT_DATE_RFC
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+# Upstream builds must be reproducilble.
+if (NOT XRT_UPSTREAM)
+  # Get the build date RFC format
+  execute_process(
+    COMMAND date -R
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE XRT_DATE_RFC
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 
-string(TIMESTAMP XRT_DATE "%Y-%m-%d %H:%M:%S")
+  string(TIMESTAMP XRT_DATE "%Y-%m-%d %H:%M:%S")
+endif()
 
 configure_file(
   ${XRT_SOURCE_DIR}/CMake/config/version-slim.h.in

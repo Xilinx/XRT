@@ -194,6 +194,7 @@ public:
     stxB0, // Strix B0
     stxH, // Strix Halo
     krk1, // Krackan
+    npu3_f0, // deprecated
     npu3_f1, // XXXXX
     npu3_f2, // XXXXX
     npu3_f3, // XXXXX

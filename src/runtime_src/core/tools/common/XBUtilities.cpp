@@ -758,44 +758,58 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 {
   boost::property_tree::ptree empty_ptree;
   output << boost::format("  %-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
-  output << boost::format("  %-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+
+  auto branch = pt_xrt.get<std::string>("branch", "N/A");
+  auto hash = pt_xrt.get<std::string>("hash", "N/A");
+  auto build_date = pt_xrt.get<std::string>("build_date", "N/A");
+  if (!branch.empty() && !boost::iequals(branch, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Branch" % branch;
+  if (!hash.empty() && !boost::iequals(hash, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Hash" % hash;
+  if (!build_date.empty() && !boost::iequals(build_date, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Hash Date" % build_date;
+
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
-    std::string drv_name = driver.get<std::string>("name", "N/A");
-    std::string drv_hash = driver.get<std::string>("hash", "N/A");
-    if (!boost::iequals(drv_hash, "N/A")) {
-      output << boost::format("  %-20s : %s, %s\n") % drv_name
-          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
-    } else {
-      std::string drv_version = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
-      output << boost::format("  %-20s : %s\n") % drv_version % driver.get<std::string>("version", "N/A");
+    auto drv_name = driver.get<std::string>("name", "N/A");
+    auto drv_hash = driver.get<std::string>("hash", "N/A");
+    auto drv_ver = driver.get<std::string>("version", "N/A");
+
+    // If driver is in-tree then use OS kernel version
+    if (drv_ver == "unknown" || drv_ver == "N/A") {
+      static auto pt_os = xrt_core::sysinfo::get_os_info();
+      drv_ver = pt_os.get<std::string>("release", "N/A");
     }
+
+    if (drv_hash == "unknown" || drv_hash == "N/A")
+      output << boost::format("  %-20s : %s\n") % drv_name % drv_ver;
+    else
+      output << boost::format("  %-20s : %s, %s\n") % drv_name % drv_ver % drv_hash;
   }
 
+  if (available_devices.empty())
+    return;
+
   try {
-    if (!available_devices.empty()) {
     const boost::property_tree::ptree& dev = available_devices.begin()->second;
-    const std::string fw_ver = dev.get<std::string>("firmware_version", "N/A");
-    const std::string device_class = dev.get<std::string>("device_class", "");
+    auto fw_ver = dev.get<std::string>("firmware_version", "N/A");
+    auto device_class = dev.get<std::string>("device_class", "");
 
     if (device_class == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen)) {
       if (fw_ver != "N/A")
         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % fw_ver;
 
-      const std::string uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
-      const std::string build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
+      auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
+      auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
 
       if (uc_fw_version != "N/A")
         output << boost::format("  %-20s : %s\n") % "UC Firmware Version" % uc_fw_version;
-      if (build_date != "N/A")
-        output << boost::format("  %-20s : %s\n") % "UC Build Date" % build_date;
+      if (uc_fw_build_date != "N/A")
+        output << boost::format("  %-20s : %s\n") % "UC Build Date" % uc_fw_build_date;
     }
     else
       output << boost::format("  %-20s : %s\n") % "Firmware Version" % fw_ver;
-    }  
   }
   catch (...) {
     //no device available
@@ -812,12 +826,10 @@ extract_artifacts_from_archive(const xrt_core::archive* archive,
   for (const auto& artifact_name : artifact_names) {
     try {
       std::string artifact_data = archive->data(artifact_name);
-      // Convert string to vector<char> for artifacts_repository
       std::vector<char> artifact_binary(artifact_data.begin(), artifact_data.end());
       artifacts_repo[artifact_name] = std::move(artifact_binary);
-    }
-    catch (const std::exception& /*e*/) {
-      //Empty artifact will be ignored
+    } catch (const std::exception& /*e*/) {
+      //Ignore files that are not found
     }
   }
   return artifacts_repo;
@@ -838,4 +850,29 @@ open_archive(const xrt_core::device* device)
   }
   
   return archive;
+}
+
+// Helper function to determine if hardware type is STRX or NPU3
+bool
+XBUtilities::
+is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type)
+{
+  switch (hw_type) {
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
+    case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
+    case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+      return true;
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
+    case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
+      return false;
+    default:
+      throw std::runtime_error("Unsupported hardware type");
+  }
 }

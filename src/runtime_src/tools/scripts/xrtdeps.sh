@@ -422,6 +422,61 @@ mariner_package_list()
     )
 }
 
+arch_package_list()
+{
+    ARCH_LIST=(\
+     base-devel \
+     boost \
+     cmake \
+     cppcheck \
+     curl \
+     dkms \
+     elfutils \
+     gcc \
+     gdb \
+     git \
+     gnuplot \
+     graphviz \
+     gtest \
+     json-glib \
+     libdrm \
+     libffi \
+     libjpeg-turbo \
+     libpng \
+     libtiff \
+     libyaml \
+     lm_sensors \
+     lsb-release \
+     ncurses \
+     ocl-icd \
+     opencl-headers \
+     openssl \
+     pciutils \
+     perl \
+     pkgconf \
+     protobuf \
+     python \
+     python-pip \
+     python-sphinx \
+     python-breathe \
+     python-sphinx_rtd_theme \
+     rapidjson \
+     strace \
+     systemtap \
+     unzip \
+     wget \
+    )
+
+    if [ $docker == 0 ] && [ $sysroot == 0 ]; then
+        ARCH_LIST+=(linux-headers)
+    fi
+
+    #dmidecode is only applicable for x86_64
+    if [ $ARCH == "x86_64" ]; then
+        ARCH_LIST+=( dmidecode )
+    fi
+}
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ] || [ $FLAVOR == "linuxmint" ]; then
@@ -434,6 +489,8 @@ update_package_list()
         suse_package_list
     elif [ $FLAVOR == "mariner" ]; then
         mariner_package_list
+    elif [ $FLAVOR == "arch" ]; then
+        arch_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -694,6 +751,8 @@ install_pybind11()
         apt-get install -y pybind11-dev
     elif [ $FLAVOR == "linuxmint" ]; then
         apt-get install -y pybind11-dev
+    elif [ $FLAVOR == "arch" ]; then
+        pacman -Syu --needed --noconfirm pybind11
     else
         # Install/upgrade pybind11 for building the XRT python bindings
         # We need 2.6.0 minimum version
@@ -731,6 +790,16 @@ install_hip()
         else
             echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
             echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
+        fi
+    elif [ $FLAVOR == "arch" ]; then
+        # Check if ROCm HIP is already installed
+        pacman -Qi hip-runtime-amd &> /dev/null
+        if [ $? == 0 ]; then
+            echo "hip-runtime-amd already installed..."
+            pacman -Ql hip-runtime-amd | grep hip/hip_runtime_api.h
+        else
+            echo "Installing ROCm HIP from Arch repositories..."
+            pacman -Syu --needed --noconfirm hip-runtime-amd
         fi
     else
             echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
@@ -798,6 +867,11 @@ install()
     if [ $FLAVOR == "mariner" ]; then
         echo "Installing Mariner packages..."
         dnf install -y "${MN_LIST[@]}"
+    fi
+
+    if [ $FLAVOR == "arch" ]; then
+        echo "Installing Arch Linux packages..."
+        pacman -Syu --needed --noconfirm "${ARCH_LIST[@]}"
     fi
 
     install_pybind11

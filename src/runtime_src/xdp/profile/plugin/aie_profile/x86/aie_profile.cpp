@@ -44,8 +44,8 @@ namespace xdp {
   using ProfileTileType = xdp::built_in::ProfileTileType;
   using severity_level = xrt_core::message::severity_level;
 
-  AieProfile_x86Impl::AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      : AieProfileImpl(database, metadata)
+  AieProfile_x86Impl::AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata, uint64_t deviceID)
+      : AieProfileImpl(database, metadata, deviceID)
   {
     auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
     device = xrt::device(spdevice);
@@ -60,7 +60,7 @@ namespace xdp {
 
   void AieProfile_x86Impl::updateDevice()
   {
-    setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
+    setMetricsSettings(deviceID, metadata->getHandle());
   }
 
   bool AieProfile_x86Impl::setMetricsSettings(const uint64_t deviceId, void* handle)

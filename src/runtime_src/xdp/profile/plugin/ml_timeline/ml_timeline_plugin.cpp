@@ -8,6 +8,7 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
@@ -121,13 +122,35 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    uint64_t deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
-    uint64_t implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
+    uint64_t deviceId = 0;
+    uint64_t implId   = 0;
+    if (xrt_core::hw_context_int::get_elf_flow(hwContext)) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "In Full ELF flow");
 
-    std::string deviceName = util::getDeviceName(hwCtxImpl, true);
+      deviceId = (db->getStaticInfo()).getHwCtxImplUidElf(hwCtxImpl);
+      implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
+  
+      std::string deviceName = "";
+      try {
+        deviceName = xrt_core::device_query<xrt_core::query::rom_vbnv>(coreDevice);
+      } catch (const xrt_core::query::no_such_key&) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
+      } catch (const std::exception &) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
+      }
+      (db->getStaticInfo()).updateDeviceFromCoreDeviceElf(deviceId, coreDevice);
+      (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
 
-    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
-    (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+    } else {
+      // xclbin flow
+      deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
+      implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
+  
+      std::string deviceName = util::getDeviceName(hwCtxImpl, true);
+  
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
+      (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+    }
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineClientDevImpl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
@@ -152,19 +175,41 @@ namespace xdp {
       return;
     }
 
-    uint64_t deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
-    uint64_t implId = mMultiImpl.size();  // to match ML Timeline output file naming convention
+    uint64_t deviceId = 0;
+    uint64_t implId   = 0;
+    if (xrt_core::hw_context_int::get_elf_flow(hwContext)) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "In Full ELF flow");
 
-    std::string deviceName = util::getDeviceName(hwCtxImpl, true);
+      deviceId = (db->getStaticInfo()).getHwCtxImplUidElf(hwCtxImpl);
+      implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
 
-    // TODO: should we use updateDeviceFromCoreDeviceHwCtxFlow or updateDeviceFromCoreDevice
-    (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
-    (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+      std::string deviceName = "";
+      try {
+        deviceName = xrt_core::device_query<xrt_core::query::rom_vbnv>(coreDevice);
+      } catch (const xrt_core::query::no_such_key&) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
+      } catch (const std::exception &) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
+      }
+      (db->getStaticInfo()).updateDeviceFromCoreDeviceElf(deviceId, coreDevice);
+      (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+
+    } else {
+      // xclbin flow
+      deviceId = (db->getStaticInfo()).getHwCtxImplUid(hwCtxImpl);
+      implId   = mMultiImpl.size();  // to match ML Timeline output file naming convention
+
+      std::string deviceName = util::getDeviceName(hwCtxImpl, true);
+
+      // TODO: should we use updateDeviceFromCoreDeviceHwCtxFlow or updateDeviceFromCoreDevice
+      (db->getStaticInfo()).updateDeviceFromCoreDevice(deviceId, coreDevice);
+      (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
+    }
 
     mMultiImpl[hwCtxImpl] = std::make_pair(implId, std::make_unique<MLTimelineVE2Impl>(db, mBufSz));
     auto mlImpl = mMultiImpl[hwCtxImpl].second.get();
     mlImpl->updateDevice(hwCtxImpl, deviceId);
-    
+
   #endif
 
   }

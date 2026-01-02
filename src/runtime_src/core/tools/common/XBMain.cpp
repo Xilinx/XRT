@@ -5,6 +5,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "core/common/system.h"
+#include "core/common/sysinfo.h"
 #include "core/common/smi.h"
 #include "SmiDefault.h"
 #include "SubCmd.h"
@@ -111,7 +112,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
-  XBU::setAdvance( bAdvance );
+  XBU::setAdvance((bAdvance && xrt_core::sysinfo::is_advanced()));
   XBU::setForce( bForce );
 
   // Was default device requested?
@@ -224,6 +225,14 @@ void  main_(int argc, char** argv,
     std::istringstream command_config_stream(config);
     boost::property_tree::read_json(command_config_stream, configTreeMain);
     subCommand->setOptionConfig(configTreeMain);
+
+    if (XBU::getAdvance()) {
+      std::cout << "-------------------------------------------------------------------------\n";
+      std::cout << "                    DISCLAIMER  (xrt-smi --advanced)                     \n";
+      std::cout << "You are running a developer command that may change system configuration.\n";
+      std::cout << "                Continue only if you understand the risks.               \n";
+      std::cout << "-------------------------------------------------------------------------\n";
+    }
   }
 
   // -- Execute the sub-command

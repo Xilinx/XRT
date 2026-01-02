@@ -420,6 +420,41 @@ submit()
   return true;
 }
 
+bool event_record_command::submit()
+{
+  throw_invalid_value_if(!m_event, "event is nullptr");
+
+  auto s = m_stream.lock();
+  throw_invalid_value_if(!s, "stream is not set or has been destroyed for event record command");
+
+  // Record the event in the stream
+  m_event->record(std::move(s));
+  set_state(state::completed);
+  return true;
+}
+
+bool event_wait_command::submit()
+{
+  throw_invalid_value_if(!m_event, "event is nullptr");
+
+  auto s = m_stream.lock();
+  throw_invalid_value_if(!s, "stream is not set or has been destroyed for event wait command");
+
+  // check stream on which wait is called is same as stream in which event is enqueued
+  if (m_event->is_recorded_stream(s.get()))
+    s->record_top_event(m_event);
+
+  // Wait for the event to complete
+  m_event->wait();
+
+  // Clear the top event after wait completes (if it was set for this stream)
+  if (m_event->is_recorded_stream(s.get()))
+    s->clear_top_event();
+
+  set_state(state::completed);
+  return true;
+}
+
 // Global map of commands
 xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
 

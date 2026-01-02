@@ -725,7 +725,7 @@ public:
     // Notify shim that any BOs bound to this kernel command are no
     // longer used by the command.
     get_exec_bo()->reset();
-    
+
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(std::move(m_execbuf));
   }
@@ -767,7 +767,7 @@ public:
     // For lazy state update the command must be polled. Polling
     // is a no-op on platforms where command state is live.
     m_hwqueue.poll(this);
-    
+
     auto state = get_state_raw();
     notify(state);  // update command state accordingly
     return state;
@@ -869,10 +869,20 @@ public:
       m_managed = (m_callbacks && !m_callbacks->empty());
       m_done = false;
     }
-    if (m_managed)
-      m_hwqueue.managed_start(this);
-    else
-      m_hwqueue.unmanaged_start(this);
+
+    try {
+      if (m_managed)
+        m_hwqueue.managed_start(this);
+      else
+        m_hwqueue.unmanaged_start(this);
+    }
+    catch (...) {
+      // Start failed, m_done remains true
+      // command can be retried if needed
+      std::lock_guard<std::mutex> lk(m_mutex);
+      m_done = true;
+      throw;
+    }
   }
 
   // Wait for command completion
@@ -1316,7 +1326,7 @@ class buffer_cache
 
     for (size_t i = 0; i < cache_size; ++i)
       cache.push_back(xbi::create_bo(hwctx, bo_size, flag));
-    
+
     return cache;
   }
 
@@ -1657,6 +1667,62 @@ private:
     return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
   }
 
+  // Function that checks if hw ctx is created using xcbin/ELF
+  // If is_elf_flow is true, then it checks if hw ctx is created using ELF
+  // and returns the hw ctx
+  // If is_elf_flow is false, then it checks if hw ctx is created using XCLBIN
+  // and returns the hw ctx
+  // Throws exception in other cases
+  static xrt::hw_context
+  check_and_get_hw_context(const xrt::hw_context& ctx, bool is_full_elf_flow)
+  {
+    if (is_full_elf_flow) {
+      if (xrt_core::hw_context_int::get_elf_flow(ctx))
+        return ctx;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::hw_context passed is not created using full ELF");
+    }
+    else {
+      if (!xrt_core::hw_context_int::get_elf_flow(ctx))
+        return ctx;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::hw_context passed is not created using XCLBIN");
+    }
+  }
+
+  // Function that checks if the module is created using full ELF
+  // If is_full_elf_flow is true, then it checks if the module is created using full ELF
+  // and returns the module
+  // If is_full_elf_flow is false, then it checks if the module is created using XCLBIN
+  // and returns the module
+  // Throws exception in other cases
+  static xrt::module
+  check_and_get_module(const xrt::module& mod, bool is_full_elf_flow)
+  {
+    if (is_full_elf_flow) {
+      if (xrt_core::module_int::is_full_elf_module(mod))
+        return mod;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::module passed is not created using full ELF");
+    }
+    else {
+      // In xclbin only flow, module can be null
+      // return empty module in that case as other kernel_impl functions
+      // handle null module
+      if (!mod)
+        return mod;
+
+      if (!xrt_core::module_int::is_full_elf_module(mod))
+        return mod;
+
+      throw std::runtime_error("Invalid API called for xrt::kernel creation, "
+                               "xrt::module passed is created using full ELF");
+    }
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1671,9 +1737,9 @@ public:
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
-    , hwctx(std::move(ctx))                                    // hw context
+    , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
     , hwqueue(hwctx)                                           // hw queue
-    , m_module{std::move(mod)}                                 // module if any
+    , m_module(check_and_get_module(mod, false))               // module (not full ELF flow)
     , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -1720,7 +1786,7 @@ public:
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
     , device(std::move(dev))                                            // share ownership
-    , hwctx(std::move(ctx))                                             // hw context
+    , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
     , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
     , properties(get_kernel_info().props)
@@ -2255,7 +2321,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
       // Also, for ELF flow we dont need kernel args info in cmd payload
       // as args are patched at host side, only the first arg(opcode)
       // info is sent in this case and it is written into the command register
-      // map at offset 0x0.   The command count is initialized earlier to 
+      // map at offset 0x0.   The command count is initialized earlier to
       // the size the command register map plus cu masks.
       // opcode is uint64_t so (2 * uint32_t) is the size in payload so
       // subtract register map size and add 2.
@@ -2586,12 +2652,12 @@ public:
   {
     if (m_runlist)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
-    
+
     prep_start();
-    
+
     // log kernel start info
-    // This is in critical path, we need to reduce log overhead 
-    // as much as possible, passing kernel impl pointer instead of 
+    // This is in critical path, we need to reduce log overhead
+    // as much as possible, passing kernel impl pointer instead of
     // constructing args in place
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
@@ -2647,7 +2713,7 @@ public:
   {
     // don't bother if command is done by the time abort is called
     if (cmd->is_done()) {
-      if (cmd->get_state() == ERT_CMD_STATE_NEW) 
+      if (cmd->get_state() == ERT_CMD_STATE_NEW)
        throw xrt_core::error("Cannot abort command that wasn't started");
       return cmd->get_state();
     }
@@ -2724,7 +2790,7 @@ public:
     // The TXN flow can be identified by the kernel type.
     if (opcode == ERT_START_CU && kernel->get_kernel_type() == kernel_type::dpu)
       opcode = ERT_START_NPU;
-    
+
     switch (opcode) {
     case ERT_START_NPU:
     case ERT_START_DPU:
@@ -2807,7 +2873,7 @@ public:
   {
     if (!m_module)
       throw xrt_core::error("No module associated with run object");
-  
+
     return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
   }
 };
@@ -3212,7 +3278,7 @@ class runlist_impl
 
   enum class state { idle, closed, running, error };
   mutable state m_state = state::idle;
-  
+
   xrt::hw_context m_hwctx;
   xrt_core::hw_queue m_hwqueue;
   std::vector<xrt::run> m_runlist;
@@ -3343,7 +3409,7 @@ class runlist_impl
     // For lazy state update the command must be polled. Polling
     // is a no-op on platforms where command state is live.
     m_hwqueue.poll(cmd);
-    
+
     return static_cast<ert_cmd_state>(pkt->state);
   }
 
@@ -3353,6 +3419,7 @@ class runlist_impl
     auto epkt = run.get_ert_packet();
     auto opcode = epkt->opcode;
     auto rhdl = run.get_handle();
+    std::string msg = "runlist failed execution (" + cmd_state_to_string(state) + ")";
 
     // Hack for ERT_START_CU which is used in NPU TXN non-elf flow as
     // well as for Alveo.  For Alveo we do not want to throw aie_error.
@@ -3365,9 +3432,9 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
-      throw xrt::runlist::aie_error(run, state, "runlist failed execution");
+      throw xrt::runlist::aie_error(run, state, msg);
     default:
-      throw xrt::runlist::command_error(run, state, "runlist failed execution");
+      throw xrt::runlist::command_error(run, state, msg);
     }
   }
 
@@ -3410,7 +3477,7 @@ class runlist_impl
       // Mark all subsequent commands as aborted. The state of
       // the first incomplete run is not changed.
       abort_runs(first_error_idx + 1, m_runlist.size());
-                 
+
       // Throw command error for first failed command.  The state of
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
@@ -3483,7 +3550,7 @@ public:
     auto execbuf = get_cmd_chain_for_run_at_index(runidx);
     auto [cmd, pkt] = unpack(execbuf);
     auto chain_data = get_ert_cmd_chain_data(pkt);
-    
+
     auto run_impl = run.get_handle();
     auto run_cmd = run_impl->get_cmd();
     auto run_bo = run_cmd->get_exec_bo();
@@ -3495,12 +3562,12 @@ public:
     // Let shim handle binding of run_bo arguments to the command
     // that cahins the run_bo.  This allows pinning if necessary.
     // May throw, but so far no state change, so still safe.
-    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); 
+    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
     // makes it impossible to add to another list or to same list
     // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't 
+    // recording this runlist with the run object, but it doesn't
     // proctect against caller manually controlling the run object,
     // which is undefined behavior.  No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
@@ -3540,7 +3607,7 @@ public:
       m_state = state::running;
       throw;
     }
-        
+
     // The command list is now submitted (running).  It cannot be reset
     // until wait() has been called and state changed to idle or error.
     m_state = state::running;
@@ -3989,7 +4056,7 @@ xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
-    throw std::runtime_error("Invalid kernel context implementation."); 
+    throw std::runtime_error("Invalid kernel context implementation.");
 
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }

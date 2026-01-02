@@ -639,6 +639,18 @@ get_cmdbo_cache()
   return value;
 }
 
+/**
+ * Enable QDMA AIO (Asynchronous I/O) support.
+ * Default is false.
+ * Set to true in xrt.ini to enable AIO if needed.
+ */
+inline bool
+get_qdma_aio_enable()
+{
+  static bool value = detail::get_bool_value("Runtime.qdma_aio_enable", false);
+  return value;
+}
+
 inline std::string
 get_hw_em_driver()
 {
@@ -1106,10 +1118,10 @@ get_run_buffer_pool_memory_mb()
   return value;
 }
 
-inline unsigned int
-get_log_buffer_size_per_uc()
+inline bool
+get_uc_log()
 {
-  static unsigned int value = detail::get_uint_value("Debug.log_buf_size_per_uc", 0);
+  static bool value = detail::get_bool_value("Debug.uc_log", false);
   return value;
 }
 

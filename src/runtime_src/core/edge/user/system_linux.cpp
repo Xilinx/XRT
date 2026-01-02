@@ -95,17 +95,15 @@ driver_version(const std::string& driver)
   std::string path("/sys/module/");
   path += driver;
   path += "/version";
-  //dkms flow is not available for zocl
-  //so version.h file is not available at zocl build time
-#if defined(XRT_DRIVER_VERSION)
-  std::string zocl_driver_ver = XRT_DRIVER_VERSION;
-  std::stringstream ss(zocl_driver_ver);
-  getline(ss, ver, ',');
-#endif
+ 
   std::ifstream stream(path);
-  if (stream.is_open())
-     getline(stream, hash);
-  
+  if (stream.is_open()) {
+    std::string line;
+    getline(stream, line);
+    std::stringstream ss(line);
+    getline(ss, ver, ',');
+    getline(ss, hash, ',');
+  }
   _pt.put("name", driver);
   _pt.put("version", ver);
   _pt.put("hash", hash);

@@ -466,10 +466,26 @@ read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
   return xdp::native::profiling_wrapper("xrt::aie::device::read_aie_mem",
     [this, &col, row, offset, size, context_id, pid] {
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(offset); // DRC check
-        return get_handle()->read_aie_mem(abs_col, row, offset, size);
+
+        xrt_core::query::aie_read::args args{};
+        args.type = xrt_core::query::aie_read::access_type::mem;
+        args.pid = static_cast<uint64_t>(pid);
+        args.context_id = context_id;
+        args.col = col;
+        args.row = row;
+        args.offset = offset;
+        args.size = size;
+
+        try {
+          return xrt_core::device_query<xrt_core::query::aie_read>(get_handle().get(), args);
+        }
+        catch (const xrt_core::query::no_such_key&) {
+          // Fallback to old call if new query is not supported
+          // calculate absolute col index
+          auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
+          return get_handle()->read_aie_mem(abs_col, row, offset, size);
+        }
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("read_aie_mem is not supported on this platform");
@@ -484,16 +500,33 @@ write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
   return xdp::native::profiling_wrapper("xrt::aie::device::write_aie_mem",
     [this, &col, row, offset, &data, context_id, pid] {
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(offset); // DRC check
-        return get_handle()->write_aie_mem(abs_col, row, offset, data);
+
+        xrt_core::query::aie_write::args args{};
+        args.type = xrt_core::query::aie_write::access_type::mem;
+        args.pid = static_cast<uint64_t>(pid);
+        args.context_id = context_id;
+        args.col = col;
+        args.row = row;
+        args.offset = offset;
+        args.data = data;
+
+        try {
+          return xrt_core::device_query<xrt_core::query::aie_write>(get_handle().get(), args);
+        }
+        catch (const xrt_core::query::no_such_key&) {
+          // Fallback to old call if new query is not supported
+          // calculate absolute col index
+          auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
+          return get_handle()->write_aie_mem(abs_col, row, offset, data);
+        }
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("write_aie_mem is not supported on this platform");
       }
     });
 }
+
 uint32_t
 device::
 read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
@@ -501,10 +534,32 @@ read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_
   return xdp::native::profiling_wrapper("xrt::device::read_aie_reg",
     [this, &col, row, reg_addr, context_id, pid] {
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
         is_4byte_aligned_or_throw(reg_addr); // DRC check
-        return get_handle()->read_aie_reg(abs_col, row, reg_addr);
+
+        xrt_core::query::aie_read::args args{};
+        args.type = xrt_core::query::aie_read::access_type::reg;
+        args.pid = static_cast<uint64_t>(pid);
+        args.context_id = context_id;
+        args.col = col;
+        args.row = row;
+        args.offset = reg_addr;
+        args.size = 4; // hardcode 4 as register is 4 bytes
+
+        try {
+          auto vec = xrt_core::device_query<xrt_core::query::aie_read>(get_handle().get(), args);
+          if (vec.size() != 4) {
+            throw std::runtime_error("AI engine register read must return 4 bytes");
+          }
+          uint32_t value = 0;
+          std::memcpy(&value, vec.data(), sizeof(uint32_t));
+          return value;
+        }
+        catch (const xrt_core::query::no_such_key&) {
+          // Fallback to old call if new query is not supported
+          // calculate absolute col index
+          auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
+          return get_handle()->read_aie_reg(abs_col, row, reg_addr);
+        }
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("read_aie_reg is not supported on this platform");
@@ -518,11 +573,32 @@ write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32
 {
   return xdp::native::profiling_wrapper("xrt::device::write_aie_reg",
     [this, &col, row, reg_addr, &reg_val, context_id, pid] {
+      is_4byte_aligned_or_throw(reg_addr); // DRC check
+
+      xrt_core::query::aie_write::args args{};
+      args.type = xrt_core::query::aie_write::access_type::reg;
+      args.pid = static_cast<uint64_t>(pid);
+      args.context_id = context_id;
+      args.col = col;
+      args.row = row;
+      args.offset = reg_addr;
+
+      // Convert uint32_t to vector<char>
+      args.data.resize(sizeof(uint32_t));
+      std::memcpy(args.data.data(), &reg_val, sizeof(uint32_t));
+
       try {
-        // calculate absolute col index
-        auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
-        is_4byte_aligned_or_throw(reg_addr); // DRC check
-        return get_handle()->write_aie_reg(abs_col, row, reg_addr, reg_val);
+        try {
+          xrt_core::device_query<xrt_core::query::aie_write>(get_handle().get(), args);
+          return true;
+        }
+        catch (const xrt_core::query::no_such_key&) {
+          // Fallback to old call if new query is not supported
+          // calculate absolute col index
+          auto abs_col = get_abs_col(get_handle().get(), pid, context_id, col);
+          get_handle()->write_aie_reg(abs_col, row, reg_addr, reg_val);
+          return true;
+        }
       }
       catch (const xrt_core::query::no_such_key&) {
         throw std::runtime_error("write_aie_reg is not supported on this platform");

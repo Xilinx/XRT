@@ -335,13 +335,12 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             continue;
 
         // Make sure stream/channel number is as specified
-        // NOTE1: For PLIO, we use the SOUTH location only
-        // NOTE2: For GMIO, we use DMA channel number or south location
+        // NOTE1: For PLIO, we use the SOUTH location
+        // NOTE2: For GMIO, we use DMA channel number
         if (specifiedId >= 0) {
           if ((type == io_type::PLIO) && (specifiedId != streamId))
             continue;
-          if ((type == io_type::GMIO) && (specifiedId != channelNum)
-              && (specifiedId != streamId))
+          if ((type == io_type::GMIO) && (specifiedId != channelNum))
             continue;
         }
 
@@ -365,6 +364,16 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                     " exceeds maximum ports (" + std::to_string(it->port_names.size()) +
                     "). Unable to store port name.");
             }
+
+            // For GMIOs, also populate mm2s_names and s2mm_names using channelNum
+            if (type == io_type::GMIO) {
+                if (channelNum < NUM_MEM_CHANNELS) {
+                    if (isMaster)
+                        it->s2mm_names[channelNum] = name;
+                    else
+                        it->mm2s_names[channelNum] = name;
+                }
+            }
         }
         else {
             // Add first stream ID and master/slave to vectors
@@ -379,6 +388,16 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                     "Interface tile streamId " + std::to_string(streamId) +
                     " exceeds maximum ports (" + std::to_string(tile.port_names.size()) +
                     "). Unable to store port name.");
+            }
+
+            // For GMIOs, also populate mm2s_names and s2mm_names using channelNum
+            if (type == io_type::GMIO) {
+                if (channelNum < NUM_MEM_CHANNELS) {
+                    if (isMaster)
+                        tile.s2mm_names[channelNum] = name;
+                    else
+                        tile.mm2s_names[channelNum] = name;
+                }
             }
 
             tile.subtype = type;

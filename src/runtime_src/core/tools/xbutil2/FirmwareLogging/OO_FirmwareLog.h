@@ -5,17 +5,18 @@
 
 #include "tools/common/OptionOptions.h"
 
-class OO_EventTrace : public OptionOptions {
+class OO_FirmwareLog : public OptionOptions {
 public:
   void execute( const SubCmdOptions &_options ) const override;
   void validate_args() const;
 
 public:
-  explicit OO_EventTrace(const std::string &_longName, bool _isHidden = false);
+  explicit OO_FirmwareLog(const std::string &_longName, bool _isHidden = false);
 
 private:
   std::string m_device;
-  std::string m_action;
+  bool m_enable;
+  bool m_disable;
   bool m_help;
-  uint32_t m_categories;
+  uint32_t m_log_level;
 };

@@ -3028,7 +3028,7 @@ static ssize_t program_vmr_store(struct device *dev,
 static DEVICE_ATTR_WO(program_vmr);
 
 static ssize_t vmr_default_fpt_read(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+        BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
         struct xocl_xgq_vmr *xgq =
                 dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -3066,7 +3066,7 @@ static struct bin_attribute bin_attr_vmr_default_fpt = {
 };
 
 static ssize_t vmr_backup_fpt_read(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+        BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
         struct xocl_xgq_vmr *xgq =
                 dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -3104,7 +3104,7 @@ static struct bin_attribute bin_attr_vmr_backup_fpt = {
 };
 
 static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+        BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
         struct xocl_xgq_vmr *xgq =
                 dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -3144,7 +3144,7 @@ static struct bin_attribute bin_attr_vmr_system_dtb = {
 };
 
 static ssize_t vmr_plm_log_read(struct file *filp, struct kobject *kobj,
-        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+        BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
         struct xocl_xgq_vmr *xgq =
                 dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -3182,7 +3182,7 @@ static struct bin_attribute bin_attr_vmr_plm_log = {
 };
 
 static ssize_t vmr_apu_log_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+	BIN_ATTRIBUTE_CONST struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct xocl_xgq_vmr *xgq =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -3238,7 +3238,7 @@ static struct attribute *vmr_attrs[] = {
 	NULL,
 };
 
-static struct bin_attribute *vmr_bin_attrs[] = {
+static BIN_ATTRIBUTE_CONST struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
 	&bin_attr_vmr_plm_log,
 	&bin_attr_vmr_apu_log,

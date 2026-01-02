@@ -6,6 +6,7 @@
 
 #include "event.h"
 #include "module.h"
+#include "stream.h"
 
 namespace xrt::core::hip {
 
@@ -14,6 +15,9 @@ using node_handle = void*;
 
 // graph_handle - opaque graph handle
 using graph_handle = void*;
+
+// graph_exec_handle - opaque graph_exec handle
+using graph_exec_handle = void*;
 
 // Represents a node in the HIP graph, wrapping a command.
 class graph_node : public std::enable_shared_from_this<graph_node>
@@ -49,7 +53,7 @@ public:
     std::vector<std::shared_ptr<graph_node>> result;
     for (const auto& wptr : m_children) {
       if (auto sptr = wptr.lock()) {
-        result.push_back(sptr);
+        result.push_back(std::move(sptr));
       }
     }
     return result;
@@ -99,22 +103,23 @@ private:
 };
 
 // Represents an executable instance of a HIP graph.
-class graph_exec : public command
+class graph_exec
 {
 private:
   std::vector<std::shared_ptr<graph_node>> m_node_exec_list;
-  std::future<void> m_exec_future;
 
 public:
   graph_exec() = default;
-  explicit graph_exec(std::shared_ptr<graph> graph);
+  explicit graph_exec(const std::shared_ptr<graph>& graph);
 
-  bool submit() override;
-  bool wait() override;
+  void execute(std::shared_ptr<stream> s);
 };
 
 // Global map of graph
 extern xrt_core::handle_map<graph_handle, std::shared_ptr<graph>> graph_cache;
+
+// Global map of graph_exec
+extern xrt_core::handle_map<graph_exec_handle, std::shared_ptr<graph_exec>> graph_exec_cache;
 } // xrt::core::hip
 
 #endif
