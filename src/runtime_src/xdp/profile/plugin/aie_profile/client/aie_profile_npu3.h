@@ -24,7 +24,7 @@ namespace xdp {
   
   class AieProfile_NPU3Impl : public AieProfileImpl {
    public:
-    AieProfile_NPU3Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
+    AieProfile_NPU3Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata, uint64_t deviceID);
     ~AieProfile_NPU3Impl() = default;
 
     void updateDevice();

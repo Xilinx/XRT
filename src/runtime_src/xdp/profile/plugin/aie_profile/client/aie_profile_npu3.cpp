@@ -45,9 +45,10 @@ namespace xdp {
   using module_type = xdp::module_type;
 
   AieProfile_NPU3Impl::AieProfile_NPU3Impl(VPDatabase* database,
-    std::shared_ptr<AieProfileMetadata> metadata
+    std::shared_ptr<AieProfileMetadata> metadata,
+    uint64_t deviceID
   )
-    : AieProfileImpl(database, metadata)
+    : AieProfileImpl(database, metadata, deviceID)
   {
     auto hwGen = metadata->getHardwareGen();
 
