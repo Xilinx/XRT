@@ -55,6 +55,8 @@
 
 namespace {
 
+namespace xbi = xrt_core::bo_int;
+
 XRT_CORE_UNUSED void
 dump_bo(xrt::bo& bo, const std::string& filename)
 {
@@ -64,16 +66,6 @@ dump_bo(xrt::bo& bo, const std::string& filename)
 
   auto buf = bo.map<char*>();
   ofs.write(buf, static_cast<std::streamsize>(bo.size()));
-}
-
-// Helper function to fill xrt::bo with data
-void
-fill_bo_with_data(xrt::bo& bo, const buf& buf, bool sync = true)
-{
-  auto ptr = bo.map<char*>();
-  std::memcpy(ptr, buf.data(), buf.size());
-  if (sync)
-    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 }
 } // namespace
 
@@ -142,7 +134,7 @@ public:
 
   // Get patch buffer size based on buffer type
   virtual size_t
-  get_patch_buf_size(xrt_core::patcher::buf_type, uint32_t) const
+  get_patch_buf_size(xrt_core::elf_patcher::buf_type) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -151,7 +143,7 @@ public:
   // It is used with internal test cases that verifies shim functionality.
   virtual void
   patch(uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
-        xrt_core::patcher::buf_type, uint32_t)
+        xrt_core::elf_patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -230,14 +222,14 @@ protected:
     if (arg2patcher.find(m_ctrl_code_id) == arg2patcher.end())
         return false; // no patch entries for given ctrl code id
 
-    auto it = arg2patcher[m_ctrl_code_id].find(key_string);
-    auto not_found_use_argument_name = (it == arg2patcher[m_ctrl_code_id].end());
+    auto it = arg2patcher.at(m_ctrl_code_id).find(key_string);
+    auto not_found_use_argument_name = (it == arg2patcher.at(m_ctrl_code_id).end());
     if (not_found_use_argument_name) {
       // Search using index
       auto index_string = std::to_string(index);
       const auto key_index_string = xrt_core::elf_patcher::generate_key_string(index_string, type);
-      it = arg2patcher[m_ctrl_code_id].find(key_index_string);
-      if (it == arg2patcher[m_ctrl_code_id].end())
+      it = arg2patcher.at(m_ctrl_code_id).find(key_index_string);
+      if (it == arg2patcher.at(m_ctrl_code_id).end())
         return false;
     }
 
@@ -245,14 +237,14 @@ protected:
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
-        ss << "Patched " << xrt_core::elf_patcher::to_string(type)
+        ss << "Patched " << xrt_core::elf_patcher::get_section_name(type)
            << " using argument index " << index
            << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
-        ss << "Patched " << xrt_core::elf_patcher::to_string(type)
+        ss << "Patched " << xrt_core::elf_patcher::get_section_name(type)
            << " using argument name " << argnm
            << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
@@ -339,7 +331,7 @@ class module_run_aie2p : public module_run
   {
     for (const auto& [key, buf] : m_config.ctrlpkt_pm_bufs) {
       m_ctrlpkt_pm_bos[key] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
-      fill_bo_with_data(m_ctrlpkt_pm_bos[key], buf);
+      fill_bo_with_data(m_ctrlpkt_pm_bos.at(key), buf);
     }
   }
 
@@ -626,16 +618,16 @@ public:
 
   // Get patch buffer size based on buffer type
   size_t
-  get_patch_buf_size(xrt_core::patcher::buf_type type, uint32_t) const override
+  get_patch_buf_size(xrt_core::elf_patcher::buf_type type) const override
   {
     switch (type) {
-      case xrt_core::patcher::buf_type::ctrltext:
+      case xrt_core::elf_patcher::buf_type::ctrltext:
         return m_instr_bo.size();
-      case xrt_core::patcher::buf_type::ctrldata:
+      case xrt_core::elf_patcher::buf_type::ctrldata:
         return m_ctrlpkt_bo ? m_ctrlpkt_bo.size() : 0;
-      case xrt_core::patcher::buf_type::preempt_save:
+      case xrt_core::elf_patcher::buf_type::preempt_save:
         return m_preempt_save_bo ? m_preempt_save_bo.size() : 0;
-      case xrt_core::patcher::buf_type::preempt_restore:
+      case xrt_core::elf_patcher::buf_type::preempt_restore:
         return m_preempt_restore_bo ? m_preempt_restore_bo.size() : 0;
       default:
         throw std::runtime_error("Unknown buffer type passed");
@@ -644,7 +636,7 @@ public:
 
   void
   patch(uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
-        xrt_core::elf_patcher::buf_type type, uint32_t /*id*/) override
+        xrt_core::elf_patcher::buf_type type) override
   {
     const buf* buf = nullptr;
 
@@ -1071,9 +1063,9 @@ public:
 
   // Get patch buffer size based on buffer type
   size_t
-  get_patch_buf_size(xrt_core::patcher::buf_type type, uint32_t) const override
+  get_patch_buf_size(xrt_core::elf_patcher::buf_type type) const override
   {
-    if (type != xrt_core::patcher::buf_type::ctrltext)
+    if (type != xrt_core::elf_patcher::buf_type::ctrltext)
       throw std::runtime_error("Info of given buffer type not available");
 
     const auto& col_data = m_config.ctrlcodes;
@@ -1152,7 +1144,7 @@ public:
 
 module::
 module(const xrt::elf& elf)
-: detail::pimpl<module_impl>(elf)
+: detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
 {}
 
 } // namespace xrt
@@ -1170,10 +1162,10 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
   switch (platform) {
   case xrt::elf::platform::aie2p:
     // pre created ctrlpkt bo is used only in aie2p platform
-    return xrt::module{std::make_shared<module_run_aie2p>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
+    return xrt::module{std::make_shared<xrt::module_run_aie2p>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
   case xrt::elf::platform::aie2ps:
   case xrt::elf::platform::aie2ps_group:
-    return xrt::module{std::make_shared<module_run_aie2ps>(elf, hwctx, ctrl_code_id)};
+    return xrt::module{std::make_shared<xrt::module_run_aie2ps>(elf, hwctx, ctrl_code_id)};
   default:
     throw std::runtime_error("Unsupported platform");
   }
@@ -1226,9 +1218,9 @@ get_ctrl_scratchpad_bo(const xrt::module& module)
 }
 
 size_t
-get_patch_buf_size(const xrt::module& module, xrt_core::patcher::buf_type type, uint32_t id)
+get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type type)
 {
-  return module.get_handle()->get_patch_buf_size(type, id);
+  return module.get_handle()->get_patch_buf_size(type);
 }
 
 void

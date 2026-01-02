@@ -3,7 +3,7 @@
 #ifndef XRT_CORE_ELF_PATCHER_H
 #define XRT_CORE_ELF_PATCHER_H
 
-#include "module_int.h"
+#include "core/common/config.h"
 #include "xrt/xrt_bo.h"
 
 #include <array>
@@ -98,14 +98,15 @@ struct symbol_patcher
 
   // Each symbol can be patched at multiple places in the buffer.
   // This vector stores the patch information for each place.
-  std::vector<patch_info> m_patch_infos;
+  // Mutable because patching updates dirty flag and caches bd_data_ptrs
+  mutable std::vector<patch_info> m_patch_infos;
 
   // constructor that takes the symbol type, patch information and buffer type.
   symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t);
 
   // Functions used for patching a symbol in the buffer.
-  void patch_symbol(uint8_t* base, uint64_t value);
-  void patch_symbol(xrt::bo bo, uint64_t value, bool first);
+  void patch_symbol(uint8_t* base, uint64_t value) const;
+  void patch_symbol(xrt::bo bo, uint64_t value, bool first) const;
 
 private:
   // Different patching functions for different symbol types.
@@ -120,7 +121,7 @@ private:
 
   template<typename T>
   void
-  patch_symbol_helper(T base_or_bo, uint64_t new_value, bool first)
+  patch_symbol_helper(T base_or_bo, uint64_t new_value, bool first) const
   {
     // base_or_bo is either a pointer to base address of buffer to be patched
     // or xrt::bo object itself

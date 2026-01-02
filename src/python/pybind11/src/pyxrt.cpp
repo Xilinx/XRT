@@ -388,14 +388,7 @@ PYBIND11_MODULE(pyxrt, m) {
         .def(py::init([](xrt::elf& xe) {
                 return new xrt::module(xe);
         }))
-        .def(py::init([](void* userptr, size_t sz, const xrt::uuid& uuid) {
-            return new xrt::module(userptr, sz, uuid);
-        }))
-        .def(py::init([](const xrt::module& parent, const xrt::hw_context& hwctx) {
-            return new xrt::module(parent, hwctx);
-        }))
         // constructor with impl, not sure check xrt_module.h
-        .def("get_cfg_uuid", &xrt::module::get_cfg_uuid, "Get the CFG's uuid for the module")
         .def("get_hw_context", &xrt::module::get_hw_context, "Get hw context of module");
 
     /*

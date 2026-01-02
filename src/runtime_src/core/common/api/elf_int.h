@@ -366,8 +366,8 @@ namespace xrt_core::elf_int {
 static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 
 // Get kernel properties and arguments from elf::kernel object
-std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
-get_kernel_properties_and_args(std::shared_ptr<elf_impl> elf_impl,
+std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
+get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
 
 } // namespace xrt_core::elf_int
