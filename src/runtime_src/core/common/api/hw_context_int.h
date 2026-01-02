@@ -45,11 +45,11 @@ XRT_CORE_COMMON_EXPORT
 xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl);
 
-// Checks all the modules that are registered with given hw context
-// and returns the module with the given kernel name
-// throws if no module is found with given kernel name
-xrt::module
-get_module(const xrt::hw_context& hwctx, const std::string& kname);
+// Checks all the ELFs that are registered with given hw context
+// and returns the ELF with the given kernel name
+// throws if no ELF is found with given kernel name
+xrt::elf
+get_elf(const xrt::hw_context& hwctx, const std::string& kname);
 
 // Get the partition size (number of columns).  May not be available
 // in xclbin mode.

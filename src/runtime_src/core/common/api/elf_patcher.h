@@ -51,6 +51,14 @@ get_section_name(buf_type type)
   return section_names[static_cast<int>(type)];
 }
 
+// Generate key string for patcher lookup
+XRT_CORE_UNUSED
+inline std::string
+generate_key_string(const std::string& argument_name, buf_type type)
+{
+  return argument_name + std::to_string(static_cast<int>(type));
+}
+
 // struct symbol_patcher - patcher for a symbol
 //
 // Manage patching of a symbol in the control code, ctrlpkt etc.
@@ -96,8 +104,8 @@ struct symbol_patcher
   symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t);
 
   // Functions used for patching a symbol in the buffer.
-  void patch(uint8_t* base, uint64_t value);
-  void patch(xrt::bo bo, uint64_t value, bool first);
+  void patch_symbol(uint8_t* base, uint64_t value);
+  void patch_symbol(xrt::bo bo, uint64_t value, bool first);
 
 private:
   // Different patching functions for different symbol types.
@@ -112,7 +120,7 @@ private:
 
   template<typename T>
   void
-  patch_impl(T base_or_bo, uint64_t new_value, bool first)
+  patch_symbol_helper(T base_or_bo, uint64_t new_value, bool first)
   {
     // base_or_bo is either a pointer to base address of buffer to be patched
     // or xrt::bo object itself

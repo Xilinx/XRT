@@ -16,19 +16,19 @@ symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t
 
 void
 symbol_patcher::
-patch(uint8_t* base, uint64_t value)
+patch_symbol(uint8_t* base, uint64_t value)
 {
   // this function is used by internal shim level tests
   // which does explicit sync of buffers
   // so needn't do a partial sync
-  patch_impl(base, value, true /*no partial sync*/);
+  patch_symbol_helper(base, value, true /*no partial sync*/);
 }
 
 void
 symbol_patcher::
-patch(xrt::bo bo, uint64_t value, bool first)
+patch_symbol(xrt::bo bo, uint64_t value, bool first)
 {
-  patch_impl(bo, value, first);
+  patch_symbol_helper(bo, value, first);
 }
 
 void

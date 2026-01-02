@@ -12,6 +12,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "elf_patcher.h"
 
+#include "ert.h"
+
 #include <elfio/elfio.hpp>
 
 #include <cstdint>
@@ -244,13 +246,6 @@ private:
 public:
   virtual ~elf_impl() = default;
 
-  // Generate key string for patcher lookup
-  static std::string
-  generate_key_string(const std::string& argument_name, patcher_buf_type type)
-  {
-    return argument_name + std::to_string(static_cast<int>(type));
-  }
-
   // Get raw ELFIO object reference
   const ELFIO::elfio&
   get_elfio() const
@@ -332,7 +327,49 @@ public:
   {
     throw std::runtime_error("get_pdi_bo not supported on this platform");
   }
+
+  // Get control code id from kernel name
+  // Looks up kernel + subkernel name in the kernel name to id map
+  virtual uint32_t
+  get_ctrlcode_id(const std::string& name) const = 0;
+
+  // Get argument to patcher map for patching symbols
+  const std::map<uint32_t, std::map<std::string, patcher>>&
+  get_arg2patcher() const
+  {
+    return m_arg2patcher;
+  }
+
+  // Get number of arg patchers for a ctrl code id
+  // Throws exception if no arg patchers found for given ctrl code id
+  size_t
+  number_of_arg_patchers(uint32_t ctrl_code_id) const
+  {
+    if (auto it = m_arg2patcher.find(ctrl_code_id); it != m_arg2patcher.end())
+      return it->second.size();
+
+    throw std::runtime_error(
+        std::string{"Unable to get arg patchers for ctrl code id: " + std::to_string(ctrl_code_id)});
+  }
+
+  // Get the ERT command opcode in ELF flow
+  virtual ert_cmd_opcode
+  get_ert_opcode() const = 0;
 };
 
 } // namespace xrt
+
+namespace xrt_core::elf_int {
+
+// ELFs with no multi control code support use below id as
+// grp index or control code id
+static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
+
+// Get kernel properties and arguments from elf::kernel object
+std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
+get_kernel_properties_and_args(std::shared_ptr<elf_impl> elf_impl,
+                               const std::string& kernel_name);
+
+} // namespace xrt_core::elf_int
+
 #endif

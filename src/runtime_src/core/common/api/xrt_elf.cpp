@@ -29,8 +29,8 @@
 
 namespace {
 
-// Constant for identifying ELFs without multi control code support
-static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
+// Use the constant from elf_int.h
+using xrt_core::elf_int::no_ctrl_code_id;
 
 static constexpr size_t
 operator"" _kb(unsigned long long v)  { return 1024u * v; } // NOLINT
@@ -134,11 +134,6 @@ demangle(const std::string& mangled)
 
   return result;
 }
-
-// Using kernel_argument from xclbin as the codebase
-// uses it most of the places, hard to decouple it
-// xarg alias is defined in elf_int.h
-// using xarg = xrt_core::xclbin::kernel_argument;
 
 // Function that constructs kernel arguments from signature
 // kernel signature has name followed by args
@@ -253,8 +248,22 @@ buf::append_section_data(const ELFIO::section* sec)
 class elf::kernel_impl
 {
   std::string m_name;
+  // Using kernel_argument, kernel_properties from xclbin codebase
+  // as xrt::kernel_impl uses it most of the places, hard to decouple it
+  // TODO : Remove this once ELF flow is stable
   std::vector<xarg> m_args;
+  xrt_core::xclbin::kernel_properties m_properties;
   std::vector<elf::kernel::instance> m_instances;
+
+  xrt_core::xclbin::kernel_properties
+  construct_properties(const std::string& name) const
+  {
+    xrt_core::xclbin::kernel_properties properties;
+    properties.name = name;
+    properties.type = xrt_core::xclbin::kernel_properties::kernel_type::dpu;
+
+    return properties;
+  }
 
 public:
   explicit
@@ -263,6 +272,7 @@ public:
     : m_name{std::move(name)}
     , m_args{std::move(args)}
     , m_instances{std::move(instances)}
+    , m_properties{construct_properties(m_name)}
   {}
 
   std::string
@@ -295,6 +305,12 @@ public:
     return (m_args[index].type == xarg::argtype::global)
       ? elf::kernel::data_type::global
       : elf::kernel::data_type::scalar;
+  }
+
+  std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
+  get_properties_and_args() const
+  {
+    return {m_properties, m_args};
   }
 };
 
@@ -827,7 +843,7 @@ class elf_aie2p : public elf_impl
         ? patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
         : patcher::patch_info{ offset, add_end_addr, 0 };
 
-      auto key_string = generate_key_string(argnm, buf_type);
+      auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, buf_type);
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
@@ -911,6 +927,61 @@ public:
   get_pdi_bo(const std::string& symbol) override
   {
     return m_pdi_bo_map[symbol];
+  }
+
+  uint32_t
+  get_ctrlcode_id(const std::string& name) const override
+  {
+    if (auto pos = name.find(":"); pos != std::string::npos) {
+      // name passed is kernel name + sub kernel name
+      auto key = name.substr(0, pos) + name.substr(pos + 1);
+      auto it = m_kernel_name_to_id_map.find(key);
+      if (it == m_kernel_name_to_id_map.end())
+        throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + name);
+
+      auto id = it->second;
+      if ((m_instr_buf_map.find(id) == m_instr_buf_map.end()) &&
+          (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end()))
+        throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+
+      return id;
+    }
+
+    // If user doesn't provide sub kernel we default to first entry
+    // if its the only availble sub kernel of given kernel
+    // otherwise an exception is thrown
+    // check if given kernel is present
+    if (auto entry = m_kernel_to_subkernels_map.find(name); entry != m_kernel_to_subkernels_map.end()) {
+      if (entry->second.size() == 1) {
+        auto key = name + *(entry->second.begin());
+        auto it = m_kname_to_id_map.find(key);
+        if (it == m_kname_to_id_map.end())
+          throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
+
+        auto id = it->second;
+        if ((m_instr_buf_map.find(id) == m_instr_buf_map.end()) &&
+            (m_ctrl_packet_map.find(id) == m_ctrl_packet_map.end()))
+          throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+
+        return id;
+      }
+      else
+        throw std::runtime_error("Multiple sub kernels present for given kernel, cannot choose sub kernel\n");
+    }
+
+    throw std::runtime_error(std::string{"cannot get ctrlcode id from given kernel name: "} + name);
+  }
+
+  ert_cmd_opcode
+  get_ert_opcode() const override
+  {
+    if (!m_pdi_buf_map.empty())
+      return ERT_START_NPU_PREEMPT_ELF;
+
+    if (m_preemption_exist)
+      return ERT_START_NPU_PREEMPT;
+
+    return ERT_START_NPU;
   }
 };
 
@@ -1179,7 +1250,7 @@ class elf_aie2ps : public elf_impl
         patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
       }
 
-      auto key_string = generate_key_string(argnm, buf_type);
+      auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, buf_type);
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
@@ -1253,6 +1324,53 @@ public:
       this                                                                       // elf_parent
     };
   }
+
+  uint32_t
+  get_ctrlcode_id(const std::string& name) const override
+  {
+    if (auto pos = name.find(":"); pos != std::string::npos) {
+      // name passed is kernel name + sub kernel name
+      auto key = name.substr(0, pos) + name.substr(pos + 1);
+      auto it = m_kernel_name_to_id_map.find(key);
+      if (it == m_kernel_name_to_id_map.end())
+        throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + name);
+
+      auto id = it->second;
+      if (m_ctrlcodes_map.find(id) == m_ctrlcodes_map.end())
+        throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+
+      return id;
+    }
+
+    // If user doesn't provide sub kernel we default to first entry
+    // if its the only availble sub kernel of given kernel
+    // otherwise an exception is thrown
+    // check if given kernel is present
+    if (auto entry = m_kernel_to_subkernels_map.find(name); entry != m_kernel_to_subkernels_map.end()) {
+      if (entry->second.size() == 1) {
+        auto key = name + *(entry->second.begin());
+        auto it = m_kname_to_id_map.find(key);
+        if (it == m_kname_to_id_map.end())
+          throw std::runtime_error(std::string{"Unable to find group idx for given kernel: "} + key);
+
+        auto id = it->second;
+        if (m_ctrlcodes_map.find(id) == m_ctrlcodes_map.end())
+          throw std::runtime_error(std::string{"Unable to find ctrlcode entry for given kernel: "} + name);
+
+        return id;
+      }
+      else
+        throw std::runtime_error("Multiple sub kernels present for given kernel, cannot choose sub kernel\n");
+    }
+
+    throw std::runtime_error(std::string{"cannot get ctrlcode id from given kernel name: "} + name);
+  }
+
+  ert_cmd_opcode
+  get_ert_opcode() const override
+  {
+    return ERT_START_DPU;
+  }
 };
 
 } // namespace xrt
@@ -1280,33 +1398,6 @@ create_elf_impl(ELFIO::elfio&& elfio)
 }
 
 } // namespace
-
-////////////////////////////////////////////////////////////////
-// XRT implmentation access to internal elf APIs
-////////////////////////////////////////////////////////////////
-namespace xrt_core::elf_int {
-
-// Extract section data from ELF file
-std::vector<uint8_t>
-get_section(const xrt::elf& elf, const std::string& sname)
-{
-  return elf.get_handle()->get_section(sname);
-}
-
-const ELFIO::elfio&
-get_elfio(const xrt::elf& elf)
-{
-  return elf.get_handle()->get_elfio();
-}
-
-// Get the elf_impl pointer from xrt::elf object
-std::shared_ptr<xrt::elf_impl>
-get_impl(const xrt::elf& elf)
-{
-  return elf.get_handle();
-}
-
-} // xrt_core::elf_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_elf C++ API implementation (xrt_elf.h)
@@ -1427,6 +1518,26 @@ get_name() const
 }
 
 } // namespace xrt
+
+////////////////////////////////////////////////////////////////
+// XRT implmentation access to internal elf APIs
+////////////////////////////////////////////////////////////////
+namespace xrt_core::elf_int {
+
+std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
+get_kernel_properties_and_args(std::shared_ptr<elf_impl> elf_impl,
+                               const std::string& kernel_name)
+{
+  auto kernels = elf_impl->get_kernels();
+  for (const auto& kernel : kernels) {
+    if (kernel.get_name() == kernel_name) {
+      return kernel.get_handle()->get_properties_and_args();
+    }
+  }
+  throw std::runtime_error("Kernel not found: " + kernel_name);
+}
+
+} // xrt_core::elf_int
 
 ////////////////////////////////////////////////////////////////
 // xrt::aie::program C++ API implementation (xrt_aie.h)

@@ -25,6 +25,7 @@
 #include "command.h"
 #include "context_mgr.h"
 #include "device_int.h"
+#include "elf_int.h"
 #include "handle.h"
 #include "hw_context_int.h"
 #include "hw_queue.h"
@@ -1416,7 +1417,7 @@ private:
   size_t num_cumasks = 1;                     // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                               // Internal unique id for debug
-  uint32_t m_ctrl_code_id = xrt_core::module_int::no_ctrl_code_id;
+  uint32_t m_ctrl_code_id = xrt_core::elf_int::no_ctrl_code_id;
                                               // ID to identify which ctrl code to load from elf
 
   std::unique_ptr<buffer_cache> m_ctrlpkt_bo_cache;
@@ -1593,7 +1594,12 @@ private:
       kcmd->opcode = (protocol == control_type::fa) ? ERT_START_FA : ERT_START_CU;
       break;
     case kernel_type::dpu :
-      kcmd->opcode = (m_module ? xrt_core::module_int::get_ert_opcode(m_module) : ERT_START_CU);
+      if (m_module) {
+        auto elf_handle = xrt_core::module_int::get_elf_handle(m_module);
+        kcmd->opcode = elf_handle->get_ert_opcode();
+      }
+      else
+        kcmd->opcode = ERT_START_CU;
       break;
     case kernel_type::none:
       throw std::runtime_error("Internal error: wrong kernel type can't set cmd opcode");
@@ -1610,18 +1616,6 @@ private:
     desc->num_output_entries = fa_num_outputs;
     desc->output_entry_bytes = fa_output_entry_bytes;
     return data;  // no skipping
-  }
-
-  const xrt_core::module_int::kernel_info&
-  get_kernel_info()
-  {
-    const auto& kernels_info = xrt_core::module_int::get_kernels_info(m_module);
-    for (const auto& kinfo : kernels_info) {
-      if (kinfo.props.name == name)
-        return kinfo;
-    }
-
-    throw std::runtime_error(std::string{"Unable to get kernel info of : "} + name);
   }
 
   static uint32_t
@@ -1649,10 +1643,19 @@ private:
     if (!module)
       return nullptr; // applicable only for ELF flows
 
-    auto ctrlpkt_data = xrt_core::module_int::get_ctrlpkt_data(module, id);
-    auto ctrlpkt_buf_size = ctrlpkt_data.size();
-    if (ctrlpkt_buf_size == 0)
+    // Get control packet data from ELF module configuration
+    auto elf_handle = xrt_core::module_int::get_elf_handle(module);
+    const auto& config =
+        std::get<xrt::module_config_aie2p>(elf_handle->get_module_config(id));
+    const auto& ctrl_packet = config.ctrl_packet_data;
+
+    if (ctrl_packet.size() == 0)
       return nullptr;
+
+    // Create mutable copy for buffer cache
+    std::vector<uint8_t> ctrlpkt_data(ctrl_packet.data(),
+                                      ctrl_packet.data() + ctrl_packet.size());
+    auto ctrlpkt_buf_size = ctrlpkt_data.size();
 
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
     static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
@@ -1702,7 +1705,7 @@ private:
   check_and_get_module(const xrt::module& mod, bool is_full_elf_flow)
   {
     if (is_full_elf_flow) {
-      if (xrt_core::module_int::is_full_elf_module(mod))
+      if (xrt_core::module_int::get_elf_handle(mod)->is_full_elf())
         return mod;
 
       throw std::runtime_error("Invalid API called for xrt::kernel creation, "
@@ -1715,12 +1718,19 @@ private:
       if (!mod)
         return mod;
 
-      if (!xrt_core::module_int::is_full_elf_module(mod))
+      if (!xrt_core::module_int::get_elf_handle(mod)->is_full_elf())
         return mod;
 
       throw std::runtime_error("Invalid API called for xrt::kernel creation, "
                                "xrt::module passed is created using full ELF");
     }
+  }
+
+  static std::pair<xrt_core::xclbin::kernel_properties, std::vector<xarg>>
+  get_kernel_info_from_module(const xrt::module& module, const std::string& kernel_name)
+  {
+    return xrt_core::elf_int::get_kernel_properties_and_args(
+        xrt_core::module_int::get_elf_handle(module), kernel_name);
   }
 
 public:
@@ -1788,16 +1798,17 @@ public:
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
-    , m_module(xrt_core::hw_context_int::get_module(hwctx, nm.substr(0, nm.find(":"))))
-    , properties(get_kernel_info().props)
+    , m_module(xrt_core::hw_context_int::get_elf(hwctx, name))
+    , properties(get_kernel_info_from_module(m_module, nm).first)
     , uid(create_uid())
-    , m_ctrl_code_id(xrt_core::module_int::get_ctrlcode_id(m_module, nm)) // control code index
+    , m_ctrl_code_id(xrt_core::module_int::get_elf_handle(m_module)->get_ctrlcode_id(nm))
+                                                                        // control code index
     , m_ctrlpkt_bo_cache(initialize_ctrlpkt_bo_cache(hwctx, m_module, m_ctrl_code_id))
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
     // get kernel info from module and initialize kernel args
-    for (const auto& arg : get_kernel_info().args)
+    for (const auto& arg : get_kernel_info_from_module(m_module, nm).second)
       args.emplace_back(arg);
 
     // amend args with computed data based on kernel protocol
@@ -2197,7 +2208,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
 
     // Pass pre created ctrlpkt buffer when creating module_sram object.
     // This buffer is empty when ELF doesn't have ctrlpkt
-    return xrt_core::module_int::create_run_module(module, hwctx, ctrl_code_id, ctrlpkt_bo);
+    return xrt_core::module_int::create_module_run(xrt_core::module_int::get_elf_handle(module),
+                                                   hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
   virtual std::unique_ptr<arg_setter>
