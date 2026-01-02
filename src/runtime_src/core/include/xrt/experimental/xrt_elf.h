@@ -172,6 +172,14 @@ public:
   XRT_API_EXPORT
   elf(const void *data, size_t size);
 
+  /// @cond
+  // Undocumented converting constructor using impl only
+  XRT_API_EXPORT
+  elf(std::shared_ptr<elf_impl> impl)
+    : detail::pimpl<elf_impl>(std::move(impl))
+  {}
+  /// @endcond
+
   /**
    * get_cfg_uuid() - Get the configuration UUID of the elf
    *

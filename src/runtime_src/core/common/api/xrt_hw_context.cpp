@@ -15,11 +15,9 @@
 #include "core/common/utils.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/experimental/xrt_ext.h"
-#include "core/include/xrt/experimental/xrt_module.h"
 #include "bo_int.h"
 #include "elf_int.h"
 #include "hw_context_int.h"
-#include "module_int.h"
 #include "xclbin_int.h"
 
 #include "core/common/device.h"
@@ -171,24 +169,15 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   void
   create_elf_map(const xrt::elf& elf)
   {
-    // creating xrt::module object from elf to get kernels info
-    // At present ELF is parsed when we create xrt::module object
-    // TODO : remove module creation once we move all parsing logic
-    // to xrt::elf or xrt::aie::program
-    xrt::module module_obj{elf};
-
     // Store the ELF in the map against all available kernels in the it.
     // This will be useful for ELF lookup when creating xrt::kernel object
     // using kernel name
-    const auto& kernels_info = xrt_core::module_int::get_kernels_info(module_obj);
-
-    std::lock_guard<std::mutex> lk(m_mutex);
-    for (const auto& k_info : kernels_info) {
-      auto kernel_name = k_info.props.name;
+    for (const auto& kernel : elf.get_kernels()) {
+      auto kernel_name = kernel.get_name();
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
-      m_elf_map.emplace(std::move(kernel_name), elf);
+      m_elf_map.emplace{kernel_name, elf};
     }
   }
 
@@ -404,20 +393,13 @@ public:
     return m_usage_logger.get();
   }
 
-  xrt::module
-  get_module(const std::string& kname)
+  xrt::elf
+  get_elf(const std::string& kname) const
   {
-     std::lock_guard<std::mutex> lk(m_mutex);
+    if (auto itr = m_elf_map.find(kname); itr != m_elf_map.end())
+      return itr->second;
 
-     auto itr = m_elf_map.find(kname);
-     if (itr == m_elf_map.end())
-       throw std::runtime_error("no module found with given kernel name in ctx");
-
-     auto [kmitr, inserted] = m_kernel_mod_map.try_emplace(kname, xrt::module{});
-     if (inserted)
-       kmitr->second = xrt::module{itr->second}; // create module from the ELF that has this kernel
-
-     return kmitr->second;
+    throw std::runtime_error("no ELF found with given kernel name in ctx");
   }
 
   bool
@@ -569,10 +551,10 @@ create_hw_context_from_implementation(void* hwctx_impl)
   return xrt::hw_context(impl_ptr->get_shared_ptr());
 }
 
-xrt::module
-get_module(const xrt::hw_context& ctx, const std::string& kname)
+xrt::elf
+get_elf(const xrt::hw_context& ctx, const std::string& kname)
 {
-  return ctx.get_handle()->get_module(kname);
+  return ctx.get_handle()->get_elf(kname);
 }
 
 size_t
