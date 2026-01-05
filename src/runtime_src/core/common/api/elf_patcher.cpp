@@ -3,9 +3,27 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "elf_patcher.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <stdexcept>
 
 namespace xrt_core::elf_patcher {
+
+// Get AIE DDR address offset
+inline static uint64_t
+get_ddr_aie_addr_offset()
+{
+  constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+#ifndef _WIN32
+  // On NPU3 emulation platform
+  // there is no DDR offset needed for AIE shim tile
+  static const char* xemtarget = std::getenv("XCL_EMULATION_DEVICE_TARGET"); // NOLINT
+  static const bool is_npu3_snl = xemtarget && (std::strcmp(xemtarget, "npu3_snl") == 0);
+  if (is_npu3_snl)
+    return 0;
+#endif
+  return ddr_aie_addr_offset;
+}
 
 symbol_patcher::
 symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t)
@@ -73,13 +91,11 @@ void
 symbol_patcher::
 patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
 {
-  constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
-
   uint64_t base_address =
     ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
     bd_data_ptr[1];
 
-  base_address += patch + ddr_aie_addr_offset;  //2G offset
+  base_address += patch + get_ddr_aie_addr_offset();
   bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
   bd_data_ptr[0] = (bd_data_ptr[0] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);// NOLINT
 }
@@ -103,13 +119,11 @@ symbol_patcher::
 patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
 {
   // This patching scheme is originated from NPU firmware
-  constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
-
   uint64_t base_address =
     ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
     ((static_cast<uint64_t>(bd_data_ptr[2])));
 
-  base_address = base_address + patch + ddr_aie_addr_offset;
+  base_address = base_address + patch + get_ddr_aie_addr_offset();
   bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
   bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
 }
@@ -119,13 +133,11 @@ symbol_patcher::
 patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const
 {
   // This patching scheme is originated from NPU firmware
-  constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
-
   uint64_t base_address =
     ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |                      // NOLINT
     ((static_cast<uint64_t>(bd_data_ptr[1])));
 
-  base_address = base_address + patch + ddr_aie_addr_offset;
+  base_address = base_address + patch + get_ddr_aie_addr_offset();
   bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
   bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
 }
@@ -135,12 +147,10 @@ symbol_patcher::
 patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
 {
   // This patching scheme is originated from NPU firmware
-  constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
-
   // bd_data_ptr is a pointer to the header of the control code
   uint64_t base_address = (((uint64_t)bd_data_ptr[1] & 0x1FFFFFF) << 32) | bd_data_ptr[2]; // NOLINT
 
-  base_address += patch + ddr_aie_addr_offset;
+  base_address += patch + get_ddr_aie_addr_offset();
   bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
   bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
 }
