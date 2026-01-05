@@ -180,6 +180,7 @@ void
 OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Firmware Log Examine");
+  XBUtilities::sudo_or_throw("Firmware logging requires admin privileges");
 
   XBUtilities::verbose("Option(s):");
   for (auto & aString : _options)
