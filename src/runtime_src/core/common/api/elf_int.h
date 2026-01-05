@@ -175,13 +175,16 @@ protected:
   std::vector<elf::kernel> m_kernels;
 
   /* Patcher related types and data - common between elf_aie2p and elf_aie2ps */
-  // Alias for symbol_patcher for brevity
-  using patcher = xrt_core::elf_patcher::symbol_patcher;
+  // Aliases for patcher types
+  using patcher_config = xrt_core::elf_patcher::patcher_config;
+  using patch_config = xrt_core::elf_patcher::patch_config;
   using patcher_buf_type = xrt_core::elf_patcher::buf_type;
+  using patcher_symbol_type = xrt_core::elf_patcher::symbol_type;
 
-  // Map of argument name to patcher for each ctrl code id
-  // key - ctrl code id, value - map of argument name to patcher
-  std::map<uint32_t, std::map<std::string, patcher>> m_arg2patcher;
+  // Map of argument name to patcher config for each ctrl code id
+  // key - ctrl code id, value - map of argument name to patcher config
+  // Stores static configuration only
+  std::map<uint32_t, std::map<std::string, patcher_config>> m_arg2patcher;
 
   // Constants for parsing rela addend field
   // rela->addend have offset to base-bo-addr info along with schema
@@ -333,24 +336,18 @@ public:
   virtual uint32_t
   get_ctrlcode_id(const std::string& name) const = 0;
 
-  // Get argument to patcher map for patching symbols
-  const std::map<uint32_t, std::map<std::string, patcher>>&
-  get_arg2patcher() const
+  // Get patcher configs for a specific ctrl code id
+  // Returns const pointer to shared configs owned by elf_impl (avoids copying)
+  // module_run creates symbol_patcher objects from these configs
+  const std::map<std::string, patcher_config>*
+  get_patcher_configs(uint32_t ctrl_code_id) const
   {
-    return m_arg2patcher;
+    auto it = m_arg2patcher.find(ctrl_code_id);
+    if (it != m_arg2patcher.end())
+      return &it->second;
+    return nullptr;
   }
 
-  // Get number of arg patchers for a ctrl code id
-  // Throws exception if no arg patchers found for given ctrl code id
-  size_t
-  number_of_arg_patchers(uint32_t ctrl_code_id) const
-  {
-    if (auto it = m_arg2patcher.find(ctrl_code_id); it != m_arg2patcher.end())
-      return it->second.size();
-
-    throw std::runtime_error(
-        std::string{"Unable to get arg patchers for ctrl code id: " + std::to_string(ctrl_code_id)});
-  }
 
   // Get the ERT command opcode in ELF flow
   virtual ert_cmd_opcode

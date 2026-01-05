@@ -59,70 +59,87 @@ generate_key_string(const std::string& argument_name, buf_type type)
   return argument_name + std::to_string(static_cast<int>(type));
 }
 
-// struct symbol_patcher - patcher for a symbol
+// Symbol type enum for patching schemes
+enum class symbol_type {
+  uc_dma_remote_ptr_symbol_kind = 1,
+  shim_dma_base_addr_symbol_kind = 2,      // patching scheme needed by AIE2PS firmware
+  scalar_32bit_kind = 3,
+  control_packet_48 = 4,                   // patching scheme needed by firmware to patch control packet
+  shim_dma_48 = 5,                         // patching scheme needed by firmware to patch instruction buffer
+  shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
+  control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
+  address_64 = 8,                          // patching scheme needed to patch pdi address
+  control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
+  unknown_symbol_kind = 10
+};
+
+// Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
+static constexpr size_t max_bd_words = 9;
+
+// Static configuration per patch location - immutable after ELF parsing
+struct patch_config {
+  uint64_t offset_to_patch_buffer;
+  uint32_t offset_to_base_bo_addr;
+  uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
+};
+
+// Runtime state per patch location - owned by module_run
+struct patch_state {
+  bool dirty = false; // Tells whether this entry is already patched or not
+  uint32_t bd_data_ptrs[max_bd_words] = {}; // array to store bd ptrs original values
+};
+
+// struct patcher_config - static configuration for a patcher
 //
-// Manage patching of a symbol in the control code, ctrlpkt etc.
-// The symbol type is used to determine the patching method.
+// Stored in elf_impl, shared across module_run instances (read-only)
+// Contains symbol type, buffer type, and all patch locations
+struct patcher_config
+{
+  symbol_type m_symbol_type = symbol_type::shim_dma_48;
+  buf_type m_buf_type = buf_type::ctrltext;
+  std::vector<patch_config> m_patch_configs;
+
+  // Constructor for creating config during ELF parsing
+  patcher_config(symbol_type type, std::vector<patch_config> configs, buf_type t);
+};
+
+// struct symbol_patcher - runtime patcher for a symbol
 //
-// The patcher is created with an offset into a buffer object.
-// The base address of the buffer object is passed
-// in as a parameter to patch.
+// Created by module_run, references shared config from elf_impl,
+// owns its own runtime state for thread-safe patching.
 struct symbol_patcher
 {
-  enum class symbol_type {
-    uc_dma_remote_ptr_symbol_kind = 1,
-    shim_dma_base_addr_symbol_kind = 2,      // patching scheme needed by AIE2PS firmware
-    scalar_32bit_kind = 3,
-    control_packet_48 = 4,                   // patching scheme needed by firmware to patch control packet
-    shim_dma_48 = 5,                         // patching scheme needed by firmware to patch instruction buffer
-    shim_dma_aie4_base_addr_symbol_kind = 6, // patching scheme needed by AIE4 firmware
-    control_packet_57 = 7,                   // patching scheme needed by firmware to patch control packet for aie2ps
-    address_64 = 8,                          // patching scheme needed to patch pdi address
-    control_packet_57_aie4 = 9,              // patching scheme needed by firmware to patch control packet for aie4
-    unknown_symbol_kind = 10
-  };
+  // Pointer to shared static configuration (owned by elf_impl)
+  const patcher_config* m_config = nullptr;
 
-  buf_type m_buf_type = buf_type::ctrltext;
-  symbol_type m_symbol_type = symbol_type::shim_dma_48;
+  // Runtime state per patch location
+  std::vector<patch_state> m_states;
 
-  // Maximum BD data words - AIE2P uses 8, AIE4/AIE2PS uses 9
-  static constexpr size_t max_bd_words = 9;
-
-  struct patch_info {
-    uint64_t offset_to_patch_buffer;
-    uint32_t offset_to_base_bo_addr;
-    uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
-    bool dirty = false; // Tells whether this entry is already patched or not
-    uint32_t bd_data_ptrs[max_bd_words]; // array to store bd ptrs original values
-  };
-
-  // Each symbol can be patched at multiple places in the buffer.
-  // This vector stores the patch information for each place.
-  // Mutable because patching updates dirty flag and caches bd_data_ptrs
-  mutable std::vector<patch_info> m_patch_infos;
-
-  // constructor that takes the symbol type, patch information and buffer type.
-  symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t);
+  // Constructor - takes pointer to shared config, initializes state
+  explicit symbol_patcher(const patcher_config* config);
 
   // Functions used for patching a symbol in the buffer.
-  void patch_symbol(uint8_t* base, uint64_t value) const;
-  void patch_symbol(xrt::bo bo, uint64_t value, bool first) const;
+  void patch_symbol(uint8_t* base, uint64_t value);
+  void patch_symbol(xrt::bo bo, uint64_t value, bool first);
 
 private:
   // Different patching functions for different symbol types.
-  void patch64(uint32_t* data_to_patch, uint64_t addr) const;
-  void patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const;
-  void patch57(uint32_t* bd_data_ptr, uint64_t patch) const;
-  void patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const;
-  void patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch) const;
-  void patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const;
-  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const;
-  void patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const;
+  static void patch64(uint32_t* data_to_patch, uint64_t addr);
+  static void patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask);
+  static void patch57(uint32_t* bd_data_ptr, uint64_t patch);
+  static void patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch);
+  static void patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch);
+  static void patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch);
+  static void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch);
+  static void patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch);
 
   template<typename T>
   void
-  patch_symbol_helper(T base_or_bo, uint64_t new_value, bool first) const
+  patch_symbol_helper(T base_or_bo, uint64_t new_value, bool first)
   {
+    if (!m_config)
+      throw std::runtime_error("symbol_patcher: config not set");
+
     // base_or_bo is either a pointer to base address of buffer to be patched
     // or xrt::bo object itself
     // shim tests call this function with address directly and call sync themselves
@@ -136,18 +153,27 @@ private:
     else
       base = base_or_bo;
 
-    for (auto& item : m_patch_infos) {
-      auto offset = item.offset_to_patch_buffer;
+    const auto& configs = m_config->m_patch_configs;
+
+    // Ensure runtime state is properly sized
+    if (m_states.size() != configs.size())
+      m_states.resize(configs.size());
+
+    for (size_t i = 0; i < configs.size(); ++i) {
+      const auto& config = configs[i];
+      auto& state = m_states[i];
+
+      auto offset = config.offset_to_patch_buffer;
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
 
-      if (!item.dirty) {
-        // first time patching cache bd ptr values using bd ptrs array in patch info
-        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, item.bd_data_ptrs);
-        item.dirty = true;
+      if (!state.dirty) {
+        // first time patching cache bd ptr values using bd ptrs array in patch state
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs);
+        state.dirty = true;
       }
       else {
-        // not the first time patching, restore bd ptr values from patch info bd ptrs array
-        std::copy(item.bd_data_ptrs, item.bd_data_ptrs + max_bd_words, bd_data_ptr);
+        // not the first time patching, restore bd ptr values from patch state bd ptrs array
+        std::copy(state.bd_data_ptrs, state.bd_data_ptrs + max_bd_words, bd_data_ptr);
       }
 
       // lambda for calling sync bo if template arg is of type xrt::bo
@@ -158,7 +184,7 @@ private:
         }
       };
 
-      switch (m_symbol_type) {
+      switch (m_config->m_symbol_type) {
       case symbol_type::address_64:
         // new_value is a 64bit address
         patch64(bd_data_ptr, new_value);
@@ -169,8 +195,8 @@ private:
         break;
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
-        if (item.mask) {
-          patch32(bd_data_ptr, new_value, item.mask);
+        if (config.mask) {
+          patch32(bd_data_ptr, new_value, config.mask);
           if (!first) {
             // sync 32 bits patched
             sync(sizeof(uint32_t));
@@ -179,7 +205,7 @@ private:
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
-        patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch57(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written to 8th offset of bd_data_ptr
           // so sync all the words (max_bd_words)
@@ -188,7 +214,7 @@ private:
         break;
       case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
         // new_value is a bo address
-        patch57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch57_aie4(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // sync 64 bits or 2 words
           sync(sizeof(uint64_t));
@@ -196,7 +222,7 @@ private:
         break;
       case symbol_type::control_packet_57:
         // new_value is a bo address
-        patch_ctrl57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch_ctrl57(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written till 3rd offset of bd_data_ptr
           // so syncing 4 words
@@ -205,7 +231,7 @@ private:
         break;
       case symbol_type::control_packet_48:
         // new_value is a bo address
-        patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch_ctrl48(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written till 3rd offset of bd_data_ptr
           // so syncing 4 words
@@ -214,7 +240,7 @@ private:
         break;
       case symbol_type::shim_dma_48:
         // new_value is a bo address
-        patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch_shim48(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written till 2nd offset of bd_data_ptr
           // so syncing 3 words
@@ -223,7 +249,7 @@ private:
         break;
       case symbol_type::control_packet_57_aie4:
         // new_value is a bo address
-        patch_ctrl57_aie4(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
+        patch_ctrl57_aie4(bd_data_ptr, new_value + config.offset_to_base_bo_addr);
         if (!first) {
           // Data in this case is written till 2nd offset of bd_data_ptr
           // so syncing 3 words
