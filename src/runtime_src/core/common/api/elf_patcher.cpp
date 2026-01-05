@@ -25,16 +25,25 @@ get_ddr_aie_addr_offset()
   return ddr_aie_addr_offset;
 }
 
-symbol_patcher::
-symbol_patcher(symbol_type type, std::vector<patch_info> patch_infos, buf_type t)
-  : m_buf_type(t)
-  , m_symbol_type(type)
-  , m_patch_infos(std::move(patch_infos))
+// patcher_config constructor - stores static configuration from ELF
+patcher_config::
+patcher_config(symbol_type type, std::vector<patch_config> configs, buf_type t)
+  : m_symbol_type(type)
+  , m_buf_type(t)
+  , m_patch_configs(std::move(configs))
 {}
+
+// symbol_patcher constructor
+symbol_patcher::
+symbol_patcher(const patcher_config* config)
+  : m_config(config)
+{
+  // State will be lazily initialized in patch_symbol_helper
+}
 
 void
 symbol_patcher::
-patch_symbol(uint8_t* base, uint64_t value) const
+patch_symbol(uint8_t* base, uint64_t value)
 {
   // this function is used by internal shim level tests
   // which does explicit sync of buffers
@@ -44,14 +53,14 @@ patch_symbol(uint8_t* base, uint64_t value) const
 
 void
 symbol_patcher::
-patch_symbol(xrt::bo bo, uint64_t value, bool first) const
+patch_symbol(xrt::bo bo, uint64_t value, bool first)
 {
   patch_symbol_helper(bo, value, first);
 }
 
 void
 symbol_patcher::
-patch64(uint32_t* data_to_patch, uint64_t addr) const
+patch64(uint32_t* data_to_patch, uint64_t addr)
 {
   *data_to_patch = static_cast<uint32_t>(addr & 0xffffffff);
   *(data_to_patch + 1) = static_cast<uint32_t>((addr >> 32) & 0xffffffff);
@@ -59,7 +68,7 @@ patch64(uint32_t* data_to_patch, uint64_t addr) const
 
 void
 symbol_patcher::
-patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
+patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
 {
   // Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
   // For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
@@ -74,7 +83,7 @@ patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask) const
 
 void
 symbol_patcher::
-patch57(uint32_t* bd_data_ptr, uint64_t patch) const
+patch57(uint32_t* bd_data_ptr, uint64_t patch)
 {
   uint64_t base_address =
     ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |                       // NOLINT
@@ -89,7 +98,7 @@ patch57(uint32_t* bd_data_ptr, uint64_t patch) const
 
 void
 symbol_patcher::
-patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
+patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
 {
   uint64_t base_address =
     ((static_cast<uint64_t>(bd_data_ptr[0]) & 0x1FFFFFF) << 32) |                   // NOLINT
@@ -102,7 +111,7 @@ patch57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
 
 void
 symbol_patcher::
-patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch) const
+patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch)
 {
   //TODO need to change below logic to patch 57 bits
   uint64_t base_address =
@@ -116,7 +125,7 @@ patch_ctrl57(uint32_t* bd_data_ptr, uint64_t patch) const
 
 void
 symbol_patcher::
-patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
+patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
 {
   // This patching scheme is originated from NPU firmware
   uint64_t base_address =
@@ -130,7 +139,7 @@ patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch) const
 
 void
 symbol_patcher::
-patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const
+patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
 {
   // This patching scheme is originated from NPU firmware
   uint64_t base_address =
@@ -144,7 +153,7 @@ patch_shim48(uint32_t* bd_data_ptr, uint64_t patch) const
 
 void
 symbol_patcher::
-patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
+patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
 {
   // This patching scheme is originated from NPU firmware
   // bd_data_ptr is a pointer to the header of the control code

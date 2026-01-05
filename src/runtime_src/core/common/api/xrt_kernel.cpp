@@ -1644,10 +1644,14 @@ private:
       return nullptr; // applicable only for ELF flows
 
     // Get control packet data from ELF module configuration
+    // Control packet cache is only applicable for aie2p platform
     auto elf_handle = xrt_core::module_int::get_elf_handle(module);
     auto module_config = elf_handle->get_module_config(id);
-    const auto& config = std::get<xrt::module_config_aie2p>(module_config);
-    const auto& ctrl_packet = config.ctrl_packet_data;
+    const auto config = std::get_if<xrt::module_config_aie2p>(&module_config);
+    if (!config)
+      return nullptr; // not aie2p platform, no ctrlpkt cache needed
+
+    const auto& ctrl_packet = config->ctrl_packet_data;
 
     if (ctrl_packet.size() == 0)
       return nullptr;

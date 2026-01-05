@@ -157,6 +157,18 @@ protected:
   xrt::hw_context m_hwctx;
   uint32_t m_ctrl_code_id;
 
+  // Alias for patcher types
+  using patcher_config = xrt_core::elf_patcher::patcher_config;
+  using symbol_patcher = xrt_core::elf_patcher::symbol_patcher;
+
+  // Pointer to shared patcher configs
+  // This is created during ELF parsing and shared across module_run instances
+  const std::map<std::string, patcher_config>* m_patcher_configs = nullptr;
+
+  // Runtime patchers - each symbol_patcher references shared config + owns state
+  // Created lazily on first patch for each argument
+  std::map<std::string, symbol_patcher> m_patchers;
+
   // Arguments patched in the buffer object
   std::set<std::string> m_patched_args;
 
@@ -214,26 +226,36 @@ protected:
   patch_helper(T base_or_bo, const std::string& argnm, size_t index, uint64_t patch,
                xrt_core::elf_patcher::buf_type type)
   {
-    // get argument to patcher map for patching symbols
-    const auto& arg2patcher = m_elf_impl->get_arg2patcher();
+    // Check if patcher configs exist
+    if (!m_patcher_configs || m_patcher_configs->empty())
+        return false;
+
     const auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, type);
 
-    // check if arg patcher exists for this ctrl code
-    if (arg2patcher.find(m_ctrl_code_id) == arg2patcher.end())
-        return false; // no patch entries for given ctrl code id
+    auto config_it = m_patcher_configs->find(key_string);
+    auto not_found_use_argument_name = (config_it == m_patcher_configs->end());
+    std::string used_key = key_string;
 
-    auto it = arg2patcher.at(m_ctrl_code_id).find(key_string);
-    auto not_found_use_argument_name = (it == arg2patcher.at(m_ctrl_code_id).end());
     if (not_found_use_argument_name) {
       // Search using index
       auto index_string = std::to_string(index);
       const auto key_index_string = xrt_core::elf_patcher::generate_key_string(index_string, type);
-      it = arg2patcher.at(m_ctrl_code_id).find(key_index_string);
-      if (it == arg2patcher.at(m_ctrl_code_id).end())
+      config_it = m_patcher_configs->find(key_index_string);
+      if (config_it == m_patcher_configs->end())
         return false;
+      used_key = key_index_string;
     }
 
-    it->second.patch_symbol(base_or_bo, patch, m_first_patch);
+    // Get or create symbol_patcher for this key
+    auto patcher_it = m_patchers.find(used_key);
+    if (patcher_it == m_patchers.end()) {
+      // Create new symbol_patcher referencing the shared config
+      patcher_it = m_patchers.emplace(used_key, symbol_patcher{&config_it->second}).first;
+    }
+
+    // Call patch - symbol_patcher owns its state internally
+    patcher_it->second.patch_symbol(base_or_bo, patch, m_first_patch);
+
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
@@ -261,6 +283,9 @@ public:
     , m_hwctx(hw_context)
     , m_ctrl_code_id(id)
   {
+    // Get pointer to shared patcher configs from elf_impl
+    m_patcher_configs = m_elf_impl->get_patcher_configs(m_ctrl_code_id);
+
     if (xrt_core::config::get_xrt_debug()) {
       m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
       m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
@@ -1023,9 +1048,9 @@ public:
       return;
     }
 
-    if (m_patched_args.size() != m_elf_impl->number_of_arg_patchers(m_ctrl_code_id)) {
+    if (m_patcher_configs && m_patched_args.size() != m_patcher_configs->size()) {
       auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
-          % m_elf_impl->number_of_arg_patchers(m_ctrl_code_id) % m_patched_args.size();
+          % m_patcher_configs->size() % m_patched_args.size();
       throw std::runtime_error{ fmt.str() };
     }
 

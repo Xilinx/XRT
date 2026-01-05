@@ -823,34 +823,34 @@ class elf_aie2p : public elf_impl
         m_ctrl_pdi_map[grp_idx].insert(symname);
       }
 
-      patcher::symbol_type patch_scheme;
+      patcher_symbol_type patch_scheme;
       uint32_t add_end_addr;
       auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
       if (abi_version != 1) {
         add_end_addr = rela->r_addend;
-        patch_scheme = static_cast<patcher::symbol_type>(type);
+        patch_scheme = static_cast<patcher_symbol_type>(type);
       }
       else {
         // rela addend have offset to base_bo_addr info along with schema
         add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
-        patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        patch_scheme = static_cast<patcher_symbol_type>(rela->r_addend & schema_mask);
       }
 
       std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-      patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind
+      patch_config pc = patch_scheme == patcher_symbol_type::scalar_32bit_kind
         // st_size is is encoded using register value mask for scaler_32
         // for other pacthing scheme it is encoded using size of dma
-        ? patcher::patch_info{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
-        : patcher::patch_info{ offset, add_end_addr, 0 };
+        ? patch_config{ offset, add_end_addr, static_cast<uint32_t>(sym->st_size) }
+        : patch_config{ offset, add_end_addr, 0 };
 
       auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, buf_type);
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
-        search->second.m_patch_infos.emplace_back(pi);
+        search->second.m_patch_configs.emplace_back(pc);
       }
       else
-        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {pi}, buf_type});
+        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher_config{patch_scheme, {pc}, buf_type});
     }
   }
 
@@ -1236,28 +1236,28 @@ class elf_aie2ps : public elf_impl
         buf_type = patcher_buf_type::ctrltext;
       }
 
-      // Construct the patcher for the argument
-      patcher::symbol_type patch_scheme = patcher::symbol_type::unknown_symbol_kind;
+      // Construct the patcher config for the argument
+      patcher_symbol_type patch_scheme = patcher_symbol_type::unknown_symbol_kind;
       uint32_t add_end_addr = 0;
       auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
       if (abi_version != 1) {
         add_end_addr = rela->r_addend;
-        patch_scheme = static_cast<patcher::symbol_type>(type);
+        patch_scheme = static_cast<patcher_symbol_type>(type);
       }
       else {
         // rela addend have offset to base_bo_addr info along with schema
         add_end_addr = (rela->r_addend & addend_mask) >> addend_shift;
-        patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        patch_scheme = static_cast<patcher_symbol_type>(rela->r_addend & schema_mask);
       }
 
       auto key_string = xrt_core::elf_patcher::generate_key_string(argnm, buf_type);
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
-        search->second.m_patch_infos.emplace_back(patcher::patch_info{abs_offset, add_end_addr, 0});
+        search->second.m_patch_configs.emplace_back(patch_config{abs_offset, add_end_addr, 0});
       }
       else
-        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
+        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher_config{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
     }
   }
 
