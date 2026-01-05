@@ -15,6 +15,7 @@
 #include "tools/common/OptionOptions.h"
 #include "FirmwareLogging/OO_FirmwareLogExamine.h"
 #include "EventTracing/OO_EventTraceExamine.h"
+#include "ContextHealth/OO_ContextHealth.h"
 
 // ---- Reports ------
 #include "tools/common/Report.h"
@@ -26,7 +27,6 @@
 #include "tools/common/reports/ReportBOStats.h"
 #include "tools/common/reports/ReportClocks.h"
 #include "tools/common/reports/ReportCmcStatus.h"
-#include "tools/common/reports/ReportContextHealth.h"
 #include "tools/common/reports/ReportDynamicRegion.h"
 #include "tools/common/reports/ReportDebugIpStatus.h"
 #include "tools/common/reports/ReportElectrical.h"
@@ -67,7 +67,6 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
     std::make_shared<ReportClocks>(),
-    std::make_shared<ReportContextHealth>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportDynamicRegion>(),
     std::make_shared<ReportHost>(),
@@ -91,7 +90,8 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   // OptionOptions collection for examine-specific interactive functionality
   m_optionOptionsCollection = {
     {std::make_shared<OO_FirmwareLogExamine>("firmware-log")}, //hidden
-    {std::make_shared<OO_EventTraceExamine>("event-trace")} //hidden
+    {std::make_shared<OO_EventTraceExamine>("event-trace")}, //hidden
+    {std::make_shared<OO_ContextHealth>("context-health")} //hidden
   };
 
   for (const auto& option : m_optionOptionsCollection){

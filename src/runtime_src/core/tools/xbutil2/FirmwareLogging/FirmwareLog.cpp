@@ -336,8 +336,9 @@ format_entry_row(const std::vector<std::string>& entry_data) const
       result += data_text;
       // Pad with spaces to reach column width
       if (data_text.length() < width) {
-        result.append(width - data_text.length(), ' ');
+        result.append(width - data_text.length() - 1 , ' ');
       }
+      result += " ";
     }
   }
   result += entry_data.back() + '\n'; // Add message
