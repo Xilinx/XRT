@@ -1407,7 +1407,7 @@ private:
   xrt::xclbin::kernel xkernel;                // kernel xclbin metadata
   std::vector<argument> args;                 // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;                  // CU context locks
-  const property_type& properties;            // Kernel properties from XML meta
+  property_type properties;                   // Kernel properties from XML meta
   std::bitset<max_cus> cumask;                // cumask for command execution
   size_t regmap_size = 0;                     // CU register map size
   size_t fa_num_inputs = 0;                   // Fast adapter number of inputs per meta data
@@ -1803,7 +1803,6 @@ public:
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
     , m_module(xrt_core::hw_context_int::get_elf(hwctx, name))
-    , properties(get_kernel_info_from_module(m_module, nm).first)
     , uid(create_uid())
     , m_ctrl_code_id(xrt_core::module_int::get_elf_handle(m_module)->get_ctrlcode_id(nm))
                                                                         // control code index
@@ -1811,8 +1810,10 @@ public:
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
-    // get kernel info from module and initialize kernel args
-    for (const auto& arg : get_kernel_info_from_module(m_module, nm).second)
+    // get kernel info from module and initialize properties and kernel args
+    auto kernel_info = get_kernel_info_from_module(m_module, nm);
+    properties = std::move(kernel_info.first);
+    for (const auto& arg : kernel_info.second)
       args.emplace_back(arg);
 
     // amend args with computed data based on kernel protocol
