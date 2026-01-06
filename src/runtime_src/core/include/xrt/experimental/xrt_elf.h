@@ -11,6 +11,7 @@
 # include <cstdint>
 # include <istream>
 # include <string>
+# include <vector>
 #endif
 
 #ifdef __cplusplus

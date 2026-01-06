@@ -434,7 +434,7 @@ class module_run_aie2p : public module_run
 
     // Create control scratchpad buffer and patch if symbol is present
     if (m_config.ctrl_scratch_pad_mem_size > 0) {
-      m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, m_config.ctrl_scratch_pad_mem_size, xbi::use_type::scratch_pad);
+      m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, m_config.ctrl_scratch_pad_mem_size, xbi::use_type::ctrl_scratch_pad);
       patch_helper(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem.address(),
                    xrt_core::elf_patcher::buf_type::ctrltext);
     }
@@ -1171,6 +1171,13 @@ module::
 module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
 {}
+
+xrt::hw_context
+module::
+get_hw_context() const
+{
+  return get_handle()->get_hw_context();
+}
 
 } // namespace xrt
 
