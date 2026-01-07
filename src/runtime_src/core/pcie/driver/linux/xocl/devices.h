@@ -3443,6 +3443,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x50B0, PCI_ANY_ID, V70_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x50B4, PCI_ANY_ID, V80_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5700, PCI_ANY_ID, RAVE_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5710, PCI_ANY_ID, RAVE_MGMT_RAPTOR2) },      \
 	{ XOCL_PCI_DEVID(0x10EE, 0x6098, PCI_ANY_ID, VCK190_MGMT_RAPTOR2) },    \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE098, PCI_ANY_ID, XBB_MFG_VCK190) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
@@ -3518,6 +3519,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x50B1, PCI_ANY_ID, V70_USER_RAPTOR2_ES3) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x50B5, PCI_ANY_ID, V80_USER_RAPTOR2_ES3) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5701, PCI_ANY_ID, RAVE_USER_RAPTOR2_ES3) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5711, PCI_ANY_ID, RAVE_USER_RAPTOR2_ES3) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x6099, PCI_ANY_ID, VCK190_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5099, PCI_ANY_ID, AVALON_USER_RAPTOR2) }
@@ -3617,6 +3619,14 @@ struct xocl_subdev_map {
 		.vbnv = "emb-plus",				\
 		.priv_data = &XOCL_BOARD_RAVE_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5710, PCI_ANY_ID,                                   \
+                .vbnv = "emb-plus",                             \
+                .priv_data = &XOCL_BOARD_RAVE_MGMT_RAPTOR2,             \
+                .type = XOCL_DSAMAP_RAPTOR2 },                          \
+        { 0x10EE, 0x5711, PCI_ANY_ID,                                   \
+                .vbnv = "emb-plus",                             \
+                .priv_data = &XOCL_BOARD_RAVE_USER_RAPTOR2_ES3, \
+                .type = XOCL_DSAMAP_RAPTOR2 },                          \
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\
                 .vbnv = "xilinx_vck190",				\
                 .priv_data = &XOCL_BOARD_VCK190_MGMT_RAPTOR2,		\
