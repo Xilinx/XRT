@@ -9,6 +9,7 @@
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 #include "xdp/profile/plugin/aie_base/aie_base_util.h"
+#include "xdp/profile/plugin/aie_base/aie_nop_util.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_util.h"
@@ -96,6 +97,13 @@ namespace xdp {
 
       if(!checkAieDevice(deviceID, metadata->getHandle()))
               return;
+
+      // Submit nop.elf before configuring profile
+      if (!aie::submitNopElf(metadata->getHandle())) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+            "Failed to submit nop.elf. AIE profile configuration will not proceed.");
+        return;
+      }
 
       bool runtimeCounters = setMetricsSettings(deviceID, metadata->getHandle());
   
