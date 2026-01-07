@@ -127,6 +127,7 @@ OO_EventTrace::
 execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Event Trace");
+  XBUtilities::sudo_or_throw("Event tracing requires admin privileges");
 
   XBUtilities::verbose("Option(s):");
   for (auto & aString : _options)

@@ -55,6 +55,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
 
 add_subdirectory(EventTracing)
 add_subdirectory(FirmwareLogging)
+add_subdirectory(ContextHealth)
 
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})

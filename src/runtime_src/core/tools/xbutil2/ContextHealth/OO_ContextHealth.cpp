@@ -3,90 +3,52 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "ReportContextHealth.h"
-#include "core/common/query_requests.h"
-#include "core/common/time.h"
+#include "OO_ContextHealth.h"
+#include "tools/common/XBUtilitiesCore.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/SmiWatchMode.h"
 #include "tools/common/Table2D.h"
-#include "tools/common/XBUtilities.h"
+#include "core/common/query_requests.h"
+#include "core/common/smi.h"
 
 // 3rd Party Library - Include Files
-#include <algorithm>
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <iomanip>
-#include <map>
+#include <algorithm>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <memory>
 
-using bpt = boost::property_tree::ptree;
+namespace po = boost::program_options;
 using context_health_info = xrt_core::query::context_health_info;
 
-void
-ReportContextHealth::
-getPropertyTreeInternal(const xrt_core::device* dev, bpt& pt) const
+// ----- C L A S S   M E T H O D S -------------------------------------------
+
+OO_ContextHealth::OO_ContextHealth( const std::string &_longName, bool _isHidden )
+    : OptionOptions(_longName, _isHidden, "Display context health information")
+    , m_device("")
+    , m_help(false)
+    , m_watch(false)
+    , m_ctx_id_list("")
+    , m_pid_list("")
 {
-  // Defer to the 20202 format.  If we ever need to update JSON data,
-  // Then update this method to do so.
-  getPropertyTree20202(dev, pt);
+  m_optionsDescription.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("watch", boost::program_options::bool_switch(&m_watch), "Continuously monitor context health")
+    ("ctx-id", boost::program_options::value<decltype(m_ctx_id_list)>(&m_ctx_id_list), "Comma-separated list of context IDs to filter (e.g., 1,2,3)")
+    ("pid", boost::program_options::value<decltype(m_pid_list)>(&m_pid_list), "Comma-separated list of PIDs to filter (e.g., 1234,5678)")
+  ;
 }
 
-void
-ReportContextHealth::
-getPropertyTree20202(const xrt_core::device* dev, bpt& pt) const
-{
-  bpt context_health_pt{};
+namespace {
 
-  try {
-    // For property tree generation, always get all contexts
-    auto context_health_data = xrt_core::device_query<context_health_info>(dev);
-
-    // Group contexts by PID
-    std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
-    for (const auto& context : context_health_data) {
-      contexts_by_pid[context.pid].push_back(context);
-    }
-
-    // Convert structured data to property tree, grouped by PID
-    bpt pids_array{};
-    for (const auto& [pid, contexts] : contexts_by_pid) {
-      bpt pid_pt;
-      pid_pt.put("pid", pid);
-      
-      bpt contexts_array{};
-      for (const auto& context : contexts) {
-        bpt context_pt;
-        context_pt.put("ctx_id"                     ,context.ctx_id);
-        const auto* health = reinterpret_cast<const ert_ctx_health_data_v1*>(context.health_data_raw.data());
-        context_pt.put("txn_op_idx"                 ,health->aie2.txn_op_idx);
-        context_pt.put("ctx_pc"                     ,health->aie2.ctx_pc);
-        context_pt.put("fatal_error_type"           ,health->aie2.fatal_error_type);
-        context_pt.put("fatal_error_exception_type" ,health->aie2.fatal_error_exception_type);
-        context_pt.put("fatal_error_exception_pc"   ,health->aie2.fatal_error_exception_pc);
-        context_pt.put("fatal_error_app_module"     ,health->aie2.fatal_error_app_module);
-        contexts_array.push_back(std::make_pair("", context_pt));
-      }
-      pid_pt.add_child("contexts", contexts_array);
-      pid_pt.put("context_count", contexts.size());
-      
-      pids_array.push_back(std::make_pair("", pid_pt));
-    }
-    context_health_pt.add_child("pids", pids_array);
-    context_health_pt.put("total_context_count", context_health_data.size());
-    context_health_pt.put("pid_count", contexts_by_pid.size());
-  } 
-  catch (const std::exception& e) {
-    context_health_pt.put("context_count", 0);
-    context_health_pt.put("error", e.what());
-  }
-
-  // There can only be 1 root node
-  pt.add_child("context_health", context_health_pt);
-}
-
-std::vector<uint64_t>
-ReportContextHealth::
-parse_values(const std::string& input) const 
+// Parse comma-separated values
+std::vector<uint64_t> 
+parse_values(const std::string& input) 
 {
   std::vector<uint64_t> result;
   if (input.empty()) {
@@ -115,24 +77,12 @@ parse_values(const std::string& input) const
   return result;
 }
 
+// Parse context ID and PID pairs
 std::vector<std::pair<uint64_t, uint64_t>>
-ReportContextHealth::
-parse_context_pid_pairs(const std::vector<std::string>& elements_filter) const 
+parse_context_pid_pairs(const std::string& ctx_id_list, const std::string& pid_list) 
 {
-  std::vector<uint64_t> context_ids;
-  std::vector<uint64_t> pids;
-  
-  // Parse both ctx_id and pid from filter
-  for (const auto& element : elements_filter) {
-    if (element.find("ctx_id=") == 0) {
-      std::string ctx_ids_str = element.substr(7); // Skip "ctx_id="
-      context_ids = parse_values(ctx_ids_str);
-    } 
-    else if (element.find("pid=") == 0) {
-      std::string pids_str = element.substr(4); // Skip "pid="
-      pids = parse_values(pids_str);
-    }
-  }
+  std::vector<uint64_t> context_ids = parse_values(ctx_id_list);
+  std::vector<uint64_t> pids = parse_values(pid_list);
   
   // Create pairs - map 1:1, pad with 0 if lists are different lengths
   std::vector<std::pair<uint64_t, uint64_t>> pairs;
@@ -147,24 +97,11 @@ parse_context_pid_pairs(const std::vector<std::string>& elements_filter) const
   return pairs;
 }
 
-std::vector<uint64_t>
-ReportContextHealth::
-parse_context_ids(const std::vector<std::string>& elements_filter) const 
-{
-  for (const auto& element : elements_filter) {
-    if (element.find("ctx_id=") == 0) {
-      std::string ctx_ids_str = element.substr(7); // Skip "ctx_id="
-      return parse_values(ctx_ids_str);
-    }
-  }
-  return {};
-}
-
+// Generate report for STRX hardware
 std::string
-ctx_health_strx::
-generate_report(const xrt_core::device* dev,
-                const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
-                const std::vector<uint64_t>& context_ids) const
+generate_strx_report(const xrt_core::device* dev,
+                     const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                     const std::vector<uint64_t>& context_ids)
 {
   std::stringstream ss;
 
@@ -234,11 +171,11 @@ generate_report(const xrt_core::device* dev,
   return ss.str();
 }
 
+// Generate report for NPU3 hardware
 std::string
-ctx_health_npu3::
-generate_report(const xrt_core::device* dev,
-                const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
-                const std::vector<uint64_t>& context_ids) const
+generate_npu3_report(const xrt_core::device* dev,
+                     const std::vector<std::pair<uint64_t, uint64_t>>& context_pid_pairs,
+                     const std::vector<uint64_t>& context_ids)
 {
   std::stringstream ss;
 
@@ -330,49 +267,72 @@ generate_report(const xrt_core::device* dev,
   return ss.str();
 }
 
+} // anonymous namespace
+
 void
-ReportContextHealth::
-writeReport(const xrt_core::device* device,
-            const bpt& /*pt*/,
-            const std::vector<std::string>& elements_filter,
-            std::ostream& output) const
+OO_ContextHealth::execute(const SubCmdOptions& _options) const
 {
-  // Detect hardware type and create appropriate reporter
-  const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
+  XBUtilities::verbose("SubCommand option: Context Health");
+
+  XBUtilities::verbose("Option(s):");
+  for (auto & aString : _options)
+    XBUtilities::verbose(std::string(" ") + aString);
+
+  // Parse sub-command ...
+  po::variables_map vm;
+
+  try {
+    po::options_description all_options("All Options");
+    all_options.add(m_optionsDescription);
+    all_options.add(m_optionsHidden);
+    po::command_line_parser parser(_options);
+    XBUtilities::process_arguments(vm, parser, all_options, m_positionalOptions, true);
+  } catch(boost::program_options::error& ex) {
+    std::cout << ex.what() << std::endl;
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
+  } 
+
+  if (m_help)
+  {
+    printHelp();
+    return;
+  }
+
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  
+  try {
+    device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  // Detect hardware type
+  const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device.get());
   xrt_core::smi::smi_hardware_config smi_hrdw;
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
 
-  std::unique_ptr<ReportContextHealth> reporter;
-  if (XBUtilities::is_strix_hardware(hardware_type))
-    reporter = std::make_unique<ctx_health_strx>();
-  else
-    reporter = std::make_unique<ctx_health_npu3>();
+  // Parse filter options
+  std::vector<uint64_t> context_ids = parse_values(m_ctx_id_list);
+  std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(m_ctx_id_list, m_pid_list);
 
-  // Parse context_id/pid pairs from elements_filter
-  std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(elements_filter);
-  std::vector<uint64_t> context_ids = parse_context_ids(elements_filter);
+  // Create report generator based on hardware type
+  auto report_generator = [&](const xrt_core::device* dev) -> std::string {
+    if (XBUtilities::is_strix_hardware(hardware_type))
+      return generate_strx_report(dev, context_pid_pairs, context_ids);
+    else
+      return generate_npu3_report(dev, context_pid_pairs, context_ids);
+  };
 
-  // Check for watch mode
-  if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
-    // Create report generator lambda for watch mode
-    auto report_generator = [&](const xrt_core::device* dev) -> std::string {
-      return reporter->generate_report(dev, context_pid_pairs, context_ids);
-    };
-    
-    smi_watch_mode::run_watch_mode(device, output, report_generator);
-    return;
+  if (m_watch) {
+    // Watch mode: continuously monitor
+    smi_watch_mode::run_watch_mode(device.get(), std::cout, report_generator);
+  } else {
+    // Single report
+    std::cout << report_generator(device.get());
   }
-  
-  // Non-watch mode: generate and output the report
-  output << reporter->generate_report(device, context_pid_pairs, context_ids);
-  output << std::endl;
 }
 
-std::string
-ReportContextHealth::
-generate_report(const xrt_core::device* /*dev*/,
-                const std::vector<std::pair<uint64_t, uint64_t>>& /*context_pid_pairs*/,
-                const std::vector<uint64_t>& /*context_ids*/) const
-{
-  return "Base ReportContextHealth generate_report called - should be overridden in derived class.\n";
-}
