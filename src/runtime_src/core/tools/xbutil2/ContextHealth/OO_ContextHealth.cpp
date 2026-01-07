@@ -110,20 +110,21 @@ generate_strx_report(const xrt_core::device* dev,
 
     // If any pid is nonzero, pass pairs
     bool has_nonzero_pid = std::any_of(context_pid_pairs.begin(), context_pid_pairs.end(), [](const auto& p){ return p.second != 0; });
-    if (!context_pid_pairs.empty() && has_nonzero_pid) {
+    if (!context_pid_pairs.empty() && has_nonzero_pid) 
+    {
       context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev, context_pid_pairs);
-    } else if (!context_ids.empty()) {
+    } else if (!context_ids.empty()) 
+    {
       context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev, context_ids);
-    } else {
+    } else 
+    {
       context_health_data = xrt_core::device_query<xrt_core::query::context_health_info>(dev);
     }
 
     auto context_count = context_health_data.size();
 
-    if (context_count == 0) {
-      ss << "No context health data available\n";
+    if (context_count == 0) 
       return ss.str();
-    }
 
     // Group contexts by PID
     std::map<uint64_t, std::vector<context_health_info::smi_context_health>> contexts_by_pid;
@@ -316,8 +317,8 @@ OO_ContextHealth::execute(const SubCmdOptions& _options) const
   auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
 
   // Parse filter options
-  std::vector<uint64_t> context_ids = parse_values(m_ctx_id_list);
-  std::vector<std::pair<uint64_t, uint64_t>> context_pid_pairs = parse_context_pid_pairs(m_ctx_id_list, m_pid_list);
+  auto context_ids = parse_values(m_ctx_id_list);
+  auto context_pid_pairs = parse_context_pid_pairs(m_ctx_id_list, m_pid_list);
 
   // Create report generator based on hardware type
   auto report_generator = [&](const xrt_core::device* dev) -> std::string {

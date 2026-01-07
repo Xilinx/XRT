@@ -90,7 +90,6 @@ OO_FirmwareLogExamine::generate_parsed_logs(const xrt_core::device* dev,
   m_watch_mode_offset = data_buf.abs_offset;
 
   if (!data_buf.data || data_buf.size == 0) {
-    ss << "No firmware log data available\n";
     return ss.str();
   }
 
