@@ -4,7 +4,7 @@
 #ifndef XRT_VERSION_H_
 #define XRT_VERSION_H_
 
-static const char xrt_build_version[] = "@XRT_VERSION_STRING@";
+#include "xrt/detail/version-slim.h"
 
 static const char xrt_build_version_branch[] = "@XRT_BRANCH@";
 
@@ -22,8 +22,6 @@ static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 #define XRT_PATCH @XRT_VERSION_PATCH@
 #define XRT_HEAD_COMMITS @XRT_HEAD_COMMITS@
 #define XRT_BRANCH_COMMITS @XRT_BRANCH_COMMITS@
-
-#include "xrt/detail/version-slim.h"
 
 #ifdef __cplusplus
 #include <iostream>
