@@ -2287,7 +2287,7 @@ class module_sram : public module_impl
     try {
       auto size = m_parent->get_ctrl_scratch_pad_mem_size();
       if (size > 0) {
-        m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, size, xbi::use_type::scratch_pad);
+        m_ctrl_scratch_pad_mem = xbi::create_bo(m_hwctx, size, xbi::use_type::ctrl_scratch_pad);
         patch_instr(m_instr_bo, Control_ScratchPad_Symbol, 0, m_ctrl_scratch_pad_mem,
                     xrt_core::patcher::buf_type::ctrltext, m_ctrl_code_id);
       }
