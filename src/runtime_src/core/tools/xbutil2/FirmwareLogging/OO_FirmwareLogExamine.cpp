@@ -89,10 +89,8 @@ OO_FirmwareLogExamine::generate_parsed_logs(const xrt_core::device* dev,
   
   m_watch_mode_offset = data_buf.abs_offset;
 
-  if (!data_buf.data || data_buf.size == 0) {
-    ss << "No firmware log data available\n";
+  if (!data_buf.data || data_buf.size == 0)
     return ss.str();
-  }
 
   // Use the passed parser instance to parse the firmware log buffer directly to string
   auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
@@ -116,10 +114,8 @@ OO_FirmwareLogExamine::generate_raw_logs(const xrt_core::device* dev,
     
     m_watch_mode_offset = data_buf.abs_offset;
     
-    if (!data_buf.data) {
-      ss << "No firmware log data available\n";
+    if (!data_buf.data) 
       return ss.str();
-    }
 
     auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     size_t buf_size = data_buf.size;

@@ -160,10 +160,8 @@ generate_parsed_logs(const xrt_core::device* device,
     
     m_watch_mode_offset = data_buf.abs_offset;
 
-    if (!data_buf.data) {
-      ss << "No event trace data available\n";
+    if (!data_buf.data)
       return ss.str();
-    }
 
     auto* data_ptr = static_cast<const uint8_t*>(data_buf.data);
     auto buf_size = data_buf.size;
@@ -191,7 +189,6 @@ generate_raw_logs(const xrt_core::device* dev,
     m_watch_mode_offset = data_buf.abs_offset;
     
     if (!data_buf.data || data_buf.size == 0) {
-      ss << "No event trace data available\n";
       return ss.str();
     }
 
