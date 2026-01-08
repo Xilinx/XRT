@@ -317,7 +317,9 @@ namespace xdp {
     auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
 
     auto allValidGraphs = metadataReader->getValidGraphs();
-    auto allValidKernels = metadataReader->getValidKernels();
+    std::string entryType = (type == module_type::mem_tile) ? "buffer" : "kernel";
+    std::vector<std::string> allValidEntries = (type == module_type::mem_tile) ?
+      metadataReader->getValidBuffers() : metadataReader->getValidKernels();
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = metadataReader->getTiles("all", type, "all");
@@ -345,17 +347,20 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
-      // Check if graph is not all or if invalid kernel
+      // Check if graph is not all or if invalid kernel/buffer
       if (graphMetrics[i][0].compare("all") != 0)
         continue;
       if ((graphMetrics[i][1].compare("all") != 0)
-          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          && (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1] 
+        msg << "Could not find " << entryType << " " << graphMetrics[i][1] 
             << " as specified in graph_based_" << tileName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+            << " The following " << entryType << "s are valid : ";
+        if (!allValidEntries.empty()) {
+          msg << allValidEntries[0];
+          for (size_t j = 1; j < allValidEntries.size(); j++)
+            msg << ", " << allValidEntries[j];
+        }
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         processed.insert(i);
         continue;
@@ -385,17 +390,20 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      // Check if already processed or if invalid kernel
+      // Check if already processed or if invalid kernel/buffer
       if ((processed.find(i) != processed.end()) || (graphMetrics[i].size() < 3))
         continue;
       if ((graphMetrics[i][1].compare("all") != 0)
-          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+          && (std::find(allValidEntries.begin(), allValidEntries.end(), graphMetrics[i][1]) == allValidEntries.end())) {
         std::stringstream msg;
-        msg << "Could not find kernel " << graphMetrics[i][1] 
+        msg << "Could not find " << entryType << " " << graphMetrics[i][1] 
             << " as specified in graph_based_" << tileName << "_metrics setting."
-            << " The following kernels are valid : " << allValidKernels[0];
-        for (size_t j = 1; j < allValidKernels.size(); j++)
-          msg << ", " << allValidKernels[j];
+            << " The following " << entryType << "s are valid : ";
+        if (!allValidEntries.empty()) {
+          msg << allValidEntries[0];
+          for (size_t j = 1; j < allValidEntries.size(); j++)
+            msg << ", " << allValidEntries[j];
+        }
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
