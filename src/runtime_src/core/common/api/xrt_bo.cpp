@@ -324,6 +324,13 @@ public:
     return device.get_hwctx_handle();
   }
 
+  // Returns id of the device where the bo is allocated
+  unsigned int
+  get_device_id() const
+  {
+    return device->get_device_id();
+  }
+
   void*
   get_hbuf_or_error() const
   {
@@ -1569,6 +1576,13 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 
 bo::
 ~bo() = default;
+
+unsigned int
+bo::
+get_device_id() const
+{
+  return handle->get_device_id();
+}
 
 } // xrt
 
