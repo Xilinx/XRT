@@ -21,12 +21,6 @@ elseif (NOT XRT_EDGE)
   # AIEBU should use XRT's version of ELFIO
   set(AIEBU_ELFIO_SRC_DIR ${XRT_SOURCE_DIR}/runtime_src/core/common/elf)
 
-  # AIEBU should build XRT's version of aie-rt, unless XRT is sharing its
-  # build of aie-rt
-  if (NOT DEFINED AIEBU_AIE-RT_BIN_DIR)
-    set(AIEBU_AIE-RT_SRC_DIR ${XRT_SOURCE_DIR}/runtime_src/aie-rt)
-  endif()
-
   xrt_add_subdirectory(aiebu)
 else()
   message(WARNING "Edge device, build of submodule aiebu disabled")
@@ -122,7 +116,7 @@ target_include_directories(xrt_coreutil
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
-  
+
 target_include_directories(xrt_coreutil_static
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
