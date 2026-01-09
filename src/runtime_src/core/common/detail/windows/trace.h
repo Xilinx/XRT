@@ -58,7 +58,7 @@ add_event(ProbeType&& p, A1&& a1, A2&& a2)
                     "XRTTraceEvent", // must be a string literal
                     TraceLoggingValue(std::forward<ProbeType>(p), "Event"),
                     TraceLoggingValue(std::forward<A1>(a1), "arg1"),
-                    TraceLoggingValue(std::forward<A2>(a1), "arg2"));
+                    TraceLoggingValue(std::forward<A2>(a2), "arg2"));
 }
 
 template<typename ...Args>
