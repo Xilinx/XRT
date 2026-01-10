@@ -33,6 +33,7 @@ namespace xdp {
   class AieTraceConfigWriter : public VPWriter
   {
   private:
+    bool isWritten = false;
     uint64_t deviceIndex;
   public:
     AieTraceConfigWriter(const char* filename, uint64_t index);

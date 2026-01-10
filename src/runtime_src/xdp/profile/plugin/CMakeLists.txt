@@ -12,7 +12,6 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   add_subdirectory(user)
 
 elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-
   add_subdirectory(native)
   add_subdirectory(user)
   add_subdirectory(ml_timeline)
@@ -25,6 +24,13 @@ elseif (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   if (WIN32)
     add_subdirectory(aie_halt)
     add_subdirectory(aie_pc)
+  endif()
+
+  if (XDP_NPU3_BUILD_CMAKE STREQUAL "yes")
+    add_custom_target(xdp_npu3_target ALL DEPENDS
+                      xdp_aie_halt_plugin 
+                      xdp_aie_profile_plugin 
+                      xdp_aie_trace_plugin)
   endif()
    
 else()
