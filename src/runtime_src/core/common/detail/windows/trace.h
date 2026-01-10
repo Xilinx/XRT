@@ -58,7 +58,7 @@ add_event(ProbeType&& p, A1&& a1, A2&& a2)
                     "XRTTraceEvent", // must be a string literal
                     TraceLoggingValue(std::forward<ProbeType>(p), "Event"),
                     TraceLoggingValue(std::forward<A1>(a1), "arg1"),
-                    TraceLoggingValue(std::forward<A2>(a1), "arg2"));
+                    TraceLoggingValue(std::forward<A2>(a2), "arg2"));
 }
 
 template<typename ...Args>
@@ -91,7 +91,7 @@ add_event(Args&&... args)
       : a1{aa1}                                                                      \
     { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _enter), a1); }     \
     ~xrt_trace_scope1()                                                              \
-    { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _exit)), a1); }     \
+    { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _exit), a1); }     \
   } xrt_trace_scope_instance{arg1}
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE2(probe, arg1, arg2)                             \
@@ -102,6 +102,6 @@ add_event(Args&&... args)
       : a1{aa1}, a2{aa2}                                                             \
     { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _enter), a1, a2); } \
     ~xrt_trace_scope2()                                                              \
-    { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _exit)), a1, a2); } \
+    { xrt_core::trace::detail::add_event(XRT_DETAIL_PROBE(probe, _exit), a1, a2); } \
   } xrt_trace_scope_instance{arg1, arg2}
 
