@@ -772,6 +772,13 @@ public:
   }
 
   /**
+   * get_device_id() - Returns the ID of the device
+   * where the buffer object is allocated
+   */
+  unsigned int
+  get_device_id() const;
+
+  /**
    * ~bo() - Destructor for bo object
    */
   XCL_DRIVER_DLLESPEC
