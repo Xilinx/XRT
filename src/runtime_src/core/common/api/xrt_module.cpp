@@ -303,11 +303,13 @@ private:
   void
   patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
   {
+    // This patching scheme is originated from NPU firmware
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     // bd_data_ptr is a pointer to the header of the control code
     uint64_t base_address = (((uint64_t)bd_data_ptr[1] & 0x1FFFFFF) << 32) | bd_data_ptr[2]; // NOLINT
 
-    base_address += patch + get_ddr_aie_addr_offset();
+    base_address += patch + ddr_aie_addr_offset;
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
     bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
   }
@@ -2044,12 +2046,14 @@ class module_sram : public module_impl
   // value : xrt::bo filled with corresponding section data
   std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
 
-  // Tuple of uC index, address, size, where address is the address of
-  // the ctrlcode for indexed uC and size is the size of the ctrlcode.
+  // Tuple of uC index, address, size, dtrace_addr, where address is the
+  // address of the ctrlcode for indexed uC, size is the size of the ctrlcode,
+  // and dtrace_addr is the address of the dtrace buffer for the indexed uC if
+  // dtrace is enabled.
   // The first ctrlcode is at the base address (m_buffer.address()) of
   // the buffer object.  The addresses are used in ert_dpu_data
   // payload to identify the ctrlcode for each column processor.
-  std::vector<std::tuple<uint16_t, uint64_t, uint64_t>> m_column_bo_address;
+  std::vector<std::tuple<uint16_t, uint64_t, uint64_t, uint64_t>> m_column_bo_address;
 
   // Arguments patched in the ctrlcode buffer object
   // Must match number of argument patchers in parent module
@@ -2087,6 +2091,7 @@ class module_sram : public module_impl
     std::string ctrl_file_path;
     std::string map_data;
     xrt::bo ctrl_bo;
+    std::map<uint32_t, size_t> buf_offset_map;
   } m_dtrace;
 
   bool
@@ -2114,14 +2119,18 @@ class module_sram : public module_impl
   // and may have holes. A hole is skipped prior to populating
   // m_column_bo_address.
   void
-  fill_column_bo_address(const std::vector<ctrlcode>& ctrlcodes)
+  fill_column_bo_address(const std::vector<ctrlcode>& ctrlcodes, const dtrace_util& dtrace_obj)
   {
     m_column_bo_address.clear();
     uint16_t ucidx = 0;
     auto base_addr = m_buffer.address();
     for (const auto& ctrlcode : ctrlcodes) {
-      if (auto size = ctrlcode.size())
-        m_column_bo_address.push_back({ ucidx, base_addr, size }); // NOLINT
+      if (auto size = ctrlcode.size()) {
+        auto it = dtrace_obj.buf_offset_map.find(ucidx);
+        uint64_t dtrace_addr = (it != dtrace_obj.buf_offset_map.end()) ?
+          dtrace_obj.ctrl_bo.address() + it->second : 0;
+        m_column_bo_address.push_back({ ucidx, base_addr, size, dtrace_addr }); // NOLINT
+      }
 
       ++ucidx;
       base_addr += ctrlcode.size();
@@ -2132,7 +2141,8 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ static_cast<uint16_t>(0), m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
+    m_column_bo_address.push_back({ static_cast<uint16_t>(0), m_instr_bo.address(), m_instr_bo.size(),
+      static_cast<uint64_t>(0) }); // NOLINT
   }
 
   // Fill the instruction buffer object with the data for each column
@@ -2618,9 +2628,10 @@ class module_sram : public module_impl
     // the number of words remaining in the payload after the current
     // instruction buffer. The ert_dpu_data::chained of the last buffer
     // is zero.
-    for (auto [ucidx, addr, size] : m_column_bo_address) {
+    for (auto [ucidx, addr, size, dtrace_addr] : m_column_bo_address) {
       auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
       dpu->instruction_buffer = addr;
+      dpu->dtrace_buffer = dtrace_addr;
       dpu->instruction_buffer_size = static_cast<uint32_t>(size);
       dpu->uc_index = ucidx;
       dpu->chained = --ert_dpu_data_count;
@@ -2731,7 +2742,6 @@ class module_sram : public module_impl
       std::vector<uint64_t> buffers(buffers_length);
       get_dtrace_buffer_size(buffers.data());
 
-      std::map<uint32_t, size_t> buf_sizes;
       size_t total_size = 0;
 
       constexpr uint32_t mask32 = 0xffffffff;
@@ -2739,8 +2749,8 @@ class module_sram : public module_impl
       for (const auto& entry : buffers) {
         //for each entry, lower 32 is the uc index, and upper 32 is the length in word for that uc
         //config_bo requires buf_size in bytes
-        buf_sizes[static_cast<uint32_t>(entry & mask32)] = (static_cast<size_t>(entry >> shift32)) * sizeof(uint32_t);
-	total_size += static_cast<size_t>(entry >> shift32);
+        m_dtrace.buf_offset_map[static_cast<uint32_t>(entry & mask32)] = total_size;
+        total_size += static_cast<size_t>(entry >> shift32) * sizeof(uint32_t);
       }
       // below call creates dtrace xrt control buffer and informs driver / firmware with the buffer address
       m_dtrace.ctrl_bo = xbi::create_bo(m_hwctx, total_size * sizeof(uint32_t), xbi::use_type::dtrace);
@@ -2750,7 +2760,7 @@ class module_sram : public module_impl
       // sync dtrace control buffer
       m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-      xrt_core::bo_int::config_bo(m_dtrace.ctrl_bo, buf_sizes);
+      //xrt_core::bo_int::config_bo(m_dtrace.ctrl_bo, buf_sizes); // not needed as we are not using config_bo
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               "[dtrace] : dtrace buffers initialized successfully");
@@ -2791,7 +2801,7 @@ public:
       initialize_dtrace_buf(m_parent.get());
       create_ctrlpkt_bufs(m_parent.get());
       create_instruction_buffer(m_parent.get());
-      fill_column_bo_address(m_parent->get_data(m_ctrl_code_id));
+      fill_column_bo_address(m_parent->get_data(m_ctrl_code_id), m_dtrace);
     }
   }
 
