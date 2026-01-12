@@ -312,10 +312,6 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::stringstream ss{};
   
-  if (!data_ptr || buf_size == 0) {
-    return "No event trace data available\n";
-  }
-
   // Get entry header and footer sizes
   size_t entry_header_size = m_config.get_entry_header_size();
   size_t entry_footer_size = m_config.get_entry_footer_size();

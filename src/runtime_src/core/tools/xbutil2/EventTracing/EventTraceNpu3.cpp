@@ -362,10 +362,6 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::stringstream ss;
   
-  if (!data_ptr || buf_size == 0) {
-    return "No event trace data available\n";
-  }
-
   const uint8_t* current_ptr = data_ptr;
   const uint8_t* end_ptr = data_ptr + buf_size;
   
