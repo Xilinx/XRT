@@ -303,13 +303,11 @@ private:
   void
   patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch) const
   {
-    // This patching scheme is originated from NPU firmware
-    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     // bd_data_ptr is a pointer to the header of the control code
     uint64_t base_address = (((uint64_t)bd_data_ptr[1] & 0x1FFFFFF) << 32) | bd_data_ptr[2]; // NOLINT
 
-    base_address += patch + ddr_aie_addr_offset;
+    base_address += patch + get_ddr_aie_addr_offset();
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
     bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
   }
@@ -2141,8 +2139,8 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ static_cast<uint16_t>(0), m_instr_bo.address(), m_instr_bo.size(),
-      static_cast<uint64_t>(0) }); // NOLINT
+    m_column_bo_address.emplace_back(static_cast<uint16_t>(0), m_instr_bo.address(), m_instr_bo.size(),
+      static_cast<uint64_t>(0)); // NOLINT
   }
 
   // Fill the instruction buffer object with the data for each column
