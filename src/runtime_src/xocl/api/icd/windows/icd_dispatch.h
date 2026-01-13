@@ -54,9 +54,35 @@
 #include <CL/cl_dx9_media_sharing.h>
 #endif
 #include <CL/cl_gl.h>
-#include <CL/cl_gl_ext.h>
 #include <CL/cl_ext.h>
 #include <CL/cl_egl.h>
+// Use extension tokens from shipped cl_ext_xilinx.h
+#include <CL/cl_ext_xilinx.h>
+
+// Additional compatibility shims for newer Khronos headers 
+#ifndef CL_EXT_SUFFIX__VERSION_2_0
+# ifdef CL_API_SUFFIX__VERSION_2_0
+#  define CL_EXT_SUFFIX__VERSION_2_0 CL_API_SUFFIX__VERSION_2_0
+# else
+#  define CL_EXT_SUFFIX__VERSION_2_0
+# endif
+#endif
+
+#ifndef CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED
+# ifdef CL_API_SUFFIX__VERSION_1_0_DEPRECATED
+#  define CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED CL_API_SUFFIX__VERSION_1_0_DEPRECATED
+# else
+#  define CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED
+# endif
+#endif
+
+#ifndef CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED
+# ifdef CL_API_SUFFIX__VERSION_1_1_DEPRECATED
+#  define CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED CL_API_SUFFIX__VERSION_1_1_DEPRECATED
+# else
+#  define CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED
+# endif
+#endif
 
 /*
  *
