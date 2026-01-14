@@ -43,9 +43,9 @@ add_compile_options("-DXRT_XOCL_SOURCE")
 add_library(xocl OBJECT ${XRT_XOCL_ALL_SRC})
 
 if (WIN32)
-include_directories(
-  ${KHRONOS}/include
-  )
+  # Put Khronos OpenCL headers *ahead* of XRT's include/1_2 wrappers.
+  # We still need include/1_2 later for cl_ext_xilinx.h.
+  include_directories(BEFORE ${KHRONOS}/include)
 
 xrt_configure_version_file(xilinxopencl SHARED)
 add_library(xilinxopencl SHARED
