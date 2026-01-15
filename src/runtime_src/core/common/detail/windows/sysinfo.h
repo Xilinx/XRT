@@ -8,7 +8,6 @@
 #include <windows.h>
 #include <string>
 #include <thread>
-#include <iostream>
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -52,7 +51,6 @@ getmachinename()
 static std::string
 getmachinedistribution()
 {
-  // Get Windows product name directly from registry (simpler than COM/WMI)
   char value[256];
   DWORD BufferSize = sizeof(value);
   
@@ -66,14 +64,9 @@ getmachinedistribution()
     &BufferSize
   );
   
-  if (result != ERROR_SUCCESS) {
-    throw xrt_core::error("Failed to get machine distribution information from registry");
-  }
-  
   std::string productName(value);
   
   // Windows 11 detection: Check if build number >= 22000
-  // Windows 11 is reported as "Windows 10" for compatibility, but we fix it based on build number
   BufferSize = sizeof(value);
   result = RegGetValueA(
     HKEY_LOCAL_MACHINE,
