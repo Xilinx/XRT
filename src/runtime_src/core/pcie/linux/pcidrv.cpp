@@ -26,6 +26,9 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
     try {
       auto pf = create_pcidev(path.filename().string());
 
+      if (!pf)
+	      continue;
+
       // In docker, all host sysfs nodes are available. So, we need to check
       // devnode to make sure the device is really assigned to docker.
       if (!sfs::exists(pf->get_subdev_path("", -1)))
