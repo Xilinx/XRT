@@ -64,12 +64,12 @@ TestShimDMABW::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core:
   }
 
   try {
-    run_flavor(ptree, dev, archive, "recipe_bw_1r.json", "profile_bw_1r.json", "bw_1r.elf", 6, "1xRead");
-    run_flavor(ptree, dev, archive, "recipe_bw_1r_1w.json", "profile_bw_1r_1w.json", "bw_1r_1w.elf", 12, "1xRead/1xWrite");
-    run_flavor(ptree, dev, archive, "recipe_bw_1r_2w.json", "profile_bw_1r_2w.json", "bw_1r_2w.elf", 9, "1xRead/2xWrite");
-    run_flavor(ptree, dev, archive, "recipe_bw_1w.json", "profile_bw_1w.json", "bw_1w.elf", 6, "1xWrite");
-    run_flavor(ptree, dev, archive, "recipe_bw_2r.json", "profile_bw_2r.json", "bw_2r.elf", 12, "2xRead");
-    run_flavor(ptree, dev, archive, "recipe_bw_2r_1w.json", "profile_bw_2r_1w.json", "bw_2r_1w.elf", 18, "2xRead/1xWrite");
+    run_flavor(ptree, dev, archive, "recipe_bw_1r.json", "profile_bw_1r.json", "bw_1r.elf", 6, "1xRead"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    run_flavor(ptree, dev, archive, "recipe_bw_1r_1w.json", "profile_bw_1r_1w.json", "bw_1r_1w.elf", 12, "1xRead/1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    run_flavor(ptree, dev, archive, "recipe_bw_1r_2w.json", "profile_bw_1r_2w.json", "bw_1r_2w.elf", 9, "1xRead/2xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    run_flavor(ptree, dev, archive, "recipe_bw_1w.json", "profile_bw_1w.json", "bw_1w.elf", 6, "1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    run_flavor(ptree, dev, archive, "recipe_bw_2r.json", "profile_bw_2r.json", "bw_2r.elf", 12, "2xRead"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    run_flavor(ptree, dev, archive, "recipe_bw_2r_1w.json", "profile_bw_2r_1w.json", "bw_2r_1w.elf", 18, "2xRead/1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
   } catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
