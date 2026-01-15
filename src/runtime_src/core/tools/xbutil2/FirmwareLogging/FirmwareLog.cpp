@@ -351,25 +351,46 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::string result;
   
-  size_t offset = 0;
-  size_t entry_header_size = m_config.get_entry_header_size();
-  size_t entry_footer_size = m_config.get_entry_footer_size();
-  size_t total_entry_size = entry_header_size + m_message_size + entry_footer_size;
+  constexpr uint8_t MAGIC_HEADER = 0xCA;
+  constexpr uint8_t MAGIC_FOOTER = 0xBA;
+  constexpr size_t SCAN_STEP = 4; // Minimum alignment step for searching
   
-  while (offset + total_entry_size <= buf_size) {
-    // Skip entry header
-    size_t msg_offset = offset + entry_header_size;
+  size_t offset = 0;
+  const size_t entry_header_size = m_config.get_entry_header_size();
+  const size_t entry_footer_size = m_config.get_entry_footer_size();
+  const size_t min_entry_size = entry_header_size + m_message_size + entry_footer_size;
+  
+  // Search for valid entries by looking for the header magic byte
+  while (offset + min_entry_size <= buf_size) {
+    // Look for header magic byte (0xCA)
+    if (data_ptr[offset] != MAGIC_HEADER) {
+      offset += SCAN_STEP;
+      continue;
+    }
     
-    // Parse the actual log message header
+    // Parse the message to determine entry size
+    const size_t msg_offset = offset + entry_header_size;
     auto entry_data = parse_entry(data_ptr, msg_offset, buf_size);
     auto format = std::stoul(entry_data[m_field_indices.at("format")]);
     auto argc = std::stoul(entry_data[m_field_indices.at("argc")]);
     
-    result += format_entry_row(entry_data);
+    const size_t payload_size = calculate_entry_size(argc, format);
+    const size_t full_entry_size = entry_header_size + payload_size + entry_footer_size;
     
-    // Calculate total entry size including header/footer
-    size_t payload_size = calculate_entry_size(argc, format);
-    size_t full_entry_size = entry_header_size + payload_size + entry_footer_size;
+    // Check if we have space for the full entry
+    if (offset + full_entry_size > buf_size) {
+      break;
+    }
+    
+    // Validate footer magic (last byte of footer structure)
+    const size_t footer_magic_offset = offset + entry_header_size + payload_size + entry_footer_size - 1;
+    if (data_ptr[footer_magic_offset] != MAGIC_FOOTER) {
+      offset += SCAN_STEP;
+      continue;
+    }
+    
+    // Valid entry found - format and add it
+    result += format_entry_row(entry_data);
     offset += full_entry_size;
   }
   return result;
