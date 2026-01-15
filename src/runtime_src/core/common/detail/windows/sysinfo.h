@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <string>
 #include <thread>
+#include <array>
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -51,8 +52,8 @@ getmachinename()
 static std::string
 getmachinedistribution()
 {
-  char value[256];
-  DWORD BufferSize = sizeof(value);
+  std::array<char, 128> value{}; //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+  DWORD BufferSize = static_cast<DWORD>(value.size());
   
   LONG result = RegGetValueA(
     HKEY_LOCAL_MACHINE,
@@ -60,31 +61,31 @@ getmachinedistribution()
     "ProductName",
     RRF_RT_ANY,
     NULL,
-    (PVOID)&value,
+    value.data(),
     &BufferSize
   );
   
-  std::string productName(value);
+  std::string productName(value.data());
   
   // Windows 11 detection: Check if build number >= 22000
-  BufferSize = sizeof(value);
+  BufferSize = static_cast<DWORD>(value.size());
   result = RegGetValueA(
     HKEY_LOCAL_MACHINE,
     "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
     "CurrentBuildNumber",
     RRF_RT_ANY,
     NULL,
-    (PVOID)&value,
+    value.data(),
     &BufferSize
   );
   
   if (result == ERROR_SUCCESS) {
-    int buildNumber = std::stoi(std::string(value));
+    int buildNumber = std::stoi(std::string(value.data()));
     // Windows 11 starts at build 22000
     // https://learn.microsoft.com/en-us/answers/questions/586619/windows-11-build-ver-is-still-10-0-22000-194
-    if (buildNumber >= 22000 && productName.find("Windows 10") != std::string::npos) { //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    if (buildNumber >= 22000 && productName.find("Windows 10") != std::string::npos) { //NOLINT(cppcoreguidelines-avoid-magic-numbers)
       size_t pos = productName.find("Windows 10");
-      productName.replace(pos, 10, "Windows 11"); //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+      productName.replace(pos, 10, "Windows 11"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
     }
   }
   
