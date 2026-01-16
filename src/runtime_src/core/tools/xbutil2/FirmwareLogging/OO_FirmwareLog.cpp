@@ -23,7 +23,7 @@ OO_FirmwareLog::OO_FirmwareLog( const std::string &_longName, bool _isHidden )
     , m_enable(false)
     , m_disable(false)
     , m_help(false)
-    , m_log_level(0)
+    , m_log_level(2)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
