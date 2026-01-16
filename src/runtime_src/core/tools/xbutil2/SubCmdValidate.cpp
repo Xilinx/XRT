@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -42,6 +42,7 @@
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "tools/common/tests/TestPreemptionOverhead.h"
 #include "tools/common/tests/TestValidateUtilities.h"
+#include "tools/common/tests/TestShimDMABW.h"
 
 namespace XBU = XBUtilities;
 namespace xq = xrt_core::query;
@@ -118,6 +119,7 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestAIEReconfigOverhead>(),
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
+  std::make_shared<TestShimDMABW>(),
 };
 
 /*
