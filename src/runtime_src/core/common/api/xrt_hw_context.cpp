@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_queue.h
@@ -145,6 +145,11 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // This map is used for lookup when creating xrt::kernel object
   // using kernel name.
   std::map<std::string, xrt::elf> m_elf_map;
+
+  // map b/w kernel name and xrt::module
+  // For xrt::kernel object created in this hw_context, they
+  // should share the same xrt::module.
+  std::map<std::string, xrt::module> m_kernel_mod_map;
 
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
@@ -393,12 +398,17 @@ public:
   }
 
   xrt::module
-  get_module(const std::string& kname) const
+  get_module(const std::string& kname)
   {
-    if (auto itr = m_elf_map.find(kname); itr != m_elf_map.end())
-      return xrt::module{itr->second}; // create module from the ELF that has this kernel
+     auto itr = m_elf_map.find(kname);
+     if (itr == m_elf_map.end())
+       throw std::runtime_error("no module found with given kernel name in ctx");
 
-    throw std::runtime_error("no module found with given kernel name in ctx");
+     auto [kmitr, inserted] = m_kernel_mod_map.try_emplace(kname, xrt::module{});
+     if (inserted)
+       kmitr->second = xrt::module{itr->second}; // create module from the ELF that has this kernel
+
+     return kmitr->second;
   }
 
   bool
