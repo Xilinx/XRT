@@ -15,6 +15,17 @@
 using json = nlohmann::json;
 #include <filesystem>
 
+namespace {
+// Configuration for a single bandwidth test flavor
+struct FlavorConfig {
+  std::string recipe;
+  std::string profile;
+  std::string elf;
+  uint32_t size;
+  std::string flavor;
+};
+} // anonymous namespace
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestShimDMABW::TestShimDMABW()
   : TestRunner("shim-dma-bw", "Run additional bandwidth tests for SHIM DMA")
@@ -63,13 +74,19 @@ TestShimDMABW::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core:
     return ptree;
   }
 
+  const std::vector<FlavorConfig> test_configs = {
+    {"recipe_bw_1r.json",     "profile_bw_1r.json",     "bw_1r.elf",     6,  "1xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {"recipe_bw_1w.json",     "profile_bw_1w.json",     "bw_1w.elf",     6,  "1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {"recipe_bw_2r.json",     "profile_bw_2r.json",     "bw_2r.elf",     12, "2xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {"recipe_bw_1r_1w.json",  "profile_bw_1r_1w.json",  "bw_1r_1w.elf",  12, "1xRead/1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {"recipe_bw_1r_2w.json",  "profile_bw_1r_2w.json",  "bw_1r_2w.elf",  9,  "1xRead/2xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {"recipe_bw_2r_1w.json",  "profile_bw_2r_1w.json",  "bw_2r_1w.elf",  18, "2xRead/1xWrite"} //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+  };
+
   try {
-    run_flavor(ptree, dev, archive, "recipe_bw_1r.json", "profile_bw_1r.json", "bw_1r.elf", 6, "1xRead"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    run_flavor(ptree, dev, archive, "recipe_bw_1r_1w.json", "profile_bw_1r_1w.json", "bw_1r_1w.elf", 12, "1xRead/1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    run_flavor(ptree, dev, archive, "recipe_bw_1r_2w.json", "profile_bw_1r_2w.json", "bw_1r_2w.elf", 9, "1xRead/2xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    run_flavor(ptree, dev, archive, "recipe_bw_1w.json", "profile_bw_1w.json", "bw_1w.elf", 6, "1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    run_flavor(ptree, dev, archive, "recipe_bw_2r.json", "profile_bw_2r.json", "bw_2r.elf", 12, "2xRead"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    run_flavor(ptree, dev, archive, "recipe_bw_2r_1w.json", "profile_bw_2r_1w.json", "bw_2r_1w.elf", 18, "2xRead/1xWrite"); //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    for (const auto& config : test_configs) {
+      run_flavor(ptree, dev, archive, config.recipe, config.profile, config.elf, config.size, config.flavor);
+    }
   } catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
