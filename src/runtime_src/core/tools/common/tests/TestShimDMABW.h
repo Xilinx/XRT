@@ -14,6 +14,20 @@ class TestShimDMABW : public TestRunner {
 
   public:
     TestShimDMABW();
+
+  private:
+    struct FlavorConfig {
+      std::string recipe;
+      std::string profile;
+      std::string elf;
+      uint32_t size;
+      std::string flavor;
+    };
+
+    void run_flavors(boost::property_tree::ptree& test, const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive,
+                     const std::vector<FlavorConfig>& test_configs);
+
+    std::vector<FlavorConfig> m_test_configs;
 };
 
 #endif

@@ -15,20 +15,17 @@
 using json = nlohmann::json;
 #include <filesystem>
 
-namespace {
-// Configuration for a single bandwidth test flavor
-struct FlavorConfig {
-  std::string recipe;
-  std::string profile;
-  std::string elf;
-  uint32_t size;
-  std::string flavor;
-};
-} // anonymous namespace
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestShimDMABW::TestShimDMABW()
   : TestRunner("shim-dma-bw", "Run additional bandwidth tests for SHIM DMA")
+  , m_test_configs({
+      {"recipe_bw_1r.json",     "profile_bw_1r.json",     "bw_1r.elf",     6,  "1xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      {"recipe_bw_1w.json",     "profile_bw_1w.json",     "bw_1w.elf",     6,  "1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      {"recipe_bw_2r.json",     "profile_bw_2r.json",     "bw_2r.elf",     12, "2xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      {"recipe_bw_1r_1w.json",  "profile_bw_1r_1w.json",  "bw_1r_1w.elf",  12, "1xRead/1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      {"recipe_bw_1r_2w.json",  "profile_bw_1r_2w.json",  "bw_1r_2w.elf",  9,  "1xRead/2xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      {"recipe_bw_2r_1w.json",  "profile_bw_2r_1w.json",  "bw_2r_1w.elf",  18, "2xRead/1xWrite"} //NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    })
 {}
 
 boost::property_tree::ptree
@@ -38,29 +35,31 @@ TestShimDMABW::run(const std::shared_ptr<xrt_core::device>&)
   return ptree;
 }
 
-static void
-run_flavor(boost::property_tree::ptree& test, const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive,
-           const std::string& recipe, const std::string& profile, const std::string& elf, const uint32_t size, const std::string& flavor)
+void
+TestShimDMABW::run_flavors(boost::property_tree::ptree& test, const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive,
+                           const std::vector<FlavorConfig>& test_configs)
 {
-  std::string recipe_data = archive->data(recipe);
-  std::string profile_data = archive->data(profile); 
-  
-  // Extract artifacts using helper method
-  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {elf});
-  
-  // Create runner with recipe, profile, and artifacts repository
-  xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
-  runner.execute();
-  runner.wait();
+  for (const auto& config : test_configs) {
+    std::string recipe_data = archive->data(config.recipe);
+    std::string profile_data = archive->data(config.profile);
 
-  auto report = json::parse(runner.get_report());
-  auto elapsed_us = report["cpu"]["elapsed"].get<double>();
-  auto iterations = report["iterations"].get<int>();
+    // Extract artifacts using helper method
+    auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {config.elf});
 
-  // Used buffer's size in runner is in MB, thus converting to GB/s
-  double bandwidth = (size * iterations) / ((elapsed_us / 1000000) * 1000); // NOLINT: Runner reports in microseconds, so conversion is required until request supports timescales
+    // Create runner with recipe, profile, and artifacts repository
+    xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
+    runner.execute();
+    runner.wait();
 
-  XBValidateUtils::logger(test, "Details", boost::str(boost::format("Average bandwidth (%s): %.1f GB/s") % flavor % bandwidth));
+    auto report = json::parse(runner.get_report());
+    auto elapsed_us = report["cpu"]["elapsed"].get<double>();
+    auto iterations = report["iterations"].get<int>();
+
+    // Used buffer's size in runner is in MB, thus converting to GB/s
+    double bandwidth = (config.size * iterations) / ((elapsed_us / 1000000) * 1000); // NOLINT: Runner reports in microseconds, so conversion is required until request supports timescales
+
+    XBValidateUtils::logger(test, "Details", boost::str(boost::format("Average bandwidth (%s): %.1f GB/s") % config.flavor % bandwidth));
+  }
 }
 
 boost::property_tree::ptree
@@ -74,19 +73,8 @@ TestShimDMABW::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core:
     return ptree;
   }
 
-  const std::vector<FlavorConfig> test_configs = {
-    {"recipe_bw_1r.json",     "profile_bw_1r.json",     "bw_1r.elf",     6,  "1xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    {"recipe_bw_1w.json",     "profile_bw_1w.json",     "bw_1w.elf",     6,  "1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    {"recipe_bw_2r.json",     "profile_bw_2r.json",     "bw_2r.elf",     12, "2xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    {"recipe_bw_1r_1w.json",  "profile_bw_1r_1w.json",  "bw_1r_1w.elf",  12, "1xRead/1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    {"recipe_bw_1r_2w.json",  "profile_bw_1r_2w.json",  "bw_1r_2w.elf",  9,  "1xRead/2xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-    {"recipe_bw_2r_1w.json",  "profile_bw_2r_1w.json",  "bw_2r_1w.elf",  18, "2xRead/1xWrite"} //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-  };
-
   try {
-    for (const auto& config : test_configs) {
-      run_flavor(ptree, dev, archive, config.recipe, config.profile, config.elf, config.size, config.flavor);
-    }
+    run_flavors(ptree, dev, archive, m_test_configs);
   } catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
