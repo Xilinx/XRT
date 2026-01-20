@@ -414,6 +414,9 @@ public:
   bool
   get_elf_flow() const
   {
+    if (!m_hdl) {
+      throw std::runtime_error("Hardware Context Handle is not yet created, so cannot determine flow type.");
+    }
     return m_elf_flow;
   }
 
