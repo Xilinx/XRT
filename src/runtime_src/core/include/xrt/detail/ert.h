@@ -175,6 +175,7 @@ struct ert_start_kernel_cmd {
  * arguments.
  */
 struct ert_dpu_data {
+  uint64_t dtrace_buffer;             /* dtrace buffer address 2 words */
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint32_t instruction_buffer_size;  /* size of buffer in bytes */
   uint16_t uc_index;                 /* microblaze controller index */
