@@ -172,18 +172,99 @@ public:
   export_fence();
 
   /**
-   * wait() - Wait for fence to be signaled
+   * signal() - Signal the fence with specified value.
    *
-   * @paramm timeout Timeout for wait.  A value of 0, implies block
+   * @param value Value to signal the fence with.
+   *
+   * This function is provided for host side signaling unrelated to
+   * the execution of a command on a hardware queue.  For example, a
+   * fence submitted for wait on a hardware queue may need to be
+   * signaled by the host to indicate that some prerequisite
+   * operation is ready.
+   *
+   * After calling this function, the fence current value will be
+   * minimum the specified `value`. The next value of the fence is set
+   * to one more than the signaled value.
+   *
+   * Note, that the next value of a fence is the value that will be
+   * implicitly signaled or waited on if the fence is submitted to as
+   * a sync wait object to a hardware queue through an xrt::run
+   * object.
+   *
+   * It is undefined behavior to signal a fence if the fence is
+   * currently submitted for signaling to a hardware queue through
+   * an xrt::run object.
+   *
+   * The function returns immediately without signaling if the
+   * specified value is less than the current fence value.
+   */
+  XRT_API_EXPORT
+  void
+  signal(uint64_t value);
+
+  /**
+   * signal() - Signal the fence at its next value
+   *
+   * This function is provided for host side signaling unrelated to
+   * the execution of a command on a hardware queue.  For example, a
+   * fence submitted for wait on a hardware queue may need to be
+   * signaled by the host to indicate that some prerequisite
+   * operation is ready.
+   *
+   * After calling this function, the fence current value will be
+   * updated to the next value and the next value will be incremented.
+   *
+   * Note, that the next value of a fence is the value that will be
+   * implicitly signaled or waited on if the fence is submitted for
+   * signaling to a hardware queue through an xrt::run object.
+   *
+   * It is undefined behavior to signal a fence if the fence is
+   * currently submitted for signaling to a hardware queue through
+   * an xrt::run object.
+   */
+  XRT_API_EXPORT
+  void
+  signal();
+
+  /**
+   * wait() - Wait for fence to be signaled at specified value
+   *
+   * Wait for fence to be signaled at specified value. This is
+   * CPU blocking operation.
+   *
+   * @param value Value to wait for
+   * @param timeout Timeout for wait.  A value of 0, implies block
    *  until completes.
    * @return std::cv_status::no_timeout when wait
    *  completes succesfully.  std::cv_status::timeout when wait times
    *  out.
    *
-   * Throws on error (to-be-defined)
-   
+   * This function is provided for host side waiting unrelated to the
+   * execution of a command on a hardware queue.  For example, a fence
+   * submitted for signaling on a hardware queue may need to be waited
+   * on by the host to indicate that it can proceed with some
+   * operation.
+   */
+  XRT_API_EXPORT
+  std::cv_status
+  wait(uint64_t value, const std::chrono::milliseconds& timeout);
+
+  /**
+   * wait() - Wait for fence to be signaled
+   *
    * Wait for fence to be signaled at its current value. This is
    * CPU blocking operation.
+   *
+   * @paramm timeout Timeout for wait.  A value of 0, implies block
+   *  until completes.
+   * @return std::cv_status::no_timeout when wait completes
+   *  succesfully.  std::cv_status::timeout when wait times out.
+   *
+   * This function is provided for host side waiting unrelated to the
+   * execution of a command on a hardware queue.  For example, a fence
+   * submitted for signaling on a hardware queue may need to be waited
+   * on by the host to indicate that it can proceed with some
+   * operation.
    */
   XRT_API_EXPORT
   std::cv_status

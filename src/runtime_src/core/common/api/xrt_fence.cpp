@@ -63,6 +63,25 @@ public:
     return m_shared_handle->get_export_handle();
   }
 
+  void
+  signal(uint64_t value)
+  {
+    m_handle->signal(value);
+  }
+
+  void
+  signal()
+  {
+    m_handle->signal(get_next_state());
+  }
+
+  std::cv_status
+  wait(uint64_t value, const std::chrono::milliseconds& timeout)
+  {
+    m_handle->wait(value, static_cast<uint32_t>(timeout.count()));
+    return std::cv_status::no_timeout; // TBD
+  }
+
   std::cv_status
   wait(std::chrono::milliseconds timeout)
   {
@@ -70,19 +89,19 @@ public:
     return std::cv_status::no_timeout; // TBD
   }
 
-  [[nodiscard]] xrt_core::fence_handle*
+  xrt_core::fence_handle*
   get_fence_handle() const
   {
     return m_handle.get();
   }
 
-  [[nodiscard]] xrt::fence::access_mode
+  xrt::fence::access_mode
   get_access_mode() const 
   {
     return m_access;
   }
 
-  [[nodiscard]] uint64_t
+  uint64_t
   get_next_state() const
   {
     return m_handle->get_next_state();
@@ -147,6 +166,27 @@ fence::
 export_fence()
 {
   return handle->export_fence();
+}
+
+void
+fence::
+signal(uint64_t value)
+{
+  handle->signal(value);
+}
+
+void
+fence::
+signal()
+{
+  handle->signal();
+}
+
+std::cv_status
+fence::
+wait(uint64_t value, const std::chrono::milliseconds& timeout)
+{
+  return handle->wait(value, timeout);
 }
 
 std::cv_status
