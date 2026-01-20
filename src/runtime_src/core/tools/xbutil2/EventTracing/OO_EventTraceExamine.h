@@ -21,7 +21,7 @@ private:
   std::string m_device;
   bool m_help;
   bool m_watch;
-  std::optional<std::string> m_raw;  // nullopt = parsed logs, empty string = raw to console, filename = raw to file
+  std::optional<std::string> m_raw;
   bool m_version;
   bool m_status;
   mutable uint64_t m_watch_mode_offset;

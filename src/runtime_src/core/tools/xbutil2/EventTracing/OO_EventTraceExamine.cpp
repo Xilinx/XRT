@@ -93,8 +93,7 @@ handle_status(const xrt_core::device* device) const {
     }
   } catch (const std::exception& e) {
     throw xrt_core::error(std::errc::operation_canceled, 
-        "Error getting event trace status: " + std::string(e.what()) + "\n" +
-        "Use 'xbutil examine --help' for more information.");
+        "Error getting event trace status: " + std::string(e.what()));
   }
 }
 
