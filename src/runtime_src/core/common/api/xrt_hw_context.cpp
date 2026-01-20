@@ -147,9 +147,12 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::map<std::string, xrt::elf> m_elf_map;
 
   // map b/w kernel name and xrt::module
-  // For xrt::kernel object created in this hw_context, they
+  // For xrt::kernel objects created in this hw_context, they
   // should share the same xrt::module.
   std::map<std::string, xrt::module> m_kernel_mod_map;
+
+  // mutex synchronization
+  std::mutex m_mutex;
 
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
@@ -400,6 +403,8 @@ public:
   xrt::module
   get_module(const std::string& kname)
   {
+     std::lock_guard<std::mutex> lk(m_mutex);
+
      auto itr = m_elf_map.find(kname);
      if (itr == m_elf_map.end())
        throw std::runtime_error("no module found with given kernel name in ctx");
