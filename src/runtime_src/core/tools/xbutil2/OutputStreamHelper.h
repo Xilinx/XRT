@@ -49,9 +49,11 @@ public:
     }
   }
 
-  // Delete copy constructor and assignment operator
+  // Delete copy and move constructors/assignment operators
   OutputStreamHelper(const OutputStreamHelper&) = delete;
   OutputStreamHelper& operator=(const OutputStreamHelper&) = delete;
+  OutputStreamHelper(OutputStreamHelper&&) = delete;
+  OutputStreamHelper& operator=(OutputStreamHelper&&) = delete;
 
   /**
    * @brief Check if raw mode is enabled
@@ -95,10 +97,10 @@ private:
   std::reference_wrapper<std::ostream> init_stream() {
     if (m_has_output_file) {
       // Try to open the file - create it if it doesn't exist
-      m_file_stream.open(*m_raw_option, std::ios::out | std::ios::binary | std::ios::trunc);
+      m_file_stream.open(m_raw_option.value(), std::ios::out | std::ios::binary | std::ios::trunc);
       if (!m_file_stream.is_open()) {
         throw xrt_core::error(std::errc::io_error, 
-                             "Failed to open output file: " + *m_raw_option);
+                             "Failed to open output file: " + m_raw_option.value());
       }
       return std::ref(m_file_stream);
     }
