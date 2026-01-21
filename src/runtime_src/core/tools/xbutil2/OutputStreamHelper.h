@@ -33,8 +33,6 @@ public:
    */
   explicit OutputStreamHelper(const std::optional<std::string>& raw_option)
     : m_raw_option(raw_option)
-    , m_is_raw(raw_option.has_value())
-    , m_has_output_file(m_is_raw && !raw_option->empty())
     , m_stream_ref(init_stream())
   {
   }
@@ -59,13 +57,7 @@ public:
    * @brief Check if raw mode is enabled
    * @return true if raw mode is requested (console or file)
    */
-  bool is_raw_mode() const { return m_is_raw; }
-
-  /**
-   * @brief Check if output is directed to a file
-   * @return true if output goes to file, false if to console
-   */
-  bool has_output_file() const { return m_has_output_file; }
+  bool is_raw_mode() const { return m_raw_option.has_value(); }
 
   /**
    * @brief Get the output stream reference
@@ -88,19 +80,17 @@ public:
 
 private:
   std::optional<std::string> m_raw_option;
-  bool m_is_raw;
-  bool m_has_output_file;
   std::ofstream m_file_stream;
   std::reference_wrapper<std::ostream> m_stream_ref;
 
   // Helper to initialize the stream reference
   std::reference_wrapper<std::ostream> init_stream() {
-    if (m_has_output_file) {
+    if (m_raw_option.has_value() && !m_raw_option->empty()) {
       // Try to open the file - create it if it doesn't exist
-      m_file_stream.open(m_raw_option.value(), std::ios::out | std::ios::binary | std::ios::trunc);
+      m_file_stream.open(*m_raw_option, std::ios::out | std::ios::binary | std::ios::trunc);
       if (!m_file_stream.is_open()) {
         throw xrt_core::error(std::errc::io_error, 
-                             "Failed to open output file: " + m_raw_option.value());
+                             "Failed to open output file: " + *m_raw_option);
       }
       return std::ref(m_file_stream);
     }
