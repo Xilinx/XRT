@@ -362,38 +362,53 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
 {
   std::stringstream ss;
   
-  const uint8_t* current_ptr = data_ptr;
-  const uint8_t* end_ptr = data_ptr + buf_size;
+  constexpr size_t SCAN_STEP = 4; // Minimum alignment for scanning
+  const size_t min_entry_size = npu3_rbe_header_bytes + npu3_event_header_bytes + npu3_rbe_footer_bytes;
   
-  // Parse each variable-size event
-  while (current_ptr < end_ptr) {
-    // Check if we have enough bytes for minimum entry (RBE header + event header + RBE footer)
-    size_t min_entry_size = npu3_rbe_header_bytes + npu3_event_header_bytes + npu3_rbe_footer_bytes;
-    if (current_ptr + min_entry_size > end_ptr) {
-      break;  // Not enough data for another event
+  size_t offset = 0;
+  
+  // Scan for valid events with magic byte validation
+  while (offset + min_entry_size <= buf_size) {
+    // Check for RBE header magic byte
+    if (data_ptr[offset] != npu3_rbe_header_magic) {
+      offset += SCAN_STEP;
+      continue;
     }
+    
+    const uint8_t* current_ptr = data_ptr + offset;
     
     try {
       // Parse NPU3 event
       auto event_data = m_config.parse_buffer(current_ptr);
       
-      // Decode event
-      auto decoded_event = m_config.decode_event(event_data);
-      
-      // Format output
-      ss << format_event(decoded_event);
-      
-      // Advance pointer: RBE header(8) + payload_words*8 + RBE footer(8)
-      // payload_words includes both event header (12 bytes) and event payload
+      // Calculate full entry size: RBE header + payload_words*8 + RBE footer
       size_t entry_size = npu3_rbe_header_bytes 
                           + (event_data.payload_words * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-                          + npu3_rbe_footer_bytes; 
-
-      current_ptr += entry_size;
+                          + npu3_rbe_footer_bytes;
+      
+      // Validate we have enough data for this entry
+      if (offset + entry_size > buf_size) {
+        break;
+      }
+      
+      // Validate RBE footer magic byte
+      size_t footer_magic_offset = offset + entry_size - 1;
+      if (data_ptr[footer_magic_offset] != npu3_rbe_footer_magic) {
+        // Invalid footer, skip this position and continue scanning
+        offset += SCAN_STEP;
+        continue;
+      }
+      
+      // Valid entry found - decode and format it
+      auto decoded_event = m_config.decode_event(event_data);
+      ss << format_event(decoded_event);
+      
+      // Advance past this valid entry
+      offset += entry_size;
       
     } catch (const std::exception& e) {
-      ss << "Error parsing event: " << e.what() << "\n";
-      break;
+      // Error parsing this entry, skip it and continue scanning
+      offset += SCAN_STEP;
     }
   }
   
