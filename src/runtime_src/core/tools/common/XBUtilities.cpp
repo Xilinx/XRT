@@ -783,10 +783,11 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
       drv_ver = pt_os.get<std::string>("release", "N/A");
     }
 
+    std::string drv_label = boost::iequals(drv_name, "N/A") ? drv_name : drv_name.append(" Version");
     if (drv_hash == "unknown" || drv_hash == "N/A")
-      output << boost::format("  %-20s : %s\n") % drv_name % drv_ver;
+      output << boost::format("  %-20s : %s\n") % drv_label % drv_ver;
     else
-      output << boost::format("  %-20s : %s, %s\n") % drv_name % drv_ver % drv_hash;
+      output << boost::format("  %-20s : %s, %s\n") % drv_label % drv_ver % drv_hash;
   }
 
   if (available_devices.empty())
