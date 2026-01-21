@@ -43,10 +43,25 @@ public:
   virtual std::unique_ptr<shared_handle>
   share() const = 0;
 
+  // Wait for a fence to be signaled to a specific value
+  // This is a blocking call
+  virtual void
+  wait(uint64_t /*value*/, uint32_t /*timeout_ms*/) const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
   // Wait for a fence to be signaled
   // This is a blocking call
   virtual void
   wait(uint32_t timeout_ms) const = 0;
+
+  // Signal a fence from host side with a specific value
+  virtual void
+  signal(uint64_t /*value*/) const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 
   // Signal a fence from host side
   virtual void
