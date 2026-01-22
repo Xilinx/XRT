@@ -336,19 +336,14 @@ private:
     bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
   }
 
-  template<typename T>
+public:
   void
-  patch_it_impl(T base_or_bo, uint64_t new_value, bool first)
+  patch_it(xrt::bo bo, uint64_t new_value, bool first)
   {
     if (!m_config)
       return;
 
-    uint8_t* base = nullptr;
-    if constexpr (std::is_same_v<T, xrt::bo>) {
-      base = reinterpret_cast<uint8_t*>(base_or_bo.map());
-    }
-    else
-      base = base_or_bo;
+    auto base = reinterpret_cast<uint8_t*>(bo.map());
 
     const auto& configs = m_config->m_patch_configs;
     for (size_t i = 0; i < configs.size(); ++i) {
@@ -369,9 +364,7 @@ private:
       }
 
       auto sync = [&](size_t size) {
-        if constexpr (std::is_same_v<T, xrt::bo>) {
-          base_or_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
-        }
+        bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
       };
 
       switch (m_config->m_patch_symbol_type) {
@@ -413,13 +406,6 @@ private:
         throw std::runtime_error("Unsupported symbol type");
       }
     }
-  }
-
-public:
-  void
-  patch_it(xrt::bo bo, uint64_t value, bool first)
-  {
-    patch_it_impl(bo, value, first);
   }
 
   // Static method for shim tests - patches directly using config without maintaining state
@@ -650,12 +636,6 @@ public:
 
   virtual const buf&
   get_pdi(const std::string& /*pdi_name*/) const
-  {
-    throw std::runtime_error("Not supported");
-  }
-
-  virtual xrt::bo&
-  get_pdi_bo(const std::string& /*pdi_name*/)
   {
     throw std::runtime_error("Not supported");
   }
@@ -1204,8 +1184,6 @@ class module_elf_aie2p : public module_elf
   std::map<std::string, buf> m_pdi_buf_map;
   // map storing pdi symbols that needs patching in ctrl codes
   std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
-  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
-  std::map<std::string, xrt::bo> m_pdi_bo_map;
 
   size_t m_ctrl_scratch_pad_mem_size = 0;
   uint32_t m_partition_size = UINT32_MAX;
@@ -1468,12 +1446,6 @@ public:
       return it->second;
 
     return buf::get_empty_buf();
-  }
-
-  xrt::bo&
-  get_pdi_bo(const std::string& pdi_name) override
-  {
-    return m_pdi_bo_map[pdi_name];
   }
 
   const instr_buf&
@@ -1994,6 +1966,9 @@ class module_sram : public module_impl
   // value : xrt::bo filled with corresponding section data
   std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
 
+  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
+  std::map<std::string, xrt::bo> m_pdi_bo_map;
+
   // Tuple of uC index, address, size, dtrace_addr, where address is the
   // address of the ctrlcode for indexed uC, size is the size of the ctrlcode,
   // and dtrace_addr is the address of the dtrace buffer for the indexed uC if
@@ -2314,15 +2289,13 @@ class module_sram : public module_impl
     // patch all pdi addresses
     auto pdi_symbols = parent->get_patch_pdis(m_ctrl_code_id);
     for (const auto& symbol : pdi_symbols) {
-      auto& pdi_bo = m_parent->get_pdi_bo(symbol);
-      if (!pdi_bo) {
-        // pdi_bo doesn't exist create it
-        const auto& pdi_data = parent->get_pdi(symbol);
-        pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
-        fill_bo_with_data(pdi_bo, pdi_data);
-      }
+      const auto& pdi_data = parent->get_pdi(symbol);
+      auto pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
+      fill_bo_with_data(pdi_bo, pdi_data);
+      // Move bo into map and get reference for patching
+      auto [it, inserted] = m_pdi_bo_map.emplace(symbol, std::move(pdi_bo));
       // patch instr buffer with pdi address
-      patch_instr(m_instr_bo, symbol, 0, pdi_bo, xrt_core::patcher::buf_type::ctrltext);
+      patch_instr(m_instr_bo, symbol, 0, it->second, xrt_core::patcher::buf_type::ctrltext);
     }
 
     if (m_ctrlpkt_bo) {
