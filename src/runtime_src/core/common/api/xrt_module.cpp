@@ -28,6 +28,7 @@
 #include <elfio/elfio.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
@@ -188,7 +189,7 @@ struct patch_config {
 // Runtime state for a single patch location (per-instance, mutable)
 struct patch_state {
   bool dirty = false; // Tells whether this entry is already patched or not
-  uint32_t bd_data_ptrs[max_bd_words] = {}; // array to store bd ptrs original values
+  std::array<uint32_t, max_bd_words> bd_data_ptrs = {}; // array to store bd ptrs original values
 };
 
 // Helper function to convert buf_type to section name string
@@ -355,12 +356,12 @@ public:
 
       if (!state.dirty) {
         // first time patching cache bd ptr values
-        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs);
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs.begin());
         state.dirty = true;
       }
       else {
         // not the first time patching, restore bd ptr values
-        std::copy(state.bd_data_ptrs, state.bd_data_ptrs + max_bd_words, bd_data_ptr);
+        std::copy(state.bd_data_ptrs.begin(), state.bd_data_ptrs.end(), bd_data_ptr);
       }
 
       auto sync = [&](size_t size) {
@@ -1366,8 +1367,8 @@ class module_elf_aie2p : public module_elf
         m_ctrl_pdi_map[grp_idx].insert(symname);
       }
 
-      patch_symbol_type patch_scheme;
-      uint32_t add_end_addr;
+      patch_symbol_type patch_scheme = patch_symbol_type::unknown_symbol_kind;
+      uint32_t add_end_addr = 0;
       auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
       if (abi_version != 1) {
         add_end_addr = rela->r_addend;
