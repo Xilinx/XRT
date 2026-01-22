@@ -6,6 +6,7 @@
 #include "core/common/device.h"
 #include "tools/common/OptionOptions.h"
 #include "FirmwareLog.h"
+#include <optional>
 
 namespace smi = xrt_core::tools::xrt_smi;
 
@@ -22,7 +23,7 @@ private:
   bool m_help;
   bool m_watch;
   bool m_status;
-  bool m_raw;
+  std::optional<std::string> m_raw; 
   bool m_version;
   mutable uint64_t m_watch_mode_offset;
 
