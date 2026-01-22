@@ -117,6 +117,9 @@ PYBIND11_MODULE(pyxrt, m) {
         .def(py::init<>())
         .def(py::init([](const xrt::device& d, const xrt::uuid& u) {
             return new xrt::hw_context(d, u);
+        }))
+        .def(py::init([](const xrt::device& device, const xrt::elf& elf) {
+            return new xrt::hw_context(device, elf);
         }));
 
 /*
