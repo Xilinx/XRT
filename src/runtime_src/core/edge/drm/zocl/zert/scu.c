@@ -136,7 +136,7 @@ stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(stat);
 
-ssize_t show_status(struct zocl_scu *scu, char *buf)
+static ssize_t show_status(struct zocl_scu *scu, char *buf)
 {
 	ssize_t sz = 0;
 
