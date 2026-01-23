@@ -2741,15 +2741,13 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    // dump dtrace buffer if ini option is enabled
-    static bool dtrace = !xrt_core::config::get_dtrace_lib_path().empty();
 
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        if (dtrace)
-          xrt_core::module_int::dump_dtrace_buffer(m_module);
+        // dump dtrace buffer if ini option is enabled
+        dump_dtrace_buffer();
 
         // dump uc log buffer for timeout case
         xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
@@ -2767,8 +2765,8 @@ public:
     if (dump)
       xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
-    if (dtrace)
-      xrt_core::module_int::dump_dtrace_buffer(m_module);
+    // dump dtrace buffer if ini option is enabled
+    dump_dtrace_buffer();
 
     // Dump uC log buffer for non-completed cases
     if (state != ERT_CMD_STATE_COMPLETED)
@@ -2826,9 +2824,7 @@ public:
 
     // dump dtrace buffer if ini option is enabled
     // here dtrace is dumped in both passing and timeout cases
-    static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
-    if (dtrace_enabled && m_module)
-      xrt_core::module_int::dump_dtrace_buffer(m_module);
+    dump_dtrace_buffer();
 
     if (state != ERT_CMD_STATE_COMPLETED) {
       // Dump uC log buffer for non-completed cases
@@ -2875,6 +2871,15 @@ public:
       throw xrt_core::error("No module associated with run object");
 
     return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
+  }
+
+  // Dump dtrace buffer if enabled and module exists
+  void
+  dump_dtrace_buffer() const
+  {
+    static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
+    if (dtrace_enabled && m_module)
+      xrt_core::module_int::dump_dtrace_buffer(m_module, uid);
   }
 };
 
@@ -3623,10 +3628,18 @@ public:
 
     // Wait throws on error. On timeout just return
     if (wait(timeout) == std::cv_status::timeout) {
+      // Dump dtrace buffer for all run objects in timeout case
+      for (const auto& run : m_runlist)
+        run.get_handle()->dump_dtrace_buffer();
+
       // Dump uC log buffer for debug when timeout happens
       xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
       return std::cv_status::timeout;
     }
+
+    // dump dtrace buffer for all run objects on successful completion
+    for (const auto& run : m_runlist)
+      run.get_handle()->dump_dtrace_buffer();
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
