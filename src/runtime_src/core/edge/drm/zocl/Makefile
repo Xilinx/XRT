@@ -12,7 +12,9 @@ else
 # build from source code
 common_dir := ../../../common/drv
 endif
-
+zocl_common_dir := common
+zocl_edge_dir := edge
+zocl_zert_dir := zert
 else
 # clean
 make_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -20,7 +22,9 @@ common_dir := $(make_dir)/../../../common/drv
 ifeq ($(wildcard $(make_dir)/../../../common/drv),)
 common_dir := $(make_dir)/../common
 endif
-
+zocl_common_dir := $(make_dir)/common
+zocl_edge_dir := $(make_dir)/edge
+zocl_zert_dir := $(make_dir)/zert
 endif
 
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
@@ -28,6 +32,10 @@ ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -
 #flags passed from xrt_git.bb file are added below
 ifneq ($(cflags_zocl),)
 	ccflags-y += $(cflags_zocl)
+endif
+
+ifneq ($(CFLAGS_MODULE),)
+	ccflags-y += $(CFLAGS_MODULE)
 endif
 
 ccflags-y += -Wall
@@ -47,7 +55,6 @@ drv_common-y   := $(common_dir)/kds_hwctx.o \
                   $(common_dir)/xrt_cu.o \
                   $(common_dir)/xrt_xclbin.o
 
-zocl_common_dir := $(make_dir)/common
 zocl_common-y := $(zocl_common_dir)/zocl_sysfs.o \
 	$(zocl_common_dir)/zocl_ioctl.o \
 	$(zocl_common_dir)/zocl_drv.o \
@@ -56,7 +63,6 @@ zocl_common-y := $(zocl_common_dir)/zocl_sysfs.o \
 	$(zocl_common_dir)/zocl_kds.o \
 	$(zocl_common_dir)/cu.o 
 
-zocl_edge_dir := $(make_dir)/edge
 zocl_edge-y := $(zocl_edge_dir)/zocl_dma.o \
 	$(zocl_edge_dir)/zocl_cu.o \
 	$(zocl_edge_dir)/zocl_mailbox.o \
@@ -66,7 +72,6 @@ zocl_edge-y := $(zocl_edge_dir)/zocl_dma.o \
 	$(zocl_edge_dir)/zocl_aie.o \
 	$(zocl_edge_dir)/zocl_hwctx.o
 
-zocl_zert_dir := $(make_dir)/zert
 zocl_zert-y := $(zocl_zert_dir)/zocl_ert.o \
 	$(zocl_zert_dir)/zocl_ov_sysfs.o \
 	$(zocl_zert_dir)/zocl_ospi_versal.o \
@@ -102,7 +107,6 @@ git_variables:
 	$(eval TMP_MODIFIED_FILES ?= $(shell git status --porcelain -uno))
 	$(eval GIT_MODIFIED_FILES ?= $(subst \\n,\,,$(TMP_MODIFIED_FILES)))
 	$(eval DATE_NOW ?= $(shell date "+%Y-%m-%d"))
-
 	$(eval cflags_module := -DXRT_HASH="\"$(GIT_HASH)\"" -DXRT_HASH_DATE="\"$(GIT_HASH_DATE)\"" -DXRT_BRANCH="\"$(GIT_BRANCH)\"" -DXRT_MODIFIED_FILES="\"$(GIT_MODIFIED_FILES)\"" -DXRT_DATE="\"$(DATE_NOW)\"" -DXRT_DRIVER_VERSION="\"$(XRT_DRIVER_VERSION)\"")
 
 modules: git_variables

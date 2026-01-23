@@ -59,7 +59,11 @@ static struct attribute *zocl_ov_attrs[] = {
 };
 
 static ssize_t read_versal_pdi(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct zocl_ov_dev *ov;
 	struct zocl_ov_pkt_node *node;
@@ -117,8 +121,11 @@ static struct bin_attribute versal_pdi_attr = {
 	.write = NULL,
 	.size = 0
 };
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+static const struct bin_attribute *zocl_ov_bin_attrs[] = {
+#else
 static struct bin_attribute *zocl_ov_bin_attrs[] = {
+#endif
 	&versal_pdi_attr,
 	NULL,
 };

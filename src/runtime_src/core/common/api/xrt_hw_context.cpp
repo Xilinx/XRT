@@ -147,9 +147,11 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   std::map<std::string, xrt::elf> m_elf_map;
 
   // map b/w kernel name and xrt::module
-  // For xrt::kernel object created in this hw_context, they
+  // For xrt::kernel objects created in this hw_context, they
   // should share the same xrt::module.
   std::map<std::string, xrt::module> m_kernel_mod_map;
+
+  mutable std::mutex m_mutex;
 
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
@@ -179,6 +181,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     // This will be useful for ELF lookup when creating xrt::kernel object
     // using kernel name
     const auto& kernels_info = xrt_core::module_int::get_kernels_info(module_obj);
+
+    std::lock_guard<std::mutex> lk(m_mutex);
     for (const auto& k_info : kernels_info) {
       auto kernel_name = k_info.props.name;
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
@@ -400,6 +404,8 @@ public:
   xrt::module
   get_module(const std::string& kname)
   {
+     std::lock_guard<std::mutex> lk(m_mutex);
+
      auto itr = m_elf_map.find(kname);
      if (itr == m_elf_map.end())
        throw std::runtime_error("no module found with given kernel name in ctx");
@@ -414,6 +420,9 @@ public:
   bool
   get_elf_flow() const
   {
+    if (!m_hdl) {
+      throw std::runtime_error("Hardware Context Handle is not yet created, so cannot determine flow type.");
+    }
     return m_elf_flow;
   }
 
@@ -513,9 +522,11 @@ public:
 
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
-  const std::map<std::string, xrt::elf>&
+  // Returns by value to ensure thread safety
+  std::map<std::string, xrt::elf>
   get_elf_map() const
   {
+    std::lock_guard<std::mutex> lk(m_mutex);
     return m_elf_map;
   }
 };
@@ -591,7 +602,7 @@ dump_uc_log_buffer(const xrt::hw_context& hwctx)
   return hwctx.get_handle()->dump_uc_log_buffer();
 }
 
-const std::map<std::string, xrt::elf>&
+std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_elf_map();

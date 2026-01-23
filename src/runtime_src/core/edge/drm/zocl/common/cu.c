@@ -175,7 +175,11 @@ static DEVICE_ATTR_RO(stat);
 
 static ssize_t
 crc_buf_show(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	     const struct bin_attribute *attr, char *buf,
+#else
 	     struct bin_attribute *attr, char *buf,
+#endif
 	     loff_t offset, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
@@ -241,7 +245,11 @@ static struct bin_attribute crc_buf_attr = {
 	.size = 0,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+static const struct bin_attribute *cu_bin_attrs[] = {
+#else
 static struct bin_attribute *cu_bin_attrs[] = {
+#endif
 	&crc_buf_attr,
 	NULL,
 };
