@@ -322,6 +322,9 @@ public:
       create_elf_map(elf);
       m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
+      // XDP configuration is required only once,
+      // as all the elfs in one HWCtx will have the same partition size
+      xrt_core::xdp::update_device(this, true);
       return;
     }
 
