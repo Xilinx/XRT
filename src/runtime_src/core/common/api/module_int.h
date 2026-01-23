@@ -117,8 +117,9 @@ get_kernels_info(const xrt::module& module);
 
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
+// Optional run_id parameter to generate unique filenames for multiple runs
 void
-dump_dtrace_buffer(const xrt::module& module);
+dump_dtrace_buffer(const xrt::module& module, uint32_t run_id = 0);
 
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.

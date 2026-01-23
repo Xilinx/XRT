@@ -2839,7 +2839,7 @@ public:
   }
 
   void
-  dump_dtrace_buffer()
+  dump_dtrace_buffer(uint32_t run_id = 0)
   {
     if (!m_dtrace.ctrl_bo) // dtrace is not enabled
       return;
@@ -2862,7 +2862,9 @@ public:
       std::string result_file_path = std::filesystem::current_path().string()
                                    + "/dtrace_dump_"
                                    + xrt_core::get_timestamp_for_filename()
-                                   + "_" + std::to_string(get_id()) + ".py";
+                                   + "_" + std::to_string(get_id())
+                                   + "_run" + std::to_string(run_id)
+                                   + ".py";
 
       get_dtrace_result_file(result_file_path.c_str());
 
@@ -3049,13 +3051,13 @@ get_kernels_info(const xrt::module& module)
 }
 
 void
-dump_dtrace_buffer(const xrt::module& module)
+dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
 {
   auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
   if (!module_sram)
     throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
 
-  module_sram->dump_dtrace_buffer();
+  module_sram->dump_dtrace_buffer(run_id);
 }
 
 xrt::bo
