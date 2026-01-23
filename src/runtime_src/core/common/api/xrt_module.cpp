@@ -3051,13 +3051,13 @@ get_kernels_info(const xrt::module& module)
 }
 
 void
-dump_dtrace_buffer(const xrt::module& module)
+dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
 {
   auto module_sram = std::dynamic_pointer_cast<xrt::module_sram>(module.get_handle());
   if (!module_sram)
     throw std::runtime_error("Getting module_sram failed, wrong module object passed\n");
 
-  module_sram->dump_dtrace_buffer();
+  module_sram->dump_dtrace_buffer(run_id);
 }
 
 xrt::bo
