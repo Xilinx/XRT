@@ -367,12 +367,6 @@ private:
    */
   std::unordered_map<std::string, size_t>
   create_field_indices(const firmware_log_config& config);
-
-  /**
-   * @brief Create column widths map for alignment
-   */
-  std::unordered_map<std::string, size_t>
-  create_column_widths(const std::unordered_map<std::string, std::string>& columns);
 };
 
 } // namespace xrt_core::tools::xrt_smi

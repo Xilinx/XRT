@@ -176,7 +176,13 @@ firmware_log_parser(firmware_log_config config)
       {"line", "Line Number"},
       {"module", "Module ID"}
     }),
-    m_column_widths(create_column_widths(m_columns))
+    m_column_widths({
+      {"timestamp", 22},
+      {"level", 15},
+      {"appn", 15},
+      {"line", 15},
+      {"module", 15}
+    })
   {}
 
 std::unordered_map<std::string, size_t> 
@@ -189,17 +195,6 @@ create_field_indices(const firmware_log_config& config)
     indices[header_struct.fields[i].name] = i;
   }
   return indices;
-}
-
-std::unordered_map<std::string, size_t> 
-firmware_log_parser::
-create_column_widths(const std::unordered_map<std::string, std::string>& columns)
-{
-  std::unordered_map<std::string, size_t> widths;
-  for (const auto& [field_name, header_text] : columns) {
-    widths[field_name] = header_text.length() + 4; // Add padding for alignment
-  }
-  return widths;
 }
 
 uint64_t 
