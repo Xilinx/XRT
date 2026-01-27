@@ -160,8 +160,8 @@ debug_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	client = zcu_xgq->zxc_client_hdl;
 	/* Default hw context set as 0 to extract the stats */
-	sz += sprintf(buf+sz, "s_cnt %ld\n", client_stat_read(client, 0, s_cnt[0]));
-	sz += sprintf(buf+sz, "c_cnt %ld\n", client_stat_read(client, 0, c_cnt[0]));
+	sz += sprintf(buf+sz, "s_cnt %lld\n", client_stat_read(client, 0, s_cnt[0]));
+	sz += sprintf(buf+sz, "c_cnt %lld\n", client_stat_read(client, 0, c_cnt[0]));
 
 	return sz;
 }
@@ -174,7 +174,11 @@ static struct attribute *zcu_xgq_attrs[] = {
 
 static ssize_t
 xgq_ring(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	 const struct bin_attribute *attr, char *buf,
+#else
 	 struct bin_attribute *attr, char *buf,
+#endif
 	 loff_t offset, size_t count)
 {
 	struct zocl_cu_xgq *zcu_xgq;
@@ -214,7 +218,11 @@ static struct bin_attribute ring_attr = {
 #ifdef ZCU_XGQ_DEBUG
 static ssize_t
 cmd_log_show(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	const struct bin_attribute *attr, char *buf,
+#else
 	struct bin_attribute *attr, char *buf,
+#endif
 	loff_t offset, size_t count)
 {
 	struct zocl_cu_xgq *zcu_xgq;
@@ -238,7 +246,11 @@ static struct bin_attribute log_attr = {
 };
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+static const struct bin_attribute *zcu_xgq_bin_attrs[] = {
+#else
 static struct bin_attribute *zcu_xgq_bin_attrs[] = {
+#endif
 	&ring_attr,
 #ifdef ZCU_XGQ_DEBUG
 	&log_attr,

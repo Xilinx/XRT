@@ -48,7 +48,11 @@ static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
 kds_custat_raw_show(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	const struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+#else
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
@@ -272,7 +276,11 @@ clean:
 static DEVICE_ATTR_RO(graph_status);
 
 static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -421,7 +429,11 @@ static struct attribute *zocl_attrs[] = {
 };
 
 static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -462,7 +474,11 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -503,7 +519,11 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -544,7 +564,11 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -587,7 +611,11 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		const struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#else
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+#endif
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct drm_zocl_slot *zocl_slot = NULL;
@@ -699,8 +727,11 @@ static struct bin_attribute xclbin_full_attr = {
 	.size = 0
 };
 
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+static const struct bin_attribute *zocl_bin_attrs[] = {
+#else
 static struct bin_attribute *zocl_bin_attrs[] = {
+#endif
 	&aie_metadata_attr,
 	&connectivity_attr,
 	&debug_ip_layout_attr,

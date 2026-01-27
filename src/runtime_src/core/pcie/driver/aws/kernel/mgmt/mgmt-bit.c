@@ -700,13 +700,30 @@ int bitstream_ioctl_axlf(struct awsmgmt_dev *lro, const void __user *arg)
 		return err;
 	}
 
+	/*
+	 * Validate m_numSections to prevent integer overflow (CVE fix).
+	 * An attacker-controlled m_numSections value could cause an integer
+	 * overflow in the copy_buffer_size calculation, resulting in a small
+	 * allocation followed by a large copy_from_user, causing heap corruption.
+	 */
+	if (bin_obj.m_header.m_numSections == 0) {
+		printk(KERN_ERR "XRT: Invalid XCLBIN - zero sections\n");
+		return -EINVAL;
+	}
+
+	if (bin_obj.m_header.m_numSections > XCLBIN_MAX_NUM_SECTION) {
+		printk(KERN_ERR "XRT: XCLBIN section count %u exceeds maximum %u\n",
+		       bin_obj.m_header.m_numSections, XCLBIN_MAX_NUM_SECTION);
+		return -EINVAL;
+	}
+
 	copy_buffer_size = (bin_obj.m_header.m_numSections)*sizeof(struct axlf_section_header) + sizeof(struct axlf);
 	printk(KERN_INFO "Marker 0, numSections : %d, user_buf_size %llu, axlf struct size %lu\n", bin_obj.m_header.m_numSections, copy_buffer_size, sizeof(struct axlf));
 
 	copy_buffer = (struct axlf*)vmalloc(copy_buffer_size);
 	if(!copy_buffer) {
 		printk(KERN_ERR "Unable to create copy_buffer");
-		return -EFAULT;
+		return -ENOMEM;
 	}
 
 	if (copy_from_user((void *)copy_buffer, (void *)bitstream_obj.xclbin, copy_buffer_size)) {

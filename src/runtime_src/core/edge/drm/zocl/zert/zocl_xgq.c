@@ -22,6 +22,10 @@
 #include "zocl_ert_intc.h"
 #include "zocl_xgq.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+#define del_timer_sync(timer) timer_shutdown_sync(timer)
+#endif
+
 #define ZXGQ2PDEV(zxgq)			((zxgq)->zx_pdev)
 #define ZXGQ2DEV(zxgq)			(&ZXGQ2PDEV(zxgq)->dev)
 #define zxgq_err(zxgq, fmt, args...)	zocl_err(ZXGQ2DEV(zxgq), fmt"\n", ##args)
@@ -220,7 +224,7 @@ static void zxgq_req_receiver(struct work_struct *work)
 
 static void zxgq_timer(struct timer_list *t)
 {
-	struct zocl_xgq *zxgq = from_timer(zxgq, t, zx_timer);
+	struct zocl_xgq *zxgq = container_of(t, struct zocl_xgq, zx_timer);
 
 	complete(&zxgq->zx_comp);
 	/* We're a periodic timer. */

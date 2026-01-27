@@ -132,6 +132,23 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
+
+	/*
+	 * Validate m_numSections to prevent integer overflow (CVE fix).
+	 * An attacker-controlled m_numSections value could cause an integer
+	 * overflow in the axlf_size calculation, resulting in heap corruption.
+	 */
+	if (axlf_head.m_header.m_numSections == 0) {
+		DRM_WARN("read xclbin: invalid XCLBIN - zero sections");
+		return -EINVAL;
+	}
+
+	if (axlf_head.m_header.m_numSections > XCLBIN_MAX_NUM_SECTION) {
+		DRM_WARN("read xclbin: section count %u exceeds maximum %u",
+			 axlf_head.m_header.m_numSections, XCLBIN_MAX_NUM_SECTION);
+		return -EINVAL;
+	}
+
 	num_of_sections = axlf_head.m_header.m_numSections;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
 	axlf = vmalloc(axlf_size);

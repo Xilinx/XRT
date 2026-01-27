@@ -151,8 +151,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // should share the same xrt::module.
   std::map<std::string, xrt::module> m_kernel_mod_map;
 
-  // mutex synchronization
-  std::mutex m_mutex;
+  mutable std::mutex m_mutex;
 
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
@@ -182,6 +181,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     // This will be useful for ELF lookup when creating xrt::kernel object
     // using kernel name
     const auto& kernels_info = xrt_core::module_int::get_kernels_info(module_obj);
+
+    std::lock_guard<std::mutex> lk(m_mutex);
     for (const auto& k_info : kernels_info) {
       auto kernel_name = k_info.props.name;
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
@@ -321,6 +322,9 @@ public:
       create_elf_map(elf);
       m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
+      // XDP configuration is required only once,
+      // as all the elfs in one HWCtx will have the same partition size
+      xrt_core::xdp::update_device(this, true);
       return;
     }
 
@@ -521,9 +525,11 @@ public:
 
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
-  const std::map<std::string, xrt::elf>&
+  // Returns by value to ensure thread safety
+  std::map<std::string, xrt::elf>
   get_elf_map() const
   {
+    std::lock_guard<std::mutex> lk(m_mutex);
     return m_elf_map;
   }
 };
@@ -599,7 +605,7 @@ dump_uc_log_buffer(const xrt::hw_context& hwctx)
   return hwctx.get_handle()->dump_uc_log_buffer();
 }
 
-const std::map<std::string, xrt::elf>&
+std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_elf_map();
