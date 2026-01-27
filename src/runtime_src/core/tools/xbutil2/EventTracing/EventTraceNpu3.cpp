@@ -406,7 +406,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
       // Advance past this valid entry
       offset += entry_size;
       
-    } catch (const std::exception& e) {
+    } catch (const std::exception& /*e*/) {
       // Error parsing this entry, skip it and continue scanning
       offset += SCAN_STEP;
     }
