@@ -383,7 +383,7 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
       
       // Calculate full entry size: RBE header + payload_words*8 + RBE footer
       size_t entry_size = npu3_rbe_header_bytes 
-                          + (event_data.payload_words * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+                          + (static_cast<size_t>(event_data.payload_words) * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
                           + npu3_rbe_footer_bytes;
       
       // Validate we have enough data for this entry

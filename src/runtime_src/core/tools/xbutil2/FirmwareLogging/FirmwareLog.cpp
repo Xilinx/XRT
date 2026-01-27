@@ -176,6 +176,7 @@ firmware_log_parser(firmware_log_config config)
       {"line", "Line Number"},
       {"module", "Module ID"}
     }),
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     m_column_widths({
       {"timestamp", 22},
       {"level", 15},
@@ -183,6 +184,7 @@ firmware_log_parser(firmware_log_config config)
       {"line", 15},
       {"module", 15}
     })
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
   {}
 
 std::unordered_map<std::string, size_t> 
