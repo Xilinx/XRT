@@ -98,7 +98,7 @@ public:
   // The payload is after extra_cu_mask and before CU arguments.
   // Returns the current point of the ERT command payload
   virtual uint32_t*
-  fill_ert_dpu_data(uint32_t* payload) const
+  fill_ert_dpu_data(uint32_t*) const
   {
     throw std::runtime_error("Not supported");
   }
@@ -221,9 +221,8 @@ protected:
   }
 
   // Helper function for patching buffer with argument name or index
-  template <typename T>
   bool
-  patch_helper(T base_or_bo, const std::string& argnm, size_t index, uint64_t patch,
+  patch_helper(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t patch,
                xrt_core::elf_patcher::buf_type type)
   {
     // Check if patcher configs exist
@@ -254,7 +253,7 @@ protected:
     }
 
     // Call patch - symbol_patcher owns its state internally
-    patcher_it->second.patch_symbol(base_or_bo, patch, m_first_patch);
+    patcher_it->second.patch_symbol(bo, patch, m_first_patch);
 
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
@@ -322,6 +321,9 @@ class module_run_aie2p : public module_run
   // key : section name (.ctrlpkt.pm.*)
   // value : xrt::bo filled with corresponding section data
   std::map<std::string, xrt::bo> m_ctrlpkt_pm_bos;
+
+  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
+  std::map<std::string, xrt::bo> m_pdi_bo_map;
 
   // Symbol names for patching
   static constexpr const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
@@ -441,15 +443,14 @@ class module_run_aie2p : public module_run
 
     // Patch all PDI addresses using config's pdi symbols
     for (const auto& symbol : m_config.patch_pdi_symbols) {
-      auto& pdi_bo = m_config.elf_parent->get_pdi_bo(symbol);
-      if (!pdi_bo) {
-        // pdi_bo doesn't exist, create it
-        const auto& pdi_data = m_config.elf_parent->get_pdi(symbol);
-        pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
-        fill_bo_with_data(pdi_bo, pdi_data);
-      }
+      const auto& pdi_data = m_config.elf_parent->get_pdi(symbol);
+      auto pdi_bo = xbi::create_bo(m_hwctx, pdi_data.size(), xbi::use_type::pdi);
+      fill_bo_with_data(pdi_bo, pdi_data);
+      // Move bo into map and get reference for patching
+      auto [it, inserted] = m_pdi_bo_map.emplace(symbol, std::move(pdi_bo));
+
       // Patch instr buffer with PDI address
-      patch_helper(m_instr_bo, symbol, 0, pdi_bo.address(), xrt_core::elf_patcher::buf_type::ctrltext);
+      patch_helper(m_instr_bo, symbol, 0, it->second.address(), xrt_core::elf_patcher::buf_type::ctrltext);
     }
 
     // Patch control packet address if present
@@ -639,60 +640,6 @@ public:
     // Sync bo data before returning
     m_ctrl_scratch_pad_mem.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
     return m_ctrl_scratch_pad_mem;
-  }
-
-  // Get patch buffer size based on buffer type
-  size_t
-  get_patch_buf_size(xrt_core::elf_patcher::buf_type type) const override
-  {
-    switch (type) {
-      case xrt_core::elf_patcher::buf_type::ctrltext:
-        return m_instr_bo.size();
-      case xrt_core::elf_patcher::buf_type::ctrldata:
-        return m_ctrlpkt_bo ? m_ctrlpkt_bo.size() : 0;
-      case xrt_core::elf_patcher::buf_type::preempt_save:
-        return m_preempt_save_bo ? m_preempt_save_bo.size() : 0;
-      case xrt_core::elf_patcher::buf_type::preempt_restore:
-        return m_preempt_restore_bo ? m_preempt_restore_bo.size() : 0;
-      default:
-        throw std::runtime_error("Unknown buffer type passed");
-    }
-  }
-
-  void
-  patch(uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
-        xrt_core::elf_patcher::buf_type type) override
-  {
-    const buf* buf = nullptr;
-
-    switch (type) {
-      case xrt_core::elf_patcher::buf_type::ctrltext:
-        buf = &m_config.instr_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::ctrldata:
-        buf = &m_config.ctrl_packet_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::preempt_save:
-        buf = &m_config.preempt_save_data;
-        break;
-      case xrt_core::elf_patcher::buf_type::preempt_restore:
-        buf = &m_config.preempt_restore_data;
-        break;
-      default:
-        throw std::runtime_error("Unknown buffer type passed");
-    }
-
-    if (sz < buf->size())
-      throw std::runtime_error{"Control code buffer passed in is too small"};
-
-    std::memcpy(ibuf, buf->data(), sz);
-
-    size_t index = 0;
-    for (auto& [arg_name, arg_addr] : *args) {
-      if (!patch_helper(ibuf, arg_name, index, arg_addr, type))
-        throw std::runtime_error{"Failed to patch " + arg_name};
-      index++;
-    }
   }
 };
 
@@ -1022,7 +969,7 @@ public:
 
     // New Elfs have multiple ctrlpkt sections
     // Iterate over all ctrlpkt buffers and patch them
-    for (const auto& ctrlpkt : m_ctrlpkt_bos) {
+    for (auto& ctrlpkt : m_ctrlpkt_bos) {
       if (patch_helper(ctrlpkt.second, argnm, index, value, xrt_core::elf_patcher::buf_type::ctrlpkt))
         patched = true;
     }
@@ -1086,23 +1033,6 @@ public:
     m_first_patch = false;
   }
 
-  // Get patch buffer size based on buffer type
-  size_t
-  get_patch_buf_size(xrt_core::elf_patcher::buf_type type) const override
-  {
-    if (type != xrt_core::elf_patcher::buf_type::ctrltext)
-      throw std::runtime_error("Info of given buffer type not available");
-
-    const auto& col_data = m_config.ctrlcodes;
-    if (col_data.empty())
-      throw std::runtime_error{"No control code found"};
-
-    if (col_data.size() != 1)
-      throw std::runtime_error{"multiple column ctrlcode are not supported in this flow"};
-
-    return col_data[0].size();
-  }
-
   // Dump dynamic trace buffer
   void
   dump_dtrace_buffer() override
@@ -1138,31 +1068,6 @@ public:
     catch (const std::exception &e) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffer dump failed, "} + e.what());
-    }
-  }
-
-  void
-  patch(uint8_t* ibuf, size_t sz, const std::vector<std::pair<std::string, uint64_t>>* args,
-        xrt_core::elf_patcher::buf_type type) override
-  {
-    const auto& col_data = m_config.ctrlcodes;
-    if (col_data.empty())
-      throw std::runtime_error{"No control code found"};
-
-    if (col_data.size() != 1)
-      throw std::runtime_error{"Patch failed: only support patching single column"};
-
-    const buf* buf = &col_data[0];
-    if (sz < buf->size())
-      throw std::runtime_error{"Control code buffer passed in is too small"};
-
-    std::memcpy(ibuf, buf->data(), sz);
-
-    size_t index = 0;
-    for (auto& [arg_name, arg_addr] : *args) {
-      if (!patch_helper(ibuf, arg_name, index, arg_addr, type))
-        throw std::runtime_error{"Failed to patch " + arg_name};
-      index++;
     }
   }
 };
@@ -1250,17 +1155,123 @@ get_ctrl_scratchpad_bo(const xrt::module& module)
 }
 
 size_t
-get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type type)
+get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type type,
+                   uint32_t ctrl_code_id)
 {
-  return module.get_handle()->get_patch_buf_size(type);
+  auto elf_hdl = module.get_handle()->get_elf_handle();
+  auto platform = elf_hdl->get_platform();
+
+  if (platform == xrt::elf::platform::aie2p) {
+    auto module_config =
+        std::get<xrt::module_config_aie2p>(elf_hdl->get_module_config(ctrl_code_id));
+
+    switch (type) {
+      case xrt_core::elf_patcher::buf_type::ctrltext:
+        return module_config.instr_data.size();
+      case xrt_core::elf_patcher::buf_type::ctrldata:
+        return module_config.ctrl_packet_data.size();
+      case xrt_core::elf_patcher::buf_type::preempt_save:
+        return module_config.preempt_save_data.size();
+      case xrt_core::elf_patcher::buf_type::preempt_restore:
+        return module_config.preempt_restore_data.size();
+      default:
+        throw std::runtime_error("Unknown buffer type passed");
+    }
+  }
+  else if(platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group) {
+    auto module_config =
+        std::get<xrt::module_config_aie2ps>(elf_hdl->get_module_config(ctrl_code_id));
+
+        if (type != xrt_core::elf_patcher::buf_type::ctrltext)
+      throw std::runtime_error("Info of given buffer type not available");
+
+    const auto& col_data = module_config.ctrlcodes;
+    if (col_data.empty())
+      throw std::runtime_error{"No control code found for given id"};
+    if (col_data.size() != 1)
+      throw std::runtime_error{"Patch failed: only support patching single column"};
+    return col_data[0].size();
+  }
+  else {
+    throw std::runtime_error{"Patch failed: unsupported ELF ABI"};
+  }
 }
 
 void
 patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
       const std::vector<std::pair<std::string, uint64_t>>* args,
-      xrt_core::elf_patcher::buf_type type)
+      xrt_core::elf_patcher::buf_type type, uint32_t ctrl_code_id)
 {
-  module.get_handle()->patch(ibuf, sz, args, type);
+  auto elf_hdl = module.get_handle()->get_elf_handle();
+  const xrt::buf* inst = nullptr;
+  auto platform = elf_hdl->get_platform();
+
+  if (platform == xrt::elf::platform::aie2p) {
+    auto module_config =
+        std::get<xrt::module_config_aie2p>(elf_hdl->get_module_config(ctrl_code_id));
+    switch (type) {
+      case xrt_core::elf_patcher::buf_type::ctrltext:
+        inst = &module_config.instr_data;
+        break;
+      case xrt_core::elf_patcher::buf_type::ctrldata:
+        inst = &module_config.ctrl_packet_data;
+        break;
+      case xrt_core::elf_patcher::buf_type::preempt_save:
+        inst = &module_config.preempt_save_data;
+        break;
+      case xrt_core::elf_patcher::buf_type::preempt_restore:
+        inst = &module_config.preempt_restore_data;
+        break;
+      default:
+        throw std::runtime_error("Unknown buffer type passed");
+    }
+  }
+  else if(platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group) {
+    auto module_config =
+        std::get<xrt::module_config_aie2ps>(elf_hdl->get_module_config(ctrl_code_id));
+    const auto& col_data = module_config.ctrlcodes;
+
+    if (col_data.empty())
+      throw std::runtime_error{"No control code found for given id"};
+    if (col_data.size() != 1)
+      throw std::runtime_error{"Patch failed: only support patching single column"};
+
+    inst = &col_data[0];
+  }
+  else {
+    throw std::runtime_error{"Patch failed: unsupported ELF ABI"};
+  }
+
+  if (sz < inst->size())
+    throw std::runtime_error{"Control code buffer passed in is too small"};
+  std::memcpy(ibuf, inst->data(), sz);
+
+  // If no args to patch, we're done
+  if (!args || args->empty())
+    return;
+
+  // Get the patcher configs from module
+  const auto* patcher_configs = elf_hdl->get_patcher_configs(ctrl_code_id);
+  if (!patcher_configs)
+    throw std::runtime_error{"No patcher configs found for given id"};
+
+  size_t index = 0;
+  for (const auto& [arg_name, arg_addr] : *args) {
+    // Find the patcher config for this argument
+    auto key_string = xrt_core::elf_patcher::generate_key_string(arg_name, type);
+    auto it = patcher_configs->find(key_string);
+    if (it == patcher_configs->end()) {
+      // Try with index
+      auto index_key = xrt_core::elf_patcher::generate_key_string(std::to_string(index), type);
+      it = patcher_configs->find(index_key);
+      if (it == patcher_configs->end())
+        throw std::runtime_error{"Failed to patch " + arg_name};
+    }
+
+    // Use static patch method (no state needed for shim tests)
+    xrt_core::elf_patcher::symbol_patcher::patch_symbol_raw(ibuf, arg_addr, it->second);
+    index++;
+  }
 }
 
 } // namespace xrt_core::module_int

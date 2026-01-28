@@ -143,12 +143,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // This map is used for lookup when creating xrt::kernel object
   // using kernel name.
   std::map<std::string, xrt::elf> m_elf_map;
-
-  // map b/w kernel name and xrt::module
-  // For xrt::kernel objects created in this hw_context, they
-  // should share the same xrt::module.
-  std::map<std::string, xrt::module> m_kernel_mod_map;
-
+  // mutex to protect the elf map
   mutable std::mutex m_mutex;
 
   // No. of cols in the AIE partition managed by this hw ctx
@@ -174,6 +169,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     // using kernel name
     for (const auto& kernel : elf.get_kernels()) {
       auto kernel_name = kernel.get_name();
+      std::lock_guard lk(m_mutex);
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
@@ -396,6 +392,7 @@ public:
   xrt::elf
   get_elf(const std::string& kname) const
   {
+    std::lock_guard lk(m_mutex);
     if (auto itr = m_elf_map.find(kname); itr != m_elf_map.end())
       return itr->second;
 
@@ -507,11 +504,10 @@ public:
 
   // Returns map of kernel names to their corresponding elf files
   // registered with this hardware context
-  // Returns by value to ensure thread safety
   std::map<std::string, xrt::elf>
   get_elf_map() const
   {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::lock_guard lk(m_mutex);
     return m_elf_map;
   }
 };
