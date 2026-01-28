@@ -1,4 +1,4 @@
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_module.h
 #define XRT_API_SOURCE         // exporting xrt_module.h
@@ -120,7 +120,7 @@ public:
 
   // Dump dynamic trace buffer
   virtual void
-  dump_dtrace_buffer()
+  dump_dtrace_buffer(uint32_t run_id)
   {
     throw std::runtime_error("Not supported");
   }
@@ -1035,7 +1035,7 @@ public:
 
   // Dump dynamic trace buffer
   void
-  dump_dtrace_buffer() override
+  dump_dtrace_buffer(uint32_t run_id) override
   {
     if (!m_dtrace.ctrl_bo) // dtrace is not enabled
       return;
@@ -1058,7 +1058,9 @@ public:
       std::string result_file_path = std::filesystem::current_path().string()
                                    + "/dtrace_dump_"
                                    + xrt_core::get_timestamp_for_filename()
-                                   + "_" + std::to_string(get_id()) + ".py";
+                                   + "_" + std::to_string(get_id())
+                                   + "_run" + std::to_string(run_id)
+                                   + ".py";
 
       get_dtrace_result_file(result_file_path.c_str());
 
@@ -1143,9 +1145,9 @@ sync(const xrt::module& module)
 }
 
 void
-dump_dtrace_buffer(const xrt::module& module)
+dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
 {
-  module.get_handle()->dump_dtrace_buffer();
+  module.get_handle()->dump_dtrace_buffer(run_id);
 }
 
 xrt::bo

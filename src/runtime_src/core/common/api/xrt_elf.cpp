@@ -1,4 +1,4 @@
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_elf.h
 #define XRT_API_SOURCE         // exporting xrt_elf.h

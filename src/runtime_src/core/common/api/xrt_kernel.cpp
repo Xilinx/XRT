@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
@@ -2213,8 +2213,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
 
     // Pass pre created ctrlpkt buffer when creating module_sram object.
     // This buffer is empty when ELF doesn't have ctrlpkt
-    return xrt_core::module_int::create_module_run(xrt_core::module_int::get_elf_handle(module),
-                                                   hwctx, ctrl_code_id, ctrlpkt_bo);
+    return xrt_core::module_int::create_module_run(
+        xrt::elf(xrt_core::module_int::get_elf_handle(module)),
+        hwctx, ctrl_code_id, ctrlpkt_bo);
   }
 
   virtual std::unique_ptr<arg_setter>
