@@ -319,16 +319,9 @@ public:
   // created lazily and cached
   // Get PDI buffer data for a symbol
   virtual const buf&
-  get_pdi(const std::string& symbol) const
+  get_pdi(const std::string&) const
   {
     throw std::runtime_error("get_pdi not supported on this platform");
-  }
-
-  // Get/create PDI buffer object for a symbol
-  virtual xrt::bo&
-  get_pdi_bo(const std::string& symbol)
-  {
-    throw std::runtime_error("get_pdi_bo not supported on this platform");
   }
 
   // Get control code id from kernel name

@@ -610,8 +610,6 @@ class elf_aie2p : public elf_impl
   // map that stores pdi symbols that needs patching in corresponding ctrl codes
   // key - ctrl code id, value - set of pdi symbols that needs patching
   std::map<uint32_t, std::unordered_set<std::string>> m_ctrl_pdi_map;
-  // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
-  std::map<std::string, xrt::bo> m_pdi_bo_map;
 
   // size of control scratch pad memory
   size_t m_ctrl_scratch_pad_mem_size = 0;
@@ -847,7 +845,7 @@ class elf_aie2p : public elf_impl
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
-        search->second.m_patch_configs.emplace_back(pc);
+        search->second.add_patch(pc);
       }
       else
         m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher_config{patch_scheme, {pc}, buf_type});
@@ -921,12 +919,6 @@ public:
     if (it == m_pdi_buf_map.end())
       throw std::runtime_error("PDI buffer not found for symbol: " + symbol);
     return it->second;
-  }
-
-  xrt::bo&
-  get_pdi_bo(const std::string& symbol) override
-  {
-    return m_pdi_bo_map[symbol];
   }
 
   uint32_t
@@ -1254,10 +1246,10 @@ class elf_aie2ps : public elf_impl
 
       auto search = m_arg2patcher[grp_idx].find(key_string);
       if (search != m_arg2patcher[grp_idx].end()) {
-        search->second.m_patch_configs.emplace_back(patch_config{abs_offset, add_end_addr, 0});
+        search->second.add_patch(patch_config{abs_offset, add_end_addr, 0});
       }
       else
-        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher_config{patch_scheme, {{abs_offset, add_end_addr}}, buf_type});
+        m_arg2patcher[grp_idx].emplace(std::move(key_string), patcher_config{patch_scheme, {patch_config{abs_offset, add_end_addr, 0}}, buf_type});
     }
   }
 

@@ -33,30 +33,19 @@ patcher_config(symbol_type type, std::vector<patch_config> configs, buf_type t)
   , m_patch_configs(std::move(configs))
 {}
 
+void
+patcher_config::
+add_patch(const patch_config& pc)
+{
+  m_patch_configs.push_back(pc);
+}
+
 // symbol_patcher constructor
 symbol_patcher::
 symbol_patcher(const patcher_config* config)
   : m_config(config)
-{
-  // State will be lazily initialized in patch_symbol_helper
-}
-
-void
-symbol_patcher::
-patch_symbol(uint8_t* base, uint64_t value)
-{
-  // this function is used by internal shim level tests
-  // which does explicit sync of buffers
-  // so needn't do a partial sync
-  patch_symbol_helper(base, value, true /*no partial sync*/);
-}
-
-void
-symbol_patcher::
-patch_symbol(xrt::bo bo, uint64_t value, bool first)
-{
-  patch_symbol_helper(bo, value, first);
-}
+  , m_states(config ? config->m_patch_configs.size() : 0)
+{}
 
 void
 symbol_patcher::
@@ -162,6 +151,158 @@ patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
   base_address += patch + get_ddr_aie_addr_offset();
   bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFF);                                  // NOLINT
   bd_data_ptr[1] = (bd_data_ptr[1] & 0xFE000000) | ((base_address >> 32) & 0x1FFFFFF);     // NOLINT
+}
+
+void
+symbol_patcher::
+patch_symbol(xrt::bo bo, uint64_t value, bool first)
+{
+  if (!m_config)
+    throw std::runtime_error("symbol_patcher: config not set");
+
+  auto base = reinterpret_cast<uint8_t*>(bo.map());
+  const auto& configs = m_config->m_patch_configs;
+
+  // Ensure runtime state is properly sized
+  if (m_states.size() != configs.size())
+    m_states.resize(configs.size());
+
+  for (size_t i = 0; i < configs.size(); ++i) {
+    const auto& config = configs[i];
+    auto& state = m_states[i];
+
+    auto offset = config.offset_to_patch_buffer;
+    auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
+
+    if (!state.dirty) {
+      // first time patching cache bd ptr values using bd ptrs array in patch state
+      std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs.begin());
+      state.dirty = true;
+    }
+    else {
+      // not the first time patching, restore bd ptr values from patch state bd ptrs array
+      std::copy(state.bd_data_ptrs.begin(), state.bd_data_ptrs.end(), bd_data_ptr);
+    }
+
+    // lambda for calling sync bo
+    // We only sync the words that are patched not the entire bo
+    auto sync = [&](size_t size) {
+      bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    };
+
+    switch (m_config->m_symbol_type) {
+    case symbol_type::address_64:
+      // value is a 64bit address
+      patch64(bd_data_ptr, value);
+      if (!first) {
+        // sync 64 bits patched
+        sync(sizeof(uint64_t));
+      }
+      break;
+    case symbol_type::scalar_32bit_kind:
+      // value is a register value
+      if (config.mask) {
+        patch32(bd_data_ptr, value, config.mask);
+        if (!first) {
+          // sync 32 bits patched
+          sync(sizeof(uint32_t));
+        }
+      }
+      break;
+    case symbol_type::shim_dma_base_addr_symbol_kind:
+      // value is a bo address
+      patch57(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // sync all the words (max_bd_words)
+        sync(sizeof(uint32_t) * max_bd_words);
+      }
+      break;
+    case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+      // value is a bo address
+      patch57_aie4(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // sync 64 bits or 2 words
+        sync(sizeof(uint64_t));
+      }
+      break;
+    case symbol_type::control_packet_57:
+      // value is a bo address
+      patch_ctrl57(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // Data in this case is written till 3rd offset of bd_data_ptr
+        // so syncing 4 words
+        sync(4 * sizeof(uint32_t));    // NOLINT
+      }
+      break;
+    case symbol_type::control_packet_48:
+      // value is a bo address
+      patch_ctrl48(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // Data in this case is written till 3rd offset of bd_data_ptr
+        // so syncing 4 words
+        sync(4 * sizeof(uint32_t));    // NOLINT
+      }
+      break;
+    case symbol_type::shim_dma_48:
+      // value is a bo address
+      patch_shim48(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // syncing 3 words
+        sync(3 * sizeof(uint32_t));    // NOLINT
+      }
+      break;
+    case symbol_type::control_packet_57_aie4:
+      // value is a bo address
+      patch_ctrl57_aie4(bd_data_ptr, value + config.offset_to_base_bo_addr);
+      if (!first) {
+        // syncing 3 words
+        sync(3 * sizeof(uint32_t));    // NOLINT
+      }
+      break;
+    default:
+      throw std::runtime_error("Unsupported symbol type");
+    }
+  }
+}
+
+void
+symbol_patcher::
+patch_symbol_raw(uint8_t* base, uint64_t value, const patcher_config& config)
+{
+  for (const auto& cfg : config.m_patch_configs) {
+    auto offset = cfg.offset_to_patch_buffer;
+    auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset); // NOLINT
+
+    switch (config.m_symbol_type) {
+    case symbol_type::address_64:
+      patch64(bd_data_ptr, value);
+      break;
+    case symbol_type::scalar_32bit_kind:
+      if (cfg.mask)
+        patch32(bd_data_ptr, value, cfg.mask);
+      break;
+    case symbol_type::shim_dma_base_addr_symbol_kind:
+      patch57(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::shim_dma_aie4_base_addr_symbol_kind:
+        patch57_aie4(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::control_packet_57:
+      patch_ctrl57(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::control_packet_48:
+      patch_ctrl48(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::shim_dma_48:
+      patch_shim48(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    case symbol_type::control_packet_57_aie4:
+      patch_ctrl57_aie4(bd_data_ptr, value + cfg.offset_to_base_bo_addr);
+      break;
+    default:
+      throw std::runtime_error("Unsupported symbol type");
+    }
+  }
 }
 
 } // namespace xrt_core::elf_patcher
