@@ -176,6 +176,7 @@ public:
   /// @cond
   // Undocumented converting constructor using impl only
   XRT_API_EXPORT
+  explicit
   elf(std::shared_ptr<elf_impl> impl)
     : detail::pimpl<elf_impl>(std::move(impl))
   {}

@@ -84,6 +84,11 @@ class elf_impl;
 // Configuration for AIE2P platform
 struct module_config_aie2p
 {
+  // NOLINTBEGIN
+  // Reference members are safe here: module_run holds shared_ptr<elf_impl>
+  // ensuring data lifetime, and these configs are temporary parameter bundles
+  // used only during construction.
+
   // Reference to instruction buffer data
   const instr_buf& instr_data;
 
@@ -108,6 +113,7 @@ struct module_config_aie2p
 
   // Reference to control packet preemption buffers map
   const std::map<std::string, buf>& ctrlpkt_pm_bufs;
+  // NOLINTEND
 
   // Flag indicating if preemption sections exist
   bool has_preemption;
@@ -119,6 +125,11 @@ struct module_config_aie2p
 // Configuration for AIE2PS/AIE4 platform
 struct module_config_aie2ps
 {
+  // NOLINTBEGIN
+  // Reference members are safe here: module_run holds shared_ptr<elf_impl>
+  // ensuring data lifetime, and these configs are temporary parameter bundles
+  // used only during construction.
+
   // Reference to control codes for each column
   const std::vector<ctrlcode>& ctrlcodes;
 
@@ -127,6 +138,7 @@ struct module_config_aie2ps
 
   // Reference to dump buffer for debug/trace
   const buf& dump_buf;
+  // NOLINTEND
 
   // Parent elf_impl pointer for any mutable operations
   elf_impl* elf_parent;
@@ -248,6 +260,12 @@ private:
 
 public:
   virtual ~elf_impl() = default;
+
+  // Base class managed through shared_ptr - no copy/move
+  elf_impl(const elf_impl&) = delete;
+  elf_impl(elf_impl&&) = delete;
+  elf_impl& operator=(const elf_impl&) = delete;
+  elf_impl& operator=(elf_impl&&) = delete;
 
   // Get raw ELFIO object reference
   const ELFIO::elfio&

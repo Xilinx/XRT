@@ -51,8 +51,8 @@ void
 symbol_patcher::
 patch64(uint32_t* data_to_patch, uint64_t addr)
 {
-  *data_to_patch = static_cast<uint32_t>(addr & 0xffffffff);
-  *(data_to_patch + 1) = static_cast<uint32_t>((addr >> 32) & 0xffffffff);
+  *data_to_patch = static_cast<uint32_t>(addr & 0xffffffff);                // NOLINT
+  *(data_to_patch + 1) = static_cast<uint32_t>((addr >> 32) & 0xffffffff);  // NOLINT
 }
 
 void
