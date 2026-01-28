@@ -313,6 +313,9 @@ public:
       create_elf_map(elf);
       m_elf_flow = true; // ELF flow
       m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
+      // XDP configuration is required only once,
+      // as all the elfs in one HWCtx will have the same partition size
+      xrt_core::xdp::update_device(this, true);
       return;
     }
 
@@ -404,6 +407,9 @@ public:
   bool
   get_elf_flow() const
   {
+    if (!m_hdl) {
+      throw std::runtime_error("Hardware Context Handle is not yet created, so cannot determine flow type.");
+    }
     return m_elf_flow;
   }
 
