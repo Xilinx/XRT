@@ -1811,7 +1811,7 @@ public:
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n", uid);
 
     // get kernel info from module and initialize properties and kernel args
-    auto kernel_info = get_kernel_info_from_module(m_module, nm);
+    auto kernel_info = get_kernel_info_from_module(m_module, name);
     properties = std::move(kernel_info.first);
     for (const auto& arg : kernel_info.second)
       args.emplace_back(arg);
