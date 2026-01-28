@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Xilinx Runtime (XRT) Experimental APIs
 
@@ -37,6 +37,7 @@ get_elf_handle(const xrt::module& module);
 
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
+XRT_CORE_COMMON_EXPORT
 uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t *payload);
 
@@ -77,18 +78,21 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const void* va
 // Check that all arguments have been patched and sync the buffer
 // to device if necessary.  Throw if not all arguments have been
 // patched.
+XRT_CORE_COMMON_EXPORT
 void
 sync(const xrt::module&);
 
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
 // Optional run_id parameter to generate unique filenames for multiple runs
+XRT_CORE_COMMON_EXPORT
 void
 dump_dtrace_buffer(const xrt::module& module, uint32_t run_id = 0);
 
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.
 // Throws if ELF doesn't contain scratchpad memory
+XRT_CORE_COMMON_EXPORT
 xrt::bo
 get_ctrl_scratchpad_bo(const xrt::module& module);
 
