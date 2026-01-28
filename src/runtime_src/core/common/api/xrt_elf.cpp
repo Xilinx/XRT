@@ -340,7 +340,7 @@ public:
 elf_impl::
 elf_impl(ELFIO::elfio&& elfio)
   : m_elfio{std::move(elfio)}
-{}
+{}  // NOLINT - m_platform initialized in derived class constructor
 
 // Get symbol information from .symtab at given index
 elf_impl::symbol_info
@@ -539,6 +539,7 @@ std::string
 elf_impl::
 get_note(const ELFIO::section* section, ELFIO::Elf_Word note_num) const
 {
+  // NOLINTNEXTLINE - ELFIO API requires non-const pointer despite not modifying
   ELFIO::note_section_accessor accessor(m_elfio, const_cast<ELFIO::section*>(section));
   ELFIO::Elf_Word type = 0;
   std::string name;
@@ -821,8 +822,8 @@ class elf_aie2p : public elf_impl
         m_ctrl_pdi_map[grp_idx].insert(symname);
       }
 
-      patcher_symbol_type patch_scheme;
-      uint32_t add_end_addr;
+      patcher_symbol_type patch_scheme = patcher_symbol_type::scalar_32bit_kind;
+      uint32_t add_end_addr = 0;
       auto abi_version = static_cast<uint16_t>(m_elfio.get_abi_version());
       if (abi_version != 1) {
         add_end_addr = rela->r_addend;
@@ -901,7 +902,7 @@ public:
       ctrl_pkt_it != m_ctrl_packet_map.end() ? ctrl_pkt_it->second : buf::get_empty_buf(), // ctrl_packet_data
       save_it != m_save_buf_map.end() ? save_it->second : buf::get_empty_buf(),  // preempt_save_data
       restore_it != m_restore_buf_map.end() ? restore_it->second : buf::get_empty_buf(), // preempt_restore_data
-      512_kb,                                                                     // scratch_pad_mem_size
+      512_kb,                                                                     // scratch_pad_mem_size  // NOLINT
       m_ctrl_scratch_pad_mem_size,                                               // ctrl_scratch_pad_mem_size
       pdi_it != m_ctrl_pdi_map.end() ? pdi_it->second : empty_pdi_set,           // patch_pdi_symbols
       m_ctrlpkt_pm_dynsyms,                                                      // ctrlpkt_pm_dynsyms

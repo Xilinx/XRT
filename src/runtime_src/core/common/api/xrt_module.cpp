@@ -73,14 +73,21 @@ namespace xrt {
 class module_impl
 {
 protected:
-  std::shared_ptr<xrt::elf_impl> m_elf_impl;
+  std::shared_ptr<xrt::elf_impl> m_elf_impl; // NOLINT
 
 public:
-  explicit module_impl(const xrt::elf& elf)
+  explicit
+  module_impl(const xrt::elf& elf)
     : m_elf_impl(elf.get_handle())
   {}
 
   virtual ~module_impl() = default;
+
+  // Base class managed through shared_ptr - no copy/move
+  module_impl(const module_impl&) = delete;
+  module_impl(module_impl&&) = delete;
+  module_impl& operator=(const module_impl&) = delete;
+  module_impl& operator=(module_impl&&) = delete;
 
   virtual xrt::hw_context
   get_hw_context() const
@@ -120,7 +127,7 @@ public:
 
   // Dump dynamic trace buffer
   virtual void
-  dump_dtrace_buffer(uint32_t run_id)
+  dump_dtrace_buffer(uint32_t)
   {
     throw std::runtime_error("Not supported");
   }
@@ -154,6 +161,10 @@ public:
 class module_run : public module_impl
 {
 protected:
+  // NOLINTBEGIN
+  // Protected members allow derived classes direct access without boilerplate
+  // getters/setters. This is a controlled inheritance hierarchy within this file.
+
   xrt::hw_context m_hwctx;
   uint32_t m_ctrl_code_id;
 
@@ -177,6 +188,7 @@ protected:
 
   // First patch flag - buffers are synced fully on first run
   bool m_first_patch = true;
+  // NOLINTEND
 
 private:
   union debug_flag_union {
@@ -277,14 +289,12 @@ protected:
   }
 
 public:
-  explicit module_run(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
+  module_run(const xrt::elf& elf, xrt::hw_context hw_context, uint32_t id)
     : module_impl(elf)
-    , m_hwctx(hw_context)
+    , m_hwctx(std::move(hw_context))
     , m_ctrl_code_id(id)
+    , m_patcher_configs(m_elf_impl->get_patcher_configs(m_ctrl_code_id))
   {
-    // Get pointer to shared patcher configs from elf_impl
-    m_patcher_configs = m_elf_impl->get_patcher_configs(m_ctrl_code_id);
-
     if (xrt_core::config::get_xrt_debug()) {
       m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
       m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
@@ -510,8 +520,8 @@ class module_run_aie2p : public module_run
   }
 
 public:
-  explicit module_run_aie2p(const xrt::elf& elf, const xrt::hw_context& hw_context,
-                            uint32_t id, const xrt::bo& ctrlpkt_bo)
+  module_run_aie2p(const xrt::elf& elf, const xrt::hw_context& hw_context,
+                   uint32_t id, const xrt::bo& ctrlpkt_bo)
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie2p>(m_elf_impl->get_module_config(id)))
   {
@@ -905,7 +915,7 @@ class module_run_aie2ps : public module_run
 
     for (const auto& ctrlcode : ctrlcodes) {
       if (auto size = ctrlcode.size())
-        m_column_bo_address.push_back({ucidx, base_addr, size});
+        m_column_bo_address.emplace_back(ucidx, base_addr, size);
 
       ++ucidx;
       base_addr += ctrlcode.size();
@@ -936,7 +946,7 @@ class module_run_aie2ps : public module_run
   }
 
 public:
-  explicit module_run_aie2ps(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
+  module_run_aie2ps(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie2ps>(m_elf_impl->get_module_config(id)))
   {
