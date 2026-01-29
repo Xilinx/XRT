@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 add_library(core_common_api_library_objects OBJECT
   context_mgr.cpp
+  elf_patcher.cpp
   hw_queue.cpp
   native_profile.cpp
   xrt_bo.cpp
