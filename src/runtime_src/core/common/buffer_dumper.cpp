@@ -7,9 +7,11 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
+#include "core/common/uc_log_schema.h"
 
 #include <cstring>
 #include <stdexcept>
+#include <sstream>
 
 namespace xrt_core {
 
@@ -25,7 +27,7 @@ buffer_dumper(config cfg)
     std::string filename = m_config.dump_file_prefix + "_" +
                            xrt_core::get_timestamp_for_filename() + "_" +
                            std::to_string(xrt_core::utils::get_pid()) + "_" +
-                           std::to_string(i) + ".bin";
+                           std::to_string(i) + ".txt";
 
     m_file_streams[i].open(filename, std::ios::out | std::ios::binary);
     if (!m_file_streams[i].is_open()) {
@@ -75,48 +77,91 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
                              " is in bad state before write");
   }
 
-  // Always write/update metadata since this function is called when there's new data
-  // and metadata(count) gets updated when there is new data
-  // Seek to beginning and write/update metadata
-  fs.seekp(0);
-  fs.write(reinterpret_cast<const char*>(chunk),
-           static_cast<std::streamsize>(m_config.metadata_size));
+  // UC log parsing and writing log messages to file using log schema
+  try {
+    // Parse log entries from the chunk using log schema
+    const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
+    const size_t bytes_to_end = m_config.chunk_size - start_offset;
 
-  if (!fs)
-    throw std::runtime_error("Failed to write metadata for chunk " + std::to_string(chunk_index));
+    std::ostringstream parsed_stream;
+    size_t parsed_bytes = 0;
+    // Iterate and parse each log entry in dumped data
+    while (parsed_bytes < length) {
+      size_t entry_offset;
 
-  // Seek to end to append actual data
-  fs.seekp(0, std::ios::end);
+      // Handle circular buffer wrapping
+      if (parsed_bytes < bytes_to_end) 
+        entry_offset = start_offset + parsed_bytes; // No wrap around
+      else 
+        entry_offset = m_config.metadata_size + (parsed_bytes - bytes_to_end); // Wrapped around
 
-  const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
-  const size_t bytes_to_end = m_config.chunk_size - start_offset;
+      // Current log entry in chunk
+      const uint8_t* entry = chunk + entry_offset;
+      // Extract fields from log entry, each log entry has format like following
+      //  -----------------------------------------
+      //  word  |  name    | meaning
+      //  -----------------------------------------
+      //  0     | length   | log entry length in number of words 
+      //  1     | ts_high  | timestamp high 32bit
+      //  2     | ts_low   | timestamp low 32bit
+      //  3     | file_id  | id of filename for file this log is in
+      //  4     | line num | line number of the log in the file
+      //  5     | log_id   | id of format string
+      //  6...  | args     | length - 6 is the number of args in format string
+      //  -----------------------------------------
+      uint32_t entry_length, ts_high, ts_low, file_id, line_num, log_id;
+      std::memcpy(&entry_length, entry, 4);
+      std::memcpy(&ts_high, entry + 4, 4);
+      std::memcpy(&ts_low, entry + 8, 4);
+      std::memcpy(&file_id, entry + 12, 4);
+      std::memcpy(&line_num, entry + 16, 4);
+      std::memcpy(&log_id, entry + 20, 4);
+      // Extract log arguments, 3 types of log: 0 argument, 1 argument, 2 arguments
+      uint32_t arg1 = 0, arg2 = 0;
+      if (entry_length > 6)
+        std::memcpy(&arg1, entry + 24, 4);
+      if (entry_length > 7)
+        std::memcpy(&arg2, entry + 28, 4);
 
-  if (length <= bytes_to_end) { // data doesn't wrap around
-    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-             static_cast<std::streamsize>(length));
+      // Format log message using log schema
+      // If log_id is not found in log schema, use default format string
+      const char* default_formats[] = {"unknown !", "unknown %d !!", "unknown %d unknown %d !!!"};
+      auto log_schema_it = uc_log_schema.logs.find(log_id);
+      const char* log_format = (log_schema_it != uc_log_schema.logs.end()) 
+        ? log_schema_it->second.c_str() 
+        : default_formats[entry_length - 6];
 
+      parsed_stream << "[CERT] ";
+      char log_message[1024];
+      if (entry_length == 6) 
+      {  // Log message without arguments
+        parsed_stream << log_format;
+      } 
+      else if (entry_length == 7) 
+      { // Log message with one argument
+        std::snprintf(log_message, sizeof(log_message), log_format, arg1);
+        parsed_stream << log_message;
+      } 
+      else if (entry_length == 8) 
+      { // Log message with two arguments
+        std::snprintf(log_message, sizeof(log_message), log_format, arg1, arg2);
+        parsed_stream << log_message;
+      }
+
+      parsed_bytes += m_config.metadata_size;
+    }
+    
+    // Append parsed output to file
+    fs.seekp(0, std::ios::end);
+    fs << parsed_stream.str();
+    
     if (!fs)
-      throw std::runtime_error("Failed to write " + std::to_string(length) +
-                               " bytes to chunk " + std::to_string(chunk_index));
+      throw std::runtime_error("Failed to write parsed UC log for chunk " + std::to_string(chunk_index));
   }
-  else {
-    // data wraps around
-    // write the first part
-    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-             static_cast<std::streamsize>(bytes_to_end));
-
-    if (!fs)
-      throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) +
-                               " bytes) to chunk " + std::to_string(chunk_index));
-
-    // write the wrapped part
-    fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
-             static_cast<std::streamsize>(length - bytes_to_end));
-
-    if (!fs)
-      throw std::runtime_error("Failed to write wrapped part (" +
-                               std::to_string(length - bytes_to_end) +
-                               " bytes) to chunk " + std::to_string(chunk_index));
+  catch (const std::exception& e) {
+    // Log parsing error, log warning and continue
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                            std::string{"UC log parsing failed: "} + e.what());
   }
 
   fs.flush();
