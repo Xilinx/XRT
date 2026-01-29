@@ -1257,7 +1257,10 @@ adjust_buffer_flags(const xrt::device& device, xrt::bo::flags flags, xrt::memory
   if (!is_nodma(device))
     return static_cast<xrtBufferFlags>(flags);
 
-  if (device.get_handle()->get_memory_type(grp) == xrt_core::device::memory_type::host)
+  // Extract bank index from memory group encoding
+  // grp contains: bank (bits 0-15), slot (bits 16-23), boflags (bits 24-31)
+  xcl_bo_flags xgrp{grp};
+  if (device.get_handle()->get_memory_type(xgrp.bank) == xrt_core::device::memory_type::host)
     return static_cast<xrtBufferFlags>(xrt::bo::flags::host_only);
 
   return static_cast<xrtBufferFlags>(flags);
