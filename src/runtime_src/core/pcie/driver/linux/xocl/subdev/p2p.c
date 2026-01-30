@@ -513,7 +513,7 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 	mb_req->req = XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR;
 	mb_p2p = (struct xcl_mailbox_p2p_bar_addr *)mb_req->data;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0) && !defined(RHEL_10_1_GE) && !defined(RHEL_9_7_GE)
 	if (!iommu_present(&pci_bus_type)){
 #else
 	if (!device_iommu_mapped(&pcidev->dev)) {

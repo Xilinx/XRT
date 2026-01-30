@@ -1241,7 +1241,7 @@ static struct drm_driver zocl_driver = {
 	.fops                      = &zocl_driver_fops,
 	.name                      = ZOCL_DRIVER_NAME,
 	.desc                      = ZOCL_DRIVER_DESC,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0)
 	.date                      = driver_date,
 #endif
 };

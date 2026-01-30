@@ -567,7 +567,7 @@ static struct drm_driver mm_drm_driver = {
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0) && !defined(RHEL_10_1_GE) && !defined(RHEL_9_7_GE)
 	.date				= driver_date,
 #endif
 };
