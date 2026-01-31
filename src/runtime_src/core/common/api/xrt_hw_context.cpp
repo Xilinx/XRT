@@ -608,7 +608,7 @@ get_mem_index(const xrt::hw_context& hwctx)
   {
     return it->second;
   }
-  return 1;  // default value is 1 in all the platforms
+  return 1;  // fallback default value when mem_index is not specified
 }
 
 } // xrt_core::hw_context_int
