@@ -1747,7 +1747,7 @@ create_bo(const std::shared_ptr<xrt_core::device>& device, size_t sz, use_type t
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 {
-  // Extract cma_index from hwctx cfg_param if available, otherwise default to 1
+  // Extract mem_index from hwctx cfg_param (or use its default)
   auto mem_index = xrt_core::hw_context_int::get_mem_index(hwctx);
   auto grp = static_cast<xrtMemoryGroup>(mem_index);
 
