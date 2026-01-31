@@ -377,6 +377,12 @@ public:
     return m_mode;
   }
 
+  cfg_param_type
+  get_cfg_param() const
+  {
+    return m_cfg_param;
+  }
+
   size_t
   get_partition_size() const
   {
@@ -591,6 +597,18 @@ const std::map<std::string, xrt::elf>&
 get_elf_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_elf_map();
+}
+
+uint32_t
+get_mem_index(const xrt::hw_context& hwctx)
+{
+  auto cfg_param = hwctx.get_handle()->get_cfg_param();
+  auto it = cfg_param.find("mem_index");
+  if (it != cfg_param.end())
+  {
+    return it->second;
+  }
+  return 1;  // default value is 1 in all the platforms
 }
 
 } // xrt_core::hw_context_int

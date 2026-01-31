@@ -82,6 +82,12 @@ XRT_CORE_COMMON_EXPORT
 const std::map<std::string, xrt::elf>&
 get_elf_map(const xrt::hw_context& hwctx);
 
+// Get the Memory index from the hardware context configuration parameters
+// Returns 1 if mem_index is not found in cfg_param
+XRT_CORE_COMMON_EXPORT
+uint32_t
+get_mem_index(const xrt::hw_context& hwctx);
+
 }} // hw_context_int, xrt_core
 
 #endif

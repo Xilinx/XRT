@@ -1747,11 +1747,14 @@ create_bo(const std::shared_ptr<xrt_core::device>& device, size_t sz, use_type t
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 {
+  // Extract cma_index from hwctx cfg_param if available, otherwise default to 1
+  auto mem_index = xrt_core::hw_context_int::get_mem_index(hwctx);
+  auto grp = static_cast<xrtMemoryGroup>(mem_index);
+
   // While the memory group should be ignored (inferred) for
-  // debug / trace buffers, it is still passed in as a default
-  // group 1 with no implied correlation to xclbin connectivity
-  // or memory group.
-  return xrt::bo{alloc(device_type{hwctx}, sz, compose_internal_bo_flags(type), 1)};
+  // debug / trace buffers, it is passed from the hwctx cfg_param
+  // to allow allocation from specific Memory regions
+  return xrt::bo{alloc(device_type{hwctx}, sz, compose_internal_bo_flags(type), grp)};
 }
 
 void
