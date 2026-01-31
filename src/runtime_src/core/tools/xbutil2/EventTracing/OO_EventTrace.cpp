@@ -42,15 +42,22 @@ OO_EventTrace::OO_EventTrace( const std::string &_longName, bool _isHidden )
 uint32_t
 OO_EventTrace::
 parse_categories(const std::vector<std::string>& categories_list, 
-                 const xrt_core::device* device) const 
+                 const xrt_core::device* device,
+                 bool is_enable) const 
 {
-  if (categories_list.empty()) {
-    return 0;
+  // If "all" is specified, enable/disable all categories
+  if (categories_list.size() == 1 && categories_list[0] == "all") {
+    return 0xFFFFFFFF; // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
   }
 
-  // Handle special case for "all"
-  if (categories_list.size() == 1 && categories_list[0] == "all") {
-    return 0xFFFFFFFF; // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)  
+  // If no categories specified with --enable, enable all categories
+  if (categories_list.empty() && is_enable) {
+    return 0xFFFFFFFF; // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+  }
+
+  // If no categories specified with --disable, return 0 (no-op or error)
+  if (categories_list.empty()) {
+    return 0;
   }
 
   uint32_t category_mask = 0;
@@ -96,7 +103,7 @@ handle_config(const xrt_core::device* device) const {
   std::string action_name = m_enable ? "enable" : "disable";
 
   try {
-    uint32_t category_mask = parse_categories(m_categories, device);
+    uint32_t category_mask = parse_categories(m_categories, device, m_enable);
     xrt_core::query::event_trace_state::value_type params{action_value, category_mask};
     xrt_core::device_update<xrt_core::query::event_trace_state>(device, params);
     std::cout << "Event trace " << action_name << "d successfully" << std::endl;
