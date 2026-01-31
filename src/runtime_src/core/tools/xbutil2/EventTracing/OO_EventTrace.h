@@ -22,7 +22,8 @@ public:
 private:
   uint32_t 
   parse_categories(const std::vector<std::string>& categories_list,
-                   const xrt_core::device* device) const;
+                   const xrt_core::device* device,
+                   bool is_enable) const;
 
   void
   handle_list_categories(const xrt_core::device* device) const;
