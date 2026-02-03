@@ -30,30 +30,106 @@ namespace xrt {
 
 ////////////////////////////////////////////////////////////////
 // buf - wrapper for holding ELF section data
+//
+// Uses std::string_view for zero-copy non-owning view of
+// ELFIO section data.
+// Padding stored separately to avoid copying section data.
 ////////////////////////////////////////////////////////////////
 struct buf
 {
-  std::vector<uint8_t> m_data;
+private:
+  // Non-owning views into ELFIO or external data
+  std::vector<std::string_view> m_views;
 
+  // Padding buffer - only allocated when AIE2PS/AIE4 needs page alignment
+  // Stored separately to avoid copying section data
+  std::vector<uint8_t> m_padding_buffer;
+
+public:
+  buf() = default;
+
+  // Append section data without copying (zero-copy from ELFIO)
   void
-  append_section_data(const ELFIO::section* sec);
+  append_section_data(const ELFIO::section* sec)
+  {
+    if (sec && sec->get_size() > 0) {
+      m_views.emplace_back(sec->get_data(), sec->get_size());
+    }
+  }
 
+  // Overload for smart pointers (from ELFIO range-based for loops)
+  void
+  append_section_data(const std::unique_ptr<ELFIO::section>& sec)
+  {
+    append_section_data(sec.get());
+  }
+
+  // Add padding to reach target size (for AIE2PS/AIE4 page alignment)
+  // Only allocates memory for padding zeros, NOT for existing section data!
+  void
+  add_padding_to_size(size_t target_size)
+  {
+    size_t current = size();
+    if (target_size > current) {
+      size_t padding_size = target_size - current;
+      m_padding_buffer.resize(padding_size, 0);
+      m_views.emplace_back(
+        reinterpret_cast<const char*>(m_padding_buffer.data()),
+        padding_size
+      );
+    }
+  }
+
+  // Get total size across all views
   size_t
   size() const
   {
-    return m_data.size();
+    size_t total = 0;
+    for (const auto& view : m_views) {
+      total += view.size();
+    }
+    return total;
   }
 
+  // Copy all views to destination buffer
+  // Iterates views and copies directly - used for copying to device BOs
+  void
+  copy_to(void* dest) const
+  {
+    auto* dst = static_cast<uint8_t*>(dest);
+    for (const auto& view : m_views) {
+      std::memcpy(dst, view.data(), view.size());
+      dst += view.size();
+    }
+  }
+
+  // Get data pointer - only works for single view (zero-copy)
+  // Used by patcher that needs direct memory access
   const uint8_t*
   data() const
   {
-    return m_data.data();
+    if (m_views.size() == 1) {
+      return reinterpret_cast<const uint8_t*>(m_views[0].data());
+    }
+
+    // Multiple views: cannot provide direct pointer
+    // Caller should use copy_to() instead
+    throw std::runtime_error(
+      "Cannot get direct pointer from buffer with multiple views. "
+      "Use copy_to() to copy data instead."
+    );
   }
 
-  void
-  append_section_data(const uint8_t* userptr, size_t sz)
+  // Create std::string from views (for debug/trace)
+  std::string
+  to_string() const
   {
-    m_data.insert(m_data.end(), userptr, userptr + sz);
+    std::string result;
+    result.reserve(size());
+    for (const auto& view : m_views) {
+      result.append(view);
+    }
+    return result;
   }
 
   static const buf&

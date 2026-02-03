@@ -234,17 +234,6 @@ load_elfio(const void* data, size_t size)
 
 namespace xrt {
 
-////////////////////////////////////////////////////////////////
-// buf::append_section_data implementation
-////////////////////////////////////////////////////////////////
-void
-buf::append_section_data(const ELFIO::section* sec)
-{
-  auto sz = sec->get_size();
-  auto sdata = sec->get_data();
-  m_data.insert(m_data.end(), sdata, sdata + sz);
-}
-
 class elf::kernel_impl
 {
   std::string m_name;
@@ -637,7 +626,7 @@ class elf_aie2p : public elf_impl
         continue;
 
       auto grp_idx = m_section_to_group_map[sec->get_index()];
-      buf_map[grp_idx].append_section_data(sec.get());
+      buf_map[grp_idx].append_section_data(sec);
     }
   }
 
@@ -688,7 +677,7 @@ class elf_aie2p : public elf_impl
       if (name.find(pdi_pattern) == std::string::npos)
         continue;
 
-      m_pdi_buf_map[name].append_section_data(sec.get());
+      m_pdi_buf_map[name].append_section_data(sec);
     }
   }
 
@@ -702,7 +691,7 @@ class elf_aie2p : public elf_impl
       if (name.find(pm_pattern) == std::string::npos)
         continue;
 
-      m_ctrlpkt_pm_bufs[name].append_section_data(sec.get());
+      m_ctrlpkt_pm_bufs[name].append_section_data(sec);
     }
   }
 
@@ -1098,7 +1087,7 @@ class elf_aie2ps : public elf_impl
           auto current_size = m_ctrlcodes_map[id][ucidx].size();
           auto target_size = (page + 1) * elf_page_size;
           if (current_size < target_size) {
-            m_ctrlcodes_map[id][ucidx].m_data.resize(target_size, 0);
+            m_ctrlcodes_map[id][ucidx].add_padding_to_size(target_size);
           }
         }
         pad_offsets[id][ucidx] = m_ctrlcodes_map[id][ucidx].size();
@@ -1130,7 +1119,7 @@ class elf_aie2ps : public elf_impl
         continue;
 
       buf ctrlpkt_buf;
-      ctrlpkt_buf.append_section_data(sec.get());
+      ctrlpkt_buf.append_section_data(sec);
       auto grp_idx = m_section_to_group_map[sec->get_index()];
       m_ctrlpkt_buf_map[grp_idx][name] = std::move(ctrlpkt_buf);
     }
@@ -1148,7 +1137,7 @@ class elf_aie2ps : public elf_impl
         continue;
 
       auto ctrl_id = m_section_to_group_map[sec->get_index()];
-      m_dump_buf_map[ctrl_id].append_section_data(sec.get());
+      m_dump_buf_map[ctrl_id].append_section_data(sec);
     }
   }
 

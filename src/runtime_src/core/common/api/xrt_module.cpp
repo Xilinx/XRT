@@ -227,7 +227,7 @@ protected:
   fill_bo_with_data(xrt::bo& bo, const xrt::buf& buf, bool sync = true)
   {
     auto ptr = bo.map<char*>();
-    std::memcpy(ptr, buf.data(), buf.size());
+    buf.copy_to(ptr);
     if (sync)
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
@@ -718,8 +718,7 @@ class module_run_aie2ps : public module_run
       return false;
     }
 
-    m_dtrace.map_data = std::string{reinterpret_cast<const char*>(m_config.dump_buf.data()),
-                                    m_config.dump_buf.size()};
+    m_dtrace.map_data = m_config.dump_buf.to_string();
     return true;
   }
 
@@ -838,7 +837,7 @@ class module_run_aie2ps : public module_run
     // Copy all column control codes to instruction buffer
     auto ptr = m_buffer.map<char*>();
     for (const auto& ctrlcode : col_data) {
-      std::memcpy(ptr, ctrlcode.data(), ctrlcode.size());
+      ctrlcode.copy_to(ptr);
       ptr += ctrlcode.size();
     }
 
@@ -1256,7 +1255,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
 
   if (sz < inst->size())
     throw std::runtime_error{"Control code buffer passed in is too small"};
-  std::memcpy(ibuf, inst->data(), sz);
+  inst->copy_to(ibuf);
 
   // If no args to patch, we're done
   if (!args || args->empty())
