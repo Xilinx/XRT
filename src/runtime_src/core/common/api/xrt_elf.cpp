@@ -506,7 +506,23 @@ xrt::uuid
 elf_impl::
 get_cfg_uuid() const
 {
-  return {}; // tbd
+  constexpr size_t uuid_size = 16;
+  constexpr ELFIO::Elf_Word first_note = 0;
+
+  auto section = m_elfio.sections[".note.xrt.UID"];
+  if (!section)
+    throw std::runtime_error("ELF is missing .note.xrt.UID section\n");
+
+  auto data = get_note(section, first_note);
+  if (data.size() != uuid_size)
+    throw std::runtime_error("Invalid UUID size in .note.xrt.UID section, expected 16 bytes but got " +
+                             std::to_string(data.size()) + " bytes\n");
+
+  // UUID is stored as raw 16 bytes in the note section
+  // Copy directly to uuid_t (which is unsigned char[16])
+  xuid_t uuid_data;
+  std::memcpy(uuid_data, data.data(), uuid_size);
+  return xrt::uuid(uuid_data);
 }
 
 // Extract section data by name
