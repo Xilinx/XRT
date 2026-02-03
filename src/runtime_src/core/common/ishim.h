@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef core_common_ishim_h
 #define core_common_ishim_h
 
@@ -8,7 +8,6 @@
 #include "xcl_graph.h"
 #include "xrt.h"
 
-#include "core/common/api/elf_int.h"
 #include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/graph_handle.h"
 #include "core/common/shim/hwctx_handle.h"
@@ -143,7 +142,7 @@ struct ishim
   virtual std::unique_ptr<fence_handle>
   create_fence(xrt::fence::access_mode)
   { throw not_supported_error{__func__}; }
-  
+
   virtual std::unique_ptr<fence_handle>
   import_fence(pid_t, shared_handle::export_handle)
   { throw not_supported_error{__func__}; }
@@ -175,7 +174,7 @@ struct ishim
   create_hw_context(const xrt::elf& elf,
                     const xrt::hw_context::cfg_param_type& cfg,
                     xrt::hw_context::access_mode mode) const
-  { return create_hw_context(elf_int::get_partition_size(elf), cfg, mode); }
+  { return create_hw_context(elf.get_partition_size(), cfg, mode); }
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims

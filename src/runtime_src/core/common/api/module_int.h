@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Xilinx Runtime (XRT) Experimental APIs
 
@@ -10,39 +10,13 @@
 #include "core/common/xclbin_parser.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/experimental/xrt_module.h"
+#include "elf_int.h"
 
 #include "ert.h"
 
 #include <string>
 
-namespace xrt_core::patcher {
-// enum with different buffer types that supports patching
-// Some of the internal shim tests use this enum, so moving it to header
-// Ideal place for this enum would be in a header that has patching logic
-// TODO: Move this when patching logic is added to aiebu 
-enum class buf_type {
-  ctrltext = 0,        // control code
-  ctrldata = 1,        // control packet
-  preempt_save = 2,    // preempt_save
-  preempt_restore = 3, // preempt_restore
-  pdi = 4,             // pdi
-  ctrlpkt_pm = 5,      // preemption ctrl pkt
-  pad = 6,             // scratchpad/control packet section name for next gen aie devices
-  dump = 7,            // dump section containing debug info for trace etc
-  ctrlpkt = 8,         // control packet section in aie2ps/aie4 new ELFs
-  buf_type_count = 9   // total number of buf types
-};
-}
-
 namespace xrt_core::module_int {
-struct kernel_info {
-  std::vector<xrt_core::xclbin::kernel_argument> args;
-  xrt_core::xclbin::kernel_properties props;
-};
-
-// Elfs with no multi control code support use below id as
-// grp index or control code id
-static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 
 // create module object that will be used with run object
 // The object created holds buffers for instruction/control-pkt
@@ -51,17 +25,19 @@ static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 // identify the control code that needs to be run.
 // Also pre created ctrlpkt bo with data filled from ELF is passed
 // to reduce overhead of bo creation during module object init
+XRT_CORE_COMMON_EXPORT
 xrt::module
-create_run_module(const xrt::module& parent, const xrt::hw_context& hwctx,
+create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
                   uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo);
 
-// Get control code id from kernel name given to construct xrt::kernel
-// Throws exception if this kernel is not present in ELF
-uint32_t
-get_ctrlcode_id(const xrt::module& module, const std::string& kname);
+// Get the underlying elf handle from module object
+XRT_CORE_COMMON_EXPORT
+std::shared_ptr<xrt::elf_impl>
+get_elf_handle(const xrt::module& module);
 
 // Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
 // and before CU arguments.
+XRT_CORE_COMMON_EXPORT
 uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t *payload);
 
@@ -77,7 +53,8 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 size_t
-get_patch_buf_size(const xrt::module&, xrt_core::patcher::buf_type, uint32_t id = no_ctrl_code_id);
+get_patch_buf_size(const xrt::module&, xrt_core::elf_patcher::buf_type type,
+                   uint32_t ctrl_code_id = xrt_core::elf_int::no_ctrl_code_id);
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
@@ -91,7 +68,7 @@ XRT_CORE_COMMON_EXPORT
 XRT_CORE_UNUSED
 void
 patch(const xrt::module&, uint8_t*, size_t, const std::vector<std::pair<std::string, uint64_t>>*,
-      xrt_core::patcher::buf_type, uint32_t id = no_ctrl_code_id);
+      xrt_core::elf_patcher::buf_type, uint32_t ctrl_code_id = xrt_core::elf_int::no_ctrl_code_id);
 
 // Patch scalar into control code at given argument
 XRT_CORE_COMMON_EXPORT
@@ -101,41 +78,23 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const void* va
 // Check that all arguments have been patched and sync the buffer
 // to device if necessary.  Throw if not all arguments have been
 // patched.
+XRT_CORE_COMMON_EXPORT
 void
 sync(const xrt::module&);
-
-// Get the ERT command opcode in ELF flow
-ert_cmd_opcode
-get_ert_opcode(const xrt::module& module);
-
-// Returns vector of kernel info extracted from demangled kernel signatures
-// kernel signature eg : DPU(void*, void*, void*)
-// Each kernel info object holds kernel name (DPU), kernel args and kernel properties
-// returns empty vector if ELF doesnt have kernel signatures
-const std::vector<kernel_info>&
-get_kernels_info(const xrt::module& module);
 
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
 // Optional run_id parameter to generate unique filenames for multiple runs
+XRT_CORE_COMMON_EXPORT
 void
 dump_dtrace_buffer(const xrt::module& module, uint32_t run_id = 0);
 
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.
 // Throws if ELF doesn't contain scratchpad memory
+XRT_CORE_COMMON_EXPORT
 xrt::bo
 get_ctrl_scratchpad_bo(const xrt::module& module);
-
-// Returns ctrlpkt section data in ELF
-// This data is used to create ctrlpkt buffers ahead in xrt::kernel object
-// returns empty vector if ctrlpkt section is not present
-std::vector<uint8_t>
-get_ctrlpkt_data(const xrt::module& module, uint32_t ctrl_code_id);
-
-// Function to check if the module is created from a full ELF
-bool
-is_full_elf_module(const xrt::module& module);
 
 } // xrt_core::module_int
 
