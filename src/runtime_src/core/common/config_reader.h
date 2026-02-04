@@ -783,6 +783,17 @@ get_privileged_context()
   return value;
 }
 
+// This flag is added to skip kernel argument connectivity validation.
+// By default, XRT validates that kernel arguments are allocated in memory banks
+// that are connected to the compute units. When enabled, this check is bypassed,
+// and the buffer is used as-is without creating a local copy in a connected bank.
+inline bool
+get_skip_connectivity()
+{
+  static bool value = detail::get_bool_value("Runtime.skip_connectivity", false);
+  return value;
+}
+
 inline bool
 get_is_enable_prep_target()
 {

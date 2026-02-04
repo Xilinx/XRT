@@ -2282,6 +2282,11 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     if (!kernel->get_xclbin())
       return bo;
 
+    // Check if connectivity validation should be skipped via INI option
+    static bool skip_connectivity_check = xrt_core::config::get_skip_connectivity();
+    if (skip_connectivity_check)
+      return bo;
+
     xcl_bo_flags grp {xrt_core::bo::group_id(bo)};
     if (validate_ip_arg_connectivity(index, grp.bank))
       return bo;
