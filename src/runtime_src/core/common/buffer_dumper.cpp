@@ -12,6 +12,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <sstream>
+#include <array>
 
 namespace xrt_core {
 
@@ -87,7 +88,7 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
     size_t parsed_bytes = 0;
     // Iterate and parse each log entry in dumped data
     while (parsed_bytes < length) {
-      size_t entry_offset;
+      size_t entry_offset = 0;
 
       // Handle circular buffer wrapping
       if (parsed_bytes < bytes_to_end) 
@@ -97,55 +98,44 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
 
       // Current log entry in chunk
       const uint8_t* entry = chunk + entry_offset;
-      // Extract fields from log entry, each log entry has format like following
-      //  -----------------------------------------
-      //  word  |  name    | meaning
-      //  -----------------------------------------
-      //  0     | length   | log entry length in number of words 
-      //  1     | ts_high  | timestamp high 32bit
-      //  2     | ts_low   | timestamp low 32bit
-      //  3     | file_id  | id of filename for file this log is in
-      //  4     | line num | line number of the log in the file
-      //  5     | log_id   | id of format string
-      //  6...  | args     | length - 6 is the number of args in format string
-      //  -----------------------------------------
-      uint32_t entry_length, ts_high, ts_low, file_id, line_num, log_id;
-      std::memcpy(&entry_length, entry, 4);
-      std::memcpy(&ts_high, entry + 4, 4);
-      std::memcpy(&ts_low, entry + 8, 4);
-      std::memcpy(&file_id, entry + 12, 4);
-      std::memcpy(&line_num, entry + 16, 4);
-      std::memcpy(&log_id, entry + 20, 4);
-      // Extract log arguments, 3 types of log: 0 argument, 1 argument, 2 arguments
-      uint32_t arg1 = 0, arg2 = 0;
-      if (entry_length > 6)
-        std::memcpy(&arg1, entry + 24, 4);
-      if (entry_length > 7)
-        std::memcpy(&arg2, entry + 28, 4);
+      // Extract log entry fields
+      log_entry log;
+      std::memcpy(&log, entry, sizeof(log_entry));
 
       // Format log message using log schema
       // If log_id is not found in log schema, use default format string
-      const char* default_formats[] = {"unknown !", "unknown %d !!", "unknown %d unknown %d !!!"};
-      auto log_schema_it = uc_log_schema.logs.find(log_id);
+      constexpr std::array<const char*, 3> default_formats = {
+        "unknown !", 
+        "unknown %d !!", 
+        "unknown %d unknown %d !!!"
+      };
+      auto log_schema_it = uc_log_schema.logs.find(log.log_id);
       const char* log_format = (log_schema_it != uc_log_schema.logs.end()) 
         ? log_schema_it->second.c_str() 
-        : default_formats[entry_length - 6];
+        : default_formats[std::min(static_cast<std::size_t>(log.length - 6), (default_formats.size() - 1))];
 
       parsed_stream << "[CERT] ";
-      char log_message[1024];
-      if (entry_length == 6) 
-      {  // Log message without arguments
+      std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      if (log.length == 6) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      { // Log message without arguments
         parsed_stream << log_format;
       } 
-      else if (entry_length == 7) 
+      else if (log.length == 7) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       { // Log message with one argument
-        std::snprintf(log_message, sizeof(log_message), log_format, arg1);
-        parsed_stream << log_message;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1));
+        parsed_stream << log_message.data();
       } 
-      else if (entry_length == 8) 
+      else if (log.length == 8) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       { // Log message with two arguments
-        std::snprintf(log_message, sizeof(log_message), log_format, arg1, arg2);
-        parsed_stream << log_message;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1, log.argument2));
+        parsed_stream << log_message.data();
+      }
+      else
+      { // Unexpected entry length
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                                "Invalid UC log entry length: " + std::to_string(log.length));
       }
 
       parsed_bytes += m_config.metadata_size;

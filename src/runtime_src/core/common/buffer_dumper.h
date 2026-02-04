@@ -46,6 +46,18 @@ public:
     xrt::bo dump_buffer;              // xrt buffer object to dump
   };
 
+  // Log entry struct for uc log binary format
+  struct log_entry
+  {
+    uint32_t length = 0;              // Log entry length in number of words
+    uint32_t ts_high = 0;             // Timestamp high 32 bits
+    uint32_t ts_low = 0;              // Timestamp low 32 bits
+    uint32_t file_id = 0;             // ID of log source file
+    uint32_t line_num = 0;            // Line number of log in source file
+    uint32_t log_id = 0;              // ID of format string
+    uint32_t argument1 = 0;           // First argument (present if length > 6)
+    uint32_t argument2 = 0;           // Second argument (present if length > 7)
+  };
 
 private:
   config m_config;
