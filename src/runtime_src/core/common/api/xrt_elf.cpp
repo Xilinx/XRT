@@ -327,9 +327,10 @@ public:
 
 // Protected constructor
 elf_impl::
-elf_impl(ELFIO::elfio&& elfio)
+elf_impl(ELFIO::elfio&& elfio, elf::platform platform)
   : m_elfio{std::move(elfio)}
-{}  // NOLINT - m_platform initialized in derived class constructor
+  , m_platform{platform}
+{}
 
 // Get symbol information from .symtab at given index
 elf_impl::symbol_info
@@ -594,9 +595,9 @@ get_abi_version() const
 }
 
 ////////////////////////////////////////////////////////////////
-// Derived class for AIE2P platform
+// Derived class for aie2p (gen2) platform
 ////////////////////////////////////////////////////////////////
-class elf_aie2p : public elf_impl
+class elf_aie_gen2 : public elf_impl
 {
   // Elfs can have multiple kernels and its corresponding sub kernels
   // We use ctrl code id or grp idx to represent kernel + sub kernel combination
@@ -859,11 +860,9 @@ class elf_aie2p : public elf_impl
   }
 
 public:
-  explicit
-  elf_aie2p(ELFIO::elfio&& elfio)
-    : elf_impl{std::move(elfio)}
+  elf_aie_gen2(ELFIO::elfio&& elfio, elf::platform platform)
+    : elf_impl{std::move(elfio), platform}
   {
-    m_platform = xrt::elf::platform::aie2p;
     // Parse group sections to populate kernel and section maps
     parse_group_sections();
     // Initialize all section buffer maps
@@ -872,7 +871,7 @@ public:
     initialize_arg_patchers();
   }
 
-  // AIE2P: uses group sections if version >= 1.0
+  // AIE2P: uses group sections if version >= 1.0 (for 1.0 and 2.0 + versions)
   bool
   is_group_elf() const override
   {
@@ -885,7 +884,7 @@ public:
   // Virtual accessor overrides
   ////////////////////////////////////////////////////////////////
 
-  // Get module configuration for module_run_aie2p
+  // Get module configuration for module_run_aie_gen2
   module_config
   get_module_config(uint32_t ctrl_code_id) override
   {
@@ -902,7 +901,7 @@ public:
 
     static const std::unordered_set<std::string> empty_pdi_set;
 
-    return module_config_aie2p{
+    return module_config_aie_gen2{
       instr_it->second,                                                          // instr_data
       ctrl_pkt_it != m_ctrl_packet_map.end() ? ctrl_pkt_it->second : buf::get_empty_buf(), // ctrl_packet_data
       save_it != m_save_buf_map.end() ? save_it->second : buf::get_empty_buf(),  // preempt_save_data
@@ -984,9 +983,9 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////
-// Derived class for AIE2PS platform
+// Derived class for aie2ps, aie4, aie4a, aie4z (gen2 +) platforms
 ////////////////////////////////////////////////////////////////
-class elf_aie2ps : public elf_impl
+class elf_aie_gen2_plus : public elf_impl
 {
   // Control code is padded to page size
   static constexpr size_t elf_page_size = 8192;  // AIE_COLUMN_PAGE_SIZE
@@ -1271,18 +1270,16 @@ class elf_aie2ps : public elf_impl
   }
 
 public:
-  explicit
-  elf_aie2ps(ELFIO::elfio&& elfio)
-    : elf_impl{std::move(elfio)}
+  elf_aie_gen2_plus(ELFIO::elfio&& elfio, elf::platform platform)
+    : elf_impl{std::move(elfio), platform}
   {
-    m_platform = xrt::elf::platform::aie2ps;
     // Parse group sections to populate kernel and section maps
     parse_group_sections();
     // Initialize all section buffer maps
     initialize_section_buffer_maps();
   }
 
-  // AIE2PS/AIE4: uses group sections if version >= 0.3
+  // AIE2PS/AIE4: uses group sections if version >= 0.3 (for 0.3 and 2.0 + versions)
   bool
   is_group_elf() const override
   {
@@ -1300,7 +1297,7 @@ public:
   // Virtual accessor overrides
   ////////////////////////////////////////////////////////////////
 
-  // Get module configuration for module_run_aie2ps
+  // Get module configuration for module_run_aie_gen2_plus
   module_config
   get_module_config(uint32_t ctrl_code_id) override
   {
@@ -1315,7 +1312,7 @@ public:
 
     static const std::map<std::string, buf> empty_ctrlpkt_map;
 
-    return module_config_aie2ps{
+    return module_config_aie_gen2_plus{
       ctrlcode_it->second,                                                       // ctrlcodes
       ctrlpkt_it != m_ctrlpkt_buf_map.end() ? ctrlpkt_it->second : empty_ctrlpkt_map, // ctrlpkt_bufs
       dump_it != m_dump_buf_map.end() ? dump_it->second : buf::get_empty_buf(),  // dump_buf
@@ -1383,12 +1380,13 @@ create_elf_impl(ELFIO::elfio&& elfio)
 
   switch (os_abi) {
   case static_cast<uint8_t>(xrt::elf::platform::aie2p):
-    return std::make_shared<xrt::elf_aie2p>(std::move(elfio));
-
+    return std::make_shared<xrt::elf_aie_gen2>(std::move(elfio), xrt::elf::platform::aie2p);
   case static_cast<uint8_t>(xrt::elf::platform::aie2ps):
   case static_cast<uint8_t>(xrt::elf::platform::aie2ps_group):
-    return std::make_shared<xrt::elf_aie2ps>(std::move(elfio));
-
+  case static_cast<uint8_t>(xrt::elf::platform::aie4):
+  case static_cast<uint8_t>(xrt::elf::platform::aie4a):
+  case static_cast<uint8_t>(xrt::elf::platform::aie4z):
+    return std::make_shared<xrt::elf_aie_gen2_plus>(std::move(elfio), static_cast<xrt::elf::platform>(os_abi));
   default:
     throw std::runtime_error("ELF contains unsupported platform OS/ABI: " +
                              std::to_string(static_cast<int>(os_abi)));
