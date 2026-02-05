@@ -80,6 +80,7 @@ install_recipes()
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=de2c993ac479f02575bcbfb14ef9b485 \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
+		echo 'FILES:${PN} += "${libdir}/dtrace"' >> $XRT_BB
     fi
 
     grep "inherit externalsrc" $ZOCL_BB
@@ -157,9 +158,9 @@ elif [[ $(repo --version 2>&1 | grep -oP 'repo launcher version \K[0-9.]+') < 2.
     install_repo
 fi
 
-if [ -f "$yocto_path/edf-init-build-env" ]; then
+if [ -f "$yocto_path/internal-edf-init-build-env" ]; then
     cd $yocto_path
-    source edf-init-build-env
+    source internal-edf-init-build-env
 else
     git submodule update --init --recursive --force
     mkdir -p $yocto_path
@@ -169,7 +170,7 @@ else
     yes ""| repo init -u $REPO_URL -b $BRANCH -m $MANIFEST_PATH/$MANIFEST_FILE
 
     repo sync
-    source edf-init-build-env
+    source internal-edf-init-build-env
     install_recipes
 fi
 

@@ -1,4 +1,4 @@
 REPO_URL=https://gitenterprise.xilinx.com/ssw-devops/yocto-tagged-manifest.git
 BRANCH=master
-MANIFEST_PATH=/proj/yocto/edf/2026.1/stable/Yocto_edf_2026.1_12120742
-MANIFEST_FILE=default_12120742.xml
+MANIFEST_PATH=/proj/yocto/edf/2026.1/stable/Yocto_edf_2026.1_01141221
+MANIFEST_FILE=default_01141221.xml
