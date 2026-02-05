@@ -3,7 +3,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestCmdChainLatency.h"
+#include "TestRunlistThroughput.h"
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_device.h"
@@ -12,22 +12,20 @@
 #include "core/common/archive.h"
 namespace XBU = XBUtilities;
 
-#include <filesystem>
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
-TestCmdChainLatency::TestCmdChainLatency()
-  : TestRunner("cmd-chain-latency", "Run end-to-end latency test using command chaining")
+TestRunlistThroughput::TestRunlistThroughput()
+  : TestRunner("runlist-throughput", "Run end-to-end throughput test using runlist")
 {}
 
 boost::property_tree::ptree
-TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>&)
+TestRunlistThroughput::run(const std::shared_ptr<xrt_core::device>&)
 {
   boost::property_tree::ptree ptree = get_test_header();
   return ptree;
 }
 
 boost::property_tree::ptree
-TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+TestRunlistThroughput::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
@@ -36,24 +34,24 @@ TestCmdChainLatency::run(const std::shared_ptr<xrt_core::device>& dev, const xrt
     XBValidateUtils::logger(ptree, "Error", "No archive found, skipping test");
     return ptree;
   }
-  
+
   try {
-    std::string recipe_data = archive->data("recipe_cmd_chain_latency.json");
-    std::string profile_data = archive->data("profile_cmd_chain_latency.json"); 
+    std::string recipe_data = archive->data("recipe_cmd_chain_throughput.json");
+    std::string profile_data = archive->data("profile_cmd_chain_throughput.json"); 
     
     // Extract artifacts using helper method
     auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
       "validate.xclbin", 
-      "nop.elf"
+      "nop.elf" 
     });    // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
     runner.execute();
     runner.wait();
 
     auto report = nlohmann::json::parse(runner.get_report());
-    auto latency = report["cpu"]["latency"].get<double>();
+    auto throughput = report["cpu"]["throughput"].get<double>();
 
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average latency: %.1f us") % latency));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average throughput: %.1f ops/s") % throughput));
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch (const std::exception& ex) {
