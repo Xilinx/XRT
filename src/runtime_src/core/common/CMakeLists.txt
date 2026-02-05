@@ -13,7 +13,7 @@ if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
 elseif (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
   message(WARNING "Compiling for ARM64, build of submodule aiebu disabled")
-elseif (NOT XRT_EDGE)
+else()
   set(AIEBU_COMPONENT ${XRT_BASE_COMPONENT})
   set(AIEBU_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
   set(AIEBU_UPSTREAM ${XRT_UPSTREAM})
@@ -22,8 +22,6 @@ elseif (NOT XRT_EDGE)
   set(AIEBU_ELFIO_SRC_DIR ${XRT_SOURCE_DIR}/runtime_src/core/common/elf)
 
   xrt_add_subdirectory(aiebu)
-else()
-  message(WARNING "Edge device, build of submodule aiebu disabled")
 endif()
 
 add_library(core_common_library_objects OBJECT
