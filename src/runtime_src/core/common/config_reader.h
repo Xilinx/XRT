@@ -1108,16 +1108,16 @@ get_aie_trace_settings_enable_system_timeline()
 }
 
 inline std::string
-get_dtrace_lib_path()
-{
-  static std::string value = detail::get_string_value("Debug.dtrace_lib_path", "");
-  return value;
-}
-
-inline std::string
 get_dtrace_control_file_path()
 {
   static std::string value = detail::get_string_value("Debug.dtrace_control_file_path", "");
+  return value;
+}
+
+inline unsigned int
+get_dtrace_log_level()
+{
+  static unsigned int value = detail::get_uint_value("Debug.dtrace_log_level", 1);
   return value;
 }
 

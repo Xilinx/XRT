@@ -2896,12 +2896,11 @@ public:
     return xrt_core::module_int::get_ctrl_scratchpad_bo(m_module);
   }
 
-  // Dump dtrace buffer if enabled and module exists
+  // Dump dtrace buffer if module has dtrace initialized
   void
   dump_dtrace_buffer() const
   {
-    static bool dtrace_enabled = !xrt_core::config::get_dtrace_lib_path().empty();
-    if (dtrace_enabled && m_module)
+    if (m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module, uid);
   }
 };
