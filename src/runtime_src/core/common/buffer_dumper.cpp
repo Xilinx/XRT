@@ -112,21 +112,22 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
       auto log_schema_it = uc_log_schema.logs.find(log.log_id);
       const char* log_format = (log_schema_it != uc_log_schema.logs.end()) 
         ? log_schema_it->second.c_str() 
-        : default_formats[std::min(static_cast<std::size_t>(log.length - 6), (default_formats.size() - 1))];
+        : default_formats[std::min(static_cast<std::size_t>(log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))), 
+                          (default_formats.size() - 1))];
 
       parsed_stream << "[CERT] ";
       std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      if (log.length == 6) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t)))
       { // Log message without arguments
         parsed_stream << log_format;
       } 
-      else if (log.length == 7) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      else if (log.length == (offsetof(log_entry, argument2) / sizeof(uint32_t)))
       { // Log message with one argument
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
         static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1));
         parsed_stream << log_message.data();
       } 
-      else if (log.length == 8) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      else if (log.length == (sizeof(log_entry) / sizeof(uint32_t)))
       { // Log message with two arguments
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
         static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1, log.argument2));
