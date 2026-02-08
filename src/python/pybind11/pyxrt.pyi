@@ -10,20 +10,34 @@ from typing import (
     List,
     Sequence,
     SupportsInt,
+    TYPE_CHECKING,
     Union,
     overload,
 )
 
-import numpy as np
-import numpy.typing as npt
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
+    NDArrayInt8 = npt.NDArray[np.int8]
+else:
+    try:
+        import numpy as np
+        import numpy.typing as npt
+        NDArrayInt8 = npt.NDArray[np.int8]
+    except ImportError:
+        np = None  # type: ignore[assignment]
+        npt = None  # type: ignore[assignment]
+        NDArrayInt8 = Any
 
 # Buffer protocol type - accepts bytes, bytearray, memoryview, numpy arrays, etc.
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer as ReadableBuffer
+elif npt is not None:
+    # For Python < 3.12, include numpy arrays when numpy is available
+    ReadableBuffer = Union[bytes, bytearray, memoryview, NDArrayInt8]  # type: ignore[misc]
 else:
-    from typing import Union as _U
-    # For Python < 3.12, define a union of common buffer types
-    ReadableBuffer = _U[bytes, bytearray, memoryview, npt.NDArray[Any]]  # type: ignore[misc]
+    # Fallback without numpy
+    ReadableBuffer = Union[bytes, bytearray, memoryview, Any]  # type: ignore[misc]
 
 # Type aliases
 memory_group = int
@@ -168,6 +182,16 @@ class hw_context:
         Args:
             device: The device to create the context on.
             uuid: The UUID of the xclbin to associate with this context.
+        """
+        ...
+    
+    @overload
+    def __init__(self, device: device, elf: elf) -> None:
+        """Create a hardware context for a device with an ELF object.
+        
+        Args:
+            device: The device to create the context on.
+            elf: The ELF object to associate with this context.
         """
         ...
 
@@ -490,7 +514,7 @@ class bo:
         """
         ...
     
-    def read(self, size: SupportsInt, skip: SupportsInt) -> npt.NDArray[np.int8]:
+    def read(self, size: SupportsInt, skip: SupportsInt) -> NDArrayInt8:
         """Read from the buffer object.
         
         Args:
@@ -799,41 +823,11 @@ class program:
 class module:
     """Functions an application will execute in hardware."""
     
-    @overload
     def __init__(self, elf: elf) -> None:
         """Create a module from an ELF object.
         
         Args:
             elf: The ELF object containing the module.
-        """
-        ...
-    
-    @overload
-    def __init__(self, userptr: Any, size: SupportsInt, uuid: uuid) -> None:
-        """Create a module from user memory.
-        
-        Args:
-            userptr: Pointer to user memory containing module data.
-            size: Size of the module data.
-            uuid: UUID to associate with the module.
-        """
-        ...
-    
-    @overload
-    def __init__(self, parent: module, hwctx: hw_context) -> None:
-        """Create a module from a parent module and hardware context.
-        
-        Args:
-            parent: Parent module.
-            hwctx: Hardware context to associate with the module.
-        """
-        ...
-    
-    def get_cfg_uuid(self) -> uuid:
-        """Get the CFG's uuid for the module.
-        
-        Returns:
-            Configuration UUID.
         """
         ...
     
