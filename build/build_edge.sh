@@ -21,6 +21,7 @@ usage()
     echo "          -clean, clean                   Remove build directories"
     echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
     echo "          -archiver                       Generate archiver of the project. This is needed to generate LICENSE"
+    echo "          -noinit                         Do not initialize Git submodules"
     echo ""
 }
 
@@ -229,6 +230,7 @@ clean=0
 apu_package=0
 archiver=0
 gen_sysroot=0
+init_submodule=1
 SSTATE_CACHE=""
 SETTINGS_FILE="${THIS_SCRIPT_DIR}/petalinux.build"
 while [ $# -gt 0 ]; do
@@ -260,6 +262,9 @@ while [ $# -gt 0 ]; do
                         shift
                         SSTATE_CACHE=$1
                         ;;
+		-noinit )
+			init_submodule=0
+			;;
 		--* | -* )
 			error "Unregognized option: $1"
 			;;
@@ -330,9 +335,9 @@ echo " PETALINUX: $PETALINUX"
 echo ""
 
 GIT_MODULES=$XRT_REPO_DIR/.gitmodules
-if [ -f "$GIT_MODULES" ]; then
+if [ -f "$GIT_MODULES" ] && [ $init_submodule == 1 ]; then
     cd $XRT_REPO_DIR
-    echo "Updating Git XRT submodules"
+    echo "Updating Git XRT submodules, use -noinit option to avoid updating"
     git submodule update --init
     cd $ORIGINAL_DIR
 fi
