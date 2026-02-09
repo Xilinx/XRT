@@ -7,9 +7,12 @@
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/common/utils.h"
+#include "core/common/uc_log_schema.h"
 
 #include <cstring>
 #include <stdexcept>
+#include <sstream>
+#include <array>
 
 namespace xrt_core {
 
@@ -25,7 +28,7 @@ buffer_dumper(config cfg)
     std::string filename = m_config.dump_file_prefix + "_" +
                            xrt_core::get_timestamp_for_filename() + "_" +
                            std::to_string(xrt_core::utils::get_pid()) + "_" +
-                           std::to_string(i) + ".bin";
+                           std::to_string(i) + ".txt";
 
     m_file_streams[i].open(filename, std::ios::out | std::ios::binary);
     if (!m_file_streams[i].is_open()) {
@@ -75,48 +78,81 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
                              " is in bad state before write");
   }
 
-  // Always write/update metadata since this function is called when there's new data
-  // and metadata(count) gets updated when there is new data
-  // Seek to beginning and write/update metadata
-  fs.seekp(0);
-  fs.write(reinterpret_cast<const char*>(chunk),
-           static_cast<std::streamsize>(m_config.metadata_size));
+  // UC log parsing and writing log messages to file using log schema
+  try {
+    // Parse log entries from the chunk using log schema
+    const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
+    const size_t bytes_to_end = m_config.chunk_size - start_offset;
 
-  if (!fs)
-    throw std::runtime_error("Failed to write metadata for chunk " + std::to_string(chunk_index));
+    std::ostringstream parsed_stream;
+    size_t parsed_bytes = 0;
+    // Iterate and parse each log entry in dumped data
+    while (parsed_bytes < length) {
+      size_t entry_offset = 0;
 
-  // Seek to end to append actual data
-  fs.seekp(0, std::ios::end);
+      // Handle circular buffer wrapping
+      if (parsed_bytes < bytes_to_end) 
+        entry_offset = start_offset + parsed_bytes; // No wrap around
+      else 
+        entry_offset = m_config.metadata_size + (parsed_bytes - bytes_to_end); // Wrapped around
 
-  const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
-  const size_t bytes_to_end = m_config.chunk_size - start_offset;
+      // Current log entry in chunk
+      const uint8_t* entry = chunk + entry_offset;
+      // Extract log entry fields
+      log_entry log;
+      std::memcpy(&log, entry, sizeof(log_entry));
 
-  if (length <= bytes_to_end) { // data doesn't wrap around
-    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-             static_cast<std::streamsize>(length));
+      // Format log message using log schema
+      // If log_id is not found in log schema, use default format string
+      constexpr std::array<const char*, 3> default_formats = {
+        "unknown !", 
+        "unknown %d !!", 
+        "unknown %d unknown %d !!!"
+      };
+      auto log_schema_it = uc_log_schema.logs.find(log.log_id);
+      const char* log_format = (log_schema_it != uc_log_schema.logs.end()) 
+        ? log_schema_it->second.c_str() 
+        : default_formats[std::min(static_cast<std::size_t>(log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))), 
+                          (default_formats.size() - 1))];
 
+      parsed_stream << "[CERT] ";
+      std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t)))
+      { // Log message without arguments
+        parsed_stream << log_format;
+      } 
+      else if (log.length == (offsetof(log_entry, argument2) / sizeof(uint32_t)))
+      { // Log message with one argument
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1));
+        parsed_stream << log_message.data();
+      } 
+      else if (log.length == (sizeof(log_entry) / sizeof(uint32_t)))
+      { // Log message with two arguments
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+        static_cast<void>(std::snprintf(log_message.data(), log_message.size(), log_format, log.argument1, log.argument2));
+        parsed_stream << log_message.data();
+      }
+      else
+      { // Unexpected entry length
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                                "Invalid UC log entry length: " + std::to_string(log.length));
+      }
+
+      parsed_bytes += m_config.metadata_size;
+    }
+    
+    // Append parsed output to file
+    fs.seekp(0, std::ios::end);
+    fs << parsed_stream.str();
+    
     if (!fs)
-      throw std::runtime_error("Failed to write " + std::to_string(length) +
-                               " bytes to chunk " + std::to_string(chunk_index));
+      throw std::runtime_error("Failed to write parsed UC log for chunk " + std::to_string(chunk_index));
   }
-  else {
-    // data wraps around
-    // write the first part
-    fs.write(reinterpret_cast<const char*>(chunk + start_offset),
-             static_cast<std::streamsize>(bytes_to_end));
-
-    if (!fs)
-      throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) +
-                               " bytes) to chunk " + std::to_string(chunk_index));
-
-    // write the wrapped part
-    fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
-             static_cast<std::streamsize>(length - bytes_to_end));
-
-    if (!fs)
-      throw std::runtime_error("Failed to write wrapped part (" +
-                               std::to_string(length - bytes_to_end) +
-                               " bytes) to chunk " + std::to_string(chunk_index));
+  catch (const std::exception& e) {
+    // Log parsing error, log warning and continue
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "buffer_dumper",
+                            std::string{"UC log parsing failed: "} + e.what());
   }
 
   fs.flush();
