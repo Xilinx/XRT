@@ -16,6 +16,8 @@
 #include "core/common/api/bo_int.h"
 #include "xrt/detail/xclbin.h"
 
+#include <stdexcept>
+
 namespace XBU = XBUtilities;
 
 static constexpr uint32_t num_of_cores_strix = 32;
@@ -29,7 +31,7 @@ static constexpr unsigned int gemm_num_iterations = 10;
  * Strix: H Clock. NPU3: AIE Clock.
  */
 static uint64_t
-get_gemm_clock_mhz(const std::shared_ptr<xrt_core::device>& dev)
+get_clock(const std::shared_ptr<xrt_core::device>& dev)
 {
   uint64_t clock_mhz = 0;
   try {
@@ -46,7 +48,31 @@ get_gemm_clock_mhz(const std::shared_ptr<xrt_core::device>& dev)
   catch (const std::exception&) {
     return 0;
   }
+  if (clock_mhz == 0)
+    throw std::runtime_error("Clock frequency is 0");
   return clock_mhz;
+}
+
+/** Clock period in ns from frequency in MHz. */
+static double
+clock_period_ns(uint64_t clock_mhz)
+{
+  return 1000000000.0 / (clock_mhz * 1000000); // NOLINT MHz to ns
+}
+
+/** Log GEMM results and optional verbose details. */
+static void
+log_gemm_results(boost::property_tree::ptree& ptree, uint64_t clock_mhz,
+                 const char* clock_label, double tops, double avg_cycle_count,
+                 double period_ns, unsigned int num_cores)
+{
+  if (XBU::getVerbose()) {
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("%s: %u MHz") % clock_label % static_cast<unsigned>(clock_mhz)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Iterations: %u") % gemm_num_iterations));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (period_ns * avg_cycle_count)));
+    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
+  }
+  XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % tops));
 }
 
 // ----- S T A T I C   M E T H O D S -------------------------------------------
@@ -65,14 +91,8 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
 
-    // Get GEMM clock (H Clock for Strix) for TOPS calculation
-    uint64_t clock_mhz = get_gemm_clock_mhz(dev);
-    if (clock_mhz == 0) {
-      XBValidateUtils::logger(ptree, "Error", "GEMM clock (H Clock) is 0");
-      ptree.put("status", XBValidateUtils::test_token_failed);
-      return;
-    }
-    double clock_period_ns = 1000000000.0 / (clock_mhz * 1000000); // NOLINT MHz to ns
+    uint64_t clock_mhz = get_clock(dev);
+    double period_ns = clock_period_ns(clock_mhz);
 
     double tops_sum = 0.0;
     double total_cycle_count_sum = 0.0;
@@ -93,7 +113,7 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
           ptree.put("status", XBValidateUtils::test_token_failed);
           return;
         }
-        auto temp_TOPS_per_core = total_ops_strix / (clock_period_ns * cycle_count * 1000); // NOLINT
+        auto temp_TOPS_per_core = total_ops_strix / (period_ns * cycle_count * 1000); // NOLINT
         run_total_cycle_count += cycle_count;
         run_TOPS += temp_TOPS_per_core;
         core_ptr++;
@@ -106,14 +126,7 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
     double TOPS = tops_sum / gemm_num_iterations;
     double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_strix);
 
-    if (XBU::getVerbose()) {
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("H Clock: %u MHz") % static_cast<unsigned>(clock_mhz)));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Iterations: %u") % gemm_num_iterations));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (clock_period_ns * avg_cycle_count)));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
-    }
-
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % TOPS));
+    log_gemm_results(ptree, clock_mhz, "H Clock", TOPS, avg_cycle_count, period_ns, num_of_cores_strix);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
@@ -153,14 +166,8 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
 
     xrt_core::bo_int::config_bo(bo, buf_map);
 
-    // Get GEMM clock (AIE Clock for NPU3) for TOPS calculation
-    uint64_t clock_mhz = get_gemm_clock_mhz(dev);
-    if (clock_mhz == 0) {
-      XBValidateUtils::logger(ptree, "Error", "GEMM clock (AIE Clock) is 0");
-      ptree.put("status", XBValidateUtils::test_token_failed);
-      return;
-    }
-    double clock_period_ns = 1000000000.0 / (clock_mhz * 1000000); // NOLINT MHz to ns
+    uint64_t clock_mhz = get_clock(dev);
+    double period_ns = clock_period_ns(clock_mhz);
 
     double tops_sum = 0.0;
     double total_cycle_count_sum = 0.0;
@@ -177,7 +184,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
       }
 
       double cycle_count_per_core = total_cycle_count / num_of_cores_npu3;
-      double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * clock_period_ns); // NOLINT
+      double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * period_ns); // NOLINT
       double tops_per_core = gops_per_core / 1e12; // NOLINT
       double run_tops = tops_per_core * num_of_cores_npu3;
 
@@ -188,15 +195,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     double aie4_tops_all_cores = tops_sum / gemm_num_iterations;
     double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_npu3);
 
-    if (XBU::getVerbose()) {
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("AIE Clock: %u MHz") % static_cast<unsigned>(clock_mhz)));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Iterations: %u") % gemm_num_iterations));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count per core: %.1f") % (total_cycle_count_sum / gemm_num_iterations / num_of_cores_npu3)));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (clock_period_ns * avg_cycle_count)));
-      XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
-    }
-
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("TOPS: %.1f") % aie4_tops_all_cores));
+    log_gemm_results(ptree, clock_mhz, "AIE Clock", aie4_tops_all_cores, avg_cycle_count, period_ns, num_of_cores_npu3);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
