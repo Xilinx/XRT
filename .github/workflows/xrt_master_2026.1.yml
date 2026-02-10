@@ -14,10 +14,7 @@ jobs:
   build:
     strategy:      
       matrix:      
-        include:      
-          - os: centos79      
-            packageType: rpm
-            os_ver: centos_7.9      
+        include:           
           - os: centos8      
             packageType: rpm
             os_ver: centos_8.1      
