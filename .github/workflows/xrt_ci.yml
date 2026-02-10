@@ -36,9 +36,7 @@ jobs:
     needs: authorize  
     strategy:      
       matrix:      
-        include:      
-          - os: centos79      
-            packageType: rpm      
+        include:         
           - os: centos8      
             packageType: rpm      
           - os: rhel9      
