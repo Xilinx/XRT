@@ -216,7 +216,10 @@ public:
    enum class platform : uint8_t {
     aie2ps       = 64,   // AIE2PS architecture
     aie2p        = 69,   // AIE2P architecture
-    aie2ps_group = 70    // AIE2PS group variant
+    aie2ps_group = 70,   // AIE2PS group variant
+    aie4         = 75,   // AIE4 architecture
+    aie4a        = 86,   // AIE4 variant
+    aie4z        = 105   // AIE4 variant
   };
 
   /**
@@ -228,7 +231,7 @@ public:
    * @return
    *  The platform enum value for the ELF
    *  throws std::runtime_error if the ELF contains an unknown
-   *  or unsupported platform
+   *  or unsupported platform value
    */
   XRT_API_EXPORT
   platform

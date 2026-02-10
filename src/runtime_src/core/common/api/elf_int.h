@@ -158,7 +158,7 @@ class elf_impl;
 ////////////////////////////////////////////////////////////////
 
 // Configuration for AIE2P platform
-struct module_config_aie2p
+struct module_config_aie_gen2
 {
   // NOLINTBEGIN
   // Reference members are safe here: module_run holds shared_ptr<elf_impl>
@@ -199,7 +199,7 @@ struct module_config_aie2p
 };
 
 // Configuration for AIE2PS/AIE4 platform
-struct module_config_aie2ps
+struct module_config_aie_gen2_plus
 {
   // NOLINTBEGIN
   // Reference members are safe here: module_run holds shared_ptr<elf_impl>
@@ -221,13 +221,13 @@ struct module_config_aie2ps
 };
 
 // Variant type for platform-specific module configuration
-using module_config = std::variant<module_config_aie2p, module_config_aie2ps>;
+using module_config = std::variant<module_config_aie_gen2, module_config_aie_gen2_plus>;
 
 ////////////////////////////////////////////////////////////////
 // elf_impl - Base implementation class for xrt::elf
 //
 // This class is the internal implementation of xrt::elf.
-// Derived classes (elf_aie2p, elf_aie2ps) provide platform-specific
+// Derived classes (elf_aie_gen2, elf_aie_gen2_plus) provide platform-specific
 // functionality. The declaration is exposed here to allow
 // xrt_module.cpp to access parsed ELF data.
 ////////////////////////////////////////////////////////////////
@@ -262,7 +262,7 @@ protected:
   // Final kernel objects built from m_kernel_args_map and m_kernel_to_subkernels_map
   std::vector<elf::kernel> m_kernels;
 
-  /* Patcher related types and data - common between elf_aie2p and elf_aie2ps */
+  /* Patcher related types and data - common between all platforms */
   // Aliases for patcher types
   using patcher_config = xrt_core::elf_patcher::patcher_config;
   using patch_config = xrt_core::elf_patcher::patch_config;
@@ -282,9 +282,8 @@ protected:
   static constexpr uint32_t schema_mask = ~addend_mask;
   // NOLINTEND
 
-  // Protected constructor - takes already-loaded ELFIO
-  explicit
-  elf_impl(ELFIO::elfio&& elfio);
+  // Protected constructor - takes already-loaded ELFIO and platform
+  elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
 
   // Parse .group sections in the ELF file and populate all maps
   void
