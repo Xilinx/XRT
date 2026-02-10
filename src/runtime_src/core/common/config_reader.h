@@ -523,7 +523,7 @@ get_xgq_polling()
 }
 
 /**
- * Use new hw context for multi slot application 
+ * Use new hw context for multi slot application
  */
 inline bool
 get_hw_context_flag()
@@ -1126,13 +1126,6 @@ get_run_buffer_pool_memory_mb()
 {
   static constexpr unsigned int default_pool_memory_mb = 64;
   static unsigned int value = detail::get_uint_value("Runtime.run_buffer_pool_memory_mb", default_pool_memory_mb);
-  return value;
-}
-
-inline bool
-get_uc_log()
-{
-  static bool value = detail::get_bool_value("Debug.uc_log", false);
   return value;
 }
 

@@ -183,10 +183,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   static std::unique_ptr<uc_log_buffer>
   init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
   {
-    // Create uc log buffer only if ini option is enabled
-    // If enabled, but not supported then this function returns nullptr
-    static auto uc_log_enabled = xrt_core::config::get_uc_log();
-    if (!uc_log_enabled || !ctx_hdl)
+    // If uc log buffer is not supported then this function returns nullptr
+    if (!ctx_hdl)
       return nullptr;
 
     try {
