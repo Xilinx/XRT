@@ -15,13 +15,17 @@
 # pragma warning ( disable : 4996 )
 #endif
 namespace {
-  
-static std::tm*
+
+static std::tm
 get_gmtime(const std::time_t& time)
 {
-  std::tm* tm;
-  tm = gmtime(&time); 
-  return tm;
+  std::tm tm_buf{};
+#ifdef _WIN32
+  gmtime_s(&tm_buf, &time);
+#else
+  gmtime_r(&time, &tm_buf);
+#endif
+  return tm_buf;
 }
 
 }
@@ -50,7 +54,7 @@ timestamp()
   auto time = std::chrono::system_clock::now();
   auto tm = get_gmtime(std::chrono::system_clock::to_time_t(time));
   char buf[64] = {0};
-  return std::strftime(buf, sizeof(buf), "%c GMT", tm)
+  return std::strftime(buf, sizeof(buf), "%c GMT", &tm)
     ? buf : "Time conversion failed";
 }
 
@@ -70,8 +74,15 @@ timestamp(uint64_t epoch)
 std::string
 get_timestamp_for_filename()
 {
+  constexpr int microseconds_per_second = 1000000;
+  constexpr int microsecond_width = 6;
+
   auto current_time = std::chrono::system_clock::now();
   std::time_t time = std::chrono::system_clock::to_time_t(current_time);
+
+  // Extract microseconds
+  auto us = std::chrono::duration_cast<std::chrono::microseconds>(
+      current_time.time_since_epoch()) % microseconds_per_second;
 
   std::tm tm_buf{};
   #ifdef _WIN32
@@ -81,7 +92,8 @@ get_timestamp_for_filename()
   #endif
 
   std::stringstream time_stamp;
-  time_stamp << std::put_time(&tm_buf, "%Y-%m-%d_%H-%M-%S");
+  time_stamp << std::put_time(&tm_buf, "%Y-%m-%d_%H-%M-%S")
+             << '-' << std::setfill('0') << std::setw(microsecond_width) << us.count();
   return time_stamp.str();
 }
 

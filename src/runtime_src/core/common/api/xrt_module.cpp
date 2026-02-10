@@ -311,10 +311,10 @@ public:
   }
 };
 
-class module_run_aie2p : public module_run
+class module_run_aie_gen2 : public module_run
 {
   // Platform-specific configuration from ELF
-  xrt::module_config_aie2p m_config;
+  xrt::module_config_aie_gen2 m_config;
 
   // Instruction and control packet buffers
   xrt::bo m_instr_bo;
@@ -375,7 +375,7 @@ class module_run_aie2p : public module_run
   void
   create_instruction_buf()
   {
-    XRT_DEBUGF("-> module_run_aie2p::create_instruction_buf()\n");
+    XRT_DEBUGF("-> module_run_aie_gen2::create_instruction_buf()\n");
 
     // Get instruction buffer from config
     size_t sz = m_config.instr_data.size();
@@ -483,7 +483,7 @@ class module_run_aie2p : public module_run
                    xrt_core::elf_patcher::buf_type::ctrltext);
     }
 
-    XRT_DEBUGF("<- module_run_aie2p::create_instruction_buf()\n");
+    XRT_DEBUGF("<- module_run_aie_gen2::create_instruction_buf()\n");
   }
 
   ////////////////////////////////////////////////////////////////
@@ -491,7 +491,7 @@ class module_run_aie2p : public module_run
   ////////////////////////////////////////////////////////////////
 
   uint32_t*
-  fill_ert_aie2p_preempt_data(uint32_t* payload) const
+  fill_ert_aie_gen2_preempt_data(uint32_t* payload) const
   {
     // npu preemption in elf_flow
     auto npu = reinterpret_cast<ert_npu_preempt_data*>(payload);
@@ -509,7 +509,7 @@ class module_run_aie2p : public module_run
   }
 
   uint32_t*
-  fill_ert_aie2p_non_preempt_data(uint32_t* payload) const
+  fill_ert_aie_gen2_non_preempt_data(uint32_t* payload) const
   {
     auto npu = reinterpret_cast<ert_npu_data*>(payload);
     npu->instruction_buffer = m_instr_bo.address();
@@ -520,10 +520,10 @@ class module_run_aie2p : public module_run
   }
 
 public:
-  module_run_aie2p(const xrt::elf& elf, const xrt::hw_context& hw_context,
-                   uint32_t id, const xrt::bo& ctrlpkt_bo)
+  module_run_aie_gen2(const xrt::elf& elf, const xrt::hw_context& hw_context,
+                      uint32_t id, const xrt::bo& ctrlpkt_bo)
     : module_run(elf, hw_context, id)
-    , m_config(std::get<xrt::module_config_aie2p>(m_elf_impl->get_module_config(id)))
+    , m_config(std::get<xrt::module_config_aie_gen2>(m_elf_impl->get_module_config(id)))
   {
     create_ctrlpkt_buf(ctrlpkt_bo);
     create_ctrlpkt_pm_bufs();
@@ -536,9 +536,9 @@ public:
   {
     // Use preempt data if preemption buffers exist or if it's a group ELF
     if ((m_preempt_save_bo && m_preempt_restore_bo) || m_elf_impl->is_group_elf())
-      return fill_ert_aie2p_preempt_data(payload);
+      return fill_ert_aie_gen2_preempt_data(payload);
     else
-      return fill_ert_aie2p_non_preempt_data(payload);
+      return fill_ert_aie_gen2_non_preempt_data(payload);
   }
 
   // Patch argument in control code
@@ -653,10 +653,10 @@ public:
   }
 };
 
-class module_run_aie2ps : public module_run
+class module_run_aie_gen2_plus : public module_run
 {
   // Platform-specific configuration from ELF
-  xrt::module_config_aie2ps m_config;
+  xrt::module_config_aie_gen2_plus m_config;
 
   // Instruction buffer (combined ctrlcode for all columns)
   xrt::bo m_buffer;
@@ -926,7 +926,7 @@ class module_run_aie2ps : public module_run
   ////////////////////////////////////////////////////////////////
 
   uint32_t*
-  fill_ert_aie2ps(uint32_t* payload) const
+  fill_ert_aie_gen2_plus(uint32_t* payload) const
   {
     auto ert_dpu_data_count = static_cast<uint16_t>(m_column_bo_address.size());
     // For multiple instruction buffers, the ert_dpu_data::chained has
@@ -945,9 +945,9 @@ class module_run_aie2ps : public module_run
   }
 
 public:
-  module_run_aie2ps(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
+  module_run_aie_gen2_plus(const xrt::elf& elf, const xrt::hw_context& hw_context, uint32_t id)
     : module_run(elf, hw_context, id)
-    , m_config(std::get<xrt::module_config_aie2ps>(m_elf_impl->get_module_config(id)))
+    , m_config(std::get<xrt::module_config_aie_gen2_plus>(m_elf_impl->get_module_config(id)))
   {
     initialize_dtrace_buf();
     create_ctrlpkt_bufs();
@@ -959,7 +959,7 @@ public:
   uint32_t*
   fill_ert_dpu_data(uint32_t* payload) const override
   {
-    return fill_ert_aie2ps(payload);
+    return fill_ert_aie_gen2_plus(payload);
   }
 
   // Patch argument in control code
@@ -1110,10 +1110,13 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
   switch (platform) {
   case xrt::elf::platform::aie2p:
     // pre created ctrlpkt bo is used only in aie2p platform
-    return xrt::module{std::make_shared<xrt::module_run_aie2p>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
+    return xrt::module{std::make_shared<xrt::module_run_aie_gen2>(elf, hwctx, ctrl_code_id, ctrlpkt_bo)};
   case xrt::elf::platform::aie2ps:
   case xrt::elf::platform::aie2ps_group:
-    return xrt::module{std::make_shared<xrt::module_run_aie2ps>(elf, hwctx, ctrl_code_id)};
+  case xrt::elf::platform::aie4:
+  case xrt::elf::platform::aie4a:
+  case xrt::elf::platform::aie4z:
+    return xrt::module{std::make_shared<xrt::module_run_aie_gen2_plus>(elf, hwctx, ctrl_code_id)};
   default:
     throw std::runtime_error("Unsupported platform");
   }
@@ -1174,7 +1177,7 @@ get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type ty
 
   if (platform == xrt::elf::platform::aie2p) {
     auto module_config =
-        std::get<xrt::module_config_aie2p>(elf_hdl->get_module_config(ctrl_code_id));
+        std::get<xrt::module_config_aie_gen2>(elf_hdl->get_module_config(ctrl_code_id));
 
     switch (type) {
       case xrt_core::elf_patcher::buf_type::ctrltext:
@@ -1189,9 +1192,11 @@ get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type ty
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if(platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group) {
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+          platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
+          platform == xrt::elf::platform::aie4z) {
     auto module_config =
-        std::get<xrt::module_config_aie2ps>(elf_hdl->get_module_config(ctrl_code_id));
+        std::get<xrt::module_config_aie_gen2_plus>(elf_hdl->get_module_config(ctrl_code_id));
 
         if (type != xrt_core::elf_patcher::buf_type::ctrltext)
       throw std::runtime_error("Info of given buffer type not available");
@@ -1219,7 +1224,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
 
   if (platform == xrt::elf::platform::aie2p) {
     auto module_config =
-        std::get<xrt::module_config_aie2p>(elf_hdl->get_module_config(ctrl_code_id));
+        std::get<xrt::module_config_aie_gen2>(elf_hdl->get_module_config(ctrl_code_id));
     switch (type) {
       case xrt_core::elf_patcher::buf_type::ctrltext:
         inst = &module_config.instr_data;
@@ -1237,9 +1242,11 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
         throw std::runtime_error("Unknown buffer type passed");
     }
   }
-  else if(platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group) {
+  else if (platform == xrt::elf::platform::aie2ps || platform == xrt::elf::platform::aie2ps_group ||
+           platform == xrt::elf::platform::aie4 || platform == xrt::elf::platform::aie4a ||
+           platform == xrt::elf::platform::aie4z) {
     auto module_config =
-        std::get<xrt::module_config_aie2ps>(elf_hdl->get_module_config(ctrl_code_id));
+        std::get<xrt::module_config_aie_gen2_plus>(elf_hdl->get_module_config(ctrl_code_id));
     const auto& col_data = module_config.ctrlcodes;
 
     if (col_data.empty())
