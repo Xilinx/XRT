@@ -114,14 +114,12 @@ endif()
 target_include_directories(xrt_coreutil
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
-  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
 target_include_directories(xrt_coreutil_static
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
-  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
