@@ -85,6 +85,7 @@ add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
+  $<TARGET_OBJECTS:dtrace_library_objects>
   )
 
 add_library(xrt_coreutil_static STATIC
@@ -92,6 +93,7 @@ add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
+  $<TARGET_OBJECTS:dtrace_library_objects>
   )
 
 set_target_properties(xrt_coreutil PROPERTIES
@@ -112,12 +114,14 @@ endif()
 target_include_directories(xrt_coreutil
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
 target_include_directories(xrt_coreutil_static
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
