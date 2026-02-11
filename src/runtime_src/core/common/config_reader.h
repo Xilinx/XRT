@@ -1129,6 +1129,15 @@ get_run_buffer_pool_memory_mb()
   return value;
 }
 
+inline bool
+get_uc_log()
+{
+  // uc_log is enabled by default, we can remove this ini option
+  // once we are sure that it doesn't add any overhead to the runtime
+  static bool value = detail::get_bool_value("Debug.uc_log", true);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
