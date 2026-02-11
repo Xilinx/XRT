@@ -62,12 +62,12 @@ clock_period_ns(uint64_t clock_mhz)
 
 /** Log GEMM results and optional verbose details. */
 static void
-log_gemm_results(boost::property_tree::ptree& ptree, uint64_t clock_mhz,
-                 const char* clock_label, double tops, double avg_cycle_count,
-                 double period_ns, unsigned int num_cores)
+log_gemm_results(boost::property_tree::ptree& ptree, 
+                 double tops, 
+                 double avg_cycle_count,
+                 double period_ns)
 {
   if (XBU::getVerbose()) {
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("%s: %u MHz") % clock_label % static_cast<unsigned>(clock_mhz)));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Iterations: %u") % gemm_num_iterations));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (period_ns * avg_cycle_count)));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
@@ -126,7 +126,7 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
     double TOPS = tops_sum / gemm_num_iterations;
     double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_strix);
 
-    log_gemm_results(ptree, clock_mhz, "H Clock", TOPS, avg_cycle_count, period_ns, num_of_cores_strix);
+    log_gemm_results(ptree, TOPS, avg_cycle_count, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
@@ -195,7 +195,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     double aie4_tops_all_cores = tops_sum / gemm_num_iterations;
     double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_npu3);
 
-    log_gemm_results(ptree, clock_mhz, "AIE Clock", aie4_tops_all_cores, avg_cycle_count, period_ns, num_of_cores_npu3);
+    log_gemm_results(ptree, aie4_tops_all_cores, avg_cycle_count, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
   }
   catch(const std::exception& e) {
