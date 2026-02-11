@@ -26,10 +26,7 @@ jobs:
             os_ver: rhel_8.10  
           - os: rhel10.0      
             packageType: rpm
-            os_ver: rhel_10.0  
-          - os: ubuntu2004      
-            packageType: deb
-            os_ver: ubuntu_20.04      
+            os_ver: rhel_10.0      
           - os: hip      
             packageType: deb
             os_ver: ubuntu_22.04
