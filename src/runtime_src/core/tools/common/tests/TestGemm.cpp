@@ -24,7 +24,6 @@ static constexpr uint32_t num_of_cores_strix = 32;
 constexpr size_t num_of_cores_npu3 = 12;
 static constexpr uint32_t total_ops_strix = 196608; //192K OPs
 constexpr uint64_t total_ops_npu3 = 2097152; // 2,097,152 OPs
-static constexpr unsigned int gemm_num_iterations = 10;
 
 /**
  * Get GEMM clock frequency in MHz for TOPS calculation from clock topology.
@@ -33,24 +32,14 @@ static constexpr unsigned int gemm_num_iterations = 10;
 static uint64_t
 get_clock(const std::shared_ptr<xrt_core::device>& dev)
 {
-  uint64_t clock_mhz = 0;
-  try {
-    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-    auto topo = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for (int c = 0; c < topo->m_count; c++) {
-      const char* name = topo->m_clock_freq[c].m_name;
-      if (boost::iequals(name, "H Clock") || boost::iequals(name, "AIE Clock")) {
-        clock_mhz = topo->m_clock_freq[c].m_freq_Mhz;
-        break;
-      }
-    }
-  }
-  catch (const std::exception&) {
-    return 0;
-  }
-  if (clock_mhz == 0)
-    throw std::runtime_error("Clock frequency is 0");
-  return clock_mhz;
+  uint64_t npu_hclock = 0;
+  auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
+  for (auto &res : res_info) {
+    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::npu_clk_max)
+      continue;
+    npu_hclock = res.data_uint64;
+  } 
+  return npu_hclock;
 }
 
 /** Clock period in ns from frequency in MHz. */
@@ -68,7 +57,6 @@ log_gemm_results(boost::property_tree::ptree& ptree,
                  double period_ns)
 {
   if (XBU::getVerbose()) {
-    XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Iterations: %u") % gemm_num_iterations));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Total Duration (avg): %.1f ns") % (period_ns * avg_cycle_count)));
     XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Average cycle count: %.1f") % avg_cycle_count));
   }
@@ -94,37 +82,29 @@ run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive*
     uint64_t clock_mhz = get_clock(dev);
     double period_ns = clock_period_ns(clock_mhz);
 
-    double tops_sum = 0.0;
-    double total_cycle_count_sum = 0.0;
+    runner.execute();
+    runner.wait();
+    const auto bo_result_map = runner.map_buffer("bo_result");
 
-    for (unsigned int iter = 0; iter < gemm_num_iterations; iter++) {
-      runner.execute();
-      runner.wait();
-      const auto bo_result_map = runner.map_buffer("bo_result");
+    const auto* core_ptr = reinterpret_cast<const uint32_t*>(bo_result_map.data());
+    double run_TOPS = 0.0;
+    double run_total_cycle_count = 0.0;
 
-      const auto* core_ptr = reinterpret_cast<const uint32_t*>(bo_result_map.data());
-      double run_TOPS = 0.0;
-      double run_total_cycle_count = 0.0;
-
-      for (uint32_t n = 0; n < num_of_cores_strix; n++) {
-        auto cycle_count = *core_ptr;
-        if (cycle_count == 0) {
-          XBValidateUtils::logger(ptree, "Error", "cycle count is 0");
-          ptree.put("status", XBValidateUtils::test_token_failed);
-          return;
-        }
-        auto temp_TOPS_per_core = total_ops_strix / (period_ns * cycle_count * 1000); // NOLINT
-        run_total_cycle_count += cycle_count;
-        run_TOPS += temp_TOPS_per_core;
-        core_ptr++;
+    for (uint32_t n = 0; n < num_of_cores_strix; n++) {
+      auto cycle_count = *core_ptr;
+      if (cycle_count == 0) {
+        XBValidateUtils::logger(ptree, "Error", "cycle count is 0");
+        ptree.put("status", XBValidateUtils::test_token_failed);
+        return;
       }
-
-      tops_sum += run_TOPS;
-      total_cycle_count_sum += run_total_cycle_count;
+      auto temp_TOPS_per_core = total_ops_strix / (period_ns * cycle_count * 1000); // NOLINT
+      run_total_cycle_count += cycle_count;
+      run_TOPS += temp_TOPS_per_core;
+      core_ptr++;
     }
 
-    double TOPS = tops_sum / gemm_num_iterations;
-    double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_strix);
+    double TOPS = run_TOPS;
+    double avg_cycle_count = run_total_cycle_count / num_of_cores_strix;
 
     log_gemm_results(ptree, TOPS, avg_cycle_count, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
@@ -169,31 +149,21 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     uint64_t clock_mhz = get_clock(dev);
     double period_ns = clock_period_ns(clock_mhz);
 
-    double tops_sum = 0.0;
-    double total_cycle_count_sum = 0.0;
+    run.start();
+    run.wait2();
+    bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-    for (unsigned int iter = 0; iter < gemm_num_iterations; iter++) {
-      run.start();
-      run.wait2();
-      bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-      double total_cycle_count = 0.0;
-      for (uint8_t i = 1; i <= num_of_cores_npu3 * 2; i = i + 2) { // read every other register
-        uint32_t cycle_count = *reinterpret_cast<uint32_t*>(buf_result + i * sizeof(uint32_t));
-        total_cycle_count += cycle_count;
-      }
-
-      double cycle_count_per_core = total_cycle_count / num_of_cores_npu3;
-      double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * period_ns); // NOLINT
-      double tops_per_core = gops_per_core / 1e12; // NOLINT
-      double run_tops = tops_per_core * num_of_cores_npu3;
-
-      tops_sum += run_tops;
-      total_cycle_count_sum += total_cycle_count;
+    double total_cycle_count = 0.0;
+    for (uint8_t i = 1; i <= num_of_cores_npu3 * 2; i = i + 2) { // read every other register
+      uint32_t cycle_count = *reinterpret_cast<uint32_t*>(buf_result + i * sizeof(uint32_t));
+      total_cycle_count += cycle_count;
     }
 
-    double aie4_tops_all_cores = tops_sum / gemm_num_iterations;
-    double avg_cycle_count = total_cycle_count_sum / (gemm_num_iterations * num_of_cores_npu3);
+    double cycle_count_per_core = total_cycle_count / num_of_cores_npu3;
+    double gops_per_core = (static_cast<double>(total_ops_npu3) * 1e9) / (cycle_count_per_core * period_ns); // NOLINT
+    double tops_per_core = gops_per_core / 1e12; // NOLINT
+    double aie4_tops_all_cores = tops_per_core * num_of_cores_npu3;
+    double avg_cycle_count = total_cycle_count / num_of_cores_npu3;
 
     log_gemm_results(ptree, aie4_tops_all_cores, avg_cycle_count, period_ns);
     ptree.put("status", XBValidateUtils::test_token_passed);
