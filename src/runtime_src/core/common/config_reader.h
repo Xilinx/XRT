@@ -523,7 +523,7 @@ get_xgq_polling()
 }
 
 /**
- * Use new hw context for multi slot application 
+ * Use new hw context for multi slot application
  */
 inline bool
 get_hw_context_flag()
@@ -1132,7 +1132,9 @@ get_run_buffer_pool_memory_mb()
 inline bool
 get_uc_log()
 {
-  static bool value = detail::get_bool_value("Debug.uc_log", false);
+  // uc_log is enabled by default, we can remove this ini option
+  // once we are sure that it doesn't add any overhead to the runtime
+  static bool value = detail::get_bool_value("Debug.uc_log", true);
   return value;
 }
 
