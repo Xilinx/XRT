@@ -113,23 +113,6 @@ endif()
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.18.0" AND NOT CMAKE_CXX_COMPILER MATCHES "(arm64|ARM64)")
   target_link_libraries(xrt_coreutil PRIVATE cert_dtrace)
   target_link_libraries(xrt_coreutil_static PRIVATE cert_dtrace_static)
-  install(TARGETS cert_dtrace
-    EXPORT xrt-targets
-    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
-    RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
-    )
-    # Install static library - exclude from xrt-targets export in yocto builds
-    # to avoid find_package(XRT) failures when static libs are not in sysroot
-    if (XRT_YOCTO)
-      install(TARGETS cert_dtrace_static
-      ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
-      )
-    else()
-      install(TARGETS cert_dtrace_static
-      EXPORT xrt-targets
-      ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
-      )
-  endif()
 endif()
 
 target_include_directories(xrt_coreutil
