@@ -48,12 +48,17 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS -DXRT_EDGE=1 -DXRT_YOCTO=1 -DCMAKE_INSTALL_PREFIX=/usr\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
-        echo 'FILES:${PN} += "${libdir}/dtrace"' >> $XRT_BB
 	echo 'DEPENDS += " systemtap"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=de2c993ac479f02575bcbfb14ef9b485 \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
+        echo '' >> $XRT_BB
+        echo 'do_install:append() {' >> $XRT_BB
+        echo '    if [ -d "${D}${libdir}/dtrace" ]; then' >> $XRT_BB
+        echo '        rm -rf ${D}${libdir}/dtrace' >> $XRT_BB
+        echo '    fi' >> $XRT_BB
+        echo '}' >> $XRT_BB
     fi
 
     grep "inherit externalsrc" $ZOCL_BB

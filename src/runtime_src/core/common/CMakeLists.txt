@@ -85,7 +85,6 @@ add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
-  $<TARGET_OBJECTS:dtrace_library_objects>
   )
 
 add_library(xrt_coreutil_static STATIC
@@ -93,7 +92,6 @@ add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
-  $<TARGET_OBJECTS:dtrace_library_objects>
   )
 
 set_target_properties(xrt_coreutil PROPERTIES
@@ -111,17 +109,38 @@ endif()
 # links with xrt_coreutil
 # BUILD_INTERFACE is for targets within XRT that link with xrt_coreutil
 # INSTALL_INTERFACE is for external targets that link XRT::xrt_coreutil
+# Link aiebu dtrace library when aiebu is built
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.18.0" AND NOT CMAKE_CXX_COMPILER MATCHES "(arm64|ARM64)")
+  target_link_libraries(xrt_coreutil PRIVATE cert_dtrace)
+  target_link_libraries(xrt_coreutil_static PRIVATE cert_dtrace_static)
+  install(TARGETS cert_dtrace
+    EXPORT xrt-targets
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
+    RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
+    )
+    # Install static library - exclude from xrt-targets export in yocto builds
+    # to avoid find_package(XRT) failures when static libs are not in sysroot
+    if (XRT_YOCTO)
+      install(TARGETS cert_dtrace_static
+      ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
+      )
+    else()
+      install(TARGETS cert_dtrace_static
+      EXPORT xrt-targets
+      ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
+      )
+  endif()
+endif()
+
 target_include_directories(xrt_coreutil
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
-  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
 target_include_directories(xrt_coreutil_static
   PUBLIC
   $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
-  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/aiebu/src/cpp>
   $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
 
