@@ -111,7 +111,7 @@ endif()
 # INSTALL_INTERFACE is for external targets that link XRT::xrt_coreutil
 # Link aiebu dtrace library when aiebu is built
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.18.0" AND NOT CMAKE_CXX_COMPILER MATCHES "(arm64|ARM64)")
-  target_link_libraries(xrt_coreutil PRIVATE cert_dtrace)
+  target_link_libraries(xrt_coreutil PRIVATE cert_dtrace_static)
   target_link_libraries(xrt_coreutil_static PRIVATE cert_dtrace_static)
 endif()
 
