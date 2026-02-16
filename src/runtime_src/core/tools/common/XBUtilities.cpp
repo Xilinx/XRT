@@ -166,7 +166,16 @@ XBUtilities::get_available_devices(bool inUserDomain)
       catch (...) {
         // The UC firmware wasn't added
       }
-      
+
+      try {
+        const auto aie_tiles = xrt_core::device_query<xq::aie_tiles_stats>(device);
+        std::string topology = boost::str(boost::format("%ux%u") % aie_tiles.rows % aie_tiles.cols);
+        pt_dev.put("aie_topology", topology);
+      }
+      catch (...) {
+        // AIE topology wasn't added
+      }
+
       try {
         auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
         std::string pf = device->is_userpf() ? "user" : "mgmt";
