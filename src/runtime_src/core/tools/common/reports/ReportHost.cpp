@@ -84,7 +84,8 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
   const Table2D::HeaderData aie_topology = {"Topology", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, name, aie_topology};
+  const Table2D::HeaderData aie_architecture = {"Version", Table2D::Justification::left};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, name, aie_topology, aie_architecture};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -97,7 +98,8 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
     const std::vector<std::string> entry_data = {
       bdf_string, 
       dev.get<std::string>("name", "n/a"),
-      dev.get<std::string>("aie_topology", "N/A")
+      dev.get<std::string>("aie_topology", "N/A"),
+      dev.get<std::string>("aie_architecture_version", "N/A")
     };
 
     device_table.addEntry(entry_data);
