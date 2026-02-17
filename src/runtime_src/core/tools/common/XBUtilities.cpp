@@ -198,7 +198,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
           pt_dev.put("aie_architecture_version", "AIE4");
         default:
-          throw std::runtime_error("AIE Architecture Version Unavailable");
+          pt_dev.put("aie_architecture_version", "N/A");
         }
       }
       catch (...) {
