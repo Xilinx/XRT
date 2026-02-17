@@ -741,6 +741,23 @@ public:
   /// @endcond
 
   /**
+   * get_gmio_mem_index() - Get memory bank index for a GMIO port by exact connectivity arg_name
+   *
+   * Use the returned value as bank_id when creating xrt::aie::bo for this GMIO.
+   * Host must pass the exact arg_name as present in the xclbin packagedSystemD connectivity
+   * (e.g. "in1", "out1", or "pr0_gmioIn" when using prefix_port naming).
+   *
+   * @param gmio_name
+   *   Exact connectivity arg_name for the GMIO port.
+   * @return
+   *   mem_data_index (use as bank_id in xrt::aie::bo).
+   * @throws std::runtime_error if xclbin has no named connectivity for this port.
+   */
+  XRT_API_EXPORT
+  int32_t
+  get_gmio_mem_index(const std::string& gmio_name) const;
+
+  /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin
    *
    * @return
