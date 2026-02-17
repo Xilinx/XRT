@@ -2005,7 +2005,7 @@ struct cert_firmware_version : request
   using result_type = data;
   static const key_type key = key_type::cert_firmware_version;
 
-  virtual std::any
+  std::any
   get(const device* device) const override = 0;
 };
 
