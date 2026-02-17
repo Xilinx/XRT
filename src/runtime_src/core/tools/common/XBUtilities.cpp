@@ -188,7 +188,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
         case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
         case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
-          pt_dev.put("aie_architecture_version", "aie2p");
+          pt_dev.put("aie_architecture_version", "AIE2P");
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
@@ -196,7 +196,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
-          pt_dev.put("aie_architecture_version", "aie4");
+          pt_dev.put("aie_architecture_version", "AIE4");
         default:
           throw std::runtime_error("AIE Architecture Version Unavailable");
         }
