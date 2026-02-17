@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include Files
 #include "ReportHost.h"
@@ -83,7 +83,8 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
 {
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, name};
+  const Table2D::HeaderData aie_topology = {"Topology", Table2D::Justification::left};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, name, aie_topology};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -93,7 +94,12 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
       continue;
 
     const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    const std::vector<std::string> entry_data = {bdf_string, dev.get<std::string>("name", "n/a")};
+    const std::vector<std::string> entry_data = {
+      bdf_string, 
+      dev.get<std::string>("name", "n/a"),
+      dev.get<std::string>("aie_topology", "N/A")
+    };
+
     device_table.addEntry(entry_data);
   }
 

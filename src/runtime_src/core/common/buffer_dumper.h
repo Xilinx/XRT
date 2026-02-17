@@ -68,6 +68,11 @@ private:
   std::mutex m_dump_mutex;
   std::condition_variable m_cv;
   std::vector<std::ofstream> m_file_streams;
+  std::string m_session_timestamp;  // Set on first file open for consistent naming
+
+  // Open file for chunk lazily when first data is available; returns stream
+  std::ofstream&
+  get_or_open_stream(size_t chunk_index);
 
   // Read the logged count from chunk metadata
   size_t

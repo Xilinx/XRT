@@ -126,11 +126,11 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // Dump dynamic trace buffer
+  // Dump dynamic trace buffer (optional)
   virtual void
   dump_dtrace_buffer(uint32_t)
   {
-    throw std::runtime_error("Not supported");
+  //Placeholder has no dtrace
   }
 
   // Get control scratchpad buffer object
