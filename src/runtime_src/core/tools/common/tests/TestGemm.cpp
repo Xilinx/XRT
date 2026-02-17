@@ -51,8 +51,8 @@ clock_period_ns(uint64_t clock_mhz)
 
 /** Log GEMM results and optional verbose details. */
 static void
-log_gemm_results(boost::property_tree::ptree& ptree, 
-                 double tops, 
+log_gemm_results(boost::property_tree::ptree& ptree,
+                 double tops,
                  double avg_cycle_count,
                  double period_ns)
 {
@@ -149,8 +149,11 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     uint64_t clock_mhz = get_clock(dev);
     double period_ns = clock_period_ns(clock_mhz);
 
-    run.start();
-    run.wait2();
+    for (int i = 0; i < 100; i++) { // NOLINT
+      run.start();
+      run.wait2();
+    }
+
     bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     double total_cycle_count = 0.0;
@@ -172,7 +175,6 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     XBValidateUtils::logger(ptree, "Error", e.what());
     ptree.put("status", XBValidateUtils::test_token_failed);
   }
-  
 }
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
