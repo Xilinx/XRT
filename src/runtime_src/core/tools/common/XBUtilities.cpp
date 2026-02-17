@@ -149,6 +149,18 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The npu firmware wasn't added
       }
       try {
+        const auto cert_fw_ver = xrt_core::device_query<xq::cert_firmware_version>(device);
+        std::string version = "N/A";
+        if (cert_fw_ver.date != 0) {
+          version = boost::str(boost::format("%u, %s")
+            % cert_fw_ver.date % cert_fw_ver.git_hash);
+        }
+        pt_dev.put("cert_firmware_version", version);
+      }
+      catch(...) {
+        // The CERT firmware wasn't added
+      }
+      try {
         const auto uc_fw_ver = xrt_core::device_query<xq::firmware_version>(device, xq::firmware_version::firmware_type::uc_firmware);
         std::string version = "N/A";
         std::string build_date = "N/A";
@@ -810,6 +822,10 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     if (device_class == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen)) {
       if (fw_ver != "N/A")
         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % fw_ver;
+
+      auto cert_fw_ver = dev.get<std::string>("cert_firmware_version", "N/A");
+      if (cert_fw_ver != "N/A")
+        output << boost::format("  %-20s : %s\n") % "CERT Firmware Version" % cert_fw_ver;
 
       auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
       auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
