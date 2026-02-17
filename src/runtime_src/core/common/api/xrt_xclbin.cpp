@@ -22,11 +22,15 @@
 #include "native_profile.h"
 #include "xclbin_int.h"
 
+#include "core/common/json/nlohmann/json.hpp"
+
 #include <boost/algorithm/string.hpp>
 
 #include <array>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <numeric>
 #include <regex>
 #include <set>
@@ -389,6 +393,7 @@ class xclbin_impl
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
     std::vector<xclbin::aie_partition> m_aie_partitions;
+    std::map<std::string, int32_t> m_gmio_name_to_mem_index;
 
     // encoded / compressed memory connection used by
     // xrt core to manage compute unit connectivity.
@@ -410,6 +415,58 @@ class xclbin_impl
         }
       }
       return mems;
+    }
+
+    // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from packagedSystemD
+    //
+    // Parses SYSTEM_METADATA (packagedSystemD, kind 22) JSON:
+    //   system_diagram_metadata.xclbin.user_regions[0].connectivity[]
+    //   Edges with node1.arg_name and node2.type == "memory" -> mem_data_index from node2.id.
+    static std::map<std::string, int32_t>
+    init_gmio_connectivity(const xclbin_impl* ximpl)
+    {
+      std::map<std::string, int32_t> gmio_name_to_mem_index;
+      try {
+        auto sys_raw = ximpl->get_axlf_section(SYSTEM_METADATA);
+        if (!sys_raw.first || sys_raw.second == 0)
+          return gmio_name_to_mem_index;
+        std::string json_str(sys_raw.first, sys_raw.second);
+        auto j = nlohmann::json::parse(json_str);
+        if (!j.contains("system_diagram_metadata") || !j["system_diagram_metadata"].contains("xclbin") ||
+            !j["system_diagram_metadata"]["xclbin"].contains("user_regions"))
+          return gmio_name_to_mem_index;
+        auto& ur = j["system_diagram_metadata"]["xclbin"]["user_regions"];
+        if (ur.empty() || !ur[0].contains("connectivity"))
+          return gmio_name_to_mem_index;
+        for (auto& edge : ur[0]["connectivity"]) {
+          if (!edge.contains("node1") || !edge.contains("node2"))
+            continue;
+          auto& n1 = edge["node1"];
+          auto& n2 = edge["node2"];
+          if (!n2.contains("type") || n2["type"].get<std::string>() != "memory")
+            continue;
+          if (!n1.contains("arg_name"))
+            continue;
+          std::string arg_name = n1["arg_name"].get<std::string>();
+          if (arg_name.empty())
+            continue;
+          int32_t mem_idx = 0;
+          if (n2.contains("id") && !n2["id"].is_null()) {
+            if (n2["id"].is_string())
+              mem_idx = static_cast<int32_t>(std::stoi(n2["id"].get<std::string>()));
+            else
+              mem_idx = n2["id"].get<int32_t>();
+          }
+          auto it = gmio_name_to_mem_index.find(arg_name);
+          if (it == gmio_name_to_mem_index.end())
+            gmio_name_to_mem_index[arg_name] = mem_idx;
+          else
+            it->second = std::max(it->second, mem_idx);
+        }
+      } catch (...) {
+        // JSON parse or structure mismatch - leave map empty
+      }
+      return gmio_name_to_mem_index;
     }
 
     // init_ips() - populate m_ips with xclbin::ip objects
@@ -578,6 +635,7 @@ class xclbin_impl
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
       , m_aie_partitions(init_aie_partitions(m_ximpl))
+      , m_gmio_name_to_mem_index(init_gmio_connectivity(m_ximpl))
       , m_membank_encoding(init_mem_encoding(m_mems))
     {}
   };
@@ -746,6 +804,25 @@ public:
   get_aie_partitions() const
   {
     return get_xclbin_info()->m_aie_partitions;
+  }
+
+  int32_t
+  get_gmio_mem_index(const std::string& gmio_name) const
+  {
+    const auto* info = get_xclbin_info();
+    auto it = info->m_gmio_name_to_mem_index.find(gmio_name);
+    if (it == info->m_gmio_name_to_mem_index.end()) {
+      std::string msg = "No connectivity for GMIO port '" + gmio_name + "'";
+      if (info->m_gmio_name_to_mem_index.empty())
+        msg += " (packagedSystemD missing or has no GMIO connectivity)";
+      else {
+        msg += ". Available GMIO arg_name(s):";
+        for (const auto& kv : info->m_gmio_name_to_mem_index)
+          msg += " '" + kv.first + "'";
+      }
+      throw std::runtime_error(msg);
+    }
+    return it->second;
   }
 };
 
@@ -1092,6 +1169,15 @@ xclbin::
 get_aie_partitions() const
 {
   return handle ? handle->get_aie_partitions() : std::vector<xclbin::aie_partition>{};
+}
+
+int32_t
+xclbin::
+get_gmio_mem_index(const std::string& gmio_name) const
+{
+  if (!handle)
+    throw std::runtime_error("get_gmio_mem_index: empty xclbin");
+  return handle->get_gmio_mem_index(gmio_name);
 }
 
 std::string
