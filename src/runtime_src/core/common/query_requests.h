@@ -1998,7 +1998,7 @@ struct firmware_version : request
 struct cert_firmware_version : request
 {
   struct data {
-    uint32_t date;
+    std::string date;
     std::string git_hash;
   };
 
