@@ -14,7 +14,7 @@
 
 namespace xrt_core::bo_int {
 
-XRT_CORE_COMMON_EXPORT  
+XRT_CORE_COMMON_EXPORT
 xrt_core::buffer_handle*
 get_buffer_handle(const xrt::bo& bo);
 
@@ -59,6 +59,18 @@ create_bo(const std::shared_ptr<xrt_core::device>& m_core_device, size_t sz, use
 XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
+
+// create_bo() - Create a buffer object using shim hwctx handle and device
+// for specific use case
+//
+// Allocates a buffer object using shim hwctx handle and device.
+// Used when the buffer is owned by an hwctx (lifetime managed by hwctx)
+// passes the handle directly to avoid circular dependency.
+XRT_CORE_COMMON_EXPORT
+xrt::bo
+create_bo(xrt_core::hwctx_handle* hwctx_handle,
+          const std::shared_ptr<xrt_core::device>& device,
+          size_t sz, use_type type);
 
 // config_bo() - Configure the buffer object for the given use case (based on
 // the flag passed)
