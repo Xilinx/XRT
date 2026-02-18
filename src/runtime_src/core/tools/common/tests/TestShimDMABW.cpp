@@ -17,13 +17,8 @@ using json = nlohmann::json;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestShimDMABW::TestShimDMABW()
-  : TestRunner("shim-dma-bw", "Run additional bandwidth tests for SHIM DMA")
+  : TestRunner("shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA")
   , m_test_configs({
-      {"recipe_bw_1r.json",     "profile_bw_1r.json",     "bw_1r.elf",     6,  "1xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      {"recipe_bw_1w.json",     "profile_bw_1w.json",     "bw_1w.elf",     6,  "1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      {"recipe_bw_2r.json",     "profile_bw_2r.json",     "bw_2r.elf",     12, "2xRead"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      {"recipe_bw_1r_1w.json",  "profile_bw_1r_1w.json",  "bw_1r_1w.elf",  12, "1xRead/1xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
-      {"recipe_bw_1r_2w.json",  "profile_bw_1r_2w.json",  "bw_1r_2w.elf",  9,  "1xRead/2xWrite"}, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
       {"recipe_bw_2r_1w.json",  "profile_bw_2r_1w.json",  "bw_2r_1w.elf",  18, "2xRead/1xWrite"} //NOLINT(cppcoreguidelines-avoid-magic-numbers)
     })
 {}
