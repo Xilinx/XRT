@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-// UC Log Schema Version 0.24
+// UC Log Schema Version 0.25
 // This file defines UC log schema mappings for parsing binary log messages
 // from the firmware. It includes mappings for file IDs to filenames and
 // log IDs to format strings.
@@ -46,7 +46,8 @@ uc_log_schema = {
     {12, "dbg_handler.c"},
     {13, "profiling.c"},
     {14, "trace.c"},
-    {15, "utils.c"}
+    {15, "utils.c"},
+    {16, "cache.c"}
   },
   
   // Log ID to format string mapping
@@ -156,12 +157,24 @@ uc_log_schema = {
     {102, "break early new page ...\n"},
     {103, "load elf cp poff: 0x%x\n"},
     {104, "preempt prefetch job skipped\n"},
-    {105, "offset 0x%u: 0x%u\n"},
+    {105, "offset 0x%x: 0x%x\n"},
     {106, "Handshake dump:\n"},
     {107, "hw uncorrectable error caught\n"},
     {108, "hw correctable error caught\n"},
     {109, "axi error caught\n"},
-    {110, "\n"}
+    {110, "%d cmds queued in current check\n"},
+    {111, "handle slot %d , subcmd id in runlist: %d\n"},
+    {112, "update completion\n"},
+    {113, "ATOMICS update read_idx by %d\n"},
+    {114, "cache hit for address 0x%x:0x%x\n"},
+    {115, "cache miss for address 0x%x:0x%x\n"},
+    {116, "update read_idx by %d\n"},
+    {117, "lead: handle packet. chain_flag: %d\n"},
+    {118, "q new write index high %d : low %d\n"},
+    {119, "q new read index high %d : low %d\n"},
+    {120, "q old write index high %d : low %d\n"},
+    {121, "q old read index high %d : low %d\n"},
+    {122, "\n"}
   }
 };
 
