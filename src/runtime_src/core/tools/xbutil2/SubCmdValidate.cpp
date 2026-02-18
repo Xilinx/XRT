@@ -607,8 +607,11 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       else if (boost::iequals(options.m_pmode, "TURBO")) {
         xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::turbo);
       }
-      else if (boost::iequals(options.m_pmode, "POWERSAVER") || boost::iequals(options.m_pmode, "BALANCED")) {
-        throw xrt_core::error(boost::str(boost::format("No tests are supported in %s mode\n") % options.m_pmode));
+      else if (boost::iequals(options.m_pmode, "POWERSAVER")) {
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::powersaver);
+      }
+      else if (boost::iequals(options.m_pmode, "BALANCED")) {
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::balanced);
       }
       else {
         throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % options.m_pmode));
