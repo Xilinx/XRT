@@ -36,6 +36,10 @@
 #define XRT_TRACE_POINT_LOG(probe, ...) \
   XRT_DETAIL_TRACE_POINT_LOG(probe, ##__VA_ARGS__)
 
+// Add a trace point with automatic epoch time (microseconds since Unix epoch)
+#define XRT_TRACE_POINT_LOG_EPOCH_TIME(probe, ...) \
+  XRT_DETAIL_TRACE_POINT_LOG_EPOCH_TIME(probe, ##__VA_ARGS__)
+
 // Scoped trace points
 // Create a scoped object that that a tracepoint when created
 // and when destroyed.  The variants support 0, 1, or 2 arguments.

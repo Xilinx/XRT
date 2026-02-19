@@ -4,9 +4,25 @@
 
 #define SDT_USE_VARIADIC
 #include <sys/sdt.h>
+#include <chrono>
+
+namespace xrt_core::trace::detail {
+
+// Helper function to get epoch time in microseconds
+inline int64_t
+get_epoch_time_us()
+{
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
+
+} // namespace xrt_core::trace::detail
 
 #define XRT_DETAIL_TRACE_POINT_LOG(probe, ...) \
   STAP_PROBEV(xrt, probe##_log, ##__VA_ARGS__)
+
+#define XRT_DETAIL_TRACE_POINT_LOG_EPOCH_TIME(probe, ...) \
+  STAP_PROBEV(xrt, probe##_log, xrt_core::trace::detail::get_epoch_time_us(), ##__VA_ARGS__)
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE(probe)                             \
   struct xrt_trace_scope {                  /* NOLINT */                \

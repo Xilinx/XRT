@@ -4114,7 +4114,7 @@ void
 run::
 start()
 {
-  XRT_TRACE_POINT_SCOPE(xrt_run_start);
+  XRT_TRACE_POINT_LOG_EPOCH_TIME("xrt_run_start");
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();
@@ -4147,10 +4147,12 @@ run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait);
-  return xdp::native::profiling_wrapper("xrt::run::wait",
+  auto result = xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
+  XRT_TRACE_POINT_LOG_EPOCH_TIME("xrt_run_wait_complete");
+  return result;
 }
 
 std::cv_status
@@ -4158,10 +4160,12 @@ run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
-  return xdp::native::profiling_wrapper("xrt::run::wait",
+  auto result = xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
     });
+  XRT_TRACE_POINT_LOG_EPOCH_TIME("xrt_run_wait2_complete");
+  return result;
 }
 
 ert_cmd_state
@@ -4417,7 +4421,7 @@ void
 runlist::
 execute()
 {
-  XRT_TRACE_POINT_SCOPE(xrt_runlist_execute);
+  XRT_TRACE_POINT_LOG_EPOCH_TIME("xrt_runlist_execute");
   handle->execute(*this);
 }
 
@@ -4426,7 +4430,9 @@ runlist::
 wait(const std::chrono::milliseconds& timeout) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_runlist_wait);
-  return handle->wait_throw_on_error(timeout);
+  auto result = handle->wait_throw_on_error(timeout);
+  XRT_TRACE_POINT_LOG_EPOCH_TIME("xrt_runlist_wait_complete");
+  return result;
 }
 
 ert_cmd_state

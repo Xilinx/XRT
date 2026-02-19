@@ -24,12 +24,21 @@
 #include <memory>
 #include <windows.h>
 #include <TraceLoggingProvider.h>
+#include <chrono>
 
 // Forward declare the logging provider object.  The provider
 // is defined in a single compilation unit (core/common/trace.cpp).
 TRACELOGGING_DECLARE_PROVIDER(g_logging_provider);
 
 namespace xrt_core::trace::detail {
+
+// Helper function to get epoch time in microseconds
+inline int64_t
+get_epoch_time_us()
+{
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
 
 template <typename ProbeType>
 inline void
@@ -75,6 +84,9 @@ add_event(Args&&... args)
 
 #define XRT_DETAIL_TRACE_POINT_LOG(probe, ...) \
   xrt_core::trace::detail::add_event(#probe, ##__VA_ARGS__)  // VS++ suppresses trailing comma
+
+#define XRT_DETAIL_TRACE_POINT_LOG_EPOCH_TIME(probe, ...) \
+  xrt_core::trace::detail::add_event(#probe, xrt_core::trace::detail::get_epoch_time_us(), ##__VA_ARGS__)
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE(probe)                                          \
   struct xrt_trace_scope {                                                           \
