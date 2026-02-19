@@ -2064,6 +2064,7 @@ class profile
     bool m_verbose = false;
     bool m_validate = false;
     bool m_legacy = false;
+    unsigned long long m_target_frame_time_ns = 0;  // for FPS throttling
     mutable json m_report;
 
     static mode
@@ -2131,6 +2132,8 @@ class profile
     void
     execute_iteration(size_t iteration)
     {
+      auto iteration_start = std::chrono::steady_clock::now();
+
       // Bind buffers to recipe if requested.  All buffers are bound
       // when created, so this is for subsequent iterations
       // only. Binding must to through executor which could have clone
@@ -2155,6 +2158,19 @@ class profile
       // Validate if requested (implies wait)
       if (m_iteration.value("validate", false))
         m_profile->validate();
+
+      // FPS-based throttling - TODO: do we want to allow catching up if only some frames are too slow?
+      if (m_target_frame_time_ns > 0) {
+        assert(m_profile->m_sleep_to_limit_fps);
+        auto iteration_end = std::chrono::steady_clock::now();
+        unsigned long long elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+          iteration_end - iteration_start).count();
+
+        if (elapsed_ns < m_target_frame_time_ns) {
+          auto sleep_ns = m_target_frame_time_ns - elapsed_ns;
+          std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
+        }
+      }
     }
 
   public:
@@ -2170,7 +2186,11 @@ class profile
       , m_verbose(j.value("verbose", true))
       , m_validate(j.value("validate", (m_mode == mode::validate)))
       , m_legacy(legacy)
-    {}
+    {
+      // Initialize target frame time if sleep_to_limit_fps is enabled
+      if (m_profile->m_sleep_to_limit_fps && m_profile->m_target_fps > 0)
+        m_target_frame_time_ns = 1'000'000'000ULL / m_profile->m_target_fps;
+    }
 
     // Execute the profile
     void
@@ -2239,6 +2259,8 @@ private:
   json m_profile_json;
   std::shared_ptr<artifacts::repo> m_repo;
 
+  bool m_sleep_to_limit_fps = false;
+  uint32_t m_target_fps = 0;
   xrt::hw_context::qos_type m_qos;
   size_t m_runlist_threshold;
   recipe m_recipe;
@@ -2285,13 +2307,23 @@ private:
 
 private:
   static xrt::hw_context::qos_type
-  init_qos(const json& j)
+  init_qos(const json& j, bool& sleep_to_limit_fps, uint32_t& target_fps)
   {
+    // TODO: should this function directly initialize m_sleep_to_limit_fps and m_target_fps?
+    //       If so, can I change this function to no longer be static?
     if (j.empty())
       return {};
 
+    // Extract sleep_to_limit_fps before building qos map
+    sleep_to_limit_fps = j.value("sleep_to_limit_fps", false);
+    target_fps = j.value("fps", 0);
+    if (sleep_to_limit_fps && (target_fps == 0))
+      throw profile_error("fps must be specified when sleep_to_limit_fps is true");
+
     xrt::hw_context::qos_type qos;
     for (auto [key, value] : j.items()) {
+      if (key == "sleep_to_limit_fps")
+        continue; // exclude QoS parameters that aren't in the driver
       XRT_DEBUGF("qos[%s] = %d\n", key.c_str(), value.get<uint32_t>());
       qos.emplace(std::move(key), value.get<uint32_t>());
     }
@@ -2333,7 +2365,7 @@ public:
           std::shared_ptr<artifacts::repo> repo)
     : m_profile_json(load_json(profile)) // cannot use brace-initialization (see nlohmann FAQ)
     , m_repo{std::move(repo)}
-    , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
+    , m_qos{init_qos(m_profile_json.value("qos", json::object()), m_sleep_to_limit_fps, m_target_fps)}
     , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
     , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo.get()}
     , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo.get()}
