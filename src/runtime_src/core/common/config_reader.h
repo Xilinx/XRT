@@ -372,6 +372,13 @@ get_pl_deadlock_detection()
   return value;
 }
 
+inline std::string
+get_xdp_json()
+{
+  static std::string value = detail::get_string_value("Debug.profile_settings", "");
+  return value;
+}
+
 inline bool
 get_api_checks()
 {
