@@ -65,7 +65,7 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type);
 //
 // Allocates a buffer object using shim hwctx handle and device.
 // Used when the buffer is owned by an hwctx (lifetime managed by hwctx)
-// passes the handle directly to avoid circular dependency.
+// This function directly passes the shim hwctx handle to avoid circular dependency.
 XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_bo(xrt_core::hwctx_handle* hwctx_handle,

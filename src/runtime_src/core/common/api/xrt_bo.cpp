@@ -143,7 +143,7 @@ public:
 
   // Constructor using shim hwctx handle and device.
   // Used when the buffer is owned by an hwctx (lifetime managed by hwctx)
-  // passes the handle directly to avoid circular dependency.
+  // This function directly passes the shim hwctx handle to avoid circular dependency.
   device_type(xrt_core::hwctx_handle* hwctx_handle,
               std::shared_ptr<xrt_core::device> device)
     : m_device(std::move(device))
@@ -1769,7 +1769,7 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
 }
 
 xrt::bo
-create_bo(xrt_core::hwctx_handle* ctx_hdl,
+create_bo(xrt_core::hwctx_handle* hwctx_handle,
           const std::shared_ptr<xrt_core::device>& device,
           size_t sz, use_type type)
 {
@@ -1777,7 +1777,7 @@ create_bo(xrt_core::hwctx_handle* ctx_hdl,
   // debug / trace buffers, it is still passed in as a default
   // group 1 with no implied correlation to xclbin connectivity
   // or memory group.
-  return xrt::bo{alloc(device_type{ctx_hdl, device}, sz, compose_internal_bo_flags(type), 1)};
+  return xrt::bo{alloc(device_type{hwctx_handle, device}, sz, compose_internal_bo_flags(type), 1)};
 }
 
 void
