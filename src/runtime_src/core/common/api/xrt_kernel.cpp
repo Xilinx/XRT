@@ -4283,13 +4283,21 @@ kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xdev), xclbin_id, name, mode))
-{}
+{
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrt::kernel(device, xclbin_id, name) is deprecated. "
+    "Use xrt::kernel(hw_context, name) instead.");
+}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
-{}
+{
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrt::kernel(xclDeviceHandle, xclbin_id, name) is deprecated. "
+    "Use xrt::kernel(hw_context, name) instead.");
+}
 
 kernel::
 kernel(const xrt::hw_context& ctx, const std::string& name)
@@ -4670,6 +4678,9 @@ kernel(const xrt::hw_context& ctx, const std::string& name)
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrtPLKernelOpen is deprecated. "
+    "Use xrt::hw_context and xrt::kernel(hw_context, name) instead.");
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{
@@ -4689,6 +4700,9 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrtPLKernelOpenExclusive is deprecated. "
+    "Use xrt::hw_context and xrt::kernel(hw_context, name) instead.");
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{
