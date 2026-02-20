@@ -8,7 +8,6 @@ set "DO_CLEAN=0"
 set "SCRIPTDIR=%~dp0"
 set "SCRIPTDIR=%SCRIPTDIR:~0,-1%"
 set "BUILDDIR=%SCRIPTDIR%"
-
 set "DEBUG=1"
 set "RELEASE=1"
 set "EXT_DIR=%BUILDDIR%\ext.vcpkg\vcpkg_installed\x64-windows"
@@ -27,20 +26,19 @@ REM --------------------------------------------------------------------------
 :parseArgs
 if "%~1"=="" goto argsParsed
 
-if /I "%~1"=="-help"  goto help
-if /I "%~1"=="-ext"   goto parseExt
-if /I "%~1"=="-install" goto parseInstall
-
-if /I "%~1"=="-clean"         ( set "DO_CLEAN=1" & shift & goto parseArgs )
-if /I "%~1"=="-dbg"           ( set "RELEASE=0" & shift & goto parseArgs )
-if /I "%~1"=="-opt"           ( set "DEBUG=0" & shift & goto parseArgs )
-if /I "%~1"=="-stage"     ( set "STAGE=1" & shift & goto parseArgs )
-if /I "%~1"=="-sdk"           ( set "CREATE_SDK=1" & set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
-if /I "%~1"=="-pkg"           ( set "CREATE_PACKAGE=1" & shift & goto parseArgs )
-if /I "%~1"=="-npu"           ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
-if /I "%~1"=="-noabi"         ( set "CMAKEFLAGS=%CMAKEFLAGS% -DDISABLE_ABI_CHECK=1" & shift & goto parseArgs )
-if /I "%~1"=="-hip"           ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_ENABLE_HIP=ON" & shift & goto parseArgs )
-if /I "%~1"=="-nocmake"       ( set "NOCMAKE=1" & shift & goto parseArgs )
+if /I "%~1"=="-help"     goto help
+if /I "%~1"=="-ext"      goto parseExt
+if /I "%~1"=="-install"  goto parseInstall
+if /I "%~1"=="-clean"    ( set "DO_CLEAN=1" & shift & goto parseArgs )
+if /I "%~1"=="-dbg"      ( set "RELEASE=0" & shift & goto parseArgs )
+if /I "%~1"=="-opt"      ( set "DEBUG=0" & shift & goto parseArgs )
+if /I "%~1"=="-stage"    ( set "STAGE=1" & shift & goto parseArgs )
+if /I "%~1"=="-sdk"      ( set "CREATE_SDK=1" & set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
+if /I "%~1"=="-pkg"      ( set "CREATE_PACKAGE=1" & shift & goto parseArgs )
+if /I "%~1"=="-npu"      ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
+if /I "%~1"=="-noabi"    ( set "CMAKEFLAGS=%CMAKEFLAGS% -DDISABLE_ABI_CHECK=1" & shift & goto parseArgs )
+if /I "%~1"=="-hip"      ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_ENABLE_HIP=ON" & shift & goto parseArgs )
+if /I "%~1"=="-nocmake"  ( set "NOCMAKE=1" & shift & goto parseArgs )
 
 echo Unknown option: %1
 goto help
@@ -48,10 +46,12 @@ goto help
 REM --------------------------------------------------------------------------
 :parseExt
 shift
+
 if "%~1"=="" (
-  echo ERROR: -ext requires a path argument
+  echo ERROR: -ext requires a path as argument
   exit /B 2
 )
+
 set "EXT_DIR=%~1"
 set "EXT_DIR_USER=1"
 shift
@@ -60,15 +60,12 @@ goto parseArgs
 REM --------------------------------------------------------------------------
 :parseInstall
 shift
-if "%~1"=="" (
-  set "INSTALL_ROOT=C:\Xilinx\XRT"
-  goto parseArgs
-)
-if "%~1:~0,1%"=="-" (
-  set "INSTALL_ROOT=C:\Xilinx\XRT"
-  goto parseArgs
-)
-set "INSTALL_ROOT=%~1"
+
+set "INSTALL_ARG=%~1"
+if "%INSTALL_ARG%"==""       ( set "INSTALL_ROOT=C:\Xilinx\XRT" & goto parseArgs )
+if "%INSTALL_ARG:~0,1%"=="-" ( set "INSTALL_ROOT=C:\Xilinx\XRT" & goto parseArgs )
+
+set "INSTALL_ROOT=%INSTALL_ARG%"
 shift
 goto parseArgs
 
@@ -94,12 +91,9 @@ if "%INSTALL_ROOT%"==""   goto :skipInstallCheck
 if not "%DEBUG%"=="1"     goto :skipInstallCheck
 if not "%RELEASE%"=="1"   goto :skipInstallCheck
 echo ERROR: -install requires -dbg or -opt (cannot install both configs into one prefix)
-
 exit /B 2
 
-REM --------------------------------------------------------------------------
 :skipInstallCheck
-
 if "%DEBUG%"=="1" call :doBuild Debug WDebug
 if errorlevel 1 exit /B
 
@@ -136,6 +130,7 @@ REM --------------------------------------------------------------------------
 :doConfig
 echo Configuring %CFG%...
 set "LOCAL_CMAKEFLAGS=%CMAKEFLAGS%"
+
 if not "%EXT_DIR:vcpkg_installed=%"=="%EXT_DIR%" set "LOCAL_CMAKEFLAGS=%LOCAL_CMAKEFLAGS% -DCMAKE_PREFIX_PATH=%EXT_DIR%"
 set "PROTOC_EXE=%EXT_DIR%\tools\protobuf\protoc.exe"
 if exist "%PROTOC_EXE%" (
@@ -146,6 +141,7 @@ if exist "%PROTOC_EXE%" (
     exit /B 2
   )
 )
+
 cmake -B "%BUILDDIR%\%DIR%" -G "%GENERATOR%" ^
   -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% ^
   -DCMAKE_VS_GLOBALS="VcpkgEnabled=false" ^
@@ -229,7 +225,7 @@ echo [-help]             - List this help
 echo [-clean]            - Remove build artifact directories
 echo [-dbg]              - Debug build only
 echo [-opt]              - Release build only
-echo [-ext ^<path^>]       - Sets EXT_DIR (usually a vcpkg prefix) for dependencies
+echo [-ext ^<path^>]       - Sets EXT_DIR for dependencies (usually a vcpkg prefix)
 echo [-install [^<path^>]] - Install prefix (default: C:\Xilinx\XRT)
 echo [-stage]            - Copy a small set of runtime DLLs into ^<prefix^>\ext\bin
 echo [-sdk]              - Build NPU and create a ZIP archive via CPack (Release only)

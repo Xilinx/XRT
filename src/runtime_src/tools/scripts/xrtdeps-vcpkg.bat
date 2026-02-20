@@ -90,7 +90,7 @@ echo Dependency prefix ready:
 echo   EXT_DIR=%EXT_DIR%
 echo.
 echo Build example:
-echo   build\build26.bat -ext "%EXT_DIR%" -stage_ext -opt -npu -install
+echo   build\build26.bat -ext "%EXT_DIR%" -opt -npu -install -stage
 
 exit /B 0
 
