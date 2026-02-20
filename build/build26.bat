@@ -16,7 +16,7 @@ set "EXT_DIR_USER=0"
 set "CI_EXT_DIR=C:\Xilinx\XRT\ext.new"
 set "CMAKEFLAGS="
 set "NOCMAKE=0"
-set "STAGE_EXT=0"
+set "STAGE=0"
 set "CREATE_SDK=0"
 set "CREATE_PACKAGE=0"
 set "INSTALL_ROOT="
@@ -34,7 +34,7 @@ if /I "%~1"=="-install" goto parseInstall
 if /I "%~1"=="-clean"         ( set "DO_CLEAN=1" & shift & goto parseArgs )
 if /I "%~1"=="-dbg"           ( set "RELEASE=0" & shift & goto parseArgs )
 if /I "%~1"=="-opt"           ( set "DEBUG=0" & shift & goto parseArgs )
-if /I "%~1"=="-stage_ext"     ( set "STAGE_EXT=1" & shift & goto parseArgs )
+if /I "%~1"=="-stage"     ( set "STAGE=1" & shift & goto parseArgs )
 if /I "%~1"=="-sdk"           ( set "CREATE_SDK=1" & set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
 if /I "%~1"=="-pkg"           ( set "CREATE_PACKAGE=1" & shift & goto parseArgs )
 if /I "%~1"=="-npu"           ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
@@ -166,7 +166,7 @@ echo Installing %CFG%...
 cmake --install "%BUILDDIR%\%DIR%" --config %CFG% --prefix "%XRT_INSTALL_PREFIX%"
 if errorlevel 1 exit /B
 
-if "%STAGE_EXT%"=="1" (
+if "%STAGE%"=="1" (
   call :stageExt "%CFG%" "%XRT_INSTALL_PREFIX%"
   if errorlevel 1 exit /B
 )
@@ -229,9 +229,9 @@ echo [-help]             - List this help
 echo [-clean]            - Remove build artifact directories
 echo [-dbg]              - Debug build only
 echo [-opt]              - Release build only
-echo [-ext ^<path^>]       - Dependency prefix (include/lib/bin)
+echo [-ext ^<path^>]       - Sets EXT_DIR (usually a vcpkg prefix) for dependencies
 echo [-install [^<path^>]] - Install prefix (default: C:\Xilinx\XRT)
-echo [-stage_ext]        - Copy a small set of runtime DLLs into ^<prefix^>\ext\bin
+echo [-stage]            - Copy a small set of runtime DLLs into ^<prefix^>\ext\bin
 echo [-sdk]              - Build NPU and create a ZIP archive via CPack (Release only)
 echo [-pkg]              - Create ZIP and MSI archives via CPack (Release only)
 echo [-npu]              - Build NPU component of XRT
