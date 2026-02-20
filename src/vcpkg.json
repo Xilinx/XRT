@@ -1,0 +1,18 @@
+{
+  "name": "xrt",
+  "version": "0.1.0",
+  "description": "XRT Windows build dependencies (vcpkg manifest)",
+  "dependencies": [
+    "boost-asio",
+    "boost-filesystem",
+    "boost-format",
+    "boost-interprocess",
+    "boost-process",
+    "boost-program-options",
+    "boost-property-tree",
+    "boost-regex",
+    "boost-uuid",
+    "gtest",
+    "opencl"
+  ]
+}
