@@ -219,10 +219,9 @@ if(NOT WIN32 AND NOT XRT_SYSTEM_INSTALL)
 endif()
 
 
-if (WIN32)
+if (WIN32 AND NOT DEFINED GTEST_ROOT)
   set(GTEST_ROOT "C:/Xilinx/XRT/ext")
 endif()
-
 find_package(GTest)
 
 if (GTEST_FOUND AND NOT XRT_SYSTEM_INSTALL)
@@ -239,7 +238,7 @@ if (GTEST_FOUND AND NOT XRT_SYSTEM_INSTALL)
   add_executable(${UNIT_TEST_NAME} ${XCLBINTEST_SRCS})
 
   if(WIN32)
-    target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::program_options Boost::system )
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::program_options Boost::filesystem Boost::system )
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
   else()
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
