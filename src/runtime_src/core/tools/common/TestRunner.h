@@ -43,7 +43,7 @@ class TestRunner : public JSONConfigurable {
     }
     
     boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&,
-                                          const xrt_core::archive* archive = nullptr,
+                                          const xrt_core::archive* archive,
                                           unsigned int iter);
     
     virtual void set_param(const std::string&, const std::string&) {}
