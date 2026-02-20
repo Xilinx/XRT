@@ -100,5 +100,10 @@ else()
   )
 endif()
 
-include(hip-config)
-message("-- Found at ${HIP_INCLUDE_DIR}")
+if (XRT_YOCTO)
+  #In Yocto flow, HIP headers and libs are found at standard sysroot path; no need to include hip-config
+  message("-- Using HIP from sysroot")
+else()
+  include(hip-config)
+  message("-- Found at ${HIP_INCLUDE_DIR}")
+endif()
