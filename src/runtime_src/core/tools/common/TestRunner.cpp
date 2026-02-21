@@ -71,34 +71,38 @@ TestRunner::TestRunner (const std::string & test_name,
 }
 
 boost::property_tree::ptree
-TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
+TestRunner::startTest(const std::shared_ptr<xrt_core::device>& dev, 
+                      const xrt_core::archive* archive, 
+                      unsigned int iter)
 {
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
-  bool is_thread_running = true;
-
   boost::property_tree::ptree result;
 
-  // Start the test process
-  std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running, archive); });
-  // Wait for the test process to finish or for the signal to be caught
-  while (is_thread_running && !force_exit) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    try {
-      busy_bar.check_timeout(max_test_duration);
-    } catch (const std::exception&) {
-      test_thread.detach();
-      throw;
+  for (unsigned int i = 0; i < iter; ++i) {
+    XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+    busy_bar.start(XBUtilities::is_escape_codes_disabled());
+    bool is_thread_running = true;
+
+    // Start the test process
+    std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running, archive); });
+    // Wait for the test process to finish or for the signal to be caught
+    while (is_thread_running && !force_exit) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      try {
+        busy_bar.check_timeout(max_test_duration);
+      } catch (const std::exception&) {
+        test_thread.detach();
+        throw;
+      }
     }
-  }
-  if (force_exit) {
-    test_thread.detach();
+    if (force_exit) {
+      test_thread.detach();
+      busy_bar.finish();
+      throw std::runtime_error("Test interrupted by user (Ctrl+C).");
+    }
+
+    test_thread.join();
     busy_bar.finish();
-    throw std::runtime_error("Test interrupted by user (Ctrl+C).");
   }
-    
-  test_thread.join();
-  busy_bar.finish();
 
   return result;
 }
