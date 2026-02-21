@@ -17,7 +17,20 @@ env:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            triplet: x64-windows
+            cmake_arch: x64
+            build_dir: WRelease
+          - runner: windows-11-arm
+            triplet: arm64-windows
+            cmake_arch: ARM64
+            build_dir: WRelease-arm64
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout repository
@@ -50,13 +63,13 @@ jobs:
             ${{ github.workspace }}/vcpkg/installed
             ${{ github.workspace }}/vcpkg/buildtrees
             ${{ github.workspace }}/vcpkg/downloads
-          key: vcpkg-win-${{ runner.os }}-${{ hashFiles('src/vcpkg.json') }}
+          key: vcpkg-win-${{ matrix.runner }}-${{ matrix.triplet }}-${{ hashFiles('src/vcpkg.json') }}
           restore-keys: |
-            vcpkg-win-${{ runner.os }}-
+            vcpkg-win-${{ matrix.runner }}-${{ matrix.triplet }}-
 
       - name: Install vcpkg dependencies (manifest)
         run: |
-          .\vcpkg\vcpkg.exe install --x-manifest-root="${{ github.workspace }}\src" --triplet=x64-windows
+          .\vcpkg\vcpkg.exe install --x-manifest-root="${{ github.workspace }}\src" --triplet=${{ matrix.triplet }}
         working-directory: ${{ github.workspace }}
 
       - name: Configure CMake (Release)
@@ -64,16 +77,18 @@ jobs:
           # github.workspace expands with backslashes on Windows; normalize to forward slashes for CMake
           $ws = "${{ github.workspace }}" -replace '\\', '/'
           $vcpkgRoot = "$ws/vcpkg"
-          $triplet = "x64-windows"
+          $triplet = "${{ matrix.triplet }}"
+          $buildDir = "${{ matrix.build_dir }}"
           # vcpkg toolchain (manifest mode) installs to build/vcpkg_installed/<triplet>; OpenCL.dll is there
-          $kronos = "$ws/build/WRelease/vcpkg_installed/$triplet"
+          $kronos = "$ws/build/$buildDir/vcpkg_installed/$triplet"
           $src = "$ws/src"
-          $build = "$ws/build/WRelease"
+          $build = "$ws/build/$buildDir"
           New-Item -ItemType Directory -Force -Path $build
+          # Pass triplet as literal so vcpkg subprocess does not re-interpret $triplet
           cmake -B $build -S $src `
-            -G "Visual Studio 17 2022" -A x64 `
+            -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }} `
             -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
             -DKHRONOS="$kronos" `
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
             -DMSVC_PARALLEL_JOBS=4
@@ -82,21 +97,21 @@ jobs:
       - name: Build (Release)
         run: |
           $ws = "${{ github.workspace }}" -replace '\\', '/'
-          $build = "$ws/build/WRelease"
+          $build = "$ws/build/${{ matrix.build_dir }}"
           cmake --build $build --config Release --verbose
         shell: pwsh
 
       - name: Install (staging)
         run: |
           $ws = "${{ github.workspace }}" -replace '\\', '/'
-          $build = "$ws/build/WRelease"
-          $prefix = "$ws/build/WRelease/xilinx/xrt"
+          $build = "$ws/build/${{ matrix.build_dir }}"
+          $prefix = "$build/xilinx/xrt"
           cmake --install $build --config Release --prefix $prefix --verbose
         shell: pwsh
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xrt-windows-Release
-          path: ${{ github.workspace }}/build/WRelease/xilinx/xrt
+          name: xrt-windows-${{ matrix.triplet }}-Release
+          path: ${{ github.workspace }}/build/${{ matrix.build_dir }}/xilinx/xrt
           retention-days: 7
