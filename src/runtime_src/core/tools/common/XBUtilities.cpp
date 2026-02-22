@@ -197,6 +197,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
         case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
           pt_dev.put("aie_architecture_version", "AIE2P");
+          break;
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
@@ -205,8 +206,10 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
           pt_dev.put("aie_architecture_version", "AIE4");
+          break;
         default:
           pt_dev.put("aie_architecture_version", "N/A");
+          break;
         }
       }
       catch (...) {
