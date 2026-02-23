@@ -272,8 +272,6 @@ fd_package_list()
      gnutls-devel \
      gtest-devel \
      json-glib-devel \
-     kernel-devel-$(uname -r) \
-     kernel-headers-$(uname -r) \
      libcurl-devel \
      libdrm-devel \
      libffi-devel \
@@ -292,28 +290,31 @@ fd_package_list()
      opencl-headers \
      opencv \
      openssl-devel \
-     openssl-static \
      pciutils \
      perl \
-     pkgconfig \
+     pkgconf-pkg-config \
      protobuf-compiler \
      protobuf-devel \
-     protobuf-static \
-     python \
-     python-pip \
-     python2-sphinx \
      python3 \
+     python3-devel \
      python3-pip \
+     python3-sphinx \
      redhat-lsb \
      rapidjson-devel \
      rpm-build \
      strace \
      systemd-devel \
-     systemd-devel \
      systemtap-sdt-devel \
      unzip \
      zlib-static \
     )
+
+    if [ $docker == 0 ]; then
+        FD_LIST+=(\
+          kernel-devel-$(uname -r) \
+          kernel-headers \
+        )
+    fi
 }
 
 
@@ -747,6 +748,8 @@ install_pybind11()
     echo "Installing pybind11..."
     if [ $FLAVOR == "mariner" ]; then
         sudo dnf install -y pybind11-devel python3-pybind11
+    elif [ $FLAVOR == "fedora" ]; then
+        dnf install -y pybind11-devel python3-pybind11
     elif [ $FLAVOR == "ubuntu" ] && [ $MAJOR -ge 23 ]; then
         apt-get install -y pybind11-dev
     elif [ $FLAVOR == "linuxmint" ]; then
@@ -779,14 +782,21 @@ install_hip()
             echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
         fi
     elif [ $FLAVOR == "fedora" ]; then
-        rpm -q hip-devel
+        if [ $MAJOR -ge 40 ]; then
+            # hip-devel was merged into rocm-hip-devel in Fedora 40 (ROCm 6.0);
+            # see https://src.fedoraproject.org/rpms/rocclr/blob/f40/f/rocclr.spec#_104
+            HIP_PKG=rocm-hip-devel
+        else
+            HIP_PKG=hip-devel
+        fi
+        rpm -q $HIP_PKG
         if [ $? == 0 ]; then
-            echo "hip-devel already installed..."
-            rpm -q -l hip-devel | grep hip/hip_runtime_api.h
+            echo "$HIP_PKG already installed..."
+            rpm -q -l $HIP_PKG | grep hip/hip_runtime_api.h
         elif [ $MAJOR -ge 38 ]; then
             # From version 38 onwards, a version of HIP devel tools is bundled--
-            # https://packages.fedoraproject.org/pkgs/rocclr/hip-devel/
-            yum install -y hip-devel
+            # https://packages.fedoraproject.org/pkgs/rocclr/rocm-hip-devel/
+            dnf install -y $HIP_PKG
         else
             echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
             echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
