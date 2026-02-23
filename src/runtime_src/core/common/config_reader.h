@@ -958,6 +958,13 @@ get_aie_profile_settings_start_iteration()
   return value;
 }
 
+inline bool
+get_aie_profile_settings_dtrace_debug()
+{
+  static bool value = detail::get_bool_value("AIE_profile_settings.dtrace_debug", "false");
+  return value;
+}
+
 // AIE_trace_settings
 
 inline std::string
