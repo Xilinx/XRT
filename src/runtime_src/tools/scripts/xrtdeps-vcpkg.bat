@@ -9,6 +9,10 @@ set "SCRIPTDIR=%~dp0"
 set "SCRIPTDIR=%SCRIPTDIR:~0,-1%"
 set "SRC_ROOT=%SCRIPTDIR%\..\..\..\.."
 set "EXTRA_PORTS="
+REM Pin vcpkg registry baseline for determinism.
+REM Dependency versioning can be done here.
+REM Current vcpkg release: 2026.01.16
+SET "VCPKG_BASELINE_SHA=66c0373dc7fca549e5803087b9487edfe3aca0a1"
 
 for %%I in ("%SRC_ROOT%") do set "SRC_ROOT=%%~fI"
 
@@ -23,6 +27,7 @@ if /I "%~1"=="-help"    goto help
 if /I "%~1"=="-extroot" goto parseExtRoot
 if /I "%~1"=="-triplet" goto parseTriplet
 if /I "%~1"=="-port"    goto parsePort
+if /I "%~1"=="-baseline" goto parseBaseline
 if /I "%~1"=="-clean"   ( set "DO_CLEAN=1" & shift & goto parseArgs )
 
 echo Unknown option: %1
@@ -68,6 +73,19 @@ shift
 goto parseArgs
 
 REM --------------------------------------------------------------------------
+:parseBaseline
+shift
+
+set "VCPKG_BASELINE_SHA="
+set "BASELINE_ARG=%~1"
+if "%BASELINE_ARG%"=="" goto parseArgs
+if "%BASELINE_ARG:~0,1%"=="-" goto parseArgs
+
+set "VCPKG_BASELINE_SHA=%BASELINE_ARG%"
+shift
+goto parseArgs
+
+REM --------------------------------------------------------------------------
 :argsParsed
 if "%DO_CLEAN%"=="1" goto clean
 
@@ -78,7 +96,15 @@ mkdir "%XRT_EXT_ROOT%" >NUL 2>NUL
 pushd "%XRT_EXT_ROOT%" || exit /B
 del /F /Q vcpkg.json vcpkg-configuration.json vcpkg-lock.json >NUL 2>NUL
 vcpkg new --application || exit /B
-vcpkg add port boost-filesystem boost-program-options boost-property-tree boost-format boost-headers boost-interprocess boost-uuid boost-asio boost-process opencl protobuf %EXTRA_PORTS% || exit /B
+
+if "%VCPKG_BASELINE_SHA%"=="" goto baselineDone
+
+python -c "import json, pathlib; p=pathlib.Path('vcpkg-configuration.json'); d=json.loads(p.read_text(encoding='utf-8')); dr=d.get('default-registry') or {}; dr['baseline']=r'%VCPKG_BASELINE_SHA%'; d['default-registry']=dr; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
+
+:baselineDone
+
+copy /Y "%SRC_ROOT%\src\vcpkg.json" vcpkg.json >NUL || exit /B
+if not "%EXTRA_PORTS%"=="" ( vcpkg add port %EXTRA_PORTS% || exit /B )
 vcpkg install --triplet %VCPKG_TRIPLET% --clean-after-build || exit /B
 popd
 
@@ -103,6 +129,7 @@ echo [-help]              - List this help
 echo [-extroot ^<path^>]    - Root directory for vcpkg deps (default: ^<repo^>\build\ext.vcpkg)
 echo [-clean]             - Remove the extroot directory (default: ^<repo^>\build\ext.vcpkg)
 echo [-triplet ^<triplet^>] - vcpkg triplet (default: x64-windows)
+echo [-baseline [^<sha^>]]    - Use vcpkg default baseline (omit ^<sha^>) or pin to user-specified ^<sha^>
 echo [-port ^<port^>]       - Extra vcpkg port to install (may be repeated)
 echo.
 echo Note: Uses first vcpkg on PATH.
