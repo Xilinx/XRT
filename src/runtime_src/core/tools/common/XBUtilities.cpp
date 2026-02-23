@@ -185,6 +185,38 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
 
       try {
+        // Map hardware type to AIE architecture version string
+        const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
+        xrt_core::smi::smi_hardware_config smi_hrdw;
+        auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+
+        switch (hardware_type) {
+        case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
+        case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
+          pt_dev.put("aie_architecture_version", "AIE2P");
+          break;
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
+          pt_dev.put("aie_architecture_version", "AIE4");
+          break;
+        default:
+          pt_dev.put("aie_architecture_version", "N/A");
+          break;
+        }
+      }
+      catch (...) {
+        // AIE architecture version wasn't added
+      }
+
+      try {
         auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
         std::string pf = device->is_userpf() ? "user" : "mgmt";
         pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));

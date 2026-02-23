@@ -1914,6 +1914,10 @@ xrtBOExport(xrtBufferHandle bhdl)
 xrtBufferHandle
 xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
 {
+#ifdef _MSC_VER
+# pragma warning(push)
+# pragma warning(disable : 4702)  // unreachable code (false positive on ARM64)
+#endif
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
       auto boh = alloc_xbuf(xrt_to_core_device(dhdl), xcl_buffer_handle{xhdl});
@@ -1930,6 +1934,9 @@ xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
     send_exception_message(ex.what());
   }
   return nullptr;
+#ifdef _MSC_VER
+# pragma warning(pop)
+#endif
 }
 
 int
