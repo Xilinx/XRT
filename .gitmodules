@@ -21,4 +21,4 @@
 [submodule "src/runtime_src/xdp"]
 	path = src/runtime_src/xdp
 	url = https://gitenterprise.xilinx.com/XDP/XDP.git
-	branch = npu3_devel
+	branch = next_gen_devel
