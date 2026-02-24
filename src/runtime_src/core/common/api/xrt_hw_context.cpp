@@ -87,7 +87,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       constexpr size_t count_size = 8;
 
       auto bo = xrt_core::bo_int::create_bo(
-          device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
+          ctx_hdl, device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
       // So make sure for each uC metadata bytes are initialized with
       // zero's before configuring
