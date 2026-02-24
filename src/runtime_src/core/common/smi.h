@@ -201,6 +201,7 @@ public:
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
+    aie2ps, // Telluride aie2ps
     unknown // Unknown hardware type
   };
 
