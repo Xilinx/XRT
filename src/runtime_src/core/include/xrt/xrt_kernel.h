@@ -172,6 +172,16 @@ public:
   run(const kernel& krnl);
 
   /**
+   * run() - Construct run object from a kernel with dtrace control file
+   *
+   * @param krnl: Kernel object representing the kernel to execute
+   * @param dtrace_control_file: Path to dtrace control (ct) file for this run.
+   *   Preferred over Debug.dtrace_control_file_path from config when set.
+   */
+  XRT_API_EXPORT
+  run(const kernel& krnl, const std::string& dtrace_control_file);
+
+  /**
    * run() - Copy ctor
    *
    * Performs shallow copy, sharing data with the source
@@ -202,6 +212,20 @@ public:
    */
   run&
   operator=(run&&) = default;
+
+  /**
+   * set_dtrace_control_file() - Set dtrace control (ct) file for this run.
+   *
+   * @param path: Path to the dtrace control file. Used for dtrace handle
+   *   creation when start() is called; preferred over config when set.
+   *
+   * Must be called before start() or after run completes. Throws if the run
+   * has already been started and is still in progress. After a run completes,
+   * call this to set a different ct file and start() again to relaunch.
+   */
+  XRT_API_EXPORT
+  void
+  set_dtrace_control_file(const std::string& path);
 
   /**
    * start() - Start one execution of a run.
