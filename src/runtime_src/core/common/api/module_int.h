@@ -89,6 +89,13 @@ XRT_CORE_COMMON_EXPORT
 void
 dump_dtrace_buffer(const xrt::module& module, uint32_t run_id = 0);
 
+// Set dtrace control file for this run's module (run-level overrides config).
+// Reinitializes dtrace with the given path; empty path means use config.
+// No-op for module types that do not support dtrace.
+XRT_CORE_COMMON_EXPORT
+void
+set_dtrace_control_file(const xrt::module& module, const std::string& path);
+
 // Returns buffer object associated with control scratchpad memory.
 // This memory is created using ELF associated with run object.
 // Throws if ELF doesn't contain scratchpad memory

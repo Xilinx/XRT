@@ -2324,6 +2324,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   uint32_t*
   initialize_dpu(uint32_t* payload)
   {
+    // Cache start of ert_dpu_data so we can refresh dtrace buffer
+    // addresses when set_dtrace_control_file() is called
+    m_dpu_payload = payload;
     payload = xrt_core::module_int::fill_ert_dpu_data(m_module, payload);
 
     // Return payload past the ert_dpu_data structures
@@ -2374,6 +2377,9 @@ class run_impl : public std::enable_shared_from_this<run_impl>
 
   const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
   std::mutex m_mutex;                     // mutex synchronization
+  // Run-level dtrace ct file: stored so clone inherits it
+  std::string m_dtrace_control_file;
+  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
 
 public:
   uint32_t
@@ -2392,6 +2398,32 @@ public:
   pop_callback()
   {
     cmd->pop_callback();
+  }
+
+  void
+  set_dtrace_control_file(const std::string& path)
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto s = cmd->get_state();
+    // Allow when not yet started (NEW) or when run has finished (COMPLETED/ERROR/etc.)
+    // so user can set new ct file and relaunch
+    bool running =
+        (s == ERT_CMD_STATE_QUEUED || s == ERT_CMD_STATE_SUBMITTED ||
+         s == ERT_CMD_STATE_RUNNING);
+
+    if (running) {
+      throw xrt_core::error(
+          "Cannot set dtrace control file: run has already been started and is "
+          "still in progress");
+    }
+
+    m_dtrace_control_file = path;
+    if (m_module) {
+      xrt_core::module_int::set_dtrace_control_file(m_module, path);
+      if (m_dpu_payload) {
+        xrt_core::module_int::fill_ert_dpu_data(m_module, m_dpu_payload);
+      }
+    }
   }
 
   // run_type() - constructor
@@ -2438,6 +2470,12 @@ public:
     , m_header(rhs->m_header)
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
+    , m_dtrace_control_file(rhs->m_dtrace_control_file)
+    // Clone packet has same layout: [ert_dpu_data][args]. data points past dpu section;
+    // rhs->m_dpu_payload - rhs->data is the negative offset from args back to dpu start.
+    , m_dpu_payload(rhs->m_dpu_payload
+                        ? data + (rhs->m_dpu_payload - rhs->data)
+                        : nullptr)
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -4107,8 +4145,22 @@ namespace xrt {
 run::
 run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
-           ("xrt::run::run",alloc_run, krnl.get_handle()))
+           ("xrt::run::run", alloc_run, krnl.get_handle()))
 {}
+
+run::
+run(const kernel& krnl, const std::string& dtrace_control_file)
+  : run(krnl)
+{
+  handle->set_dtrace_control_file(dtrace_control_file);
+}
+
+void
+run::
+set_dtrace_control_file(const std::string& path)
+{
+  handle->set_dtrace_control_file(path);
+}
 
 void
 run::
