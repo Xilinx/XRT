@@ -40,6 +40,12 @@ getmachinename()
   case PROCESSOR_ARCHITECTURE_INTEL:
     machine = "x86";
     break;
+  case PROCESSOR_ARCHITECTURE_ARM:
+    machine = "arm";
+    break;
+  case PROCESSOR_ARCHITECTURE_ARM64:
+    machine = "arm64";
+    break;
   case PROCESSOR_ARCHITECTURE_UNKNOWN:
   default:
     machine = "unknown";
