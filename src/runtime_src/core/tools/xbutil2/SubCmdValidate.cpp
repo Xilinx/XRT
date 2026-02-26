@@ -36,8 +36,8 @@
 #include "tools/common/tests/TestGemm.h"
 #include "tools/common/tests/TestNPUThroughput.h"
 #include "tools/common/tests/TestNPULatency.h"
-#include "tools/common/tests/TestCmdChainLatency.h"
-#include "tools/common/tests/TestCmdChainThroughput.h"
+#include "tools/common/tests/TestRunlistLatency.h"
+#include "tools/common/tests/TestRunlistThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "tools/common/tests/TestPreemptionOverhead.h"
@@ -114,8 +114,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestGemm>(),
   std::make_shared<TestNPUThroughput>(),
   std::make_shared<TestNPULatency>(),
-  std::make_shared<TestCmdChainLatency>(),
-  std::make_shared<TestCmdChainThroughput>(),
+  std::make_shared<TestRunlistLatency>(),
+  std::make_shared<TestRunlistThroughput>(),
   std::make_shared<TestAIEReconfigOverhead>(),
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
