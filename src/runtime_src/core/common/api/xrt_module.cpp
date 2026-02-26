@@ -673,19 +673,28 @@ class module_run_aie_gen2_plus : public module_run
   // Symbol name for control code patching
   static constexpr const char* Control_Code_Symbol = "control-code";
 
+  ////////////////////////////////////////////////////////////////
+  // Dtrace Implementation
+  ////////////////////////////////////////////////////////////////
+
   // Dynamic tracing utility structure
   struct dtrace_util
   {
-    void* dtrace_handle{nullptr};
-    std::string ctrl_file_path;
-    std::string map_data;
+    // Function pointer for dtrace destroy handle
+    using dtrace_destroy_handle = void (*)(dtrace_handle_t);
+
+    std::unique_ptr<void, dtrace_destroy_handle> dtrace_handle;
     xrt::bo ctrl_bo;
     std::map<uint32_t, size_t> buf_offset_map;
-  } m_dtrace;
 
-  ////////////////////////////////////////////////////////////////
-  // Dtrace initialization
-  ////////////////////////////////////////////////////////////////
+    dtrace_util() : dtrace_handle(nullptr, destroy_dtrace_handle) {}
+
+    dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
+                uint32_t log_level)
+      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level),
+                      destroy_dtrace_handle) {}
+  };
+  dtrace_util m_dtrace;
 
   // Initialize dtrace helper - returns true on success
   bool
@@ -699,7 +708,6 @@ class module_run_aie_gen2_plus : public module_run
                               "Dtrace control file is not accessible");
       return false;
     }
-    m_dtrace.ctrl_file_path = path;
 
     // Get dump buffer data from config
     if (m_config.dump_buf.size() == 0) {
@@ -708,7 +716,16 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
-    m_dtrace.map_data = m_config.dump_buf.to_string();
+    auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
+    log_level = (log_level > 3) ? 3U : (log_level < 1) ? 1U : log_level;
+
+    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level);
+    if (!m_dtrace.dtrace_handle.get()) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
+        "[dtrace] : Failed to get dtrace handle");
+      return false;
+    }
+
     return true;
   }
 
@@ -720,20 +737,9 @@ class module_run_aie_gen2_plus : public module_run
       return; // init failure
 
     uint32_t buffers_length = 0;
-    auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
-    log_level = (log_level > 3) ? 3U : (log_level < 1) ? 1U : log_level;
 
-    m_dtrace.dtrace_handle = get_dtrace_col_numbers_with_log(
-        m_dtrace.ctrl_file_path.c_str(),
-        m_dtrace.map_data.c_str(),
-        &buffers_length,
-        log_level);
-
-    if (!m_dtrace.dtrace_handle) {
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
-        "[dtrace] : Failed to get dtrace handle");
-      return;
-    }
+    // Get the number of uC required for dynamic tracing
+    get_dtrace_col_numbers(m_dtrace.dtrace_handle.get(), &buffers_length);
 
     if (!buffers_length) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
@@ -743,8 +749,7 @@ class module_run_aie_gen2_plus : public module_run
 
     try {
       std::vector<uint64_t> buffers(buffers_length);
-      get_dtrace_buffer_size(m_dtrace.dtrace_handle, buffers.data());
-
+      get_dtrace_buffer_size(m_dtrace.dtrace_handle.get(), buffers.data());
 
       size_t total_size = 0;
 
@@ -756,7 +761,7 @@ class module_run_aie_gen2_plus : public module_run
       }
 
       m_dtrace.ctrl_bo = xbi::create_bo(m_hwctx, total_size, xbi::use_type::dtrace);
-      populate_dtrace_buffer(m_dtrace.dtrace_handle, m_dtrace.ctrl_bo.map<uint32_t*>(), m_dtrace.ctrl_bo.address());
+      populate_dtrace_buffer(m_dtrace.dtrace_handle.get(), m_dtrace.ctrl_bo.map<uint32_t*>(), m_dtrace.ctrl_bo.address());
       m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
@@ -1023,7 +1028,7 @@ public:
   void
   dump_dtrace_buffer(uint32_t run_id) override
   {
-    if (!m_dtrace.ctrl_bo || !m_dtrace.dtrace_handle)
+    if (!m_dtrace.ctrl_bo || !m_dtrace.dtrace_handle.get())
       return;
 
     // sync dtrace buffers output from device
@@ -1039,7 +1044,7 @@ public:
                                    + "_run" + std::to_string(run_id)
                                    + ".py";
 
-      get_dtrace_result_file(m_dtrace.dtrace_handle, result_file_path.c_str());
+      get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_path.c_str());
 
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffer dumped successfully to - "} + result_file_path);
