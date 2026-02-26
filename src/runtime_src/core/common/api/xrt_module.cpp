@@ -704,11 +704,11 @@ class module_run_aie_gen2_plus : public module_run
   };
   dtrace_util m_dtrace;
 
-  // Initialize dtrace helper
-  // sets path (run-level overrides config file) and
-  // creates dtrace handle. Returns true on success.
+  // Creates dtrace util object.
+  // Sets path (run-level overrides config file).
+  // Returns true on success.
   bool
-  init_dtrace_helper(const std::string& run_level_ct_file)
+  create_dtrace_util(const std::string& run_level_ct_file)
   {
     std::string path = run_level_ct_file.empty()
       ? xrt_core::config::get_dtrace_control_file_path()
@@ -787,9 +787,9 @@ class module_run_aie_gen2_plus : public module_run
   void
   initialize_dtrace_buf(const std::string& run_level_ct_file = "")
   {
-    if (!init_dtrace_helper(run_level_ct_file)) {
-      return;  // init failure
-    }
+    if (!create_dtrace_util(run_level_ct_file))
+      return;  // create failure
+
     create_dtrace_buffers();
   }
 
@@ -798,10 +798,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   set_dtrace_control_file(const std::string& path) override
   {
-    if (!init_dtrace_helper(path)) {
-      return;
-    }
-    create_dtrace_buffers();
+    initialize_dtrace_buf(path);
     // Only update dtrace addresses; instruction buffer layout is unchanged.
     update_column_bo_dtrace_addresses();
   }
@@ -940,13 +937,12 @@ class module_run_aie_gen2_plus : public module_run
   update_column_bo_dtrace_addresses()
   {
     for (auto& entry : m_column_bo_address) {
-      uint16_t ucidx = static_cast<uint16_t>(std::get<col_ucidx>(entry));
+      auto ucidx = static_cast<uint16_t>(std::get<col_ucidx>(entry));
       uint64_t dtrace_addr = 0;
       if (m_dtrace.ctrl_bo) {
         auto it = m_dtrace.buf_offset_map.find(ucidx);
-        if (it != m_dtrace.buf_offset_map.end()) {
+        if (it != m_dtrace.buf_offset_map.end())
           dtrace_addr = m_dtrace.ctrl_bo.address() + it->second;
-        }
       }
       std::get<col_dtrace_addr>(entry) = dtrace_addr;
     }
