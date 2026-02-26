@@ -149,6 +149,14 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The npu firmware wasn't added
       }
       try {
+        const auto cert_fw_ver = xrt_core::device_query<xq::cert_firmware_version>(device);
+        pt_dev.put("cert_firmware_date", cert_fw_ver.date);
+        pt_dev.put("cert_firmware_hash", cert_fw_ver.git_hash);
+      }
+      catch(...) {
+        // The CERT firmware wasn't added
+      }
+      try {
         const auto uc_fw_ver = xrt_core::device_query<xq::firmware_version>(device, xq::firmware_version::firmware_type::uc_firmware);
         std::string version = "N/A";
         std::string build_date = "N/A";
@@ -174,6 +182,41 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
       catch (...) {
         // AIE topology wasn't added
+      }
+
+      try {
+        // Map hardware type to AIE architecture version string
+        const auto& pcie_id = xrt_core::device_query<xrt_core::query::pcie_id>(device);
+        xrt_core::smi::smi_hardware_config smi_hrdw;
+        auto hardware_type = smi_hrdw.get_hardware_type(pcie_id);
+
+        switch (hardware_type) {
+        case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
+        case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
+          pt_dev.put("aie_architecture_version", "AIE2P");
+          break;
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f2:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f3:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
+          pt_dev.put("aie_architecture_version", "AIE4");
+          break;
+        case xrt_core::smi::smi_hardware_config::hardware_type::aie2ps:
+          pt_dev.put("aie_architecture_version", "AIE2PS");
+          break;
+        default:
+          pt_dev.put("aie_architecture_version", "N/A");
+          break;
+        }
+      }
+      catch (...) {
+        // AIE architecture version wasn't added
       }
 
       try {
@@ -810,6 +853,14 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
     if (device_class == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen)) {
       if (fw_ver != "N/A")
         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % fw_ver;
+
+      auto cert_hash = dev.get<std::string>("cert_firmware_hash", "N/A");
+      if (cert_hash != "N/A")
+        output << boost::format("  %-20s : %s\n") % "CERT Hash" % cert_hash;
+
+      auto cert_date = dev.get<std::string>("cert_firmware_date", "N/A");
+      if (cert_date != "N/A")
+        output << boost::format("  %-20s : %s\n") % "CERT Build Date" % cert_date;
 
       auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
       auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");

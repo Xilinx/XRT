@@ -292,7 +292,8 @@ static test_status
 run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
                        Report::SchemaVersion schemaVersion,
                        std::vector<std::shared_ptr<TestRunner>>& testObjectsToRun,
-                       boost::property_tree::ptree& ptDevCollectionTestSuite)
+                       boost::property_tree::ptree& ptDevCollectionTestSuite,
+                       unsigned int iter_count)
 {
   boost::property_tree::ptree ptDeviceTestSuite;
   boost::property_tree::ptree ptDeviceInfo;
@@ -314,8 +315,8 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     boost::property_tree::ptree ptTest;
     pretty_print_test_desc(testPtr, ptTest, test_idx, std::cout, xq::pcie_bdf::to_string(bdf));
     try {
-      // Call startTest with archive if available, otherwise use standard call
-      ptTest = test_archive ? testPtr->startTest(device, test_archive.get()) : testPtr->startTest(device);
+      // Call startTest with archive if available, otherwise use standard call; pass iter_count for repeated runs
+      ptTest = test_archive ? testPtr->startTest(device, test_archive.get(), iter_count) : testPtr->startTest(device, nullptr, iter_count);
     } catch (const std::runtime_error& e) {
       std::cout << e.what() << std::endl;
       return test_status::failed;
@@ -341,14 +342,15 @@ static bool
 run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
                       Report::SchemaVersion schemaVersion,
                       std::vector<std::shared_ptr<TestRunner>>& testObjectsToRun,
-                      std::ostream & output)
+                      std::ostream & output,
+                      unsigned int iter_count)
 {
   // -- Root property tree
   boost::property_tree::ptree ptDevCollectionTestSuite;
 
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
+  auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested, iter_count) == test_status::failed);
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
 
@@ -607,8 +609,11 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       else if (boost::iequals(options.m_pmode, "TURBO")) {
         xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::turbo);
       }
-      else if (boost::iequals(options.m_pmode, "POWERSAVER") || boost::iequals(options.m_pmode, "BALANCED")) {
-        throw xrt_core::error(boost::str(boost::format("No tests are supported in %s mode\n") % options.m_pmode));
+      else if (boost::iequals(options.m_pmode, "POWERSAVER")) {
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::powersaver);
+      }
+      else if (boost::iequals(options.m_pmode, "BALANCED")) {
+        xrt_core::device_update<xq::performance_mode>(device.get(), xq::performance_mode::power_type::balanced);
       }
       else {
         throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % options.m_pmode));
@@ -632,7 +637,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
+  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_iter);
 
   try {
     //reset pmode
@@ -671,6 +676,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
+  options.m_iter = vm.count("iter") ? static_cast<unsigned int>(std::stoul(vm["iter"].as<std::string>())) : 1;
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
   options.m_elf = vm.count("elf") ? vm["elf"].as<bool>() : false;
 }

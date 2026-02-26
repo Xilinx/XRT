@@ -11,8 +11,6 @@ add_subdirectory(runner)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
-elseif (${CMAKE_CXX_COMPILER} MATCHES "(arm64|ARM64)")
-  message(WARNING "Compiling for ARM64, build of submodule aiebu disabled")
 else()
   set(AIEBU_COMPONENT ${XRT_BASE_COMPONENT})
   set(AIEBU_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
@@ -110,7 +108,7 @@ endif()
 # BUILD_INTERFACE is for targets within XRT that link with xrt_coreutil
 # INSTALL_INTERFACE is for external targets that link XRT::xrt_coreutil
 # Link aiebu dtrace library when aiebu is built
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.18.0" AND NOT CMAKE_CXX_COMPILER MATCHES "(arm64|ARM64)")
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.18.0")
   target_link_libraries(xrt_coreutil PRIVATE cert_dtrace_static)
   target_link_libraries(xrt_coreutil_static PRIVATE cert_dtrace_static)
 endif()

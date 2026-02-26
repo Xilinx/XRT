@@ -42,8 +42,9 @@ class TestRunner : public JSONConfigurable {
       return run(dev);
     }
     
-    boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&, 
-                                          const xrt_core::archive* archive = nullptr);
+    boost::property_tree::ptree startTest(const std::shared_ptr<xrt_core::device>&,
+                                          const xrt_core::archive* archive,
+                                          unsigned int iter);
     
     virtual void set_param(const std::string&, const std::string&) {}
     bool is_explicit() const { return m_explicit; };

@@ -125,6 +125,8 @@ class device_type
 {
   xrt::hw_context m_hwctx;
   std::shared_ptr<xrt_core::device> m_device;
+  xrt_core::hwctx_handle* m_hwctx_handle = nullptr;
+
 public:
   device_type() = default;
 
@@ -132,15 +134,26 @@ public:
     : m_device(std::move(device))
   {}
 
+  // Constructor using hwctx. Used for lifetime management of the buffer.
   device_type(xrt::hw_context hwctx)  // NOLINT converting ctor
     : m_hwctx(std::move(hwctx))
     , m_device(xrt_core::hw_context_int::get_core_device(m_hwctx))
+    , m_hwctx_handle(static_cast<xrt_core::hwctx_handle*>(m_hwctx))
+  {}
+
+  // Constructor using shim hwctx handle and device.
+  // Used when the buffer is owned by an hwctx (lifetime managed by hwctx)
+  // This function directly passes the shim hwctx handle to avoid circular dependency.
+  device_type(xrt_core::hwctx_handle* hwctx_handle,
+              std::shared_ptr<xrt_core::device> device)
+    : m_device(std::move(device))
+    , m_hwctx_handle(hwctx_handle)
   {}
 
   [[nodiscard]] bool
   is_valid_hwctx() const
   {
-    return static_cast<xrt_core::hwctx_handle*>(m_hwctx) != nullptr;
+    return m_hwctx_handle != nullptr;
   }
 
   [[nodiscard]] const xrt_core::device*
@@ -158,9 +171,7 @@ public:
   [[nodiscard]] xrt_core::hwctx_handle*
   get_hwctx_handle() const
   {
-    return (m_hwctx)
-      ? static_cast<xrt_core::hwctx_handle*>(m_hwctx)
-      : nullptr;
+    return m_hwctx_handle;
   }
 
   xrt_core::device*
@@ -1618,7 +1629,7 @@ mode_to_dir(xrt::ext::bo::access_mode am)
     throw xrt_core::error("xrt::ext::bo: invalid access mode");
   }
 }
-  
+
 static xrtBufferFlags
 adjust_buffer_flags(xrt::ext::bo::access_mode access)
 {
@@ -1755,6 +1766,18 @@ create_bo(const xrt::hw_context& hwctx, size_t sz, use_type type)
   // group 1 with no implied correlation to xclbin connectivity
   // or memory group.
   return xrt::bo{alloc(device_type{hwctx}, sz, compose_internal_bo_flags(type), 1)};
+}
+
+xrt::bo
+create_bo(xrt_core::hwctx_handle* hwctx_handle,
+          const std::shared_ptr<xrt_core::device>& device,
+          size_t sz, use_type type)
+{
+  // While the memory group should be ignored (inferred) for
+  // debug / trace buffers, it is still passed in as a default
+  // group 1 with no implied correlation to xclbin connectivity
+  // or memory group.
+  return xrt::bo{alloc(device_type{hwctx_handle, device}, sz, compose_internal_bo_flags(type), 1)};
 }
 
 void
@@ -1914,6 +1937,10 @@ xrtBOExport(xrtBufferHandle bhdl)
 xrtBufferHandle
 xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
 {
+#ifdef _MSC_VER
+# pragma warning(push)
+# pragma warning(disable : 4702)  // unreachable code (false positive on ARM64)
+#endif
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
       auto boh = alloc_xbuf(xrt_to_core_device(dhdl), xcl_buffer_handle{xhdl});
@@ -1930,6 +1957,9 @@ xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
     send_exception_message(ex.what());
   }
   return nullptr;
+#ifdef _MSC_VER
+# pragma warning(pop)
+#endif
 }
 
 int

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -144,6 +144,7 @@ enum class key_type
   total_mem_usage,
 
   firmware_version,
+  cert_firmware_version,
 
   idcode,
   data_retention,
@@ -1991,6 +1992,21 @@ struct firmware_version : request
 
   std::any
   get(const device* device, const std::any& req_type) const override = 0;
+};
+
+// Retrieves the CERT firmware version
+struct cert_firmware_version : request
+{
+  struct data {
+    std::string date;
+    std::string git_hash;
+  };
+
+  using result_type = data;
+  static const key_type key = key_type::cert_firmware_version;
+
+  std::any
+  get(const device* device) const override = 0;
 };
 
 struct clock_freqs_mhz : request

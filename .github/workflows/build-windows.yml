@@ -1,0 +1,117 @@
+# Build XRT on Windows using cl.exe (MSVC) with vcpkg for 3rd party dependencies.
+# Note: GitHub-hosted Windows runners do not support running jobs inside a container.
+# For containerized builds, use a self-hosted runner with the Dockerfile in .github/containers/windows.
+name: Build XRT (Windows)
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# Disable vcpkg NuGet binary cache; the Azure feed is often unreachable from GitHub runners.
+# Builds use source only; actions/cache below caches vcpkg/installed for faster reruns.
+env:
+  VCPKG_BINARY_SOURCES: 'clear'
+
+jobs:
+  build-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            triplet: x64-windows
+            cmake_arch: x64
+            build_dir: WRelease
+          - runner: windows-11-arm
+            triplet: arm64-windows
+            cmake_arch: ARM64
+            build_dir: WRelease-arm64
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Set up vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+          ref: master
+
+      - name: Bootstrap vcpkg
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+        working-directory: ${{ github.workspace }}
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/installed
+            ${{ github.workspace }}/vcpkg/buildtrees
+            ${{ github.workspace }}/vcpkg/downloads
+          key: vcpkg-win-${{ matrix.runner }}-${{ matrix.triplet }}-${{ hashFiles('src/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-win-${{ matrix.runner }}-${{ matrix.triplet }}-
+
+      - name: Install vcpkg dependencies (manifest)
+        run: |
+          .\vcpkg\vcpkg.exe install --x-manifest-root="${{ github.workspace }}\src" --triplet=${{ matrix.triplet }}
+        working-directory: ${{ github.workspace }}
+
+      - name: Configure CMake (Release)
+        run: |
+          # github.workspace expands with backslashes on Windows; normalize to forward slashes for CMake
+          $ws = "${{ github.workspace }}" -replace '\\', '/'
+          $vcpkgRoot = "$ws/vcpkg"
+          $triplet = "${{ matrix.triplet }}"
+          $buildDir = "${{ matrix.build_dir }}"
+          # vcpkg toolchain (manifest mode) installs to build/vcpkg_installed/<triplet>; OpenCL.dll is there
+          $kronos = "$ws/build/$buildDir/vcpkg_installed/$triplet"
+          $src = "$ws/src"
+          $build = "$ws/build/$buildDir"
+          New-Item -ItemType Directory -Force -Path $build
+          # Pass triplet as literal so vcpkg subprocess does not re-interpret $triplet
+          cmake -B $build -S $src `
+            -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }} `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
+            -DKHRONOS="$kronos" `
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON `
+            -DMSVC_PARALLEL_JOBS=4
+        shell: pwsh
+
+      - name: Build (Release)
+        run: |
+          $ws = "${{ github.workspace }}" -replace '\\', '/'
+          $build = "$ws/build/${{ matrix.build_dir }}"
+          cmake --build $build --config Release --verbose
+        shell: pwsh
+
+      - name: Install (staging)
+        run: |
+          $ws = "${{ github.workspace }}" -replace '\\', '/'
+          $build = "$ws/build/${{ matrix.build_dir }}"
+          $prefix = "$build/xilinx/xrt"
+          cmake --install $build --config Release --prefix $prefix --verbose
+        shell: pwsh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xrt-windows-${{ matrix.triplet }}-Release
+          path: ${{ github.workspace }}/build/${{ matrix.build_dir }}/xilinx/xrt
+          retention-days: 7

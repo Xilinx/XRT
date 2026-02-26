@@ -103,19 +103,12 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
   const auto layer_boundary = xrt_core::device_query_default<xq::preemption>(dev.get(), 0);
 
   try {
-    std::string recipe_4x1_memtile_data = archive->data("recipe_preemption_memtile_4x1.json");
     std::string recipe_4x3_memtile_data = archive->data("recipe_preemption_memtile_4x3.json");
-    std::string profile_data = archive->data("profile_preemption.json"); 
+    std::string profile_data = archive->data("profile_preemption.json");
 
-    
     auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive, {
-      "preemption_memtile_4x1.elf",
       "preemption_memtile_4x3.elf",
     });
-
-    // Measure preemption overhead for all 4 recipes
-    auto overhead_memtile_4x1 = measure_preemption_overhead(dev, recipe_4x1_memtile_data, profile_data, artifacts_repo);
-    XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead for 4x%d is %.1f us") % "memtile" % 1 % overhead_memtile_4x1));
 
     auto overhead_memtile_4x3 = measure_preemption_overhead(dev, recipe_4x3_memtile_data, profile_data, artifacts_repo);
     XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead for 4x%d is %.1f us") % "memtile" % 3 % overhead_memtile_4x3));
