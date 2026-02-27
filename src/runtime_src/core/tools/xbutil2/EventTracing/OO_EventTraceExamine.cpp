@@ -123,7 +123,7 @@ handle_logging(const xrt_core::device* device) const {
   if (m_watch) {
     if (!output_helper.is_raw_mode() && config) {
       auto parser = smi::event_trace_parser::create_from_config(config, device);
-      out << add_header();
+      out << parser->get_header_row();
       
       auto report_generator = [this, &parser](const xrt_core::device* dev) -> std::string {
         return generate_parsed_logs(dev, parser, true);
@@ -142,9 +142,8 @@ handle_logging(const xrt_core::device* device) const {
     } else {
       out << "Event Trace Logs\n";
       out << "==================\n\n";
-      out << add_header();
-      
       auto parser = smi::event_trace_parser::create_from_config(config, device);
+      out << parser->get_header_row();
       out << generate_parsed_logs(device, parser, false);
     }
   }
@@ -206,22 +205,6 @@ generate_raw_logs(const xrt_core::device* dev,
   catch (const std::exception& e) {
     ss << "Error retrieving raw event trace data: " << e.what() << "\n";
   }
-  return ss.str();
-}
-
-std::string
-OO_EventTraceExamine::
-add_header() const
-{
-  std::stringstream ss{};
-  
-  // Format table header with proper spacing
-  ss << boost::format("%-20s %-25s %-25s %-30s\n") //NOLINT (cppcoreguidelines-avoid-magic-numbers)
-        % "Timestamp" 
-        % "Event Name" 
-        % "Category" 
-        % "Arguments";
-  
   return ss.str();
 }
 

@@ -8,6 +8,7 @@
 #include "core/common/query_requests.h"
 #include "tools/common/XBUtilities.h"
 
+#include <boost/format.hpp>
 #include <memory>
 #include <stdexcept>
 #include <sstream>
@@ -128,6 +129,38 @@ parse_structure_size(const std::string& struct_name)
 }
 
 // Parser base implementation
+event_trace_parser::
+event_trace_parser()
+  : m_column_widths({30, 30, 30, 30})  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+{}
+
+std::string
+event_trace_parser::
+get_header_row() const
+{
+  const std::string fmt =
+    "%-" + std::to_string(m_column_widths[0]) + "s "
+    "%-" + std::to_string(m_column_widths[1]) + "s "
+    "%-" + std::to_string(m_column_widths[2]) + "s "
+    "%-" + std::to_string(m_column_widths[3]) + "s\n";
+  return (boost::format(fmt) % "Timestamp" % "Event Name" % "Category" % "Arguments").str();
+}
+
+std::string
+event_trace_parser::
+format_event_row(uint64_t timestamp,
+                 const std::string& event_name,
+                 const std::string& category_display,
+                 const std::string& args_str) const
+{
+  const std::string fmt =
+    "%-" + std::to_string(m_column_widths[0]) + "lu "
+    "%-" + std::to_string(m_column_widths[1]) + "s "
+    "%-" + std::to_string(m_column_widths[2]) + "s "
+    "%-" + std::to_string(m_column_widths[3]) + "s\n";
+  return (boost::format(fmt) % timestamp % event_name % category_display % args_str).str();
+}
+
 std::string
 event_trace_parser::
 format_categories(const std::vector<std::string>& categories) const
@@ -138,7 +171,7 @@ format_categories(const std::vector<std::string>& categories) const
   
   std::stringstream ss;
   for (size_t i = 0; i < categories.size(); ++i) {
-    if (i > 0) ss << "|";
+    if (i > 0) ss << " | ";
     ss << categories[i];
   }
   return ss.str();
