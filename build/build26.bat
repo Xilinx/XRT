@@ -11,15 +11,17 @@ set "BUILDDIR=%SCRIPTDIR%"
 set "DEBUG=1"
 set "RELEASE=1"
 set "RELWITHDEBINFO=0"
-set "TARGET_TRIPLET=x64-windows"
+set "TARGET_TRIPLET=x64-windows-static"
 set "CMAKE_ARCH="
 set "DIR_SUFFIX="
-set "EXT_DIR=%BUILDDIR%\ext.vcpkg\vcpkg_installed\%TARGET_TRIPLET%"
+set "EXT_DIR="
+set "EXT_CMAKE_PREFIX="
 set "EXT_DIR_USER=0"
-set "CI_EXT_DIR=C:\Xilinx\XRT\ext.new"
+set "CI_EXT_ROOT=C:\Xilinx\XRT\ext.new"
 set "CMAKEFLAGS="
 set "NOCMAKE=0"
 set "STAGE=0"
+set "DYNAMIC_DEPS=0"
 set "CREATE_SDK=0"
 set "CREATE_PACKAGE=0"
 set "INSTALL_ROOT="
@@ -34,11 +36,11 @@ if /I "%~1"=="-help"     goto help
 if /I "%~1"=="-ext"      goto parseExt
 if /I "%~1"=="-install"  goto parseInstall
 if /I "%~1"=="-arm64"    goto parseArm64
+if /I "%~1"=="-dynamic"  goto parseDynamic
 if /I "%~1"=="-clean"    ( set "DO_CLEAN=1" & shift & goto parseArgs )
 if /I "%~1"=="-dbg"      ( set "RELEASE=0" & shift & goto parseArgs )
 if /I "%~1"=="-opt"      ( set "DEBUG=0" & shift & goto parseArgs )
 if /I "%~1"=="-rwd"      ( set "DEBUG=0" & set "RELEASE=0" & set "RELWITHDEBINFO=1" & shift & goto parseArgs )
-if /I "%~1"=="-stage"    ( set "STAGE=1" & shift & goto parseArgs )
 if /I "%~1"=="-sdk"      ( set "CREATE_SDK=1" & set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
 if /I "%~1"=="-pkg"      ( set "CREATE_PACKAGE=1" & shift & goto parseArgs )
 if /I "%~1"=="-npu"      ( set "CMAKEFLAGS=%CMAKEFLAGS% -DXRT_NPU=1" & shift & goto parseArgs )
@@ -51,9 +53,18 @@ goto help
 
 REM --------------------------------------------------------------------------
 :parseArm64
-set "TARGET_TRIPLET=arm64-windows"
 set "CMAKE_ARCH=ARM64"
-if "%EXT_DIR_USER%"=="0" set "EXT_DIR=%BUILDDIR%\ext.vcpkg\vcpkg_installed\arm64-windows"
+if "%DYNAMIC_DEPS%"=="1" set "TARGET_TRIPLET=arm64-windows"
+if not "%DYNAMIC_DEPS%"=="1" set "TARGET_TRIPLET=arm64-windows-static"
+shift
+goto parseArgs
+
+REM --------------------------------------------------------------------------
+:parseDynamic
+set "DYNAMIC_DEPS=1"
+set "STAGE=1"
+if /I "%CMAKE_ARCH%"=="ARM64" set "TARGET_TRIPLET=arm64-windows"
+if /I not "%CMAKE_ARCH%"=="ARM64" set "TARGET_TRIPLET=x64-windows"
 shift
 goto parseArgs
 
@@ -68,6 +79,7 @@ if "%~1"=="" (
 
 set "EXT_DIR=%~1"
 set "EXT_DIR_USER=1"
+set "EXT_CMAKE_PREFIX=%EXT_DIR%"
 shift
 goto parseArgs
 
@@ -87,19 +99,17 @@ REM --------------------------------------------------------------------------
 :argsParsed
 if "%DO_CLEAN%"=="1" goto clean
 call :pickGenerator
+if "%EXT_DIR_USER%"=="0" call :resolveDefaultExtDir
 
-REM Prefer repo-local vcpkg deps when present; otherwise fall back to ext.new.
-if not "%EXT_DIR_USER%"=="0" goto skipExtFallback
-if /I not "%TARGET_TRIPLET%"=="x64-windows" goto skipExtFallback
-if exist "%EXT_DIR%\" goto skipExtFallback
-if exist "%CI_EXT_DIR%\" set "EXT_DIR=%CI_EXT_DIR%"
-
-:skipExtFallback
 if not exist "%EXT_DIR%\" (
   echo ERROR: dependency prefix not found: "%EXT_DIR%"
-  echo        Use -ext ^<path^>, or run src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat
+  echo        Use -ext ^<path^>, or run:
+  echo          src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat -triplet %TARGET_TRIPLET%
   exit /B 2
 )
+
+echo Using dependency prefix: "%EXT_DIR%"
+call :echoDetectedBaseline "%EXT_DIR%"
 
 if "%INSTALL_ROOT%"=="" goto skipInstallCheck
 
@@ -124,6 +134,30 @@ if "%RELWITHDEBINFO%"=="1" call :doBuild RelWithDebInfo WRelDeb%DIR_SUFFIX%
 if errorlevel 1 exit /B
 
 goto :EOF
+
+REM --------------------------------------------------------------------------
+:resolveDefaultExtDir
+set "REPO_EXT_DIR=%BUILDDIR%\ext.vcpkg\vcpkg_installed\%TARGET_TRIPLET%"
+set "CI_VCPKG_EXT_DIR=%CI_EXT_ROOT%\vcpkg_installed\%TARGET_TRIPLET%"
+set "CI_TRIPLET_EXT_DIR=%CI_EXT_ROOT%\%TARGET_TRIPLET%"
+set "EXT_DIR=%REPO_EXT_DIR%"
+set "EXT_CMAKE_PREFIX=%REPO_EXT_DIR%"
+if exist "%REPO_EXT_DIR%\" goto :EOF
+if exist "%CI_VCPKG_EXT_DIR%\" set "EXT_DIR=%CI_VCPKG_EXT_DIR%" & set "EXT_CMAKE_PREFIX=%CI_VCPKG_EXT_DIR%" & goto :EOF
+if exist "%CI_TRIPLET_EXT_DIR%\" set "EXT_DIR=%CI_TRIPLET_EXT_DIR%" & set "EXT_CMAKE_PREFIX=%CI_TRIPLET_EXT_DIR%" & goto :EOF
+if exist "%CI_EXT_ROOT%\" set "EXT_DIR=%CI_EXT_ROOT%" & set "EXT_CMAKE_PREFIX=%CI_EXT_ROOT%"
+goto :EOF
+
+REM --------------------------------------------------------------------------
+:echoDetectedBaseline
+set "BASELINE_MARKER=%~1\.vcpkg-baseline"
+if not exist "%BASELINE_MARKER%" exit /B 0
+set "DETECTED_BASELINE="
+set /P DETECTED_BASELINE=<"%BASELINE_MARKER%"
+if "%DETECTED_BASELINE%"=="" exit /B 0
+if /I "%DETECTED_BASELINE%"=="UNPINNED" echo Using detected vcpkg baseline: UNPINNED
+if /I not "%DETECTED_BASELINE%"=="UNPINNED" echo Using detected vcpkg baseline: %DETECTED_BASELINE:~0,7%
+exit /B 0
 
 REM --------------------------------------------------------------------------
 :pickGenerator
@@ -154,7 +188,7 @@ REM --------------------------------------------------------------------------
 echo Configuring %CFG%...
 set "LOCAL_CMAKEFLAGS=%CMAKEFLAGS%"
 
-if not "%EXT_DIR:vcpkg_installed=%"=="%EXT_DIR%" set "LOCAL_CMAKEFLAGS=%LOCAL_CMAKEFLAGS% -DCMAKE_PREFIX_PATH=%EXT_DIR%"
+if not "%EXT_CMAKE_PREFIX%"=="" set "LOCAL_CMAKEFLAGS=%LOCAL_CMAKEFLAGS% -DCMAKE_PREFIX_PATH=%EXT_CMAKE_PREFIX%"
 set "PROTOC_EXE=%EXT_DIR%\tools\protobuf\protoc.exe"
 if exist "%PROTOC_EXE%" set "LOCAL_CMAKEFLAGS=%LOCAL_CMAKEFLAGS% -DProtobuf_PROTOC_EXECUTABLE=%PROTOC_EXE%"
 
@@ -245,8 +279,8 @@ echo [-opt]              - Release build only
 echo [-rwd]              - RelWithDebInfo build only
 echo [-ext ^<path^>]       - Sets EXT_DIR for dependencies (usually a vcpkg prefix)
 echo [-install [^<path^>]] - Install prefix (default: C:\Xilinx\XRT)
-echo [-arm64]            - Configure/build ARM64 (uses vcpkg triplet arm64-windows)
-echo [-stage]            - Copy a small set of runtime DLLs into ^<prefix^>\ext\bin
+echo [-arm64]            - Configure/build ARM64 (uses vcpkg triplet arm64-windows-static by default)
+echo [-dynamic]          - Use dynamic vcpkg triplets and copy runtime DLLs into ^<prefix^>\ext\bin
 echo [-sdk]              - Build NPU and create a ZIP archive via CPack (Release only)
 echo [-pkg]              - Create ZIP and MSI archives via CPack (Release only)
 echo [-npu]              - Build NPU component of XRT
@@ -255,9 +289,14 @@ echo [-hip]              - Enable HIP build
 echo [-nocmake]          - Skip re-configure; build/install only
 echo.
 echo Note:
-echo     Default EXT_DIR uses build\ext.vcpkg if present; otherwise uses C:\Xilinx\XRT\ext.new
-echo     To install vcpkg deps into build\ext.vcpkg, run:
-echo     src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat
+echo     Default EXT_DIR prefers: build\ext.vcpkg\vcpkg_installed\^<triplet^>
+echo     Then tries: C:\Xilinx\XRT\ext.new\vcpkg_installed\^<triplet^>
+echo     Then tries: C:\Xilinx\XRT\ext.new\^<triplet^>, 
+echo     Then tries: C:\Xilinx\XRT\ext.new
+echo
+echo     To install dependencies into build\ext.vcpkg, run:
+echo     src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat [-triplet ^<triplet^>]
+echo     (Default: x64-windows-static.)
 goto :EOF
 
 REM --------------------------------------------------------------------------
