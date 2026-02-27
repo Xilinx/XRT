@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -835,13 +836,28 @@ get_softkernels(const axlf* top)
     pSection != nullptr;
     pSection = ::xclbin::get_axlf_section_next(top, pSection, SOFT_KERNEL)) {
       auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+      auto section_size = pSection->m_sectionSize;
+
+      if (section_size < sizeof(soft_kernel))
+        continue;
+
       auto soft = reinterpret_cast<const soft_kernel*>(begin);
+
+      if (soft->mpo_symbol_name >= section_size ||
+          soft->mpo_name >= section_size ||
+          soft->mpo_version >= section_size ||
+          soft->m_image_offset >= section_size ||
+          (soft->m_image_offset + soft->m_image_size) > section_size)
+        continue;
 
       softkernel_object sko;
       sko.ninst = soft->m_num_instances;
-      sko.symbol_name = std::string(begin + soft->mpo_symbol_name);
-      sko.mpo_name = std::string(begin + soft->mpo_name);
-      sko.mpo_version = std::string(begin + soft->mpo_version);
+      sko.symbol_name = std::string(begin + soft->mpo_symbol_name,
+          strnlen(begin + soft->mpo_symbol_name, section_size - soft->mpo_symbol_name));
+      sko.mpo_name = std::string(begin + soft->mpo_name,
+          strnlen(begin + soft->mpo_name, section_size - soft->mpo_name));
+      sko.mpo_version = std::string(begin + soft->mpo_version,
+          strnlen(begin + soft->mpo_version, section_size - soft->mpo_version));
       sko.size = soft->m_image_size;
       sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);  // NOLINT
       sks.emplace_back(std::move(sko));
@@ -858,29 +874,77 @@ get_aie_partition(const axlf* top)
     return {};
 
   auto topbase = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
-  auto aiep = reinterpret_cast<const aie_partition*>(topbase);
-  auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
+  auto section_size = pSection->m_sectionSize;
 
-  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name, aiep->operations_per_cycle};
+  if (section_size < sizeof(aie_partition))
+    return {};
+
+  auto aiep = reinterpret_cast<const aie_partition*>(topbase);
+
+  if (aiep->mpo_name >= section_size)
+    return {};
+  if (aiep->info.start_columns.offset >= section_size)
+    return {};
+  size_t start_cols_bytes = static_cast<size_t>(aiep->info.start_columns.size) * sizeof(uint16_t);
+  if (start_cols_bytes > section_size ||
+      aiep->info.start_columns.offset > section_size - start_cols_bytes)
+    return {};
+  if (aiep->aie_pdi.offset >= section_size)
+    return {};
+  size_t aie_pdi_bytes = static_cast<size_t>(aiep->aie_pdi.size) * sizeof(aie_pdi);
+  if (aie_pdi_bytes > section_size || aiep->aie_pdi.offset > section_size - aie_pdi_bytes)
+    return {};
+
+  auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
+  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size},
+      std::string(topbase + aiep->mpo_name, strnlen(topbase + aiep->mpo_name, section_size - aiep->mpo_name)),
+      aiep->operations_per_cycle};
 
   for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
-    aie_pdi_obj pdiobj;
-    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
+    size_t pdi_offset = aiep->aie_pdi.offset + i * sizeof(aie_pdi);
+    if (pdi_offset + sizeof(aie_pdi) > section_size)
+      continue;
+
+    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + pdi_offset);
+
+    if (aiepdip->pdi_image.offset >= section_size ||
+        (aiepdip->pdi_image.offset + aiepdip->pdi_image.size) > section_size ||
+        aiepdip->cdo_groups.offset >= section_size)
+      continue;
+    size_t cdo_groups_bytes = static_cast<size_t>(aiepdip->cdo_groups.size) * sizeof(cdo_group);
+    if (cdo_groups_bytes > section_size ||
+        aiepdip->cdo_groups.offset > section_size - cdo_groups_bytes)
+      continue;
 
     if (aiepdip->pdi_image.size > PDI_IMAGE_MAX_SIZE)
       throw std::runtime_error("PDI image size too big");
 
+    aie_pdi_obj pdiobj;
     pdiobj.uuid = aiepdip->uuid;
     pdiobj.pdi.resize(aiepdip->pdi_image.size);
     memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
+
     for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
+      size_t cdo_offset = aiepdip->cdo_groups.offset + j * sizeof(cdo_group);
+      if (cdo_offset + sizeof(cdo_group) > section_size)
+        continue;
+
+      auto cdop = reinterpret_cast<const cdo_group*>(topbase + cdo_offset);
+      if (cdop->mpo_name >= section_size ||
+          cdop->dpu_kernel_ids.offset >= section_size)
+        continue;
+      size_t ids_bytes = static_cast<size_t>(cdop->dpu_kernel_ids.size) * sizeof(uint64_t);
+      if (ids_bytes > section_size || cdop->dpu_kernel_ids.offset > section_size - ids_bytes)
+        continue;
+
       std::vector<uint64_t> dpu_kernel_ids;
-      auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
       auto kernel_idp = reinterpret_cast<const uint64_t*>(topbase + cdop->dpu_kernel_ids.offset);
       for (uint32_t k = 0; k < cdop->dpu_kernel_ids.size; ++k)
         dpu_kernel_ids.push_back(kernel_idp[k]);
 
-      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, std::move(dpu_kernel_ids)});
+      std::string cdo_name(topbase + cdop->mpo_name,
+          strnlen(topbase + cdop->mpo_name, section_size - cdop->mpo_name));
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({cdo_name, cdop->cdo_type, cdop->pdi_id, std::move(dpu_kernel_ids)});
     }
 
     obj.pdis.emplace_back(std::move(pdiobj));
