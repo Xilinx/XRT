@@ -60,7 +60,7 @@ add_subdirectory(ContextHealth)
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
-set(XBUTIL2_NAME "xrt-smi") 
+set(XBUTIL2_NAME "xrt-smi")
 # Determine any helper scripts
 if(WIN32)
   set(XRT_HELPER_SCRIPTS "xrt-smi" "xrt-smi.bat")
@@ -88,7 +88,6 @@ if (XRT_STATIC_BUILD)
   target_link_libraries(${XBUTIL2_NAME}_static
     PRIVATE
     xrt_coreutil_static
-    boost_system
     boost_program_options
     -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
     uuid
@@ -103,7 +102,6 @@ target_link_libraries(${XBUTIL2_NAME}
   PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   )
 
