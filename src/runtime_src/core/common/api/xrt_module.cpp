@@ -96,6 +96,13 @@ public:
     return {};
   }
 
+  // Run-level dtrace control file
+  virtual void
+  set_dtrace_control_file(const std::string&)
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   std::shared_ptr<xrt::elf_impl>
   get_elf_handle() const
   {
@@ -668,6 +675,7 @@ class module_run_aie_gen2_plus : public module_run
 
   // Tuple of uC index, address, size, dtrace_addr for each column
   // Used in ert_dpu_data payload to identify ctrlcode and dtrace buffer per column
+  enum column_bo_index : size_t { col_ucidx = 0, col_base_addr, col_size, col_dtrace_addr };
   std::vector<std::tuple<uint16_t, uint64_t, uint64_t, uint64_t>> m_column_bo_address;
 
   // Symbol name for control code patching
@@ -696,11 +704,15 @@ class module_run_aie_gen2_plus : public module_run
   };
   dtrace_util m_dtrace;
 
-  // Initialize dtrace helper - returns true on success
+  // Creates dtrace util object.
+  // Sets path (run-level overrides config file).
+  // Returns true on success.
   bool
-  init_dtrace_helper()
+  create_dtrace_util(const std::string& run_level_ct_file)
   {
-    static auto path = xrt_core::config::get_dtrace_control_file_path();
+    std::string path = run_level_ct_file.empty()
+      ? xrt_core::config::get_dtrace_control_file_path()
+      : run_level_ct_file;
     if (path.empty())
       return false;
     if (!std::filesystem::exists(path)) {
@@ -729,16 +741,12 @@ class module_run_aie_gen2_plus : public module_run
     return true;
   }
 
-  // Initialize dtrace buffer for debugging/tracing
+  // Create dtrace buffers (ctrl_bo, buf_offset_map).
+  // Assumes m_dtrace.dtrace_handle is already set.
   void
-  initialize_dtrace_buf()
+  create_dtrace_buffers()
   {
-    if (!init_dtrace_helper())
-      return; // init failure
-
     uint32_t buffers_length = 0;
-
-    // Get the number of uC required for dynamic tracing
     get_dtrace_col_numbers(m_dtrace.dtrace_handle.get(), &buffers_length);
 
     if (!buffers_length) {
@@ -772,6 +780,27 @@ class module_run_aie_gen2_plus : public module_run
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what());
     }
+  }
+
+  // Initialize dtrace buffer for debugging/tracing.
+  // Uses config path if run_level_ct_file is empty.
+  void
+  initialize_dtrace_buf(const std::string& run_level_ct_file = "")
+  {
+    if (!create_dtrace_util(run_level_ct_file))
+      return;  // create failure
+
+    create_dtrace_buffers();
+  }
+
+  // Reinit dtrace with a new control file (e.g. after run finished, before next
+  // start). Run-level path preferred over config.
+  void
+  set_dtrace_control_file(const std::string& path) override
+  {
+    initialize_dtrace_buf(path);
+    // Only update dtrace addresses; instruction buffer layout is unchanged.
+    update_column_bo_dtrace_addresses();
   }
 
   ////////////////////////////////////////////////////////////////
@@ -902,6 +931,23 @@ class module_run_aie_gen2_plus : public module_run
     }
   }
 
+  // Update only dtrace buffer addresses in m_column_bo_address; instruction
+  // addrs/sizes unchanged.
+  void
+  update_column_bo_dtrace_addresses()
+  {
+    for (auto& entry : m_column_bo_address) {
+      auto ucidx = static_cast<uint16_t>(std::get<col_ucidx>(entry));
+      uint64_t dtrace_addr = 0;
+      if (m_dtrace.ctrl_bo) {
+        auto it = m_dtrace.buf_offset_map.find(ucidx);
+        if (it != m_dtrace.buf_offset_map.end())
+          dtrace_addr = m_dtrace.ctrl_bo.address() + it->second;
+      }
+      std::get<col_dtrace_addr>(entry) = dtrace_addr;
+    }
+  }
+
   ////////////////////////////////////////////////////////////////
   // ERT payload fill functions
   ////////////////////////////////////////////////////////////////
@@ -931,7 +977,7 @@ public:
     : module_run(elf, hw_context, id)
     , m_config(std::get<xrt::module_config_aie_gen2_plus>(m_elf_impl->get_module_config(id)))
   {
-    initialize_dtrace_buf();
+    initialize_dtrace_buf("");  // use config path by default
     create_ctrlpkt_bufs();
     create_instruction_buffer();
     fill_column_bo_address();
@@ -1133,6 +1179,12 @@ void
 dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
 {
   module.get_handle()->dump_dtrace_buffer(run_id);
+}
+
+void
+set_dtrace_control_file(const xrt::module& module, const std::string& path)
+{
+  module.get_handle()->set_dtrace_control_file(path);
 }
 
 xrt::bo

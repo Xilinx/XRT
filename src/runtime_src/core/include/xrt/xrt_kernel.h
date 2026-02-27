@@ -172,6 +172,18 @@ public:
   run(const kernel& krnl);
 
   /**
+   * run() - Construct run object from a kernel with dtrace control file
+   *
+   * @param krnl: Kernel object representing the kernel to execute
+   * @param dtrace_control_file: Path to dtrace control (ct) file for this run.
+   *   Preferred over Debug.dtrace_control_file_path from config when set.
+   *
+   * Throws if the run does not support dtrace flow (non-ELF flow).
+   */
+  XRT_API_EXPORT
+  run(const kernel& krnl, const std::string& dtrace_control_file);
+
+  /**
    * run() - Copy ctor
    *
    * Performs shallow copy, sharing data with the source
@@ -533,7 +545,7 @@ public:
   XRT_API_EXPORT
   void
   submit_wait(const xrt::fence& fence);
-  
+
   XRT_API_EXPORT
   void
   submit_signal(const xrt::fence& fence);
@@ -645,19 +657,35 @@ public:
 
   /**
    * get_ctrl_scratchpad_bo() - Get the ctrl scratchpad bo object
-   * 
+   *
    * NPU uses ctrl scratchpad memory to store control state data.
    * This memory is created by XRT based on ELF used to create xrt::kernel
    * The API returns the buffer object (bo) created by XRT allowing
    * applications to read from or write to it.
    * This API is only valid for run objects associated with an ELF.
-   * 
+   *
    * Throws if control scratchpad section is not absent in ELF or
    * if any error occurs while retrieving the bo
    */
   XRT_API_EXPORT
   xrt::bo
   get_ctrl_scratchpad_bo() const;
+
+  /**
+   * set_dtrace_control_file() - Set dtrace control (ct) file for this run.
+   *
+   * @param path: Path to the dtrace control file. Used for dtrace handle
+   *   creation when start() is called; preferred over config when set.
+   *
+   * Must be called before start() or after run completes. Throws if the run
+   * has already been started and is still in progress. After a run completes,
+   * call this to set a different ct file and start() again to relaunch.
+   *
+   * Throws if the run does not support dtrace flow (non-ELF flow).
+   */
+  XRT_API_EXPORT
+  void
+  set_dtrace_control_file(const std::string& path);
 
 public:
   /// @cond
