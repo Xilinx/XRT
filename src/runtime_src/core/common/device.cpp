@@ -6,6 +6,7 @@
 #define XRT_API_SOURCE         // in same dll as coreutil
 #include "device.h"
 #include "config_reader.h"
+#include "message.h"
 #include "debug.h"
 #include "error.h"
 #include "query_requests.h"
@@ -146,6 +147,9 @@ void
 device::
 load_xclbin(const xrt::xclbin& xclbin)
 {
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrt::device::load_xclbin is deprecated. "
+    "Use xrt::device::register_xclbin() and xrt::hw_context() instead.");
   try {
     m_xclbin = xclbin;
     load_axlf(xclbin.get_axlf());
@@ -160,6 +164,9 @@ void
 device::
 load_xclbin(const uuid& xclbin_id)
 {
+  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+    "XRT DEPRECATION WARNING: xrt::device::load_xclbin is deprecated. "
+    "Use xrt::device::register_xclbin() and xrt::hw_context() instead.");
   auto uuid_loaded = get_xclbin_uuid();
   if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
     throw error(ENODEV, "specified xclbin is not loaded");
