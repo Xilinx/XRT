@@ -224,6 +224,10 @@ private:
  * Provides common formatting functionality shared between STRx and NPU3 parsers.
  */
 class event_trace_parser {
+
+  /** Column widths for table: [timestamp, event_name, category, arguments] */
+  std::vector<size_t> m_column_widths;
+
 public:
   /**
    * @brief Factory method to create appropriate parser based on device type
@@ -303,9 +307,6 @@ protected:
    */
   std::string
   format_arguments(const std::map<std::string, std::string>& args) const;
-
-  /** Column widths for table: [timestamp, event_name, category, arguments] */
-  std::vector<size_t> m_column_widths;
 };
 
 } // namespace xrt_core::tools::xrt_smi
