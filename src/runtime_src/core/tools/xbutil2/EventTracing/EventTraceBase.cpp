@@ -171,7 +171,7 @@ format_categories(const std::vector<std::string>& categories) const
   
   std::stringstream ss;
   for (size_t i = 0; i < categories.size(); ++i) {
-    if (i > 0) ss << "|";
+    if (i > 0) ss << " | ";
     ss << categories[i];
   }
   return ss.str();
