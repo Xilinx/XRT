@@ -135,14 +135,13 @@ handle_logging(const xrt_core::device* device) const {
   XBUtilities::OutputStreamHelper output_helper(m_raw);
   std::ostream& out = output_helper.get_stream();
   
-  // Try to parse device specific config unless user explicitly wants raw logs
+  // Load device config when available 
   std::optional<smi::firmware_log_config> config;
   if (!output_helper.is_raw_mode()) {
     try {
       config = smi::firmware_log_config::load_config(device);
-    } 
-    catch (const std::exception& e) {
-      out << "[Warning]: Dumping raw firmware log: " << e.what() << "\n";
+    } catch (const std::exception& e) {
+      out << "[Warning] Firmware log config unavailable, dumping raw: " << e.what() << "\n";
     }
   }
 

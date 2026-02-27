@@ -246,6 +246,13 @@ public:
         size_t buf_size) const = 0;
 
   /**
+   * @brief Get formatted header row for the event trace table
+   * @return std::string Formatted header row (Timestamp, Event Name, Category, Arguments)
+   */
+  std::string
+  get_header_row() const;
+
+  /**
    * @brief Virtual destructor (public for unique_ptr)
    */
   virtual ~event_trace_parser() = default;
@@ -263,9 +270,23 @@ public:
 
 protected:
   /**
-   * @brief Protected constructor
+   * @brief Protected default constructor (uses default column widths)
    */
-  event_trace_parser() = default;
+  event_trace_parser();
+
+  /**
+   * @brief Format a single event row using stored column widths
+   * @param timestamp Event timestamp
+   * @param event_name Event name (or "UNKNOWN")
+   * @param category_display Formatted categories string
+   * @param args_str Formatted arguments string
+   * @return Formatted table row string
+   */
+  std::string
+  format_event_row(uint64_t timestamp,
+                   const std::string& event_name,
+                   const std::string& category_display,
+                   const std::string& args_str) const;
 
   /**
    * @brief Format event categories for table display (inline format)
@@ -282,6 +303,9 @@ protected:
    */
   std::string
   format_arguments(const std::map<std::string, std::string>& args) const;
+
+  /** Column widths for table: [timestamp, event_name, category, arguments] */
+  std::vector<size_t> m_column_widths;
 };
 
 } // namespace xrt_core::tools::xrt_smi
