@@ -10,19 +10,31 @@ else (POLICY CMP0144)
   return()
 endif ()
 
-find_package(Protobuf)
+# Prefer protobuf's config package.
+set(XBTRACER_PROTOBUF_CONFIG_MODE FALSE)
+set(protobuf_MODULE_COMPATIBLE TRUE)
+find_package(Protobuf CONFIG QUIET)
+unset(protobuf_MODULE_COMPATIBLE)
+if (Protobuf_FOUND)
+  set(XBTRACER_PROTOBUF_CONFIG_MODE TRUE)
+else()
+  find_package(Protobuf)
+endif()
 if (NOT Protobuf_FOUND)
   message("Protobuf is not found, skipping xbtracer")
   return()
 endif (NOT Protobuf_FOUND)
 
-# Protobuf 22+ uses abseil for logging, need to link against it
-# Note: Protobuf versioning changed - version 22.0 may report as 4.22.0 or 6.22.0
-# We check for abseil linking if protobuf version >= 4.0 (corresponds to protobuf 22+)
-find_package(absl QUIET)
-if (absl_FOUND AND Protobuf_VERSION VERSION_GREATER_EQUAL 4.0)
-  set(XBTRACER_ABSL_LIBS absl::log_internal_check_op absl::log_internal_message)
-  message(STATUS "Found abseil, will link xbtracer against abseil logging libraries")
+# Keep manual abseil fallback only for module mode.
+if (NOT XBTRACER_PROTOBUF_CONFIG_MODE)
+  # Protobuf 22+ uses abseil for logging, need to link against it
+  # Note: Protobuf versioning changed - version 22.0 may report as 4.22.0 or 6.22.0
+  # We check for abseil linking if protobuf version >= 4.0 (corresponds to protobuf 22+)
+  find_package(absl QUIET)
+  if (absl_FOUND AND Protobuf_VERSION VERSION_GREATER_EQUAL 4.0)
+    set(XBTRACER_ABSL_LIBS absl::log_internal_check_op absl::log_internal_message)
+    message(STATUS "Found abseil, will link xbtracer against abseil logging libraries")
+  endif()
 endif()
 message("Protobuf version is ${Protobuf_VERSION}.")
 if (Protobuf_VERSION VERSION_LESS 3.0)
@@ -57,7 +69,8 @@ add_custom_target(xbtracer_generated_code DEPENDS ${ProtoSources} ${ProtoHeaders
 add_library(xbtracer_protobuf STATIC ${ProtoSources} ${ProtoHeaders})
 add_dependencies(xbtracer_protobuf xbtracer_generated_code)
 if (MSVC)
-  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267 /wd4100)
+  # Suppress benign third-party header warnings for generated targets in newer protobuf.
+  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267 /wd4100 /wd4141 /wd4189)
 endif(MSVC)
 # Link protobuf static library against abseil if needed
 if (XBTRACER_ABSL_LIBS)
