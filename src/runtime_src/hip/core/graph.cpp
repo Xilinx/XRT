@@ -140,32 +140,23 @@ void
 graph_exec::
 execute(std::shared_ptr<stream> s)
 {
-  // Set stream on event_record_command and event_wait_command nodes before enqueuing
-  for (auto& node : m_node_exec_list) {
-    auto cmd = node->get_cmd();
-    if (cmd->get_type() == command::type::event_record) {
-      auto event_record_cmd = std::dynamic_pointer_cast<event_record_command>(cmd);
-      if (event_record_cmd)
-        event_record_cmd->set_stream(s);
-    }
-    else if (cmd->get_type() == command::type::event_wait) {
-      auto event_wait_cmd = std::dynamic_pointer_cast<event_wait_command>(cmd);
-      if (event_wait_cmd)
-        event_wait_cmd->set_stream(s);
-    }
-  }
-
-  // Create async task to enqueue commands to stream
   auto future = std::async(std::launch::async, [this, s]() {
     for (auto& node : m_node_exec_list) {
+      auto cmd = node->get_cmd();
+      const auto cmd_type = cmd->get_type();
+
+      if (cmd_type == command::type::event_record)
+        std::static_pointer_cast<event_record_command>(cmd)->set_stream(s);
+      else if (cmd_type == command::type::event_wait)
+        std::static_pointer_cast<event_wait_command>(cmd)->set_stream(s);
+
       // Wait for all dependencies to complete before enqueuing this node
       for (const auto& dep : node->get_deps_list())
         dep->get_cmd()->wait();
 
-      // Enqueue the command to the stream instead of submitting directly
-      auto cmd = node->get_cmd();
-      if (cmd->get_type() == command::type::event_record ||
-          cmd->get_type() == command::type::event_wait)
+      cmd->set_state(command::state::init);
+      if (cmd_type == command::type::event_record ||
+          cmd_type == command::type::event_wait)
         cmd->submit();
       else
         s->enqueue(std::move(cmd));
