@@ -115,9 +115,9 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
       // Format log message using log schema
       // If log_id is not found in log schema, use default format string
       constexpr std::array<const char*, 3> default_formats = {
-        "unknown !",
-        "unknown %d !!",
-        "unknown %d unknown %d !!!"
+        "unknown !\n",
+        "unknown %d !!\n",
+        "unknown %d unknown %d !!!\n"
       };
       auto log_schema_it = uc_log_schema.logs.find(log.log_id);
       const char* log_format = (log_schema_it != uc_log_schema.logs.end())

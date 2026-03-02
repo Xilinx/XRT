@@ -82,7 +82,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // tweak dump interval, size_per_uc based on experiments
       constexpr size_t size_per_uc = 2_mb;
       constexpr size_t dump_interval_ms = 50;
-      constexpr size_t metadata_size = 32;
+      constexpr size_t metadata_size = sizeof(xrt_core::buffer_dumper::log_entry);
       constexpr size_t count_offset = 0;
       constexpr size_t count_size = 8;
 

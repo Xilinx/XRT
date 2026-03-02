@@ -174,7 +174,12 @@ uc_log_schema = {
     {119, "q new read index high %d : low %d\n"},
     {120, "q old write index high %d : low %d\n"},
     {121, "q old read index high %d : low %d\n"},
-    {122, "\n"}
+    {122, "Trigger completion interrupt\n"},
+    {123, "Trigger idle interrupt\n"},
+    {124, "Trigger miscellaneous interrupt\n"},
+    {125, "Trigger common interrupt\n"},
+    {126, "Skip %d cmds in runlist\n"},
+    {127, "\n"}
   }
 };
 
