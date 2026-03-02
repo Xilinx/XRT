@@ -172,18 +172,6 @@ public:
   run(const kernel& krnl);
 
   /**
-   * run() - Construct run object from a kernel with dtrace control file
-   *
-   * @param krnl: Kernel object representing the kernel to execute
-   * @param dtrace_control_file: Path to dtrace control (ct) file for this run.
-   *   Preferred over Debug.dtrace_control_file_path from config when set.
-   *
-   * Throws if the run does not support dtrace flow (non-ELF flow).
-   */
-  XRT_API_EXPORT
-  run(const kernel& krnl, const std::string& dtrace_control_file);
-
-  /**
    * run() - Copy ctor
    *
    * Performs shallow copy, sharing data with the source

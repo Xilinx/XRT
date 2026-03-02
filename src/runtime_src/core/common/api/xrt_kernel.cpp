@@ -4148,13 +4148,6 @@ run(const kernel& krnl)
            ("xrt::run::run", alloc_run, krnl.get_handle()))
 {}
 
-run::
-run(const kernel& krnl, const std::string& dtrace_control_file)
-  : run(krnl)
-{
-  handle->set_dtrace_control_file(dtrace_control_file);
-}
-
 void
 run::
 set_dtrace_control_file(const std::string& path)
