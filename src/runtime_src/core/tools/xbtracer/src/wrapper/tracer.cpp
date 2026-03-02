@@ -12,7 +12,6 @@
 #include <memory>
 #include <mutex>
 
-#include "xrt/detail/version.h"
 #include "wrapper/tracer.h"
 #ifdef _WIN32
 #include "core/common/windows/win_utils.h"

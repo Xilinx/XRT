@@ -7,7 +7,7 @@
 #include "config_reader.h"
 #include "utils.h"
 
-#include "xrt/detail/version.h"
+#include "xrt/detail/version-git.h"
 
 #include <map>
 #include <fstream>
@@ -179,7 +179,7 @@ file_dispatch(const std::string &file)
   handle.open(file.c_str());
   handle << "XRT build version: " << xrt_build_version << "\n";
   handle << "Build hash: " << xrt_build_version_hash << "\n";
-  handle << "Build date: " << xrt_build_version_date << "\n";
+  handle << "Build hash date: " << xrt_build_version_hash_date << "\n";
   handle << "Git branch: " << xrt_build_version_branch<< "\n";
   handle << "[" << xrt_core::timestamp() << "]" << "\n";
   handle << "PID: " << xrt_core::utils::get_pid() << "\n";
@@ -209,7 +209,7 @@ console_dispatch()
 {
   std::cerr << "XRT build version: " << xrt_build_version << "\n";
   std::cerr << "Build hash: " << xrt_build_version_hash << "\n";
-  std::cerr << "Build date: " << xrt_build_version_date << "\n";
+  std::cerr << "Build hash date: " << xrt_build_version_hash_date << "\n";
   std::cerr << "Git branch: " << xrt_build_version_branch<< "\n";
   std::cerr << "PID: " << xrt_core::utils::get_pid() << "\n";
   std::cerr << "UID: " << get_userid() << "\n";
