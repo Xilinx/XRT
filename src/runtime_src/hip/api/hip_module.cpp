@@ -20,7 +20,6 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
                          void** kernelParams, void** extra)
 {
   throw_invalid_resource_if(!f, "function is nullptr");
-  throw_invalid_value_if(!kernelParams, "kernel parameters is nullptr");
 
   auto func_hdl = reinterpret_cast<function_handle>(f);
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
