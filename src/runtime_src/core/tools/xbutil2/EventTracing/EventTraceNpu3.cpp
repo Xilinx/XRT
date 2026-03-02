@@ -353,8 +353,7 @@ format_value(uint64_t value, const std::string& format) const
 parser_npu3::
 parser_npu3(config_npu3 config)
   : m_config(std::move(config))
-{
-}
+{}
 
 std::string
 parser_npu3::
@@ -419,25 +418,12 @@ std::string
 parser_npu3::
 format_event(const decoded_event_t& decoded_event) const
 {
-  std::stringstream ss;
-  
-  // Format categories
   std::string categories_str = format_categories(decoded_event.categories);
-  
-  // Format arguments
   std::string args_str = format_arguments(decoded_event.args);
-  
-  // Format as table row with consistent column widths
   std::string event_name = decoded_event.name.empty() ? "UNKNOWN" : decoded_event.name;
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
-  
-  ss << boost::format("%-20lu %-30s %-55s %-30s\n")
-        % decoded_event.timestamp
-        % event_name
-        % category_display
-        % args_str;
-  
-  return ss.str();
+
+  return format_event_row(decoded_event.timestamp, event_name, category_display, args_str);
 }
 
 } // namespace xrt_core::tools::xrt_smi

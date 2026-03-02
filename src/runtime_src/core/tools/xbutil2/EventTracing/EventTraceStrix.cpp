@@ -303,8 +303,9 @@ format_value(uint64_t value, const std::string& format) const
 }
 
 parser_strix::
-parser_strix(config_strix config) 
-  : m_config(std::move(config)) {}
+parser_strix(config_strix config)
+  : m_config(std::move(config))
+{}
 
 std::string
 parser_strix::
@@ -338,27 +339,14 @@ std::string
 parser_strix::
 format_event(const event_data_t& event_data) const
 {
-  std::stringstream ss{};
-  
   auto decoded_event = m_config.decode_event(event_data);
 
-  // Format categories for table
   std::string categories_str = format_categories(decoded_event.categories);
-
-  // Format arguments for table
   std::string args_str = format_arguments(decoded_event.args);
-
-  // Format as table row with consistent column widths
   std::string event_name = decoded_event.name.empty() ? "UNKNOWN" : decoded_event.name;
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
-  
-  ss << boost::format("%-20lu %-25s %-25s %-30s\n")//NOLINT (cppcoreguidelines-avoid-magic-numbers) 
-        % event_data.timestamp               // Use parsed timestamp value
-        % event_name                         // Use parsed name or UNKNOWN
-        % category_display                   // Use parsed categories or UNKNOWN
-        % args_str;
-  
-  return ss.str();
+
+  return format_event_row(event_data.timestamp, event_name, category_display, args_str);
 }
 
 std::string
