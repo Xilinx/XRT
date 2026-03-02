@@ -417,54 +417,96 @@ class xclbin_impl
       return mems;
     }
 
-    // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from packagedSystemD
+    // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY
     //
-    // Parses SYSTEM_METADATA (packagedSystemD, kind 22) JSON:
-    //   system_diagram_metadata.xclbin.user_regions[0].connectivity[]
-    //   Edges with node1.arg_name and node2.type == "memory" -> mem_data_index from node2.id.
+    // CONNECTIVITY (12-byte connection) has arg_index, m_ip_layout_index, mem_data_index only.
+    // Arg names come from EMBEDDED_METADATA kernel XML. Flow:
+    //   1. Build (kernel_name, arg_id) -> arg_name from EMBEDDED_METADATA (all indexed args)
+    //   2. Build ip_layout_index -> kernel_name from IP_LAYOUT (ip_data.m_name format "kernel:instance")
+    //   3. For each CONNECTIVITY connection: resolve arg_name, store mem_data_index
+    //
+    // Host uses arg_name (e.g. "in1", "out1") matching AIE_METADATA logical_name and EMBEDDED_METADATA arg name.
+    // AIE GMIO uses addressQualifier=1 (global), not stream; include all args with connectivity.
     static std::map<std::string, int32_t>
     init_gmio_connectivity(const xclbin_impl* ximpl)
     {
       std::map<std::string, int32_t> gmio_name_to_mem_index;
       try {
-        auto sys_raw = ximpl->get_axlf_section(SYSTEM_METADATA);
-        if (!sys_raw.first || sys_raw.second == 0)
+        auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
+        if (!xml.first || xml.second == 0)
           return gmio_name_to_mem_index;
-        std::string json_str(sys_raw.first, sys_raw.second);
-        auto j = nlohmann::json::parse(json_str);
-        if (!j.contains("system_diagram_metadata") || !j["system_diagram_metadata"].contains("xclbin") ||
-            !j["system_diagram_metadata"]["xclbin"].contains("user_regions"))
+
+        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
+        if (!ip_layout)
           return gmio_name_to_mem_index;
-        auto& ur = j["system_diagram_metadata"]["xclbin"]["user_regions"];
-        if (ur.empty() || !ur[0].contains("connectivity"))
+
+        auto conn = ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
+        if (!conn || conn->m_count <= 0)
           return gmio_name_to_mem_index;
-        for (auto& edge : ur[0]["connectivity"]) {
-          if (!edge.contains("node1") || !edge.contains("node2"))
-            continue;
-          auto& n1 = edge["node1"];
-          auto& n2 = edge["node2"];
-          if (!n2.contains("type") || n2["type"].get<std::string>() != "memory")
-            continue;
-          if (!n1.contains("arg_name"))
-            continue;
-          std::string arg_name = n1["arg_name"].get<std::string>();
-          if (arg_name.empty())
-            continue;
-          int32_t mem_idx = 0;
-          if (n2.contains("id") && !n2["id"].is_null()) {
-            if (n2["id"].is_string())
-              mem_idx = static_cast<int32_t>(std::stoi(n2["id"].get<std::string>()));
-            else
-              mem_idx = n2["id"].get<int32_t>();
+
+        // 1. Build (kernel_name, arg_id) -> arg_name from EMBEDDED_METADATA (all indexed args)
+        using arg_map = std::map<size_t, std::string>;
+        std::map<std::string, arg_map> kernel_arg_id_to_name;
+        for (auto& kobj : xrt_core::xclbin::get_kernels(xml.first, xml.second)) {
+          arg_map arg_id_to_name;
+          for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml.first, xml.second, kobj.name)) {
+            if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+              continue;
+            arg_id_to_name[arg.index] = arg.name;
           }
-          auto it = gmio_name_to_mem_index.find(arg_name);
-          if (it == gmio_name_to_mem_index.end())
+          if (!arg_id_to_name.empty())
+            kernel_arg_id_to_name[kobj.name] = std::move(arg_id_to_name);
+        }
+
+        if (kernel_arg_id_to_name.empty())
+          return gmio_name_to_mem_index;
+
+        // 2. Build ip_layout_index -> kernel_name from IP_LAYOUT
+        // m_name format "kernel:instance"; try both parts to match metadata (e.g. ai_engine_0)
+        std::map<int32_t, std::string> ip_idx_to_kernel;
+        for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
+          const auto& ip = ip_layout->m_ip_data[idx];
+          if (ip.m_type != IP_KERNEL && ip.m_type != IP_PS_KERNEL)
+            continue;
+          std::string m_name(reinterpret_cast<const char*>(ip.m_name),
+                            strnlen(reinterpret_cast<const char*>(ip.m_name), sizeof(ip.m_name)));
+          std::string kernel_name;
+          auto colon = m_name.find(':');
+          if (colon != std::string::npos) {
+            std::string before = m_name.substr(0, colon);
+            std::string after = m_name.substr(colon + 1);
+            kernel_name = kernel_arg_id_to_name.count(after) ? after : before;
+          } else {
+            kernel_name = m_name;
+          }
+          if (kernel_arg_id_to_name.count(kernel_name))
+            ip_idx_to_kernel[idx] = kernel_name;
+        }
+
+        // 3. Iterate CONNECTIVITY: resolve arg_name, store mem_data_index
+        // Use arg_name only (matches host gmio_bank_id("in1") and AIE_METADATA logical_name)
+        for (int32_t i = 0; i < conn->m_count; ++i) {
+          const auto& cxn = conn->m_connection[i];
+          auto it = ip_idx_to_kernel.find(cxn.m_ip_layout_index);
+          if (it == ip_idx_to_kernel.end())
+            continue;
+          const std::string& kernel_name = it->second;
+          auto kit = kernel_arg_id_to_name.find(kernel_name);
+          if (kit == kernel_arg_id_to_name.end())
+            continue;
+          auto ait = kit->second.find(static_cast<size_t>(cxn.arg_index));
+          if (ait == kit->second.end())
+            continue;
+          std::string arg_name = ait->second;
+          int32_t mem_idx = cxn.mem_data_index;
+          auto mit = gmio_name_to_mem_index.find(arg_name);
+          if (mit == gmio_name_to_mem_index.end())
             gmio_name_to_mem_index[arg_name] = mem_idx;
           else
-            it->second = std::max(it->second, mem_idx);
+            mit->second = std::max(mit->second, mem_idx);
         }
       } catch (...) {
-        // JSON parse or structure mismatch - leave map empty
+        // Parse or structure mismatch - leave map empty
       }
       return gmio_name_to_mem_index;
     }
