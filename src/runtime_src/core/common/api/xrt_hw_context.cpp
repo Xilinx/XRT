@@ -116,6 +116,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_interval_ms = dump_interval_ms;
       config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
       config.dump_buffer = std::move(bo);
+      config.dump_bin_format = xrt_core::config::get_uc_log_bin_format();
 
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }

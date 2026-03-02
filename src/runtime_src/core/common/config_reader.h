@@ -1152,6 +1152,13 @@ get_uc_log()
   return value;
 }
 
+inline bool
+get_uc_log_bin_format()
+{
+  static bool value = detail::get_bool_value("Debug.uc_log_bin_format", false);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
