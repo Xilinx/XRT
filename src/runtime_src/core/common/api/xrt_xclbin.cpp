@@ -22,8 +22,6 @@
 #include "native_profile.h"
 #include "xclbin_int.h"
 
-#include "core/common/json/nlohmann/json.hpp"
-
 #include <boost/algorithm/string.hpp>
 
 #include <array>
