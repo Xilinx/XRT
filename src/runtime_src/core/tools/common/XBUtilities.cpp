@@ -816,13 +816,13 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 
   auto branch = pt_xrt.get<std::string>("branch", "N/A");
   auto hash = pt_xrt.get<std::string>("hash", "N/A");
-  auto build_date = pt_xrt.get<std::string>("build_date", "N/A");
+  auto build_hash_date = pt_xrt.get<std::string>("build_hash_date", "N/A");
   if (!branch.empty() && !boost::iequals(branch, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Branch" % branch;
   if (!hash.empty() && !boost::iequals(hash, "N/A"))
     output << boost::format("  %-20s : %s\n") % "Hash" % hash;
-  if (!build_date.empty() && !boost::iequals(build_date, "N/A"))
-    output << boost::format("  %-20s : %s\n") % "Hash Date" % build_date;
+  if (!build_hash_date.empty() && !boost::iequals(build_hash_date, "N/A"))
+    output << boost::format("  %-20s : %s\n") % "Hash Date" % build_hash_date;
 
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {

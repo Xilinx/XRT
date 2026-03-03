@@ -45,10 +45,6 @@ private:
   generate_raw_logs(const xrt_core::device* dev, 
                     bool is_watch) const;
 
-  // Format table header for trace events
-  std::string 
-  add_header() const;
-
   // Display raw version as 4 bytes with LSB first
   // This is required by firmware to consume event-logs
   void 

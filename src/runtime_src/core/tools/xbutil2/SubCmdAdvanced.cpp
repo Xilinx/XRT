@@ -54,7 +54,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));
 // Only defined for embedded platform
-#ifndef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+#if !defined(ENABLE_NATIVE_SUBCMDS_AND_REPORTS) || defined(XDNA_VE2)
   addSubOption(std::make_shared<OO_AieRegRead>("read-aie-reg"));
   addSubOption(std::make_shared<OO_AieClockFreq>("aie-clock"));
 #endif
