@@ -98,19 +98,12 @@ public:
   get_timestamp() const;
 
   /**
-   * gmio_bank_id() - Get memory bank index for a GMIO port by exact connectivity arg_name.
-   *
-   * Use the returned value when creating xrt::aie::bo for this GMIO so the buffer
-   * is allocated in the correct DDR bank. The graph must have been created from an
-   * hw_context (e.g. graph(hwctx, "mygraph")).
-   *
-   * Host must pass the exact arg_name as present in the xclbin connectivity section.
+   * gmio_bank_id() - Get bank index for a GMIO port.
    *
    * @param gmio_name
-   *   Exact connectivity arg_name (e.g. "in1", "out1", or "pr0_gmioIn").
+   *   GMIO port name (e.g. "in", "out", "gmioIn", "gmioOut").
    * @return
-   *   Bank index to pass to xrt::aie::bo(hwctx, size, flags, bank_id).
-   * @throws std::runtime_error if graph has no hw_context or no connectivity for the name.
+   *   Bank index for xrt::aie::bo(hwctx, size, flags, bank_id).
    */
   uint32_t
   gmio_bank_id(const std::string& gmio_name) const;

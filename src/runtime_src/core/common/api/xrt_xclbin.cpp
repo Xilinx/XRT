@@ -415,14 +415,7 @@ class xclbin_impl
       return mems;
     }
 
-    // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY
-    //
-    // Flow: (1) Build kernel_arg_id_to_name from EMBEDDED_METADATA.
-    //       (2) Build ip_layout_index -> kernel_name: AIE-only (no IP_LAYOUT) uses virtual
-    //           mapping 0 -> sole kernel; complex uses IP_LAYOUT m_name "kernel:instance".
-    //       (3) Iterate CONNECTIVITY, resolve arg_name, store mem_data_index.
-    //
-    // Host uses arg_name (e.g. "in1", "out1", "pr0_gmioIn") matching AIE_METADATA logical_name.
+    // Build gmio port name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY.
     static std::map<std::string, int32_t>
     init_gmio_connectivity(const xclbin_impl* ximpl)
     {
@@ -461,7 +454,6 @@ class xclbin_impl
             it->second = std::max(it->second, mem_idx);
         };
 
-        // Build ip_layout_index -> kernel_name
         // AIE-only (no IP_LAYOUT): virtual mapping 0 -> sole kernel
         // Complex (has IP_LAYOUT): from IP_LAYOUT m_name "kernel:instance" (use instance part)
         std::map<int32_t, std::string> ip_idx_to_kernel;
