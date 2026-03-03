@@ -4603,6 +4603,7 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
   } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
     oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
+      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
       << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
