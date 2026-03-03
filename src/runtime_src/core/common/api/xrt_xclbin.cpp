@@ -462,7 +462,7 @@ class xclbin_impl
           return gmio_name_to_mem_index;
 
         // 2. Build ip_layout_index -> kernel_name from IP_LAYOUT
-        // m_name format "kernel:instance"; try both parts to match metadata (e.g. ai_engine_0)
+        // m_name format "kernel:instance" (e.g. ai_engine:ai_engine_0); use instance part
         std::map<int32_t, std::string> ip_idx_to_kernel;
         for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
           const auto& ip = ip_layout->m_ip_data[idx];
@@ -472,13 +472,10 @@ class xclbin_impl
                             strnlen(reinterpret_cast<const char*>(ip.m_name), sizeof(ip.m_name)));
           std::string kernel_name;
           auto colon = m_name.find(':');
-          if (colon != std::string::npos) {
-            std::string before = m_name.substr(0, colon);
-            std::string after = m_name.substr(colon + 1);
-            kernel_name = kernel_arg_id_to_name.count(after) ? after : before;
-          } else {
+          if (colon != std::string::npos)
+            kernel_name = m_name.substr(colon + 1);  // instance (e.g. ai_engine_0)
+          else
             kernel_name = m_name;
-          }
           if (kernel_arg_id_to_name.count(kernel_name))
             ip_idx_to_kernel[idx] = kernel_name;
         }
@@ -856,7 +853,7 @@ public:
     if (it == info->m_gmio_name_to_mem_index.end()) {
       std::string msg = "No connectivity for GMIO port '" + gmio_name + "'";
       if (info->m_gmio_name_to_mem_index.empty())
-        msg += " (packagedSystemD missing or has no GMIO connectivity)";
+        msg += " (xclbin has no GMIO connectivity from EMBEDDED_METADATA + CONNECTIVITY)";
       else {
         msg += ". Available GMIO arg_name(s):";
         for (const auto& kv : info->m_gmio_name_to_mem_index)
