@@ -1222,7 +1222,8 @@ struct xrt_resource_raw : request
     npu_tops_max,  // Max TOPs, query returns double value
     npu_task_max,  // Max Tasks, query returns uint64 value
     npu_tops_curr, // Current TOPs, query returns double value
-    npu_task_curr  // Current Tasks, query returns uint64 value
+    npu_task_curr,  // Current Tasks, query returns uint64 value
+    npu_curr_clk_max
   };
 
   /**
@@ -1256,6 +1257,8 @@ struct xrt_resource_raw : request
       return "Current TOPs";
     case resource_type::npu_task_curr:
       return "Current Tasks";
+    case resource_type::npu_curr_clk_max:
+      return "Current Max H-Clocks";
     default:
       throw xrt_core::internal_error("enum value does not exists");
     }

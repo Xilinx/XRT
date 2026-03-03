@@ -35,7 +35,7 @@ get_clock(const std::shared_ptr<xrt_core::device>& dev)
   uint64_t npu_hclock = 0;
   auto res_info = xrt_core::device_query_default<xrt_core::query::xrt_resource_raw>(dev, {});
   for (auto &res : res_info) {
-    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::npu_clk_max)
+    if (res.type != xrt_core::query::xrt_resource_raw::resource_type::npu_curr_clk_max)
       continue;
     npu_hclock = res.data_uint64;
   } 

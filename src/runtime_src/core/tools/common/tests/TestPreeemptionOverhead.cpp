@@ -111,7 +111,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     });
 
     auto overhead_memtile_4x3 = measure_preemption_overhead(dev, recipe_4x3_memtile_data, profile_data, artifacts_repo);
-    XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead for 4x%d is %.1f us") % "memtile" % 3 % overhead_memtile_4x3));
+    XBU::logger(ptree, "Details", boost::str(boost::format("Average %s preemption overhead is %.1f us") % "memtile" % overhead_memtile_4x3));
   }
   catch(const std::exception& e) {
     XBValidateUtils::logger(ptree, "Error", e.what());
