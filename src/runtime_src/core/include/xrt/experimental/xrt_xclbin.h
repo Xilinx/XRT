@@ -744,8 +744,8 @@ public:
    * get_gmio_mem_index() - Get memory bank index for a GMIO port by exact connectivity arg_name
    *
    * Use the returned value as bank_id when creating xrt::aie::bo for this GMIO.
-   * Host must pass the exact arg_name as present in the xclbin packagedSystemD connectivity
-   * (e.g. "in1", "out1", or "pr0_gmioIn" when using prefix_port naming).
+   * Host must pass the exact arg_name as present in the xclbin connectivity
+   * (EMBEDDED_METADATA kernel XML arg names; e.g. "in1", "out1", or "pr0_gmioIn").
    *
    * @param gmio_name
    *   Exact connectivity arg_name for the GMIO port.
