@@ -706,10 +706,14 @@ class module_run_aie_gen2_plus : public module_run
 
   // Creates dtrace util object.
   // Sets path (run-level overrides config file).
-  // Returns true on success.
+  // Returns true on success. No-op if dtrace is not enabled for this hw context (enable_dtrace in qos).
   bool
   create_dtrace_util(const std::string& run_level_ct_file)
   {
+    // Check if dtrace is enabled for this hw context
+    if (!xrt_core::hw_context_int::is_dtrace_enabled(m_hwctx))
+      return false;
+
     std::string path = run_level_ct_file.empty()
       ? xrt_core::config::get_dtrace_control_file_path()
       : run_level_ct_file;

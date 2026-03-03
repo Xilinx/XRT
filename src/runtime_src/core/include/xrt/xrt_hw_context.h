@@ -49,6 +49,7 @@ public:
    *  - priority               // ??
    *  - enable_isp_channel     // toggle isp communication
    *  - enable_acp_channel     // toggle acp communication
+   *  - enable_dtrace          // toggle dtrace per hw context
    *
    * Currently ignored for legacy platforms
    */
@@ -83,14 +84,14 @@ public:
 
   /**
    * hw_context() - Constructor with QoS control and access control
-   * 
+   *
    * @param device
    *  Device where context is created
    * @param cfg_param
    *  Configuration Parameters (incl. Quality of Service)
    * @param mode
    *  Access control for the context
-   * 
+   *
    * When application uses this constructor no hw resources are allocated
    * It acts as placeholder and is used for setting QoS and access control
    * Applications can later add configuration Elfs using add_config api.
@@ -136,10 +137,10 @@ public:
 
   /**
    * add_config() - adds config Elf file to the context
-   * 
+   *
    * @param elf
    *  XRT Elf object created from config Elf file
-   * 
+   *
    * Adds config Elf to context if it is the first config added
    * If config already exists, it will be added only when configuration matches
    * with existing one else an exception is thrown

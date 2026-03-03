@@ -407,6 +407,17 @@ public:
     return m_elf_flow;
   }
 
+  // True if enable_dtrace is set to non-zero in cfg_param (qos_type).
+  bool
+  is_dtrace_enabled() const
+  {
+    // Key for cfg_param_type/qos_type to enable dtrace per hw context
+    static constexpr const char* enable_dtrace_param = "enable_dtrace";
+
+    const auto it = m_cfg_param.find(enable_dtrace_param);
+    return it != m_cfg_param.end() && it->second != 0;
+  }
+
   double
   get_aie_freq() const
   {
@@ -562,6 +573,12 @@ bool
 get_elf_flow(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_elf_flow();
+}
+
+bool
+is_dtrace_enabled(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->is_dtrace_enabled();
 }
 
 const xrt::bo&
