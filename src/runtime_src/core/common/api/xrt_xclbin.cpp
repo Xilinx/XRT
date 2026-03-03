@@ -417,14 +417,13 @@ class xclbin_impl
 
     // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY
     //
-    // CONNECTIVITY (12-byte connection) has arg_index, m_ip_layout_index, mem_data_index only.
-    // Arg names come from EMBEDDED_METADATA kernel XML. Flow:
-    //   1. Build (kernel_name, arg_id) -> arg_name from EMBEDDED_METADATA (all indexed args)
-    //   2. Build ip_layout_index -> kernel_name from IP_LAYOUT (ip_data.m_name format "kernel:instance")
-    //   3. For each CONNECTIVITY connection: resolve arg_name, store mem_data_index
+    // Two modes:
+    //   - AIE-only (no IP_LAYOUT): assume ip_layout_index 0 for all connections; use single kernel
+    //     from EMBEDDED_METADATA for arg resolution.
+    //   - Complex (has IP_LAYOUT): build ip_layout_index -> kernel_name from IP_LAYOUT, resolve
+    //     via CONNECTIVITY.
     //
-    // Host uses arg_name (e.g. "in1", "out1") matching AIE_METADATA logical_name and EMBEDDED_METADATA arg name.
-    // AIE GMIO uses addressQualifier=1 (global), not stream; include all args with connectivity.
+    // Host uses arg_name (e.g. "in1", "out1", "pr0_gmioIn") matching AIE_METADATA logical_name.
     static std::map<std::string, int32_t>
     init_gmio_connectivity(const xclbin_impl* ximpl)
     {
@@ -432,10 +431,6 @@ class xclbin_impl
       try {
         auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
         if (!xml.first || xml.second == 0)
-          return gmio_name_to_mem_index;
-
-        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
-        if (!ip_layout)
           return gmio_name_to_mem_index;
 
         auto conn = ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
@@ -459,7 +454,32 @@ class xclbin_impl
         if (kernel_arg_id_to_name.empty())
           return gmio_name_to_mem_index;
 
-        // 2. Build ip_layout_index -> kernel_name from IP_LAYOUT
+        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
+
+        if (!ip_layout) {
+          // AIE-only: no IP_LAYOUT; use ip_layout_index 0; require single kernel for arg resolution
+          if (kernel_arg_id_to_name.size() != 1)
+            return gmio_name_to_mem_index;
+          const auto& arg_id_to_name = kernel_arg_id_to_name.begin()->second;
+          for (int32_t i = 0; i < conn->m_count; ++i) {
+            const auto& cxn = conn->m_connection[i];
+            if (cxn.m_ip_layout_index != 0)
+              continue;
+            auto ait = arg_id_to_name.find(static_cast<size_t>(cxn.arg_index));
+            if (ait == arg_id_to_name.end())
+              continue;
+            std::string arg_name = ait->second;
+            int32_t mem_idx = cxn.mem_data_index;
+            auto mit = gmio_name_to_mem_index.find(arg_name);
+            if (mit == gmio_name_to_mem_index.end())
+              gmio_name_to_mem_index[arg_name] = mem_idx;
+            else
+              mit->second = std::max(mit->second, mem_idx);
+          }
+          return gmio_name_to_mem_index;
+        }
+
+        // Complex: build ip_layout_index -> kernel_name from IP_LAYOUT
         // m_name format "kernel:instance" (e.g. ai_engine:ai_engine_0); use instance part
         std::map<int32_t, std::string> ip_idx_to_kernel;
         for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
@@ -478,8 +498,7 @@ class xclbin_impl
             ip_idx_to_kernel[idx] = kernel_name;
         }
 
-        // 3. Iterate CONNECTIVITY: resolve arg_name, store mem_data_index
-        // Use arg_name only (matches host gmio_bank_id("in1") and AIE_METADATA logical_name)
+        // Iterate CONNECTIVITY: resolve arg_name, store mem_data_index
         for (int32_t i = 0; i < conn->m_count; ++i) {
           const auto& cxn = conn->m_connection[i];
           auto it = ip_idx_to_kernel.find(cxn.m_ip_layout_index);
