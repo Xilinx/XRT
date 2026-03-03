@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_VERSION_GIT_H_
+#define XRT_VERSION_GIT_H_
+
+#include "xrt/detail/version-slim.h"
+
+static const char xrt_build_version_branch[] = "@XRT_BRANCH@";
+
+static const char xrt_build_version_hash[] = "@XRT_HASH@";
+
+static const char xrt_build_version_hash_date[] = "@XRT_HASH_DATE@";
+
+static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
+
+#define XRT_DRIVER_VERSION "@XRT_VERSION_STRING@,@XRT_HASH@"
+#define XRT_PATCH @XRT_VERSION_PATCH@
+#define XRT_HEAD_COMMITS @XRT_HEAD_COMMITS@
+#define XRT_BRANCH_COMMITS @XRT_BRANCH_COMMITS@
+
+#endif
+
