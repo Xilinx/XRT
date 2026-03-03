@@ -417,11 +417,10 @@ class xclbin_impl
 
     // init_gmio_connectivity() - build GMIO arg_name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY
     //
-    // Two modes:
-    //   - AIE-only (no IP_LAYOUT): assume ip_layout_index 0 for all connections; use single kernel
-    //     from EMBEDDED_METADATA for arg resolution.
-    //   - Complex (has IP_LAYOUT): build ip_layout_index -> kernel_name from IP_LAYOUT, resolve
-    //     via CONNECTIVITY.
+    // Flow: (1) Build kernel_arg_id_to_name from EMBEDDED_METADATA.
+    //       (2) Build ip_layout_index -> kernel_name: AIE-only (no IP_LAYOUT) uses virtual
+    //           mapping 0 -> sole kernel; complex uses IP_LAYOUT m_name "kernel:instance".
+    //       (3) Iterate CONNECTIVITY, resolve arg_name, store mem_data_index.
     //
     // Host uses arg_name (e.g. "in1", "out1", "pr0_gmioIn") matching AIE_METADATA logical_name.
     static std::map<std::string, int32_t>
@@ -454,51 +453,44 @@ class xclbin_impl
         if (kernel_arg_id_to_name.empty())
           return gmio_name_to_mem_index;
 
-        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
+        auto update = [](std::map<std::string, int32_t>& m, const std::string& arg_name, int32_t mem_idx) {
+          auto it = m.find(arg_name);
+          if (it == m.end())
+            m[arg_name] = mem_idx;
+          else
+            it->second = std::max(it->second, mem_idx);
+        };
 
+        // Build ip_layout_index -> kernel_name
+        // AIE-only (no IP_LAYOUT): virtual mapping 0 -> sole kernel
+        // Complex (has IP_LAYOUT): from IP_LAYOUT m_name "kernel:instance" (use instance part)
+        std::map<int32_t, std::string> ip_idx_to_kernel;
+        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
         if (!ip_layout) {
-          // AIE-only: no IP_LAYOUT; use ip_layout_index 0; require single kernel for arg resolution
           if (kernel_arg_id_to_name.size() != 1)
             return gmio_name_to_mem_index;
-          const auto& arg_id_to_name = kernel_arg_id_to_name.begin()->second;
-          for (int32_t i = 0; i < conn->m_count; ++i) {
-            const auto& cxn = conn->m_connection[i];
-            if (cxn.m_ip_layout_index != 0)
+          ip_idx_to_kernel[0] = kernel_arg_id_to_name.begin()->first;
+        } else {
+          for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
+            const auto& ip = ip_layout->m_ip_data[idx];
+            if (ip.m_type != IP_KERNEL && ip.m_type != IP_PS_KERNEL)
               continue;
-            auto ait = arg_id_to_name.find(static_cast<size_t>(cxn.arg_index));
-            if (ait == arg_id_to_name.end())
-              continue;
-            std::string arg_name = ait->second;
-            int32_t mem_idx = cxn.mem_data_index;
-            auto mit = gmio_name_to_mem_index.find(arg_name);
-            if (mit == gmio_name_to_mem_index.end())
-              gmio_name_to_mem_index[arg_name] = mem_idx;
+            std::string m_name(reinterpret_cast<const char*>(ip.m_name),
+                              strnlen(reinterpret_cast<const char*>(ip.m_name), sizeof(ip.m_name)));
+            std::string kernel_name;
+            auto colon = m_name.find(':');
+            if (colon != std::string::npos)
+              kernel_name = m_name.substr(colon + 1);  // instance (e.g. ai_engine_0)
             else
-              mit->second = std::max(mit->second, mem_idx);
+              kernel_name = m_name;
+            if (kernel_arg_id_to_name.count(kernel_name))
+              ip_idx_to_kernel[idx] = kernel_name;
           }
+        }
+
+        if (ip_idx_to_kernel.empty())
           return gmio_name_to_mem_index;
-        }
 
-        // Complex: build ip_layout_index -> kernel_name from IP_LAYOUT
-        // m_name format "kernel:instance" (e.g. ai_engine:ai_engine_0); use instance part
-        std::map<int32_t, std::string> ip_idx_to_kernel;
-        for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
-          const auto& ip = ip_layout->m_ip_data[idx];
-          if (ip.m_type != IP_KERNEL && ip.m_type != IP_PS_KERNEL)
-            continue;
-          std::string m_name(reinterpret_cast<const char*>(ip.m_name),
-                            strnlen(reinterpret_cast<const char*>(ip.m_name), sizeof(ip.m_name)));
-          std::string kernel_name;
-          auto colon = m_name.find(':');
-          if (colon != std::string::npos)
-            kernel_name = m_name.substr(colon + 1);  // instance (e.g. ai_engine_0)
-          else
-            kernel_name = m_name;
-          if (kernel_arg_id_to_name.count(kernel_name))
-            ip_idx_to_kernel[idx] = kernel_name;
-        }
-
-        // Iterate CONNECTIVITY: resolve arg_name, store mem_data_index
         for (int32_t i = 0; i < conn->m_count; ++i) {
           const auto& cxn = conn->m_connection[i];
           auto it = ip_idx_to_kernel.find(cxn.m_ip_layout_index);
@@ -511,13 +503,7 @@ class xclbin_impl
           auto ait = kit->second.find(static_cast<size_t>(cxn.arg_index));
           if (ait == kit->second.end())
             continue;
-          std::string arg_name = ait->second;
-          int32_t mem_idx = cxn.mem_data_index;
-          auto mit = gmio_name_to_mem_index.find(arg_name);
-          if (mit == gmio_name_to_mem_index.end())
-            gmio_name_to_mem_index[arg_name] = mem_idx;
-          else
-            mit->second = std::max(mit->second, mem_idx);
+          update(gmio_name_to_mem_index, ait->second, cxn.mem_data_index);
         }
       } catch (...) {
         // Parse or structure mismatch - leave map empty
