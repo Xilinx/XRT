@@ -24,6 +24,7 @@
 #include "core/common/shim/graph_handle.h"
 #include "core/common/shim/profile_handle.h"
 
+#include <iostream>
 #include <limits>
 #include <memory>
 
@@ -187,9 +188,8 @@ public:
     : device{std::move(dev)}
     , m_buffer_handle{device->open_aie_buffer_handle(xclbin_id,name.c_str())}
   {
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-      "XRT DEPRECATION WARNING: xrt::aie::buffer(device, uuid, name) is deprecated. "
-      "Use xrt::aie::buffer(hw_context, name) instead.");
+    std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::aie::buffer(device, uuid, name) is deprecated. "
+      "Use xrt::aie::buffer(hw_context, name) instead." << std::endl;
   }
 
   buffer_impl(xrt::hw_context hwctx, const std::string& name)
@@ -336,9 +336,8 @@ graph::
 graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, graph::access_mode am)
   : handle{std::make_shared<xrt::graph_impl>(device.get_handle(), xclbin_id, name, am)}
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrt::graph(device, xclbin_id, name) is deprecated. "
-    "Use xrt::graph(hw_context, name) instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::graph(device, xclbin_id, name) is deprecated. "
+    "Use xrt::graph(hw_context, name) instead." << std::endl;
 }
 
 graph::
@@ -547,9 +546,8 @@ wait() const
 xrtGraphHandle
 xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtGraphOpen is deprecated. "
-    "Use xrt::hw_context and xrt::graph(hw_context, name) instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtGraphOpen is deprecated. "
+    "Use xrt::hw_context and xrt::graph(hw_context, name) instead." << std::endl;
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::primary);
     graph_cache[hdl.get()] = hdl;
@@ -568,9 +566,8 @@ xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* g
 xrtGraphHandle
 xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtGraphOpenExclusive is deprecated. "
-    "Use xrt::hw_context and xrt::graph(hw_context, name) instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtGraphOpenExclusive is deprecated. "
+    "Use xrt::hw_context and xrt::graph(hw_context, name) instead." << std::endl;
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::exclusive);
     graph_cache[hdl.get()] = hdl;
@@ -589,9 +586,8 @@ xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, cons
 xrtGraphHandle
 xrtGraphOpenShared(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtGraphOpenShared is deprecated. "
-    "Use xrt::hw_context and xrt::graph(hw_context, name) instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtGraphOpenShared is deprecated. "
+    "Use xrt::hw_context and xrt::graph(hw_context, name) instead." << std::endl;
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::shared);
     graph_cache[hdl.get()] = hdl;
@@ -803,9 +799,8 @@ xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t
 xrtDeviceHandle
 xrtAIEDeviceOpen(unsigned int index)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtAIEDeviceOpen is deprecated. "
-    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtAIEDeviceOpen is deprecated. "
+    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead." << std::endl;
   try {
     auto handle = xrtDeviceOpen(index);
     open_aie_context(handle, xrt::aie::access_mode::primary);
@@ -824,9 +819,8 @@ xrtAIEDeviceOpen(unsigned int index)
 xrtDeviceHandle
 xrtAIEDeviceOpenExclusive(unsigned int index)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtAIEDeviceOpenExclusive is deprecated. "
-    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtAIEDeviceOpenExclusive is deprecated. "
+    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead." << std::endl;
   try {
     auto handle = xrtDeviceOpen(index);
     open_aie_context(handle, xrt::aie::access_mode::exclusive);
@@ -845,9 +839,8 @@ xrtAIEDeviceOpenExclusive(unsigned int index)
 xrtDeviceHandle
 xrtAIEDeviceOpenShared(unsigned int index)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xrtAIEDeviceOpenShared is deprecated. "
-    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtAIEDeviceOpenShared is deprecated. "
+    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead." << std::endl;
   try {
     auto handle = xrtDeviceOpen(index);
     open_aie_context(handle, xrt::aie::access_mode::shared);

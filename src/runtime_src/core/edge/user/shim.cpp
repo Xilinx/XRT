@@ -679,9 +679,8 @@ int
 shim::
 xclLoadAxlf(const axlf *buffer)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xclLoadAxlf (internal) is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xclLoadAxlf (internal) is deprecated. "
+    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
   int off = 0;
@@ -2497,9 +2496,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 {
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xclLoadXclBin/xclLoadXclBinMeta is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xclLoadXclBin/xclLoadXclBinMeta is deprecated. "
+    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
 
   try {
     bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;

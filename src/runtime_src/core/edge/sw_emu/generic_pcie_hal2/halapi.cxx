@@ -3,12 +3,13 @@
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
-#include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/include/xdp/app_debug.h"
 #include "core/include/deprecated/xcl_app_debug.h"
 #include "xcl_graph.h"
+
+#include <iostream>
 
 namespace {
 
@@ -754,9 +755,8 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
 void*
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-    "XRT DEPRECATION WARNING: xclGraphOpen is deprecated. "
-    "Use xrt::hw_context and xrt::graph(hw_context, name) instead.");
+  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xclGraphOpen is deprecated. "
+    "Use xrt::hw_context and xrt::graph(hw_context, name) instead." << std::endl;
   try {
     xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
     xclGraphHandle graphHandle = new xclswemuhal2::GraphType(drv, graph);
