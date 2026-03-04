@@ -150,8 +150,12 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
       try {
         const auto cert_fw_ver = xrt_core::device_query<xq::cert_firmware_version>(device);
-        pt_dev.put("cert_firmware_date", cert_fw_ver.date);
-        pt_dev.put("cert_firmware_hash", cert_fw_ver.git_hash);
+        std::string version = "N/A";
+        if (cert_fw_ver.major != 0 || cert_fw_ver.mid_version != 0 || cert_fw_ver.minor != 0) {
+          version = boost::str(boost::format("%u.%u.%u")
+            % cert_fw_ver.major % cert_fw_ver.mid_version % cert_fw_ver.minor);
+        }
+        pt_dev.put("cert_firmware_version", version);
       }
       catch(...) {
         // The CERT firmware wasn't added
@@ -854,13 +858,9 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
       if (fw_ver != "N/A")
         output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % fw_ver;
 
-      auto cert_hash = dev.get<std::string>("cert_firmware_hash", "N/A");
-      if (cert_hash != "N/A")
-        output << boost::format("  %-20s : %s\n") % "CERT Hash" % cert_hash;
-
-      auto cert_date = dev.get<std::string>("cert_firmware_date", "N/A");
-      if (cert_date != "N/A")
-        output << boost::format("  %-20s : %s\n") % "CERT Build Date" % cert_date;
+      auto cert_fw_ver = dev.get<std::string>("cert_firmware_version", "N/A");
+      if (cert_fw_ver != "N/A")
+        output << boost::format("  %-20s : %s\n") % "CERT Firmware Version" % cert_fw_ver;
 
       auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
       auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
