@@ -45,6 +45,7 @@ if (MSVC)
     /ZH:SHA_256   # enable secure source code hashing
     /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
     $<$<NOT:$<CONFIG:Debug>>:/GL>  # enable whole program optimization
+    /volatile:ms  # strong volatile ordering
     )
   add_link_options(
     /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT
