@@ -73,9 +73,15 @@ namespace xrt_core::xdp::core {
   void
   load_core()
   {
+#ifdef XDP_NPU3_BUILD_CMAKE
+    static xrt_core::module_loader xdp_core_loader("xdp_core_npu3",
+                                                    register_callbacks_empty,
+                                                    warning_callbacks_empty);
+#else
     static xrt_core::module_loader xdp_core_loader("xdp_core",
                                                     register_callbacks_empty,
                                                     warning_callbacks_empty);
+#endif
   }
 }
 
@@ -97,13 +103,19 @@ register_callbacks(void* handle)
 void 
 load()
 {
+#ifdef XDP_NPU3_BUILD_CMAKE
+    std::string libname = "xdp_aie_profile_plugin_npu3";
+#else
+    std::string libname = "xdp_aie_profile_plugin";
+#endif
+
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   // On Windows client, load AIE profiling from the SDK location
-  static xrt_core::sdk_loader xdp_aie_loader("xdp_aie_profile_plugin",
+  static xrt_core::sdk_loader xdp_aie_loader(libname,
                                              register_callbacks,
                                              warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
+  static xrt_core::module_loader xdp_aie_loader(libname,
                                                 register_callbacks,
                                                 warning_callbacks_empty);
 #endif
@@ -156,9 +168,15 @@ register_callbacks(void* handle)
 void 
 load()
 {
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_aie_debug_loader("xdp_aie_debug_plugin_npu3",
+                                                register_callbacks,
+                                                warning_callbacks_empty);  
+#else
   static xrt_core::module_loader xdp_aie_debug_loader("xdp_aie_debug_plugin",
                                                 register_callbacks,
-                                                warning_callbacks_empty);
+                                                warning_callbacks_empty);  
+#endif
 }
 
 // Make connections
@@ -201,9 +219,15 @@ register_callbacks(void* handle)
 void
 load()
 {
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_aie_status_loader("xdp_aie_status_plugin_npu3",
+                                                register_callbacks,
+                                                warning_callbacks_empty);
+#else
   static xrt_core::module_loader xdp_aie_status_loader("xdp_aie_status_plugin",
                                                 register_callbacks,
                                                 warning_callbacks_empty);
+#endif
 }
 
 // Make connections
@@ -247,9 +271,15 @@ register_callbacks(void* handle)
 void
 load()
 {
-  static xrt_core::module_loader xdp_loader("xdp_ml_timeline_plugin",
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_ml_timeline_loader("xdp_ml_timeline_plugin_npu3",
+                                                        register_callbacks,
+                                                        warning_callbacks_empty);
+#else
+  static xrt_core::module_loader xdp_ml_timeline_loader("xdp_ml_timeline_plugin",
+                                                        register_callbacks,
+                                                        warning_callbacks_empty);
+#endif
 }
 
 // Make connections
@@ -291,9 +321,15 @@ register_callbacks(void* handle)
 void
 load()
 {
-  static xrt_core::module_loader xdp_loader("xdp_aie_pc_plugin",
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_aie_pc_loader("xdp_aie_pc_plugin_npu3",
+                                                   register_callbacks,
+                                                   warning_callbacks_empty);
+#else
+  static xrt_core::module_loader xdp_aie_pc_loader("xdp_aie_pc_plugin",
+                                                   register_callbacks,
+                                                   warning_callbacks_empty);
+#endif
 }
 
 // Make connections
@@ -335,9 +371,15 @@ register_callbacks(void* handle)
 void
 load()
 {
-  static xrt_core::module_loader xdp_loader("xdp_pl_deadlock_plugin",
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin_npu3",
+                                                        register_callbacks,
+                                                        warning_callbacks_empty);
+#else
+  static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin",
+                                                        register_callbacks,
+                                                        warning_callbacks_empty);
+#endif
 }
 
 // Make connections
@@ -376,15 +418,21 @@ register_callbacks(void* handle)
 void 
 load()
 {
+#ifdef XDP_NPU3_BUILD_CMAKE
+    std::string libname = "xdp_aie_trace_plugin_npu3";
+#else
+    std::string libname = "xdp_aie_trace_plugin";
+#endif
+
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   // On Windows client, load AIE trace from the SDK location
-  static xrt_core::sdk_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
+  static xrt_core::sdk_loader xdp_aie_trace_loader(libname,
                                                    register_callbacks,
                                                    warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+  static xrt_core::module_loader xdp_aie_trace_loader(libname,
+                                                      register_callbacks,
+                                                      warning_callbacks_empty);
 #endif
 }
 
@@ -392,8 +440,8 @@ void
 load_xdna()
 {
   static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin_xdna",
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+                                                      register_callbacks,
+                                                      warning_callbacks_empty);
 }
 
 // Make connections
@@ -434,13 +482,19 @@ register_callbacks(void* handle)
 void
 load()
 {
+#ifdef XDP_NPU3_BUILD_CMAKE
+    std::string libname = "xdp_aie_halt_plugin_npu3";
+#else
+    std::string libname = "xdp_aie_halt_plugin";
+#endif
+
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
   // On Windows client, load AIE Halt from the SDK location
-  static xrt_core::sdk_loader xdp_aie_halt_loader("xdp_aie_halt_plugin",
+  static xrt_core::sdk_loader xdp_aie_halt_loader(libname,
                                                   register_callbacks,
                                                   warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_halt_loader("xdp_aie_halt_plugin",
+  static xrt_core::module_loader xdp_aie_halt_loader(libname,
                                                      register_callbacks,
                                                      warning_callbacks_empty);
 #endif
@@ -485,9 +539,15 @@ register_callbacks(void* handle)
 void
 load()
 {
-  static xrt_core::module_loader xdp_loader("xdp_hal_device_offload_plugin",
-                                             register_callbacks,
-                                             warning_callbacks_empty);
+#ifdef XDP_NPU3_BUILD_CMAKE
+  static xrt_core::module_loader xdp_offload_loader("xdp_hal_device_offload_plugin_npu3",
+                                                    register_callbacks,
+                                                    warning_callbacks_empty);
+#else
+  static xrt_core::module_loader xdp_offload_loader("xdp_hal_device_offload_plugin",
+                                                    register_callbacks,
+                                                    warning_callbacks_empty);
+#endif
 }
 
 // Make connections
