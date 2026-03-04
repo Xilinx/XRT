@@ -192,11 +192,13 @@ XBUtilities::get_available_devices(bool inUserDomain)
 
         switch (hardware_type) {
         case xrt_core::smi::smi_hardware_config::hardware_type::phx:
+          pt_dev.put("aie_architecture_version", "aie2");
+          break;
         case xrt_core::smi::smi_hardware_config::hardware_type::stxA0:
         case xrt_core::smi::smi_hardware_config::hardware_type::stxB0:
         case xrt_core::smi::smi_hardware_config::hardware_type::stxH:
         case xrt_core::smi::smi_hardware_config::hardware_type::krk1:
-          pt_dev.put("aie_architecture_version", "AIE2P");
+          pt_dev.put("aie_architecture_version", "aie2p");
           break;
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f0:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_f1:
@@ -205,10 +207,10 @@ XBUtilities::get_available_devices(bool inUserDomain)
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B01:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B02:
         case xrt_core::smi::smi_hardware_config::hardware_type::npu3_B03:
-          pt_dev.put("aie_architecture_version", "AIE4");
+          pt_dev.put("aie_architecture_version", "aie4");
           break;
         case xrt_core::smi::smi_hardware_config::hardware_type::aie2ps:
-          pt_dev.put("aie_architecture_version", "AIE2PS");
+          pt_dev.put("aie_architecture_version", "aie2ps");
           break;
         default:
           pt_dev.put("aie_architecture_version", "N/A");
