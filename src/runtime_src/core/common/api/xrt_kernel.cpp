@@ -4285,8 +4285,6 @@ kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& n
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xdev), xclbin_id, name, mode))
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::kernel(device, xclbin_id, name) is deprecated. "
-    "Use xrt::kernel(hw_context, name) instead." << std::endl;
 }
 
 kernel::
@@ -4294,8 +4292,6 @@ kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::kernel(xclDeviceHandle, xclbin_id, name) is deprecated. "
-    "Use xrt::kernel(hw_context, name) instead." << std::endl;
 }
 
 kernel::
@@ -4677,8 +4673,6 @@ kernel(const xrt::hw_context& ctx, const std::string& name)
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtPLKernelOpen is deprecated. "
-    "Use xrt::hw_context and xrt::kernel(hw_context, name) instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{
@@ -4698,8 +4692,6 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtPLKernelOpenExclusive is deprecated. "
-    "Use xrt::hw_context and xrt::kernel(hw_context, name) instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{

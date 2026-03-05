@@ -759,6 +759,7 @@ public:
    */
   kernel() = default;
 
+#pragma message("xrt::kernel(device, xclbin_id, name) is deprecated. Use xrt::kernel(hw_context, name) instead")
   /**
    * kernel() - Constructor from a device and xclbin
    *
@@ -799,6 +800,7 @@ public:
   /**
    * Obsoleted construction from xclDeviceHandle
    */
+#pragma message("xrt::kernel(xclDeviceHandle, xclbin_id, name) is deprecated. Use xrt::kernel(hw_context, name) instead")
   XRT_API_EXPORT
   kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
@@ -962,6 +964,7 @@ extern "C" {
  *
  * A kernel handle is thread safe and can be shared between threads.
  */
+#pragma message("xrtPLKernelOpen is deprecated. Use xrt::hw_context and xrt::kernel(hw_context, name) instead")
 XRT_API_EXPORT
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
@@ -978,6 +981,7 @@ xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char 
  * access.  Fails if any compute unit is already opened with either
  * exclusive or shared access.
  */
+#pragma message("xrtPLKernelOpenExclusive is deprecated. Use xrt::hw_context and xrt::kernel(hw_context, name) instead")
 XRT_API_EXPORT
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);

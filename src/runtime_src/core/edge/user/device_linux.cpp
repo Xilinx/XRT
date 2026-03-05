@@ -1385,8 +1385,6 @@ void
 device_linux::
 open_aie_context(xrt::aie::access_mode am)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::device::open_aie_context is deprecated. "
-    "Use xrt::hw_context with hw_context::open_graph_handle instead." << std::endl;
   auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
   if (int ret = drv->openAIEContext(am))
@@ -1399,8 +1397,6 @@ void
 device_linux::
 reset_aie()
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::device::reset_aie is deprecated. "
-    "Use hw_context::reset_array instead." << std::endl;
   auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
   if (!drv->isAieRegistered())
@@ -1418,8 +1414,6 @@ void
 device_linux::
 wait_gmio(const char *gmioName)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::device::wait_gmio is deprecated. "
-    "Use xrt::graph or xrt::aie::buffer via hw_context instead." << std::endl;
   auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
   if (!drv->isAieRegistered())

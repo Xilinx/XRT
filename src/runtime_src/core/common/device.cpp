@@ -147,8 +147,6 @@ void
 device::
 load_xclbin(const xrt::xclbin& xclbin)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::device::load_xclbin is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   try {
     m_xclbin = xclbin;
     load_axlf(xclbin.get_axlf());
@@ -163,8 +161,6 @@ void
 device::
 load_xclbin(const uuid& xclbin_id)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::device::load_xclbin is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   auto uuid_loaded = get_xclbin_uuid();
   if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
     throw error(ENODEV, "specified xclbin is not loaded");

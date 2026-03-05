@@ -2794,8 +2794,6 @@ void xclClose(xclDeviceHandle handle)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
   return xdp::hal::profiling_wrapper("xclLoadXclBin", [handle, buffer] {
-    std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xclLoadXclBin is deprecated. "
-      "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
     try {
       auto drv = xocl::shim::handleCheck(handle);
       if (!drv)

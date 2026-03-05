@@ -456,8 +456,6 @@ void
 device::
 open_context(xrt::aie::device::access_mode am)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrt::aie::device is deprecated. "
-    "Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead." << std::endl;
   auto core_device = get_handle();
   core_device->open_aie_context(am);
 }
@@ -704,8 +702,6 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 int
 xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtDeviceLoadXclbin is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, top]{
       xrt::xclbin xclbin{top};
@@ -727,8 +723,6 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
 int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtDeviceLoadXclbinFile is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, fnm]{
       xrt::xclbin xclbin{std::string{fnm}};
@@ -750,8 +744,6 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtDeviceLoadXclbinHandle is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl]{
       auto device = device_cache.get_or_error(dhdl);
@@ -772,8 +764,6 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 int
 xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xrtDeviceLoadXclbinUUID is deprecated. "
-    "Use xrt::device::register_xclbin() and xrt::hw_context() instead." << std::endl;
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, uuid]{
       auto device = device_cache.get_or_error(dhdl);

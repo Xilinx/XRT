@@ -334,6 +334,7 @@ xclGetErrorStatus(xclDeviceHandle handle, struct xclErrorStatus *info);
  *
  * This API also downloads OVERLAY (dtbo) section (Edge only).
  */
+#pragma message("xclLoadXclBin is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
 XCL_DRIVER_DLLHIDDEN
 int
 xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);

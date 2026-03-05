@@ -755,8 +755,6 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
 void*
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
-  std::cout << "[XRT] WARNING: XRT DEPRECATION WARNING: xclGraphOpen is deprecated. "
-    "Use xrt::hw_context and xrt::graph(hw_context, name) instead." << std::endl;
   try {
     xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
     xclGraphHandle graphHandle = new xclswemuhal2::GraphType(drv, graph);

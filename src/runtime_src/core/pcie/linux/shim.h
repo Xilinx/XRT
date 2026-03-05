@@ -75,6 +75,7 @@ public:
   int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
 
   // Bitstream/bin download
+#pragma message("xclLoadXclBin is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
   int xclLoadXclBin(const xclBin *buffer);
   int xclGetErrorStatus(xclErrorStatus *info);
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
@@ -202,6 +203,7 @@ private:
   int dev_init();
   void dev_fini();
 
+#pragma message("xclLoadAxlf is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
   int xclLoadAxlf(const axlf *buffer);
   int xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx);
   int xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj);

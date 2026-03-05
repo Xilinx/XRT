@@ -26,6 +26,7 @@
 
 typedef void * xclGraphHandle;
 
+#pragma message("xclGraphOpen is deprecated. Use xrt::hw_context and xrt::graph(hw_context, name) instead")
 xclGraphHandle
 xclGraphOpen(xclDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName, xrt::graph::access_mode am);
 
@@ -86,6 +87,7 @@ xclReadProfiling(xclDeviceHandle handle, int phdl);
 int
 xclStopProfiling(xclDeviceHandle handle, int phdl);
 
+#pragma message("xclLoadXclBinMeta is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
 int
 xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer);
 
