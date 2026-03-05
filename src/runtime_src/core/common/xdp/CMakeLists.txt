@@ -17,7 +17,13 @@ if (XRT_NPU)
     PRIVATE 
     XDP_CLIENT_BUILD=1
     )
-  
+  if (XDP_NPU3_BUILD_CMAKE)
+    target_compile_definitions(core_common_xdp_profile_objects
+      PRIVATE
+      XDP_NPU3_BUILD_CMAKE=1
+      )
+  endif()
+
 elseif (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   
   target_compile_definitions(core_common_xdp_profile_objects
