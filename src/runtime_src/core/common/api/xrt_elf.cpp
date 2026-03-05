@@ -12,6 +12,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -1413,27 +1414,36 @@ valid_or_error(const std::shared_ptr<elf_impl>& handle)
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm))}
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_elf_ctor_string);
+}
 
 elf::
 elf(std::istream& stream)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(stream))}
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_elf_ctor_stream);
+}
 
 elf::
 elf(const void* data, size_t size)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(data, size))}
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_elf_ctor_data);
+}
 
 elf::
 elf(const std::string_view& sv)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(sv.data(), sv.size()))}
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_elf_ctor_string_view);
+}
 
 xrt::uuid
 elf::
 get_cfg_uuid() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_get_cfg_uuid);
   valid_or_error(handle);
   return handle->get_cfg_uuid();
 }
@@ -1442,6 +1452,7 @@ bool
 elf::
 is_full_elf() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_is_full_elf);
   valid_or_error(handle);
   return handle->is_full_elf();
 }
@@ -1450,6 +1461,7 @@ uint32_t
 elf::
 get_partition_size() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_get_partition_size);
   valid_or_error(handle);
   return handle->get_partition_size();
 }
@@ -1458,6 +1470,7 @@ elf::platform
 elf::
 get_platform() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_get_platform);
   valid_or_error(handle);
   return handle->get_platform();
 }
@@ -1466,6 +1479,7 @@ std::vector<elf::kernel>
 elf::
 get_kernels() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_get_kernels);
   valid_or_error(handle);
   return handle->get_kernels();
 }
@@ -1478,6 +1492,7 @@ std::string
 elf::kernel::
 get_name() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_kernel_get_name);
   return handle->get_name();
 }
 
@@ -1485,6 +1500,7 @@ size_t
 elf::kernel::
 get_num_args() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_kernel_get_num_args);
   return handle->get_num_args();
 }
 
@@ -1492,6 +1508,7 @@ elf::kernel::data_type
 elf::kernel::
 get_arg_data_type(size_t index) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_kernel_get_arg_data_type);
   return handle->get_arg_data_type(index);
 }
 
@@ -1499,6 +1516,7 @@ std::vector<elf::kernel::instance>
 elf::kernel::
 get_instances() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_kernel_get_instances);
   return handle->get_instances();
 }
 
@@ -1510,6 +1528,7 @@ std::string
 elf::kernel::instance::
 get_name() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_kernel_instance_get_name);
   return handle->get_name();
 }
 

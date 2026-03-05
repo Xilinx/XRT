@@ -13,6 +13,7 @@
 #include "core/common/message.h"
 #include "core/common/module_loader.h"
 #include "core/common/query_requests.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
 
@@ -1028,27 +1029,36 @@ namespace xrt {
 xclbin::
 xclbin(const std::string& filename)
   : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(filename))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_ctor_string);
+}
 
 xclbin::
 xclbin(const std::vector<char>& data)
   : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(data))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_ctor_vector);
+}
 
 xclbin::
 xclbin(const std::string_view& data)
   : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(std::vector<char>{data.begin(), data.end()}))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_ctor_string_view);
+}
 
 xclbin::
 xclbin(const axlf* top)
   : detail::pimpl<xclbin_impl>(std::make_shared<xclbin_full>(top))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_ctor_axlf);
+}
 
 std::vector<xclbin::kernel>
 xclbin::
 get_kernels() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_kernels);
   return handle ? handle->get_kernels() : std::vector<xclbin::kernel>{};
 }
 
@@ -1056,6 +1066,7 @@ xclbin::kernel
 xclbin::
 get_kernel(const std::string& name) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_kernel);
   return handle ? handle->get_kernel(name) : xclbin::kernel{};
 }
 
@@ -1063,6 +1074,7 @@ std::vector<xclbin::ip>
 xclbin::
 get_ips() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_ips);
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
 
@@ -1070,6 +1082,7 @@ std::vector<xclbin::ip>
 xclbin::
 get_ips(const std::string& name) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_ips_by_name);
   return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
 }
 
@@ -1077,6 +1090,7 @@ xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_ip);
   return handle ? handle->get_ip(name) : xclbin::ip{};
 }
 
@@ -1084,6 +1098,7 @@ std::vector<xclbin::mem>
 xclbin::
 get_mems() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_mems);
   return handle ? handle->get_mems() : std::vector<xclbin::mem>{};
 }
 
@@ -1091,6 +1106,7 @@ std::vector<xclbin::aie_partition>
 xclbin::
 get_aie_partitions() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_aie_partitions);
   return handle ? handle->get_aie_partitions() : std::vector<xclbin::aie_partition>{};
 }
 
@@ -1098,6 +1114,7 @@ std::string
 xclbin::
 get_xsa_name() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_xsa_name);
   return handle ? handle->get_xsa_name() : "";
 }
 
@@ -1105,6 +1122,7 @@ std::string
 xclbin::
 get_fpga_device_name() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_fpga_device_name);
   return handle ? handle->get_fpga_device_name() : "";
 }
 
@@ -1112,6 +1130,7 @@ uuid
 xclbin::
 get_uuid() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_uuid);
   return handle ? handle->get_uuid() : uuid{};
 }
 
@@ -1119,6 +1138,7 @@ uuid
 xclbin::
 get_interface_uuid() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_interface_uuid);
   return handle ? handle->get_interface_uuid() : uuid{};
 }
 
@@ -1126,6 +1146,7 @@ xclbin::target_type
 xclbin::
 get_target_type() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_target_type);
   if (!handle)
     throw std::runtime_error("No xclbin");
 
@@ -1136,6 +1157,7 @@ const axlf*
 xclbin::
 get_axlf() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_axlf);
   return handle ? handle->get_axlf() : nullptr;
 }
 
@@ -1143,6 +1165,7 @@ std::pair<const char*, size_t>
 xclbin::
 get_axlf_section(axlf_section_kind kind) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_xclbin_get_axlf_section);
   if (!handle)
     throw std::runtime_error("No xclbin");
 

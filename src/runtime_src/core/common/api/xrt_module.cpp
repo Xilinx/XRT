@@ -6,6 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
+#include "core/common/trace.h"
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -1105,12 +1106,15 @@ public:
 module::
 module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_module_ctor);
+}
 
 xrt::hw_context
 module::
 get_hw_context() const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_module_get_hw_context);
   return get_handle()->get_hw_context();
 }
 

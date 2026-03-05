@@ -19,6 +19,7 @@
 #include "core/common/cuidx_type.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
+#include "core/common/trace.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -338,17 +339,22 @@ namespace xrt {
 ip::
 ip(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
   : detail::pimpl<ip_impl>(std::make_shared<ip_impl>(device.get_handle(), xclbin_id, name))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_ip_ctor_device);
+}
 
 ip::
 ip(const xrt::hw_context& ctx, const std::string& name)
   : detail::pimpl<ip_impl>(std::make_shared<ip_impl>(ctx, name))
-{}
+{
+  XRT_TRACE_POINT_SCOPE(xrt_ip_ctor_hwctx);
+}
 
 void
 ip::
 write_register(uint32_t offset, uint32_t data)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_write_register);
   xdp::native::profiling_wrapper("xrt::ip::write_register",[this, offset, data]{
     handle->write_register(offset, data);
   }) ;
@@ -358,6 +364,7 @@ uint32_t
 ip::
 read_register(uint32_t offset) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_read_register);
   return xdp::native::profiling_wrapper("xrt::ip::read_register", [this, offset] {
     return handle->read_register(offset);
   }) ;
@@ -367,6 +374,7 @@ xrt::ip::interrupt
 ip::
 create_interrupt_notify()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_create_interrupt_notify);
   return xrt::ip::interrupt{handle->get_interrupt()};
 }
 
@@ -377,6 +385,7 @@ void
 ip::interrupt::
 enable()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_interrupt_enable);
   if (handle)
     handle->enable();
 }
@@ -385,6 +394,7 @@ void
 ip::interrupt::
 disable()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_interrupt_disable);
   if (handle)
     handle->disable();
 }
@@ -393,6 +403,7 @@ void
 ip::interrupt::
 wait()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_interrupt_wait);
   if (handle)
     handle->wait();
 }
@@ -401,6 +412,7 @@ std::cv_status
 ip::interrupt::
 wait(const std::chrono::milliseconds& timeout) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_ip_interrupt_wait_timeout);
   if (handle)
     return handle->wait(timeout);
 
