@@ -43,6 +43,13 @@ std::string
 get_timestamp_for_filename();
 
 /**
+ * @return uc log formatted timestamp "seconds.nanoseconds"
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_timestamp_for_uc_log(uint64_t epoch);
+
+/**
  * Simple time guard to accumulate scoped time
  */
 class time_guard

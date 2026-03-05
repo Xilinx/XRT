@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-// UC Log Schema Version 0.25
+// UC Log Schema Version 0.26
 // This file defines UC log schema mappings for parsing binary log messages
 // from the firmware. It includes mappings for file IDs to filenames and
 // log IDs to format strings.
@@ -75,7 +75,7 @@ uc_log_schema = {
     {20, "OPCODE entering barrier (id: %d slot: %d)\n"},
     {21, "LB %u check-in\n"},
     {22, "LB %u release\n"},
-    {23, "patch address (r%d r%d) "},
+    {23, "patch address (r%d r%d)\n"},
     {24, "0x%x : 0x%x\n"},
     {25, "collect trace info at offset %d\n"},
     {26, "invalid trace control body address: 0x%x\n"},
@@ -100,7 +100,7 @@ uc_log_schema = {
     {45, "Page-in to slot %u length 0x%x\n"},
     {46, "Page-in to slot %u length 0x%x cur_save_level %d\n"},
     {47, "Partition: [%u, %u], self = %u\n"},
-    {48, "Log buffer: [0x%x 0x%x] "},
+    {48, "Log buffer: [0x%x 0x%x]\n"},
     {49, "size = 0x%x, id: %d\n"},
     {50, "tct %x fsl %x\n"},
     {51, "tct %x tlast = %x\n"},
@@ -123,17 +123,17 @@ uc_log_schema = {
     {68, "handle dbg queue...\n"},
     {69, "DBG queue packet opcode: %u\n"},
     {70, "do_dbg_rw\n"},
-    {71, "Page-in to slot %u page offset 0x%x "},
+    {71, "Page-in to slot %u page offset 0x%x\n"},
     {72, "cur_save_level 0x%x\n"},
-    {73, "[TIMESTAMP][ID] %d "},
+    {73, "[TIMESTAMP][ID] %d\n"},
     {74, "[HIGH] %d [LOW] %d\n"},
-    {75, "    job: %d state: %d "},
+    {75, "    job: %d state: %d\n"},
     {76, "pc: 0x%x\n"},
-    {77, "Page-in to slot %u length 0x%x "},
+    {77, "Page-in to slot %u length 0x%x\n"},
     {78, "cur_save_level %d\n"},
-    {79, "Exception!!\n\tESR: 0x%x EAR: 0x%x "},
+    {79, "Exception!!\n\tESR: 0x%x EAR: 0x%x\n"},
     {80, "PC: 0x%x\n"},
-    {81, "Partition: [%u, %u], "},
+    {81, "Partition: [%u, %u]\n"},
     {82, "self = %u\n"},
     {83, "Waken up after preempted?\n"},
     {84, "prefetch load last elf: %d ...\n"},
@@ -179,7 +179,9 @@ uc_log_schema = {
     {124, "Trigger miscellaneous interrupt\n"},
     {125, "Trigger common interrupt\n"},
     {126, "Skip %d cmds in runlist\n"},
-    {127, "\n"}
+    {127, "Leaving barrier: conditional job\n"},
+    {128, "break early same page same job\n"},
+    {129, "\n"}
   }
 };
 

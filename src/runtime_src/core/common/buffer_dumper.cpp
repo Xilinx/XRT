@@ -175,7 +175,10 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
         : default_formats[std::min(static_cast<std::size_t>(log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))),
                           (default_formats.size() - 1))];
 
-      parsed_stream << "[CERT] ";
+      // log marker [<seconds>.<nanoseconds>] [CERT]
+      uint64_t timestamp_ns = (static_cast<uint64_t>(log.ts_high) << 32) | log.ts_low; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      parsed_stream << "[" << xrt_core::get_timestamp_for_uc_log(timestamp_ns) << "] [CERT] ";
+
       std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t)))
       { // Log message without arguments
