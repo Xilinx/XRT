@@ -18,7 +18,6 @@
 #endif
 #include "core/edge/user/aie/profile_object.h"
 #include <filesystem>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <poll.h>

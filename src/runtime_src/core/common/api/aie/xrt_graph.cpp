@@ -24,7 +24,6 @@
 #include "core/common/shim/graph_handle.h"
 #include "core/common/shim/profile_handle.h"
 
-#include <iostream>
 #include <limits>
 #include <memory>
 
@@ -187,8 +186,7 @@ public:
                 const std::string& name)
     : device{std::move(dev)}
     , m_buffer_handle{device->open_aie_buffer_handle(xclbin_id,name.c_str())}
-  {
-  }
+  {}
 
   buffer_impl(xrt::hw_context hwctx, const std::string& name)
     : device{hwctx.get_device().get_handle()}
@@ -333,8 +331,7 @@ namespace xrt {
 graph::
 graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, graph::access_mode am)
   : handle{std::make_shared<xrt::graph_impl>(device.get_handle(), xclbin_id, name, am)}
-{
-}
+{}
 
 graph::
 graph(const xrt::hw_context& hwctx, const std::string& name, graph::access_mode am)

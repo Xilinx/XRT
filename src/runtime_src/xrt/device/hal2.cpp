@@ -26,6 +26,10 @@
 # pragma warning( disable : 4267 4996 4244 4245 )
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 namespace {
 
 static bool

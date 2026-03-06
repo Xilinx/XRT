@@ -79,7 +79,6 @@ public:
    * The default access mode is primary.
    */
   template <typename ArgType>
-  [[deprecated("Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead")]]
   device(ArgType&& arg, access_mode am = access_mode::primary)
     : xrt::device(std::forward<ArgType>(arg))
   {
@@ -642,7 +641,6 @@ extern "C" {
  *       handle, by default, we will try to acquire primary context when
  *       it tries to access AIE array through XRT APIs.
  */
-__attribute__((deprecated("Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead")))
 xrtDeviceHandle
 xrtAIEDeviceOpen(unsigned int index);
 
@@ -654,7 +652,6 @@ xrtAIEDeviceOpen(unsigned int index);
  *
  * This API will open AIE device with exclusive access.
  */
-__attribute__((deprecated("Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead")))
 xrtDeviceHandle
 xrtAIEDeviceOpenExclusive(unsigned int index);
 
@@ -666,7 +663,6 @@ xrtAIEDeviceOpenExclusive(unsigned int index);
  *
  * This API will open AIE device with shared access.
  */
-__attribute__((deprecated("Use xrt::device and xrt::hw_context with hw_context::open_graph_handle instead")))
 xrtDeviceHandle
 xrtAIEDeviceOpenShared(unsigned int index);
 

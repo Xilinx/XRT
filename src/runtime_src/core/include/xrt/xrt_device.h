@@ -548,7 +548,6 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  * The xclbin image can safely be deleted after calling
  * this funciton.
  */
-__attribute__((deprecated("Use xrt::device::register_xclbin() and xrt::hw_context() instead")))
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
@@ -564,7 +563,6 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
  * the xclbin.   Using this function allows one time
  * allocation of data that needs to be kept in memory.
  */
-__attribute__((deprecated("Use xrt::device::register_xclbin() and xrt::hw_context() instead")))
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm);
@@ -580,7 +578,6 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm);
  * caller.  The xrt::xclbin object must contain the complete axlf
  * structure.
  */
-__attribute__((deprecated("Use xrt::device::register_xclbin() and xrt::hw_context() instead")))
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
@@ -596,7 +593,6 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
  * comapres it with the input uuid. If they match, load the cached
  * xclbin metadata into caller's process. Otherwise returns error.
  */
-__attribute__((deprecated("Use xrt::device::register_xclbin() and xrt::hw_context() instead")))
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid);

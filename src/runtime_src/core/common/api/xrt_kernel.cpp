@@ -63,7 +63,6 @@
 #include <mutex>
 #include <stdexcept>
 #include <fstream>
-#include <iostream>
 #include <type_traits>
 #include <utility>
 using namespace std::chrono_literals;
@@ -4284,15 +4283,13 @@ kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xdev), xclbin_id, name, mode))
-{
-}
+{}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
       alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
-{
-}
+{}
 
 kernel::
 kernel(const xrt::hw_context& ctx, const std::string& name)

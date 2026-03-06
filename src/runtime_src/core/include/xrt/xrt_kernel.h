@@ -792,18 +792,11 @@ public:
   /// @endcond
 
   /// @cond
-  /// Deprecated construtor for exclusive access
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+  /// Deprecated constructor for exclusive access
   [[deprecated("Use xrt::kernel(hw_context, name) instead")]]
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex)
     : kernel(device, xclbin_id, name, ex ? cu_access_mode::exclusive : cu_access_mode::shared)
   {}
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
 
   /**
    * Obsoleted construction from xclDeviceHandle

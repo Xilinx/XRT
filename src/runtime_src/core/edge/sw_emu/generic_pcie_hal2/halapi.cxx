@@ -9,8 +9,6 @@
 #include "core/include/deprecated/xcl_app_debug.h"
 #include "xcl_graph.h"
 
-#include <iostream>
-
 namespace {
 
 // Wrap handle check to throw on error
