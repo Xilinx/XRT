@@ -2,114 +2,98 @@
 # Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 cmake_minimum_required(VERSION 3.10...4.0)
-if (POLICY CMP0144)
-  message("--using CMP0144 for Protobuf checking")
-  cmake_policy(SET CMP0144 NEW)
-else (POLICY CMP0144)
-  message("--CMP0144 is not supported, skipping xbtracer")
+
+include(${XRT_SOURCE_DIR}/CMake/protobuf.cmake)
+if (NOT Protobuf_FOUND)
+  message("Protobuf was not found, skip xbtracer.")
+  return()
+endif ()
+if (Protobuf_VERSION VERSION_LESS 3.0)
+  message("Protobuf ${Protobuf_VERSION} < 3.0, skip xbtracer.")
   return()
 endif ()
 
-find_package(Protobuf)
-if (NOT Protobuf_FOUND)
-  message("Protobuf is not found, skipping xbtracer")
-  return()
-endif (NOT Protobuf_FOUND)
-
-# Protobuf 22+ uses abseil for logging, need to link against it
-# Note: Protobuf versioning changed - version 22.0 may report as 4.22.0 or 6.22.0
-# We check for abseil linking if protobuf version >= 4.0 (corresponds to protobuf 22+)
-find_package(absl QUIET)
-if (absl_FOUND AND Protobuf_VERSION VERSION_GREATER_EQUAL 4.0)
-  set(XBTRACER_ABSL_LIBS absl::log_internal_check_op absl::log_internal_message)
-  message(STATUS "Found abseil, will link xbtracer against abseil logging libraries")
-endif()
-message("Protobuf version is ${Protobuf_VERSION}.")
-if (Protobuf_VERSION VERSION_LESS 3.0)
-  # we use timestamp feature of protobuf
-  message("Protobuf version ${Protobuf_VERSION} is less than 3.0, skip xbtracer.")
-  return()
-endif (Protobuf_VERSION VERSION_LESS 3.0)
-
-# Imported targets should link the .lib (not the .dll) when compiling with MSVC
-set(XBTRACER_PROTOBUF_LINK "")
-if (TARGET protobuf::libprotobuf)
-  set(XBTRACER_PROTOBUF_LINK protobuf::libprotobuf)
-elseif (TARGET Protobuf::libprotobuf)
-  set(XBTRACER_PROTOBUF_LINK Protobuf::libprotobuf)
-else()
-  set(XBTRACER_PROTOBUF_LINK ${Protobuf_LIBRARIES})
-endif()
-
-include_directories (
-${Protobuf_INCLUDE_DIR}
-${CMAKE_CURRENT_BINARY_DIR}
-)
-# Generate Cpp files from Proto file
-file(GLOB PROTO_SRC_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.proto"
-)
-
-PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${PROTO_SRC_FILES})
-
-add_custom_target(xbtracer_generated_code DEPENDS ${ProtoSources} ${ProtoHeaders})
-
-add_library(xbtracer_protobuf STATIC ${ProtoSources} ${ProtoHeaders})
-add_dependencies(xbtracer_protobuf xbtracer_generated_code)
+################################################################
+# Generate C++ from .proto and create xbtracer proto library
+################################################################
+set(XBTRACER_PROTO_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/func.proto)
+add_library(xbtracer_protobuf STATIC)
+protobuf_generate_cpp(xbtracer_protobuf ${XBTRACER_PROTO_FILES})
+target_include_directories(xbtracer_protobuf PRIVATE
+  ${Protobuf_INCLUDE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/src
+  )
 if (MSVC)
-  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267 /wd4100)
-endif(MSVC)
-# Link protobuf static library against abseil if needed
-if (XBTRACER_ABSL_LIBS)
-  target_link_libraries(xbtracer_protobuf PUBLIC ${XBTRACER_ABSL_LIBS})
-endif()
+  target_compile_options(xbtracer_protobuf PRIVATE /wd4244 /wd4267 /wd4100 /wd4141 /wd4189)
+endif ()
+target_link_libraries(xbtracer_protobuf PUBLIC protobuf::libprotobuf)
 
-include_directories(
-  "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  ${XRT_BINARY_DIR}/gen
-)
-
-file(GLOB XBTRACER_COMMON_SRC_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/common/*.cpp"
-)
-
+################################################################
+# Create xbtracer common library
+################################################################
+file(GLOB XBTRACER_COMMON_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/common/*.cpp)
 add_library(xbtracer_common STATIC ${XBTRACER_COMMON_SRC_FILES})
+target_include_directories(xbtracer_common PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  )
 if (NOT WIN32)
   target_link_libraries(xbtracer_common PRIVATE dl)
 endif (NOT WIN32)
 
-file(GLOB XBTRACER_WRAPPER_SRC_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/*.cpp"
-)
-
-add_library(xrt_trace SHARED ${XBTRACER_WRAPPER_SRC_FILES} ${ProtoHeaders})
+################################################################
+# Create xbtracer wrapper library
+################################################################
+file(GLOB XBTRACER_WRAPPER_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/*.cpp)
+add_library(xrt_trace SHARED ${XBTRACER_WRAPPER_SRC_FILES})
 set_target_properties(xrt_trace PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 target_compile_definitions(xrt_trace PRIVATE XRT_ABI_VERSION=${XRT_VERSION_MAJOR})
-
-target_link_libraries(xrt_trace PRIVATE xbtracer_common xbtracer_protobuf ${XBTRACER_PROTOBUF_LINK} xrt_coreutil)
+target_include_directories(xrt_trace PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/src
+  )
+target_link_libraries(xrt_trace PRIVATE xbtracer_common xbtracer_protobuf protobuf::libprotobuf xrt_coreutil)
 add_dependencies(xrt_trace xbtracer_common xbtracer_protobuf xrt_coreutil)
 
+################################################################
+# Create xbtracer tracer executable
+################################################################
 file(GLOB XBTRACER_CAPTURE_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/src/capture/*.cpp"
 )
 
 add_executable(xrt-tracer ${XBTRACER_CAPTURE_SRC_FILES})
 target_link_libraries(xrt-tracer PRIVATE xbtracer_common)
+target_include_directories(xrt-tracer PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+ )
 add_dependencies(xrt-tracer xbtracer_common)
 
+################################################################
+# Create xbtracer replay executable
+################################################################
 file(GLOB XBREPLAY_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/src/replay/*.cpp"
 )
 add_executable(xrt-replay ${XBREPLAY_SRC_FILES})
-target_link_libraries(xrt-replay PRIVATE xbtracer_common xbtracer_protobuf ${XBTRACER_PROTOBUF_LINK} xrt_coreutil)
+target_include_directories(xrt-replay PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_BINARY_DIR} 
+  ${CMAKE_CURRENT_BINARY_DIR}/src
+ )
+target_link_libraries(xrt-replay PRIVATE xbtracer_common xbtracer_protobuf protobuf::libprotobuf xrt_coreutil)
 if (NOT WIN32)
   target_link_libraries(xrt-replay PRIVATE pthread)
 endif (NOT WIN32)
 add_dependencies(xrt-replay xbtracer_common xbtracer_protobuf xrt_coreutil)
-# TODO: when buiding with yocto for APU in CI, the status return from message to jason convertion function
-# provided from protobuf built from yocto doesn't match the one in the absl library, which results in
-# build failure. After fixing this issue in yocto APU build, we can always print message as JSON.
-# for now, we by default disable it, as it is not the key feature in the tracer/replay prototype, and replay
+
+# TODO: when buiding with yocto for APU in CI, the status return from
+# message to jason convertion function provided from protobuf built
+# from yocto doesn't match the one in the absl library, which results
+# in build failure. After fixing this issue in yocto APU build, we can
+# always print message as JSON.  for now, we by default disable it, as
+# it is not the key feature in the tracer/replay prototype, and replay
 # only tries to dump JSON message when it fails to replay a function.
 if (XRT_XBTRACER_ENABLE_JSON)
   target_compile_options(xrt-replay PRIVATE XBTRACER_PROTOBUF_HAS_JASON)
@@ -117,7 +101,7 @@ if (XRT_XBTRACER_ENABLE_JSON)
   add_executable(xbtracer_dump
     src/misc/xbtracer_dump.cpp
   )
-  target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf ${XBTRACER_PROTOBUF_LINK})
+  target_link_libraries(xbtracer_dump PRIVATE xbtracer_common xbtracer_protobuf protobuf::libprotobuf)
   add_dependencies(xbtracer_dump xbtracer_common xbtracer_protobuf xrt_coreutil)
 endif (XRT_XBTRACER_ENABLE_JSON)
 
