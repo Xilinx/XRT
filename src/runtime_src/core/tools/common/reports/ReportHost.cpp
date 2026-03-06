@@ -83,7 +83,7 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
 {
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
-  const Table2D::HeaderData aie_architecture = {"Version", Table2D::Justification::left};
+  const Table2D::HeaderData aie_architecture = {"Architecture", Table2D::Justification::left};
   const Table2D::HeaderData aie_topology = {"Topology", Table2D::Justification::left};
   const std::vector<Table2D::HeaderData> table_headers = {bdf, name, aie_architecture, aie_topology};
   Table2D device_table(table_headers);

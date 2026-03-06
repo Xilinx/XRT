@@ -697,7 +697,15 @@ struct ert_uc_health_info {
  *                                  which has context health data for aie2ps and aie4
  *
  * @ctx_state:             context state
- * @num_ucs:               number of uC reported
+ * @num_uc:                number of uC reported
+ * @ctx_error_type:        context error type. Error types:
+ *                         NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE: HWS error moving a context from one state to another
+ *                         NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE: HWS error stopping a context
+ *                         NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE: NPI error interrupt
+ *                         NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT: preemption took too long
+ *                         NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE:HWS error - unable to create a process for a context
+ *                         NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR: CERT critical error interrupt
+ *                         NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT: Context TDR - CERT is stuck / control code hang
  * @uc_info:               array for health data for each uC in the context.
  *                         the array size is based on num_certs.
  *
@@ -707,6 +715,7 @@ struct ert_uc_health_info {
 struct ert_ctx_health_data_aie4 {
   uint32_t ctx_state;
   uint32_t num_uc;
+  uint32_t ctx_error_type;
   struct ert_uc_health_info uc_info[];
 };
 

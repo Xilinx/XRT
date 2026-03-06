@@ -372,6 +372,13 @@ get_pl_deadlock_detection()
   return value;
 }
 
+inline std::string
+get_xdp_json()
+{
+  static std::string value = detail::get_string_value("Debug.profile_settings", "");
+  return value;
+}
+
 inline bool
 get_api_checks()
 {
@@ -955,6 +962,13 @@ inline unsigned int
 get_aie_profile_settings_start_iteration()
 {
   static unsigned int value = detail::get_uint_value("AIE_profile_settings.start_iteration", 1);
+  return value;
+}
+
+inline bool
+get_aie_profile_settings_dtrace_debug()
+{
+  static bool value = detail::get_bool_value("AIE_profile_settings.dtrace_debug", "false");
   return value;
 }
 
