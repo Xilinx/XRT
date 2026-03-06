@@ -151,9 +151,9 @@ XBUtilities::get_available_devices(bool inUserDomain)
       try {
         const auto cert_fw_ver = xrt_core::device_query<xq::cert_firmware_version>(device);
         std::string version = "N/A";
-        if (cert_fw_ver.major != 0 || cert_fw_ver.mid_version != 0 || cert_fw_ver.minor != 0) {
-          version = boost::str(boost::format("%u.%u.%u")
-            % cert_fw_ver.major % cert_fw_ver.mid_version % cert_fw_ver.minor);
+        if (cert_fw_ver.major != 0 || cert_fw_ver.minor != 0 || cert_fw_ver.hotfix != 0 || cert_fw_ver.build != 0) {
+          version = boost::str(boost::format("%u.%u.%u.%u")
+            % cert_fw_ver.major % cert_fw_ver.minor % cert_fw_ver.hotfix % cert_fw_ver.build);
         }
         pt_dev.put("cert_firmware_version", version);
       }
