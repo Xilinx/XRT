@@ -58,6 +58,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -2483,6 +2484,15 @@ public:
   virtual
   ~run_impl()
   {
+    // It is a fatal error to destruct a run_impl while its command is
+    // still in progress.  But only abort if there are no live
+    // exception objects.
+    if (!cmd->is_done()) {
+      xrt_core::send_exception_message("xrt::run destructed while command is still in progress");
+      if (!std::uncaught_exceptions())
+        std::abort();
+    }
+
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
     if (m_ctrlpkt_bo)
       kernel->release_ctrlpkt_buffer(std::move(m_ctrlpkt_bo));
@@ -2590,8 +2600,12 @@ public:
     get_arg_setter()->set_arg_value(arg, bo);
     cmd->bind_arg_at_index(arg.index(), bo);
 
-    if (m_module)
+    if (m_module) {
+      if (!cmd->is_done())
+        throw std::runtime_error("xrt::run::set_arg called while command is still in progress");
+
       xrt_core::module_int::patch(m_module, arg.name(), arg.index(), bo);
+    }
   }
 
   void
