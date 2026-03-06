@@ -52,7 +52,6 @@ public:
    */
   enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2 };
 
-#pragma message("xrt::graph(device, xclbin_id, name) is deprecated. Use xrt::graph(hw_context, name) instead")
   /**
    * graph() - Constructor from a device, xclbin and graph name
    *
@@ -65,6 +64,7 @@ public:
    * @param am
    *  Open the graph with specified access (default primary)
    */
+  [[deprecated("Use xrt::graph(hw_context, name) instead")]]
   graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
         access_mode am = access_mode::primary);
 
@@ -276,7 +276,7 @@ extern "C" {
  * The graph is opened with primary access by default. Fails if the
  * graph is already opened with exclusive or primary access.
  */
-#pragma message("xrtGraphOpen is deprecated. Use xrt::hw_context and xrt::graph(hw_context, name) instead")
+__attribute__((deprecated("Use xrt::hw_context and xrt::graph(hw_context, name) instead")))
 xrtGraphHandle
 xrtGraphOpen(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
 
@@ -292,7 +292,7 @@ xrtGraphOpen(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphN
  * Fails if the graph is already opened with exclusive, primary or
  * shared access.
  */
-#pragma message("xrtGraphOpenExclusive is deprecated. Use xrt::hw_context and xrt::graph(hw_context, name) instead")
+__attribute__((deprecated("Use xrt::hw_context and xrt::graph(hw_context, name) instead")))
 xrtGraphHandle
 xrtGraphOpenExclusive(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
 
@@ -307,7 +307,7 @@ xrtGraphOpenExclusive(xrtDeviceHandle handle, const xuid_t xclbinUUID, const cha
  * Same as @xrtGraphOpen(), but opens graph with shared access.
  * Fails if the graph is already opened with exclusive access.
  */
-#pragma message("xrtGraphOpenShared is deprecated. Use xrt::hw_context and xrt::graph(hw_context, name) instead")
+__attribute__((deprecated("Use xrt::hw_context and xrt::graph(hw_context, name) instead")))
 xrtGraphHandle
 xrtGraphOpenShared(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
 

@@ -56,7 +56,10 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
         return;
       }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
       device.load_xclbin(path);
+#pragma GCC diagnostic pop
   }
 
   // Load ps kernel onto device
@@ -70,8 +73,11 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
     return;
   }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   auto uuid = device.load_xclbin(b_file);
   auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
+#pragma GCC diagnostic pop
 
   auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));
   auto max_throughput = max_throughput_bo.map<double*>();

@@ -310,9 +310,7 @@ public:
   double xclGetKernelWriteMaxBandwidthMBps();
 
   // Bitstream/bin download
-#pragma message("xclLoadXclBin is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
   int xclLoadXclBin(const xclBin *buffer);
-#pragma message("xclLoadAxlf is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
   int xclLoadAxlf(const axlf *buffer);
   int prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj);
   int load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_create_hw_ctx *hw_ctx);

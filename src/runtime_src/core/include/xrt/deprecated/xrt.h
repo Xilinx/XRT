@@ -334,10 +334,17 @@ xclGetErrorStatus(xclDeviceHandle handle, struct xclErrorStatus *info);
  *
  * This API also downloads OVERLAY (dtbo) section (Edge only).
  */
-#pragma message("xclLoadXclBin is deprecated. Use xrt::device::register_xclbin() and xrt::hw_context() instead")
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+__attribute__((deprecated("Use xrt::device::register_xclbin() and xrt::hw_context() instead")))
 XCL_DRIVER_DLLHIDDEN
 int
 xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
+#ifdef __GNUC__
+/* No pop - suppression persists for rest of TU; runtime internals (e.g. shim) call this API */
+#endif
 
 /*
  * xclGetSectionInfo() - Get information from sysfs about the downloaded xclbin sections

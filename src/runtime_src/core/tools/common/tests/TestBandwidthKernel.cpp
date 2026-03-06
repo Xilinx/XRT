@@ -90,7 +90,10 @@ create_kernel_objects(xrt::device device, xrt::uuid xclbin_uuid, int num_kernel)
     // compute unit.
     // For such case, this kernel object can only access the specific
     // Compute unit
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     krnls[i] = xrt::kernel(device, xclbin_uuid, krnl_name_full.c_str());
+#pragma GCC diagnostic pop
   }
   return krnls;
 }
@@ -299,7 +302,10 @@ TestBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev, boost
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   auto xclbin_uuid = device.load_xclbin(b_file);
+#pragma GCC diagnostic pop
 
   std::vector<xrt::kernel> krnls = create_kernel_objects(device, xclbin_uuid, num_kernel);
 

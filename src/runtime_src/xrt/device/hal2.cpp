@@ -274,7 +274,10 @@ hal::operations_result<int>
 device::
 loadXclBin(const xclBin* xclbin)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   m_handle.load_xclbin(xclbin);
+#pragma GCC diagnostic pop
 
   // refresh device info on successful load
   std::lock_guard<std::mutex> lk(m_mutex);
