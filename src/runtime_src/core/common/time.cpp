@@ -99,13 +99,13 @@ get_timestamp_for_filename()
 
 // returns uc log formatted timestamp "seconds.nanoseconds"
 std::string
-get_timestamp_for_uc_log(uint64_t epoch)
+get_timestamp_for_uc_log(uint64_t epoch_ns)
 {
   constexpr uint64_t nanoseconds_per_second = 1000000000;
   constexpr int nanoseconds_width = 9;
 
-  uint64_t seconds = epoch / nanoseconds_per_second;
-  uint64_t nanoseconds = epoch % nanoseconds_per_second;
+  uint64_t seconds = epoch_ns / nanoseconds_per_second;
+  uint64_t nanoseconds = epoch_ns % nanoseconds_per_second;
 
   std::stringstream time_stamp;
   time_stamp << seconds << '.'
