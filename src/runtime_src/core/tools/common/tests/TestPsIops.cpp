@@ -129,8 +129,11 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   std::vector<arg_t> arg(threadNumber);
 
   xrt::device device(dev);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   auto uuid = device.load_xclbin(xclbin_fn);
   auto hello_world = xrt::kernel(device, uuid.get(), krnl.name);
+#pragma GCC diagnostic pop
 
   barrier.init(threadNumber + 1);
 

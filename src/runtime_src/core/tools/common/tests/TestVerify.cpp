@@ -46,6 +46,8 @@ TestVerify::run(const std::shared_ptr<xrt_core::device>& dev)
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   auto xclbin_uuid = device.load_xclbin(b_file);
 
   xrt::kernel krnl;
@@ -60,6 +62,7 @@ TestVerify::run(const std::shared_ptr<xrt_core::device>& dev)
       return ptree;
     }
   }
+#pragma GCC diagnostic pop
 
   // Allocate the output buffer to hold the kernel output
   auto output_buffer = xrt::bo(device, sizeof(char) * buffer_size, krnl.group_id(0));

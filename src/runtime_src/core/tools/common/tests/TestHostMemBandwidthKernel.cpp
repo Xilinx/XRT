@@ -98,12 +98,15 @@ TestHostMemBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev
 
   std::string krnl_name = "bandwidth";
   xrt::uuid xclbin_uuid;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   if (retVal == EOPNOTSUPP) {
     krnl_name = "slavebridge";
     xclbin_uuid = device.load_xclbin(old_binary_file.string());
   } else {
     xclbin_uuid = device.load_xclbin(b_file);
   }
+#pragma GCC diagnostic pop
   std::vector<xrt::kernel> krnls(num_kernel);
 
   for (int i = 0; i < num_kernel; i++) {
@@ -119,7 +122,10 @@ TestHostMemBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev
     // compute unit.
     // For such case, this kernel object can only access the specific
     // Compute unit
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     krnls[i] = xrt::kernel(device, xclbin_uuid, krnl_name_full.c_str());
+#pragma GCC diagnostic pop
   }
 
   double max_throughput = 0;
