@@ -53,8 +53,14 @@ get_elf(const xrt::hw_context& hwctx, const std::string& kname);
 
 // Get the partition size (number of columns).  May not be available
 // in xclbin mode.
+XRT_CORE_COMMON_EXPORT
 size_t
 get_partition_size(const xrt::hw_context&);
+
+// Get the number of controllers.
+XRT_CORE_COMMON_EXPORT
+size_t
+get_num_uc(const xrt::hw_context&);
 
 // get_elf_flow() - Returns true if hwctx was created with elf file/flow
 // Returns false everywhere else
