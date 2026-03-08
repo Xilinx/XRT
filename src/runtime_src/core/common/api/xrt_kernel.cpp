@@ -3440,6 +3440,13 @@ class runlist_impl
       set_run_state(m_runlist.at(idx), ERT_CMD_STATE_ABORT);
   }
 
+  ert_cmd_state
+  get_ert_state(const execbuf_type* execbuf) const
+  {
+    auto [cmd, pkt] = unpack(execbuf);
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
   // Pre: command has completed (error or not)
   // Note that hwqueue::wait_command is used here because the state of
   // the cmd object may be lazy updated only when wait() is called,
@@ -3535,7 +3542,9 @@ class runlist_impl
     // commands are marked aborted including any unsubmitted commands.
     size_t runidx = 0;
     for (auto execbuf : m_submitted_cmds) {
-      auto state = get_completed_state(execbuf, 1ms);
+      auto state = (execbuf == m_submitted_cmds.back())
+        ? get_ert_state(execbuf)              // - already waited on in wait_last_cmd
+        : get_completed_state(execbuf, 1ms);  // - involves calling wait()
       if (state == ERT_CMD_STATE_COMPLETED) {
         runidx += submit_size;
         continue;
