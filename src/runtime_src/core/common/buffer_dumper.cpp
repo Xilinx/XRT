@@ -205,6 +205,10 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
       parsed_bytes += m_config.metadata_size;
     }
 
+    // Separator between dumper reads; the separator marks read boundaries and indicates
+    // log entries may have been lost at the boundary before the next read.
+    parsed_stream << "[0.000000000] [CERT] [Dumper]--------------[Separator]--------------\n";
+
     // Append parsed output to file
     fs.seekp(0, std::ios::end);
     fs << parsed_stream.str();
@@ -243,9 +247,9 @@ process_chunks_no_lock()
     size_t logged_wrap = logged_count / m_data_size;
     size_t dumped_wrap = dumped_count / m_data_size;
 
+    // Overwrite detected; catch up and resume dumping from current position.
     if (logged_count > dumped_count && logged_wrap > dumped_wrap)
-      throw std::runtime_error("Overwrite detected in chunk: " + std::to_string(i) +
-                               ", dump buffer corrupted.");
+      dumped_count = logged_count;
 
     if (dumped_count != logged_count) {
       size_t to_dump = logged_count - dumped_count;
