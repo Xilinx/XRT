@@ -44,7 +44,7 @@ TestAiePl::run(const std::shared_ptr<xrt_core::device>& dev)
   return ptree;
 }
 
-bool run_pl_controller_aie1(xrt::device device, xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta, std::string dma_lock) {
+bool run_pl_controller_aie1(xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta, std::string dma_lock) {
   xf::plctrl::plController m_pl_ctrl(aie_meta, dma_lock.c_str());
 
   unsigned int num_iter = 2;
@@ -147,7 +147,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::hw_context hw_ctx, boost::p
   return match;
 }
 
-bool run_pl_controller_aie2(xrt::device device, xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta) {
+bool run_pl_controller_aie2(xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta) {
   // instance of plController
   xf::plctrl::plController_aie2 m_pl_ctrl(aie_meta);
 
@@ -283,11 +283,11 @@ TestAiePl::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
     case 1: {
       std::string dma_lock_file = "dma_lock_report.json";
       auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
-      match = run_pl_controller_aie1(device, hw_ctx, aie_meta, dma_lock.string());
+      match = run_pl_controller_aie1(hw_ctx, aie_meta, dma_lock.string());
       break;
     }
     case 2:
-      match = run_pl_controller_aie2(device, hw_ctx, aie_meta);
+      match = run_pl_controller_aie2(hw_ctx, aie_meta);
       break;
     default:
       XBValidateUtils::logger(ptree, "Error", "Unsupported AIE Hardware");
