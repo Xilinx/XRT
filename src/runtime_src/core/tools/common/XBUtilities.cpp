@@ -996,12 +996,11 @@ printAdvancedDisclaimer()
 bool
 XBUtilities::
 isUsingAdvanced(
-    bool advanced,
     const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
     const std::vector<std::string>& requestedNames)
 {
   // If advanced is not set, return false immediately
-  if (!advanced)
+  if (!getAdvance())
     return false;
 
   for (const auto& name : requestedNames) {

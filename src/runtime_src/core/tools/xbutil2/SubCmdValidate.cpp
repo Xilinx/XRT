@@ -531,7 +531,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // All Error Handling for xrt-smi validate should go here
     handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
 
-    if (XBU::isUsingAdvanced(XBU::getAdvance(), tests, validatedTests))
+    if (XBU::isUsingAdvanced(tests, validatedTests))
       XBU::printAdvancedDisclaimer();
 
     // check if xclbin folder path is provided
