@@ -376,6 +376,15 @@ public:
     return m_partition_size;
   }
 
+  size_t
+  get_num_uc() const
+  {
+    if (!m_hdl) {
+      throw std::runtime_error("Hardware Context Handle is not yet created, so cannot get number of micro-controllers.");
+    }
+    return m_hdl->get_num_uc();
+  }
+
   xrt_core::hwctx_handle*
   get_hwctx_handle()
   {
@@ -556,6 +565,12 @@ size_t
 get_partition_size(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_partition_size();
+}
+
+size_t
+get_num_uc(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_num_uc();
 }
 
 bool
