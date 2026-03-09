@@ -2001,8 +2001,10 @@ struct firmware_version : request
 struct cert_firmware_version : request
 {
   struct data {
-    std::string date;
-    std::string git_hash;
+    uint32_t major;
+    uint32_t minor;
+    uint32_t hotfix;
+    uint32_t build;
   };
 
   using result_type = data;
