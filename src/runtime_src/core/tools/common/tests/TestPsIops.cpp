@@ -15,8 +15,10 @@ namespace XBU = XBUtilities;
 #include <sstream>
 
 #include "ps_iops_util/xilutil.hpp"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 
 #ifdef _WIN32
@@ -97,7 +99,7 @@ runThread(std::vector<xrt::run>& cmds, unsigned int total, arg_t& arg)
 }
 
 static void
-runTestThread(const xrt::device& device, const xrt::kernel& hello_world,
+runTestThread(const xrt::hw_context& hw_ctx, const xrt::kernel& hello_world,
               arg_t& arg)
 {
   std::vector<xrt::run> cmds;
@@ -105,10 +107,10 @@ runTestThread(const xrt::device& device, const xrt::kernel& hello_world,
 
   for (int i = 0; i < arg.queueLength; i++) {
     auto run = xrt::run(hello_world);
-    auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+    auto bo0 = xrt::bo(hw_ctx, DATA_SIZE, hello_world.group_id(0));
     run.set_arg(0, bo0);
     bos.push_back(std::move(bo0));
-    auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
+    auto bo1 = xrt::bo(hw_ctx, DATA_SIZE, hello_world.group_id(1));
     run.set_arg(1, bo1);
     bos.push_back(std::move(bo1));
     run.set_arg(2, COUNT);
@@ -129,20 +131,10 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   std::vector<arg_t> arg(threadNumber);
 
   xrt::device device(dev);
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-  auto uuid = device.load_xclbin(xclbin_fn);
-  auto hello_world = xrt::kernel(device, uuid.get(), krnl.name);
-#ifdef _MSC_VER
-#pragma warning(pop)
-#else
-#pragma GCC diagnostic pop
-#endif
+  auto xclbin = xrt::xclbin(xclbin_fn);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
+  auto hello_world = xrt::kernel(hw_ctx, krnl.name);
 
   barrier.init(threadNumber + 1);
 
@@ -150,7 +142,7 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
     arg[i].thread_id = i;
     arg[i].queueLength = queueLength;
     arg[i].total = total;
-    threads[i] = std::thread([&](int i){ runTestThread(device, hello_world, arg[i]); }, i);
+    threads[i] = std::thread([&](int i){ runTestThread(hw_ctx, hello_world, arg[i]); }, i);
   }
 
   /* Wait threads to prepare to start */

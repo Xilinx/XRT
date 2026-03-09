@@ -11,7 +11,9 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
+#include "xrt/experimental/xrt_xclbin.h"
 
 static constexpr size_t buffer_size = 64;
 
@@ -46,35 +48,25 @@ TestVerify::run(const std::shared_ptr<xrt_core::device>& dev)
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return ptree;
   }
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-  auto xclbin_uuid = device.load_xclbin(b_file);
+  auto xclbin = xrt::xclbin(b_file);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
 
   xrt::kernel krnl;
   try {
-    krnl = xrt::kernel(device, xclbin_uuid, "verify");
+    krnl = xrt::kernel(hw_ctx, "verify");
   } catch (const std::exception&) {
     try {
-      krnl = xrt::kernel(device, xclbin_uuid, "hello");
+      krnl = xrt::kernel(hw_ctx, "hello");
     } catch (const std::exception&) {
       XBValidateUtils::logger(ptree, "Error", "Kernel could not be found.");
       ptree.put("status", XBValidateUtils::test_token_failed);
       return ptree;
     }
   }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#else
-#pragma GCC diagnostic pop
-#endif
 
   // Allocate the output buffer to hold the kernel output
-  auto output_buffer = xrt::bo(device, sizeof(char) * buffer_size, krnl.group_id(0));
+  auto output_buffer = xrt::bo(hw_ctx, sizeof(char) * buffer_size, krnl.group_id(0));
 
   // Run the kernel and store its contents within the allocated output buffer
   auto run = krnl(output_buffer);

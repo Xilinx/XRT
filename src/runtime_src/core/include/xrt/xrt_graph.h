@@ -64,7 +64,7 @@ public:
    * @param am
    *  Open the graph with specified access (default primary)
    */
-  [[deprecated("deprecated, please use corresponding hw_context function instead")]]
+  [[deprecated("deprecated, please use graph(hw_context, name) instead")]]
   graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
         access_mode am = access_mode::primary);
 

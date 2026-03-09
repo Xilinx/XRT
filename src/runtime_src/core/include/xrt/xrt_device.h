@@ -342,7 +342,7 @@ public:
    * @return
    *  UUID of argument xclbin
    */
-  [[deprecated("deprecated, please use corresponding hw_context function instead")]]
+  [[deprecated("deprecated, please use hw_context() instead")]]
   XCL_DRIVER_DLLESPEC
   uuid
   load_xclbin(const axlf* xclbin);
@@ -359,7 +359,7 @@ public:
    * the xclbin.   Using this function allows one time
    * allocation of data that needs to be kept in memory.
    */
-  [[deprecated("deprecated, please use corresponding hw_context function instead")]]
+  [[deprecated("deprecated, please use hw_context() instead")]]
   XCL_DRIVER_DLLESPEC
   uuid
   load_xclbin(const std::string& xclbin_fnm);
@@ -376,7 +376,7 @@ public:
    * caller.  The xrt::xclbin object must contain the complete axlf
    * structure.
    */
-  [[deprecated("deprecated, please use corresponding hw_context function instead")]]
+  [[deprecated("deprecated, please use hw_context() instead")]]
   XCL_DRIVER_DLLESPEC
   uuid
   load_xclbin(const xrt::xclbin& xclbin);
