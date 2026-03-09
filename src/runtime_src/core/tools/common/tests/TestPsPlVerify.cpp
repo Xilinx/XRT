@@ -56,10 +56,19 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
         return;
       }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
       device.load_xclbin(path);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
   }
 
   // Load ps kernel onto device
@@ -73,11 +82,20 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
     return;
   }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto uuid = device.load_xclbin(b_file);
   auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
 
   auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));
   auto max_throughput = max_throughput_bo.map<double*>();

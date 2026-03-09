@@ -82,13 +82,22 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_
 
   unsigned int mem_size_bytes = 0;
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto sender_receiver_k1 =
       xrt::kernel(device, uuid, "sender_receiver:{sender_receiver_1}");
   auto controller_k1 =
       xrt::kernel(device, uuid, "pl_controller_kernel:{controller_1}");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
 
   // output memory
   mem_size_bytes = num_sample * num_iter * sizeof(uint32_t);
@@ -173,11 +182,20 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_
   uint32_t mem_size_bytes = 0;
 
   // XRT auto get group_id
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto sender_receiver_k1 = xrt::kernel(device, uuid, "sender_receiver:{sender_receiver_1}");
   auto controller_k1 = xrt::kernel(device, uuid, "pl_controller_top:{controller_1}");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
 
   // output memory
   mem_size_bytes = num_sample * num_iter * sizeof(uint32_t);
@@ -257,10 +275,19 @@ TestAiePl::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
   }
   ptree.put("xclbin_directory", std::filesystem::path(test_path));
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   const auto uuid = device.load_xclbin(binaryFile.string());
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
 
   boost::property_tree::ptree aie_meta;
   auto metadata_pair = dev->get_axlf_section(AIE_METADATA);

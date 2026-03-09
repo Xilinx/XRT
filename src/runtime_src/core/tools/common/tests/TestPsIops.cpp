@@ -129,11 +129,20 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   std::vector<arg_t> arg(threadNumber);
 
   xrt::device device(dev);
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto uuid = device.load_xclbin(xclbin_fn);
   auto hello_world = xrt::kernel(device, uuid.get(), krnl.name);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
 
   barrier.init(threadNumber + 1);
 

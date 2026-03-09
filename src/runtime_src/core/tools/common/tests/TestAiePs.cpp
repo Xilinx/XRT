@@ -54,10 +54,19 @@ TestAiePs::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
       ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     device.load_xclbin(path);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
   }
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
@@ -73,11 +82,20 @@ TestAiePs::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
   const int input_size_allocated = ((input_size_in_bytes / 4096) + ((input_size_in_bytes % 4096) > 0)) * 4096;
   const int output_size_allocated = ((output_size_in_bytes / 4096) + ((output_size_in_bytes % 4096) > 0)) * 4096;
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto uuid = device.load_xclbin(b_file);
   auto aie_kernel = xrt::kernel(device,uuid, "aie_kernel");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
   auto out_bo= xrt::bo(device, output_size_allocated, aie_kernel.group_id(2));
   auto out_bomapped = out_bo.map<float*>();
   memset(out_bomapped, 0, output_size_in_bytes);

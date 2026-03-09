@@ -44,10 +44,19 @@ TestPsVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::prope
       ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     device.load_xclbin(path);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
   }
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
@@ -58,11 +67,20 @@ TestPsVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::prope
     return;
   }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   auto uuid = device.load_xclbin(b_file);
   auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
 #pragma GCC diagnostic pop
+#endif
   const size_t DATA_SIZE = COUNT * sizeof(int);
   auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
   auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
