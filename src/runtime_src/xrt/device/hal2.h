@@ -8,6 +8,8 @@
 
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_hw_context.h"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/detail/ert.h"
 
 #include "core/common/device.h"
@@ -67,6 +69,7 @@ class device : public xrt_xocl::hal::device
 
   xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
+  std::map<xrt::uuid, xrt::hw_context> m_hw_contexts;
 
   mutable std::mutex m_mutex;
 
