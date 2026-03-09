@@ -860,7 +860,7 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
 
       auto cert_fw_ver = dev.get<std::string>("cert_firmware_version", "N/A");
       if (cert_fw_ver != "N/A")
-        output << boost::format("  %-20s : %s\n") % "CERT Firmware Version" % cert_fw_ver;
+        output << boost::format("  %-20s: %s\n") % "CERT Firmware Version" % cert_fw_ver;
 
       auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
       auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
