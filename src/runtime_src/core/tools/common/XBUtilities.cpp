@@ -981,3 +981,40 @@ get_archive_install_path(const std::string& xrt_version)
   
   return std::string(home) + "/.local/share/xrt/" + xrt_version + "/amdxdna/bins";
 }
+
+void
+XBUtilities::
+printAdvancedDisclaimer()
+{
+  std::cout << "-------------------------------------------------------------------------\n";
+  std::cout << "                    DISCLAIMER  (xrt-smi --advanced)                     \n";
+  std::cout << "You are running a developer command that may change system configuration.\n";
+  std::cout << "                Continue only if you understand the risks.               \n";
+  std::cout << "-------------------------------------------------------------------------\n";
+}
+
+bool
+XBUtilities::
+isUsingAdvanced(
+    bool advanced,
+    const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
+    const std::vector<std::string>& requestedNames)
+{
+  // If advanced is not set, return false immediately
+  if (!advanced)
+    return false;
+
+  for (const auto& name : requestedNames) {
+    if (name == "all")
+      return true;
+  }
+
+  // Check if any specific requested item is hidden
+  for (const auto& name : requestedNames) {
+    for (const auto& item : configItems) {
+      if (std::get<0>(item) == name && std::get<2>(item) == "hidden")
+        return true;
+    }
+  }
+  return false;
+}

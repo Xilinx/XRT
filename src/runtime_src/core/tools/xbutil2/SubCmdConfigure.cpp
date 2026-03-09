@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -80,6 +80,22 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   }
 
   if (optionOption) {
+    // Check if the selected option is hidden and print disclaimer if needed
+    if (XBU::getAdvance() && !options.m_device.empty()) {
+      try {
+        auto device = XBU::get_device(boost::algorithm::to_lower_copy(options.m_device), true /*inUserDomain*/);
+        auto optionOptions = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::configure_option_options);
+        for (const auto& opt : optionOptions) {
+          if (std::get<0>(opt) == optionOption->longName() && std::get<2>(opt) == "hidden") {
+            XBU::printAdvancedDisclaimer();
+            break;
+          }
+        }
+      } catch (const std::runtime_error&) {
+        // Do not display disclaimer.
+      }
+    }
+
     optionOption->setGlobalOptions(getGlobalOptions());
     optionOption->execute(_options);
     return;

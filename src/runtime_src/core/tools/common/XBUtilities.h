@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -156,7 +157,25 @@ namespace XBUtilities {
 
   bool
   is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type);
-                                 /**
+
+  void
+  printAdvancedDisclaimer();
+
+  /**
+   * isUsingAdvanced() - Check if user is using xrt-smi advanced/hidden features
+   *
+   * @advanced: whether advanced flag is set
+   * @configItems: Vector of tuples (name, description, type) from shim config
+   * @requestedNames: Vector of names requested by the user
+   * Return: true if advanced mode is enabled and user is using advanced/hidden features
+   */
+  bool
+  isUsingAdvanced(
+      bool advanced,
+      const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
+      const std::vector<std::string>& requestedNames);
+
+  /**
    * Open archive from device
    */
   std::unique_ptr<xrt_core::archive> 
