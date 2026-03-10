@@ -2656,6 +2656,25 @@ public:
   set_arg_at_index(size_t index, const void* value, size_t bytes)
   {
     auto& arg = kernel->get_arg(index);
+
+    // For DPU flows, check if the first arg (at index 0) equals
+    // the deprecated Legacy TXN flow opcode value, and warn if so.
+    constexpr uint64_t legacy_txn_flow_opcode = 2;
+    constexpr size_t opcode_arg_index = 0;
+    if (index == opcode_arg_index && value &&
+        kernel->get_kernel_type() == kernel_type::dpu &&
+        arg.type() == xarg::argtype::scalar) {
+      uint64_t opcode = 0;
+      std::memcpy(&opcode, value, std::min(bytes, sizeof(opcode)));
+      if (opcode == legacy_txn_flow_opcode) {
+        static std::once_flag warned;
+        std::call_once(warned, [] {
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+            "Legacy TXN flow is deprecated. Please migrate to the TXN flow with upgraded xclbin/ELF.");
+        });
+      }
+    }
+
     set_arg_value(arg, value, bytes);
   }
 
@@ -2709,19 +2728,6 @@ public:
       xrt_core::module_int::sync(m_module);
 
     encode_compute_units();
-
-    // For DPU flows, check if the first arg (opcode at offset 0x0) equals
-    // the deprecated xclbin-only opcode value, and warn if so.
-    constexpr uint64_t xclbin_only_opcode = 2;
-    constexpr size_t opcode_arg_index = 0;
-    if (kernel->get_kernel_type() == kernel_type::dpu && data
-        && kernel->get_arg(opcode_arg_index).type() == xarg::argtype::scalar) {
-      uint64_t opcode = 0;
-      std::memcpy(&opcode, data, sizeof(opcode));
-      if (opcode == xclbin_only_opcode)
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-          "xclbin only flow is deprecated. Please migrate to the ELF flow.\n");
-    }
 
     auto pkt = cmd->get_ert_packet();
 
