@@ -2710,6 +2710,19 @@ public:
 
     encode_compute_units();
 
+    // For DPU flows, check if the first arg (opcode at offset 0x0) equals
+    // the deprecated xclbin-only opcode value, and warn if so.
+    constexpr uint64_t xclbin_only_opcode = 2;
+    constexpr size_t opcode_arg_index = 0;
+    if (kernel->get_kernel_type() == kernel_type::dpu && data
+        && kernel->get_arg(opcode_arg_index).type() == xarg::argtype::scalar) {
+      uint64_t opcode = 0;
+      std::memcpy(&opcode, data, sizeof(opcode));
+      if (opcode == xclbin_only_opcode)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "xclbin only flow is deprecated. Please migrate to the ELF flow.\n");
+    }
+
     auto pkt = cmd->get_ert_packet();
 
     // Very first start() of this run object caches the command header
