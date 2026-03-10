@@ -133,6 +133,8 @@ void
 OO_EventTrace::
 execute(const SubCmdOptions& _options) const
 {
+  XBUtilities::printAdvancedDisclaimer();
+
   XBUtilities::verbose("SubCommand option: Event Trace");
   XBUtilities::sudo_or_throw("Event tracing requires admin privileges");
 
