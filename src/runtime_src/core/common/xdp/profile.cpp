@@ -74,12 +74,10 @@ namespace xrt_core::xdp::core {
   void
   load_core()
   {
-    std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_core_npu3" : "xdp_core";
-
-    static xrt_core::module_loader xdp_core_loader(libname,
-                                                   register_callbacks_empty,
-                                                   warning_callbacks_empty);
+    static xrt_core::module_loader
+    xdp_core_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_core_npu3" : "xdp_core",
+                    register_callbacks_empty,
+                    warning_callbacks_empty);
   }
 }
 
@@ -101,18 +99,16 @@ register_callbacks(void* handle)
 void 
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin";
-
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
-  // On Windows client, load AIE profiling from the SDK location
-  static xrt_core::sdk_loader xdp_aie_loader(libname,
-                                             register_callbacks,
-                                             warning_callbacks_empty);
+  static xrt_core::sdk_loader
+  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+                 register_callbacks,
+                 warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_loader(libname,
-                                                register_callbacks,
-                                                warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_aie_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_profile_plugin_npu3" : "xdp_aie_profile_plugin",
+                 register_callbacks,
+                 warning_callbacks_empty);
 #endif
 }
 
@@ -163,12 +159,10 @@ register_callbacks(void* handle)
 void 
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin";
-
-  static xrt_core::module_loader xdp_aie_debug_loader(libname,
-                                                      register_callbacks,
-                                                      warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_aie_debug_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_debug_plugin_npu3" : "xdp_aie_debug_plugin",
+                       register_callbacks,
+                       warning_callbacks_empty);
 }
 
 // Make connections
@@ -211,7 +205,6 @@ register_callbacks(void* handle)
 void
 load()
 {
-
   static xrt_core::module_loader xdp_aie_status_loader("xdp_aie_status_plugin",
                                                        register_callbacks,
                                                        warning_callbacks_empty);
@@ -258,12 +251,10 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin";
-
-  static xrt_core::module_loader xdp_ml_timeline_loader(libname,
-                                                        register_callbacks,
-                                                        warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_ml_timeline_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_ml_timeline_plugin_npu3" : "xdp_ml_timeline_plugin",
+                         register_callbacks,
+                         warning_callbacks_empty);
 }
 
 // Make connections
@@ -305,12 +296,10 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_pc_plugin_npu3" : "xdp_aie_pc_plugin";
-
-  static xrt_core::module_loader xdp_aie_pc_loader(libname,
-                                                   register_callbacks,
-                                                   warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_aie_pc_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_pc_plugin_npu3" : "xdp_aie_pc_plugin",
+                    register_callbacks,
+                    warning_callbacks_empty);
 }
 
 // Make connections
@@ -394,18 +383,16 @@ register_callbacks(void* handle)
 void 
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin";
-
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
-  // On Windows client, load AIE trace from the SDK location
-  static xrt_core::sdk_loader xdp_aie_trace_loader(libname,
-                                                   register_callbacks,
-                                                   warning_callbacks_empty);
+  static xrt_core::sdk_loader
+  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+                       register_callbacks,
+                       warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_trace_loader(libname,
-                                                      register_callbacks,
-                                                      warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_aie_trace_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_trace_plugin_npu3" : "xdp_aie_trace_plugin",
+                       register_callbacks,
+                       warning_callbacks_empty);
 #endif
 }
 
@@ -455,18 +442,16 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin";
-
 #if defined(XDP_CLIENT_BUILD) && defined(_WIN32)
-  // On Windows client, load AIE Halt from the SDK location
-  static xrt_core::sdk_loader xdp_aie_halt_loader(libname,
-                                                  register_callbacks,
-                                                  warning_callbacks_empty);
+  static xrt_core::sdk_loader
+  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+                      register_callbacks,
+                      warning_callbacks_empty);
 #else
-  static xrt_core::module_loader xdp_aie_halt_loader(libname,
-                                                     register_callbacks,
-                                                     warning_callbacks_empty);
+  static xrt_core::module_loader
+  xdp_aie_halt_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_aie_halt_plugin_npu3" : "xdp_aie_halt_plugin",
+                      register_callbacks,
+                      warning_callbacks_empty);
 #endif
 }
 
