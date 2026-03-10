@@ -97,6 +97,22 @@ get_timestamp_for_filename()
   return time_stamp.str();
 }
 
+// returns uc log formatted timestamp "seconds.nanoseconds"
+std::string
+get_timestamp_for_uc_log(uint64_t epoch_ns)
+{
+  constexpr uint64_t nanoseconds_per_second = 1000000000;
+  constexpr int nanoseconds_width = 9;
+
+  uint64_t seconds = epoch_ns / nanoseconds_per_second;
+  uint64_t nanoseconds = epoch_ns % nanoseconds_per_second;
+
+  std::stringstream time_stamp;
+  time_stamp << seconds << '.'
+             << std::setfill('0') << std::setw(nanoseconds_width) << nanoseconds;
+  return time_stamp.str();
+}
+
 ////////////////////////////////////////////////////////////////
 // systime implementation
 // Implmentation is platform specific, the pimpl is inline

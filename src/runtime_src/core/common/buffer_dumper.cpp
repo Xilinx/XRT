@@ -41,7 +41,7 @@ get_or_open_stream(size_t chunk_index)
 
   std::string filename = m_config.dump_file_prefix + "_" + m_session_timestamp + "_" +
                          std::to_string(xrt_core::utils::get_pid()) + "_" +
-                         std::to_string(chunk_index) + ".txt";
+                         std::to_string(chunk_index) + (m_config.dump_bin_format ? ".bin" : ".txt");
 
   fs.open(filename, std::ios::out | std::ios::binary);
   if (!fs.is_open())
@@ -88,12 +88,62 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
                              " is in bad state before write");
   }
 
+  // Calculate start offset and bytes to end for circular buffer wrapping
+  const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
+  const size_t bytes_to_end = m_config.chunk_size - start_offset;
+
+  // UC log dump in binary format
+  if (m_config.dump_bin_format) {
+    // Always write/update metadata since this function is called when there's new data
+    // and metadata(count) gets updated when there is new data
+    // Seek to beginning and write/update metadata
+    fs.seekp(0);
+    fs.write(reinterpret_cast<const char*>(chunk),
+            static_cast<std::streamsize>(m_config.metadata_size));
+
+    if (!fs)
+      throw std::runtime_error("Failed to write metadata for chunk " + std::to_string(chunk_index));
+
+    // Seek to end to append actual data
+    fs.seekp(0, std::ios::end);
+
+    if (length <= bytes_to_end) { // data doesn't wrap around
+      fs.write(reinterpret_cast<const char*>(chunk + start_offset),
+              static_cast<std::streamsize>(length));
+
+      if (!fs)
+        throw std::runtime_error("Failed to write " + std::to_string(length) +
+                                " bytes to chunk " + std::to_string(chunk_index));
+    }
+    else {
+      // data wraps around
+      // write the first part
+      fs.write(reinterpret_cast<const char*>(chunk + start_offset),
+              static_cast<std::streamsize>(bytes_to_end));
+
+      if (!fs)
+        throw std::runtime_error("Failed to write first part (" + std::to_string(bytes_to_end) +
+                                " bytes) to chunk " + std::to_string(chunk_index));
+
+      // write the wrapped part
+      fs.write(reinterpret_cast<const char*>(chunk + m_config.metadata_size),
+              static_cast<std::streamsize>(length - bytes_to_end));
+
+      if (!fs)
+        throw std::runtime_error("Failed to write wrapped part (" +
+                                std::to_string(length - bytes_to_end) +
+                                " bytes) to chunk " + std::to_string(chunk_index));
+    }
+
+    fs.flush();
+    if (!fs)
+      throw std::runtime_error("Failed to flush chunk " + std::to_string(chunk_index));
+
+    return;
+  }
+
   // UC log parsing and writing log messages to file using log schema
   try {
-    // Parse log entries from the chunk using log schema
-    const size_t start_offset = (start % m_data_size) + m_config.metadata_size;
-    const size_t bytes_to_end = m_config.chunk_size - start_offset;
-
     std::ostringstream parsed_stream;
     size_t parsed_bytes = 0;
     // Iterate and parse each log entry in dumped data
@@ -115,9 +165,9 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
       // Format log message using log schema
       // If log_id is not found in log schema, use default format string
       constexpr std::array<const char*, 3> default_formats = {
-        "unknown !",
-        "unknown %d !!",
-        "unknown %d unknown %d !!!"
+        "unknown !\n",
+        "unknown %d !!\n",
+        "unknown %d unknown %d !!!\n"
       };
       auto log_schema_it = uc_log_schema.logs.find(log.log_id);
       const char* log_format = (log_schema_it != uc_log_schema.logs.end())
@@ -125,7 +175,10 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
         : default_formats[std::min(static_cast<std::size_t>(log.length - (offsetof(log_entry, argument1) / sizeof(uint32_t))),
                           (default_formats.size() - 1))];
 
-      parsed_stream << "[CERT] ";
+      // log marker [<seconds>.<nanoseconds>] [CERT]
+      uint64_t timestamp_ns = (static_cast<uint64_t>(log.ts_high) << 32) | log.ts_low; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+      parsed_stream << "[" << xrt_core::get_timestamp_for_uc_log(timestamp_ns) << "] [CERT] ";
+
       std::array<char, 1024> log_message{}; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       if (log.length == (offsetof(log_entry, argument1) / sizeof(uint32_t)))
       { // Log message without arguments
@@ -151,6 +204,10 @@ dump_chunk_data(size_t chunk_index, size_t start, size_t length, uint8_t* chunk)
 
       parsed_bytes += m_config.metadata_size;
     }
+
+    // Separator between dumper reads; the separator marks read boundaries and indicates
+    // log entries may have been lost at the boundary before the next read.
+    parsed_stream << "[0.000000000] [CERT] [Dumper]--------------[Separator]--------------\n";
 
     // Append parsed output to file
     fs.seekp(0, std::ios::end);
@@ -190,9 +247,9 @@ process_chunks_no_lock()
     size_t logged_wrap = logged_count / m_data_size;
     size_t dumped_wrap = dumped_count / m_data_size;
 
+    // Overwrite detected; catch up and resume dumping from current position.
     if (logged_count > dumped_count && logged_wrap > dumped_wrap)
-      throw std::runtime_error("Overwrite detected in chunk: " + std::to_string(i) +
-                               ", dump buffer corrupted.");
+      dumped_count = logged_count;
 
     if (dumped_count != logged_count) {
       size_t to_dump = logged_count - dumped_count;

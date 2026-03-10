@@ -44,6 +44,7 @@ public:
     size_t dump_interval_ms = 0;      // Polling interval in ms
     std::string dump_file_prefix;     // Output file prefix
     xrt::bo dump_buffer;              // xrt buffer object to dump
+    bool dump_bin_format = false;     // Dump in binary format when enabled
   };
 
   // Log entry struct for uc log binary format
