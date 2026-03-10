@@ -1665,14 +1665,16 @@ private:
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
     static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
 
-    // Even though if pool memory is less than ctrlpkt size, we still maintain one entry
-    // in cache to reduce overhead for atleast one run
+    // Even when pool memory is less than the ctrlpkt size, we still maintain one cache
+    // entry to reduce overhead for at least one run. We also limit the max pool size
+    // to avoid excessive buffer creation for smaller ctrlpkt sizes.
     constexpr size_t min_pool_size = 1;
-    size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
+    static auto max_pool_size = static_cast<size_t>(xrt_core::config::get_run_buffer_pool_max_size());
+    auto pool_size = std::clamp(pool_memory_size / ctrlpkt_buf_size, min_pool_size, max_pool_size);
 
     // Create and return buffer_cache with calculated pool size
     // use ctrlpkt flag while creating buffers
-    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), pool_size, xbi::use_type::ctrlpkt);
   }
 
   // Function that checks if hw ctx is created using xcbin/ELF
