@@ -211,10 +211,8 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_aie_status_plugin_npu3" : "xdp_aie_status_plugin";
 
-  static xrt_core::module_loader xdp_aie_status_loader(libname,
+  static xrt_core::module_loader xdp_aie_status_loader("xdp_aie_status_plugin",
                                                        register_callbacks,
                                                        warning_callbacks_empty);
 }
@@ -354,10 +352,8 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_pl_deadlock_plugin_npu3" : "xdp_pl_deadlock_plugin";
 
-  static xrt_core::module_loader xdp_pl_deadlock_loader(libname,
+  static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin",
                                                         register_callbacks,
                                                         warning_callbacks_empty);
 }
@@ -513,10 +509,8 @@ register_callbacks(void* handle)
 void
 load()
 {
-  std::string libname = (std::getenv("AMD_XDP_NPU3"))
-                        ? "xdp_hal_device_offload_plugin_npu3" : "xdp_hal_device_offload_plugin";
 
-  static xrt_core::module_loader xdp_offload_loader(libname,
+  static xrt_core::module_loader xdp_offload_loader("xdp_hal_device_offload_plugin",
                                                     register_callbacks,
                                                     warning_callbacks_empty);
 }
