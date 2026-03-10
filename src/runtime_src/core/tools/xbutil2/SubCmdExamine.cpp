@@ -193,13 +193,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     // Check for OptionOptions first
     auto optionOption = checkForSubOption(vm);
     if (optionOption) {
-      try {
-        auto optionOptions = xrt_core::smi::get_option_options("examine");
-        if (XBU::isUsingAdvanced(optionOptions, {optionOption->longName()}))
-          XBU::printAdvancedDisclaimer();
-      } catch (const std::runtime_error&) {
-        // Do not display disclaimer on default.
-      }
       optionOption->setGlobalOptions(getGlobalOptions());
       optionOption->execute(_options);
       return;

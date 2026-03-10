@@ -222,6 +222,8 @@ dump_raw_version(const xrt_core::device* device) const
 void
 OO_EventTraceExamine::execute(const SubCmdOptions& _options) const
 {
+  XBUtilities::printAdvancedDisclaimer();
+
   XBUtilities::verbose("SubCommand option: Event Trace Examine");
   XBUtilities::sudo_or_throw("Event tracing requires admin privileges");
 

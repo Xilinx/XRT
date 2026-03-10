@@ -273,6 +273,8 @@ generate_npu3_report(const xrt_core::device* dev,
 void
 OO_ContextHealth::execute(const SubCmdOptions& _options) const
 {
+  XBUtilities::printAdvancedDisclaimer();
+
   XBUtilities::verbose("SubCommand option: Context Health");
 
   XBUtilities::verbose("Option(s):");
