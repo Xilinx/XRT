@@ -82,7 +82,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       // tweak dump interval, size_per_uc based on experiments
       constexpr size_t size_per_uc = 2_mb;
       constexpr size_t dump_interval_ms = 50;
-      constexpr size_t metadata_size = 32;
+      constexpr size_t metadata_size = sizeof(xrt_core::buffer_dumper::log_entry);
       constexpr size_t count_offset = 0;
       constexpr size_t count_size = 8;
 
@@ -116,6 +116,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_interval_ms = dump_interval_ms;
       config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
       config.dump_buffer = std::move(bo);
+      config.dump_bin_format = xrt_core::config::get_uc_log_bin_format();
 
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
@@ -376,6 +377,15 @@ public:
     return m_partition_size;
   }
 
+  size_t
+  get_num_uc() const
+  {
+    if (!m_hdl) {
+      throw std::runtime_error("Hardware Context Handle is not yet created, so cannot get number of micro-controllers.");
+    }
+    return m_hdl->get_num_uc();
+  }
+
   xrt_core::hwctx_handle*
   get_hwctx_handle()
   {
@@ -556,6 +566,12 @@ size_t
 get_partition_size(const xrt::hw_context& ctx)
 {
   return ctx.get_handle()->get_partition_size();
+}
+
+size_t
+get_num_uc(const xrt::hw_context& ctx)
+{
+  return ctx.get_handle()->get_num_uc();
 }
 
 bool

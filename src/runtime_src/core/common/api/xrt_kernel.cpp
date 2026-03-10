@@ -58,6 +58,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -1664,14 +1665,16 @@ private:
     constexpr size_t bytes_per_mb = 1024ULL * 1024ULL;
     static auto pool_memory_size = xrt_core::config::get_run_buffer_pool_memory_mb() * bytes_per_mb;
 
-    // Even though if pool memory is less than ctrlpkt size, we still maintain one entry
-    // in cache to reduce overhead for atleast one run
+    // Even when pool memory is less than the ctrlpkt size, we still maintain one cache
+    // entry to reduce overhead for at least one run. We also limit the max pool size
+    // to avoid excessive buffer creation for smaller ctrlpkt sizes.
     constexpr size_t min_pool_size = 1;
-    size_t max_pool_size = std::max(pool_memory_size / ctrlpkt_buf_size, min_pool_size);
+    static auto max_pool_size = static_cast<size_t>(xrt_core::config::get_run_buffer_pool_max_size());
+    auto pool_size = std::clamp(pool_memory_size / ctrlpkt_buf_size, min_pool_size, max_pool_size);
 
     // Create and return buffer_cache with calculated pool size
     // use ctrlpkt flag while creating buffers
-    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), max_pool_size, xbi::use_type::ctrlpkt);
+    return std::make_unique<buffer_cache>(ctx, std::move(ctrlpkt_data), pool_size, xbi::use_type::ctrlpkt);
   }
 
   // Function that checks if hw ctx is created using xcbin/ELF
@@ -2483,6 +2486,15 @@ public:
   virtual
   ~run_impl()
   {
+    // It is a fatal error to destruct a run_impl while its command is
+    // still in progress.  But only abort if there are no live
+    // exception objects.
+    if (!cmd->is_done()) {
+      xrt_core::send_exception_message("xrt::run destructed while command is still in progress");
+      if (!std::uncaught_exceptions())
+        std::abort();
+    }
+
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
     if (m_ctrlpkt_bo)
       kernel->release_ctrlpkt_buffer(std::move(m_ctrlpkt_bo));
@@ -2590,8 +2602,12 @@ public:
     get_arg_setter()->set_arg_value(arg, bo);
     cmd->bind_arg_at_index(arg.index(), bo);
 
-    if (m_module)
+    if (m_module) {
+      if (!cmd->is_done())
+        throw std::runtime_error("xrt::run::set_arg called while command is still in progress");
+
       xrt_core::module_int::patch(m_module, arg.name(), arg.index(), bo);
+    }
   }
 
   void
@@ -3426,6 +3442,13 @@ class runlist_impl
       set_run_state(m_runlist.at(idx), ERT_CMD_STATE_ABORT);
   }
 
+  ert_cmd_state
+  get_ert_state(const execbuf_type* execbuf) const
+  {
+    auto [cmd, pkt] = unpack(execbuf);
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
   // Pre: command has completed (error or not)
   // Note that hwqueue::wait_command is used here because the state of
   // the cmd object may be lazy updated only when wait() is called,
@@ -3521,7 +3544,9 @@ class runlist_impl
     // commands are marked aborted including any unsubmitted commands.
     size_t runidx = 0;
     for (auto execbuf : m_submitted_cmds) {
-      auto state = get_completed_state(execbuf, 1ms);
+      auto state = (execbuf == m_submitted_cmds.back())
+        ? get_ert_state(execbuf)              // - already waited on in wait_last_cmd
+        : get_completed_state(execbuf, 1ms);  // - involves calling wait()
       if (state == ERT_CMD_STATE_COMPLETED) {
         runidx += submit_size;
         continue;

@@ -1143,12 +1143,25 @@ get_run_buffer_pool_memory_mb()
   return value;
 }
 
+inline unsigned int
+get_run_buffer_pool_max_size()
+{
+  static constexpr unsigned int default_pool_max_size = 8;
+  static unsigned int value = detail::get_uint_value("Runtime.run_buffer_pool_max_size", default_pool_max_size);
+  return value;
+}
+
 inline bool
 get_uc_log()
 {
-  // uc_log is enabled by default, we can remove this ini option
-  // once we are sure that it doesn't add any overhead to the runtime
-  static bool value = detail::get_bool_value("Debug.uc_log", true);
+  static bool value = detail::get_bool_value("Debug.uc_log", false);
+  return value;
+}
+
+inline bool
+get_uc_log_bin_format()
+{
+  static bool value = detail::get_bool_value("Debug.uc_log_bin_format", false);
   return value;
 }
 
