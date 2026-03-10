@@ -1118,6 +1118,14 @@ get_run_buffer_pool_memory_mb()
   return value;
 }
 
+inline unsigned int
+get_run_buffer_pool_max_size()
+{
+  static constexpr unsigned int default_pool_max_size = 8;
+  static unsigned int value = detail::get_uint_value("Runtime.run_buffer_pool_max_size", default_pool_max_size);
+  return value;
+}
+
 inline bool
 get_uc_log()
 {
