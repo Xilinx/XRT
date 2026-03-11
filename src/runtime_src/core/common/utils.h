@@ -1,30 +1,17 @@
-/**
- * Copyright (C) 2016-2025 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- * Common XRT SAK Util functions
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-#ifndef _xrt_core_common_utils_h_
-#define _xrt_core_common_utils_h_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. - All rights reserved
+#ifndef xrt_core_common_utils_h_
+#define xrt_core_common_utils_h_
 
 #include "config.h"
 #include "scope_guard.h"
 
-#include <string>
-#include <sstream>
+#include <cstdint>
 #include <functional>
-#include <iostream>
+#include <iosfwd>
+#include <sstream>
+#include <string>
 #include <vector>
 
 /* HLS CU bit status */
