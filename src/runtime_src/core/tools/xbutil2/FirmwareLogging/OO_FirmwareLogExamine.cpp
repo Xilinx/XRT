@@ -179,8 +179,6 @@ handle_logging(const xrt_core::device* device) const {
 void
 OO_FirmwareLogExamine::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::printAdvancedDisclaimer();
-
   XBUtilities::verbose("SubCommand option: Firmware Log Examine");
   XBUtilities::sudo_or_throw("Firmware logging requires admin privileges");
 
