@@ -161,25 +161,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The CERT firmware wasn't added
       }
       try {
-        const auto uc_fw_ver = xrt_core::device_query<xq::firmware_version>(device, xq::firmware_version::firmware_type::uc_firmware);
-        std::string version = "N/A";
-        std::string build_date = "N/A";
-
-        if (uc_fw_ver.major != 0 || uc_fw_ver.minor != 0) {
-          version = boost::str(boost::format("%u.%u, %s")
-            % uc_fw_ver.major
-            % uc_fw_ver.minor
-            % uc_fw_ver.git_hash);
-          build_date = uc_fw_ver.date;
-        }
-        pt_dev.put("uc_firmware.version", version);
-        pt_dev.put("uc_firmware.build_date", build_date);
-      }
-      catch (...) {
-        // The UC firmware wasn't added
-      }
-
-      try {
         const auto aie_tiles = xrt_core::device_query<xq::aie_tiles_stats>(device);
         std::string topology = boost::str(boost::format("%ux%u") % aie_tiles.rows % aie_tiles.cols);
         pt_dev.put("aie_topology", topology);
@@ -863,14 +844,6 @@ fill_xrt_versions(const boost::property_tree::ptree& pt_xrt,
       auto cert_fw_ver = dev.get<std::string>("cert_firmware_version", "N/A");
       if (cert_fw_ver != "N/A")
         output << boost::format("  %-20s: %s\n") % "CERT Firmware Version" % cert_fw_ver;
-
-      auto uc_fw_version = dev.get<std::string>("uc_firmware.version", "N/A");
-      auto uc_fw_build_date    = dev.get<std::string>("uc_firmware.build_date", "N/A");
-
-      if (uc_fw_version != "N/A")
-        output << boost::format("  %-20s : %s\n") % "UC Firmware Version" % uc_fw_version;
-      if (uc_fw_build_date != "N/A")
-        output << boost::format("  %-20s : %s\n") % "UC Build Date" % uc_fw_build_date;
     }
     else
       output << boost::format("  %-20s : %s\n") % "Firmware Version" % fw_ver;
