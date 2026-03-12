@@ -319,17 +319,18 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
   size_t event_data_size = m_config.get_event_size();
   size_t total_entry_size = entry_header_size + event_data_size + entry_footer_size;
   
-  // Parse each entry dynamically based on config sizes
+  std::optional<uint16_t> prev_seq;
   size_t offset = 0;
+  uint16_t sequence = 0;
   while (offset + total_entry_size <= buf_size) {
-    // Skip entry header
     const uint8_t* event_ptr = data_ptr + offset + entry_header_size;
-    // Parse event from buffer using runtime config
     auto event_data = m_config.parse_buffer(event_ptr);
-    
+
+    ss << format_sequence_gap(prev_seq, sequence);
+    prev_seq = sequence;
+    ++sequence;
+
     ss << format_event(event_data);
-    
-    // Move to next entry (skip header + event + footer)
     offset += total_entry_size;
   }
   return ss.str();
@@ -347,18 +348,6 @@ format_event(const event_data_t& event_data) const
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
 
   return format_event_row(event_data.timestamp, event_name, category_display, args_str);
-}
-
-std::string
-parser_strix::
-format_summary(size_t event_count, size_t buf_size) const
-{
-  std::stringstream ss{};
-  ss << "Event Trace Summary\n";
-  ss << "===================\n";
-  ss << "Total Events: " << event_count << "\n";
-  ss << "Buffer Size: " << buf_size << " bytes\n\n";
-  return ss.str();
 }
 
 } // namespace xrt_core::tools::xrt_smi

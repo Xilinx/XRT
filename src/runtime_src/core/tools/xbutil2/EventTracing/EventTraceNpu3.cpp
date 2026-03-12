@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
+#include "core/common/json/nlohmann/json.hpp"
 #include "EventTraceNpu3.h"
 #include "tools/common/XBUtilities.h"
 
@@ -82,10 +83,6 @@ parse_events()
 {
   std::map<uint16_t, event_info_npu3> event_map;
   auto config = get_config();
-  if (!config.contains("events")) {
-    return event_map;
-  }
-  
   for (const auto& it : config["events"].items()) {
     const nlohmann::json& event_data = it.value();
     event_info_npu3 event = create_event_info(event_data);
@@ -107,7 +104,6 @@ create_event_info(const nlohmann::json& event_data)
 
   parse_event_categories(event_data, event);
   parse_event_arguments(event_data, event);
-  
   return event;
 }
 
@@ -147,48 +143,6 @@ parse_event_arguments(const nlohmann::json& event_data,
     }
     event.args = arg_it->second;
   }
-}
-
-config_npu3::event_data_t
-config_npu3::
-parse_buffer(const uint8_t* buffer_ptr) const
-{
-  const uint8_t* current_ptr = buffer_ptr;
-  
-  // Parse RBE Header (8 bytes)
-  uint8_t rbe_header_magic = *current_ptr++;
-  if (rbe_header_magic != npu3_rbe_header_magic) {
-    throw std::runtime_error("Invalid RBE header magic: expected 0xCA, got 0x" + 
-                           std::to_string(rbe_header_magic));
-  }
-  
-  uint16_t payload_words = 0;
-  std::memcpy(&payload_words, current_ptr, sizeof(uint16_t));
-  current_ptr += sizeof(uint16_t);
-  
-  uint16_t sequence_number = 0;
-  std::memcpy(&sequence_number, current_ptr, sizeof(uint16_t));
-  current_ptr += sizeof(uint16_t);
-  
-  // Skip reserved bytes (3 bytes)
-  current_ptr += 3;
-  
-  // Parse Event Trace Header (12 bytes)
-  uint64_t timestamp = 0;
-  std::memcpy(&timestamp, current_ptr, sizeof(uint64_t));
-  current_ptr += sizeof(uint64_t);
-  
-  uint32_t event_id = 0;
-  std::memcpy(&event_id, current_ptr, sizeof(uint32_t));
-  current_ptr += sizeof(uint32_t);
-  
-  // Event payload pointer (starts after event header)
-  const uint8_t* payload_ptr = current_ptr;
-  
-  // Note: RBE footer validation could be added here if needed
-  // Footer is at: buffer_ptr + 8 (RBE header) + (payload_words * 8)
-  
-  return {timestamp, event_id, payload_ptr, payload_words, sequence_number};
 }
 
 config_npu3::decoded_event_t
@@ -300,10 +254,13 @@ extract_arg_value(const uint8_t* payload_ptr,
       }
       return format_value(value, arg.format) + " [lookup:" + arg.lookup + "]";
     }
-    
-    return format_value(value, arg.format);
+    // Default uint64 to hex when format not specified
+    std::string fmt = arg.format;
+    if (fmt.empty() && arg.type == "uint64")
+      fmt = "016x";
+    return format_value(value, fmt);
   }
-  
+
   return ss.str();
 }
 
@@ -355,75 +312,68 @@ parser_npu3(config_npu3 config)
   : m_config(std::move(config))
 {}
 
+parser_npu3::event_data_t
+parser_npu3::
+parse_payload(const uint8_t* buffer_ptr) const
+{
+  const uint8_t* current_ptr = buffer_ptr + 1;
+
+  uint16_t payload_words = 0;
+  std::memcpy(&payload_words, current_ptr, sizeof(payload_words));
+  payload_words = static_cast<uint16_t>((payload_words >> 8) | (payload_words << 8));
+  current_ptr += sizeof(payload_words);
+
+  const uint16_t sequence_number = static_cast<uint16_t>(*current_ptr);
+  current_ptr += 2;  // seq byte + reserved byte
+
+  current_ptr += 3;  // reserved
+
+  event_data_t out;
+  std::memcpy(&out.timestamp, current_ptr, sizeof(out.timestamp));
+  current_ptr += sizeof(out.timestamp);
+  std::memcpy(&out.event_id, current_ptr, sizeof(out.event_id));
+  current_ptr += sizeof(out.event_id);
+  out.payload_ptr = current_ptr;
+  out.payload_words = payload_words;
+  out.sequence_number = sequence_number;
+  return out;
+}
+
 std::string
 parser_npu3::
 parse(const uint8_t* data_ptr, size_t buf_size) const
 {
-  std::stringstream ss;
-  
-  constexpr size_t SCAN_STEP = 4; // Minimum alignment for scanning
-  const size_t min_entry_size = npu3_rbe_header_bytes + npu3_event_header_bytes + npu3_rbe_footer_bytes;
-  
-  size_t offset = 0;
-  
-  // Scan for valid events with magic byte validation
-  while (offset + min_entry_size <= buf_size) {
-    // Check for RBE header magic byte
+  std::stringstream ss{};
+
+  std::optional<uint16_t> prev_seq;
+  for (size_t offset = 0; offset < buf_size; ) {
     if (data_ptr[offset] != npu3_rbe_header_magic) {
-      offset += SCAN_STEP;
+      offset++;
       continue;
     }
-    
-    const uint8_t* current_ptr = data_ptr + offset;
-    
-    try {
-      // Parse NPU3 event
-      auto event_data = m_config.parse_buffer(current_ptr);
-      
-      // Calculate full entry size: RBE header + payload_words*8 + RBE footer
-      size_t entry_size = npu3_rbe_header_bytes 
-                          + (static_cast<size_t>(event_data.payload_words) * 8)  // NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-                          + npu3_rbe_footer_bytes;
-      
-      // Validate we have enough data for this entry
-      if (offset + entry_size > buf_size) {
-        break;
-      }
-      
-      // Validate RBE footer magic byte
-      size_t footer_magic_offset = offset + entry_size - 1;
-      if (data_ptr[footer_magic_offset] != npu3_rbe_footer_magic) {
-        // Invalid footer, skip this position and continue scanning
-        offset += SCAN_STEP;
-        continue;
-      }
-      
-      // Valid entry found - decode and format it
-      auto decoded_event = m_config.decode_event(event_data);
-      ss << format_event(decoded_event);
-      
-      // Advance past this valid entry
-      offset += entry_size;
-      
-    } catch (const std::exception& /*e*/) {
-      // Error parsing this entry, skip it and continue scanning
-      offset += SCAN_STEP;
-    }
+    auto event_data = parse_payload(data_ptr + offset);
+    const size_t entry_size = npu3_rbe_header_bytes 
+                              + (static_cast<size_t>(event_data.payload_words) * 8) //NOLINT
+                              + npu3_rbe_footer_bytes; 
+    ss << format_sequence_gap(prev_seq, event_data.sequence_number);
+    prev_seq = event_data.sequence_number;
+    ss << format_event(event_data);
+    offset += entry_size;
   }
-  
   return ss.str();
 }
 
 std::string
 parser_npu3::
-format_event(const decoded_event_t& decoded_event) const
+format_event(const event_data_t& event_data) const
 {
+  auto decoded_event = m_config.decode_event(event_data);
   std::string categories_str = format_categories(decoded_event.categories);
   std::string args_str = format_arguments(decoded_event.args);
   std::string event_name = decoded_event.name.empty() ? "UNKNOWN" : decoded_event.name;
   std::string category_display = categories_str.empty() ? "UNKNOWN" : categories_str;
 
-  return format_event_row(decoded_event.timestamp, event_name, category_display, args_str);
+  return format_event_row(event_data.timestamp, event_name, category_display, args_str);
 }
 
 } // namespace xrt_core::tools::xrt_smi

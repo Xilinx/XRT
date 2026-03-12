@@ -163,6 +163,20 @@ format_event_row(uint64_t timestamp,
 
 std::string
 event_trace_parser::
+format_sequence_gap(std::optional<uint16_t> prev_seq, uint16_t curr_seq) const
+{
+  if (!prev_seq)
+    return "";
+  const uint16_t prev = *prev_seq;
+  const uint16_t delta = static_cast<uint16_t>(curr_seq - prev);
+  if (delta <= 1)
+    return "";
+  return "  --- sequence gap: " + std::to_string(prev) + " -> " + std::to_string(curr_seq)
+       + " (delta " + std::to_string(static_cast<unsigned>(delta)) + ", events may be missing) ---\n";
+}
+
+std::string
+event_trace_parser::
 format_categories(const std::vector<std::string>& categories) const
 {
   if (categories.empty()) {
@@ -171,8 +185,10 @@ format_categories(const std::vector<std::string>& categories) const
   
   std::stringstream ss;
   for (size_t i = 0; i < categories.size(); ++i) {
-    if (i > 0) ss << " | ";
-    ss << categories[i];
+    if (i > 0) ss << " and ";
+    auto category = categories[i];
+    boost::algorithm::erase_first(category, "EVENT_TRACE_CATEGORY_");
+    ss << category;
   }
   return ss.str();
 }

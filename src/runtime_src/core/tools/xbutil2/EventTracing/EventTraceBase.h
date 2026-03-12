@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -291,6 +292,12 @@ protected:
                    const std::string& event_name,
                    const std::string& category_display,
                    const std::string& args_str) const;
+
+  /**
+   * @brief If sequence gap (delta > 1), return a warning line; otherwise empty string.
+   */
+  std::string
+  format_sequence_gap(std::optional<uint16_t> prev_seq, uint16_t curr_seq) const;
 
   /**
    * @brief Format event categories for table display (inline format)

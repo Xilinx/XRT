@@ -69,14 +69,6 @@ public:
   explicit config_npu3(nlohmann::json json_config);
 
   /**
-   * @brief Parse NPU3 event from buffer
-   * @param buffer_ptr Pointer to event data
-   * @return Event data structure
-   */
-  event_data_t
-  parse_buffer(const uint8_t* buffer_ptr) const;
-
-  /**
    * @brief Decode event into human-readable form
    * @param event_data Event data
    * @return Decoded event
@@ -173,8 +165,9 @@ public:
         size_t buf_size) const override;
 
 private:
-  // Format decoded event as table row
-  std::string format_event(const decoded_event_t& decoded_event) const;
+  event_data_t parse_payload(const uint8_t* buffer_ptr) const;
+
+  std::string format_event(const event_data_t& event_data) const;
 
   config_npu3 m_config;
 };
