@@ -169,6 +169,10 @@ public:
   get_xrt_device() const
   { return m_hal->get_xrt_device(); }
 
+  xrt::hw_context
+  get_xrt_hwctx(const uuid& uuid) const
+  { return m_hal->get_xrt_hwctx(uuid); }
+
   void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
   { m_hal->acquire_cu_context(uuid,cuidx,shared); }

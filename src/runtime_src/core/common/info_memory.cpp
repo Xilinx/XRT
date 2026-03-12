@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
-
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "info_memory.h"
+
 #include "ps_kernel.h"
 #include "query_requests.h"
 #include "utils.h"
 #include "xrt/detail/xclbin.h"
 
+#include <boost/property_tree/ptree.hpp>
 #include <boost/algorithm/string.hpp>
 
 // Too much typing
@@ -498,8 +499,8 @@ populate_cus(const xrt_core::device* device, const std::vector<xq::kds_cu_info::
   std::vector<ps_kernel_data> ps_kernels;
   try {
     ps_kernels = get_ps_kernels(device);
-  } catch(const xrt_core::error& ex) {
-    std::cout << ex.what() <<std::endl;
+  }
+  catch(const xrt_core::error&) {
     return pt;
   }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -225,14 +225,6 @@ void  main_(int argc, char** argv,
     std::istringstream command_config_stream(config);
     boost::property_tree::read_json(command_config_stream, configTreeMain);
     subCommand->setOptionConfig(configTreeMain);
-
-    if (XBU::getAdvance()) {
-      std::cout << "-------------------------------------------------------------------------\n";
-      std::cout << "                    DISCLAIMER  (xrt-smi --advanced)                     \n";
-      std::cout << "You are running a developer command that may change system configuration.\n";
-      std::cout << "                Continue only if you understand the risks.               \n";
-      std::cout << "-------------------------------------------------------------------------\n";
-    }
   }
 
   // -- Execute the sub-command
