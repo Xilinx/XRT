@@ -121,7 +121,7 @@ copy_if_name_match(InputItr first, InputItr last, OutputItr dst, const std::stri
     std::regex r("^(.*):\\{(.*)\\}$");
     std::smatch m;
     if (!regex_search(str,m,r))
-      return "^(" + str + "):((.*))$|^(.*):(" + str + ")$";
+      return "^(" + str + "):((.*))$";            // "(kernel):((.*))"
 
     std::string kernel = m[1];
     std::string insts = m[2];                     // "cu1,cu2,cu3"
