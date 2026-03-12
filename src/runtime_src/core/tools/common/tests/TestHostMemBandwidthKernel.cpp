@@ -11,8 +11,10 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 #include <filesystem>
 #include <math.h>
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 
 #ifdef _WIN32
@@ -97,13 +99,15 @@ TestHostMemBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev
   }
 
   std::string krnl_name = "bandwidth";
-  xrt::uuid xclbin_uuid;
+  xrt::xclbin xclbin;
   if (retVal == EOPNOTSUPP) {
     krnl_name = "slavebridge";
-    xclbin_uuid = device.load_xclbin(old_binary_file.string());
+    xclbin = xrt::xclbin(old_binary_file.string());
   } else {
-    xclbin_uuid = device.load_xclbin(b_file);
+    xclbin = xrt::xclbin(b_file);
   }
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
   std::vector<xrt::kernel> krnls(num_kernel);
 
   for (int i = 0; i < num_kernel; i++) {
@@ -119,7 +123,7 @@ TestHostMemBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev
     // compute unit.
     // For such case, this kernel object can only access the specific
     // Compute unit
-    krnls[i] = xrt::kernel(device, xclbin_uuid, krnl_name_full.c_str());
+    krnls[i] = xrt::kernel(hw_ctx, krnl_name_full.c_str());
   }
 
   double max_throughput = 0;

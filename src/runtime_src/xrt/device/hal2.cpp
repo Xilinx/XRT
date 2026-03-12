@@ -274,7 +274,9 @@ hal::operations_result<int>
 device::
 loadXclBin(const xclBin* xclbin)
 {
-  m_handle.load_xclbin(xclbin);
+  auto xclbin_obj = xrt::xclbin(reinterpret_cast<const axlf*>(xclbin));
+  auto uuid = m_handle.register_xclbin(xclbin_obj);
+  m_hw_contexts[uuid] = xrt::hw_context(m_handle, uuid);
 
   // refresh device info on successful load
   std::lock_guard<std::mutex> lk(m_mutex);

@@ -161,7 +161,7 @@ kernel(program* prog, const std::string& name, xrt::xclbin::kernel xk)
 
   // Construct kernel run object for each device
   for (auto device: prog->get_device_range()) {
-    xrt::kernel xkernel(device->get_xrt_device(), prog->get_xclbin_uuid(device), name);
+    xrt::kernel xkernel(device->get_xrt_hwctx(prog->get_xclbin_uuid(device)), name);
 
     // The run object must limit the CUs to those of the OpenCL device,
     // which could be a sub-device.  Since kernel is not tied to a particular

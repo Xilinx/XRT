@@ -7,8 +7,10 @@
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 namespace XBU = XBUtilities;
 
@@ -54,7 +56,9 @@ TestAiePs::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
       ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
-    device.load_xclbin(path);
+    auto dep_xclbin = xrt::xclbin(path);
+    auto dep_uuid = device.register_xclbin(dep_xclbin);
+    xrt::hw_context dep_hw_ctx(device, dep_uuid);
   }
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
@@ -70,9 +74,11 @@ TestAiePs::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
   const int input_size_allocated = ((input_size_in_bytes / 4096) + ((input_size_in_bytes % 4096) > 0)) * 4096;
   const int output_size_allocated = ((output_size_in_bytes / 4096) + ((output_size_in_bytes % 4096) > 0)) * 4096;
 
-  auto uuid = device.load_xclbin(b_file);
-  auto aie_kernel = xrt::kernel(device,uuid, "aie_kernel");
-  auto out_bo= xrt::bo(device, output_size_allocated, aie_kernel.group_id(2));
+  auto xclbin = xrt::xclbin(b_file);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
+  auto aie_kernel = xrt::kernel(hw_ctx, "aie_kernel");
+  auto out_bo= xrt::bo(hw_ctx, output_size_allocated, aie_kernel.group_id(2));
   auto out_bomapped = out_bo.map<float*>();
   memset(out_bomapped, 0, output_size_in_bytes);
 

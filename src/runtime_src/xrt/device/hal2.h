@@ -8,6 +8,8 @@
 
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_hw_context.h"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/detail/ert.h"
 
 #include "core/common/device.h"
@@ -67,6 +69,12 @@ class device : public xrt_xocl::hal::device
 
   xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
+
+  // In hwctx flow, we create hw contexts from xclbins on demand
+  // instead of explicitly loading the xclbins.  The hwctx are cached
+  // here and accessors are provided so that xclbin references can be
+  // converted into the hwctx that has loaded the xclbin.
+  std::map<xrt::uuid, xrt::hw_context> m_hw_contexts;
 
   mutable std::mutex m_mutex;
 
@@ -188,6 +196,12 @@ public:
   get_xrt_device() const override
   {
     return m_handle;
+  }
+
+  xrt::hw_context
+  get_xrt_hwctx(const uuid& uuid) const override
+  {
+    return m_hw_contexts.at(uuid);
   }
 
   std::shared_ptr<xrt_core::device>

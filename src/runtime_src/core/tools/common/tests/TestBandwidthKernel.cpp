@@ -11,8 +11,10 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 #include <filesystem>
 #include <math.h>
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 
 #ifdef _WIN32
@@ -78,7 +80,7 @@ marshal_build_metadata(std::string test_path, unsigned int* num_kernel, unsigned
 }
 
 static std::vector<xrt::kernel>
-create_kernel_objects(xrt::device device, xrt::uuid xclbin_uuid, int num_kernel)
+create_kernel_objects(xrt::hw_context hw_ctx, int num_kernel)
 {
   std::string krnl_name = "bandwidth";
   std::vector<xrt::kernel> krnls(num_kernel);
@@ -90,7 +92,7 @@ create_kernel_objects(xrt::device device, xrt::uuid xclbin_uuid, int num_kernel)
     // compute unit.
     // For such case, this kernel object can only access the specific
     // Compute unit
-    krnls[i] = xrt::kernel(device, xclbin_uuid, krnl_name_full.c_str());
+    krnls[i] = xrt::kernel(hw_ctx, krnl_name_full.c_str());
   }
   return krnls;
 }
@@ -145,7 +147,7 @@ calculate_throughput(std::chrono::time_point<std::chrono::high_resolution_clock>
 }
 
 static std::pair<double, std::vector<double>>
-test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_kernel_ddr)
+test_bandwidth_ddr(xrt::hw_context hw_ctx, std::vector<xrt::kernel> krnls, int num_kernel_ddr)
 {
   double max_throughput = 0;
   double mbpersec = 0;
@@ -166,8 +168,8 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
 
     // Creating Buffers
     for (int i = 0; i < num_kernel_ddr; i++) {
-      input_buffer[i] = xrt::bo(device, vector_size_bytes, krnls[i].group_id(0));
-      output_buffer[i] = xrt::bo(device, vector_size_bytes, krnls[i].group_id(1));
+      input_buffer[i] = xrt::bo(hw_ctx, vector_size_bytes, krnls[i].group_id(0));
+      output_buffer[i] = xrt::bo(hw_ctx, vector_size_bytes, krnls[i].group_id(1));
     }
 
     for (int i = 0; i < num_kernel_ddr; i++) {
@@ -214,7 +216,7 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
 }
 
 static double
-test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_kernel)
+test_bandwidth_hbm(xrt::hw_context hw_ctx, std::vector<xrt::kernel> krnls, int num_kernel)
 {
   double max_throughput = 0;
   double mbpersec = 0;
@@ -232,8 +234,8 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
     xrt::bo input_buffer, output_buffer;
 
     // Creating Buffers
-    input_buffer = xrt::bo(device, vector_size_bytes, krnls[num_kernel - 1].group_id(0));
-    output_buffer = xrt::bo(device, vector_size_bytes, krnls[num_kernel - 1].group_id(1));
+    input_buffer = xrt::bo(hw_ctx, vector_size_bytes, krnls[num_kernel - 1].group_id(0));
+    output_buffer = xrt::bo(hw_ctx, vector_size_bytes, krnls[num_kernel - 1].group_id(1));
 
     input_buffer.write(input_host.data());
     input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -299,13 +301,15 @@ TestBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev, boost
     ptree.put("status", XBValidateUtils::test_token_skipped);
     return;
   }
-  auto xclbin_uuid = device.load_xclbin(b_file);
+  auto xclbin = xrt::xclbin(b_file);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
 
-  std::vector<xrt::kernel> krnls = create_kernel_objects(device, xclbin_uuid, num_kernel);
+  std::vector<xrt::kernel> krnls = create_kernel_objects(hw_ctx, num_kernel);
 
   try {
     if (num_kernel_ddr) {
-      auto  throughputs = test_bandwidth_ddr(device, krnls, num_kernel_ddr);
+      auto  throughputs = test_bandwidth_ddr(hw_ctx, krnls, num_kernel_ddr);
       double max_throughput = throughputs.first;
       std::vector <double> throughput_per_kernel = throughputs.second;
       XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
@@ -315,7 +319,7 @@ TestBandwidthKernel::runTest(const std::shared_ptr<xrt_core::device>& dev, boost
       }
     }
     if (chk_hbm_mem) {
-      double max_throughput = test_bandwidth_hbm(device, krnls, num_kernel);
+      double max_throughput = test_bandwidth_hbm(hw_ctx, krnls, num_kernel);
       XBValidateUtils::logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %.1f MB/s") % max_throughput));
     }
   } catch (const std::runtime_error& e) {

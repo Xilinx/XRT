@@ -181,6 +181,9 @@ public:
   virtual xrt::device
   get_xrt_device() const = 0;
 
+  virtual xrt::hw_context
+  get_xrt_hwctx(const uuid&) const = 0;
+
   virtual std::shared_ptr<xrt_core::device>
   get_core_device() const = 0;
 
