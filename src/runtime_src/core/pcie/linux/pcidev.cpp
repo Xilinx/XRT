@@ -697,7 +697,13 @@ int
 get_runtime_active_kids(std::string &pci_bridge_path)
 {
   int curr_act_dev = 0;
-  std::vector<sfs::path> vec{sfs::directory_iterator(pci_bridge_path), sfs::directory_iterator()};
+  std::vector<sfs::path> vec;
+  try {
+    vec.assign(sfs::directory_iterator(pci_bridge_path), sfs::directory_iterator());
+  }
+  catch (const sfs::filesystem_error&) {
+    return 0;
+  }
 
   // Check number of Xilinx devices under this bridge.
   for (auto& path : vec) {

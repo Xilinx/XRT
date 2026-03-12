@@ -19,7 +19,15 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
     return;
 
   // Gather all sysfs directory and sort
-  std::vector<sfs::path> vec{ sfs::directory_iterator(drvpath), sfs::directory_iterator() };
+  // Use try/catch to handle permission errors (e.g. in a confined snap
+  // without the hardware-observe interface connected).
+  std::vector<sfs::path> vec;
+  try {
+    vec.assign(sfs::directory_iterator(drvpath), sfs::directory_iterator());
+  }
+  catch (const sfs::filesystem_error&) {
+    return;
+  }
   std::sort(vec.begin(), vec.end());
 
   for (auto& path : vec) {
