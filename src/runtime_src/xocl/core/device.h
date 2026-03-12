@@ -121,6 +121,12 @@ public:
     return m_xdevice->get_xrt_device();
   }
 
+  xrt::hw_context
+  get_xrt_hwctx(const xrt_core::uuid& uuid) const
+  {
+    return m_xdevice->get_xrt_hwctx(uuid);
+  }
+
   platform*
   get_platform() const
   {
