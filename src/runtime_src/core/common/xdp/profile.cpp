@@ -190,15 +190,11 @@ std::function<void (void*)> end_status_cb;
 void
 register_callbacks(void* handle)
 {
-  #if defined(XDP_VE2_BUILD)
-    using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
-    
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
-    end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
-  #else
-    (void)handle;
-  #endif
+  using ftype = void (*)(void*);
+  using utype = void (*)(void*, bool);
+  
+  update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
+  end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
 }
 
 
