@@ -326,7 +326,8 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     const uint8_t* event_ptr = data_ptr + offset + entry_header_size;
     auto event_data = m_config.parse_buffer(event_ptr);
 
-    ss << format_sequence_gap(prev_seq, sequence);
+    if (prev_seq)
+      ss << format_sequence_gap(*prev_seq, sequence);
     prev_seq = sequence;
     ++sequence;
 

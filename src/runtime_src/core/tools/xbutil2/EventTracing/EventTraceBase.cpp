@@ -163,16 +163,14 @@ format_event_row(uint64_t timestamp,
 
 std::string
 event_trace_parser::
-format_sequence_gap(std::optional<uint16_t> prev_seq, uint16_t curr_seq) const
+format_sequence_gap(uint16_t prev_seq, uint16_t curr_seq) const
 {
-  if (!prev_seq)
-    return "";
-  const uint16_t prev = *prev_seq;
-  const uint16_t delta = static_cast<uint16_t>(curr_seq - prev);
-  if (delta <= 1)
-    return "";
-  return "  --- sequence gap: " + std::to_string(prev) + " -> " + std::to_string(curr_seq)
-       + " (delta " + std::to_string(static_cast<unsigned>(delta)) + ", events may be missing) ---\n";
+  if (curr_seq >= prev_seq + 2) {
+    const uint16_t delta = static_cast<uint16_t>(curr_seq - prev_seq);
+    return "  --- sequence gap: " + std::to_string(prev_seq) + " -> " + std::to_string(curr_seq)
+         + " (delta " + std::to_string(static_cast<unsigned>(delta)) + ", events may be missing) ---\n";
+  }
+  return "";
 }
 
 std::string

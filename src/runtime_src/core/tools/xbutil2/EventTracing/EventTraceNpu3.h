@@ -57,8 +57,8 @@ public:
     uint64_t timestamp;
     uint32_t event_id;         // unique_id from event header
     const uint8_t* payload_ptr;
-    uint16_t payload_words;    // number of 64-bit words (from RBE header)
-    uint16_t sequence_number;  // sequence number (from RBE header)
+    uint8_t payload_words;    // number of 64-bit words (from RBE header, 1 byte)
+    uint16_t sequence_number; // sequence number (from RBE header, 2 bytes)
   };
 
 public:

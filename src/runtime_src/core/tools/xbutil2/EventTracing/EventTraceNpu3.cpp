@@ -316,17 +316,16 @@ parser_npu3::event_data_t
 parser_npu3::
 parse_payload(const uint8_t* buffer_ptr) const
 {
-  const uint8_t* current_ptr = buffer_ptr + 1;
+  const uint8_t* current_ptr = buffer_ptr + 1;  // magic (1 byte)
 
-  uint16_t payload_words = 0;
-  std::memcpy(&payload_words, current_ptr, sizeof(payload_words));
-  payload_words = static_cast<uint16_t>((payload_words >> 8) | (payload_words << 8));
-  current_ptr += sizeof(payload_words);
+  const uint8_t payload_words = *current_ptr;
+  current_ptr++; // payload_words (1 byte)
 
-  const uint16_t sequence_number = static_cast<uint16_t>(*current_ptr);
-  current_ptr += 2;  // seq byte + reserved byte
+  uint16_t sequence_number = 0;
+  std::memcpy(&sequence_number, current_ptr, sizeof(sequence_number));
+  current_ptr += 2;
 
-  current_ptr += 3;  // reserved
+  current_ptr += 4;  // reserved
 
   event_data_t out;
   std::memcpy(&out.timestamp, current_ptr, sizeof(out.timestamp));
@@ -355,7 +354,8 @@ parse(const uint8_t* data_ptr, size_t buf_size) const
     const size_t entry_size = npu3_rbe_header_bytes 
                               + (static_cast<size_t>(event_data.payload_words) * 8) //NOLINT
                               + npu3_rbe_footer_bytes; 
-    ss << format_sequence_gap(prev_seq, event_data.sequence_number);
+    if (prev_seq)
+      ss << format_sequence_gap(*prev_seq, event_data.sequence_number);
     prev_seq = event_data.sequence_number;
     ss << format_event(event_data);
     offset += entry_size;
