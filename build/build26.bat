@@ -103,8 +103,7 @@ if "%EXT_DIR_USER%"=="0" call :resolveDefaultExtDir
 
 if not exist "%EXT_DIR%\" (
   echo ERROR: dependency prefix not found: "%EXT_DIR%"
-  echo        Use -ext ^<path^>, or run:
-  echo          src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat -triplet %TARGET_TRIPLET%
+  echo        Use -ext ^<path^>, or populate the default dependency area.
   exit /B 2
 )
 
@@ -137,13 +136,11 @@ goto :EOF
 
 REM --------------------------------------------------------------------------
 :resolveDefaultExtDir
-set "REPO_EXT_DIR=%BUILDDIR%\ext.vcpkg\vcpkg_installed\%TARGET_TRIPLET%"
 set "CI_VCPKG_EXT_DIR=%CI_EXT_ROOT%\vcpkg_installed\%TARGET_TRIPLET%"
 set "CI_TRIPLET_EXT_DIR=%CI_EXT_ROOT%\%TARGET_TRIPLET%"
-set "EXT_DIR=%REPO_EXT_DIR%"
-set "EXT_CMAKE_PREFIX=%REPO_EXT_DIR%"
-if exist "%REPO_EXT_DIR%\" goto :EOF
-if exist "%CI_VCPKG_EXT_DIR%\" set "EXT_DIR=%CI_VCPKG_EXT_DIR%" & set "EXT_CMAKE_PREFIX=%CI_VCPKG_EXT_DIR%" & goto :EOF
+set "EXT_DIR=%CI_VCPKG_EXT_DIR%"
+set "EXT_CMAKE_PREFIX=%CI_VCPKG_EXT_DIR%"
+if exist "%CI_VCPKG_EXT_DIR%\" goto :EOF
 if exist "%CI_TRIPLET_EXT_DIR%\" set "EXT_DIR=%CI_TRIPLET_EXT_DIR%" & set "EXT_CMAKE_PREFIX=%CI_TRIPLET_EXT_DIR%" & goto :EOF
 if exist "%CI_EXT_ROOT%\" set "EXT_DIR=%CI_EXT_ROOT%" & set "EXT_CMAKE_PREFIX=%CI_EXT_ROOT%"
 goto :EOF
@@ -239,6 +236,7 @@ if not exist "%XRT_EXT_BIN%\" mkdir "%XRT_EXT_BIN%" >NUL 2>NUL
 
 copy /Y "%VCPKG_BIN%\boost_filesystem*.dll"      "%XRT_EXT_BIN%\" || exit /B
 copy /Y "%VCPKG_BIN%\boost_program_options*.dll" "%XRT_EXT_BIN%\" || exit /B
+copy /Y "%VCPKG_BIN%\OpenCL.dll"                 "%XRT_EXT_BIN%\" || exit /B
 if not exist "%VCPKG_BIN%\libprotobuf*.dll" goto skipProtobufCopy
 copy /Y "%VCPKG_BIN%\libprotobuf*.dll"           "%XRT_EXT_BIN%\" || exit /B
 :skipProtobufCopy
@@ -289,24 +287,19 @@ echo [-hip]              - Enable HIP build
 echo [-nocmake]          - Skip re-configure; build/install only
 echo.
 echo Note:
-echo     Default EXT_DIR prefers: build\ext.vcpkg\vcpkg_installed\^<triplet^>
-echo     Then tries: C:\Xilinx\XRT\ext.new\vcpkg_installed\^<triplet^>
-echo     Then tries: C:\Xilinx\XRT\ext.new\^<triplet^>, 
+echo     Default EXT_DIR tries: C:\Xilinx\XRT\ext.new\vcpkg_installed\^<triplet^>
+echo     Then tries: C:\Xilinx\XRT\ext.new\^<triplet^>
 echo     Then tries: C:\Xilinx\XRT\ext.new
-echo
-echo     To install dependencies into build\ext.vcpkg, run:
-echo     src\runtime_src\tools\scripts\xrtdeps-vcpkg.bat [-triplet ^<triplet^>]
-echo     (Default: x64-windows-static.)
 goto :EOF
 
 REM --------------------------------------------------------------------------
 :clean
-if exist "%BUILDDIR%\WDebug" rmdir /S /Q "%BUILDDIR%\WDebug"
-if exist "%BUILDDIR%\WRelease" rmdir /S /Q "%BUILDDIR%\WRelease"
-if exist "%BUILDDIR%\WRelDeb" rmdir /S /Q "%BUILDDIR%\WRelDeb"
-if exist "%BUILDDIR%\WDebugA64" rmdir /S /Q "%BUILDDIR%\WDebugA64"
+if exist "%BUILDDIR%\WDebug"      rmdir /S /Q "%BUILDDIR%\WDebug"
+if exist "%BUILDDIR%\WRelease"    rmdir /S /Q "%BUILDDIR%\WRelease"
+if exist "%BUILDDIR%\WRelDeb"     rmdir /S /Q "%BUILDDIR%\WRelDeb"
+if exist "%BUILDDIR%\WDebugA64"   rmdir /S /Q "%BUILDDIR%\WDebugA64"
 if exist "%BUILDDIR%\WReleaseA64" rmdir /S /Q "%BUILDDIR%\WReleaseA64"
-if exist "%BUILDDIR%\WRelDebA64" rmdir /S /Q "%BUILDDIR%\WRelDebA64"
+if exist "%BUILDDIR%\WRelDebA64"  rmdir /S /Q "%BUILDDIR%\WRelDebA64"
 echo Build directories cleaned.
 
 exit /B 0

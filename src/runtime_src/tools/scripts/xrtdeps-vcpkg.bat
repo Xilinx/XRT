@@ -13,7 +13,7 @@ set "CREATE_PACKAGE=0"
 REM Pin vcpkg registry baseline for determinism.
 REM Dependency versioning can be done here.
 REM Current vcpkg release: 2026.01.16
-SET "VCPKG_BASELINE_SHA=66c0373dc7fca549e5803087b9487edfe3aca0a1"
+set "VCPKG_BASELINE_SHA=66c0373dc7fca549e5803087b9487edfe3aca0a1"
 
 for %%I in ("%SRC_ROOT%") do set "SRC_ROOT=%%~fI"
 
@@ -70,6 +70,12 @@ if "%~1"=="" (
   exit /B 2
 )
 
+if /I "%~1"=="opencl" (
+  echo NOTE: opencl is handled separately and does not need -port opencl
+  shift
+  goto parseArgs
+)
+
 set "EXTRA_PORTS=%EXTRA_PORTS% %~1"
 shift
 goto parseArgs
@@ -91,28 +97,31 @@ REM --------------------------------------------------------------------------
 :argsParsed
 if "%DO_CLEAN%"=="1" goto clean
 
+set "OPENCL_TRIPLET=%VCPKG_TRIPLET:-static=%"
 set "EXT_DIR=%XRT_EXT_ROOT%\vcpkg_installed\%VCPKG_TRIPLET%"
+set "OPENCL_EXT_ROOT=%XRT_EXT_ROOT%\.opencl.dynamic"
+set "OPENCL_EXT_DIR=%OPENCL_EXT_ROOT%\vcpkg_installed\%OPENCL_TRIPLET%"
 set "PKG_OUT_DIR=%SRC_ROOT%\build\pkg"
 set "PKG_BASELINE_ID=unpinned"
 if not "%VCPKG_BASELINE_SHA%"=="" set "PKG_BASELINE_ID=%VCPKG_BASELINE_SHA:~0,7%"
 
-mkdir "%XRT_EXT_ROOT%" >NUL 2>NUL
+call :prepareManifestRoot "%XRT_EXT_ROOT%" || exit /B
+copy /Y "%SRC_ROOT%\src\vcpkg.json" "%XRT_EXT_ROOT%\vcpkg.json" >NUL || exit /B
+python -c "import json, os, pathlib; p=pathlib.Path(os.environ['XRT_EXT_ROOT'])/'vcpkg.json'; d=json.loads(p.read_text(encoding='utf-8')); d['dependencies']=[dep for dep in d.get('dependencies', []) if dep != 'opencl']; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
 
 pushd "%XRT_EXT_ROOT%" || exit /B
-del /F /Q vcpkg.json vcpkg-configuration.json vcpkg-lock.json >NUL 2>NUL
-vcpkg new --application || exit /B
-
-if "%VCPKG_BASELINE_SHA%"=="" goto baselineDone
-
-python -c "import json, pathlib; p=pathlib.Path('vcpkg-configuration.json'); d=json.loads(p.read_text(encoding='utf-8')); dr=d.get('default-registry') or {}; dr['baseline']=r'%VCPKG_BASELINE_SHA%'; d['default-registry']=dr; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
-
-:baselineDone
-
-copy /Y "%SRC_ROOT%\src\vcpkg.json" vcpkg.json >NUL || exit /B
-if not "%EXTRA_PORTS%"=="" ( vcpkg add port %EXTRA_PORTS% || exit /B )
+if not "%EXTRA_PORTS%"=="" vcpkg add port %EXTRA_PORTS% || exit /B
 vcpkg install --triplet %VCPKG_TRIPLET% --clean-after-build || exit /B
-call :writeBaselineMarker || exit /B
 popd
+
+call :prepareManifestRoot "%OPENCL_EXT_ROOT%" || exit /B
+pushd "%OPENCL_EXT_ROOT%" || exit /B
+vcpkg add port opencl || exit /B
+vcpkg install --triplet %OPENCL_TRIPLET% --clean-after-build || exit /B
+popd
+
+call :copyOpenCLIntoPrefix || exit /B
+call :writeBaselineMarker || exit /B
 
 REM Needed for pyxrt.
 python -m pip install pybind11 || exit /B
@@ -147,8 +156,27 @@ echo [-port ^<port^>]       - Extra vcpkg port to install (may be repeated)
 echo [-pkg]               - Create build\pkg\ext.vcpkg.^<baseline^>.^<triplet^>.zip for publishing
 echo.
 echo Note: Uses first vcpkg on PATH.
+echo       OpenCL is always installed separately as a dynamic dependency and copied into the main prefix.
 
 exit /B 2
+
+REM --------------------------------------------------------------------------
+:prepareManifestRoot
+set "MANIFEST_ROOT=%~1"
+mkdir "%MANIFEST_ROOT%" >NUL 2>NUL
+pushd "%MANIFEST_ROOT%" || exit /B
+del /F /Q vcpkg.json vcpkg-configuration.json vcpkg-lock.json >NUL 2>NUL
+vcpkg new --application || exit /B
+if "%VCPKG_BASELINE_SHA%"=="" goto prepareManifestRootDone
+python -c "import json, pathlib; p=pathlib.Path('vcpkg-configuration.json'); d=json.loads(p.read_text(encoding='utf-8')); dr=d.get('default-registry') or {}; dr['baseline']=r'%VCPKG_BASELINE_SHA%'; d['default-registry']=dr; p.write_text(json.dumps(d, indent=2) + chr(10), encoding='utf-8')" || exit /B
+:prepareManifestRootDone
+popd
+exit /B 0
+
+REM --------------------------------------------------------------------------
+:copyOpenCLIntoPrefix
+python -c "import os, pathlib, shutil; src=pathlib.Path(os.environ['OPENCL_EXT_DIR']); dst=pathlib.Path(os.environ['EXT_DIR']); (dst/'bin').mkdir(parents=True, exist_ok=True); (dst/'lib').mkdir(parents=True, exist_ok=True); (dst/'include').mkdir(parents=True, exist_ok=True); shutil.copy2(src/'bin'/'OpenCL.dll', dst/'bin'/'OpenCL.dll'); shutil.copy2(src/'lib'/'OpenCL.lib', dst/'lib'/'OpenCL.lib'); shutil.copytree(src/'include'/'CL', dst/'include'/'CL', dirs_exist_ok=True)" || exit /B
+exit /B 0
 
 REM --------------------------------------------------------------------------
 :writeBaselineMarker
