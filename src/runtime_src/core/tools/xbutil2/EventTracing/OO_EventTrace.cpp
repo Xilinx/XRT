@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -133,6 +133,8 @@ void
 OO_EventTrace::
 execute(const SubCmdOptions& _options) const
 {
+  XBUtilities::printAdvancedDisclaimer();
+
   XBUtilities::verbose("SubCommand option: Event Trace");
   XBUtilities::sudo_or_throw("Event tracing requires admin privileges");
 
