@@ -117,24 +117,26 @@ copy_if_name_match(InputItr first, InputItr last, OutputItr dst, const std::stri
 {
   // "kernel:{cu1,cu2,cu3}" -> "(kernel):((cu1)|(cu2)|(cu3))"
   // "kernel" -> "(kernel):((.*))"
+  // Also match "type:instance" when instance equals name (e.g. ai_engine_0 matches ai_engine:ai_engine_0)
   auto create_regex = [](const auto& str) {
     std::regex r("^(.*):\\{(.*)\\}$");
     std::smatch m;
+    std::string main_regex;
     if (!regex_search(str,m,r))
-      return "^(" + str + "):((.*))$";            // "(kernel):((.*))"
-
-    std::string kernel = m[1];
-    std::string insts = m[2];                     // "cu1,cu2,cu3"
-    std::string regex = "^(" + kernel + "):(";    // "(kernel):("
-    std::vector<std::string> cus;                 // split at ','
-    boost::split(cus,insts,boost::is_any_of(","));
-
-    // compose final regex
-    int count = 0;
-    for (auto& cu : cus)
-      regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
-    regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
-    return regex;
+      main_regex = "^(" + str + "):((.*))$";            // "(kernel):((.*))"
+    else {
+      std::string kernel = m[1];
+      std::string insts = m[2];                     // "cu1,cu2,cu3"
+      main_regex = "^(" + kernel + "):(";    // "(kernel):("
+      std::vector<std::string> cus;                 // split at ','
+      boost::split(cus,insts,boost::is_any_of(","));
+      int count = 0;
+      for (auto& cu : cus)
+        main_regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
+      main_regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
+    }
+    // Match instance part: "type:name" when name equals str (for AIE ai_engine:ai_engine_0)
+    return main_regex + "|^(.*):(" + str + ")$";
   };
 
   std::regex r(create_regex(name));
@@ -430,18 +432,13 @@ class xclbin_impl
           it->second = std::max(it->second, mem_idx);
       };
 
-      using memory_type = xclbin::mem::memory_type;
       for (const auto& kernel : kernels) {
         for (const auto& arg : kernel.get_args()) {
           auto arg_name = arg.get_name();
           if (arg_name.empty())
             continue;
-          for (const auto& mem : arg.get_mems()) {
-            if (mem.get_type() == memory_type::streaming ||
-                mem.get_type() == memory_type::streaming_connection)
-              continue;
+          for (const auto& mem : arg.get_mems())
             update(gmio_name_to_mem_index, arg_name, mem.get_index());
-          }
         }
       }
       return gmio_name_to_mem_index;
