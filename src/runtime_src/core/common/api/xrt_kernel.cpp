@@ -1771,6 +1771,10 @@ public:
         xrt_core::hw_context_int::set_exclusive(hwctx);
     }
 
+    // AIE-only xclbins use xrt::graph API, not xrt::kernel
+    if (auto axlf = xclbin.get_axlf(); axlf && xrt_core::xclbin::is_aie_only(axlf))
+      throw xrt_core::error(ENOTSUP, "xrt::kernel cannot be opened for AIE-only xclbins.");
+
     // Compare the matching CUs against the CU sort order to create cumask
     const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching nm
     if (kernel_cus.empty())

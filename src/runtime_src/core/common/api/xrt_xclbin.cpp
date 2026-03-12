@@ -415,90 +415,34 @@ class xclbin_impl
       return mems;
     }
 
-    // Build gmio port name -> mem_data_index from EMBEDDED_METADATA + CONNECTIVITY.
+    // Build gmio arg_name -> mem_data_index from m_kernels connectivity.
+    // IP_LAYOUT is present in all xclbins, so kernel args have mems from CONNECTIVITY.
     static std::map<std::string, int32_t>
-    init_gmio_connectivity(const xclbin_impl* ximpl)
+    init_gmio_connectivity(const xclbin_impl*,
+                           const std::vector<xclbin::kernel>& kernels)
     {
       std::map<std::string, int32_t> gmio_name_to_mem_index;
-      try {
-        auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
-        if (!xml.first || xml.second == 0)
-          return gmio_name_to_mem_index;
+      auto update = [](std::map<std::string, int32_t>& m, const std::string& arg_name, int32_t mem_idx) {
+        auto it = m.find(arg_name);
+        if (it == m.end())
+          m[arg_name] = mem_idx;
+        else
+          it->second = std::max(it->second, mem_idx);
+      };
 
-        auto conn = ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
-        if (!conn || conn->m_count <= 0)
-          return gmio_name_to_mem_index;
-
-        // 1. Build (kernel_name, arg_id) -> arg_name from EMBEDDED_METADATA (all indexed args)
-        using arg_map = std::map<size_t, std::string>;
-        std::map<std::string, arg_map> kernel_arg_id_to_name;
-        for (auto& kobj : xrt_core::xclbin::get_kernels(xml.first, xml.second)) {
-          arg_map arg_id_to_name;
-          for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml.first, xml.second, kobj.name)) {
-            if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+      using memory_type = xclbin::mem::memory_type;
+      for (const auto& kernel : kernels) {
+        for (const auto& arg : kernel.get_args()) {
+          auto arg_name = arg.get_name();
+          if (arg_name.empty())
+            continue;
+          for (const auto& mem : arg.get_mems()) {
+            if (mem.get_type() == memory_type::streaming ||
+                mem.get_type() == memory_type::streaming_connection)
               continue;
-            arg_id_to_name[arg.index] = arg.name;
-          }
-          if (!arg_id_to_name.empty())
-            kernel_arg_id_to_name[kobj.name] = std::move(arg_id_to_name);
-        }
-
-        if (kernel_arg_id_to_name.empty())
-          return gmio_name_to_mem_index;
-
-        auto update = [](std::map<std::string, int32_t>& m, const std::string& arg_name, int32_t mem_idx) {
-          auto it = m.find(arg_name);
-          if (it == m.end())
-            m[arg_name] = mem_idx;
-          else
-            it->second = std::max(it->second, mem_idx);
-        };
-
-        // AIE-only (no IP_LAYOUT): virtual mapping 0 -> sole kernel
-        // Complex (has IP_LAYOUT): from IP_LAYOUT m_name "kernel:instance" (use instance part)
-        std::map<int32_t, std::string> ip_idx_to_kernel;
-        auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
-        if (!ip_layout) {
-          if (kernel_arg_id_to_name.size() != 1)
-            return gmio_name_to_mem_index;
-          ip_idx_to_kernel[0] = kernel_arg_id_to_name.begin()->first;
-        } else {
-          for (int32_t idx = 0; idx < ip_layout->m_count; ++idx) {
-            const auto& ip = ip_layout->m_ip_data[idx];
-            if (ip.m_type != IP_KERNEL && ip.m_type != IP_PS_KERNEL)
-              continue;
-            std::string m_name(reinterpret_cast<const char*>(ip.m_name),
-                              strnlen(reinterpret_cast<const char*>(ip.m_name), sizeof(ip.m_name)));
-            std::string kernel_name;
-            auto colon = m_name.find(':');
-            if (colon != std::string::npos)
-              kernel_name = m_name.substr(colon + 1);  // instance (e.g. ai_engine_0)
-            else
-              kernel_name = m_name;
-            if (kernel_arg_id_to_name.count(kernel_name))
-              ip_idx_to_kernel[idx] = kernel_name;
+            update(gmio_name_to_mem_index, arg_name, mem.get_index());
           }
         }
-
-        if (ip_idx_to_kernel.empty())
-          return gmio_name_to_mem_index;
-
-        for (int32_t i = 0; i < conn->m_count; ++i) {
-          const auto& cxn = conn->m_connection[i];
-          auto it = ip_idx_to_kernel.find(cxn.m_ip_layout_index);
-          if (it == ip_idx_to_kernel.end())
-            continue;
-          const std::string& kernel_name = it->second;
-          auto kit = kernel_arg_id_to_name.find(kernel_name);
-          if (kit == kernel_arg_id_to_name.end())
-            continue;
-          auto ait = kit->second.find(static_cast<size_t>(cxn.arg_index));
-          if (ait == kit->second.end())
-            continue;
-          update(gmio_name_to_mem_index, ait->second, cxn.mem_data_index);
-        }
-      } catch (...) {
-        // Parse or structure mismatch - leave map empty
       }
       return gmio_name_to_mem_index;
     }
@@ -669,7 +613,7 @@ class xclbin_impl
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
       , m_aie_partitions(init_aie_partitions(m_ximpl))
-      , m_gmio_name_to_mem_index(init_gmio_connectivity(m_ximpl))
+      , m_gmio_name_to_mem_index(init_gmio_connectivity(m_ximpl, m_kernels))
       , m_membank_encoding(init_mem_encoding(m_mems))
     {}
   };
@@ -848,7 +792,7 @@ public:
     if (it == info->m_gmio_name_to_mem_index.end()) {
       std::string msg = "No connectivity for GMIO port '" + gmio_name + "'";
       if (info->m_gmio_name_to_mem_index.empty())
-        msg += " (xclbin has no GMIO connectivity from EMBEDDED_METADATA + CONNECTIVITY)";
+        msg += " (xclbin has no GMIO connectivity)";
       else {
         msg += ". Available GMIO arg_name(s):";
         for (const auto& kv : info->m_gmio_name_to_mem_index)
