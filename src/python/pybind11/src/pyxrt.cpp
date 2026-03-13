@@ -497,7 +497,3 @@ PYBIND11_MODULE(pyxrt, m) {
         }), "Wait for the specified timeout for the runlist to complete");
         
 }
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-
