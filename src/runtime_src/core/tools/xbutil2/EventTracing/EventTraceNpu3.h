@@ -57,8 +57,8 @@ public:
     uint64_t timestamp;
     uint32_t event_id;         // unique_id from event header
     const uint8_t* payload_ptr;
-    uint16_t payload_words;    // number of 64-bit words (from RBE header)
-    uint16_t sequence_number;  // sequence number (from RBE header)
+    uint8_t payload_words;    // number of 64-bit words (from RBE header, 1 byte)
+    uint16_t sequence_number; // sequence number (from RBE header, 2 bytes)
   };
 
 public:
@@ -67,14 +67,6 @@ public:
    * @param json_config Configuration file
    */
   explicit config_npu3(nlohmann::json json_config);
-
-  /**
-   * @brief Parse NPU3 event from buffer
-   * @param buffer_ptr Pointer to event data
-   * @return Event data structure
-   */
-  event_data_t
-  parse_buffer(const uint8_t* buffer_ptr) const;
 
   /**
    * @brief Decode event into human-readable form
@@ -173,8 +165,9 @@ public:
         size_t buf_size) const override;
 
 private:
-  // Format decoded event as table row
-  std::string format_event(const decoded_event_t& decoded_event) const;
+  event_data_t parse_payload(const uint8_t* buffer_ptr) const;
+
+  std::string format_event(const event_data_t& event_data) const;
 
   config_npu3 m_config;
 };
