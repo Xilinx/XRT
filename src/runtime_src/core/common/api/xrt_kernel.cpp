@@ -58,6 +58,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <map>
 #include <memory>
@@ -2652,29 +2653,37 @@ public:
     set_arg(arg, args);
   }
 
+  // For DPU flows, warn once if the opcode arg carries the deprecated
+  // Legacy TXN flow opcode value.
+  void
+  warn_if_legacy_txn_flow(const argument& arg, const void* value, size_t bytes)
+  {
+    // check if the first arg (at index 0) equals the deprecated Legacy
+    // TXN flow opcode value, and warn if so.
+    constexpr uint64_t legacy_txn_flow_opcode = 2;
+    constexpr size_t opcode_arg_index  = 0;
+    if (arg.index() != opcode_arg_index || !value ||
+        kernel->get_kernel_type() != kernel_type::dpu ||
+        arg.type() != xarg::argtype::scalar)
+      return;
+
+    uint64_t opcode = 0;
+    std::memcpy(&opcode, value, std::min(bytes, sizeof(opcode)));
+    if (opcode != legacy_txn_flow_opcode)
+      return;
+
+    static std::once_flag warned;
+    std::call_once(warned, [] {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "Legacy TXN flow is deprecated. Please migrate to the TXN flow with upgraded xclbin/ELF.");
+    });
+  }
+
   void
   set_arg_at_index(size_t index, const void* value, size_t bytes)
   {
-    auto& arg = kernel->get_arg(index);
-
-    // For DPU flows, check if the first arg (at index 0) equals
-    // the deprecated Legacy TXN flow opcode value, and warn if so.
-    constexpr uint64_t legacy_txn_flow_opcode = 2;
-    constexpr size_t opcode_arg_index = 0;
-    if (index == opcode_arg_index && value &&
-        kernel->get_kernel_type() == kernel_type::dpu &&
-        arg.type() == xarg::argtype::scalar) {
-      uint64_t opcode = 0;
-      std::memcpy(&opcode, value, std::min(bytes, sizeof(opcode)));
-      if (opcode == legacy_txn_flow_opcode) {
-        static std::once_flag warned;
-        std::call_once(warned, [] {
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-            "Legacy TXN flow is deprecated. Please migrate to the TXN flow with upgraded xclbin/ELF.");
-        });
-      }
-    }
-
+    const auto& arg = kernel->get_arg(index);
+    warn_if_legacy_txn_flow(arg, value, bytes);
     set_arg_value(arg, value, bytes);
   }
 
