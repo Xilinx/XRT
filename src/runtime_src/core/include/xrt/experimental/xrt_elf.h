@@ -82,7 +82,12 @@ public:
        *  Name of the custom section
        *
        * @return
-       *  A span representing the custom section data
+       *  A non-owning span over the custom section data.
+       *
+       * @warning
+       *  The returned span is valid only while the originating xrt::elf
+       *  object (and this instance) remains alive. Do not use the
+       *  span after the xrt::elf object is destroyed.
        *
        * @note
        *  Returns xrt::detail::span (lightweight span) for now. Will switch to
@@ -156,7 +161,12 @@ public:
      *  Name of the custom section
      *
      * @return
-     *  A span representing the custom section data
+     *  A non-owning span over the custom section data.
+     *
+     * @warning
+     *  The returned span is valid only while the originating xrt::elf
+     *  object (and this kernel) remains alive. Do not use the
+     *  span after the xrt::elf object is destroyed.
      *
      * @note
      *  Returns xrt::detail::span (lightweight span) for now. Will switch to
@@ -319,7 +329,11 @@ public:
     *  Name of the custom section
     *
     * @return
-    *  A span representing the custom section data
+    *  A non-owning span over the custom section data.
+    *
+    * @warning
+    *  The returned span is valid only while this xrt::elf object remains
+    *  alive. Do not use the span after the xrt::elf object is destroyed.
     *
     * @note
     *  Returns xrt::detail::span (lightweight span) for now. Will switch to

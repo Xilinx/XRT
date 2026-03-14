@@ -342,8 +342,9 @@ private:
   parse_custom_sections(const std::vector<uint32_t>& custom_section_ids);
 
   // Helper function to add custom section to kernel (instance_name is empty)
-  // or to an instance.
-  void
+  // or to an instance. Returns true if the section was added, false if
+  // kernel or instance was not found.
+  bool
   add_custom_section_to_kernel_or_instance(
     const std::string& kernel_name,
     const std::string& instance_name,
@@ -458,7 +459,7 @@ public:
   // Get custom section data by name
   // Returns span of custom section data
   detail::span<const char>
-  get_custom_section(const std::string& name);
+  get_custom_section(const std::string& name) const;
 };
 
 } // namespace xrt

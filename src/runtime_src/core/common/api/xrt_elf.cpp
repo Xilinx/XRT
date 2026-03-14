@@ -312,6 +312,13 @@ public:
     m_custom_section_map[section_name] = section_data;
   }
 
+  // Add custom section to a named instance.
+  // Returns true if the instance was found and section was added.
+  bool
+  add_custom_section_to_instance(const std::string& instance_name,
+                                 const std::string& sec_name,
+                                 detail::span<const char> data);
+
   detail::span<const char>
   get_custom_section(const std::string& section_name) const
   {
@@ -356,6 +363,24 @@ public:
     throw std::runtime_error("Cannot get custom section " + section_name + " data, section not found for instance " + m_name);
   }
 };
+
+// Defined after instance_impl so instance_impl is a complete type.
+bool
+elf::
+kernel_impl::
+add_custom_section_to_instance(
+  const std::string& instance_name,
+  const std::string& sec_name,
+  detail::span<const char> data)
+{
+  for (auto& inst : m_instances) {
+    if (inst.get_name() != instance_name)
+      continue;
+    inst.get_handle()->add_custom_section(sec_name, data);
+    return true;
+  }
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////
 // elf_impl method implementations
@@ -526,7 +551,8 @@ parse_single_group_section(const ELFIO::section* section)
 
 // Helper function to add custom section to kernel (instance_name is empty)
 // or to an instance.
-void
+// Returns true if added, false if kernel/instance not found.
+bool
 elf_impl::
 add_custom_section_to_kernel_or_instance(
   const std::string& kernel_name,
@@ -540,17 +566,14 @@ add_custom_section_to_kernel_or_instance(
 
     if (instance_name.empty()) {
       kernel.get_handle()->add_custom_section(sec_name, data);
-      return;
+      return true;
     }
 
-    for (auto& instance : kernel.get_instances()) {
-      if (instance.get_name() != instance_name)
-        continue;
-
-      instance.get_handle()->add_custom_section(sec_name, data);
-      return;
-    }
+    return kernel.get_handle()->add_custom_section_to_instance(
+      instance_name, sec_name, data);
   }
+
+  return false;
 }
 
 void
@@ -585,16 +608,23 @@ parse_custom_sections(const std::vector<uint32_t>& custom_section_ids)
       auto demangled = demangle(kernel_sym.name);
       auto kernel_name = extract_kernel_name(demangled);
 
-      add_custom_section_to_kernel_or_instance(
-        kernel_name, "", sec_name, data);
+      if (!add_custom_section_to_kernel_or_instance(
+            kernel_name, "", sec_name, data))
+        throw std::runtime_error(
+          "custom section '" + sec_name + "' references kernel '" +
+          kernel_name + "' which is not in the ELF");
     }
     else {
       // Section belongs to a group: instance-level custom section.
       auto [kernel_name, subkernel_name] =
         get_kernel_subkernel_from_symtab(symtab_idx);
 
-      add_custom_section_to_kernel_or_instance(
-        kernel_name, subkernel_name, sec_name, data);
+      if (!add_custom_section_to_kernel_or_instance(
+            kernel_name, subkernel_name, sec_name, data))
+        throw std::runtime_error(
+          "custom section '" + sec_name + "' references kernel '" +
+          kernel_name + "' instance '" + subkernel_name +
+          "' which is not in the ELF");
     }
   }
 }
@@ -613,7 +643,7 @@ parse_sections()
 
   // collect custom sections and parse .group sections to populate maps
   std::vector<uint32_t> custom_section_ids;
-  auto CUSTOM_SECTION_TYPE = ELFIO::SHT_LOUSER + 1;
+  constexpr ELFIO::Elf_Word CUSTOM_SECTION_TYPE = ELFIO::SHT_LOUSER + 1;
   for (const auto& section : m_elfio.sections) {
     if (!section)
       continue;
@@ -730,7 +760,7 @@ get_abi_version() const
 
 detail::span<const char>
 elf_impl::
-get_custom_section(const std::string& name)
+get_custom_section(const std::string& name) const
 {
   if (auto it = m_global_custom_section_map.find(name); it != m_global_custom_section_map.end())
     return it->second;
