@@ -31,6 +31,10 @@
 // C++11 includes
 #include <string>
 
+#ifdef _MSC_VER
+#pragma warning(disable: 4996)  // C4996: deprecated function; Python binding delegates to C++
+#endif
+
 namespace py = pybind11;
 
 PYBIND11_MAKE_OPAQUE(std::vector<xrt::xclbin::ip>);
@@ -493,4 +497,3 @@ PYBIND11_MODULE(pyxrt, m) {
         }), "Wait for the specified timeout for the runlist to complete");
         
 }
-
