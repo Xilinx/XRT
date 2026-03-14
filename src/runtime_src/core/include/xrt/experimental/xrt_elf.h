@@ -72,25 +72,9 @@ public:
        * @return
        *  The name of the instance
        */
+      XRT_API_EXPORT
       std::string
       get_name() const;
-
-      /**
-       * get_custom_section() - Get custom section data of an instance from ELF
-       *
-       * @param section_name
-       *  Name of the custom section
-       *
-       * @return
-       *  A span representing the custom section data
-       *
-       * @note
-       *  Returns xrt::detail::span (lightweight span) for now. Will switch to
-       *  std::span when XRT uses C++20 by default.
-       */
-      XRT_API_EXPORT
-      xrt::detail::span<const char>
-      get_custom_section(const std::string& section_name) const;
     };
 
   public:
@@ -148,23 +132,6 @@ public:
     XRT_API_EXPORT
     std::vector<instance>
     get_instances() const;
-
-    /**
-     * get_custom_section() - Get custom section data of a kernel from ELF
-     *
-     * @param section_name
-     *  Name of the custom section
-     *
-     * @return
-     *  A span representing the custom section data
-     *
-     * @note
-     *  Returns xrt::detail::span (lightweight span) for now. Will switch to
-     *  std::span when XRT uses C++20 by default.
-     */
-    XRT_API_EXPORT
-    xrt::detail::span<const char>
-    get_custom_section(const std::string& section_name) const;
   };
 
 public:
@@ -313,13 +280,18 @@ public:
    get_kernels() const;
 
    /**
-    * get_custom_section() - Get Global custom section data from ELF
+    * get_custom_section() - Get custom section data by name from ELF
     *
     * @param section_name
     *  Name of the custom section
     *
     * @return
     *  A span representing the custom section data
+    *  throws std::runtime_error if the custom section is not found
+    *
+    * @warning
+    *  The returned span is valid only while this xrt::elf object remains
+    *  alive. Do not use the span after the xrt::elf object is destroyed.
     *
     * @note
     *  Returns xrt::detail::span (lightweight span) for now. Will switch to

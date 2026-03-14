@@ -244,10 +244,6 @@ class elf::kernel_impl
   xrt_core::xclbin::kernel_properties m_properties;
   std::vector<elf::kernel::instance> m_instances;
 
-  // Map for custom sections of a kernel
-  // key - custom section name, value - custom section data
-  std::map<std::string, detail::span<const char>> m_custom_section_map;
-
   xrt_core::xclbin::kernel_properties
   construct_properties(const std::string& name) const
   {
@@ -305,29 +301,11 @@ public:
   {
     return {m_properties, m_args};
   }
-
-  void
-  add_custom_section(const std::string& section_name, detail::span<const char> section_data)
-  {
-    m_custom_section_map[section_name] = section_data;
-  }
-
-  detail::span<const char>
-  get_custom_section(const std::string& section_name) const
-  {
-    if (auto it = m_custom_section_map.find(section_name); it != m_custom_section_map.end())
-      return it->second;
-
-    throw std::runtime_error("Cannot get custom section " + section_name + " data, section not found for kernel " + m_name);
-  }
 };
 
 class elf::kernel::instance_impl
 {
   std::string m_name;
-  // Map for custom sections of an instance
-  // key - custom section name, value - custom section data
-  std::map<std::string, detail::span<const char>> m_custom_section_map;
 
 public:
   explicit
@@ -339,21 +317,6 @@ public:
   get_name() const
   {
     return m_name;
-  }
-
-  void
-  add_custom_section(const std::string& section_name, detail::span<const char> section_data)
-  {
-    m_custom_section_map[section_name] = section_data;
-  }
-
-  detail::span<const char>
-  get_custom_section(const std::string& section_name) const
-  {
-    if (auto it = m_custom_section_map.find(section_name); it != m_custom_section_map.end())
-      return it->second;
-
-    throw std::runtime_error("Cannot get custom section " + section_name + " data, section not found for instance " + m_name);
   }
 };
 
@@ -524,40 +487,10 @@ parse_single_group_section(const ELFIO::section* section)
   m_group_to_sections_map.emplace(group_id, std::move(member_sections));
 }
 
-// Helper function to add custom section to kernel (instance_name is empty)
-// or to an instance.
-void
-elf_impl::
-add_custom_section_to_kernel_or_instance(
-  const std::string& kernel_name,
-  const std::string& instance_name,
-  const std::string& sec_name,
-  detail::span<const char> data)
-{
-  for (auto& kernel : m_kernels) {
-    if (kernel.get_name() != kernel_name)
-      continue;
-
-    if (instance_name.empty()) {
-      kernel.get_handle()->add_custom_section(sec_name, data);
-      return;
-    }
-
-    for (auto& instance : kernel.get_instances()) {
-      if (instance.get_name() != instance_name)
-        continue;
-
-      instance.get_handle()->add_custom_section(sec_name, data);
-      return;
-    }
-  }
-}
-
 void
 elf_impl::
 parse_custom_sections(const std::vector<uint32_t>& custom_section_ids)
 {
-  constexpr uint32_t no_symtab_idx = 0;
   auto section_span = [](const ELFIO::section* sec) {
     return detail::span<const char>(sec->get_data(), sec->get_size());
   };
@@ -567,35 +500,10 @@ parse_custom_sections(const std::vector<uint32_t>& custom_section_ids)
     if (!sec)
       continue;
 
-    auto symtab_idx = sec->get_info();
     auto sec_name = sec->get_name();
     auto data = section_span(sec);
 
-    if (m_section_to_group_map.find(sec_id) == m_section_to_group_map.end()) {
-      // Section not in any group: global or kernel-level custom section.
-      if (symtab_idx == no_symtab_idx) {
-        m_global_custom_section_map[sec_name] = data;
-        continue;
-      }
-      // Kernel-level custom section: symtab points to kernel (STT_FUNC).
-      auto kernel_sym = get_symbol_from_symtab(symtab_idx);
-      if (kernel_sym.type != ELFIO::STT_FUNC)
-        throw std::runtime_error(
-          "custom section points to invalid symtab index (expected STT_FUNC)");
-      auto demangled = demangle(kernel_sym.name);
-      auto kernel_name = extract_kernel_name(demangled);
-
-      add_custom_section_to_kernel_or_instance(
-        kernel_name, "", sec_name, data);
-    }
-    else {
-      // Section belongs to a group: instance-level custom section.
-      auto [kernel_name, subkernel_name] =
-        get_kernel_subkernel_from_symtab(symtab_idx);
-
-      add_custom_section_to_kernel_or_instance(
-        kernel_name, subkernel_name, sec_name, data);
-    }
+    m_custom_section_map[sec_name] = data;
   }
 }
 
@@ -613,23 +521,21 @@ parse_sections()
 
   // collect custom sections and parse .group sections to populate maps
   std::vector<uint32_t> custom_section_ids;
-  auto CUSTOM_SECTION_TYPE = ELFIO::SHT_LOUSER + 1;
+  constexpr ELFIO::Elf_Word custom_section_type = ELFIO::SHT_LOUSER + 1;
   for (const auto& section : m_elfio.sections) {
     if (!section)
       continue;
 
     if (section->get_type() == ELFIO::SHT_GROUP)
       parse_single_group_section(section.get());
-    else if (section->get_type() == CUSTOM_SECTION_TYPE)
+    else if (section->get_type() == custom_section_type)
       custom_section_ids.push_back(section->get_index());
   }
 
   // Build elf::kernel objects after all group sections are parsed
   finalize_kernels();
 
-  // parse and collect custom sections
-  // This function is called after creating kernels and instances
-  // because custom sections are added to corresponding kernel/instance
+  // parse and collect custom sections from ELF
   parse_custom_sections(custom_section_ids);
 
   // Free parsing-only data, not used after parse_sections().
@@ -730,9 +636,9 @@ get_abi_version() const
 
 detail::span<const char>
 elf_impl::
-get_custom_section(const std::string& name)
+get_custom_section(const std::string& name) const
 {
-  if (auto it = m_global_custom_section_map.find(name); it != m_global_custom_section_map.end())
+  if (auto it = m_custom_section_map.find(name); it != m_custom_section_map.end())
     return it->second;
 
   throw std::runtime_error("Cannot get custom section " + name + " data, section not found in ELF");
@@ -1654,13 +1560,6 @@ get_instances() const
   return handle->get_instances();
 }
 
-detail::span<const char>
-elf::kernel::
-get_custom_section(const std::string& section_name) const
-{
-  return handle->get_custom_section(section_name);
-}
-
 ////////////////////////////////////////////////////////////////
 // elf::kernel::instance API implementation
 ////////////////////////////////////////////////////////////////
@@ -1670,13 +1569,6 @@ elf::kernel::instance::
 get_name() const
 {
   return handle->get_name();
-}
-
-detail::span<const char>
-elf::kernel::instance::
-get_custom_section(const std::string& section_name) const
-{
-  return handle->get_custom_section(section_name);
 }
 
 } // namespace xrt

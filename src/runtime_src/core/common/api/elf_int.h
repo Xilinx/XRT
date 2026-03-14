@@ -262,9 +262,9 @@ protected:
   // Final kernel objects built from m_kernel_args_map and m_kernel_to_subkernels_map
   std::vector<elf::kernel> m_kernels;
 
-  // Map for custom sections that are not tied to specific kernels or groups
+  // Map for custom sections
   // key - custom section name, value - custom section data
-  std::map<std::string, detail::span<const char>> m_global_custom_section_map;
+  std::map<std::string, detail::span<const char>> m_custom_section_map;
 
   /* Patcher related types and data - common between all platforms */
   // Aliases for patcher types
@@ -337,18 +337,9 @@ private:
   void
   parse_single_group_section(const ELFIO::section* section);
 
-  // Parse custom sections and populate corresponding maps
+  // Parse custom sections and populate corresponding map
   void
   parse_custom_sections(const std::vector<uint32_t>& custom_section_ids);
-
-  // Helper function to add custom section to kernel (instance_name is empty)
-  // or to an instance.
-  void
-  add_custom_section_to_kernel_or_instance(
-    const std::string& kernel_name,
-    const std::string& instance_name,
-    const std::string& sec_name,
-    detail::span<const char> data);
 
 public:
   virtual ~elf_impl() = default;
@@ -458,7 +449,7 @@ public:
   // Get custom section data by name
   // Returns span of custom section data
   detail::span<const char>
-  get_custom_section(const std::string& name);
+  get_custom_section(const std::string& name) const;
 };
 
 } // namespace xrt
