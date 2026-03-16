@@ -415,28 +415,29 @@ class xclbin_impl
       return mems;
     }
 
-    // Build gmio arg_name -> mem_data_index from m_kernels connectivity.
-    // IP_LAYOUT is present in all xclbins, so kernel args have mems from CONNECTIVITY.
+    // Build gmio arg_name -> mem_data_index from the ai_engine kernel's connectivity.
+    static constexpr const char* aie_kernel_name = "ai_engine";
+
     static std::map<std::string, int32_t>
     init_gmio_connectivity(const xclbin_impl*,
                            const std::vector<xclbin::kernel>& kernels)
     {
       std::map<std::string, int32_t> gmio_name_to_mem_index;
-      auto update = [](std::map<std::string, int32_t>& m, const std::string& arg_name, int32_t mem_idx) {
-        auto it = m.find(arg_name);
-        if (it == m.end())
-          m[arg_name] = mem_idx;
-        else
-          it->second = std::max(it->second, mem_idx);
-      };
-
       for (const auto& kernel : kernels) {
+        if (kernel.get_name() != aie_kernel_name)
+          continue;
+
         for (const auto& arg : kernel.get_args()) {
           auto arg_name = arg.get_name();
           if (arg_name.empty())
             continue;
-          for (const auto& mem : arg.get_mems())
-            update(gmio_name_to_mem_index, arg_name, mem.get_index());
+          for (const auto& mem : arg.get_mems()) {
+            auto it = gmio_name_to_mem_index.find(arg_name);
+            if (it == gmio_name_to_mem_index.end())
+              gmio_name_to_mem_index[arg_name] = mem.get_index();
+            else
+              it->second = std::max(it->second, mem.get_index());
+          }
         }
       }
       return gmio_name_to_mem_index;
@@ -784,18 +785,16 @@ public:
   {
     const auto* info = get_xclbin_info();
     auto it = info->m_gmio_name_to_mem_index.find(gmio_name);
-    if (it == info->m_gmio_name_to_mem_index.end()) {
-      std::string msg = "No connectivity for GMIO port '" + gmio_name + "'";
-      if (info->m_gmio_name_to_mem_index.empty())
-        msg += " (xclbin has no GMIO connectivity)";
-      else {
-        msg += ". Available GMIO arg_name(s):";
-        for (const auto& kv : info->m_gmio_name_to_mem_index)
-          msg += " '" + kv.first + "'";
-      }
-      throw std::runtime_error(msg);
-    }
-    return it->second;
+    if (it != info->m_gmio_name_to_mem_index.end())
+      return it->second;
+
+    std::string msg;
+    if (info->m_gmio_name_to_mem_index.empty())
+      msg = "xclbin has no GMIO connectivity";
+    else
+      msg = "No connectivity for GMIO port '" + gmio_name + "'";
+
+    throw std::runtime_error(msg);
   }
 };
 
