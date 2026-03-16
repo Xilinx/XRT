@@ -25,8 +25,10 @@
 #include <boost/algorithm/string.hpp>
 
 #include <array>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <numeric>
 #include <regex>
 #include <set>
@@ -389,6 +391,7 @@ class xclbin_impl
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
     std::vector<xclbin::aie_partition> m_aie_partitions;
+    std::map<std::string, int32_t> m_gmio_name_to_mem_index;
 
     // encoded / compressed memory connection used by
     // xrt core to manage compute unit connectivity.
@@ -410,6 +413,34 @@ class xclbin_impl
         }
       }
       return mems;
+    }
+
+    // Build gmio arg_name -> mem_data_index from the ai_engine kernel's connectivity.
+    static constexpr const char* aie_kernel_name = "ai_engine";
+
+    static std::map<std::string, int32_t>
+    init_gmio_connectivity(const xclbin_impl*,
+                           const std::vector<xclbin::kernel>& kernels)
+    {
+      std::map<std::string, int32_t> gmio_name_to_mem_index;
+      for (const auto& kernel : kernels) {
+        if (kernel.get_name() != aie_kernel_name)
+          continue;
+
+        for (const auto& arg : kernel.get_args()) {
+          auto arg_name = arg.get_name();
+          if (arg_name.empty())
+            continue;
+          for (const auto& mem : arg.get_mems()) {
+            auto it = gmio_name_to_mem_index.find(arg_name);
+            if (it == gmio_name_to_mem_index.end())
+              gmio_name_to_mem_index[arg_name] = mem.get_index();
+            else
+              it->second = std::max(it->second, mem.get_index());
+          }
+        }
+      }
+      return gmio_name_to_mem_index;
     }
 
     // init_ips() - populate m_ips with xclbin::ip objects
@@ -578,6 +609,7 @@ class xclbin_impl
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
       , m_aie_partitions(init_aie_partitions(m_ximpl))
+      , m_gmio_name_to_mem_index(init_gmio_connectivity(m_ximpl, m_kernels))
       , m_membank_encoding(init_mem_encoding(m_mems))
     {}
   };
@@ -746,6 +778,23 @@ public:
   get_aie_partitions() const
   {
     return get_xclbin_info()->m_aie_partitions;
+  }
+
+  int32_t
+  get_gmio_mem_index(const std::string& gmio_name) const
+  {
+    const auto* info = get_xclbin_info();
+    auto it = info->m_gmio_name_to_mem_index.find(gmio_name);
+    if (it != info->m_gmio_name_to_mem_index.end())
+      return it->second;
+
+    std::string msg;
+    if (info->m_gmio_name_to_mem_index.empty())
+      msg = "xclbin has no GMIO connectivity";
+    else
+      msg = "No connectivity for GMIO port '" + gmio_name + "'";
+
+    throw std::runtime_error(msg);
   }
 };
 
@@ -1092,6 +1141,15 @@ xclbin::
 get_aie_partitions() const
 {
   return handle ? handle->get_aie_partitions() : std::vector<xclbin::aie_partition>{};
+}
+
+int32_t
+xclbin::
+get_gmio_mem_index(const std::string& gmio_name) const
+{
+  if (!handle)
+    throw std::runtime_error("get_gmio_mem_index: empty xclbin");
+  return handle->get_gmio_mem_index(gmio_name);
 }
 
 std::string
