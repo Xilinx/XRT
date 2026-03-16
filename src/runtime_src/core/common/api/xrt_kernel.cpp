@@ -1771,7 +1771,7 @@ public:
         xrt_core::hw_context_int::set_exclusive(hwctx);
     }
 
-    // AIE-only xclbins use xrt::graph API, not xrt::kernel
+    // AIE-only xclbins now have IP_LAYOUT; reject early with a clear message
     if (auto axlf = xclbin.get_axlf(); axlf && xrt_core::xclbin::is_aie_only(axlf))
       throw xrt_core::error(ENOTSUP, "xrt::kernel cannot be opened for AIE-only xclbins.");
 
