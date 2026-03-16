@@ -9,6 +9,8 @@ if(POLICY CMP0177)
   cmake_policy(SET CMP0177 NEW)
 endif()
 
+message("-- CMake executable: ${CMAKE_COMMAND}")
+message("-- CMake version: ${CMAKE_VERSION}")
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 
