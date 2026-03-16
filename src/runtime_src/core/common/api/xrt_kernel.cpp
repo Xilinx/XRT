@@ -47,6 +47,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
 
@@ -4226,7 +4227,10 @@ run::
 run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
            ("xrt::run::run", alloc_run, krnl.get_handle()))
-{}
+{
+  auto hwctx = krnl.get_handle()->get_hw_context();
+  xrt_core::xdp::run_constructor(this, hwctx.get_handle().get());
+}
 
 void
 run::

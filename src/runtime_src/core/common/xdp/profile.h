@@ -22,6 +22,12 @@ update_device(void* handle, bool hw_context_flow);
 void 
 finish_flush_device(void* handle);
 
+// run_constructor should be called when an xrt::run is constructed.
+// This hook allows XDP plugins to attach per-run resources (e.g.,
+// a CT file for dtrace) before the run is started.
+void
+run_constructor(void* run, void* hwctx_handle);
+
 } // end namespace xrt_core::xdp
 
 #endif
