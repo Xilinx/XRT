@@ -1647,15 +1647,12 @@ class profile
     // "size" always has precedence.
     static std::map<name_t, xrt::bo>
     create_buffers(const xrt::device& device,
-                   const std::map<name_t, binding_node>& bindings,
-                   const artifacts::repo* repo)
+                   const std::map<name_t, binding_node>& bindings)
     {
       std::map<name_t, xrt::bo> bos;
-      for (const auto& [name, node] : bindings) {
-        auto size = node.value<size_t>("size", 0);
-        xrt::bo bo = size ? xrt::ext::bo{device, size} : xrt::bo{};
-        bos.emplace(node.at("name").get<std::string>(), std::move(bo));
-      }
+      for (const auto& [name, node] : bindings)
+        bos.emplace(node.at("name").get<std::string>(), xrt::bo{});
+
       return bos;
     }
 
@@ -1730,28 +1727,26 @@ class profile
     // The function supports initializing the buffer between iterations,
     // copying from the file from an offset (beg) corresponding to where
     // previous iteration reached.
-    void
-    init_buffer_file(xrt::bo& bo, const init_node& node, size_t iteration)
+    xrt::bo
+    init_buffer_file(size_t bo_size, const init_node& node, size_t iteration)
     {
       auto file = node.at("file").get<std::string>();
       auto skip = node.value<size_t>("skip", 0);
       auto bo_begin = node.value<size_t>("begin", 0);
-      auto bo_end = node.value<size_t>("end", bo.size());
+      auto bo_end = node.value<size_t>("end", bo_size);
       auto data = m_repo->get(file);
       if (skip > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
 
-      if (bo_begin > bo_end || bo_end > bo.size())
+      if (bo_begin > bo_end || bo_end > bo_size)
         throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = std::string_view{data.data() + skip, data.size() - skip};
 
-      // Create the bo from the size of the file unless it was already
-      // created from explicit size.
-      if (!bo)
-        bo = xrt::ext::bo{m_device, data.size()};
-
+      // Create the bo from the size of the file unless bo_size is specified
+      // THIS IS WHERE WE WANT TO CREATE A USERPTR BO if range is not specified
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size ? bo_size : data.size()};
       auto bo_data = bo.map<char*>();
 
       // Pad the bo with 0s outside the [bo_begin, bo_end[ range
@@ -1781,6 +1776,8 @@ class profile
     
         std::copy(data.data() + beg, data.data() + end, bo_data + bo_offset);
       }
+
+      return bo;
     }
 
     // init_buffer_stride() - Initialize bo with value at stride
@@ -1791,9 +1788,10 @@ class profile
     //   "end": 524288, // offset to end writing at (optional)
     //   "debug": true  // undefined (optional)
     // }
-    void
-    init_buffer_stride(xrt::bo& bo, const init_node& node)
+    xrt::bo
+    init_buffer_stride(size_t bo_size, const init_node& node)
     {
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size};
       auto bo_data = bo.map<uint8_t*>();
       auto stride = node.at("stride").get<size_t>();
       auto value = node.at("value").get<uint64_t>();
@@ -1802,14 +1800,18 @@ class profile
       arg_range<uint8_t> vr{&value, sizeof(value)};
       for (size_t offset = bo_begin; offset < bo_end; offset += stride) 
         std::copy_n(vr.begin(), std::min<size_t>(bo.size() - offset, vr.size()), bo_data + offset);
+
+      return bo;
     }
 
-    void
-    init_buffer_random(xrt::bo& bo, const init_node&)
+    xrt::bo
+    init_buffer_random(size_t bo_size, const init_node&)
     {
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size};
       auto bo_data = bo.map<uint8_t*>();
       static std::random_device rd;
       std::generate(bo_data, bo_data + bo.size(), [&]() { return static_cast<uint8_t>(rd()); });
+      return bo;
     }
 
     // init_buffer() - Initialize a resource buffer per the binding json node
@@ -1818,16 +1820,17 @@ class profile
     //   // "random" random initialization
     // }
     // The buffer is synced to device after iniitialization
-    void
-    init_buffer(xrt::bo& bo, const init_node& node, size_t iteration)
+    xrt::bo
+    init_buffer(size_t bo_size, const init_node& node, size_t iteration)
     {
+      xrt::bo bo;
       // stride initialization with specified value
       if (node.contains("file"))
-        init_buffer_file(bo, node, iteration);
+        bo = init_buffer_file(bo_size, node, iteration);
       else if (node.contains("stride"))
-        init_buffer_stride(bo, node);
+        bo = init_buffer_stride(bo_size, node);
       else if (node.value<bool>("random", false))
-        init_buffer_random(bo, node);
+        bo = init_buffer_random(bo_size, node);
       else
         throw profile_error("Unsupported initialization node in profile");
 
@@ -1838,12 +1841,13 @@ class profile
       }
 
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      return bo;
     }
 
-    void
-    init_buffer(xrt::bo& bo, const init_node& node)
+    xrt::bo
+    init_buffer(size_t bo_size, const init_node& node)
     {
-      init_buffer(bo, node, 0);
+      return init_buffer(bo_size, node, 0);
     }
 
   public:
@@ -1853,7 +1857,7 @@ class profile
       : m_device{std::move(device)}
       , m_repo{repo}
       , m_bindings{init_bindings(j)}
-      , m_xrt_bos{create_buffers(m_device, m_bindings, repo)}
+      , m_xrt_bos{create_buffers(m_device, m_bindings)}
     {
       // All bindings are initialized by default upon creation if they
       // have an "init" element.
@@ -1880,7 +1884,7 @@ class profile
       for (auto& [name, node] : m_bindings) {
         if (node.contains("init")) {
           XRT_DEBUGF("profile::bindings::init(%s)\n", name.c_str());
-          init_buffer(m_xrt_bos.at(name), node.at("init"));
+          m_xrt_bos.at(name) = init_buffer(node.value<size_t>("size", 0), node.at("init"));
         }
       }
     }
@@ -1894,7 +1898,7 @@ class profile
       for (auto& [name, node] : m_bindings) {
         if (node.value<bool>("reinit", false) && node.contains("init")) {
           XRT_DEBUGF("profile::bindings::reinit(%s)\n", name.c_str());
-          init_buffer(m_xrt_bos.at(name), node.at("init"), iteration);
+          m_xrt_bos.at(name) = init_buffer(node.value<size_t>("size", 0), node.at("init"), iteration);
         }
       }
     }

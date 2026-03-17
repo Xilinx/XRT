@@ -51,18 +51,23 @@ defined.
 
 ## Bindings
 
-This section is optional if all buffer resources specified in the
-recipe are specified with `size` (see [recipe](recipe.md#buffer)).
-
 The bindings section specifies how external buffers should be created,
 initialized, and validated. The section is an array of binding elements,
 where each binding element must reference a resource in the run-recipe.
 
+Externally bound buffers are buffers that are bound explicitly using
+xrt::runner APIs or buffers that are created by the profile as a
+result of a profile.json binding element.
+
 A binding element references the name of the resource buffer to bind
 to the recipe along with various attributes.  The xrt::runner will
-create an `xrt::bo` for each specified binding element.  The size of
-the buffer is optional optional when the buffer is initialized from a
-file, but is otherwise required.
+create an `xrt::bo` for each specified binding element.
+
+The `size` of the buffer is optional when the buffer is initialized
+from a file, but is otherwise required.  For file bindings without a
+specified `size`, the buffer size will be the same as the size of the
+file.
+
 ```
   "bindings": [
     { 
@@ -74,7 +79,7 @@ file, but is otherwise required.
   ],
 ```
 A binding element has some simple attributes and more complex
-nested attributes
+nested attributes.
 
 ### Simple attributes of a binding element
 
