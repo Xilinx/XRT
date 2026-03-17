@@ -117,7 +117,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
-  XBU::setAdvance((bAdvance && xrt_core::sysinfo::is_advanced()));
+  XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
   // Was default device requested?
