@@ -16,6 +16,7 @@
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/time.h"
+#include "core/common/unistd.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_bo.h"
@@ -43,7 +44,6 @@
 #include <memory>
 #include <random>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <tuple>
 #include <utility>
@@ -58,7 +58,8 @@ namespace {
 // The recipe will use xrt::runlist when the number of runs
 // exceed this threshold; otherwise use std::vector<xrt::run>
 constexpr size_t default_runlist_threshold = 6;
-  
+
+template <typename T> using span = xrt::detail::span<T>;
 using json = nlohmann::json;
 const json empty_json;
 
@@ -85,6 +86,12 @@ load_json(const std::string& input)
   }
 
   throw std::runtime_error("Failed to load json, unknown error");
+}
+
+inline bool
+is_page_aligned(const void* value)
+{
+  return value && (reinterpret_cast<uintptr_t>(value) % xrt_core::getpagesize()) == 0;
 }
 
 inline void
@@ -220,12 +227,12 @@ public:
   }
 
   // Should be std::span, but not until c++20
-  virtual const std::string_view
+  virtual span<char>
   get(const std::string& path) const = 0;
 
   // Should be std::span, but not until c++20
-  static std::string_view
-  to_sv(const std::vector<char>& vec)
+  static span<char>
+  to_sv(std::vector<char>& vec)
   {
     // return {vec.begin(), vec.end()};
     return {vec.data(), vec.size()};
@@ -248,7 +255,7 @@ public:
     : base_dir{std::move(basedir)}
   {}
 
-  const std::string_view
+  span<char>
   get(const std::string& path) const override
   {
     std::filesystem::path full_path = base_dir / path;
@@ -284,7 +291,7 @@ public:
     : m_reference{data}
   {}
 
-  const std::string_view
+  span<char>
   get(const std::string& path) const override
   {
     if (auto it = m_data.find(path); it != m_data.end())
@@ -357,7 +364,7 @@ class recipe
         
       auto path = j.at("xclbin").get<std::string>();
       auto data = repo->get(path);
-      return xrt::xclbin{data};
+      return xrt::xclbin{std::string_view{data.data(), data.size()}};
     }
 
     static xrt::aie::program
@@ -368,7 +375,7 @@ class recipe
 
       auto path = j.at("program").get<std::string>();
       auto data = repo->get(path);
-      return xrt::aie::program{data};
+      return xrt::aie::program{std::string_view{data.data(), data.size()}};
     }
 
   public:
@@ -1666,12 +1673,12 @@ class profile
     void
     validate_buffer(xrt::bo& bo, const validate_node& node, const artifacts::repo* repo)
     {
-      std::string_view golden_data;
+      span<char> golden_data;
 
       if (node.contains("name")) {
         // validate against another resource
         auto golden_bo = m_xrt_bos.at(node["name"]);
-        golden_data = std::string_view{golden_bo.map<char*>(), golden_bo.size()};
+        golden_data = span<char>{golden_bo.map<char*>(), golden_bo.size()};
       }
       else {
         // validate against content of a file
@@ -1681,7 +1688,7 @@ class profile
           throw std::runtime_error("skip bytes large than file");
 
         // Adjust the view, skipping skip bytes
-        golden_data = std::string_view{golden_data.data() + skip, golden_data.size() - skip};
+        golden_data = span<char>{golden_data.data() + skip, golden_data.size() - skip};
       }
 
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -1742,10 +1749,18 @@ class profile
         throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
 
       // Adjust the view, skipping skip bytes, then copy to bo
-      data = std::string_view{data.data() + skip, data.size() - skip};
+      data = span<char>{data.data() + skip, data.size() - skip};
 
       // Create the bo from the size of the file unless bo_size is specified
-      // THIS IS WHERE WE WANT TO CREATE A USERPTR BO if range is not specified
+      // If the bo range is the entire bo, then create a userptr BO from the
+      // file data, which avoids an extra copy.
+      if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
+        XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
+        return xrt::ext::bo{m_device, data.data(), bo_size ? bo_size : data.size()};
+      }
+
+      // Otherwise, create a normal xrt::bo and copy the file data into the
+      // bo at the specified range if any.
       xrt::bo bo = xrt::ext::bo{m_device, bo_size ? bo_size : data.size()};
       auto bo_data = bo.map<char*>();
 
