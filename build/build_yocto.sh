@@ -19,9 +19,9 @@ usage()
 {
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
-    echo "          -help                           Print this usage"
-    echo "          -clean, clean                   Remove build directories, Specify architecture"
-    echo "          -aarch [vek385|vrk160]          Specify architecture (required)"
+    echo "          -help                                 Print this usage"
+    echo "          -clean, clean                         Remove build directories, Specify architecture"
+    echo "          -aarch [vek385|vrk160|vck190|vek280]  Specify architecture (required)"
     echo ""
 }
 
@@ -39,13 +39,13 @@ set_architecture_params()
             MACHINE="amd-cortexa78-mali-common"
             RPM_ARCH_DIR="amd_cortexa78_mali_common"
             ;;
-        vrk160)
-            yocto_path="$ABS_PATH/yocto/edf/vrk160"
+        vrk160|vck190|vek280)
+            yocto_path="$ABS_PATH/yocto/edf/$ARCH"
             MACHINE="amd-cortexa72-common"
             RPM_ARCH_DIR="amd_cortexa72_common"
             ;;
         *)
-            error "Invalid architecture: $ARCH. Supported architectures: vek385, vrk160"
+            error "Invalid architecture: $ARCH. Supported architectures: vek385, vrk160, vck190, vek280"
             ;;
     esac
 }
@@ -132,7 +132,7 @@ fi
 
 # Check if architecture is specified for build
 if [[ -z "$ARCH" ]]; then
-    error "Architecture not specified. Use -aarch [vek385|vrk160]"
+    error "Architecture not specified. Use -aarch [vek385|vrk160|vck190|vek280]"
 fi
 
 # Set architecture-specific parameters
