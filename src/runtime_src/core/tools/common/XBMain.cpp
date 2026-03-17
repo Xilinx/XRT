@@ -42,7 +42,6 @@ void  main_(int argc, char** argv,
   bool bHelp = false;
   bool bBatchMode = false;
   bool bAdvance = false;
-  bool bAdvancePermissions = xrt_core::sysinfo::is_advanced();
   bool bForce = false;
   bool bVersion = false;
   std::string sDevice;
@@ -72,7 +71,7 @@ void  main_(int argc, char** argv,
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
-  if (bAdvancePermissions) {
+  if (xrt_core::sysinfo::is_advanced()) {
     hiddenOptions.add_options()
       ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
     ;
@@ -118,7 +117,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
-  XBU::setAdvance((bAdvance && bAdvancePermissions));
+  XBU::setAdvance((bAdvance && xrt_core::sysinfo::is_advanced()));
   XBU::setForce( bForce );
 
   // Was default device requested?
