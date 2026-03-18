@@ -43,6 +43,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/time.h"
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
@@ -2377,6 +2378,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
+  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t m_header;                      // cached intialized command header
   uint32_t uid;                           // internal unique id for debug
@@ -2389,7 +2391,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
-  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
+  // Run-level dtrace result file postfix
+  std::string m_dtrace_result_file_postfix;
 
 public:
   uint32_t
@@ -2479,14 +2482,11 @@ public:
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
     , m_dtrace_control_file(rhs->m_dtrace_control_file)
-    // Safe to apply rhs offset: clone_command_data() copies the entire packet
-    // (std::copy_n) and returns this->data at the same relative position as
-    // rhs->data, so the clone's buffer has identical layout and the relative
-    // offset (rhs->m_dpu_payload - rhs->data) points to the clone's dpu section.
-    , m_dpu_payload(rhs->m_dpu_payload
-                        ? data + (rhs->m_dpu_payload - rhs->data)
-                        : nullptr)
   {
+    // Cannot initialize m_dpu_payload from data in the member list (would run before data exists).
+    m_dpu_payload = rhs->m_dpu_payload
+                        ? data + (rhs->m_dpu_payload - rhs->data)
+                        : nullptr;
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
 
@@ -2737,10 +2737,24 @@ public:
   void
   prep_start()
   {
-    if (m_module)
+    if (m_module) {
       // Sync the module to device to ensure any patches are applied,
       // noop if module patching hasn't changed since last sync.
       xrt_core::module_int::sync(m_module);
+
+      if (xrt_core::module_int::is_dtrace_enabled(m_module)) {
+        // create dtrace result file postfix
+        // New file is created for each run.start(), run.wait() pair execution.
+        // Also getting timestamp for filename in run.start() so there won't be
+        // multiple files created when command is retried.
+        auto hwctx = static_cast<xrt_core::hwctx_handle*>(kernel->get_hw_context());
+        std::string postfix{
+            "_ctx_" + std::to_string(hwctx->get_slotidx()) + "_run_"
+            + std::to_string(uid) + "_"};
+        m_dtrace_result_file_postfix = postfix;
+        m_dtrace_result_file_postfix += xrt_core::get_timestamp_for_filename();
+      }
+    }
 
     encode_compute_units();
 
@@ -2924,6 +2938,8 @@ public:
       if (cv_status == std::cv_status::timeout) {
         // Dump uC log buffer in case of timeout for debugging
         xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+        // Dump dtrace buffer
+        dump_dtrace_buffer();
         return std::cv_status::timeout;
       }
 
@@ -2989,7 +3005,7 @@ public:
   dump_dtrace_buffer() const
   {
     if (m_module)
-      xrt_core::module_int::dump_dtrace_buffer(m_module, uid);
+      xrt_core::module_int::dump_dtrace_buffer(m_module, m_dtrace_result_file_postfix);
   }
 };
 

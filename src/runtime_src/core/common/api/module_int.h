@@ -82,16 +82,22 @@ XRT_CORE_COMMON_EXPORT
 void
 sync(const xrt::module&);
 
+// Check if dtrace is enabled
+XRT_CORE_COMMON_EXPORT
+bool
+is_dtrace_enabled(const xrt::module& module);
+
 // Dump dynamic trace buffer
 // Buffer is dumped after the kernel run is finished
-// Optional run_id parameter to generate unique filenames for multiple runs
+// Postfix is used to create unique filename for each run
 XRT_CORE_COMMON_EXPORT
 void
-dump_dtrace_buffer(const xrt::module& module, uint32_t run_id = 0);
+dump_dtrace_buffer(const xrt::module& module, const std::string& postfix);
 
 // Set dtrace control file for this run's module (run-level overrides config).
 // Reinitializes dtrace with the given path; empty path means use config.
 // No-op for module types that do not support dtrace.
+XRT_CORE_COMMON_EXPORT
 void
 set_dtrace_control_file(const xrt::module& module, const std::string& path);
 
