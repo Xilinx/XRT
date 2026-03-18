@@ -1114,10 +1114,17 @@ get_aie_trace_settings_poll_timers_interval_us()
   return value;
 }
 
+inline unsigned int
+get_aie_trace_settings_max_timer_samples()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.max_timer_samples", 2000000);
+  return value;
+}
+
 inline bool
 get_aie_trace_settings_enable_system_timeline()
 {
-  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", false);
+  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", true);
   return value;
 }
 
