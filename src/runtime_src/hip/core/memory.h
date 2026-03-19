@@ -143,8 +143,7 @@ namespace xrt::core::hip
   };
 
   // Global map of external memory objects
-  extern xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>>
-    external_memory_cache; //NOLINT
+  extern xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>> external_memory_cache; //NOLINT
 
   // address_range_key is used for look up hip memory objects via an offseted address
   class address_range_key

@@ -187,8 +187,7 @@ namespace xrt::core::hip
   }
 
   //we should override clang-tidy warning by adding NOLINT since external_memory_cache is non-const parameter
-  xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>>
-    external_memory_cache; //NOLINT
+  xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>> external_memory_cache; //NOLINT
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
