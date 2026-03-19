@@ -230,6 +230,9 @@ void  main_(int argc, char** argv,
     std::istringstream command_config_stream(config);
     boost::property_tree::read_json(command_config_stream, configTreeMain);
     subCommand->setOptionConfig(configTreeMain);
+
+    if (XBU::getAdvance())
+      XBU::printAdvancedDisclaimer();
   }
 
   // -- Execute the sub-command

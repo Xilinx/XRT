@@ -51,8 +51,6 @@ OO_Preemption::validate_args() const {
 void
 OO_Preemption::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::printAdvancedDisclaimer();
-
   XBUtilities::verbose("SubCommand option: Pre-emption");
 
   XBUtilities::verbose("Option(s):");

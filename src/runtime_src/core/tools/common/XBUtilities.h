@@ -162,18 +162,6 @@ namespace XBUtilities {
   printAdvancedDisclaimer();
 
   /**
-   * isUsingAdvanced() - Check if user is using xrt-smi advanced/hidden features
-   *
-   * @configItems: Vector of tuples (name, description, type) from shim config
-   * @requestedNames: Vector of names requested by the user
-   * Return: true if advanced mode is enabled and user is using advanced/hidden features
-   */
-  bool
-  isUsingAdvanced(
-      const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
-      const std::vector<std::string>& requestedNames);
-
-  /**
    * Open archive from device
    */
   std::unique_ptr<xrt_core::archive> 
