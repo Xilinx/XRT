@@ -26,7 +26,14 @@ namespace xrt::core::hip
     throw_invalid_device_if(!m_device, "failed to create hip memory, empty device.");
 
     // TODO: support non-npu device that may require delayed xrt::bo allocation until xrt kernel is created
-    init_xrt_bo();
+    auto xrt_device = m_device->get_xrt_device();
+#ifdef _WIN32
+    // hybrid sets CrossAdapter=1 in MCDM, required for cross-process IPC export
+    m_bo = xrt::ext::bo(xrt_device, m_size, xrt::ext::bo::access_mode::hybrid);
+#else
+    // process access mode enables dma-buf fd export for cross-process IPC
+    m_bo = xrt::ext::bo(xrt_device, m_size, xrt::ext::bo::access_mode::process);
+#endif
   }
 
   memory::memory(device* dev, size_t sz, void *host_mem, unsigned int flags)
@@ -147,6 +154,41 @@ namespace xrt::core::hip
     auto xrt_device = m_device->get_xrt_device();
     m_bo = xrt::ext::bo(xrt_device, m_size);
   }
+
+  // external_memory
+  external_memory::external_memory(device* dev, xrt::bo::export_handle export_hdl, size_t sz)
+    : memory(memory_type::external, sz)
+  {
+    throw_invalid_device_if(!dev, "failed to create external memory, empty device.");
+#ifdef _WIN32
+    // DuplicateHandle requires source PID even for same-process import
+    xrt::pid_type pid{static_cast<pid_t>(GetCurrentProcessId())};
+    m_bo = xrt::bo(dev->get_xrt_device(), pid, export_hdl);
+#else
+    // 2-arg constructor uses pidfd internally (pid=0 = self)
+    m_bo = xrt::bo(dev->get_xrt_device(), export_hdl);
+#endif
+  }
+
+  external_memory::external_memory(device* dev, const ipc_mem_handle& ipc_hdl)
+    : memory(memory_type::external, ipc_hdl.size)
+  {
+    throw_invalid_device_if(!dev, "failed to create external memory, empty device.");
+    m_bo = xrt::bo(dev->get_xrt_device(), xrt::pid_type{ipc_hdl.pid}, ipc_hdl.export_hdl);
+  }
+
+  void*
+  external_memory::get_mapped_device_address(size_t offset, size_t sz)
+  {
+    throw_invalid_value_if(!m_bo, "external memory has no imported XRT buffer.");
+    throw_invalid_value_if(offset + sz > get_size(),
+                           "mapped buffer range exceeds external memory size.");
+    return reinterpret_cast<void*>(m_bo.address() + offset);
+  }
+
+  //we should override clang-tidy warning by adding NOLINT since external_memory_cache is non-const parameter
+  xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>>
+    external_memory_cache; //NOLINT
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter

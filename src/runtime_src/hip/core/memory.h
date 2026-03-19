@@ -21,6 +21,7 @@ namespace xrt::core::hip
     managed,
     registered,
     sub,
+    external,
     invalid
   };
 
@@ -77,6 +78,12 @@ namespace xrt::core::hip
       return m_bo;
     }
 
+    xrt::bo&
+    get_xrt_bo()
+    {
+      return m_bo;
+    }
+
     unsigned int
     get_flags() const
     {
@@ -107,6 +114,37 @@ namespace xrt::core::hip
     void
     init_xrt_bo();
   };
+
+  // external_memory_handle - opaque handle for imported external memory
+  using external_memory_handle = void*;
+
+  // ipc_mem_handle - wire format packed into hipIpcMemHandle_t::reserved
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-member-init)
+  struct ipc_mem_handle
+  {
+    xrt::bo::export_handle export_hdl; // NT handle (Windows) or fd (Linux)
+    pid_t                  pid;        // exporting process ID
+    size_t                 size;       // allocation size in bytes
+  };
+  // NOLINTEND(cppcoreguidelines-pro-type-member-init)
+
+  // external_memory - xrt::bo imported from an OS export handle
+  class external_memory : public memory
+  {
+  public:
+    // import from same process via OS handle
+    external_memory(device* dev, xrt::bo::export_handle export_hdl, size_t sz);
+
+    // import from packed IPC handle
+    external_memory(device* dev, const ipc_mem_handle& ipc_hdl);
+
+    void*
+    get_mapped_device_address(size_t offset, size_t sz);
+  };
+
+  // Global map of external memory objects
+  extern xrt_core::handle_map<external_memory_handle, std::shared_ptr<external_memory>>
+    external_memory_cache; //NOLINT
 
   // address_range_key is used for look up hip memory objects via an offseted address
   class address_range_key
