@@ -237,7 +237,11 @@ xilinx_xrt()
   windows::adapter_list adapters;
 
   // Tight coupling with KMD driver description string
-  auto adapter = adapters.find("NPU Compute Accelerator Device");
+  auto adapter = adapters.find("AMD XDNA(TM) NPU");
+
+  // If not found, try previous adapter name
+  if (!adapter)
+    adapter = adapters.find("NPU Compute Accelerator Device");
 
   // If no matching adapter found, return coreutil path (legacy)
   if (!adapter)
