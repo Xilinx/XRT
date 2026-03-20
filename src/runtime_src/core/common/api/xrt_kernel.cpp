@@ -2324,14 +2324,14 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     pkt->header = rhs_pkt->header;
     pkt->state = ERT_CMD_STATE_NEW;
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
-    auto data = pkt->data + (rhs->data - rhs_pkt->data);
+    auto cloned_data = pkt->data + (rhs->data - rhs_pkt->data);
 
     // Initialize m_dpu_payload if present in rhs
     m_dpu_payload = rhs->m_dpu_payload
-                  ? data + (rhs->m_dpu_payload - rhs->data)
+                  ? cloned_data + (rhs->m_dpu_payload - rhs->data)
                   : nullptr;
 
-    return data;
+    return cloned_data;
   }
 
   // For DPU kernels, initialize the instruction buffer(s) in the
