@@ -519,6 +519,15 @@ public:
     std::lock_guard lk(m_mutex);
     return m_elf_map;
   }
+
+  // Returns QoS map from the hardware context
+  // QoS map is a map of key-value pairs
+  // where key is a string and value is a uint32_t
+  xrt::hw_context::qos_type
+  get_qos_map() const
+  {
+    return m_cfg_param;
+  }
 };
 
 } // xrt
@@ -602,6 +611,12 @@ std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_elf_map();
+}
+
+xrt::hw_context::qos_type
+get_qos_map(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_qos_map();
 }
 
 } // xrt_core::hw_context_int
