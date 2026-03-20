@@ -74,10 +74,18 @@ namespace xrt_core::xdp::core {
   void
   load_core()
   {
-    static xrt_core::module_loader
-    xdp_core_loader(std::getenv("AMD_XDP_NPU3") ? "xdp_core_npu3" : "xdp_core",
-                    register_callbacks_empty,
-                    warning_callbacks_empty);
+    if (std::getenv("AMD_XDP_NPU3")) {
+      static xrt_core::sdk_loader
+      xdp_core_loader("xdp_core_npu3",
+                      register_callbacks_empty,
+                      warning_callbacks_empty);
+    }
+    else {
+      static xrt_core::module_loader
+      xdp_core_loader("xdp_core",
+                      register_callbacks_empty,
+                      warning_callbacks_empty);
+    }
   }
 }
 
