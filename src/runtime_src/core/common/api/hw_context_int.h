@@ -89,9 +89,10 @@ XRT_CORE_COMMON_EXPORT
 std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx);
 
-// Get QoS map from the hardware context
-// QoS map is a map of key-value pairs
-// where key is a string and value is a uint32_t
+// Get the configuration parameter / QoS map from the hw context.
+// The returned map contains key-value pairs
+// key: string, value: uint32_t for both QoS-related settings and
+// other hw context configuration parameters.
 XRT_CORE_COMMON_EXPORT
 xrt::hw_context::qos_type
 get_qos_map(const xrt::hw_context& hwctx);
