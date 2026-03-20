@@ -2324,7 +2324,14 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     pkt->header = rhs_pkt->header;
     pkt->state = ERT_CMD_STATE_NEW;
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
-    return pkt->data + (rhs->data - rhs_pkt->data);
+    auto data = pkt->data + (rhs->data - rhs_pkt->data);
+
+    // Initialize m_dpu_payload if present in rhs
+    m_dpu_payload = rhs->m_dpu_payload
+                  ? data + (rhs->m_dpu_payload - rhs->data)
+                  : nullptr;
+
+    return data;
   }
 
   // For DPU kernels, initialize the instruction buffer(s) in the
@@ -2483,10 +2490,6 @@ public:
     , encode_cumasks(rhs->encode_cumasks)
     , m_dtrace_control_file(rhs->m_dtrace_control_file)
   {
-    // Cannot initialize m_dpu_payload from data in the member list (would run before data exists).
-    m_dpu_payload = rhs->m_dpu_payload
-                        ? data + (rhs->m_dpu_payload - rhs->data)
-                        : nullptr;
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
 
