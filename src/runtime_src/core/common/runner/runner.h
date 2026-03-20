@@ -7,6 +7,8 @@
 #include "xrt/detail/span.h"
 #include "xrt/experimental/xrt_exception.h"
 
+#include "repo.h"
+
 #include <any>
 #include <cstddef>
 #include <cstdint>
@@ -82,7 +84,8 @@ public:
    * which case the recipe references are looked up in the artifacts are
    * looked up in the repository rather than from disk.
    */
-  using artifacts_repository = std::map<std::string, std::vector<char>>;
+  //using artifacts_repository = std::map<std::string, std::vector<char>>;
+  using artifacts_repository = xrt_core::artifacts::repository;
 
   runner() = default;
 

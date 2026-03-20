@@ -36,11 +36,7 @@ load_json_from_device(const xrt_core::device* device)
   }
 
   auto archive = XBUtilities::open_archive(device);
-  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
-  auto& config_data = artifacts_repo["trace_events.json"];
-  std::string config_content(config_data.begin(), config_data.end());
-  
-  return nlohmann::json::parse(config_content);
+  return nlohmann::json::parse(archive->data("trace_events.json"));
 }
 
 uint16_t
