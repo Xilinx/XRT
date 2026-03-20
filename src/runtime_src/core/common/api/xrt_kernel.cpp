@@ -2866,16 +2866,12 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // dump dtrace buffer if ini option is enabled
-        dump_dtrace_buffer();
+        dump_logs(false);
 
-        // dump uc log buffer for timeout case
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2885,17 +2881,7 @@ public:
       state = cmd->wait();
     }
 
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
-
-    // dump dtrace buffer if ini option is enabled
-    dump_dtrace_buffer();
-
-    // Dump uC log buffer for non-completed cases
-    if (state != ERT_CMD_STATE_COMPLETED)
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    dump_logs(true); // dump required logs
 
     return state;
   }
@@ -2936,10 +2922,8 @@ public:
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // Dump uC log buffer in case of timeout for debugging
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
-        // Dump dtrace buffer
-        dump_dtrace_buffer();
+        // dump required logs before throwing error
+        dump_logs(false);
         return std::cv_status::timeout;
       }
 
@@ -2949,21 +2933,13 @@ public:
       state = cmd->wait();
     }
 
-    // dump dtrace buffer if ini option is enabled
-    // here dtrace is dumped in both passing and timeout cases
-    dump_dtrace_buffer();
+    // dump required logs
+    dump_logs(true);
 
+    // throw error if command failed to complete successfully
     if (state != ERT_CMD_STATE_COMPLETED) {
-      // Dump uC log buffer for non-completed cases
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
       throw_command_error(state);
     }
-
-    // COMPLETED
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
     return std::cv_status::no_timeout;
   }
@@ -3006,6 +2982,26 @@ public:
   {
     if (m_module)
       xrt_core::module_int::dump_dtrace_buffer(m_module, m_dtrace_result_file_postfix);
+  }
+
+private:
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    dump_dtrace_buffer();
+
+    // dump scratchpad memory in both success and error cases if it is enabled
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
+      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    else
+      // update usage logger in success cases
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_COMPLETED);
   }
 };
 
@@ -3576,6 +3572,18 @@ class runlist_impl
     }
   }
 
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    for (const auto& run : m_runlist)
+      run.get_handle()->dump_dtrace_buffer();
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3763,18 +3771,12 @@ public:
 
     // Wait throws on error. On timeout just return
     if (wait(timeout) == std::cv_status::timeout) {
-      // Dump dtrace buffer for all run objects in timeout case
-      for (const auto& run : m_runlist)
-        run.get_handle()->dump_dtrace_buffer();
-
-      // Dump uC log buffer for debug when timeout happens
-      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
+      // dump required logs before returning timeout
+      dump_logs(false);
       return std::cv_status::timeout;
     }
 
-    // dump dtrace buffer for all run objects on successful completion
-    for (const auto& run : m_runlist)
-      run.get_handle()->dump_dtrace_buffer();
+    dump_logs(true);
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
