@@ -47,7 +47,7 @@ namespace xrt::core::hip
   }
 
   memory::memory(device* dev, size_t sz, unsigned int flags)
-      : m_device(std::move(dev)),
+      : m_device(dev),
 	m_size(sz),
 	m_type(memory_type::host),
 	m_flags(flags)
