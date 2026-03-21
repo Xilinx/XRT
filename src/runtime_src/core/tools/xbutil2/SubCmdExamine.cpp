@@ -288,9 +288,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if (device){
     const xrt_core::smi::tuple_vector& reportList = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(device, xrt_core::query::xrt_smi_lists::type::examine_reports);
     runnableReports = getReportsList(reportList);
-
-    if (XBU::isUsingAdvanced(reportList, reportsToRun))
-      XBU::printAdvancedDisclaimer();
   } 
   else {
     runnableReports = uniqueReportCollection;

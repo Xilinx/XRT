@@ -965,28 +965,3 @@ printAdvancedDisclaimer()
   std::cout << "                Continue only if you understand the risks.               \n";
   std::cout << "-------------------------------------------------------------------------\n";
 }
-
-bool
-XBUtilities::
-isUsingAdvanced(
-    const std::vector<std::tuple<std::string, std::string, std::string>>& configItems,
-    const std::vector<std::string>& requestedNames)
-{
-  // If advanced is not set, return false immediately
-  if (!getAdvance())
-    return false;
-
-  for (const auto& name : requestedNames) {
-    if (name == "all")
-      return true;
-  }
-
-  // Check if any specific requested item is hidden
-  for (const auto& name : requestedNames) {
-    for (const auto& item : configItems) {
-      if (std::get<0>(item) == name && std::get<2>(item) == "hidden")
-        return true;
-    }
-  }
-  return false;
-}

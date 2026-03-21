@@ -43,6 +43,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/time.h"
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
@@ -58,6 +59,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <map>
 #include <memory>
@@ -1771,9 +1773,11 @@ public:
         xrt_core::hw_context_int::set_exclusive(hwctx);
     }
 
+#if 0
     // AIE-only xclbins now have IP_LAYOUT; reject early with a clear message
     if (auto axlf = xclbin.get_axlf(); axlf && xrt_core::xclbin::is_aie_only(axlf))
       throw xrt_core::error(ENOTSUP, "xrt::kernel cannot be opened for AIE-only xclbins.");
+#endif
 
     // Compare the matching CUs against the CU sort order to create cumask
     const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching nm
@@ -2320,7 +2324,14 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     pkt->header = rhs_pkt->header;
     pkt->state = ERT_CMD_STATE_NEW;
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
-    return pkt->data + (rhs->data - rhs_pkt->data);
+    auto cloned_data = pkt->data + (rhs->data - rhs_pkt->data);
+
+    // Initialize m_dpu_payload if present in rhs
+    m_dpu_payload = rhs->m_dpu_payload
+                  ? cloned_data + (rhs->m_dpu_payload - rhs->data)
+                  : nullptr;
+
+    return cloned_data;
   }
 
   // For DPU kernels, initialize the instruction buffer(s) in the
@@ -2374,6 +2385,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
+  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t m_header;                      // cached intialized command header
   uint32_t uid;                           // internal unique id for debug
@@ -2386,7 +2398,8 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
-  uint32_t* m_dpu_payload = nullptr;      // start of ert_dpu_data in command (for dtrace reinit)
+  // Run-level dtrace result file postfix
+  std::string m_dtrace_result_file_postfix;
 
 public:
   uint32_t
@@ -2476,13 +2489,6 @@ public:
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
     , m_dtrace_control_file(rhs->m_dtrace_control_file)
-    // Safe to apply rhs offset: clone_command_data() copies the entire packet
-    // (std::copy_n) and returns this->data at the same relative position as
-    // rhs->data, so the clone's buffer has identical layout and the relative
-    // offset (rhs->m_dpu_payload - rhs->data) points to the clone's dpu section.
-    , m_dpu_payload(rhs->m_dpu_payload
-                        ? data + (rhs->m_dpu_payload - rhs->data)
-                        : nullptr)
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -2656,10 +2662,37 @@ public:
     set_arg(arg, args);
   }
 
+  // For DPU flows, warn once if the opcode arg carries the deprecated
+  // Legacy TXN flow opcode value.
+  void
+  warn_if_legacy_txn_flow(const argument& arg, const void* value, size_t bytes)
+  {
+    // check if the first arg (at index 0) equals the deprecated Legacy
+    // TXN flow opcode value, and warn if so.
+    constexpr uint64_t legacy_txn_flow_opcode = 2;
+    constexpr size_t opcode_arg_index  = 0;
+    if (arg.index() != opcode_arg_index || !value ||
+        kernel->get_kernel_type() != kernel_type::dpu ||
+        arg.type() != xarg::argtype::scalar)
+      return;
+
+    uint64_t opcode = 0;
+    std::memcpy(&opcode, value, std::min(bytes, sizeof(opcode)));
+    if (opcode != legacy_txn_flow_opcode)
+      return;
+
+    static std::once_flag warned;
+    std::call_once(warned, [] {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "Legacy TXN flow is deprecated. Please migrate to the TXN flow with upgraded xclbin/ELF.");
+    });
+  }
+
   void
   set_arg_at_index(size_t index, const void* value, size_t bytes)
   {
-    auto& arg = kernel->get_arg(index);
+    const auto& arg = kernel->get_arg(index);
+    warn_if_legacy_txn_flow(arg, value, bytes);
     set_arg_value(arg, value, bytes);
   }
 
@@ -2707,10 +2740,24 @@ public:
   void
   prep_start()
   {
-    if (m_module)
+    if (m_module) {
       // Sync the module to device to ensure any patches are applied,
       // noop if module patching hasn't changed since last sync.
       xrt_core::module_int::sync(m_module);
+
+      if (xrt_core::module_int::is_dtrace_enabled(m_module)) {
+        // create dtrace result file postfix
+        // New file is created for each run.start(), run.wait() pair execution.
+        // Also getting timestamp for filename in run.start() so there won't be
+        // multiple files created when command is retried.
+        auto hwctx = static_cast<xrt_core::hwctx_handle*>(kernel->get_hw_context());
+        std::string postfix{
+            "_ctx_" + std::to_string(hwctx->get_slotidx()) + "_run_"
+            + std::to_string(uid) + "_"};
+        m_dtrace_result_file_postfix = postfix;
+        m_dtrace_result_file_postfix += xrt_core::get_timestamp_for_filename();
+      }
+    }
 
     encode_compute_units();
 
@@ -2822,16 +2869,12 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // dump dtrace buffer if ini option is enabled
-        dump_dtrace_buffer();
+        dump_logs(false);
 
-        // dump uc log buffer for timeout case
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
         return ERT_CMD_STATE_TIMEOUT;
       }
 
@@ -2841,17 +2884,7 @@ public:
       state = cmd->wait();
     }
 
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
-
-    // dump dtrace buffer if ini option is enabled
-    dump_dtrace_buffer();
-
-    // Dump uC log buffer for non-completed cases
-    if (state != ERT_CMD_STATE_COMPLETED)
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    dump_logs(true); // dump required logs
 
     return state;
   }
@@ -2892,8 +2925,8 @@ public:
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout) {
-        // Dump uC log buffer in case of timeout for debugging
-        xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+        // dump required logs before throwing error
+        dump_logs(false);
         return std::cv_status::timeout;
       }
 
@@ -2903,21 +2936,13 @@ public:
       state = cmd->wait();
     }
 
-    // dump dtrace buffer if ini option is enabled
-    // here dtrace is dumped in both passing and timeout cases
-    dump_dtrace_buffer();
+    // dump required logs
+    dump_logs(true);
 
+    // throw error if command failed to complete successfully
     if (state != ERT_CMD_STATE_COMPLETED) {
-      // Dump uC log buffer for non-completed cases
-      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
       throw_command_error(state);
     }
-
-    // COMPLETED
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
-    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
-    if (dump)
-      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
 
     return std::cv_status::no_timeout;
   }
@@ -2959,7 +2984,27 @@ public:
   dump_dtrace_buffer() const
   {
     if (m_module)
-      xrt_core::module_int::dump_dtrace_buffer(m_module, uid);
+      xrt_core::module_int::dump_dtrace_buffer(m_module, m_dtrace_result_file_postfix);
+  }
+
+private:
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    dump_dtrace_buffer();
+
+    // dump scratchpad memory in both success and error cases if it is enabled
+    static bool dump = xrt_core::config::get_feature_toggle("Debug.dump_scratchpad_mem");
+    if (dump)
+      xrt_core::hw_context_int::dump_scratchpad_mem(kernel->get_hw_context());
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(kernel->get_hw_context());
+    else
+      // update usage logger in success cases
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_COMPLETED);
   }
 };
 
@@ -3530,6 +3575,18 @@ class runlist_impl
     }
   }
 
+  void
+  dump_logs(bool success) const
+  {
+    // dump dtrace buffer in both success and error cases
+    for (const auto& run : m_runlist)
+      run.get_handle()->dump_dtrace_buffer();
+
+    // dump uc log in error cases
+    if (!success)
+      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3717,18 +3774,12 @@ public:
 
     // Wait throws on error. On timeout just return
     if (wait(timeout) == std::cv_status::timeout) {
-      // Dump dtrace buffer for all run objects in timeout case
-      for (const auto& run : m_runlist)
-        run.get_handle()->dump_dtrace_buffer();
-
-      // Dump uC log buffer for debug when timeout happens
-      xrt_core::hw_context_int::dump_uc_log_buffer(m_hwctx);
+      // dump required logs before returning timeout
+      dump_logs(false);
       return std::cv_status::timeout;
     }
 
-    // dump dtrace buffer for all run objects on successful completion
-    for (const auto& run : m_runlist)
-      run.get_handle()->dump_dtrace_buffer();
+    dump_logs(true);
 
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;

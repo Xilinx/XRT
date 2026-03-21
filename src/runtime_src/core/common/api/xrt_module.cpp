@@ -5,7 +5,6 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "core/common/time.h"
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -133,11 +132,18 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Check if dtrace is enabled
+  virtual bool
+  is_dtrace_enabled() const
+  {
+    return false;
+  }
+
   // Dump dynamic trace buffer (optional)
   virtual void
-  dump_dtrace_buffer(uint32_t)
+  dump_dtrace_buffer(const std::string&)
   {
-  //Placeholder has no dtrace
+    throw std::runtime_error("Not supported");
   }
 
   // Get control scratchpad buffer object
@@ -752,6 +758,7 @@ class module_run_aie_gen2_plus : public module_run
     if (!buffers_length) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Control buffer size is zero, no dtrace o/p");
+      m_dtrace = dtrace_util{};  // destroy handle; no usable dtrace without buffers
       return;
     }
 
@@ -776,9 +783,9 @@ class module_run_aie_gen2_plus : public module_run
                               "[dtrace] : dtrace buffers initialized successfully");
     }
     catch (const std::exception &e) {
-      m_dtrace.ctrl_bo = {};
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
                               std::string{"[dtrace] : dtrace buffers initialization failed, "} + e.what());
+      m_dtrace = dtrace_util{};  // destroy handle and clear partial state
     }
   }
 
@@ -1070,13 +1077,16 @@ public:
     m_first_patch = false;
   }
 
+  bool
+  is_dtrace_enabled() const override
+  {
+    return m_dtrace.dtrace_handle && m_dtrace.ctrl_bo;
+  }
+
   // Dump dynamic trace buffer
   void
-  dump_dtrace_buffer(uint32_t run_id) override
+  dump_dtrace_buffer(const std::string& postfix) override
   {
-    if (!m_dtrace.ctrl_bo || !m_dtrace.dtrace_handle.get())
-      return;
-
     // sync dtrace buffers output from device
     m_dtrace.ctrl_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
@@ -1084,10 +1094,8 @@ public:
       // dtrace output is dumped into current working directory
       // output is a python file
       std::string result_file_path = std::filesystem::current_path().string()
-                                   + "/dtrace_dump_"
-                                   + xrt_core::get_timestamp_for_filename()
-                                   + "_" + std::to_string(get_id())
-                                   + "_run" + std::to_string(run_id)
+                                   + "/dtrace_dump"
+                                   + postfix
                                    + ".py";
 
       get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_path.c_str());
@@ -1175,10 +1183,19 @@ sync(const xrt::module& module)
   module.get_handle()->sync_if_dirty();
 }
 
-void
-dump_dtrace_buffer(const xrt::module& module, uint32_t run_id)
+bool
+is_dtrace_enabled(const xrt::module& module)
 {
-  module.get_handle()->dump_dtrace_buffer(run_id);
+  return module.get_handle()->is_dtrace_enabled();
+}
+
+void
+dump_dtrace_buffer(const xrt::module& module, const std::string& postfix)
+{
+  if (!is_dtrace_enabled(module))
+    return;
+
+  module.get_handle()->dump_dtrace_buffer(postfix);
 }
 
 void
