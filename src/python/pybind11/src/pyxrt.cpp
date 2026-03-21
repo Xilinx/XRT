@@ -58,6 +58,11 @@ public:
       throw std::runtime_error("Failed to create temporary XRT device handle for load_xclbin compatibility shim");
   }
 
+  xrt_device_handle_guard(const xrt_device_handle_guard&) = delete;
+  xrt_device_handle_guard& operator=(const xrt_device_handle_guard&) = delete;
+  xrt_device_handle_guard(xrt_device_handle_guard&&) = delete;
+  xrt_device_handle_guard& operator=(xrt_device_handle_guard&&) = delete;
+
   ~xrt_device_handle_guard()
   {
     if (handle)
