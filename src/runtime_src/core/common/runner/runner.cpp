@@ -1547,11 +1547,10 @@ class profile
       return bindings;
     }
 
-    // Create a map of resource names to XRT buffer objects.
-    // Initialize the BO with data from the file if any.
-    // The size of the xrt::bo is either the size of the "file"
-    // if present, or it is the "size" per json.  An explicit
-    // "size" always has precedence.
+    // Create a map of resource names to XRT buffer objects. This
+    // function establishes the mapping from resource name to XRT
+    // buffer object. The real buffer object for the resource is
+    // during initialization of the binding.
     static std::map<name_t, xrt::bo>
     create_buffers(const xrt::device& device,
                    const std::map<name_t, binding_node>& bindings)
@@ -1627,8 +1626,8 @@ class profile
     //   "end": bo.size() // offset to end writing at (optional)
     // }
     //
-    // This function fills all the bytes of the buffer with data
-    // from file.  It wraps around the file if necessary to fill
+    // This function creates the buffer and fills the bytes of the buffer with data
+    // from file per the init node.  It wraps around the file if necessary to fill
     // the bo.
     //
     // The function supports initializing the buffer between iterations,
@@ -1656,7 +1655,7 @@ class profile
       // file data, which avoids an extra copy.
       if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
         XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
-        return xrt::ext::bo{m_device, data.data(), bo_size ? bo_size : data.size()};
+        return xrt::ext::bo{m_device, data.data(), bo_size ? bo_size : data.size(), xrt::ext::bo::access_mode::read };
       }
 
       // Otherwise, create a normal xrt::bo and copy the file data into the
@@ -1695,7 +1694,7 @@ class profile
       return bo;
     }
 
-    // init_buffer_stride() - Initialize bo with value at stride
+    // init_buffer_stride() - Create and initialize bo with value at stride
     // "init": {
     //   "stride": 1,   // write the value repeatedly at this stride
     //   "value": 239,  // the value to write
@@ -1719,6 +1718,7 @@ class profile
       return bo;
     }
 
+    // init_buffer_random() - Create and initialize bo with random data
     xrt::bo
     init_buffer_random(size_t bo_size, const init_node&)
     {
@@ -1729,7 +1729,7 @@ class profile
       return bo;
     }
 
-    // init_buffer() - Initialize a resource buffer per the binding json node
+    // init_buffer() - Create and initialize a resource buffer per the binding json node
     // "init": {
     //   // "stride" stride initialization
     //   // "random" random initialization
@@ -1791,8 +1791,8 @@ class profile
     }
 
     // Init bindings per json.  Initialization is done by filling a
-    // pattern into a buffer that requires initialization.  The
-    // pattern is currently limited to a single character.
+    // a buffer that requires initialization with data as prescribed
+    // by the binding's init node.
     void
     init()
     {
