@@ -229,7 +229,7 @@ static xrt::module
 get(const std::string& path, const xartifacts::repo& repo)
 {
   //auto key = repo->get_id() + path; // must be unique to repo
-  auto id = std::string(reinterpret_cast<const char*>(repo.get_handle().get()));
+  auto id = std::to_string(repo.get_uid());
   auto key = id + path; // must be unique to repo
   if (auto it = s_path2elf.find(key); it != s_path2elf.end())
     return get((*it).second);

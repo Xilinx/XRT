@@ -8,6 +8,7 @@
 #include "xrt/detail/span.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -89,6 +90,13 @@ public:
   repository& operator=(repository&&) noexcept = default;
   repository(const repository&) = default;
   repository& operator=(const repository&) = default;
+
+  /**
+   * get_uid() - Get a unique identifier for the repository
+   */
+  XRT_API_EXPORT
+  uint64_t
+  get_uid() const;
 
   /**
    * add_data() - Add artifacts from raw bytes

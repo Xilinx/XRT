@@ -6,6 +6,7 @@
 #include "repo.h"
 #include "detail/mmap.h"
 
+#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
@@ -80,9 +81,22 @@ struct mmap_artifact_holder : artifact_concept
 ////////////////////////////////////////////////////////////////
 class repository_impl
 {
+  uint64_t m_uid = 0;
 public:
+  repository_impl()
+  {
+    static std::atomic<uint64_t> next_uid{1};
+    m_uid = next_uid.fetch_add(1, std::memory_order_relaxed);
+  }
+  
   virtual
   ~repository_impl() = default;
+
+  uint64_t
+  get_uid() const
+  {
+    return m_uid;
+  }
 
   virtual void
   add_data(const std::string& key, span<char> data, data_mode mode) const = 0;
@@ -337,6 +351,13 @@ repository(const std::map<std::string, std::vector<char>>& repo)
 {}
   
 repository::~repository() = default;
+
+uint64_t
+repository::
+get_uid() const
+{
+  return handle->get_uid();
+}
 
 void
 repository::
