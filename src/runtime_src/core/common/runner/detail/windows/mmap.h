@@ -130,7 +130,7 @@ private:
   }
 
   static HANDLE
-  create_mapping(HANDLE file, std::size_t size)
+  create_mapping(HANDLE file, std::size_t)
   {
     HANDLE h = CreateFileMappingA(
         file,

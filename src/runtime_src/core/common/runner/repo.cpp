@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "repo.h"
 #include "detail/mmap.h"
 
@@ -281,19 +284,19 @@ public:
   {}
 
   void
-  add_data(const std::string& key, span<char> data, data_mode mode) const override
+  add_data(const std::string&, span<char>, data_mode) const override
   {
     throw std::runtime_error("Cannot add artifacts to a ram repo");
   }
 
   void
-  add_data(const std::string& key, std::string&& data) const override
+  add_data(const std::string&, std::string&&) const override
   {
     throw std::runtime_error("Cannot add artifacts to a ram repo");
   }
 
   void
-  add_file(const std::string& key, file_mode mode) const override
+  add_file(const std::string&, file_mode) const override
   {
     throw std::runtime_error("Cannot add artifacts to a ram repo");
   }
