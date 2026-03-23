@@ -85,8 +85,11 @@ static int
 get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 {
 	int s_id = -1;
-	/* xclbin contains PL section use fixed slot */
-	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT)) {
+	/* PL or merged xclbins use fixed slot 0.
+	 * AIE-only xclbins (AM_LOAD_AIE or AM_LOAD_PDI) get a dynamic slot.
+	 */
+	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
+	    !(axlf->m_header.m_actionMask & (AM_LOAD_AIE | AM_LOAD_PDI))) {
                 DRM_WARN("Xclbin contains PL section Using Slot-0");
 		*slot_id = ZOCL_DEFAULT_XCLBIN_SLOT;
 		return 0;
