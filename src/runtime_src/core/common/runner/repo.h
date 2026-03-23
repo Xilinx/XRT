@@ -52,7 +52,7 @@ public:
    *
    * @var read The file is read from disk and copied into the
    *   repository.
-   * @var ref The file is memory mapped and stored mapped pointer is
+   * @var mmap The file is memory mapped and stored mapped pointer is
    *   stored in repository.
    */
   enum class file_mode

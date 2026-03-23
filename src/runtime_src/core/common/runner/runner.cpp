@@ -329,9 +329,21 @@ class recipe
       // effect other than making sure the buffer content is valid.
       mutable xrt::bo m_xrt_bo;
 
-      static xrt::bo
-      create_bo(const xrt::device& device, type, size_t sz)
+      // The type of the buffer determines whether the buffer is created
+      // Do not create buffers for external buffers that must be bound
+      // prior to execution.
+      static bool
+      is_external(type t)
       {
+        return t == type::input || t == type::output || t == type::weight;
+      }
+
+      static xrt::bo
+      create_bo(const xrt::device& device, type t, size_t sz)
+      {
+        if (!sz || is_external(t))
+          return {}; // buffer is bound during execution, don't create here
+
         return xrt::ext::bo{device, sz};
       }
 
@@ -351,7 +363,7 @@ class recipe
         : m_name(std::move(name))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
+        , m_xrt_bo{create_bo(device, m_type, m_size)}
       {
         XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
       }
@@ -371,7 +383,7 @@ class recipe
         : m_name(other.m_name)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
+        , m_xrt_bo{create_bo(device, m_type, m_size)}
       {}
 
       buffer(const xrt::hw_context& hwctx, const buffer& other)
@@ -1636,16 +1648,37 @@ class profile
     xrt::bo
     init_buffer_file(size_t bo_size, const init_node& node, size_t iteration)
     {
+      using file_mode = xrt_core::artifacts::repository::file_mode;
       auto file = node.at("file").get<std::string>();
+      auto mmap = node.value<bool>("mmap", true);
       auto skip = node.value<size_t>("skip", 0);
       auto bo_begin = node.value<size_t>("begin", 0);
       auto bo_end = node.value<size_t>("end", bo_size);
-      auto data = m_repo.get(file);
+      auto data = m_repo.get(file, mmap ? file_mode::mmap : file_mode::read);
       if (skip > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
 
       if (bo_begin > bo_end || bo_end > bo_size)
         throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
+
+      // Create a userptr bo from the size of the file unless bo_size is specified.
+      // The file data must be page aligned and the bo range must be the entire bo.
+      if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
+        XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
+
+        // Specified binding::bo_size is size after skip, file includes
+        // bytes that should be skipped. We create a buffer before skip
+        // that is then carved out, hence must adjust size.
+        auto sz = bo_size ? bo_size + skip : data.size();
+        xrt::bo bo = xrt::ext::bo{m_device, data.data(), sz, xrt::ext::bo::access_mode::read};
+        if (!skip)
+          return bo;
+
+        // Create sub-bo to skip bytes from beginning of file.  Cannot
+        // offset the file data before creating the bo since the data 
+        // must be page aligned, and skip likely isn't a page multiple.
+        return xrt::bo{bo, bo.size() - skip, skip};
+      }
 
       // Adjust the view, skipping skip bytes, then copy to bo
       data = span<char>{data.data() + skip, data.size() - skip};
@@ -1653,10 +1686,6 @@ class profile
       // Create the bo from the size of the file unless bo_size is specified
       // If the bo range is the entire bo, then create a userptr BO from the
       // file data, which avoids an extra copy.
-      if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
-        XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
-        return xrt::ext::bo{m_device, data.data(), bo_size ? bo_size : data.size(), xrt::ext::bo::access_mode::read };
-      }
 
       // Otherwise, create a normal xrt::bo and copy the file data into the
       // bo at the specified range if any.

@@ -242,13 +242,11 @@ public:
   span<char>
   get(const std::string& key, file_mode hint) const override
   {
-    auto rkey = resolve_key(key);
-
-    auto it = m_artifacts.find(rkey);
+    auto it = m_artifacts.find(resolve_key(key));
     if (it == m_artifacts.end())
-      base_repo::add_file(rkey, hint);
+      base_repo::add_file(key, hint); // add_file() resolves key
 
-    return base_repo::get(rkey);
+    return base_repo::get(key);       // get() resolves key as well
   }
 };
 
@@ -271,6 +269,14 @@ public:
   file_repo(std::filesystem::path artifacts_dir)
    : m_base_dir(std::move(artifacts_dir))
   {}
+
+  // get() - Get artifact by key
+  span<char>
+  get(const std::string& key) const override
+  {
+    return base_repo::get(key, file_mode::read);
+  }
+  
 };
 
 ////////////////////////////////////////////////////////////////
