@@ -142,6 +142,7 @@ have been specified.
 ```
       "init": {
         "file": "<path or repo key>",
+        "mmap": bool     // memory map the file on open
         "skip": bytes    // skip number of bytes in file
         "begin": offset, // offset to start writing at (default: 0)
         "end": offset    // offset to end writing at (default: bo.size())
@@ -150,11 +151,17 @@ have been specified.
 File initialization implies that the resource buffer should be
 initialized with content from `file`.  The `file` must reference
 a key that locates a file on disk or in an artifacts repository used
-during construction of the `xrt::runner`.  If the binding element
+during construction of the `xrt::runner`.
+If the binding element
 specifies a `size` value, then this size takes precedence over the
 size of the file, otherwise the size of the file will be the size of
 the buffer. The optional `skip` element allows skipping first bytes 
 of the file during initialization of the buffer.
+
+If no artifacts repo was used during construction of the runner or if
+the repo doesn't contain the referenced file, then the optional `mmap`
+value, if set to `true`, causes the runner to memory map the file
+rather than read it directly from disk.
 
 The range defined by `[begin, end[` (default: `[0, bo.size()[`) are 
 the bytes of the buffer that will be populated with data from the file.

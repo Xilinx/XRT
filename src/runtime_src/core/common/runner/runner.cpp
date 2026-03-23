@@ -1650,7 +1650,7 @@ class profile
     {
       using file_mode = xrt_core::artifacts::repository::file_mode;
       auto file = node.at("file").get<std::string>();
-      auto mmap = node.value<bool>("mmap", true);
+      auto mmap = node.value<bool>("mmap", false);
       auto skip = node.value<size_t>("skip", 0);
       auto bo_begin = node.value<size_t>("begin", 0);
       auto bo_end = node.value<size_t>("end", bo_size);
