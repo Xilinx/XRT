@@ -12,72 +12,84 @@
 #include <unordered_map>
 #include <vector>
 
+namespace {
+
+template <typename T>
+using span = xrt_core::artifacts::span<T>;
+  
+// class artifact - Manage a repo artifact
+// This erases the type of the specific storage type (e.g. vector,
+// string, mmap) and provides a common interface to get a span<char>.
+class artifact
+{
+  struct artifact_iholder
+  {
+    virtual ~artifact_iholder() = default;
+    virtual span<char> get_span() = 0;
+  };
+
+  // Default holder for storage types that support data() and size()
+  template <typename StorageType>
+  struct artifact_type : artifact_iholder
+  {
+    StorageType m_storage;
+
+    artifact_type(StorageType&& storage)
+      : m_storage(std::forward<StorageType>(storage))
+    {}
+        
+    span<char>
+    get_span() override
+    {
+      return span<char>{m_storage.data(), m_storage.size()};
+    }
+  };
+
+  // Specialize for mmap_artifact
+  template <>
+  struct artifact_type<xrt_core::artifacts::detail::mmap_artifact> : artifact_iholder
+  {
+    xrt_core::artifacts::detail::mmap_artifact m_storage;
+
+    artifact_type(xrt_core::artifacts::detail::mmap_artifact&& storage)
+      : m_storage(std::move(storage))
+    {}
+                
+    span<char>
+    get_span() override
+    {
+      return m_storage.get_span();
+    }
+  };
+
+  std::unique_ptr<artifact_iholder> m_holder;
+
+public:
+  artifact() = default;
+  artifact(artifact&&) = default;
+
+  template <typename StorageType>
+  artifact(StorageType&& storage)
+    : m_holder(std::make_unique<artifact_type<StorageType>>(std::forward<StorageType>(storage)))
+  {}
+
+  span<char>
+  get_span()
+  {
+    return m_holder->get_span();
+  }
+}; // artifact
+
+} // namespace
+
 namespace xrt_core::artifacts {
 
 using data_mode = repository::data_mode;
 using file_mode = repository::file_mode;
 
-namespace {
-
-// Internal polymorphic artifact storage; not exposed in the API.
-struct artifact_concept
-{
-  virtual ~artifact_concept() = default;
-
-  virtual span<char>
-  get_span() = 0;
-};
-
-struct owned_artifact : artifact_concept
-{
-  std::vector<char> m_data;
-
-  span<char>
-  get_span() override
-  {
-    return span<char>(m_data.data(), m_data.size());
-  }
-};
-
-struct owned_string_artifact : artifact_concept
-{
-  std::string m_data;
-
-  span<char>
-  get_span() override
-  {
-    return span<char>(m_data.data(), m_data.size());
-  }
-};
-
-struct ref_artifact : artifact_concept
-{
-  char* m_ptr = nullptr;
-  std::size_t m_size = 0;
-
-  span<char>
-  get_span() override
-  {
-    return span<char>(m_ptr, m_size);
-  }
-};
-
-struct mmap_artifact_holder : artifact_concept
-{
-  detail::mmap_artifact m_mapped;
-
-  span<char>
-  get_span() override
-  {
-    return m_mapped.get_span();
-  }
-};
-
-}  // namespace
-
 ////////////////////////////////////////////////////////////////
-// struct base_repo
-// Base class for base_repo.  Type erased artifacts.
+// class repoisitory_impl - Repo implementation
+// Base class for base_repo.
 ////////////////////////////////////////////////////////////////
 class repository_impl
 {
@@ -113,36 +125,42 @@ public:
   virtual span<char>
   get(const std::string& key, file_mode hint) const = 0;
 };
-  
+
+// class base_repo - Base implementation of repository_impl
 class base_repo : public repository_impl
 {
-private:
   // Store as type erased artifacts
-  mutable std::unordered_map<std::string, std::unique_ptr<artifact_concept>> m_artifacts;
+  mutable std::unordered_map<std::string, artifact> m_artifacts;
 
+  // The key to store artifacts is resolved by this function, which
+  // is overridden by the file repository.
+  virtual std::string
+  resolve_key(const std::string& key) const
+  {
+    return key;
+  }
+
+private:
+  ////////////////////////////////////////////////////////////////
+  // Add artifact by different modes
+  ////////////////////////////////////////////////////////////////
   void
   add_copy(const std::string& key, span<char> data) const
   {
-    auto a = std::make_unique<owned_artifact>();
-    a->m_data.assign(data.begin(), data.end());
-    m_artifacts[key] = std::move(a);
+    std::vector<char> vec{data.begin(), data.end()};
+    m_artifacts.emplace(key, std::move(vec));
   }
 
   void
   add_string(const std::string& key, std::string&& data) const
   {
-    auto a = std::make_unique<owned_string_artifact>();
-    a->m_data = std::move(data);
-    m_artifacts[key] = std::move(a);
+    m_artifacts.emplace(key, std::move(data));
   }
 
   void
   add_ref(const std::string& key, span<char> data) const
   {
-    auto a = std::make_unique<ref_artifact>();
-    a->m_ptr = data.data();
-    a->m_size = data.size();
-    m_artifacts[key] = std::move(a);
+    m_artifacts.emplace(key, data);
   }
 
   void
@@ -154,186 +172,109 @@ private:
 
     const auto size = static_cast<std::size_t>(ifs.tellg());
     ifs.seekg(0);
-    auto a = std::make_unique<owned_artifact>();
-    a->m_data.resize(size);
-    if (size > 0 && !ifs.read(reinterpret_cast<char*>(a->m_data.data()), size))
+    std::vector<char> vec(size);
+    if (size > 0 && !ifs.read(reinterpret_cast<char*>(vec.data()), size))
       throw std::runtime_error("artifacts::repository: read failed: " + key);
 
-    m_artifacts[key] = std::move(a);
+    m_artifacts.emplace(key, std::move(vec));
   }
 
   void
   add_file_mmap(const std::string& key) const
   {
-    auto a = std::make_unique<mmap_artifact_holder>();
-    a->m_mapped = detail::mmap_artifact(key);
-    m_artifacts[key] = std::move(a);
+    m_artifacts.emplace(key, detail::mmap_artifact{key});
   }
 
 public:
   ////////////////////////////////////////////////////////////////
-  // Implementation of APIs
+  // Implementation of repository_impl interface
   ////////////////////////////////////////////////////////////////
-  virtual
-  ~base_repo() = default;
 
+  // add_data() - Add data by copy or reference
   void
   add_data(const std::string& key, span<char> data, data_mode mode) const override
   {
     switch (mode) {
     case data_mode::copy:
-      add_copy(key, data);
+      add_copy(resolve_key(key), data);
       break;
     case data_mode::ref:
-      add_ref(key, data);
+      add_ref(resolve_key(key), data);
       break;
     }
   }
 
+  // add_data() - Add data by stealing string
   void
   add_data(const std::string& key, std::string&& data) const override
   {
-    add_string(key, std::move(data));
+    add_string(resolve_key(key), std::move(data));
   }
 
+  // add_file() - Add file by reading or memory mapping
   void
   add_file(const std::string& key, file_mode mode) const override
   {
     switch (mode) {
     case file_mode::read:
-      add_file_read(key);
+      add_file_read(resolve_key(key));
       break;
     case file_mode::mmap:
-      add_file_mmap(key);
+      add_file_mmap(resolve_key(key));
       break;
     }
   }
 
+  // get() - Get artifact by key
   span<char>
   get(const std::string& key) const override
   {
-    auto it = m_artifacts.find(key);
+    auto rkey = resolve_key(key);
+
+    auto it = m_artifacts.find(rkey);
     if (it == m_artifacts.end())
-      throw std::runtime_error{"Failed to find artifact: " + key};
+      throw std::runtime_error{"Failed to find artifact: " + rkey};
     
-    return it->second->get_span();
+    return it->second.get_span();
   }
 
+  // get() - Get artifact by key, with file mode hint for on-demand loading
   span<char>
   get(const std::string& key, file_mode hint) const override
   {
-    auto it = m_artifacts.find(key);
-    if (it == m_artifacts.end())
-      base_repo::add_file(key, hint);
+    auto rkey = resolve_key(key);
 
-    return base_repo::get(key);
+    auto it = m_artifacts.find(rkey);
+    if (it == m_artifacts.end())
+      base_repo::add_file(rkey, hint);
+
+    return base_repo::get(rkey);
   }
 };
 
 ////////////////////////////////////////////////////////////////
 // struct file_impl - Implementation with base dir
-// Resolves all keys by prepending base dir, even if data
-// is not a file.
+// Resolves key by prepending base dir.
 ////////////////////////////////////////////////////////////////
 class file_repo : public base_repo
 {
   std::filesystem::path m_base_dir;
 
+  std::string
+  resolve_key(const std::string& key) const override
+  {
+    return (m_base_dir / std::filesystem::path(key)).string();
+  }
+  
 public:
   explicit
   file_repo(std::filesystem::path artifacts_dir)
    : m_base_dir(std::move(artifacts_dir))
   {}
-
-  void
-  add_data(const std::string& key, span<char> data, data_mode mode) const override
-  {
-    const std::filesystem::path resolved = m_base_dir / std::filesystem::path(key);
-    base_repo::add_data(resolved.string(), data, mode);
-  }
-
-  void
-  add_data(const std::string& key, std::string&& data) const override
-  {
-    const std::filesystem::path resolved = m_base_dir / std::filesystem::path(key);
-    base_repo::add_data(resolved.string(), std::move(data));
-  }
-
-  void
-  add_file(const std::string& key, file_mode mode) const override
-  {
-    const std::filesystem::path resolved = m_base_dir / std::filesystem::path(key);
-    base_repo::add_file(resolved.string(), mode);
-  }
-
-  span<char>
-  get(const std::string& key) const override
-  {
-    const std::filesystem::path resolved = m_base_dir / std::filesystem::path(key);
-    return base_repo::get(resolved.string(), file_mode::mmap);
-  }
-
-  span<char>
-  get(const std::string& key, file_mode hint) const override
-  {
-    const std::filesystem::path resolved = m_base_dir / std::filesystem::path(key);
-    return base_repo::get(resolved.string(), hint);
-  }
-};
-
-class ram_repo : public base_repo
-{
-  const std::map<std::string, std::vector<char>>& m_data;
-
-  static span<char>
-  to_span(const std::vector<char>& data)
-  {
-    auto ptr = reinterpret_cast<char*>(const_cast<char*>(data.data()));
-    return span<char>{ptr, data.size()};
-  }
-  
-public:
-  ram_repo(const std::map<std::string, std::vector<char>>& repo)
-    : m_data(repo)
-  {}
-
-  void
-  add_data(const std::string&, span<char>, data_mode) const override
-  {
-    throw std::runtime_error("Cannot add artifacts to a ram repo");
-  }
-
-  void
-  add_data(const std::string&, std::string&&) const override
-  {
-    throw std::runtime_error("Cannot add artifacts to a ram repo");
-  }
-
-  void
-  add_file(const std::string&, file_mode) const override
-  {
-    throw std::runtime_error("Cannot add artifacts to a ram repo");
-  }
-
-  span<char>
-  get(const std::string& key) const override
-  {
-    if (auto it = m_data.find(key); it != m_data.end())
-      return to_span((*it).second);
-
-    throw std::runtime_error{"Failed to find artifact: " + key};
-    
-  }
-
-  span<char>
-  get(const std::string& key, file_mode) const override
-  {
-    return get(key);
-  }
 };
 
 ////////////////////////////////////////////////////////////////
-// Public API
+// class repository - Public API implementation
 ////////////////////////////////////////////////////////////////
 repository::
 repository()
@@ -345,11 +286,6 @@ repository(const std::filesystem::path& artifacts_dir)
   : xrt::detail::pimpl<repository_impl>{std::make_unique<file_repo>(artifacts_dir)}
 {}
 
-repository::
-repository(const std::map<std::string, std::vector<char>>& repo)
-  : xrt::detail::pimpl<repository_impl>{std::make_unique<ram_repo>(repo)}
-{}
-  
 repository::~repository() = default;
 
 uint64_t

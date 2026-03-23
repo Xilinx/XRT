@@ -76,13 +76,6 @@ public:
   explicit
   repository(const std::filesystem::path& artifacts_dir);
 
-  /**
-   * ctor - Supply in-memory map to data
-   * aka ram_repo
-   */
-  XRT_API_EXPORT
-  repository(const std::map<std::string, std::vector<char>>& repo);
-
   XRT_API_EXPORT
   ~repository();
 

@@ -83,7 +83,7 @@ struct mmap_artifact
   mmap_artifact& operator=(const mmap_artifact&) = delete;
 
   span<char>
-  get_span()
+  get_span() const
   {
     if (!m_ptr || m_size == 0)
       return {};
