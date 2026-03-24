@@ -32,7 +32,8 @@ class artifact
   };
 
   // Default holder for storage types that support data() and size()
-  template <typename StorageType>
+  // Dummy required for partial template specialization within class
+  template <typename StorageType, int dummy>
   struct artifact_type : artifact_iholder
   {
     StorageType m_storage;
@@ -50,8 +51,9 @@ class artifact
   };
 
   // Specialize for mmap_artifact
-  template <>
-  struct artifact_type<xrt_core::artifacts::detail::mmap_artifact> : artifact_iholder
+  // Dummy required for partial template specialization within class
+  template <int dummy>
+  struct artifact_type<xrt_core::artifacts::detail::mmap_artifact, dummy> : artifact_iholder
   {
     xrt_core::artifacts::detail::mmap_artifact m_storage;
 
@@ -92,7 +94,7 @@ public:
   template <typename StorageType,
             typename = std::enable_if_t<!std::is_same_v<std::decay_t<StorageType>, artifact>>>
   explicit artifact(StorageType&& storage)
-    : m_holder(std::make_unique<artifact_type<StorageType>>(std::forward<StorageType>(storage)))
+    : m_holder(std::make_unique<artifact_type<StorageType,0>>(std::forward<StorageType>(storage)))
   {}
 
   artifact(void* data, std::size_t size)
