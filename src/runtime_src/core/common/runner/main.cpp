@@ -76,6 +76,7 @@ namespace {
 static bool g_progress = false;     // NOLINT
 static uint32_t g_iterations = 0;   // NOLINT
 static std::string g_mode = "all";  // NOLINT
+static bool g_nommap = false;       // NOLINT  
 
 constexpr double
 to_mb(size_t bytes)
@@ -142,6 +143,28 @@ touchup_iterations(json& profile, uint32_t iterations)
     exec["iterations"] = iterations;
 }
 
+// Disable mmap globally
+static void
+touchup_nommap(json& j)
+{
+  if (!g_nommap)
+    return;
+
+  if (j.is_object()) {
+    for (auto& [key, value] : j.items()) {
+      if (key == "mmap" && value.is_boolean() && value.get<bool>())
+        value = false;
+      else 
+        touchup_nommap(value);
+    }
+  }
+
+  else if (j.is_array()) {
+    for (auto& value : j)
+      touchup_nommap(value);
+  }
+}
+
 // Touch up profiles(s)
 // Return parsed / modified json as a json string
 static std::string
@@ -158,6 +181,7 @@ touchup_profile_mt(const std::string& profile, const std::string& mode, uint32_t
 
   filter_mode(json, mode);
   touchup_iterations(json, iterations);
+  touchup_nommap(json);
   
   return json.dump();
 }
@@ -170,6 +194,7 @@ touchup_profile(const std::string& profile, const std::string& mode, uint32_t it
 
   filter_mode(json, mode);
   touchup_iterations(json, iterations);
+  touchup_nommap(json);
 
   return json.dump();
 }
@@ -525,6 +550,7 @@ usage()
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--verbose <val>] set XRT verbosity level to specified value (default: 0)\n";
+  std::cout << " [--nommap] disable mmap of buffers (default: profile.json)\n";
   std::cout << " [--progress] show progress (same as --verbose 6)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
@@ -621,6 +647,11 @@ run(int argc, char* argv[])
     if (arg == "--progress") {
       verbosity = std::max(verbosity, static_cast<uint32_t>(xrt::message::level::info));
       g_progress = true;
+      continue;
+    }
+
+    if (arg == "--nommap") {
+      g_nommap = true;
       continue;
     }
 

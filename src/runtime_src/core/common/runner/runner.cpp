@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #define XRT_API_SOURCE         // in same dll as coreutil
@@ -16,6 +16,7 @@
 #include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/time.h"
+#include "core/common/unistd.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/include/xrt/xrt_bo.h"
@@ -43,7 +44,6 @@
 #include <memory>
 #include <random>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <tuple>
 #include <utility>
@@ -58,7 +58,10 @@ namespace {
 // The recipe will use xrt::runlist when the number of runs
 // exceed this threshold; otherwise use std::vector<xrt::run>
 constexpr size_t default_runlist_threshold = 6;
-  
+
+template <typename T>
+using span = xrt::detail::span<T>;
+
 using json = nlohmann::json;
 const json empty_json;
 
@@ -85,6 +88,12 @@ load_json(const std::string& input)
   }
 
   throw std::runtime_error("Failed to load json, unknown error");
+}
+
+inline bool
+is_page_aligned(const void* value)
+{
+  return value && (reinterpret_cast<uintptr_t>(value) % xrt_core::getpagesize()) == 0;
 }
 
 inline void
@@ -192,113 +201,9 @@ struct streambuf : public std::streambuf
 // Artifacts are encoded / referenced in recipe by string.
 // The artifacts can be stored in a file system or in memory
 // depending on how the recipe is loaded
-namespace artifacts {
+namespace xartifacts {
 
-// class repo - artifact repository
-class repo
-{
-protected:
-  using repo_error = xrt_core::runner::repo_error;
-  mutable std::map<std::string, std::vector<char>> m_data;
-  std::string m_id;
-
-  static std::string
-  init_id()
-  {
-    static uint64_t count = 0;
-    return std::to_string(count++);
-  }
-
-public:
-  repo() : m_id(init_id()) {}
-  virtual ~repo() = default;
-
-  std::string
-  get_id() const
-  {
-    return m_id;
-  }
-
-  // Should be std::span, but not until c++20
-  virtual const std::string_view
-  get(const std::string& path) const = 0;
-
-  // Should be std::span, but not until c++20
-  static std::string_view
-  to_sv(const std::vector<char>& vec)
-  {
-    // return {vec.begin(), vec.end()};
-    return {vec.data(), vec.size()};
-  }
-};
-
-// class file_repo - file system artifact repository
-// Artifacts are loaded from disk and stored in persistent storage  
-class file_repo : public repo
-{
-  std::filesystem::path base_dir;
-
-public:
-  file_repo()
-    : base_dir{"."}
-  {}
-
-  explicit
-  file_repo(std::filesystem::path basedir)
-    : base_dir{std::move(basedir)}
-  {}
-
-  const std::string_view
-  get(const std::string& path) const override
-  {
-    std::filesystem::path full_path = base_dir / path;
-    if (!std::filesystem::exists(full_path))
-      throw repo_error{"File not found: " + full_path.string()};
-
-    auto key = full_path.string();
-    if (auto it = m_data.find(key); it != m_data.end())
-      return to_sv((*it).second);
-
-    std::ifstream ifs(key, std::ios::binary);
-    if (!ifs)
-      throw repo_error{"Failed to open file: " + key};
-
-    ifs.seekg(0, std::ios::end);
-    std::vector<char> data(ifs.tellg());
-    ifs.seekg(0, std::ios::beg);
-    ifs.read(data.data(), data.size());
-    auto [itr, success] = m_data.emplace(key, std::move(data));
-    XRT_DEBUGF("artifacts::file_repo::get(%s) -> %s\n", path.c_str(), success ? "success" : "failure");
-    
-    return to_sv((*itr).second);
-  }
-};
-
-// class ram_repo - in-memory artifact repository
-// Used artifacts are copied to persistent storage
-class ram_repo : public repo
-{
-  const std::map<std::string, std::vector<char>>& m_reference;
-public:
-  explicit ram_repo(const std::map<std::string, std::vector<char>>& data)
-    : m_reference{data}
-  {}
-
-  const std::string_view
-  get(const std::string& path) const override
-  {
-    if (auto it = m_data.find(path); it != m_data.end())
-      return to_sv((*it).second);
-
-    if (auto it = m_reference.find(path); it != m_reference.end()) {
-      auto [itr, success] = m_data.emplace(path, it->second);
-      XRT_DEBUGF("artifacts::ram_repo::get(%s) -> %s\n", path.c_str(), success ? "success" : "failure");
-      return to_sv((*itr).second);
-    }
-
-    throw repo_error{"Failed to find artifact: " + path};
-  }
-};
+using repo = xrt_core::artifacts::repository;  
 
 } // namespace artifacts
 
@@ -321,13 +226,15 @@ get(const xrt::elf& elf)
 }
 
 static xrt::module
-get(const std::string& path, const artifacts::repo* repo)
+get(const std::string& path, const xartifacts::repo& repo)
 {
-  auto key = repo->get_id() + path; // must be unique to repo
+  //auto key = repo->get_id() + path; // must be unique to repo
+  auto id = std::to_string(repo.get_uid());
+  auto key = id + path; // must be unique to repo
   if (auto it = s_path2elf.find(key); it != s_path2elf.end())
     return get((*it).second);
 
-  auto data = repo->get(path);
+  auto data = repo.get(path);
   streambuf buf{data.data(), data.data() + data.size()};
   std::istream is{&buf};
   xrt::elf elf{is};
@@ -350,29 +257,29 @@ class recipe
     xrt::aie::program m_program;
 
     static xrt::xclbin
-    read_xclbin(const json& j, const artifacts::repo* repo)
+    read_xclbin(const json& j, const xartifacts::repo& repo)
     {
       if (!j.contains("xclbin"))
         return {};
         
       auto path = j.at("xclbin").get<std::string>();
-      auto data = repo->get(path);
-      return xrt::xclbin{data};
+      auto data = repo.get(path);
+      return xrt::xclbin{std::string_view{data.data(), data.size()}};
     }
 
     static xrt::aie::program
-    read_program(const json& j, const artifacts::repo* repo)
+    read_program(const json& j, const xartifacts::repo& repo)
     {
       if (!j.contains("program"))
         return {};
 
       auto path = j.at("program").get<std::string>();
-      auto data = repo->get(path);
-      return xrt::aie::program{data};
+      auto data = repo.get(path);
+      return xrt::aie::program{std::string_view{data.data(), data.size()}};
     }
 
   public:
-    header(const json& j, const artifacts::repo* repo)
+    header(const json& j, const xartifacts::repo& repo)
       : m_xclbin{read_xclbin(j, repo)}
       , m_program{read_program(j, repo)}
     {
@@ -422,9 +329,21 @@ class recipe
       // effect other than making sure the buffer content is valid.
       mutable xrt::bo m_xrt_bo;
 
-      static xrt::bo
-      create_bo(const xrt::device& device, type, size_t sz)
+      // The type of the buffer determines whether the buffer is created
+      // Do not create buffers for external buffers that must be bound
+      // prior to execution.
+      static bool
+      is_external(type t)
       {
+        return t == type::input || t == type::output || t == type::weight;
+      }
+
+      static xrt::bo
+      create_bo(const xrt::device& device, type t, size_t sz)
+      {
+        if (!sz || is_external(t))
+          return {}; // buffer is bound during execution, don't create here
+
         return xrt::ext::bo{device, sz};
       }
 
@@ -444,7 +363,7 @@ class recipe
         : m_name(std::move(name))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
+        , m_xrt_bo{create_bo(device, m_type, m_size)}
       {
         XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
       }
@@ -464,7 +383,7 @@ class recipe
         : m_name(other.m_name)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{m_size ? create_bo(device, m_type, m_size) : xrt::bo{}}
+        , m_xrt_bo{create_bo(device, m_type, m_size)}
       {}
 
       buffer(const xrt::hw_context& hwctx, const buffer& other)
@@ -590,7 +509,7 @@ class recipe
       // The kernel control module is created if necessary.
       static kernel
       create_kernel(const xrt::hw_context& hwctx, const json& j,
-                    const artifacts::repo* repo)
+                    const xartifacts::repo& repo)
       {
         auto name = j.at("name").get<std::string>(); // required, default xclbin kernel name
         auto elf = j.value<std::string>("ctrlcode", ""); // optional elf file
@@ -680,7 +599,7 @@ class recipe
     // create_kernels - create kernel objects from kernel property tree nodes
     static std::map<std::string, kernel>
     create_kernels(xrt::device device, const xrt::hw_context& hwctx,
-                   const json& j, const artifacts::repo* repo)
+                   const json& j, const xartifacts::repo& repo)
     {
       std::map<std::string, kernel> kernels;
       for (const auto& [name, node] : j.items())
@@ -740,7 +659,7 @@ class recipe
   public:
     resources(xrt::device device, const header& header,
               const xrt::hw_context::qos_type& qos,
-              const json& recipe, const artifacts::repo* repo)
+              const json& recipe, const xartifacts::repo& repo)
       : m_device{std::move(device)}
       , m_hwctx{create_hwctx(m_device, header, qos)}
       , m_buffers{create_buffers(m_device, m_hwctx, recipe.at("buffers"))}
@@ -1477,7 +1396,7 @@ public:
 public:
   recipe(xrt::device device, json recipe,
          const xrt::hw_context::qos_type& qos, size_t runlist_threshold,
-         const artifacts::repo* repo)
+         const xartifacts::repo& repo)
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
     , m_header{m_recipe_json.at("header"), repo}
@@ -1485,11 +1404,11 @@ public:
     , m_execution{m_resources, m_recipe_json.at("execution"), runlist_threshold }
   {}
 
-  recipe(xrt::device device, json recipe, const artifacts::repo* repo)
+  recipe(xrt::device device, json recipe, const xartifacts::repo& repo)
     : recipe::recipe(std::move(device), std::move(recipe), {}, default_runlist_threshold, repo)
   {}
 
-  recipe(xrt::device device, const std::string& rr, const artifacts::repo* repo)
+  recipe(xrt::device device, const std::string& rr, const xartifacts::repo& repo)
     : recipe::recipe(std::move(device), load_json(rr), {}, default_runlist_threshold, repo)
   {}
 
@@ -1621,7 +1540,7 @@ class profile
     xrt::device m_device;
 
     // Cache the repo for file access during init
-    const artifacts::repo* m_repo;
+    xartifacts::repo m_repo;
 
     // Map of resource name to json binding element.
     std::map<name_t, binding_node> m_bindings;
@@ -1640,22 +1559,18 @@ class profile
       return bindings;
     }
 
-    // Create a map of resource names to XRT buffer objects.
-    // Initialize the BO with data from the file if any.
-    // The size of the xrt::bo is either the size of the "file"
-    // if present, or it is the "size" per json.  An explicit
-    // "size" always has precedence.
+    // Create a map of resource names to XRT buffer objects. This
+    // function establishes the mapping from resource name to XRT
+    // buffer object. The real buffer object for the resource is
+    // during initialization of the binding.
     static std::map<name_t, xrt::bo>
     create_buffers(const xrt::device& device,
-                   const std::map<name_t, binding_node>& bindings,
-                   const artifacts::repo* repo)
+                   const std::map<name_t, binding_node>& bindings)
     {
       std::map<name_t, xrt::bo> bos;
-      for (const auto& [name, node] : bindings) {
-        auto size = node.value<size_t>("size", 0);
-        xrt::bo bo = size ? xrt::ext::bo{device, size} : xrt::bo{};
-        bos.emplace(node.at("name").get<std::string>(), std::move(bo));
-      }
+      for (const auto& [name, node] : bindings)
+        bos.emplace(node.at("name").get<std::string>(), xrt::bo{});
+
       return bos;
     }
 
@@ -1667,24 +1582,24 @@ class profile
     //   "end": bo.size()    // bo offset to start validating at (optional)
     //  }
     void
-    validate_buffer(xrt::bo& bo, const validate_node& node, const artifacts::repo* repo)
+    validate_buffer(xrt::bo& bo, const validate_node& node, const xartifacts::repo& repo)
     {
-      std::string_view golden_data;
+      span<char> golden_data;
 
       if (node.contains("name")) {
         // validate against another resource
         auto golden_bo = m_xrt_bos.at(node["name"]);
-        golden_data = std::string_view{golden_bo.map<char*>(), golden_bo.size()};
+        golden_data = span<char>{golden_bo.map<char*>(), golden_bo.size()};
       }
       else {
         // validate against content of a file
-        golden_data = repo->get(node.at("file").get<std::string>());
+        golden_data = repo.get(node.at("file").get<std::string>());
         auto skip = node.value<size_t>("skip", 0);
         if (skip > golden_data.size())
           throw std::runtime_error("skip bytes large than file");
 
         // Adjust the view, skipping skip bytes
-        golden_data = std::string_view{golden_data.data() + skip, golden_data.size() - skip};
+        golden_data = span<char>{golden_data.data() + skip, golden_data.size() - skip};
       }
 
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -1723,35 +1638,61 @@ class profile
     //   "end": bo.size() // offset to end writing at (optional)
     // }
     //
-    // This function fills all the bytes of the buffer with data
-    // from file.  It wraps around the file if necessary to fill
+    // This function creates the buffer and fills the bytes of the buffer with data
+    // from file per the init node.  It wraps around the file if necessary to fill
     // the bo.
     //
     // The function supports initializing the buffer between iterations,
     // copying from the file from an offset (beg) corresponding to where
     // previous iteration reached.
-    void
-    init_buffer_file(xrt::bo& bo, const init_node& node, size_t iteration)
+    xrt::bo
+    init_buffer_file(size_t bo_size, const init_node& node, size_t iteration)
     {
+      using file_mode = xrt_core::artifacts::repository::file_mode;
       auto file = node.at("file").get<std::string>();
+      auto mmap = node.value<bool>("mmap", false);
       auto skip = node.value<size_t>("skip", 0);
       auto bo_begin = node.value<size_t>("begin", 0);
-      auto bo_end = node.value<size_t>("end", bo.size());
-      auto data = m_repo->get(file);
-      if (skip > data.size())
+      auto bo_end = node.value<size_t>("end", bo_size);
+      auto data = m_repo.get(file, mmap ? file_mode::mmap : file_mode::read);
+
+      // Specified binding::bo_size is size after skip, file should
+      // include bytes that should be skipped.
+      if (skip + bo_size > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
 
-      if (bo_begin > bo_end || bo_end > bo.size())
+      if (bo_begin > bo_end || bo_end > bo_size)
         throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
 
+      // Create a userptr bo from the size of the file unless bo_size is specified.
+      // The file data must be page aligned and the bo range must be the entire bo.
+      if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
+        XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
+
+        // Specified binding::bo_size is size after skip, file includes
+        // bytes that should be skipped. We create a buffer before skip
+        // that is then carved out, hence must adjust size.
+        auto sz = bo_size ? bo_size + skip : data.size();
+        xrt::bo bo = xrt::ext::bo{m_device, data.data(), sz, xrt::ext::bo::access_mode::read};
+        if (!skip)
+          return bo;
+
+        // Create sub-bo to skip bytes from beginning of file.  Cannot
+        // offset the file data before creating the bo since the data 
+        // must be page aligned, and skip likely isn't a page multiple.
+        return xrt::bo{bo, bo.size() - skip, skip};
+      }
+
       // Adjust the view, skipping skip bytes, then copy to bo
-      data = std::string_view{data.data() + skip, data.size() - skip};
+      data = span<char>{data.data() + skip, data.size() - skip};
 
-      // Create the bo from the size of the file unless it was already
-      // created from explicit size.
-      if (!bo)
-        bo = xrt::ext::bo{m_device, data.size()};
+      // Create the bo from the size of the file unless bo_size is specified
+      // If the bo range is the entire bo, then create a userptr BO from the
+      // file data, which avoids an extra copy.
 
+      // Otherwise, create a normal xrt::bo and copy the file data into the
+      // bo at the specified range if any.
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size ? bo_size : data.size()};
       auto bo_data = bo.map<char*>();
 
       // Pad the bo with 0s outside the [bo_begin, bo_end[ range
@@ -1781,9 +1722,11 @@ class profile
     
         std::copy(data.data() + beg, data.data() + end, bo_data + bo_offset);
       }
+
+      return bo;
     }
 
-    // init_buffer_stride() - Initialize bo with value at stride
+    // init_buffer_stride() - Create and initialize bo with value at stride
     // "init": {
     //   "stride": 1,   // write the value repeatedly at this stride
     //   "value": 239,  // the value to write
@@ -1791,9 +1734,10 @@ class profile
     //   "end": 524288, // offset to end writing at (optional)
     //   "debug": true  // undefined (optional)
     // }
-    void
-    init_buffer_stride(xrt::bo& bo, const init_node& node)
+    xrt::bo
+    init_buffer_stride(size_t bo_size, const init_node& node)
     {
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size};
       auto bo_data = bo.map<uint8_t*>();
       auto stride = node.at("stride").get<size_t>();
       auto value = node.at("value").get<uint64_t>();
@@ -1802,32 +1746,38 @@ class profile
       arg_range<uint8_t> vr{&value, sizeof(value)};
       for (size_t offset = bo_begin; offset < bo_end; offset += stride) 
         std::copy_n(vr.begin(), std::min<size_t>(bo.size() - offset, vr.size()), bo_data + offset);
+
+      return bo;
     }
 
-    void
-    init_buffer_random(xrt::bo& bo, const init_node&)
+    // init_buffer_random() - Create and initialize bo with random data
+    xrt::bo
+    init_buffer_random(size_t bo_size, const init_node&)
     {
+      xrt::bo bo = xrt::ext::bo{m_device, bo_size};
       auto bo_data = bo.map<uint8_t*>();
       static std::random_device rd;
       std::generate(bo_data, bo_data + bo.size(), [&]() { return static_cast<uint8_t>(rd()); });
+      return bo;
     }
 
-    // init_buffer() - Initialize a resource buffer per the binding json node
+    // init_buffer() - Create and initialize a resource buffer per the binding json node
     // "init": {
     //   // "stride" stride initialization
     //   // "random" random initialization
     // }
     // The buffer is synced to device after iniitialization
-    void
-    init_buffer(xrt::bo& bo, const init_node& node, size_t iteration)
+    xrt::bo
+    init_buffer(size_t bo_size, const init_node& node, size_t iteration)
     {
+      xrt::bo bo;
       // stride initialization with specified value
       if (node.contains("file"))
-        init_buffer_file(bo, node, iteration);
+        bo = init_buffer_file(bo_size, node, iteration);
       else if (node.contains("stride"))
-        init_buffer_stride(bo, node);
+        bo = init_buffer_stride(bo_size, node);
       else if (node.value<bool>("random", false))
-        init_buffer_random(bo, node);
+        bo = init_buffer_random(bo_size, node);
       else
         throw profile_error("Unsupported initialization node in profile");
 
@@ -1838,22 +1788,23 @@ class profile
       }
 
       bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      return bo;
     }
 
-    void
-    init_buffer(xrt::bo& bo, const init_node& node)
+    xrt::bo
+    init_buffer(size_t bo_size, const init_node& node)
     {
-      init_buffer(bo, node, 0);
+      return init_buffer(bo_size, node, 0);
     }
 
   public:
     bindings() = default;
 
-    bindings(xrt::device device, const json& j, const artifacts::repo* repo)
+    bindings(xrt::device device, const json& j, xartifacts::repo repo)
       : m_device{std::move(device)}
-      , m_repo{repo}
+      , m_repo{std::move(repo)}
       , m_bindings{init_bindings(j)}
-      , m_xrt_bos{create_buffers(m_device, m_bindings, repo)}
+      , m_xrt_bos{create_buffers(m_device, m_bindings)}
     {
       // All bindings are initialized by default upon creation if they
       // have an "init" element.
@@ -1863,7 +1814,7 @@ class profile
     // Validate resource buffers per json.  Validation is per bound buffer
     // as defined in the profile json.
     void
-    validate(const artifacts::repo* repo)
+    validate(const xartifacts::repo& repo)
     {
       for (auto& [name, node] : m_bindings) {
         if (node.contains("validate"))
@@ -1872,15 +1823,15 @@ class profile
     }
 
     // Init bindings per json.  Initialization is done by filling a
-    // pattern into a buffer that requires initialization.  The
-    // pattern is currently limited to a single character.
+    // a buffer that requires initialization with data as prescribed
+    // by the binding's init node.
     void
     init()
     {
       for (auto& [name, node] : m_bindings) {
         if (node.contains("init")) {
           XRT_DEBUGF("profile::bindings::init(%s)\n", name.c_str());
-          init_buffer(m_xrt_bos.at(name), node.at("init"));
+          m_xrt_bos.at(name) = init_buffer(node.value<size_t>("size", 0), node.at("init"));
         }
       }
     }
@@ -1894,7 +1845,7 @@ class profile
       for (auto& [name, node] : m_bindings) {
         if (node.value<bool>("reinit", false) && node.contains("init")) {
           XRT_DEBUGF("profile::bindings::reinit(%s)\n", name.c_str());
-          init_buffer(m_xrt_bos.at(name), node.at("init"), iteration);
+          m_xrt_bos.at(name) = init_buffer(node.value<size_t>("size", 0), node.at("init"), iteration);
         }
       }
     }
@@ -2237,7 +2188,7 @@ private:
   friend class bindings;  // embedded class
   friend class execution; // embedded class
   json m_profile_json;
-  std::shared_ptr<artifacts::repo> m_repo;
+  xartifacts::repo m_repo;
 
   xrt::hw_context::qos_type m_qos;
   size_t m_runlist_threshold;
@@ -2273,7 +2224,7 @@ private:
   void
   validate()
   {
-    m_bindings.validate(m_repo.get());
+    m_bindings.validate(m_repo);
   }
 
   void
@@ -2330,13 +2281,13 @@ public:
   profile(const xrt::device& device,
           const std::string& recipe,
           const std::string& profile,
-          std::shared_ptr<artifacts::repo> repo)
+          xartifacts::repo repo)
     : m_profile_json(load_json(profile)) // cannot use brace-initialization (see nlohmann FAQ)
     , m_repo{std::move(repo)}
     , m_qos{init_qos(m_profile_json.value("qos", json::object()))}
     , m_runlist_threshold{init_runlist_threshold(m_profile_json)}
-    , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo.get()}
-    , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo.get()}
+    , m_recipe{device, load_json(recipe), m_qos, m_runlist_threshold, m_repo}
+    , m_bindings{device, m_profile_json.value("bindings", json::object()), m_repo}
     , m_execution(this, &m_recipe, m_profile_json.value("execution", json::object()), true)
     , m_executions(create_executions(this, &m_recipe, m_profile_json.value("executions", json::object())))
   {}
@@ -2441,8 +2392,8 @@ class recipe_impl : public runner_impl
 
 public:
   recipe_impl(const xrt::device& device, const std::string& recipe,
-              const std::shared_ptr<artifacts::repo>& repo)
-    : m_recipe{device, recipe, repo.get()}
+              const xartifacts::repo& repo)
+    : m_recipe{device, recipe, repo}
   {}
 
   void
@@ -2490,7 +2441,7 @@ class profile_impl : public runner_impl
 public:
   profile_impl(const xrt::device& device,
                const std::string& recipe, const std::string& profile,
-               const std::shared_ptr<artifacts::repo>& repo)
+               const xartifacts::repo& repo)
     : m_profile{device, recipe, profile, repo}
   {}
 
@@ -2556,7 +2507,7 @@ runner::
 runner(const xrt::device& device,
        const std::string& recipe)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
-           (device, recipe, std::make_shared<artifacts::file_repo>())}
+    (device, recipe, xartifacts::repo{""})}
 {} 
   
 runner::
@@ -2564,7 +2515,7 @@ runner(const xrt::device& device,
        const std::string& recipe,
        const std::filesystem::path& dir)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
-           (device, recipe, std::make_shared<artifacts::file_repo>(dir))}
+    (device, recipe, xartifacts::repo{dir})}
 {} 
 
 runner::
@@ -2572,14 +2523,14 @@ runner(const xrt::device& device,
        const std::string& recipe,
        const artifacts_repository& repo)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<recipe_impl>
-           (device, recipe, std::make_shared<artifacts::ram_repo>(repo))}
+    (device, recipe, repo)}
 {}
 
 runner::
 runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
-           (device, recipe, profile, std::make_shared<artifacts::file_repo>())}
+    (device, recipe, profile, xartifacts::repo{""})}
 {}
 
 runner::
@@ -2587,7 +2538,7 @@ runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile,
        const std::filesystem::path& dir)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
-           (device, recipe, profile, std::make_shared<artifacts::file_repo>(dir))}
+    (device, recipe, profile, xartifacts::repo{dir})}
 {}
 
 runner::
@@ -2595,7 +2546,7 @@ runner(const xrt::device& device,
        const std::string& recipe, const std::string& profile,
        const artifacts_repository& repo)
   : xrt::detail::pimpl<runner_impl>{std::make_unique<profile_impl>
-           (device, recipe, profile, std::make_shared<artifacts::ram_repo>(repo))}
+           (device, recipe, profile, repo)}
 {}
 
 void
