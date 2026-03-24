@@ -1655,7 +1655,10 @@ class profile
       auto bo_begin = node.value<size_t>("begin", 0);
       auto bo_end = node.value<size_t>("end", bo_size);
       auto data = m_repo.get(file, mmap ? file_mode::mmap : file_mode::read);
-      if (skip > data.size())
+
+      // Specified binding::bo_size is size after skip, file should
+      // include bytes that should be skipped.
+      if (skip + bo_size > data.size())
         throw profile_error("bad skip value: " + std::to_string(skip));
 
       if (bo_begin > bo_end || bo_end > bo_size)

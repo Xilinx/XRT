@@ -62,6 +62,22 @@ class artifact
     }
   };
 
+  struct artifact_ref : artifact_iholder
+  {
+    void* m_data;
+    size_t m_size;
+
+    artifact_ref(void* data, size_t size)
+      : m_data(data), m_size(size)
+    {}
+                
+    span<char>
+    get_span() override
+    {
+      return span<char>{static_cast<char*>(m_data), m_size};
+    }
+  };
+
   std::unique_ptr<artifact_iholder> m_holder;
 
 public:
@@ -71,6 +87,10 @@ public:
   template <typename StorageType>
   artifact(StorageType&& storage)
     : m_holder(std::make_unique<artifact_type<StorageType>>(std::forward<StorageType>(storage)))
+  {}
+
+  artifact(const void* data, std::size_t size)
+    : m_holder(std::make_unique<artifact_ref>(const_cast<void*>(data), size))
   {}
 
   span<char>
@@ -88,7 +108,7 @@ using data_mode = repository::data_mode;
 using file_mode = repository::file_mode;
 
 ////////////////////////////////////////////////////////////////
-// class repoisitory_impl - Repo implementation
+// class repository_impl - Repo implementation
 // Base class for base_repo.
 ////////////////////////////////////////////////////////////////
 class repository_impl
@@ -115,6 +135,9 @@ public:
 
   virtual void
   add_data(const std::string& key, std::string&& data) const = 0;
+
+  virtual void
+  add_data(const std::string& key, std::vector<char>&& data) const = 0;
 
   virtual void
   add_file(const std::string& key, file_mode mode) const = 0;
@@ -152,15 +175,9 @@ private:
   }
 
   void
-  add_string(const std::string& key, std::string&& data) const
-  {
-    m_artifacts.emplace(key, std::move(data));
-  }
-
-  void
   add_ref(const std::string& key, span<char> data) const
   {
-    m_artifacts.emplace(key, data);
+    m_artifacts.emplace(key, artifact{data.data(), data.size()});
   }
 
   void
@@ -208,7 +225,13 @@ public:
   void
   add_data(const std::string& key, std::string&& data) const override
   {
-    add_string(resolve_key(key), std::move(data));
+    m_artifacts.emplace(resolve_key(key), std::move(data));
+  }
+
+  void
+  add_data(const std::string& key, std::vector<char>&& data) const override
+  {
+    m_artifacts.emplace(resolve_key(key), std::move(data));
   }
 
   // add_file() - Add file by reading or memory mapping
@@ -314,6 +337,14 @@ add_data(const std::string& key, std::string&& data)
 {
   handle->add_data(key, std::move(data));
 }
+
+void
+repository::
+add_data(const std::string& key, std::vector<char>&& data)
+{
+  handle->add_data(key, std::move(data));
+}
+
 
 void
 repository::

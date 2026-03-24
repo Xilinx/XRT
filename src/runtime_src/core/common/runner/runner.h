@@ -83,8 +83,10 @@ public:
    * The runner can be constructed with an artifacts repository, in
    * which case the recipe references are looked up in the artifacts are
    * looked up in the repository rather than from disk.
+   *
+   * Note, that copies of the artifact repository share the same
+   * underlying implementation.
    */
-  //using artifacts_repository = std::map<std::string, std::vector<char>>;
   using artifacts_repository = xrt_core::artifacts::repository;
 
   runner() = default;
@@ -102,8 +104,6 @@ public:
          const std::filesystem::path& artifacts_dir);
 
   // ctor - Create runner from a recipe json and artifacts repository
-  // The repo is not copied so the lifetime of the repo must extend
-  // the lifetime of the runner.
   XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe,
          const artifacts_repository&);
@@ -121,8 +121,7 @@ public:
          const std::filesystem::path& artifacts_dir);
 
   // ctor - Create runner from a recipe json and execution profile
-  // json and artifacts repository.  The repo is not copied so the
-  // lifetime of the repo must extend the lifetime of the runner.
+  // json and artifacts repository.
   XRT_API_EXPORT
   runner(const xrt::device& device, const std::string& recipe, const std::string& profile,
          const artifacts_repository&);

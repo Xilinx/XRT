@@ -28,6 +28,9 @@ using span = xrt::detail::span<T>;
  * Consumers access data by key and receive a std::span; lifetime is
  * that of the repository or the application-managed buffer for
  * reference-backed artifacts.
+ *
+ * Note, that copies of the artifact repository share the same
+ * underlying implementation.
  */
 class repository_impl;
 class repository : public xrt::detail::pimpl<repository_impl>
@@ -39,7 +42,7 @@ public:
    * @var copy
    *   The bytes are copied into the repository
    * @var ref
-   *   The bytes are stored as referecne to data owned by caller
+   *   The bytes are stored as reference to data owned by caller
    */
   enum class data_mode
   {
@@ -118,6 +121,18 @@ public:
   add_data(const std::string& key, std::string&& data);
 
   /**
+   * add_data() - Move vector of data into the repo
+   *
+   * @param key
+   *   Key used to store and retrieve the data
+   * @param data
+   *   Rvalue vector to move into the repo
+   */
+  XRT_API_EXPORT
+  void
+  add_data(const std::string& key, std::vector<char>&& data);
+
+  /**
    * add_file() - Add file content
    *
    * @param key
@@ -138,7 +153,7 @@ public:
    *   The key that identifies the data in the repository
    *
    * Return a read-only span over the artifact data for \a key, or
-   * throw out-of-range is no such key.
+   * throw out-of-range if there is no such key.
    */
   XRT_API_EXPORT
   span<char>
@@ -150,7 +165,7 @@ public:
    * @param key
    *   The key that identifies the file data
    * @param hint
-   *   The file moode if the key needs to be added.
+   *   The file mode if the key needs to be added.
    *
    * This function checks if key is present and returns corresponding
    * data.  If not present, then the key is treated as identifying a a

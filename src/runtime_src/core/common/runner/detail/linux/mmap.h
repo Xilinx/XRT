@@ -49,18 +49,8 @@ struct mmap_artifact
     other.m_size = 0;
     other.m_ptr = nullptr;
   }
-  mmap_artifact&
-  operator=(mmap_artifact&& other) noexcept
-  {
-    this->~mmap_artifact();
-    m_fd = other.m_fd;
-    m_size = other.m_size;
-    m_ptr = other.m_ptr;
-    other.m_fd = -1;
-    other.m_size = 0;
-    other.m_ptr = nullptr;
-    return *this;
-  }
+
+  mmap_artifact& operator=(mmap_artifact&& other) noexcept = delete;
   mmap_artifact(const mmap_artifact&) = delete;
   mmap_artifact& operator=(const mmap_artifact&) = delete;
 

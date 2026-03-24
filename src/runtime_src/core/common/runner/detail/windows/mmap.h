@@ -65,20 +65,8 @@ struct mmap_artifact
     other.m_mapping_handle = nullptr;
     other.m_ptr = nullptr;
   }
-  mmap_artifact&
-  operator=(mmap_artifact&& other) noexcept
-  {
-    this->~mmap_artifact();
-    m_file_handle = other.m_file_handle;
-    m_size = other.m_size;
-    m_mapping_handle = other.m_mapping_handle;
-    m_ptr = other.m_ptr;
-    other.m_file_handle = INVALID_HANDLE_VALUE;
-    other.m_size = 0;
-    other.m_mapping_handle = nullptr;
-    other.m_ptr = nullptr;
-    return *this;
-  }
+
+  mmap_artifact& operator=(mmap_artifact&& other) noexcept = delete;
   mmap_artifact(const mmap_artifact&) = delete;
   mmap_artifact& operator=(const mmap_artifact&) = delete;
 
