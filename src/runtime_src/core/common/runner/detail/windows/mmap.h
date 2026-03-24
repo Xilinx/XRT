@@ -13,6 +13,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
 #endif
+#define NOMINMAX
 #include <windows.h>
 
 namespace xrt_core::artifacts::detail {
@@ -107,7 +108,7 @@ private:
       throw std::runtime_error("artifacts::repository: GetFileSizeEx failed");
     }
 
-    std::size_t size = static_cast<std::size_t>(li.QuadPart);
+    auto size = static_cast<std::size_t>(li.QuadPart);
     if (size == 0)
     {
       CloseHandle(file);

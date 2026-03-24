@@ -9,7 +9,10 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <limits>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -34,6 +37,7 @@ class artifact
   {
     StorageType m_storage;
 
+    explicit
     artifact_type(StorageType&& storage)
       : m_storage(std::forward<StorageType>(storage))
     {}
@@ -51,6 +55,7 @@ class artifact
   {
     xrt_core::artifacts::detail::mmap_artifact m_storage;
 
+    explicit
     artifact_type(xrt_core::artifacts::detail::mmap_artifact&& storage)
       : m_storage(std::move(storage))
     {}
@@ -84,13 +89,14 @@ public:
   artifact() = default;
   artifact(artifact&&) = default;
 
-  template <typename StorageType>
-  artifact(StorageType&& storage)
+  template <typename StorageType,
+            typename = std::enable_if_t<!std::is_same_v<std::decay_t<StorageType>, artifact>>>
+  explicit artifact(StorageType&& storage)
     : m_holder(std::make_unique<artifact_type<StorageType>>(std::forward<StorageType>(storage)))
   {}
 
-  artifact(const void* data, std::size_t size)
-    : m_holder(std::make_unique<artifact_ref>(const_cast<void*>(data), size))
+  artifact(void* data, std::size_t size)
+    : m_holder(std::make_unique<artifact_ref>(data, size))
   {}
 
   span<char>
@@ -190,7 +196,9 @@ private:
     const auto size = static_cast<std::size_t>(ifs.tellg());
     ifs.seekg(0);
     std::vector<char> vec(size);
-    if (size > 0 && !ifs.read(reinterpret_cast<char*>(vec.data()), size))
+    if (size > 0
+        && size <= static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max())
+        && !ifs.read(reinterpret_cast<char*>(vec.data()), static_cast<std::streamsize>(size)))
       throw std::runtime_error("artifacts::repository: read failed: " + key);
 
     m_artifacts.emplace(key, std::move(vec));

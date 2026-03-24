@@ -77,14 +77,14 @@ private:
   static std::size_t
   get_size(int fd)
   {
-    struct stat st;
+    struct stat st {};
     if (fstat(fd, &st) != 0)
     {
       close(fd);
       throw std::runtime_error("artifacts::repository: fstat failed");
     }
 
-    std::size_t size = static_cast<std::size_t>(st.st_size);
+    auto size = static_cast<std::size_t>(st.st_size);
     if (size == 0)
     {
       close(fd);
