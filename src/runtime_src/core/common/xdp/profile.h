@@ -3,6 +3,8 @@
 #ifndef CORE_COMMON_PROFILE_DOT_H
 #define CORE_COMMON_PROFILE_DOT_H
 
+#include <cstdint>
+
 // The functions here are the general interfaces for the XDP hooks that are
 // called from the common coreutil library and not the specific shims.
 namespace xrt_core::xdp {
@@ -26,7 +28,7 @@ finish_flush_device(void* handle);
 // This hook allows XDP plugins to attach per-run resources (e.g.,
 // a CT file for dtrace) before the run is started.
 void
-run_constructor(void* run, void* hwctx_handle);
+run_constructor(void* run, void* hwctx_handle, uint32_t run_uid);
 
 } // end namespace xrt_core::xdp
 
