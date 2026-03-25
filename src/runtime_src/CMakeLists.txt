@@ -55,6 +55,7 @@ if (NOT XRT_EDGE)
     # Used by xdp for include search path
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
     set(AIE_CODEGEN_BUILD_SHARED OFF)
+    set(XDP_USE_AIE_CODEGEN_CMAKE 1)
     xrt_add_subdirectory_disable_install_target(aie-codegen/src)
   endif()
 
@@ -87,6 +88,7 @@ else()
     # Used by xdp for include search path
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-codegen/src)
     set(AIE_CODEGEN_BUILD_SHARED OFF)
+    set(XDP_USE_AIE_CODEGEN_CMAKE 1)
     xrt_add_subdirectory_disable_install_target(aie-codegen/src)
   endif()
 
