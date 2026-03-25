@@ -14,12 +14,34 @@
 
 #include <linux/uuid.h>
 #include "zocl_util.h"
+#include "xclbin.h"
 
 struct zocl_xclbin {
 	int		zx_refcnt;
 	char		*zx_dtbo_path;
 	void		*zx_uuid;
 };
+
+/* Returns true if XRT should load the PDI from this xclbin */
+static inline bool
+zocl_xclbin_needs_pdi_load(struct axlf *axlf)
+{
+	return (axlf->m_header.m_actionMask & AM_LOAD_PDI);
+}
+
+/*
+ * Returns true if xclbin is AIE-only (no PL content).
+ *
+ * TODO: Vitis will provide dedicated bits in the xclbin header to
+ * distinguish PL-only vs AIE-only vs PL+AIE.  Once those bits are
+ * finalized, update this helper accordingly.  Until then AM_LOAD_PDI
+ * is used as a provisional proxy.
+ */
+static inline bool
+zocl_xclbin_is_aie_only(struct axlf *axlf)
+{
+	return (axlf->m_header.m_actionMask & AM_LOAD_PDI);
+}
 
 int zocl_xclbin_init(struct drm_zocl_slot *slot);
 void zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);

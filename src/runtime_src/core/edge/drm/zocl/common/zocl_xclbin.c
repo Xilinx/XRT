@@ -155,6 +155,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 }
 
+/*
+ * Load PDI for overlay xclbins that have the AM_LOAD_PDI action mask set.
+ */
 int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct drm_zocl_slot* slot, struct axlf *axlf,
 			char __user *xclbin, struct kds_client *client)
