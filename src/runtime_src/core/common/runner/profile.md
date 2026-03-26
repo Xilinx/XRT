@@ -262,11 +262,10 @@ defines how the recipe should be executed.
 ### Execution
 
 The execution section of a profile is a sub-element of 
-the profiles `executions` array.  It specified how many times the recipe
+the profiles `executions` array.  It specifies how many times the recipe
 should be executed and how.  It controls what should happen after each
 iteration and before next iteration. If `iterations` is not specified,
 then the recipe will execute one iteration.
-
 ```
   {
     "name": "myexecution", // custom id for this execution
@@ -276,6 +275,7 @@ then the recipe will execute one iteration.
     "runlist_threshold": 1 // when to use xrt::runlist
     "mode": mode           // latency, throughput, or validate
     "depth": depth         // clone the recipe runlist
+    "poll": true           // poll for completion
     "iteration" : {
     }
   }
@@ -293,7 +293,7 @@ one iteration.
   elements upon completion of all iterations. If mode is set to
   validate then this element is implicitly `true` (see details
   in mode section).
-- `runlist_threshold` (default: `6`) specifies when to
+- `runlist_threshold` (default: `6`) specifies when to use
   xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
   list of separate xrt::run objects. A value of `0` disables
   xrt::runlist completely, any other value is used to trigger when to
@@ -305,6 +305,9 @@ one iteration.
   treated as a single runlist.  In `throughput` mode the recipe runlist
   is default instantiated twice, but `depth` can be used to create more
   instances if that is necessary to keep the hardware busy.
+- `poll` (default: false) specifies that waiting for completion of the
+  recipe or in between iterations if the recipe should use polling as
+  opposed to blocking wait.
 
 #### mode
 The `mode` element is optional but if present must be one of `latency`

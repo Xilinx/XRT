@@ -1051,7 +1051,7 @@ public:
       virtual ~runlist() = default;
       virtual void add(const run& run) = 0;
       virtual void execute(size_t) = 0;
-      virtual void wait() {}
+      virtual void wait(bool poll) {}
     };
 
     struct cpu_runlist : runlist
@@ -1119,12 +1119,16 @@ public:
         }
 
         void
-        wait() override
+        wait(bool poll) override
         {
           // While waiting for last to complete is enough, all runs
           // must be marked completed
-          for (auto itr = m_rl.rbegin(); itr != m_rl.rend(); ++itr)
-            (*itr).wait2();
+          for (auto itr = m_rl.rbegin(); itr != m_rl.rend(); ++itr) {
+            if (poll)
+              while ((*itr).state() < ERT_CMD_STATE_COMPLETED) ;
+            else
+              (*itr).wait2();
+          }
         }
       }; // vrl
 
@@ -1161,9 +1165,12 @@ public:
         }
 
         void
-        wait() override
+        wait(bool poll) override
         {
-          m_rl.wait();
+          if (poll)
+            while (!m_rl.poll()) ;
+          else
+            m_rl.wait();
         }
       }; // xrl
 
@@ -1199,9 +1206,9 @@ public:
         m_impl->execute(iteration);
       }
 
-      void wait() override
+      void wait(bool poll) override
       {
-        m_impl->wait();
+        m_impl->wait(poll);
       }
     }; // npu_runlist
 
@@ -1322,7 +1329,7 @@ public:
     {
       try {
         runlist->execute(iteration);
-        runlist->wait(); // needed for NPU runlists, noop for CPU
+        runlist->wait(false); // needed for NPU runlists, noop for CPU
       }
       catch (const xrt::runlist::command_error&) {
         eptr = std::current_exception();
@@ -1357,12 +1364,12 @@ public:
     }
 
     void
-    wait()
+    wait(bool poll)
     {
       // If single runlist then it was submitted explicitly, so
       // wait explicitly
       if (m_runlists.size() == 1) {
-        m_runlists[0]->wait();
+        m_runlists[0]->wait(poll);
         return;
       }
 
@@ -1468,7 +1475,7 @@ public:
   wait()
   {
     XRT_DEBUGF("recipe::wait()\n");
-    m_execution.wait();
+    m_execution.wait(false);
   }
 
   json
@@ -1926,6 +1933,8 @@ class profile
       recipe::execution* m_base;
       std::vector<recipe::execution> m_copies;
 
+      bool m_poll = false;
+
       static std::vector<recipe::execution>
       create_execution_copies(recipe* recipe, size_t depth)
       {
@@ -1937,10 +1946,11 @@ class profile
       }
       
     public:
-      executor(profile* profile, recipe* recipe, size_t depth)
+      executor(profile* profile, recipe* recipe, size_t depth, bool poll)
         : m_profile{profile}
         , m_base{recipe->get_execution()}
         , m_copies{create_execution_copies(recipe, depth)}
+        , m_poll(poll)
       {
         // Bind buffers to the recipe execution objects prior to
         // executing the recipe. This will bind the buffers which have
@@ -1964,11 +1974,11 @@ class profile
         // Wait until previous iteration run is done then restart
         // This operates under the assumption that execution is
         // sequential and in-order of submission.
-        m_base->wait();
+        m_base->wait(m_poll);
         m_base->execute(iteration);
 
         for (auto& exec : m_copies) {
-          exec.wait();
+          exec.wait(m_poll);
           exec.execute(iteration);
         }
       }
@@ -1995,9 +2005,9 @@ class profile
       void
       wait()
       {
-        m_base->wait();
+        m_base->wait(m_poll);
         for (auto& exec : m_copies)
-          exec.wait();
+          exec.wait(m_poll);
       }
     }; // class profile::execution::executor
 
@@ -2007,6 +2017,7 @@ class profile
     profile* m_profile;
     std::string m_name;
     mode m_mode = mode::none;
+    bool m_poll = false;
     size_t m_depth = 1;
     size_t m_recipe_runs = 1;  // legacy mode throughput calculation
     executor m_executor;
@@ -2113,9 +2124,10 @@ class profile
       : m_profile(pr)
       , m_name(j.value("name", j.value("mode", "default")))
       , m_mode(to_mode(j.value("mode", "default")))
+      , m_poll{j.value("poll", false)}
       , m_depth(get_depth(m_mode, j))
       , m_recipe_runs(rr->num_runs())
-      , m_executor{m_profile, rr, m_depth}
+      , m_executor{m_profile, rr, m_depth, m_poll}
       , m_iterations{get_iterations(j)}
       , m_iteration(get_iteration_node(m_mode, j))
       , m_verbose(j.value("verbose", true))
@@ -2174,10 +2186,11 @@ class profile
     get_report() const
     {
       m_report["name"] = m_name;
-      m_report["iterations"] = m_iterations;
+      m_report["iterations"] = m_iterations; 
       if (!m_legacy) {
         m_report["depth"] = m_depth;
         m_report["mode"] = to_string(m_mode);
+        m_report["poll"] = m_poll;
       }
 
       return m_report;
