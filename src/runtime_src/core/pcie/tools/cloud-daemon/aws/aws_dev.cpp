@@ -499,6 +499,9 @@ NOTE: This Thread has to run Asynchronously in order to avoid the double load In
 is seen on F2 instance. The delay 10 secs can be removed once the double load issue on AWS instance is
 addressed by AWS team.
 */
+// 240 iterations * 500ms = 120s max wait for AFI load
+static const int AFI_LOAD_POLL_MAX_ITERATIONS = 240;
+
 static void aws_clkgen_set_dynamic_thread(int slot_id, uint32_t clk_b_freq, uint32_t clk_c_freq, uint32_t clk_hbm_freq)
 {
     int ret = 0;
@@ -569,6 +572,13 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         }
         syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
 #ifndef INTERNAL_TESTING_FOR_AWS
+
+        fpga_mgmt_image_info imageInfoNew;
+        retVal = sleepUntilLoaded(std::string(afi_id), &imageInfoNew);
+        if (retVal) {
+            std::cerr << "Failed to load AFI, error: " << retVal << std::endl;
+            return -retVal;
+        }
         auto future = std::async(std::launch::async, aws_clkgen_set_dynamic_thread, mBoardNumber, clock_mains[2]/*clk_extra_b0*/, clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/);
 #endif
         return 0;
@@ -792,7 +802,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
 #ifndef INTERNAL_TESTING_FOR_AWS
 int AwsDev::sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info *image_info )
 {
-    for( int i = 0; i < 20; i++ ) {
+    for( int i = 0; i < AFI_LOAD_POLL_MAX_ITERATIONS; i++ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
         fpga_mgmt_image_info info;
         std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info) );

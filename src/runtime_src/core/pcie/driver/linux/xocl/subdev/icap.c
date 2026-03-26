@@ -2069,8 +2069,9 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, u
 
 	/* In Azure cloud, there is special requirement for xclbin download
 	 * that the minumum timeout should be 50s.
+	 * On AWS, a first-time AFI load can take up to 120s.
 	 */
-	timeout = max((size_t)timeout, 50UL);
+	timeout = max((size_t)timeout, 120UL);
 
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL, timeout, 0);
