@@ -26,21 +26,23 @@ struct zocl_xclbin {
 static inline bool
 zocl_xclbin_needs_pdi_load(struct axlf *axlf)
 {
-	return (axlf->m_header.m_actionMask & AM_LOAD_PDI);
+	return (axlf->m_header.m_actionMask & (AM_LOAD_AIE | AM_LOAD_PDI));
 }
 
 /*
  * Returns true if xclbin is AIE-only (no PL content).
  *
+ * AM_LOAD_AIE: deprecated mask for AIE-only xclbins.
+ * AM_LOAD_PDI: current mask for AIE-only overlay xclbins.
+ *
  * TODO: Vitis will provide dedicated bits in the xclbin header to
  * distinguish PL-only vs AIE-only vs PL+AIE.  Once those bits are
- * finalized, update this helper accordingly.  Until then AM_LOAD_PDI
- * is used as a provisional proxy.
+ * finalized, update this helper accordingly.
  */
 static inline bool
 zocl_xclbin_is_aie_only(struct axlf *axlf)
 {
-	return (axlf->m_header.m_actionMask & AM_LOAD_PDI);
+	return (axlf->m_header.m_actionMask & (AM_LOAD_AIE | AM_LOAD_PDI));
 }
 
 int zocl_xclbin_init(struct drm_zocl_slot *slot);
