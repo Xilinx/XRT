@@ -24,12 +24,19 @@
 #include <exception>
 #include <future>
 #include <uuid/uuid.h>
+#ifndef INTERNAL_TESTING_FOR_AWS
+#include <atomic>
+#endif
 #include "xrt/detail/xclbin.h"
 #include "aws_dev.h"
 
 static std::map<std::string, size_t>index_map;
 #ifndef INTERNAL_TESTING_FOR_AWS
 static std::thread rescan_thread[16];
+/* Single AWS FPGA per instance: true while awsPciRescan is running (armed before thread starts). */
+static std::atomic<bool> s_aws_pci_rescan_active{false};
+/* 240 iterations * 500ms = 120s max wait for AFI load */
+static const int AFI_LOAD_POLL_MAX_ITERATIONS = 240;
 #endif
 /*
  * Functions each plugin needs to provide
@@ -124,7 +131,7 @@ int mb_notify(size_t index, int fd, bool online)
     struct xcl_mailbox_peer_state mb_conn = { 0 };
     size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
     pcieFunc dev(index);
-   
+
     std::vector<char> buf(data_len, 0);
     mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
 
@@ -165,11 +172,19 @@ int mb_notify(size_t index, int fd, bool online)
  */
 int awsLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 {
-	int ret = -1;
+    int ret = -1;
+#ifndef INTERNAL_TESTING_FOR_AWS
+    if (s_aws_pci_rescan_active.load(std::memory_order_acquire)) {
+        *resp = -EAGAIN;
+        return 0;
+    }
+#endif
     AwsDev d(index, nullptr);
     if (d.isGood()) {
         *resp = d.awsLoadXclBin(xclbin);
         ret = 0;
+    } else {
+        *resp = -ENODEV;
     }
     return ret;
 }
@@ -445,6 +460,13 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
 #ifndef INTERNAL_TESTING_FOR_AWS
 static void awsPciRescan(int index)
 {
+    struct clear_pci_rescan_active {
+        ~clear_pci_rescan_active()
+        {
+            s_aws_pci_rescan_active.store(false, std::memory_order_release);
+        }
+    } clear_active;
+
     std::string sysfs_name = xrt_core::pci::get_dev(index, true)->m_sysfs_name;
     int mBoardNumber = index_map[sysfs_name];
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -569,6 +591,11 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         }
         syslog(LOG_ERR, "WA to skip id=%x", imageInfoOld.spec.map[FPGA_APP_PF].device_id);
 #ifndef INTERNAL_TESTING_FOR_AWS
+
+        fpga_mgmt_image_info imageInfoNew;
+        retVal = sleepUntilLoaded(std::string(afi_id), &imageInfoNew);
+        if (retVal)
+            return -retVal;
         auto future = std::async(std::launch::async, aws_clkgen_set_dynamic_thread, mBoardNumber, clock_mains[2]/*clk_extra_b0*/, clock_mains[3]/*clk_extra_c0*/, clock_mains[1]/*hbm*/);
 #endif
         return 0;
@@ -605,7 +632,8 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         std::cout << "pci removal & rescan..." << std::endl;
         std::string err;
 	xrt_core::pci::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 0);
-	    
+
+        s_aws_pci_rescan_active.store(true, std::memory_order_release);
         if (rescan_thread[mBoardNumber].joinable())
                 rescan_thread[mBoardNumber].join();
         rescan_thread[mBoardNumber]  = std::thread(awsPciRescan, index);
@@ -792,7 +820,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
 #ifndef INTERNAL_TESTING_FOR_AWS
 int AwsDev::sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info *image_info )
 {
-    for( int i = 0; i < 20; i++ ) {
+    for( int i = 0; i < AFI_LOAD_POLL_MAX_ITERATIONS; i++ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
         fpga_mgmt_image_info info;
         std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info) );

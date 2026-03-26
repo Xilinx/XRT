@@ -740,6 +740,12 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		if (st->state_flags & XCL_MB_STATE_ONLINE) {
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
+			/*
+			 * AWS: refresh VBNV from peer icap (MPD/awsGetIcap) before
+			 * subdev/FDT refresh completes so shell id is visible earlier.
+			 */
+			if (xocl_is_aws(xdev))
+				xocl_rom_aws_set_vbnv_name(xdev);
 			xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
 		} else if (st->state_flags & XCL_MB_STATE_OFFLINE) {
@@ -890,7 +896,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
         /* Update AWS shell version (vbnv name of rom subdev) as peer communication is established */
         if (xocl_is_aws(xdev))
-            xocl_rom_set_vbnv_name(xdev);
+            xocl_rom_aws_set_vbnv_name(xdev);
 
 		if (!offset)
 			checksum = resp->checksum;
