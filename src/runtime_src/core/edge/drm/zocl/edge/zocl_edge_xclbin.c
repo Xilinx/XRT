@@ -79,15 +79,6 @@ zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	return 0;
 }
 
-static bool
-is_aie_only(struct axlf *axlf)
-{
-	if ((axlf->m_header.m_actionMask & AM_LOAD_AIE))
-		return true;
-
-	return false;
-}
-
 /*
  * This function is the main entry point to load xclbin. It's takes an userspace
  * pointer of xclbin and copy the xclbin data to kernel space. Then load that
@@ -186,7 +177,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			//since AIE reset happened load xclbin again
 			DRM_WARN("%s After AIE reset, loading xclbin again", __func__);
 
-		} else if (!is_aie_only(axlf)) {
+		} else if (!zocl_xclbin_is_aie_only(axlf)) {
 			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
 			vfree(axlf);
 			mutex_unlock(&slot->slot_xclbin_lock);
@@ -236,7 +227,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	} else
 #endif
-	if (is_aie_only(axlf)) {
+	if (zocl_xclbin_needs_pdi_load(axlf)) {
 
 		ret = zocl_load_aie_only_pdi(zdev, slot, axlf, xclbin, client);
 		if (ret)

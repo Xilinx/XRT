@@ -198,7 +198,12 @@ get_slot(struct drm_zocl_dev * zdev, struct kds_client* client, int hw_ctx_id)
 	}
 
 	slot = zdev->pr_slot[slot_idx];
-	// WorkAround for older flows where there is single slot for AIE
+	/*
+	 * Deprecated: WorkAround for older flows where there was a single
+	 * slot for AIE. With unified slot selection via get_free_slot(),
+	 * this fallback should no longer be needed. To be removed in a
+	 * future release.
+	 */
 	if (!slot || !slot->aie) {
 		for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 			slot = zdev->pr_slot[i];

@@ -79,18 +79,16 @@ enum zocl_slot_type {
 	ZOCL_SLOT_TYPE_VIRT			= 1
 };
 
-/* Possible XCLBIN Types that ZOCL supports */
+/*
+ * Deprecated: PL_ONLY and AIE_ONLY types are no longer set in the unified
+ * hw_context flow.  Retained for backward compatibility with legacy
+ * xrt::device paths.  Will be removed in a future release.
+ */
 enum zocl_xclbin_type {
 	ZOCL_XCLBIN_TYPE_FULL			= 0,
 	ZOCL_XCLBIN_TYPE_PL_ONLY		= 1,
 	ZOCL_XCLBIN_TYPE_AIE_ONLY		= 2,
 	ZOCL_XCLBIN_TYPE_PS			= 3
-};
-
-/* Hard coded XCLBIN slot id for AIE in ZOCL */
-enum zocl_xclbin_slot {
-	ZOCL_DEFAULT_XCLBIN_SLOT		= 0,
-	ZOCL_AIE_ONLY_XCLBIN_SLOT		= 1
 };
 
 /*
