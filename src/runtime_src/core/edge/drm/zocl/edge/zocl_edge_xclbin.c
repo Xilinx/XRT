@@ -21,27 +21,6 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-static inline u32 xclbin_protocol(u32 prop)
-{
-	u32 intr_id = prop & IP_CONTROL_MASK;
-
-	return intr_id >> IP_CONTROL_SHIFT;
-}
-
-static inline u32 xclbin_intr_enable(u32 prop)
-{
-	u32 intr_enable = prop & IP_INT_ENABLE_MASK;
-
-	return intr_enable;
-}
-
-static inline u32 xclbin_intr_id(u32 prop)
-{
-	u32 intr_id = prop & IP_INTERRUPT_ID_MASK;
-
-	return intr_id >> IP_INTERRUPT_ID_SHIFT;
-}
-
 
 /*
  * Cache the xclbin blob so that it can be shared by processes.
