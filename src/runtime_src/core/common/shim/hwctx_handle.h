@@ -5,6 +5,7 @@
 
 #include "core/common/cuidx_type.h"
 #include "core/common/error.h"
+#include "core/common/message.h"
 #include "core/common/shim/aie_buffer_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/common/shim/shared_handle.h"
@@ -38,7 +39,8 @@ public:
   virtual void
   update_qos(const qos_type&)
   {
-    throw xrt_core::error(std::errc::not_supported, __func__);
+    xrt_core::message::send(xrt_core::message::severity_level::warning,
+                            "XRT", "%s not supported", __func__);
   }
 
   // Update access mode for platforms that care.  This is used
