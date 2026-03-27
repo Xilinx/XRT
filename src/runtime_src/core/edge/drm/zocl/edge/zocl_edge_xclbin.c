@@ -207,9 +207,23 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 #endif
 	if (zocl_xclbin_needs_pdi_load(axlf)) {
 
-		ret = zocl_load_aie_only_pdi(zdev, slot, axlf, xclbin, client);
+		if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+			DRM_ERROR("%s Shared context can not load xclbin",
+				  __func__);
+			ret = -EPERM;
+			goto out0;
+		}
+
+		ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
 		if (ret)
 			goto out0;
+
+		/* Mark AIE out of reset state after load PDI */
+		if (slot->aie) {
+			mutex_lock(&slot->aie_lock);
+			slot->aie->aie_reset = false;
+			mutex_unlock(&slot->aie_lock);
+		}
 
 		zocl_cache_xclbin(zdev, slot, axlf, xclbin);
 
