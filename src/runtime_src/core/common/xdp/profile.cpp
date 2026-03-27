@@ -93,14 +93,14 @@ namespace xrt_core::xdp::aie::profile {
 
 std::function<void (void*, bool)> update_device_cb;
 std::function<void (void*)> end_poll_cb;
-std::function<void (void*, void*, uint32_t)> run_constructor_cb;
+std::function<void (void*, void*, uint32_t, const char*, void*)> run_constructor_cb;
 
 void 
 register_callbacks(void* handle)
 {  
     using ftype = void (*)(void*);
     using utype = void (*)(void*, bool);
-    using rctype = void (*)(void*, void*, uint32_t);
+    using rctype = void (*)(void*, void*, uint32_t, const char*, void*);
 
     update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
@@ -147,10 +147,11 @@ end_poll(void* handle)
 }
 
 void
-run_constructor(void* run, void* hwctx, uint32_t run_uid)
+run_constructor(void* run, void* hwctx, uint32_t run_uid, const char* kernel_name,
+                void* elf_handle)
 {
   if (run_constructor_cb)
-    run_constructor_cb(run, hwctx, run_uid);
+    run_constructor_cb(run, hwctx, run_uid, kernel_name, elf_handle);
 }
 
 } // end namespace xrt_core::xdp::aie::profile
@@ -776,10 +777,12 @@ finish_flush_device(void* handle)
 }
 
 void
-run_constructor(void* run, void* hwctx_handle, uint32_t run_uid)
+run_constructor(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name,
+                void* elf_handle)
 {
   if (xrt_core::config::get_aie_profile())
-    xrt_core::xdp::aie::profile::run_constructor(run, hwctx_handle, run_uid);
+    xrt_core::xdp::aie::profile::run_constructor(run, hwctx_handle, run_uid, kernel_name,
+                                                  elf_handle);
 }
 
 } // end namespace xrt_core::xdp

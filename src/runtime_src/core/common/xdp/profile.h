@@ -28,7 +28,8 @@ finish_flush_device(void* handle);
 // This hook allows XDP plugins to attach per-run resources (e.g.,
 // a CT file for dtrace) before the run is started.
 void
-run_constructor(void* run, void* hwctx_handle, uint32_t run_uid);
+run_constructor(void* run, void* hwctx_handle, uint32_t run_uid,
+                const char* kernel_name, void* elf_handle);
 
 } // end namespace xrt_core::xdp
 

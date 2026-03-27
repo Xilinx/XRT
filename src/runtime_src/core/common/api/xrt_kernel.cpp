@@ -4229,7 +4229,11 @@ run(const kernel& krnl)
            ("xrt::run::run", alloc_run, krnl.get_handle()))
 {
   auto hwctx = krnl.get_handle()->get_hw_context();
-  xrt_core::xdp::run_constructor(this, hwctx.get_handle().get(), handle->get_uid());
+  const auto& mod = krnl.get_handle()->get_module();
+  auto elf_hdl = mod ? xrt_core::module_int::get_elf_handle(mod) : nullptr;
+  xrt_core::xdp::run_constructor(this, hwctx.get_handle().get(), handle->get_uid(),
+                                 krnl.get_handle()->get_name().c_str(),
+                                 elf_hdl.get());
 }
 
 void
