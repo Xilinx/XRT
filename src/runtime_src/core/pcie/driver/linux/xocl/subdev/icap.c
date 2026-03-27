@@ -2069,8 +2069,9 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, u
 
 	/* In Azure cloud, there is special requirement for xclbin download
 	 * that the minumum timeout should be 50s.
+	 * On AWS, a first-time AFI load can take up to 120s.
 	 */
-	timeout = max((size_t)timeout, 50UL);
+	timeout = max((size_t)timeout, 120UL);
 
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL, timeout, 0);
@@ -2838,6 +2839,14 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 done:
 	mutex_unlock(&icap->icap_lock);
+	/*
+	 * AWS: AFI load can change shell sh_version. Refresh feature ROM VBNV
+	 * after unlock — xocl_icap_get_data() must not run while icap_lock
+	 * is held (would deadlock). Peer icap cache was expired in the peer
+	 * download path so aws_set_vbnv_name pulls fresh idcode via MPD/awsGetIcap.
+	 */
+	if (!err && !ICAP_PRIVILEGED(icap) && xocl_is_aws(xdev))
+		xocl_rom_aws_set_vbnv_name(xdev);
 	icap_xclbin_wr_unlock(icap, slot_id);
 	ICAP_INFO(icap, "err: %d", err);
 

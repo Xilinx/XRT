@@ -341,23 +341,29 @@ static const char *get_uuid_from_firmware(struct platform_device *pdev,
 	return NULL;
 }
 
-static void set_vbnv_name(struct platform_device *pdev)
+/*
+ * AWS only — call via xocl_rom_aws_set_vbnv_name() after xocl_is_aws(xdev).
+ * Peer IDCODE (sh_version via MPD get_icap_data). Peer icap cache is cleared on
+ * successful peer xclbin download (icap); else normal cache TTL applies.
+ * VBNV layout: AWS_F2_XDMA_SHELL_NAME template plus 8-char hex id at offset 32.
+ */
+static void aws_set_vbnv_name(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	char sh_version[9];
 	struct feature_rom *rom = platform_get_drvdata(pdev);
-	uint32_t idcode = xocl_icap_get_data(xdev, IDCODE); /* Get the shell version from AWS interface */
+	uint32_t idcode;
 
-	/* return if the instance is F1 as its already updated in feature_rom_probe(),
-	 *  The F1 instance is static and is not going to change in future.
-	 */
+	idcode = (uint32_t)xocl_icap_get_data(xdev, IDCODE);
+
+	/* F1 xdma: static VBNV already set in probe; sh_version does not change. */
 	if (idcode == 0x04261818)
 		return;
 
-	snprintf(sh_version, sizeof(sh_version), "%lx", idcode);
+	snprintf(sh_version, sizeof(sh_version), "%x", idcode);
 	memset(rom->header.VBNVName, 0, sizeof(rom->header.VBNVName));
 	strncpy(rom->header.VBNVName, AWS_F2_XDMA_SHELL_NAME, strlen(AWS_F2_XDMA_SHELL_NAME));
-	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version)-1);
+	strncpy(&rom->header.VBNVName[32], sh_version, sizeof(sh_version) - 1);
 }
 
 static inline bool is_multi_rp(struct feature_rom *rom)
@@ -600,7 +606,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.load_firmware = load_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
 	.get_uuid = get_uuid,
-	.set_vbnv_name = set_vbnv_name,
+	.aws_set_vbnv_name = aws_set_vbnv_name,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
