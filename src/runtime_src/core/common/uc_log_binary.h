@@ -23,8 +23,9 @@ struct uc_log_entry
   uint32_t argument2 = 0; // Second argument (present if length > word offset of argument2)
 };
 
-static_assert(std::is_standard_layout<uc_log_entry>::value, "uc_log_entry layout");
-static_assert(sizeof(uc_log_entry) == 32, "uc_log_entry size");
+#define UC_LOG_ENTRY_SIZE  32
+static_assert(std::is_standard_layout_v<uc_log_entry>, "uc_log_entry layout");
+static_assert(sizeof(uc_log_entry) == UC_LOG_ENTRY_SIZE, "uc_log_entry size");
 
 /// Chunk metadata header size (one uc_log_entry) preceding log records in a chunk
 inline constexpr std::size_t uc_log_chunk_metadata_size = sizeof(uc_log_entry);
