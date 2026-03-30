@@ -21,27 +21,6 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-static inline u32 xclbin_protocol(u32 prop)
-{
-	u32 intr_id = prop & IP_CONTROL_MASK;
-
-	return intr_id >> IP_CONTROL_SHIFT;
-}
-
-static inline u32 xclbin_intr_enable(u32 prop)
-{
-	u32 intr_enable = prop & IP_INT_ENABLE_MASK;
-
-	return intr_enable;
-}
-
-static inline u32 xclbin_intr_id(u32 prop)
-{
-	u32 intr_id = prop & IP_INTERRUPT_ID_MASK;
-
-	return intr_id >> IP_INTERRUPT_ID_SHIFT;
-}
-
 
 /*
  * Cache the xclbin blob so that it can be shared by processes.
@@ -106,7 +85,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *aie_res = 0;
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
-	uint32_t qos = 0;
+	uint32_t flags = 0;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	/* Download the XCLBIN from user space to kernel space and validate */
@@ -162,13 +141,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		return -EFAULT;
 	}
 
-	/* TODO : qos need to define */
-	qos |= axlf_obj->za_flags;
+	flags = axlf_obj->za_flags;
 	slot = zdev->pr_slot[slot_id];
 
 	mutex_lock(&slot->slot_xclbin_lock);
 	if (zocl_xclbin_same_uuid(slot,  &axlf_head.m_header.uuid)) {
-		if (qos & DRM_ZOCL_FORCE_PROGRAM) {
+		if (flags & DRM_ZOCL_FORCE_PROGRAM) {
 			// We come here if user sets force_xclbin_program
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
@@ -192,7 +170,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
-	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
+	/* 1. We locked slot->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
 	 * 2. A opened context would lock bitstream and hold it.
 	 * 3. If all contexts are closed, new kds would make sure all
@@ -229,16 +207,28 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 #endif
 	if (zocl_xclbin_needs_pdi_load(axlf)) {
 
-		ret = zocl_load_aie_only_pdi(zdev, slot, axlf, xclbin, client);
+		if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+			DRM_ERROR("%s Shared context can not load xclbin",
+				  __func__);
+			ret = -EPERM;
+			goto out0;
+		}
+
+		ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
 		if (ret)
 			goto out0;
+
+		/* Mark AIE out of reset state after load PDI */
+		if (slot->aie) {
+			mutex_lock(&slot->aie_lock);
+			slot->aie->aie_reset = false;
+			mutex_unlock(&slot->aie_lock);
+		}
 
 		zocl_cache_xclbin(zdev, slot, axlf, xclbin);
 
 	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
-		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
-		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
-		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT) {
 		/*
 		 * Load full bitstream, enabled in xrt runtime config
 		 * and xclbin has full bitstream and its not hw emulation

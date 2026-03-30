@@ -73,24 +73,6 @@ enum zocl_mem_type {
 	ZOCL_MEM_TYPE_STREAMING		= 2,
 };
 
-/* Possible slots Types for ZOCL */
-enum zocl_slot_type {
-	ZOCL_SLOT_TYPE_PHY			= 0,
-	ZOCL_SLOT_TYPE_VIRT			= 1
-};
-
-/*
- * Deprecated: PL_ONLY and AIE_ONLY types are no longer set in the unified
- * hw_context flow.  Retained for backward compatibility with legacy
- * xrt::device paths.  Will be removed in a future release.
- */
-enum zocl_xclbin_type {
-	ZOCL_XCLBIN_TYPE_FULL			= 0,
-	ZOCL_XCLBIN_TYPE_PL_ONLY		= 1,
-	ZOCL_XCLBIN_TYPE_AIE_ONLY		= 2,
-	ZOCL_XCLBIN_TYPE_PS			= 3
-};
-
 /*
  * Memory structure in zocl driver. There will be an array of this
  * structure where each element is representing each section in
@@ -124,8 +106,6 @@ struct aie_metadata {
 
 struct drm_zocl_slot {
 	u32			 slot_idx;
-	u32			 slot_type;
-	u32			 xclbin_type;
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
