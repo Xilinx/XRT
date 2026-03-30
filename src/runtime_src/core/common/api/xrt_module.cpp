@@ -200,6 +200,9 @@ protected:
   using patcher_config = xrt_core::elf_patcher::patcher_config;
   using symbol_patcher = xrt_core::elf_patcher::symbol_patcher;
 
+  // scratchpad memory symbol name
+  static constexpr const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+
   // Pointer to shared patcher configs
   // This is created during ELF parsing and shared across module_run instances
   const std::map<std::string, patcher_config>* m_patcher_configs = nullptr;
@@ -363,8 +366,7 @@ class module_run_aie_gen2 : public module_run
   // map storing xrt::bo that stores pdi data corresponding to each pdi symbol
   std::map<std::string, xrt::bo> m_pdi_bo_map;
 
-  // Symbol names for patching
-  static constexpr const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+  // Symbol names for patching specific to aie_gen2 platform
   static constexpr const char* Control_Packet_Symbol = "control-packet";
   static constexpr const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
 
@@ -888,8 +890,14 @@ class module_run_aie_gen2_plus : public module_run
       offset += col_data[i].size();
     }
 
+    // create scratchpad memory buffer and patch it in ctrlpkt buffers and
+    // instruction buffer if symbol is present in ELF
+    xrt::bo scratchpad_mem;
+    if (m_config.scratch_pad_mem_size > 0)
+      scratchpad_mem = xrt_core::hw_context_int::get_scratchpad_mem_buf(m_hwctx, m_config.scratch_pad_mem_size);
+
     // Patch control packet addresses in instruction buffer
-    for (const auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
+    for (auto& [name, ctrlpktbo] : m_ctrlpkt_bos) {
       // Symbol name is section name without the grp idx
       // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
       auto dot_pos = name.rfind('.');
@@ -897,11 +905,23 @@ class module_run_aie_gen2_plus : public module_run
                     ? name.substr(0, dot_pos)
                     : name;
 
+      // Patch scratchpad memory address in ctrlpkt buffer if present
+      if (scratchpad_mem)
+        if (patch_helper(ctrlpktbo, Scratch_Pad_Mem_Symbol, std::numeric_limits<size_t>::max(),
+                         scratchpad_mem.address(), xrt_core::elf_patcher::buf_type::ctrlpkt))
+          m_patched_args.insert(Scratch_Pad_Mem_Symbol);
+
       if (patch_helper(m_buffer, sym_name, std::numeric_limits<size_t>::max(),
                        ctrlpktbo.address(),
                        xrt_core::elf_patcher::buf_type::ctrltext))
         m_patched_args.insert(sym_name);
     }
+
+    // Patch scratchpad memory address in instruction buffer if present
+    if (scratchpad_mem)
+      if (patch_helper(m_buffer, Scratch_Pad_Mem_Symbol, std::numeric_limits<size_t>::max(),
+                       scratchpad_mem.address(), xrt_core::elf_patcher::buf_type::ctrltext))
+        m_patched_args.insert(Scratch_Pad_Mem_Symbol);
   }
 
   // Create instruction buffer with all columns data along with pad section

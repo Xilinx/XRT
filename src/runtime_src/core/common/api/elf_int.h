@@ -214,6 +214,9 @@ struct module_config_aie_gen2_plus
 
   // Reference to dump buffer for debug/trace
   const buf& dump_buf;
+
+  // Size of scratch pad memory
+  size_t scratch_pad_mem_size;
   // NOLINTEND
 
   // Parent elf_impl pointer for any mutable operations
