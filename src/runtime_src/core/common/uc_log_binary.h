@@ -23,7 +23,7 @@ struct uc_log_entry
   uint32_t argument2 = 0; // Second argument (present if length > word offset of argument2)
 };
 
-#define UC_LOG_ENTRY_SIZE  32
+inline constexpr std::size_t UC_LOG_ENTRY_SIZE = 32;
 static_assert(std::is_standard_layout_v<uc_log_entry>, "uc_log_entry layout");
 static_assert(sizeof(uc_log_entry) == UC_LOG_ENTRY_SIZE, "uc_log_entry size");
 
