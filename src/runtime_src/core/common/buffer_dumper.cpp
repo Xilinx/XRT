@@ -25,6 +25,7 @@ buffer_dumper(config cfg)
 {
   // Files are opened lazily in get_or_open_stream() when first data is available
   // start the background thread to dump the data
+  m_done_future = m_done_promise.get_future();
   m_dump_thread = std::thread(&buffer_dumper::dumping_loop, this);
 }
 
@@ -58,7 +59,10 @@ buffer_dumper::
   try {
     m_stop_thread = true;
     m_cv.notify_one();
-    m_dump_thread.join();
+    // Wait for dump thread to finish before detaching.
+    m_done_future.wait();
+    // detach instead of join to avoid deadlock under DLL_PROCESS_DETACH
+    m_dump_thread.detach();
     flush();
   }
   catch (const std::exception& e) {
@@ -300,6 +304,8 @@ dumping_loop()
                               std::string{"Error in dumping loop: "} + e.what());
     }
   }
+
+  m_done_promise.set_value();
 }
 
 void
