@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <fstream>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -65,6 +66,8 @@ private:
   size_t m_data_size = 0;
   std::vector<size_t> m_dumped_counts;
   std::thread m_dump_thread;
+  std::promise<void> m_done_promise;
+  std::future<void>  m_done_future;
   std::atomic<bool> m_stop_thread{false};
   std::mutex m_dump_mutex;
   std::condition_variable m_cv;
