@@ -1861,6 +1861,10 @@ class profile
           XRT_DEBUGF("profile::bindings::init(%s)\n", name.c_str());
           m_xrt_bos.at(name) = init_buffer(node.value<size_t>("size", 0), node.at("init"));
         }
+        else {
+          // No init, create an empty buffer with specified size (required)
+          m_xrt_bos.at(name) = xrt::ext::bo{m_device, node.at("size").get<size_t>()};
+        }
       }
     }
 
