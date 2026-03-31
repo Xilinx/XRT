@@ -254,7 +254,7 @@ class recipe
   class header
   {
     xrt::xclbin m_xclbin;
-    xrt::aie::program m_program;
+    std::vector<xrt::elf> m_programs;
 
     static xrt::xclbin
     read_xclbin(const json& j, const xartifacts::repo& repo)
@@ -267,21 +267,35 @@ class recipe
       return xrt::xclbin{std::string_view{data.data(), data.size()}};
     }
 
-    static xrt::aie::program
-    read_program(const json& j, const xartifacts::repo& repo)
+    static std::vector<xrt::elf>
+    read_programs(const json& j, const xartifacts::repo& repo)
     {
-      if (!j.contains("program"))
-        return {};
+      std::vector<xrt::elf> programs;
 
-      auto path = j.at("program").get<std::string>();
-      auto data = repo.get(path);
-      return xrt::aie::program{std::string_view{data.data(), data.size()}};
+      auto add_program = [&](const std::string& path) {
+        auto data = repo.get(path);
+        programs.emplace_back(std::string_view{data.data(), data.size()});
+      };
+
+      // Deprecated single program
+      if (j.contains("program")) {
+        add_program(j.at("program").get<std::string>());  // value required
+      }
+
+      // Read programs array"programs": [ "p1", "p2", ...]
+      if (auto it = j.find("programs"); it != j.end() && it->is_array()) {
+        for (const auto& path : *it) {
+          add_program(path.get<std::string>());
+        }
+      }
+
+      return programs;
     }
 
   public:
     header(const json& j, const xartifacts::repo& repo)
       : m_xclbin{read_xclbin(j, repo)}
-      , m_program{read_program(j, repo)}
+      , m_programs{read_programs(j, repo)}
     {
       XRT_DEBUGF("Loaded xclbin: %s\n", m_xclbin.get_uuid().to_string().c_str());
     }
@@ -294,10 +308,10 @@ class recipe
       return m_xclbin;
     }
 
-    xrt::aie::program
-    get_program() const
+    const std::vector<xrt::elf>&
+    get_programs() const
     {
-      return m_program;
+      return m_programs;
     }
 
     json
@@ -650,9 +664,16 @@ class recipe
       if (auto xclbin = header.get_xclbin())
         return create_hwctx(device, xclbin, qos);
 
-      if (auto program = header.get_program())
-        return create_hwctx(device, program, qos);
+      xrt::hw_context hwctx {device, qos, xrt::hw_context::access_mode::shared};
+      size_t elf_count = 0;
+      for (const auto& program : header.get_programs()) {
+        hwctx.add_config(program);
+        ++elf_count;
+      }
 
+      if (elf_count)
+        return hwctx;
+      
       throw recipe_error("No program or xclbin specified");
     }
 
