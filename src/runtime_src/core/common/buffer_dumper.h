@@ -2,7 +2,7 @@
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrtcore_util_buffer_dumper_h_
 #define xrtcore_util_buffer_dumper_h_
-#include "core/common/uc_log_binary.h"
+#include "core/common/uc_log.h"
 #include "core/include/xrt/xrt_bo.h"
 
 #include <atomic>
@@ -48,7 +48,7 @@ public:
     bool dump_bin_format = false;     // Dump in binary format when enabled
   };
 
-  // Log entry layout: shared definition in uc_log_binary.h
+  // Log entry layout: shared definition in uc_log.h
   using log_entry = uc_log_entry;
 
 private:
