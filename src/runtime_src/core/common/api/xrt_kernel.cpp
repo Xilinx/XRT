@@ -4205,6 +4205,12 @@ get_hw_ctx(const xrt::kernel& kernel)
   return kernel.get_handle()->get_hw_context();
 }
 
+xrt::hw_context
+get_hw_ctx(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_hw_context();
+}
+
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 {
