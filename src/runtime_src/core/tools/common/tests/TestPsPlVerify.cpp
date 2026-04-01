@@ -7,8 +7,10 @@
 #include "TestValidateUtilities.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 namespace XBU = XBUtilities;
 
@@ -56,7 +58,9 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
         return;
       }
 
-      device.load_xclbin(path);
+      auto dep_xclbin = xrt::xclbin(path);
+      auto dep_uuid = device.register_xclbin(dep_xclbin);
+      xrt::hw_context dep_hw_ctx(device, dep_uuid);
   }
 
   // Load ps kernel onto device
@@ -70,10 +74,12 @@ TestPsPlVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::pro
     return;
   }
 
-  auto uuid = device.load_xclbin(b_file);
-  auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
+  auto xclbin = xrt::xclbin(b_file);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
+  auto bandwidth_kernel = xrt::kernel(hw_ctx, "bandwidth_kernel");
 
-  auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));
+  auto max_throughput_bo = xrt::bo(hw_ctx, 4096, bandwidth_kernel.group_id(1));
   auto max_throughput = max_throughput_bo.map<double*>();
 
   int reps = 10000;

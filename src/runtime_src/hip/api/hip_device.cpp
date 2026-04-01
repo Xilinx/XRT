@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/include/xrt/experimental/xrt_system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
@@ -19,6 +19,10 @@
 
 // forward declaration
 namespace xrt::core::hip {
+// Defined first so it is initialized before the global x below (same
+// TU order).
+xrt_core::handle_map<device_handle, std::unique_ptr<device>> device_cache; //NOLINT
+
 static void
 device_init();
 }

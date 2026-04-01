@@ -529,7 +529,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     if (schemaVersion == Report::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
     // All Error Handling for xrt-smi validate should go here
-    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param); 
+    handle_errors_and_validate_tests(vm, options, testOptions, validatedTests, param);
 
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {

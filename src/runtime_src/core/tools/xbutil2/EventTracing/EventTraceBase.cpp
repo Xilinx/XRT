@@ -36,11 +36,7 @@ load_json_from_device(const xrt_core::device* device)
   }
 
   auto archive = XBUtilities::open_archive(device);
-  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"trace_events.json"});
-  auto& config_data = artifacts_repo["trace_events.json"];
-  std::string config_content(config_data.begin(), config_data.end());
-  
-  return nlohmann::json::parse(config_content);
+  return nlohmann::json::parse(archive->data("trace_events.json"));
 }
 
 uint16_t
@@ -163,6 +159,18 @@ format_event_row(uint64_t timestamp,
 
 std::string
 event_trace_parser::
+format_sequence_gap(uint16_t prev_seq, uint16_t curr_seq) const
+{
+  if (curr_seq >= prev_seq + 2) {
+    const uint16_t delta = static_cast<uint16_t>(curr_seq - prev_seq);
+    return "  --- sequence gap: " + std::to_string(prev_seq) + " -> " + std::to_string(curr_seq)
+         + " (delta " + std::to_string(static_cast<unsigned>(delta)) + ", events may be missing) ---\n";
+  }
+  return "";
+}
+
+std::string
+event_trace_parser::
 format_categories(const std::vector<std::string>& categories) const
 {
   if (categories.empty()) {
@@ -171,8 +179,10 @@ format_categories(const std::vector<std::string>& categories) const
   
   std::stringstream ss;
   for (size_t i = 0; i < categories.size(); ++i) {
-    if (i > 0) ss << " | ";
-    ss << categories[i];
+    if (i > 0) ss << " and ";
+    auto category = categories[i];
+    boost::algorithm::erase_first(category, "EVENT_TRACE_CATEGORY_");
+    ss << category;
   }
   return ss.str();
 }

@@ -741,6 +741,18 @@ public:
   /// @endcond
 
   /**
+   * get_gmio_mem_index() - Get mem_data_index for a GMIO port.
+   *
+   * @param gmio_name
+   *   GMIO port name (e.g. "in", "out", "gmioIn", "gmioOut").
+   * @return
+   *   mem_data_index to use as bank_id in xrt::aie::bo.
+   */
+  XRT_API_EXPORT
+  int32_t
+  get_gmio_mem_index(const std::string& gmio_name) const;
+
+  /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin
    *
    * @return

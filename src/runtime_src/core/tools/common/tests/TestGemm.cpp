@@ -125,7 +125,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     xrt::device working_dev(dev);
 
     // Get the ELF data from artifacts repository
-    const auto& elf_data = artifacts_repo.at("gemm.elf");
+    auto elf_data = artifacts_repo.get("gemm.elf");
     
     // Create program from ELF data (full ELF flow)
     std::string_view elf_view(elf_data.data(), elf_data.size());

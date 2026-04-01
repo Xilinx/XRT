@@ -9,7 +9,9 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
+#include "xrt/experimental/xrt_xclbin.h"
 namespace XBU = XBUtilities;
 
 static const int COUNT = 1024;
@@ -44,7 +46,9 @@ TestPsVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::prope
       ptree.put("status", XBValidateUtils::test_token_skipped);
       return;
     }
-    device.load_xclbin(path);
+    auto dep_xclbin = xrt::xclbin(path);
+    auto dep_uuid = device.register_xclbin(dep_xclbin);
+    xrt::hw_context dep_hw_ctx(device, dep_uuid);
   }
 
   const std::string b_file = XBValidateUtils::findXclbinPath(dev, ptree);
@@ -55,11 +59,13 @@ TestPsVerify::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::prope
     return;
   }
 
-  auto uuid = device.load_xclbin(b_file);
-  auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
+  auto xclbin = xrt::xclbin(b_file);
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
+  auto hello_world = xrt::kernel(hw_ctx, "hello_world");
   const size_t DATA_SIZE = COUNT * sizeof(int);
-  auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-  auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
+  auto bo0 = xrt::bo(hw_ctx, DATA_SIZE, hello_world.group_id(0));
+  auto bo1 = xrt::bo(hw_ctx, DATA_SIZE, hello_world.group_id(1));
   auto bo0_map = bo0.map<int*>();
   auto bo1_map = bo1.map<int*>();
   std::fill(bo0_map, bo0_map + COUNT, 0);

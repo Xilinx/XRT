@@ -15,8 +15,10 @@ namespace XBU = XBUtilities;
 
 // XRT includes
 #include "xrt/experimental/xrt_system.h"
+#include "xrt/experimental/xrt_xclbin.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 
 #include <boost/format.hpp>
@@ -42,7 +44,7 @@ TestAiePl::run(const std::shared_ptr<xrt_core::device>& dev)
   return ptree;
 }
 
-bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree& aie_meta, std::string dma_lock) {
+bool run_pl_controller_aie1(xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta, std::string dma_lock) {
   xf::plctrl::plController m_pl_ctrl(aie_meta, dma_lock.c_str());
 
   unsigned int num_iter = 2;
@@ -83,17 +85,17 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_
   unsigned int mem_size_bytes = 0;
 
   auto sender_receiver_k1 =
-      xrt::kernel(device, uuid, "sender_receiver:{sender_receiver_1}");
+      xrt::kernel(hw_ctx, "sender_receiver:{sender_receiver_1}");
   auto controller_k1 =
-      xrt::kernel(device, uuid, "pl_controller_kernel:{controller_1}");
+      xrt::kernel(hw_ctx, "pl_controller_kernel:{controller_1}");
 
   // output memory
   mem_size_bytes = num_sample * num_iter * sizeof(uint32_t);
-  auto out_bo1 = xrt::bo(device, mem_size_bytes, sender_receiver_k1.group_id(output_buffer_idx));
+  auto out_bo1 = xrt::bo(hw_ctx, mem_size_bytes, sender_receiver_k1.group_id(output_buffer_idx));
   auto host_out1 = out_bo1.map<int*>();
 
   // input memory
-  auto in_bo1 = xrt::bo(device, mem_size_bytes, sender_receiver_k1.group_id(input_buffer_idx));
+  auto in_bo1 = xrt::bo(hw_ctx, mem_size_bytes, sender_receiver_k1.group_id(input_buffer_idx));
   auto host_in1 = in_bo1.map<int*>();
 
 
@@ -104,7 +106,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_
   in_bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, mem_size_bytes, /*OFFSET=*/0);
 
   uint32_t num_pm = m_pl_ctrl.get_microcode_size(); /// sizeof(int32_t);
-  auto pm_bo = xrt::bo(device, (num_pm + 1) * sizeof(uint32_t),
+  auto pm_bo = xrt::bo(hw_ctx, (num_pm + 1) * sizeof(uint32_t),
                         controller_k1.group_id(pm_buffer_idx));
   auto host_pm = pm_bo.map<uint32_t*>();
 
@@ -145,7 +147,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_
   return match;
 }
 
-bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree& aie_meta) {
+bool run_pl_controller_aie2(xrt::hw_context hw_ctx, boost::property_tree::ptree& aie_meta) {
   // instance of plController
   xf::plctrl::plController_aie2 m_pl_ctrl(aie_meta);
 
@@ -170,16 +172,16 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_
   uint32_t mem_size_bytes = 0;
 
   // XRT auto get group_id
-  auto sender_receiver_k1 = xrt::kernel(device, uuid, "sender_receiver:{sender_receiver_1}");
-  auto controller_k1 = xrt::kernel(device, uuid, "pl_controller_top:{controller_1}");
+  auto sender_receiver_k1 = xrt::kernel(hw_ctx, "sender_receiver:{sender_receiver_1}");
+  auto controller_k1 = xrt::kernel(hw_ctx, "pl_controller_top:{controller_1}");
 
   // output memory
   mem_size_bytes = num_sample * num_iter * sizeof(uint32_t);
-  auto out_bo1 = xrt::bo(device, mem_size_bytes, sender_receiver_k1.group_id(output_buffer_idx));
+  auto out_bo1 = xrt::bo(hw_ctx, mem_size_bytes, sender_receiver_k1.group_id(output_buffer_idx));
   auto host_out1 = out_bo1.map<uint32_t*>();
 
   // input memory
-  auto in_bo1 = xrt::bo(device, mem_size_bytes, sender_receiver_k1.group_id(input_buffer_idx));
+  auto in_bo1 = xrt::bo(hw_ctx, mem_size_bytes, sender_receiver_k1.group_id(input_buffer_idx));
   auto host_in1 = in_bo1.map<uint32_t*>();
 
   // initialize input memory
@@ -190,7 +192,7 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_
   in_bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, mem_size_bytes, /*OFFSET=*/0);
 
   uint32_t num_pm = m_pl_ctrl.get_microcode_size(); /// sizeof(uint32_t);
-  auto pm_bo = xrt::bo(device, (num_pm + 1) * sizeof(uint32_t),
+  auto pm_bo = xrt::bo(hw_ctx, (num_pm + 1) * sizeof(uint32_t),
                         controller_k1.group_id(pm_buffer_idx));
   auto host_pm = pm_bo.map<uint32_t*>();
 
@@ -251,7 +253,9 @@ TestAiePl::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
   }
   ptree.put("xclbin_directory", std::filesystem::path(test_path));
 
-  const auto uuid = device.load_xclbin(binaryFile.string());
+  auto xclbin = xrt::xclbin(binaryFile.string());
+  auto uuid = device.register_xclbin(xclbin);
+  xrt::hw_context hw_ctx(device, uuid);
 
   boost::property_tree::ptree aie_meta;
   auto metadata_pair = dev->get_axlf_section(AIE_METADATA);
@@ -279,11 +283,11 @@ TestAiePl::runTest(const std::shared_ptr<xrt_core::device>& dev, boost::property
     case 1: {
       std::string dma_lock_file = "dma_lock_report.json";
       auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
-      match = run_pl_controller_aie1(device, uuid, aie_meta, dma_lock.string());
+      match = run_pl_controller_aie1(hw_ctx, aie_meta, dma_lock.string());
       break;
     }
     case 2:
-      match = run_pl_controller_aie2(device, uuid, aie_meta);
+      match = run_pl_controller_aie2(hw_ctx, aie_meta);
       break;
     default:
       XBValidateUtils::logger(ptree, "Error", "Unsupported AIE Hardware");

@@ -13,6 +13,8 @@
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xcl_graph.h"
 
 #include "core/common/api/device_int.h"
@@ -115,6 +117,16 @@ public:
   read_rtp(const char* port, char* buffer, size_t size)
   {
     m_graphHandle->read_graph_rtp(port, buffer, size);
+  }
+
+  uint32_t
+  gmio_bank_id(const std::string& gmio_name) const
+  {
+    auto xclbin = hw_ctx.get_xclbin();
+    if (!xclbin)
+      throw std::runtime_error("gmio_bank_id: graph has no hw_context with xclbin (create graph from hw_context)");
+    int32_t mem_index = xclbin.get_gmio_mem_index(gmio_name);
+    return static_cast<uint32_t>(mem_index);
   }
 };
 
@@ -352,6 +364,13 @@ graph::
 get_timestamp() const
 {
   return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [this]{return (handle->get_timestamp());});
+}
+
+uint32_t
+graph::
+gmio_bank_id(const std::string& gmio_name) const
+{
+  return handle->gmio_bank_id(gmio_name);
 }
 
 void

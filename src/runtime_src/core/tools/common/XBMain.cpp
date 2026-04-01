@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -68,9 +68,14 @@ void  main_(int argc, char** argv,
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
+
+  if (xrt_core::sysinfo::is_advanced()) {
+    hiddenOptions.add_options()
+      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+    ;
+  }
 
   // Merge the options to one common collection
   po::options_description allOptions("All Options");
@@ -112,7 +117,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
-  XBU::setAdvance((bAdvance && xrt_core::sysinfo::is_advanced()));
+  XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
   // Was default device requested?
@@ -226,13 +231,8 @@ void  main_(int argc, char** argv,
     boost::property_tree::read_json(command_config_stream, configTreeMain);
     subCommand->setOptionConfig(configTreeMain);
 
-    if (XBU::getAdvance()) {
-      std::cout << "-------------------------------------------------------------------------\n";
-      std::cout << "                    DISCLAIMER  (xrt-smi --advanced)                     \n";
-      std::cout << "You are running a developer command that may change system configuration.\n";
-      std::cout << "                Continue only if you understand the risks.               \n";
-      std::cout << "-------------------------------------------------------------------------\n";
-    }
+    if (XBU::getAdvance())
+      XBU::printAdvancedDisclaimer();
   }
 
   // -- Execute the sub-command

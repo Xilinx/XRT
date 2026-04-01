@@ -845,8 +845,12 @@ load_program(program* program)
 
   m_active = program;
 
-  // In order to use virtual CUs (KDMA) we must open a virtual context
-  m_xdevice->acquire_cu_context(-1,true);
+  /* COMMENTED OUT: acquire_cu_context(-1) allocates a second hw_ctx and locks
+   * the bitstream via xocl_add_context, while create_hw_context already did
+   * so. Double lock causes crash in icap_unlock_bitstream during teardown.
+   * Skip until proper fix for hw_context flow (e.g. reuse existing hw_ctx).
+   */
+  /* m_xdevice->acquire_cu_context(-1,true); */
 }
 
 void
@@ -856,8 +860,13 @@ unload_program(const program* program)
   if (m_active == program) {
     clear_cus();
     m_active = nullptr;
-    if (!m_parent.get())
-      m_xdevice->release_cu_context(-1); // release virtual CU context
+    /* COMMENTED OUT: Matches acquire_cu_context(-1) above. Skip to avoid crash
+     * in icap_unlock_bitstream (double lock / ref-count mismatch).
+     */
+    /* if (!m_parent.get())
+            m_xdevice->release_cu_context(-1);
+     */
+
   }
 }
 

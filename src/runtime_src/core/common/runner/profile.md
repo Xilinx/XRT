@@ -51,18 +51,23 @@ defined.
 
 ## Bindings
 
-This section is optional if all buffer resources specified in the
-recipe are specified with `size` (see [recipe](recipe.md#buffer)).
-
 The bindings section specifies how external buffers should be created,
 initialized, and validated. The section is an array of binding elements,
 where each binding element must reference a resource in the run-recipe.
 
+Externally bound buffers are buffers that are bound explicitly using
+xrt::runner APIs or buffers that are created by the profile as a
+result of a profile.json binding element.
+
 A binding element references the name of the resource buffer to bind
 to the recipe along with various attributes.  The xrt::runner will
-create an `xrt::bo` for each specified binding element.  The size of
-the buffer is optional optional when the buffer is initialized from a
-file, but is otherwise required.
+create an `xrt::bo` for each specified binding element.
+
+The `size` of the buffer is optional when the buffer is initialized
+from a file, but is otherwise required.  For file bindings without a
+specified `size`, the buffer size will be the same as the size of the
+file.
+
 ```
   "bindings": [
     { 
@@ -74,7 +79,7 @@ file, but is otherwise required.
   ],
 ```
 A binding element has some simple attributes and more complex
-nested attributes
+nested attributes.
 
 ### Simple attributes of a binding element
 
@@ -137,6 +142,7 @@ have been specified.
 ```
       "init": {
         "file": "<path or repo key>",
+        "mmap": bool     // memory map the file on open
         "skip": bytes    // skip number of bytes in file
         "begin": offset, // offset to start writing at (default: 0)
         "end": offset    // offset to end writing at (default: bo.size())
@@ -145,11 +151,17 @@ have been specified.
 File initialization implies that the resource buffer should be
 initialized with content from `file`.  The `file` must reference
 a key that locates a file on disk or in an artifacts repository used
-during construction of the `xrt::runner`.  If the binding element
+during construction of the `xrt::runner`.
+If the binding element
 specifies a `size` value, then this size takes precedence over the
 size of the file, otherwise the size of the file will be the size of
 the buffer. The optional `skip` element allows skipping first bytes 
 of the file during initialization of the buffer.
+
+If no artifacts repo was used during construction of the runner or if
+the repo doesn't contain the referenced file, then the optional `mmap`
+value, if set to `true`, causes the runner to memory map the file
+rather than read it directly from disk.
 
 The range defined by `[begin, end[` (default: `[0, bo.size()[`) are 
 the bytes of the buffer that will be populated with data from the file.
@@ -250,11 +262,10 @@ defines how the recipe should be executed.
 ### Execution
 
 The execution section of a profile is a sub-element of 
-the profiles `executions` array.  It specified how many times the recipe
+the profiles `executions` array.  It specifies how many times the recipe
 should be executed and how.  It controls what should happen after each
 iteration and before next iteration. If `iterations` is not specified,
 then the recipe will execute one iteration.
-
 ```
   {
     "name": "myexecution", // custom id for this execution
@@ -264,6 +275,7 @@ then the recipe will execute one iteration.
     "runlist_threshold": 1 // when to use xrt::runlist
     "mode": mode           // latency, throughput, or validate
     "depth": depth         // clone the recipe runlist
+    "poll": true           // poll for completion
     "iteration" : {
     }
   }
@@ -281,7 +293,7 @@ one iteration.
   elements upon completion of all iterations. If mode is set to
   validate then this element is implicitly `true` (see details
   in mode section).
-- `runlist_threshold` (default: `6`) specifies when to
+- `runlist_threshold` (default: `6`) specifies when to use
   xrt::runlist. xrt::runner controls when to use xrt::runlist versus a
   list of separate xrt::run objects. A value of `0` disables
   xrt::runlist completely, any other value is used to trigger when to
@@ -293,6 +305,9 @@ one iteration.
   treated as a single runlist.  In `throughput` mode the recipe runlist
   is default instantiated twice, but `depth` can be used to create more
   instances if that is necessary to keep the hardware busy.
+- `poll` (default: false) specifies that waiting for completion of the
+  recipe or in between iterations if the recipe should use polling as
+  opposed to blocking wait.
 
 #### mode
 The `mode` element is optional but if present must be one of `latency`

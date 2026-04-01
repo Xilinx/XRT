@@ -19,7 +19,7 @@
 // ./runner.exe --recipe ... --profile ... [--dir ...]
 
 #include "xrt/xrt_device.h"
-#include "experimental/xrt_ext.h"
+#include "xrt/experimental/xrt_ext.h"
 #include "core/common/runner/runner.h"
 
 #include <algorithm>

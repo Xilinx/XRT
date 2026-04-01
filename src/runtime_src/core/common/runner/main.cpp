@@ -76,6 +76,8 @@ namespace {
 static bool g_progress = false;     // NOLINT
 static uint32_t g_iterations = 0;   // NOLINT
 static std::string g_mode = "all";  // NOLINT
+static bool g_nommap = false;       // NOLINT  
+static bool g_nopoll = false;       // NOLINT  
 
 constexpr double
 to_mb(size_t bytes)
@@ -142,6 +144,25 @@ touchup_iterations(json& profile, uint32_t iterations)
     exec["iterations"] = iterations;
 }
 
+// Disable specified key bool value globally
+static void
+touchup_kv(json& j, const std::string& key, bool value)
+{
+  if (j.is_object()) {
+    for (auto& [k, v] : j.items()) {
+      if (k == key && v.is_boolean() && v.get<bool>())
+        v = value;
+      else 
+        touchup_kv(v, key, value);
+    }
+  }
+
+  else if (j.is_array()) {
+    for (auto& v : j)
+      touchup_kv(v, key, value);
+  }
+}
+
 // Touch up profiles(s)
 // Return parsed / modified json as a json string
 static std::string
@@ -158,6 +179,12 @@ touchup_profile_mt(const std::string& profile, const std::string& mode, uint32_t
 
   filter_mode(json, mode);
   touchup_iterations(json, iterations);
+
+  if (g_nommap)
+    touchup_kv(json, "mmap", false);
+
+  if (g_nopoll)
+    touchup_kv(json, "poll", false);
   
   return json.dump();
 }
@@ -170,6 +197,12 @@ touchup_profile(const std::string& profile, const std::string& mode, uint32_t it
 
   filter_mode(json, mode);
   touchup_iterations(json, iterations);
+
+  if (g_nommap)
+    touchup_kv(json, "mmap", false);
+
+  if (g_nopoll)
+    touchup_kv(json, "poll", false);
 
   return json.dump();
 }
@@ -525,6 +558,7 @@ usage()
   std::cout << " [--dir <path>] directory containing artifacts (default: current dir)\n";
   std::cout << " [--mode <latency|throughput|validate>] execute only specified mode (default: all)\n";
   std::cout << " [--verbose <val>] set XRT verbosity level to specified value (default: 0)\n";
+  std::cout << " [--nommap] disable mmap of buffers (default: profile.json)\n";
   std::cout << " [--progress] show progress (same as --verbose 6)\n";
   std::cout << " [--report [<file>]] output runner metrics to <file> or use stdout for no <file> or '-'\n";
   std::cout << "\n";
@@ -624,6 +658,16 @@ run(int argc, char* argv[])
       continue;
     }
 
+    if (arg == "--nommap") {
+      g_nommap = true;
+      continue;
+    }
+
+    if (arg == "--nopoll") {
+      g_nopoll = true;
+      continue;
+    }
+
     // Special handling to process --report options
     if (arg == "-r" || arg == "--report") {
       // --report
@@ -639,7 +683,7 @@ run(int argc, char* argv[])
       continue;
     }
 
-    if (arg[0] == '-') {
+    if (arg[0] == '-' && cur.empty()) {
       cur = arg;
       continue;
     }
@@ -665,8 +709,14 @@ run(int argc, char* argv[])
     else if (cur == "-v" || cur == "--verbose")
       verbosity = std::max<uint32_t>(verbosity, std::stoi(arg));
     else
-      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+      // Cannot use xrt::message::logf(...), before ini::set below
+      std::cerr << "[runner] INFO: ignoring unknown argument value " << cur << " " << arg << '\n';
+
+    cur.clear();
   }
+
+  if (!cur.empty())
+    std::cerr << "[runner] INFO: ignoring unknown argument value " << cur << '\n';
 
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
     throw std::runtime_error("script is mutually exclusive with recipe and profile");

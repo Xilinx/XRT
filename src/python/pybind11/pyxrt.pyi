@@ -170,6 +170,15 @@ class uuid:
 class hw_context:
     """A hardware context associates an xclbin with hardware resources."""
     
+    class access_mode(IntEnum):
+        """Hardware context access mode."""
+        exclusive: hw_context.access_mode
+        shared: hw_context.access_mode
+    
+    # Class-level enum value aliases
+    exclusive: access_mode
+    shared: access_mode
+    
     @overload
     def __init__(self) -> None:
         """Create an empty hardware context."""
@@ -186,6 +195,70 @@ class hw_context:
         ...
     
     @overload
+    def __init__(self, device: device, uuid: uuid, mode: access_mode) -> None:
+        """Create a hardware context for a registered xclbin UUID with a specific access mode."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, uuid: uuid, cfg_param: dict[str, int]) -> None:
+        """Create a hardware context for a registered xclbin UUID with configuration parameters."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin: xclbin) -> None:
+        """Create a hardware context for a device from an xclbin object.
+        
+        The xclbin is registered with the device and a hardware context is
+        created for the registered image.
+        
+        Args:
+            device: The device to create the context on.
+            xclbin: The xclbin object to register and associate with this context.
+        """
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin: xclbin, mode: access_mode) -> None:
+        """Create a hardware context for a device from an xclbin object with a specific access mode."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin: xclbin, cfg_param: dict[str, int]) -> None:
+        """Create a hardware context for a device from an xclbin object with configuration parameters."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin_path: str) -> None:
+        """Create a hardware context for a device from an xclbin file path.
+        
+        The xclbin is loaded from disk, registered with the device, and used
+        to create a hardware context.
+        
+        Args:
+            device: The device to create the context on.
+            xclbin_path: Path to the xclbin file.
+        """
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin_path: str, mode: access_mode) -> None:
+        """Create a hardware context for a device from an xclbin file path with a specific access mode."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, xclbin_path: str, cfg_param: dict[str, int]) -> None:
+        """Create a hardware context for a device from an xclbin file path with configuration parameters."""
+        ...
+    
+    @overload
+    def __init__(self, device: device, cfg_param: dict[str, int], mode: access_mode) -> None:
+        """Create a hardware context placeholder with configuration parameters and access mode.
+        
+        A configuration ELF can be added later with add_config().
+        """
+        ...
+    
+    @overload
     def __init__(self, device: device, elf: elf) -> None:
         """Create a hardware context for a device with an ELF object.
         
@@ -193,6 +266,31 @@ class hw_context:
             device: The device to create the context on.
             elf: The ELF object to associate with this context.
         """
+        ...
+    
+    @overload
+    def __init__(self, device: device, elf: elf, cfg_param: dict[str, int], mode: access_mode) -> None:
+        """Create a hardware context for a device with an ELF object, configuration parameters, and access mode."""
+        ...
+    
+    def add_config(self, elf: elf) -> None:
+        """Add an ELF configuration object to the hardware context."""
+        ...
+    
+    def get_device(self) -> device:
+        """Get the device from which the hardware context was created."""
+        ...
+    
+    def get_xclbin_uuid(self) -> uuid:
+        """Get the UUID of the xclbin associated with the hardware context."""
+        ...
+    
+    def get_xclbin(self) -> xclbin:
+        """Get the xclbin associated with the hardware context."""
+        ...
+    
+    def get_mode(self) -> access_mode:
+        """Get the access mode of the hardware context."""
         ...
 
 
@@ -222,12 +320,28 @@ class device:
         """
         ...
     
-    @overload
-    def load_xclbin(self, xclbin_path: str) -> uuid:
-        """Load an xclbin given the path to the device.
+    def register_xclbin(self, xclbin: xclbin) -> uuid:
+        """Register an xclbin with the device.
+        
+        Registration returns the xclbin UUID. Use hw_context to associate the
+        registered xclbin with hardware resources for kernel and BO creation.
         
         Args:
-            xclbin_path: Path to the xclbin file.
+            xclbin: The xclbin object to register.
+            
+        Returns:
+            UUID of the registered xclbin.
+        """
+        ...
+    
+    @overload
+    def load_xclbin(self, xclbin_path: str) -> uuid:
+        """Deprecated compatibility shim. Load an xclbin file and return its UUID.
+        
+        Prefer hw_context(self, xclbin_path) for new code.
+        
+        Args:
+            xclbin_path: Path to the xclbin file to load.
             
         Returns:
             UUID of the loaded xclbin.
@@ -236,24 +350,15 @@ class device:
     
     @overload
     def load_xclbin(self, xclbin: xclbin) -> uuid:
-        """Load the xclbin to the device.
+        """Deprecated compatibility shim. Load an xclbin object and return its UUID.
+        
+        Prefer hw_context(self, xclbin) for new code.
         
         Args:
             xclbin: The xclbin object to load.
             
         Returns:
             UUID of the loaded xclbin.
-        """
-        ...
-    
-    def register_xclbin(self, xclbin: xclbin) -> uuid:
-        """Register an xclbin with the device.
-        
-        Args:
-            xclbin: The xclbin object to register.
-            
-        Returns:
-            UUID of the registered xclbin.
         """
         ...
     
@@ -490,6 +595,35 @@ class bo:
             device: The device to allocate the buffer on.
             size: Size of the buffer in bytes.
             flags: Buffer creation flags.
+            group: Memory bank group ID.
+        """
+        ...
+    
+    @overload
+    def __init__(
+        self,
+        ctx: hw_context,
+        size: SupportsInt,
+        flags: flags,
+        group: SupportsInt
+    ) -> None:
+        """Create a buffer object with specified properties in a hardware context.
+        
+        Args:
+            ctx: The hardware context to allocate the buffer in.
+            size: Size of the buffer in bytes.
+            flags: Buffer creation flags.
+            group: Memory bank group ID.
+        """
+        ...
+    
+    @overload
+    def __init__(self, ctx: hw_context, size: SupportsInt, group: SupportsInt) -> None:
+        """Create a buffer object with default flags in a hardware context.
+        
+        Args:
+            ctx: The hardware context to allocate the buffer in.
+            size: Size of the buffer in bytes.
             group: Memory bank group ID.
         """
         ...
@@ -821,7 +955,7 @@ class program:
 
 
 class module:
-    """Functions an application will execute in hardware."""
+    """Executable hardware module created from an ELF image."""
     
     def __init__(self, elf: elf) -> None:
         """Create a module from an ELF object.
@@ -832,7 +966,7 @@ class module:
         ...
     
     def get_hw_context(self) -> hw_context:
-        """Get hw context of module.
+        """Get the hardware context associated with the module.
         
         Returns:
             Hardware context associated with the module.
@@ -841,7 +975,7 @@ class module:
 
 
 class runlist:
-    """Represents a list of runs to be executed."""
+    """Ordered collection of runs executed as a unit."""
     
     @overload
     def __init__(self) -> None:
@@ -910,7 +1044,7 @@ class _ext_access_mode(IntEnum):
 
 
 class _ext_bo(bo):
-    """Represents an enhanced version of xrt::bo with support for access mode."""
+    """Extended buffer object with explicit sharing and access controls."""
     
     @overload
     def __init__(
@@ -1011,7 +1145,7 @@ class _ext_bo(bo):
 
 
 class _ext_kernel(kernel):
-    """Represents an external kernel object."""
+    """Extended kernel object for module-backed and shared workflows."""
     
     @overload
     def __init__(self, ctx: hw_context, mod: module, name: str) -> None:
@@ -1036,7 +1170,7 @@ class _ext_kernel(kernel):
 
 
 class ext:
-    """Submodule for extended XRT functionality."""
+    """Extended XRT functionality."""
     
     # Type aliases for the ext submodule
     access_mode = _ext_access_mode

@@ -3,10 +3,11 @@
 /**
  * Pybind11 module for XRT C++ APIs
  *
- * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2019-2026 Xilinx, Inc
  *
  * Authors: graham.schelle@xilinx.com
  *          sonal.santan@xilinx.com
+ *          thomthehound@gmail.com
  */
 
 // XRT includes
@@ -29,9 +30,97 @@
 #include <pybind11/stl_bind.h>
 
 // C++11 includes
+#include <stdexcept>
 #include <string>
 
+#ifdef _MSC_VER
+#pragma warning(disable: 4996)  // C4996: deprecated function; Python binding delegates to C++
+#endif
+
 namespace py = pybind11;
+
+//-----------------------------------------------------------------------------
+// Deprecated Python compatibility shim for device.load_xclbin().
+// Schedule for removal after downstream users have migrated to hw_context.
+
+namespace {
+
+class xrt_device_handle_guard
+{
+  xrtDeviceHandle handle = nullptr;
+
+public:
+  explicit
+  xrt_device_handle_guard(const xrt::device& device)
+    : handle(xrtDeviceOpenFromXcl(static_cast<xclDeviceHandle>(device)))
+  {
+    if (!handle)
+      throw std::runtime_error("Failed to create temporary XRT device handle for load_xclbin compatibility shim");
+  }
+
+  xrt_device_handle_guard(const xrt_device_handle_guard&) = delete;
+  xrt_device_handle_guard& operator=(const xrt_device_handle_guard&) = delete;
+  xrt_device_handle_guard(xrt_device_handle_guard&&) = delete;
+  xrt_device_handle_guard& operator=(xrt_device_handle_guard&&) = delete;
+
+  ~xrt_device_handle_guard()
+  {
+    if (handle)
+      xrtDeviceClose(handle);
+  }
+
+  xrtDeviceHandle
+  get() const
+  {
+    return handle;
+  }
+};
+
+void
+warn_deprecated_load_xclbin()
+{
+  if (PyErr_WarnEx(PyExc_DeprecationWarning,
+                   "pyxrt.device.load_xclbin() is deprecated; use pyxrt.hw_context(device, xclbin) or pyxrt.hw_context(device, xclbin_path) instead",
+                   1) == -1)
+    throw py::error_already_set();
+}
+
+xrt::uuid
+load_xclbin_compat(const xrt::device& device, const xrt::xclbin& xclbin)
+{
+  xrt_device_handle_guard dhdl(device);
+
+  if (xrtDeviceLoadXclbin(dhdl.get(), xclbin.get_axlf()) != 0)
+    throw std::runtime_error("xrtDeviceLoadXclbin failed in load_xclbin compatibility shim");
+
+  return xclbin.get_uuid();
+}
+
+void
+bind_load_xclbin_compat(py::class_<xrt::device>& pydevice)
+{
+  pydevice
+    .def("load_xclbin", [](const xrt::device& d, const std::string& xclbin_path) {
+        warn_deprecated_load_xclbin();
+        xrt::xclbin xclbin{xclbin_path};
+        py::gil_scoped_release release;
+        return load_xclbin_compat(d, xclbin);
+      },
+      py::arg("xclbin_path"),
+      "Deprecated compatibility shim. Load an xclbin and return its UUID; use hw_context(device, xclbin_path) for new code")
+    .def("load_xclbin", [](const xrt::device& d, const xrt::xclbin& xclbin) {
+        warn_deprecated_load_xclbin();
+        py::gil_scoped_release release;
+        return load_xclbin_compat(d, xclbin);
+      },
+      py::arg("xclbin"),
+      "Deprecated compatibility shim. Load an xclbin and return its UUID; use hw_context(device, xclbin) for new code");
+}
+
+} // namespace
+
+// End shim.
+//-----------------------------------------------------------------------------
 
 PYBIND11_MAKE_OPAQUE(std::vector<xrt::xclbin::ip>);
 
@@ -44,6 +133,7 @@ PYBIND11_MODULE(pyxrt, m) {
  *
  *
  */
+
     m.attr("XCL_BO_FLAGS_NONE") = py::int_(XCL_BO_FLAGS_NONE);
 
     py::enum_<xclBOSyncDirection>(m, "xclBOSyncDirection", "DMA flags used with DMA API")
@@ -97,6 +187,7 @@ PYBIND11_MODULE(pyxrt, m) {
 /*
  * Global Functions
  */
+
     m.def("enumerate_devices", &xrt::system::enumerate_devices, "Enumerate devices in system");
     m.def("log_message", &xrt::message::log, "Dispatch formatted log message");
 
@@ -105,6 +196,7 @@ PYBIND11_MODULE(pyxrt, m) {
  * XRT:: UUID (needed since UUID classes passed outside of objects)
  *
  */
+
     py::class_<xrt::uuid>(m, "uuid", "XRT UUID object to identify a compiled xclbin binary")
         .def(py::init<char *>())
         .def("to_string", &xrt::uuid::to_string, "Convert XRT UUID object to string");
@@ -113,38 +205,133 @@ PYBIND11_MODULE(pyxrt, m) {
 *  xrt::hw_context
 */
 
-    py::class_<xrt::hw_context>(m, "hw_context", "A hardware context associates an xclbin with hardware resources.")
-        .def(py::init<>())
+    py::class_<xrt::hw_context> pyhwctx(
+        m,
+        "hw_context",
+        "Hardware context for associating an xclbin or ELF configuration with device resources.");
+
+    py::enum_<xrt::hw_context::access_mode>(pyhwctx, "access_mode", "Hardware context access mode")
+        .value("exclusive", xrt::hw_context::access_mode::exclusive)
+        .value("shared", xrt::hw_context::access_mode::shared)
+        .export_values();
+
+    pyhwctx.def(py::init<>(), "Create an empty hardware context handle.")
         .def(py::init([](const xrt::device& d, const xrt::uuid& u) {
+            py::gil_scoped_release release;
             return new xrt::hw_context(d, u);
-        }))
+        }),
+        py::arg("device"), py::arg("uuid"),
+        "Create a hardware context for a previously registered xclbin UUID.")
+        .def(py::init([](const xrt::device& d, const xrt::uuid& u, xrt::hw_context::access_mode mode) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(d, u, mode);
+        }),
+        py::arg("device"), py::arg("uuid"), py::arg("mode"),
+        "Create a hardware context for a registered xclbin UUID with shared or exclusive access.")
+        .def(py::init([](const xrt::device& d, const xrt::uuid& u, const xrt::hw_context::cfg_param_type& cfg_param) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(d, u, cfg_param);
+        }),
+        py::arg("device"), py::arg("uuid"), py::arg("cfg_param"),
+        "Create a hardware context for a registered xclbin UUID with configuration parameters.")
+        .def(py::init([](xrt::device& d, const xrt::xclbin& xclbin) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(d, d.register_xclbin(xclbin));
+        }),
+        py::arg("device"), py::arg("xclbin"),
+        "Register an xclbin with the device and create a hardware context for it.")
+        .def(py::init([](xrt::device& d, const xrt::xclbin& xclbin, xrt::hw_context::access_mode mode) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(d, d.register_xclbin(xclbin), mode);
+        }),
+        py::arg("device"), py::arg("xclbin"), py::arg("mode"),
+        "Register an xclbin with the device and create a hardware context with the requested access mode.")
+        .def(py::init([](xrt::device& d, const xrt::xclbin& xclbin, const xrt::hw_context::cfg_param_type& cfg_param) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(d, d.register_xclbin(xclbin), cfg_param);
+        }),
+        py::arg("device"), py::arg("xclbin"), py::arg("cfg_param"),
+        "Register an xclbin with the device and create a hardware context with configuration parameters.")
+        .def(py::init([](xrt::device& d, const std::string& xclbin_path) {
+            py::gil_scoped_release release;
+            xrt::xclbin xclbin{xclbin_path};
+            return new xrt::hw_context(d, d.register_xclbin(xclbin));
+        }),
+        py::arg("device"), py::arg("xclbin_path"),
+        "Load xclbin metadata from a path, register it with the device, and create a hardware context.")
+        .def(py::init([](xrt::device& d, const std::string& xclbin_path, xrt::hw_context::access_mode mode) {
+            py::gil_scoped_release release;
+            xrt::xclbin xclbin{xclbin_path};
+            return new xrt::hw_context(d, d.register_xclbin(xclbin), mode);
+        }),
+        py::arg("device"), py::arg("xclbin_path"), py::arg("mode"),
+        "Load xclbin metadata from a path, register it with the device, and create a hardware context with the requested access mode.")
+        .def(py::init([](xrt::device& d, const std::string& xclbin_path, const xrt::hw_context::cfg_param_type& cfg_param) {
+            py::gil_scoped_release release;
+            xrt::xclbin xclbin{xclbin_path};
+            return new xrt::hw_context(d, d.register_xclbin(xclbin), cfg_param);
+        }),
+        py::arg("device"), py::arg("xclbin_path"), py::arg("cfg_param"),
+        "Load xclbin metadata from a path, register it with the device, and create a hardware context with configuration parameters.")
+        .def(py::init([](const xrt::device& device, const xrt::hw_context::cfg_param_type& cfg_param,
+                         xrt::hw_context::access_mode mode) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(device, cfg_param, mode);
+        }),
+        py::arg("device"), py::arg("cfg_param"), py::arg("mode"),
+        "Create a staged hardware context placeholder with configuration parameters and access mode. Use add_config() later to attach an ELF configuration.")
         .def(py::init([](const xrt::device& device, const xrt::elf& elf) {
+            py::gil_scoped_release release;
             return new xrt::hw_context(device, elf);
-        }));
+        }),
+        py::arg("device"), py::arg("elf"),
+        "Create a hardware context from an ELF configuration object.")
+        .def(py::init([](const xrt::device& device, const xrt::elf& elf,
+                         const xrt::hw_context::cfg_param_type& cfg_param,
+                         xrt::hw_context::access_mode mode) {
+            py::gil_scoped_release release;
+            return new xrt::hw_context(device, elf, cfg_param, mode);
+        }),
+        py::arg("device"), py::arg("elf"), py::arg("cfg_param"), py::arg("mode"),
+        "Create a hardware context from an ELF configuration object with configuration parameters and access mode.")
+        .def("add_config", [](xrt::hw_context& ctx, const xrt::elf& elf) {
+            py::gil_scoped_release release;
+            ctx.add_config(elf);
+        }, py::arg("elf"),
+        "Add an ELF configuration object to the hardware context.")
+        .def("get_device", &xrt::hw_context::get_device,
+             "Get the device from which the hardware context was created.")
+        .def("get_xclbin_uuid", &xrt::hw_context::get_xclbin_uuid,
+             "Get the UUID of the xclbin associated with the hardware context.")
+        .def("get_xclbin", &xrt::hw_context::get_xclbin,
+             "Get the xclbin associated with the hardware context.")
+        .def("get_mode", &xrt::hw_context::get_mode,
+             "Get the access mode of the hardware context.");
 
 /*
  *
  * xrt::device
  *
  */
-    py::class_<xrt::device>(m, "device", "Abstraction of an acceleration device")
-        .def(py::init<>())
-        .def(py::init<unsigned int>())
+
+    py::class_<xrt::device> pydevice(m, "device", "Abstraction of an acceleration device");
+
+    pydevice
+        .def(py::init<>(), "Create an empty device object.")
+        .def(py::init<unsigned int>(), py::arg("index"), "Open a device by index.")
         .def(py::init([] (const std::string& bfd) {
                           return new xrt::device(bfd);
-                      }))
-        .def("load_xclbin", [](xrt::device& d, const std::string& xclbin) {
-                                py::gil_scoped_release release;
-                                return d.load_xclbin(xclbin);
-                            }, "Load an xclbin given the path to the device")
-        .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
-                                py::gil_scoped_release release;
-                                return d.load_xclbin(xclbin);
-                            }, "Load the xclbin to the device")
+                      }), py::arg("bdf"), "Open a device by BDF string.")
         .def("register_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
+                                py::gil_scoped_release release;
                                 return d.register_xclbin(xclbin);
-                            }, "Register an xclbin with the device")
-        .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid, "Return the UUID object representing the xclbin loaded on the device")
+                            }, py::arg("xclbin"),
+                            "Register an xclbin with the device. Registration alone does not create a hardware context.");
+
+    bind_load_xclbin_compat(pydevice);
+
+    pydevice
+        .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid, "Return the UUID of the xclbin currently associated with the device.")
         .def("get_info", [] (xrt::device& d, xrt::info::device key) {
                              /* Convert the value to string since we can have only one return type for get_info() */
                              switch (key) {
@@ -187,12 +374,12 @@ PYBIND11_MODULE(pyxrt, m) {
                              }
                          }, "Obtain the device properties and sensor information");
 
-
 /*
  *
  * xrt::run
  *
  */
+
     py::class_<xrt::run>(m, "run", "Represents one execution of a kernel")
         .def(py::init<>())
         .def(py::init<const xrt::kernel &>())
@@ -217,8 +404,8 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("wait2", [](xrt::run&r, const std::chrono::milliseconds& timeout) {
                             return r.wait2(timeout);
                     }, "Wait for the specified milliseconds for the run to complete")
-        .def("state", &xrt::run::state, "Check the current state of a run object")
-        .def("add_callback", &xrt::run::add_callback, "Add a callback function for run state");
+        .def("state", &xrt::run::state, "Return the current execution state of the run.")
+        .def("add_callback", &xrt::run::add_callback, "Register a callback to be invoked when the run reaches the requested state.");
 
     py::class_<xrt::kernel> pyker(m, "kernel", "Represents a set of instances matching a specified name");
 
@@ -260,14 +447,14 @@ PYBIND11_MODULE(pyxrt, m) {
                              r.start();
                              return r;
                          })
-        .def("group_id", &xrt::kernel::group_id, "Get the memory bank group id of an kernel argument");
-
+        .def("group_id", &xrt::kernel::group_id, "Get the memory-group identifier for a kernel argument.");
 
 /*
  *
  * xrt::bo
  *
  */
+
     py::class_<xrt::bo> pybo(m, "bo", "Represents a buffer object");
 
     py::enum_<xrt::bo::flags>(pybo, "flags", "Buffer object creation flags")
@@ -279,8 +466,16 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("svm", xrt::bo::flags::svm)
         .export_values();
 
-    pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>(), "Create a buffer object with specified properties")
-        .def(py::init<xrt::bo, size_t, size_t>(), "Create a sub-buffer of an existing buffer object of specifed size and offset in the existing buffer")
+    pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>(),
+             py::arg("device"), py::arg("size"), py::arg("flags"), py::arg("group"),
+             "Create a buffer object on a device with the requested size, flags, and memory group.")
+        .def(py::init<xrt::hw_context, size_t, xrt::bo::flags, xrt::memory_group>(),
+             py::arg("hwctx"), py::arg("size"), py::arg("flags"), py::arg("group"),
+             "Create a buffer object in a hardware context with the requested size, flags, and memory group.")
+        .def(py::init<xrt::hw_context, size_t, xrt::memory_group>(),
+             py::arg("hwctx"), py::arg("size"), py::arg("group"),
+             "Create a buffer object in a hardware context using default flags.")
+        .def(py::init<xrt::bo, size_t, size_t>(), "Create a sub-buffer view of an existing buffer object with the requested size and offset.")
         .def("write", ([](xrt::bo &b, py::buffer pyb, size_t seek)  {
                            py::buffer_info info = pyb.request();
                            b.write(info.ptr, info.itemsize * info.size , seek);
@@ -308,6 +503,7 @@ PYBIND11_MODULE(pyxrt, m) {
  * xrt::xclbin::ip, xrt::xclbin::kernel
  *
  */
+
     py::class_<xrt::xclbin> pyxclbin(m, "xclbin", "Represents an xclbin and provides APIs to access meta data");
     py::class_<xrt::xclbin::ip> pyxclbinip(pyxclbin, "xclbinip");
     py::bind_vector<std::vector<xrt::xclbin::ip>>(m, "xclbinip_vector");
@@ -330,6 +526,7 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("get_size_kb", &xrt::xclbin::mem::get_size_kb, "Get the size of the memory in KB")
         .def("get_used", &xrt::xclbin::mem::get_used, "Get used status of the memory")
         .def("get_index", &xrt::xclbin::mem::get_index, "Get the index of the memory");
+
 /*
  *
  * xrt::xclbin
@@ -372,9 +569,6 @@ PYBIND11_MODULE(pyxrt, m) {
             return new xrt::aie::program(xe); }))
         .def("get_partition_size", &xrt::aie::program::get_partition_size,
              "Required partition size to run the program");
-    
-
-
 
     /*
     *
@@ -382,23 +576,24 @@ PYBIND11_MODULE(pyxrt, m) {
     * 
     */
 
-    py::class_<xrt::module> pymodule(m, "module", "Functions an application will execute in hardware");
+    py::class_<xrt::module> pymodule(m, "module", "Executable hardware module created from an ELF image.");
 
     pymodule
         .def(py::init([](xrt::elf& xe) {
                 return new xrt::module(xe);
-        }))
-        // constructor with impl, not sure check xrt_module.h
-        .def("get_hw_context", &xrt::module::get_hw_context, "Get hw context of module");
+        }), py::arg("elf"), "Create a hardware module from an ELF object.")
+        .def("get_hw_context", &xrt::module::get_hw_context,
+             "Get the hardware context associated with the module.");
 
     /*
     *
     * xrt::ext
     * 
     */
-    py::module_ ext = m.def_submodule("ext", "Submodule for external");
 
-    py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Represents an enhanced version of xrt::bo with support for access mode");
+    py::module_ ext = m.def_submodule("ext", "Extended XRT functionality.");
+
+    py::class_<xrt::ext::bo, xrt::bo> pyextbo(ext, "bo", "Extended buffer object with explicit sharing and access controls.");
 
     py::enum_<xrt::ext::bo::access_mode>(ext, "access_mode", "External buffer access mode")
         .value("none", xrt::ext::bo::access_mode::none)
@@ -429,40 +624,58 @@ PYBIND11_MODULE(pyxrt, m) {
     pyextbo
         .def(py::init([](const xrt::device& device, void* userptr, size_t sz, xrt::ext::bo::access_mode access) {
             return new xrt::ext::bo(device, userptr, sz, access);
-        }))
+        }),
+        py::arg("device"), py::arg("userptr"), py::arg("size"), py::arg("access"),
+        "Create an extended buffer on a device from an existing user pointer with the requested access mode.")
         .def(py::init([](const xrt::device& device, void* userptr, size_t sz){
             return new xrt::ext::bo(device, userptr, sz);
-        }))
+        }),
+        py::arg("device"), py::arg("userptr"), py::arg("size"),
+        "Create an extended buffer on a device from an existing user pointer.")
         .def(py::init([](const xrt::device& device, size_t sz, xrt::ext::bo::access_mode access) {
             return new xrt::ext::bo(device, sz, access);
-        }))
+        }),
+        py::arg("device"), py::arg("size"), py::arg("access"),
+        "Create an extended buffer on a device with the requested access mode.")
         .def(py::init([](const xrt::device& device, size_t sz) {
             return new xrt::ext::bo(device, sz);
-        }))
+        }),
+        py::arg("device"), py::arg("size"),
+        "Create an extended buffer on a device with the default access mode.")
         .def(py::init([](const xrt::device& device, xrt::pid_type pid, xrt::bo::export_handle ehdl) {
             return new xrt::ext::bo(device, pid, ehdl);
-        }))
+        }),
+        py::arg("device"), py::arg("pid"), py::arg("export_handle"),
+        "Import an extended buffer from another process using an exported handle.")
         .def(py::init([](const xrt::hw_context& hwctx, size_t sz, xrt::ext::bo::access_mode access) {
             return new xrt::ext::bo(hwctx, sz, access);
-        }))
+        }),
+        py::arg("hwctx"), py::arg("size"), py::arg("access"),
+        "Create an extended buffer in a hardware context with the requested access mode.")
         .def(py::init([](const xrt::hw_context& hwctx, size_t sz) {
             return new xrt::ext::bo(hwctx, sz);
-        }))
+        }),
+        py::arg("hwctx"), py::arg("size"),
+        "Create an extended buffer in a hardware context with the default access mode.")
         .def(py::init([](const xrt::hw_context& hwctx, xrt::pid_type pid, xrt::bo::export_handle ehdl) {
             return new xrt::ext::bo(hwctx, pid, ehdl);
-        }))
-        ;
+        }),
+        py::arg("hwctx"), py::arg("pid"), py::arg("export_handle"),
+        "Import an extended buffer into a hardware context from another process using an exported handle.");
     
-    py::class_<xrt::ext::kernel, xrt::kernel> pyextkernel(ext, "kernel", "Represents an external kernel object");
+    py::class_<xrt::ext::kernel, xrt::kernel> pyextkernel(ext, "kernel", "Extended kernel object for module-backed and shared workflows.");
 
     pyextkernel
         .def(py::init([](const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name) {
             return new xrt::ext::kernel(ctx, mod, name);
-        }))
+        }),
+        py::arg("hwctx"), py::arg("module"), py::arg("name"),
+        "Create an extended kernel from a hardware context, a module, and a kernel name.")
         .def(py::init([](const xrt::hw_context& ctx, const std::string& name) {
             return new xrt::ext::kernel(ctx, name);
-        }))
-        ;
+        }),
+        py::arg("hwctx"), py::arg("name"),
+        "Create an extended kernel from a hardware context and a kernel name.");
 
     /*
     *
@@ -470,18 +683,18 @@ PYBIND11_MODULE(pyxrt, m) {
     * 
     */
 
-    py::class_<xrt::runlist> pyrunlist(m, "runlist", "Represents a list of runs to be executed");
+    py::class_<xrt::runlist> pyrunlist(m, "runlist", "Ordered collection of runs executed as a unit.");
     
     pyrunlist
         .def(py::init([](){
             return new xrt::runlist();
-        }))
+        }), "Create an empty runlist.")
         .def(py::init([](const xrt::hw_context& hwctx) {
             return new xrt::runlist(hwctx);
-        }))
+        }), py::arg("hwctx"), "Create a runlist associated with a hardware context.")
         .def("add", ([](xrt::runlist &r, const xrt::run& run) {
             r.add(run);
-        }), "Add a run to the runlist")
+        }), py::arg("run"), "Add a run to the runlist")
         .def("execute", ([](xrt::runlist &r) {
             r.execute();
         }), "Execute all runs in the runlist")
@@ -490,7 +703,7 @@ PYBIND11_MODULE(pyxrt, m) {
         }), "Wait for all runs in the runlist to complete")
         .def("wait", ([](xrt::runlist &r, const std::chrono::milliseconds& timeout) {
             return r.wait(timeout);
-        }), "Wait for the specified timeout for the runlist to complete");
+        }), py::arg("timeout"),
+        "Wait for the specified timeout for the runlist to complete");
         
 }
-

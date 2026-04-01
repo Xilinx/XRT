@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -156,7 +157,11 @@ namespace XBUtilities {
 
   bool
   is_strix_hardware(xrt_core::smi::smi_hardware_config::hardware_type hw_type);
-                                 /**
+
+  void
+  printAdvancedDisclaimer();
+
+  /**
    * Open archive from device
    */
   std::unique_ptr<xrt_core::archive> 

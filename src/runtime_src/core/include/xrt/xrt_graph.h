@@ -64,6 +64,7 @@ public:
    * @param am
    *  Open the graph with specified access (default primary)
    */
+  [[deprecated("deprecated, please use graph(hw_context, name) instead")]]
   graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
         access_mode am = access_mode::primary);
 
@@ -96,6 +97,17 @@ public:
    */
   uint64_t
   get_timestamp() const;
+
+  /**
+   * gmio_bank_id() - Get bank index for a GMIO port.
+   *
+   * @param gmio_name
+   *   GMIO port name (e.g. "in", "out", "gmioIn", "gmioOut").
+   * @return
+   *   Bank index for xrt::aie::bo(hwctx, size, flags, bank_id).
+   */
+  uint32_t
+  gmio_bank_id(const std::string& gmio_name) const;
 
   /**
    * run() - Start graph execution.
