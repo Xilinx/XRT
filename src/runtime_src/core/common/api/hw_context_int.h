@@ -93,9 +93,19 @@ get_elf_map(const xrt::hw_context& hwctx);
 // The returned map contains key-value pairs
 // key: string, value: uint32_t for both QoS-related settings and
 // other hw context configuration parameters.
+// Throws std::runtime_error if the context currently does not store cfg_param_type
 XRT_CORE_COMMON_EXPORT
 xrt::hw_context::qos_type
 get_qos_map(const xrt::hw_context& hwctx);
+
+// Get the configuration parameters from the hw context.
+// The returned map contains key-value pairs
+// key: string, value: string for both QoS-related settings and
+// other hw context configuration parameters.
+// Throws std::runtime_error if the context currently does not store cfg_type
+XRT_CORE_COMMON_EXPORT
+xrt::hw_context::cfg_type
+get_cfg_map(const xrt::hw_context& hwctx);
 
 }} // hw_context_int, xrt_core
 

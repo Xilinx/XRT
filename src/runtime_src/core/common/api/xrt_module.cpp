@@ -74,11 +74,17 @@ class module_impl
 {
 protected:
   std::shared_ptr<xrt::elf_impl> m_elf_impl; // NOLINT
+  std::string m_name; // Name of the module (optional)
 
 public:
   explicit
   module_impl(const xrt::elf& elf)
     : m_elf_impl(elf.get_handle())
+  {}
+
+  module_impl(const xrt::elf& elf, const std::string& name)
+    : m_elf_impl(elf.get_handle())
+    , m_name(name)
   {}
 
   virtual ~module_impl() = default;
@@ -88,6 +94,12 @@ public:
   module_impl(module_impl&&) = delete;
   module_impl& operator=(const module_impl&) = delete;
   module_impl& operator=(module_impl&&) = delete;
+
+  std::string
+  get_name() const
+  {
+    return m_name;
+  }
 
   virtual xrt::hw_context
   get_hw_context() const
@@ -1115,6 +1127,11 @@ module(const xrt::elf& elf)
 : detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
 {}
 
+module::
+module(const xrt::elf& elf, const std::string& name)
+: detail::pimpl<module_impl>(std::make_shared<module_impl>(elf, name))
+{}
+
 xrt::hw_context
 module::
 get_hw_context() const
@@ -1147,6 +1164,12 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
   default:
     throw std::runtime_error("Unsupported platform");
   }
+}
+
+std::string
+get_name(const xrt::module& module)
+{
+  return module.get_handle()->get_name();
 }
 
 std::shared_ptr<xrt::elf_impl>
