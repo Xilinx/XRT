@@ -1666,13 +1666,13 @@ class profile
     //   "end": bo.size() // offset to end writing at (optional)
     // }
     //
-    // This function creates the buffer and fills the bytes of the buffer with data
-    // from file per the init node.  It wraps around the file if necessary to fill
-    // the bo.
+    // This function creates the buffer and fills the bytes of the
+    // buffer with data from file per the init node.  It wraps around
+    // the file if necessary to fill the bo.
     //
-    // The function supports initializing the buffer between iterations,
-    // copying from the file from an offset (beg) corresponding to where
-    // previous iteration reached.
+    // The function supports initializing the buffer between
+    // iterations, copying from the file from an offset (beg)
+    // corresponding to where previous iteration reached.
     xrt::bo
     init_buffer_file(size_t bo_size, const init_node& node, size_t iteration)
     {
@@ -1684,19 +1684,27 @@ class profile
       auto bo_end = node.value<size_t>("end", bo_size);
       auto data = m_repo.get(file, mmap ? file_mode::mmap : file_mode::read);
 
-      // Specified binding::bo_size is size after skip, file should
-      // include bytes that should be skipped.
-      if (skip + bo_size > data.size())
-        throw profile_error("bad skip value: " + std::to_string(skip));
+      // The file must include the bytes to be skipped and have at
+      // least a single byte to be copied to the bo.
+      if (skip + 1 > data.size())
+        throw profile_error("bad init skip value '"
+                            + std::to_string(skip)
+                            + "' for file '" + file + "'");
 
+      // Validate that specified bo range is within size of bo
       if (bo_begin > bo_end || bo_end > bo_size)
-        throw profile_error("bad init begin/end values: " + std::to_string(bo_begin) + "/" + std::to_string(bo_end));
+        throw profile_error("bad init begin/end values: "
+                            + std::to_string(bo_begin) + "/"
+                            + std::to_string(bo_end)
+                            + "' for file '" + file + "'");
 
       // Create a userptr bo from the size of the file unless bo_size is specified.
       // The file data must be page aligned and the bo range must be the entire bo.
-      if (bo_begin == 0 && bo_end == bo_size && is_page_aligned(data.data())) {
-        XRT_PRINTF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
-
+      // The file size after skip must have enough bytes to fill the bo.
+      if (bo_begin == 0 && bo_end == bo_size
+          && is_page_aligned(data.data())
+          && data.size() - skip >= bo_size) {
+        XRT_DEBUGF("profile::bindings::init_buffer_file() creating userptr bo for file %s\n", file.c_str());
         // Specified binding::bo_size is size after skip, file includes
         // bytes that should be skipped. We create a buffer before skip
         // that is then carved out, hence must adjust size.
