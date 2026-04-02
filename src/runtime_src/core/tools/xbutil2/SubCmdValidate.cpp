@@ -637,7 +637,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_iter);
+  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput, options.m_loop);
 
   try {
     //reset pmode
@@ -676,7 +676,7 @@ void SubCmdValidate::fill_option_values(const po::variables_map& vm, SubCmdValid
   options.m_xclbin_path = vm.count("path") ? vm["path"].as<std::string>() : "";
   options.m_pmode = vm.count("pmode") ? vm["pmode"].as<std::string>() : "";
   options.m_tests_to_run = vm.count("run") ? vm["run"].as<std::vector<std::string>>() : std::vector<std::string>();
-  options.m_iter = vm.count("iter") ? static_cast<unsigned int>(std::stoul(vm["iter"].as<std::string>())) : 1;
+  options.m_loop = vm.count("loop") ? static_cast<unsigned int>(std::stoul(vm["loop"].as<std::string>())) : 1;
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
   options.m_elf = vm.count("elf") ? vm["elf"].as<bool>() : false;
 }

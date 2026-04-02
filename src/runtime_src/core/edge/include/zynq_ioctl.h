@@ -297,7 +297,7 @@ struct drm_zocl_pwrite_bo {
  * @handle:	GEM object handle
  * @pad:	Padding
  * @offset:	Offset into the object to read from
- * @size:	Length of data to wrreadite
+ * @size:	Length of data to read
  * @data_ptr:	Pointer to write the data into (pointers not 32/64 compatible)
  */
 struct drm_zocl_pread_bo {
@@ -423,7 +423,7 @@ struct drm_zocl_hw_ctx_execbuf {
 };
 
 /*
- * enum drm_zocl_platform_flags - can be used for axlf bitstream
+ * enum drm_zocl_axlf_flags - platform and load flags for axlf bitstream
  */
 enum drm_zocl_axlf_flags {
 	DRM_ZOCL_PLATFORM_BASE		= 0,
@@ -558,10 +558,8 @@ struct drm_zocl_close_cu_ctx {
  * used with DRM_IOCTL_ZOCL_OPEN_GRAPH_CTX
  *
  * @hw_context:	Open a graph context under this hw context handle
- * @graph_name:	Name of the graph on the device image for which the open context is being made
  * @flags:	Shared or Exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)
  * @graph_id:	graph id
- * @graph_context:	Reture the acquired graph index. This will be required for closing
  */
 struct drm_zocl_open_graph_ctx {
 	uint32_t	hw_context;

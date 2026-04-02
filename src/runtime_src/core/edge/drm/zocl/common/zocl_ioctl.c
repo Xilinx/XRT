@@ -22,84 +22,56 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-static bool
-is_aie_only(struct axlf *axlf)
-{
-        if ((axlf->m_header.m_actionMask & AM_LOAD_AIE))
-                return true;
-
-        return false;
-}
-
-static bool
-is_pl_only(struct axlf *axlf)
-{
-        if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
-                !xrt_xclbin_get_section_num(axlf, AIE_METADATA))
-                return true;
-
-        return false;
-}
-
+/*
+ * Deprecated: fixed slot assignment for legacy xrt::device path.
+ * PL/full xclbin -> slot 0, AIE-only xclbin -> slot 1.
+ * Only a single xclbin at a time is possible in this mode.
+ * Will be removed when xrt::device APIs are retired.
+ */
 static int
-get_legacy_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
+get_legacy_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int *slot_id)
 {
-        struct drm_zocl_slot *slot = NULL;
-        uint32_t s_id = 0;
-        uint32_t zocl_xclbin_type = 0;
+	struct drm_zocl_slot *slot = NULL;
+	uint32_t s_id;
 
-        /* Slots need to be decided based on interface ID. But currently this
-         * functionality is not yet ready. Hence we are hard coding the Slots
-         * based on the type of XCLBIN. This logic need to be updated in future.
-         */
-        /* Right now the hard coded logic as follows:
-         * Slot - 0 : FULL XCLBIN (Both PL and AIE) / PL Only XCLBIN
-         * Slot - 1 : AIE Only XCLBIN
-         */
-        if (is_aie_only(axlf)) {
-                s_id = ZOCL_AIE_ONLY_XCLBIN_SLOT;
-                zocl_xclbin_type = ZOCL_XCLBIN_TYPE_AIE_ONLY;
-        }
-        else {
-                s_id = ZOCL_DEFAULT_XCLBIN_SLOT;
-                if (is_pl_only(axlf))
-                        zocl_xclbin_type = ZOCL_XCLBIN_TYPE_PL_ONLY;
-                else
-                        zocl_xclbin_type = ZOCL_XCLBIN_TYPE_FULL;
-        }
-        slot = zdev->pr_slot[s_id];
-        if (!slot) {
-                DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", s_id);
-                return -EINVAL;
-        }
+	if (zocl_xclbin_is_aie_only(axlf))
+		s_id = 1;
+	else
+		s_id = 0;
 
-        mutex_lock(&slot->slot_xclbin_lock);
-        slot->xclbin_type = zocl_xclbin_type;
-        mutex_unlock(&slot->slot_xclbin_lock);
+	slot = zdev->pr_slot[s_id];
+	if (!slot) {
+		DRM_ERROR("Slot[%d] doesn't exist or invalid slot", s_id);
+		return -EINVAL;
+	}
+
 	*slot_id = s_id;
-	DRM_DEBUG("Found free Slot-%d is selected for xclbin \n", s_id);
-        return 0;
+	DRM_DEBUG("Legacy slot %d selected for xclbin\n", s_id);
+	return 0;
 }
 
+/*
+ * Dynamic slot assignment for xrt::hw_context path.
+ * PL/full xclbin -> slot 0, AIE-only xclbin -> slot 1 onwards (dynamic).
+ */
 static int
-get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
+get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int *slot_id)
 {
 	int s_id = -1;
-	/* xclbin contains PL section use fixed slot */
-	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT)) {
-                DRM_WARN("Xclbin contains PL section Using Slot-0");
-		*slot_id = ZOCL_DEFAULT_XCLBIN_SLOT;
+
+	if (!zocl_xclbin_is_aie_only(axlf)) {
+		DRM_WARN("Xclbin contains PL section, using Slot-0");
+		*slot_id = 0;
 		return 0;
 	}
 
-        struct drm_zocl_slot *slot = NULL;
+	struct drm_zocl_slot *slot = NULL;
 	for (int i = 1; i < MAX_PR_SLOT_NUM; i++) {
 		if (zdev->slot_mask & (1 << i)) {
 			slot = zdev->pr_slot[i];
 			if (slot) {
 				mutex_lock(&slot->slot_xclbin_lock);
 				if (zocl_xclbin_same_uuid(slot, &axlf->m_header.uuid)) {
-					// xclbin already downloaded to ith slot
 					DRM_INFO("The XCLBIN %pUb already loaded to slot %d", &axlf->m_header.uuid, i);
 					*slot_id = i;
 					mutex_unlock(&slot->slot_xclbin_lock);
@@ -109,7 +81,6 @@ get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 			}
 		}
 		else if (!(zdev->slot_mask & (1 << i)) && (s_id < 0)) {
-			// found a free slot
 			s_id = i;
 		}
 	}
@@ -117,17 +88,15 @@ get_free_slot(struct drm_zocl_dev *zdev, struct axlf *axlf, int* slot_id)
 	if (s_id > 0) {
 		slot = zdev->pr_slot[s_id];
 		if (!slot) {
-			DRM_ERROR("%s: slot %d doesn't exists or invalid", __func__, s_id);
+			DRM_ERROR("%s: slot %d doesn't exist or invalid", __func__, s_id);
 			return -EINVAL;
 		}
 		DRM_DEBUG("Found a free slot %d for XCLBIN %pUb", s_id, &axlf->m_header.uuid);
-		// acquiring the free slot
 		zdev->slot_mask |= 1 << s_id;
 		*slot_id = s_id;
 		return 0;
-
 	}
-	return -ENOMEM; // All bits are set
+	return -ENOMEM;
 }
 
 static int zocl_identify_slot(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
@@ -194,7 +163,7 @@ static int zocl_identify_slot(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *a
                 vfree(axlf);
                 return -EFAULT;
         }
-	if( hw_ctx_flow)
+	if (hw_ctx_flow)
 		ret = get_free_slot(zdev, axlf, slot_id);
 	else
 		ret = get_legacy_slot(zdev, axlf, slot_id);
@@ -204,6 +173,10 @@ static int zocl_identify_slot(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *a
 }
 
 /*
+ * Deprecated: device-level xclbin load via xrt::device API.
+ * Will be removed in a future release; use xrt::hw_context /
+ * zocl_create_hw_ctx_ioctl instead.
+ *
  * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
  */
 int

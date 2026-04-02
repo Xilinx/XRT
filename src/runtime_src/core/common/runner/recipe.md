@@ -47,11 +47,10 @@ The header section identifies programs with PDIs and meta data used by
 XRT when xrt::kernel objects are created.
 
 The run recipe supports legacy xclbin and new program configuration
-ELF files.
+ELF files.  There can be multiple ELF files, so `programs` is an
+array.
 
-The header section can be amended with other meta data as needed.
-
-If both "xclbin" and "program" are specified, the behavior is
+If both "xclbin" and "programs" are specified, the behavior is
 undefined, one takes precedence over the other, but which one is
 undefined.
 
@@ -59,14 +58,14 @@ undefined.
 {
   "header": {
     "xclbin": "design.xclbin"
-    "program": "config.elf"
+    "programs": ["config.elf", ...]
   },
   
   ...
 }
 ```
 
-The runner will use the xclbin or program from the `header` section to
+The runner will use the xclbin or programs from the `header` section to
 create an xrt::hw_context, which is subsequently used to create
 xrt::kernel objects.
 
@@ -83,11 +82,11 @@ be listed in the resources section.
 
 Kernels listed in the resources section result in runner creating
 `xrt::kernel` objects.  In XRT, the kernel objects are identified by
-name, which must match a kernel instance name in the xclbin or program.
+name, which must match a kernel instance name in the xclbin or programs.
 
 Kernels are constructed from the instance name and what control code
 the kernel should execute.  The hardware context associated with the
-kernel is created by the runner from the xclbin or program specified
+kernel is created by the runner from the xclbin or programs specified
 in the recipe `header` section, so kernels in the resources section
 must contain just the kernel instance name and the full path to an ELF
 with the control code.
@@ -228,10 +227,9 @@ If a buffer `size` is specified as in:
       }
 ```
 then the runner will create an `xrt::bo` internally for the specified
-buffer, even if the buffer is specified as "output" it is treated as
-internal by the runner.  The application framework can still bind an
-external buffer the runner object created from the recipe, but doesn't
-have to.
+buffer even if the buffer is externally bound.  If the runner creates
+an internal buffer for an externally bound buffer, then the internally
+bound buffer is destroyed / replaced with the external buffer.
 
 The `name` of the buffers in the resources section must be unique.
 The name is used in the `execution` section to refer to kernel or cpu

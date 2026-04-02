@@ -27,15 +27,13 @@ load_config(const xrt_core::device* device)
   }
 
   auto archive = XBUtilities::open_archive(device);
-  auto artifacts_repo = XBUtilities::extract_artifacts_from_archive(archive.get(), {"firmware_log.json"});
-  auto it = artifacts_repo.find("firmware_log.json");
-  if (it == artifacts_repo.end() || it->second.empty()) {
+  try {
+    auto json_config = nlohmann::json::parse(archive->data("firmware_log.json"));
+    return firmware_log_config(json_config);
+  }
+  catch (const std::exception&) {
     return std::nullopt;
   }
-
-  std::string config_content(it->second.begin(), it->second.end());
-  auto json_config = nlohmann::json::parse(config_content);
-  return firmware_log_config(json_config);
 }
 
 std::unordered_map<std::string, firmware_log_config::enum_info>

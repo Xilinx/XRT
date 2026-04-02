@@ -1167,6 +1167,7 @@ alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup
       return alloc_hbuf(device, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
+  case XCL_BO_FLAGS_KERNBUF:
   case XCL_BO_FLAGS_SVM:
   case XCL_BO_FLAGS_HOST_ONLY:
   case XCL_BO_FLAGS_P2P:
@@ -1733,10 +1734,12 @@ compose_internal_bo_flags(use_type type)
   case use_type::dtrace:
   case use_type::host_only:
   case use_type::uc_debug:
-  case use_type::log:
   case use_type::scratch_pad:
     flags.flags = XRT_BO_FLAGS_HOST_ONLY;
     break;
+  case use_type::log:
+      flags.flags = XRT_BO_FLAGS_CARVEOUT;
+      break;
   default:
     throw std::runtime_error("create_bo is called with invalid buffer type\n");
   }

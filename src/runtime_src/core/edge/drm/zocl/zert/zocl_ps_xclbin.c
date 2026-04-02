@@ -325,7 +325,6 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 		return ret;
 	}
 
-	slot->xclbin_type = ZOCL_XCLBIN_TYPE_FULL;
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;

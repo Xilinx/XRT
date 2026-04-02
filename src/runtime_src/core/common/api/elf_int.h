@@ -262,6 +262,10 @@ protected:
   // Final kernel objects built from m_kernel_args_map and m_kernel_to_subkernels_map
   std::vector<elf::kernel> m_kernels;
 
+  // Map for custom sections
+  // key - custom section name, value - custom section data
+  std::map<std::string, detail::span<const char>> m_custom_section_map;
+
   /* Patcher related types and data - common between all platforms */
   // Aliases for patcher types
   using patcher_config = xrt_core::elf_patcher::patcher_config;
@@ -285,9 +289,9 @@ protected:
   // Protected constructor - takes already-loaded ELFIO and platform
   elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
 
-  // Parse .group sections in the ELF file and populate all maps
+  // Parse sections in the ELF and populate internal maps
   void
-  parse_group_sections();
+  parse_sections();
 
 private:
   ////////////////////////////////////////////////////////////////
@@ -332,6 +336,10 @@ private:
   // Parse a single .group section and update maps
   void
   parse_single_group_section(const ELFIO::section* section);
+
+  // Parse custom sections and populate corresponding map
+  void
+  parse_custom_sections(const std::vector<uint32_t>& custom_section_ids);
 
 public:
   virtual ~elf_impl() = default;
@@ -434,10 +442,14 @@ public:
     return nullptr;
   }
 
-
   // Get the ERT command opcode in ELF flow
   virtual ert_cmd_opcode
   get_ert_opcode() const = 0;
+
+  // Get custom section data by name
+  // Returns span of custom section data
+  detail::span<const char>
+  get_custom_section(const std::string& name) const;
 };
 
 } // namespace xrt

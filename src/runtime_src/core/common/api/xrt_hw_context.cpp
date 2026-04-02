@@ -144,7 +144,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // This map is used for lookup when creating xrt::kernel object
   // using kernel name.
   std::map<std::string, xrt::elf> m_elf_map;
-  // mutex to protect the elf map
+
+  // mutex to protect the data members of hw_context_impl (elf_map, cfg_param etc.)
   mutable std::mutex m_mutex;
 
   // No. of cols in the AIE partition managed by this hw ctx
@@ -325,7 +326,15 @@ public:
   void
   update_qos(const qos_type& qos)
   {
-    m_hdl->update_qos(qos);
+    std::lock_guard lk(m_mutex);
+    if (m_hdl) {
+      m_hdl->update_qos(qos);
+      // Store updated QoS after a successful update_qos call to shim
+      m_cfg_param = qos;
+    }
+    else
+      // Store QoS if hw ctx handle is not yet created
+      m_cfg_param = qos;
   }
 
   void
@@ -519,6 +528,17 @@ public:
     std::lock_guard lk(m_mutex);
     return m_elf_map;
   }
+
+  // Get the configuration parameter / QoS map from the hw context.
+  // The returned map contains key-value pairs
+  // key: string, value: uint32_t for both QoS-related settings and
+  // other hw context configuration parameters.
+  xrt::hw_context::qos_type
+  get_qos_map() const
+  {
+    std::lock_guard lk(m_mutex);
+    return m_cfg_param;
+  }
 };
 
 } // xrt
@@ -602,6 +622,12 @@ std::map<std::string, xrt::elf>
 get_elf_map(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_elf_map();
+}
+
+xrt::hw_context::qos_type
+get_qos_map(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_qos_map();
 }
 
 } // xrt_core::hw_context_int

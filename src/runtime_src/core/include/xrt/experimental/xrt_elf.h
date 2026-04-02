@@ -5,6 +5,7 @@
 
 #include "xrt/detail/config.h"
 #include "xrt/detail/pimpl.h"
+#include "xrt/detail/span.h"
 #include "xrt/xrt_uuid.h"
 
 #ifdef __cplusplus
@@ -30,7 +31,7 @@ class elf : public detail::pimpl<elf_impl>
 {
 public:
   /*!
-   * class kernel
+   * @class kernel
    *
    * @brief
    * xrt::elf::kernel represents a kernel in an elf.
@@ -46,6 +47,15 @@ public:
   {
   public:
     class instance_impl;
+    /*!
+     * @class instance
+     *
+     * @brief
+     * xrt::elf::kernel::instance represents an instance of a kernel in an elf.
+     *
+     * @details
+     * The instance corresponds to a specific execution context of a kernel.
+     */
     class instance : public detail::pimpl<instance_impl>
     {
     public:
@@ -56,6 +66,13 @@ public:
         : detail::pimpl<instance_impl>(std::move(handle))
       {}
 
+      /**
+       * get_name() - Get instance name
+       *
+       * @return
+       *  The name of the instance
+       */
+      XRT_API_EXPORT
       std::string
       get_name() const;
     };
@@ -247,6 +264,7 @@ public:
    *  The partition size (number of columns) for the ELF
    *  throws std::runtime_error if the ELF is missing xrt configuration info
    */
+
    XRT_API_EXPORT
    uint32_t
    get_partition_size() const;
@@ -260,6 +278,28 @@ public:
    XRT_API_EXPORT
    std::vector<kernel>
    get_kernels() const;
+
+   /**
+    * get_custom_section() - Get custom section data by name from ELF
+    *
+    * @param section_name
+    *  Name of the custom section
+    *
+    * @return
+    *  A span representing the custom section data
+    *  throws std::runtime_error if the custom section is not found
+    *
+    * @warning
+    *  The returned span is valid only while this xrt::elf object remains
+    *  alive. Do not use the span after the xrt::elf object is destroyed.
+    *
+    * @note
+    *  Returns xrt::detail::span (lightweight span) for now. Will switch to
+    *  std::span when XRT uses C++20 by default.
+    */
+   XRT_API_EXPORT
+   xrt::detail::span<const char>
+   get_custom_section(const std::string& section_name) const;
 };
 
 } // namespace xrt

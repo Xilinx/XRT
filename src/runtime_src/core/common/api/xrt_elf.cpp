@@ -351,8 +351,9 @@ get_symbol_from_symtab(uint32_t sym_index) const
 
   if (!symbols.get_symbol(sym_index, info.name, value, size, bind,
                           info.type, info.section_index, other))
-    throw std::runtime_error("Unable to find symbol in .symtab section with index: " +
-                             std::to_string(sym_index));
+    throw std::runtime_error(
+      "Unable to find symbol in .symtab section with index: " +
+      std::to_string(sym_index));
 
   return info;
 }
@@ -412,12 +413,14 @@ get_kernel_subkernel_from_symtab(uint32_t sym_index)
   // Get subkernel symbol - must be of type OBJECT
   auto subkernel_sym = get_symbol_from_symtab(sym_index);
   if (subkernel_sym.type != ELFIO::STT_OBJECT)
-    throw std::runtime_error("Symbol doesn't point to subkernel entry (expected STT_OBJECT)");
+    throw std::runtime_error(
+      "Symbol doesn't point to subkernel entry (expected STT_OBJECT)");
 
   // Get parent kernel symbol - must be of type FUNC
   auto kernel_sym = get_symbol_from_symtab(subkernel_sym.section_index);
   if (kernel_sym.type != ELFIO::STT_FUNC)
-    throw std::runtime_error("Subkernel doesn't point to kernel entry (expected STT_FUNC)");
+    throw std::runtime_error(
+      "Subkernel doesn't point to kernel entry (expected STT_FUNC)");
 
   // Demangle kernel name and extract signature
   auto demangled_signature = demangle(kernel_sym.name);
@@ -462,14 +465,16 @@ parse_single_group_section(const ELFIO::section* section)
     return;
 
   // Parse kernel/subkernel from symtab using .group's info field
-  auto [kernel_name, subkernel_name] = get_kernel_subkernel_from_symtab(section->get_info());
+  auto [kernel_name, subkernel_name] =
+    get_kernel_subkernel_from_symtab(section->get_info());
 
   // Update kernel maps
   m_kernel_to_subkernels_map[kernel_name].push_back(subkernel_name);
   m_kernel_name_to_id_map[kernel_name + subkernel_name] = group_id;
 
   // Parse member section indices (skip flags at index 0)
-  const auto* word_data = reinterpret_cast<const ELFIO::Elf_Word*>(data);
+  const auto* word_data =
+    reinterpret_cast<const ELFIO::Elf_Word*>(data);
   const auto word_count = size / sizeof(ELFIO::Elf_Word);
 
   std::vector<uint32_t> member_sections;
@@ -482,24 +487,59 @@ parse_single_group_section(const ELFIO::section* section)
   m_group_to_sections_map.emplace(group_id, std::move(member_sections));
 }
 
-// Parse .group sections in the ELF file and populate all maps
 void
 elf_impl::
-parse_group_sections()
+parse_custom_sections(const std::vector<uint32_t>& custom_section_ids)
 {
-  if (!is_group_elf()) {
+  auto section_span = [](const ELFIO::section* sec) {
+    return detail::span<const char>(sec->get_data(), sec->get_size());
+  };
+
+  for (auto sec_id : custom_section_ids) {
+    auto sec = m_elfio.sections[sec_id];
+    if (!sec)
+      continue;
+
+    auto sec_name = sec->get_name();
+    auto data = section_span(sec);
+
+    m_custom_section_map[sec_name] = data;
+  }
+}
+
+// Parse ELF sections and populate all maps
+void
+elf_impl::
+parse_sections()
+{
+  if (!is_group_elf()) { // older ELF format without .group sections
     init_legacy_section_maps();
     finalize_kernels();
+    m_kernel_args_map.clear();
     return;
   }
 
+  // collect custom sections and parse .group sections to populate maps
+  std::vector<uint32_t> custom_section_ids;
+  constexpr ELFIO::Elf_Word custom_section_type = ELFIO::SHT_LOUSER + 1;
   for (const auto& section : m_elfio.sections) {
-    if (section && section->get_type() == ELFIO::SHT_GROUP)
+    if (!section)
+      continue;
+
+    if (section->get_type() == ELFIO::SHT_GROUP)
       parse_single_group_section(section.get());
+    else if (section->get_type() == custom_section_type)
+      custom_section_ids.push_back(section->get_index());
   }
 
   // Build elf::kernel objects after all group sections are parsed
   finalize_kernels();
+
+  // parse and collect custom sections from ELF
+  parse_custom_sections(custom_section_ids);
+
+  // Free parsing-only data, not used after parse_sections().
+  m_kernel_args_map.clear();
 }
 
 // Get configuration UUID from ELF
@@ -592,6 +632,16 @@ get_abi_version() const
   auto major = static_cast<uint8_t>((abi_version & major_ver_mask) >> shift);
   auto minor = static_cast<uint8_t>(abi_version & minor_ver_mask);
   return {major, minor};
+}
+
+detail::span<const char>
+elf_impl::
+get_custom_section(const std::string& name) const
+{
+  if (auto it = m_custom_section_map.find(name); it != m_custom_section_map.end())
+    return it->second;
+
+  throw std::runtime_error("Cannot get custom section " + name + " data, section not found in ELF");
 }
 
 ////////////////////////////////////////////////////////////////
@@ -863,8 +913,8 @@ public:
   elf_aie_gen2(ELFIO::elfio&& elfio, elf::platform platform)
     : elf_impl{std::move(elfio), platform}
   {
-    // Parse group sections to populate kernel and section maps
-    parse_group_sections();
+    // Parse ELF sections to populate kernel and section maps
+    parse_sections();
     // Initialize all section buffer maps
     initialize_section_buffer_maps();
     // Initialize argument patchers from relocation sections
@@ -1273,8 +1323,8 @@ public:
   elf_aie_gen2_plus(ELFIO::elfio&& elfio, elf::platform platform)
     : elf_impl{std::move(elfio), platform}
   {
-    // Parse group sections to populate kernel and section maps
-    parse_group_sections();
+    // Parse ELF sections to populate kernel and section maps
+    parse_sections();
     // Initialize all section buffer maps
     initialize_section_buffer_maps();
   }
@@ -1468,6 +1518,14 @@ get_kernels() const
 {
   valid_or_error(handle);
   return handle->get_kernels();
+}
+
+detail::span<const char>
+elf::
+get_custom_section(const std::string& section_name) const
+{
+  valid_or_error(handle);
+  return handle->get_custom_section(section_name);
 }
 
 ////////////////////////////////////////////////////////////////
