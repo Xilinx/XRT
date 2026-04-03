@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xclbin_parser_h_
 #define xclbin_parser_h_
 
@@ -33,7 +21,7 @@ namespace xrt_core { namespace xclbin {
 // struct kernel_argument - kernel argument meta data
 struct kernel_argument
 {
-  static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
+  static constexpr size_t no_index { (std::numeric_limits<size_t>::max)() };
   // numbering must match that of meta data addressQualifier
   enum class argtype { scalar = 0, global = 1, constant=2, local=3, stream = 4 };
   enum class direction { input = 0, output = 1};

@@ -87,6 +87,10 @@ get_regmap_size(const xrt::kernel& kernel);
 xrt::hw_context
 get_hw_ctx(const xrt::kernel& kernel);
 
+// Get hw ctx using which this kernel is created
+xrt::hw_context
+get_hw_ctx(const xrt::run&);
+
 // Allows the creation of the kernel object from a kernel_impl pointer
 // This is used for logging usage mertrics
 xrt::kernel

@@ -24,9 +24,9 @@ There are three sections in the run recipe.
 2. [resources](#resources)
 3. [execution](#execution)
 
-The `header` trivially contains the path (full name) of the
-configuration data that should be loaded before resources can be
-created or the recipe can be executed.
+The `header` is deprecated, but if used contains the path (full name)
+of the configuration data (xclbins and elfs) that should be loaded
+before resources can be created or the recipe can be executed.
 
 The `resources` section defines all buffer objects, kernel objects,
 and cpu function objects used to execute the recipe. The resources are
@@ -42,6 +42,9 @@ output per `size` and `offset` fields defined as part of specifying the
 kernel arguments.
 
 ## Header
+
+> [!WARNING]
+> This section is deprecated in favor of [resources.hwctxs[]](hardware-contexts)
 
 The header section identifies programs with PDIs and meta data used by
 XRT when xrt::kernel objects are created.
@@ -78,18 +81,42 @@ buffers used by kernels in the `execution` section must be listed in
 the resources section.  Also all functions executed on the CPU must
 be listed in the resources section.
 
+### Hardware contexts
+
+Hardware contexts listed in resources sections result in the runner
+creating `xrt::hw_context` objects with specified configuration. 
+
+```
+  "resources": {
+    "hwctxs" : [
+      {
+        "name": "hwctx1",
+        "xclbin": "design.xclbin"
+        "programs": ["config.elf", ...]
+        "cfg": {
+          "key1": "value1",
+          "key2": "value2"
+        }
+      },
+```
+The `name` of a hwctx is used to reference other resources that 
+are specific to a hwctx.  The `name` element is required.
+
+If both `xclbin` and `programs` are specified, the behavior is
+undefined, one takes precedence over the other, but which one is
+undefined.
+
+The `cfg` element is optional, it is a simple key/value pairs
+designating configuration parameters for hardware context creation.
+
 ### Kernel functions
 
 Kernels listed in the resources section result in runner creating
 `xrt::kernel` objects.  In XRT, the kernel objects are identified by
 name, which must match a kernel instance name in the xclbin or programs.
 
-Kernels are constructed from the instance name and what control code
-the kernel should execute.  The hardware context associated with the
-kernel is created by the runner from the xclbin or programs specified
-in the recipe `header` section, so kernels in the resources section
-must contain just the kernel instance name and the full path to an ELF
-with the control code.
+Kernels are constructed from the `instance` name and what `ctrlcode`
+control code the kernel should execute.
 
 ```
   "resources": {
@@ -97,6 +124,7 @@ with the control code.
       {
         "name": "k1",
         "instance": "DPU",
+        "hwctx": "hwctx1",
         "ctrlcode": "no-ctrl-packet.elf"
         "numargs": number
       }
@@ -104,15 +132,24 @@ with the control code.
   },
 ```
 
-The name of the kernel in resources section must be unique in the list
+The `name` of the kernel in resources section must be unique in the list
 of kernel instances, the name is used in the `execution` section to refer 
 to which instance should be executed.
 
-If a kernel is instantiated from the same instance kernel name and same
-control code, then only one such kernel instance needs to be listed in
-the resources section.  Listing multiple kernel instances referring to
-the same kernel and using the same control code is not error,
-but is not necessary.
+The `hwctx` hardware context is required if more than one hardware
+context is specified by the recipe.  Hardware contexts are created
+from the the `resources.hwctxs[]` section or from the deprecated
+`header` section.  If only one hardware context is specified in the
+recipe, then `hwctx` is not required to be specified.
+
+The `instance` name is optional and defaults to the value of `name`.
+Since the `name` must be unique among all specified kernel resources,
+it is possible that the `instance` name has to be used to reference
+the actual kernel instance from the ELF or xclbin.
+
+Kernels in the resources section must uniquely identify a kernel in
+and xclbin or ELF.  The ELF `ctrlcode` is optional in the case where 
+a `program` is used with the `hwctx`.
 
 The `numargs` is unused by the xrt::runner class, but is added to
 support using the recipe to create application code invoking a kernel
@@ -122,6 +159,12 @@ match the number of arguments to the kernel.  The recipe `runs`
 section itself may not specify all arguments, but a `hip` application
 created from the recipe.json must create an array of all expected
 arguments, where missing args will be populated with a default value.
+
+If a kernel is instantiated from the same instance kernel name and same
+control code, then only one such kernel instance needs to be listed in
+the resources section.  Listing multiple kernel instances referring to
+the same kernel and using the same control code is not error,
+but is not necessary.
 
 ### CPU functions
 
@@ -178,6 +221,7 @@ The `type` of a buffer is one of
 - weight
 - spill
 - unknown
+- debug
 
 For all pratical purposes the `type` is ignored by the xrt::runner
 when it creates the recipe.  The only enforcement is that internal
@@ -235,6 +279,19 @@ The `name` of the buffers in the resources section must be unique.
 The name is used in the `execution` section to refer to kernel or cpu
 buffer arguments.
 
+If a buffer is required to be allocated in a specific hardware context
+(e.g. `debug` buffers), then the optional `hwctx` element can be used,
+otherwise the recipe must only have one hardware context, which is
+then default used.
+
+```
+      {
+        "name": "ofm",
+        "type": "debug",
+        "hwctx": "hwctx1"
+      }
+```
+
 #### Internal buffers
 
 Internal buffers are created and managed by the runner. These are
@@ -265,7 +322,7 @@ in the recipe.
       },
       {
         "name": "b1",
-        "type": "internal:,
+        "type": "internal",
         "size": "1024"
       },
       {
@@ -315,7 +372,7 @@ resources section and scalar values as needed.
   "execution": {
     "runs": [
       {
-        "name": "convert_ifm",
+        "kernel": "convert_ifm",
         "where": "cpu",
         "arguments" : [
             { "name": "ifm", "argidx": 0 },
@@ -327,7 +384,7 @@ resources section and scalar values as needed.
         ]
       },
       {
-        "name": "k1",
+        "kernel": "k1",
         "arguments" : [
             { "name": "ifm_int", "size": 512, "offset": 0, "argidx": 3 },
             { "name": "wts", "argidx": 4 },
@@ -335,7 +392,7 @@ resources section and scalar values as needed.
         ]
       },
       {
-        "name": "k1",
+        "kernel": "k1",
         "arguments" : [
             { "name": "ifm_int", "size": 512, "offset": 512, "argidx": 3 },
             { "name": "wts", "argidx": 4 },
@@ -343,8 +400,8 @@ resources section and scalar values as needed.
         ]
       },
       {
-        "name": "convert_ofm",
-        "where": "cpu"
+        "kernel": "convert_ofm",
+        "where": "cpu",
         "arguments" : [
             { "name": "ofm_int", "argidx": 0 },
             { "name": "ofm", "argidx": 1 }
@@ -382,7 +439,7 @@ value `3` implies transaction buffer.
   "execution": {
     "runs": [
       {
-        "name": "k1",
+        "kernel": "k1",
         "arguments" : [
             { "name": "wts", "argidx": 4 },
             { "name": "ifm", "argidx": 3 },
@@ -409,28 +466,36 @@ input and output are consumed during one kernel execution.  See the
 
 ```
 {
+  "version": "1.0",
   "header": {
     "xclbin": "design.xclbin",
   },
   "resources": {
+    "hwctxs": [
+      {
+        "name": "hwctx1",
+        "xclbin": "xclbin"
+      }
+    ],
     "buffers": [
       {
         "name": "wts",
-        "type": "input",
+        "type": "input"
       },
       {
         "name": "ifm",
-        "type": "input",
+        "type": "input"
       },
       {
         "name": "ofm",
-        "type": "output",
+        "type": "output"
       }
     ],
     "kernels": [
       {
         "name": "k1",
         "instance": "DPU",
+        "hwctx": "hwctx1",
         "ctrlcode": "no-ctrl-packet.elf"
       }
     ]
@@ -438,7 +503,7 @@ input and output are consumed during one kernel execution.  See the
   "execution": {
     "runs": [
       {
-        "name": "k1",
+        "kernel": "k1",
         "arguments" : [
             { "name": "wts", "argidx": 4 },
             { "name": "ifm", "argidx": 3 },

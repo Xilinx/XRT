@@ -715,7 +715,7 @@ run(int argc, char* argv[])
     cur.clear();
   }
 
-  if (!cur.empty())
+  if (!cur.empty() && cur != "--report")
     std::cerr << "[runner] INFO: ignoring unknown argument value " << cur << '\n';
 
   if (!script.empty() && (!recipe.empty() || !profile.empty()))
