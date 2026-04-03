@@ -1,12 +1,15 @@
 #!/bin/csh -f
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 # parse out required variables
 set list = "$COMMAND_LINE"
-# The command word associated with this xrt-smi invocation
-set commandWord = `echo $list | awk 'BEGIN{FS=" "}{print $2}'`
+# Search for command word anywhere in the line (global options can come before command)
+# This handles cases like: xrt-smi --verbose validate
+set commandWord = `echo $list | tr ' ' '\n' | grep -E '^(configure|examine|validate)$' | head -1`
+# Check for terminal options (--version) - no completions after these
+set hasVersion = `echo $list | tr ' ' '\n' | grep -E '^--version$' | head -1`
 # Get the number of arguments. This script turns spaces into ampersands to count
 # the number of commands. This script is NOT space in path name friendly.
 set argsplit=(`echo "$list" | sed -e "s/ /@/g"`)
@@ -21,71 +24,67 @@ set previousWord = `echo $argsplit | awk 'BEGIN{FS="@"}{NF=NF-1;print $NF}'`
 # This is the word on the righthand side
 set currentWord = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
 
-
-# The options for the current command line statement
-set programOptions = "--verbose --batch --force --help -h --version"
-# Handle the default xrt-smi options first
-if($commandCount == "1") then
-    set programOptions="${programOptions} program validate examine configure reset"
-else
-  set commonSubCommands="--device -d ${programOptions}"
-
-  # First handle the gathering of all options unique to each command
-  switch($commandWord)
-    case "program":
-      set programOptions="${programOptions} --user -u"
-      breaksw
-    case "validate":
-      set programOptions="${programOptions} --run -r --format -f --output -o --path -p"
-      breaksw
-    case "examine":
-      set programOptions="${programOptions} --report -r --format -f --output -o"
-      breaksw
-    case "configure":
-      set programOptions="${programOptions} --host-mem --p2p --size"
-      breaksw
-    case "reset":
-      set programOptions="${programOptions} --type -t"
-      breaksw
-    # Return an empty reply if an invalid command is entered
-    default:
-      breaksw
-  endsw
-
-  # If the current word requires an argument, clear the option list
-  # If an option is "missing" from this list check the wrapper. It is most likely defined there as a 
-  # file search completion
-  switch($previousWord)
-    case "device":
-    case "d":
-      set programOptions=""
-      breaksw
-    case "format":
-    case "f":
-      set programOptions=""
-      breaksw
-    case "type":
-    case "t":
-      set programOptions=""
-      breaksw
-    case "p2p":
-      set programOptions=""
-      breaksw
-    case "hostmem":
-      set programOptions=""
-      breaksw
-    # -r shorthand applies to multiple commands under xrt-smi and requires additional processing
-    # Assuming we want to add something here one day
-    case "report":
-    case "run":
-    case "r":
-      set programOptions=""
-      breaksw
-    # do not modify the option list if the argument is not required
-    default:
-      breaksw
-  endsw
+# Check for terminal option --version first
+if ("$hasVersion" != "") then
+    # --version is terminal, no more completions
+    echo ""
+    exit 0
 endif
 
-# Printout the options for complete to register them
-echo $programOptions
+# Handle options that require arguments first
+# If an option is "missing" from this list check the wrapper. It is most likely defined there as a
+# file search completion
+switch($previousWord)
+  case "device":
+  case "d":
+    # List available device BDFs by reading symlinks from /sys/class/accel/
+    # Output one per line to avoid escaping issues with colons
+    ls -d /sys/class/accel/accel*/device |& xargs -I {} readlink {} |& xargs -n1 basename
+    exit 0
+  case "format":
+  case "f":
+    # Format options
+    echo JSON JSON-2020.2
+    exit 0
+  case "pmode":
+    # Performance mode options
+    echo default powersaver balanced performance turbo
+    exit 0
+  case "report":
+    # Report types for examine command
+    echo aie-partitions all host platform
+    exit 0
+  case "run":
+    # Test types for validate command
+    echo all gemm latency throughput
+    exit 0
+  case "help":
+  case "h":
+    # --help is terminal, no more completions
+    echo ""
+    exit 0
+endsw
+
+# Build completion options based on context
+# Common options shared by all subcommands
+set commonOpts = "--device -d --help -h --verbose --batch --force"
+
+if ("$commandWord" == "") then
+    # No command found yet, suggest commands and global options
+    echo configure examine validate --verbose --batch --force --help -h --version
+else
+    # Command found, suggest command-specific options
+    switch($commandWord)
+      case "configure":
+        echo --pmode $commonOpts
+        breaksw
+      case "examine":
+        echo --report -r --format -f --output -o $commonOpts
+        breaksw
+      case "validate":
+        echo --run -r --format -f --output -o $commonOpts
+        breaksw
+      default:
+        breaksw
+    endsw
+endif
