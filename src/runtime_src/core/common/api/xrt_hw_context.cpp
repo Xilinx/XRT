@@ -32,6 +32,10 @@
 #include <limits>
 #include <memory>
 #include <sstream>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
@@ -54,7 +58,32 @@ dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t of
   const char* buf = buf_map + offset;
   ofs.write(buf, static_cast<std::streamsize>(size));
 }
+
+// Convert experimental string config to cfg_param_type (uint32 values).
+// Non-numeric values (e.g. context name) are omitted.
+static xrt::hw_context::cfg_param_type
+to_cfg_param_type(const xrt::hw_context::cfg_type& cfg)
+{
+  xrt::hw_context::cfg_param_type out;
+  for (const auto& [key, val] : cfg) {
+    try {
+      std::size_t pos = 0;
+      auto ul = std::stoul(val, &pos, 0);
+      if (pos != val.size())
+        continue;
+      if (ul > std::numeric_limits<uint32_t>::max())
+        continue;
+
+      out[key] = static_cast<uint32_t>(ul);
+    }
+    catch (const std::exception&) {
+      continue;
+    }
+  }
+  return out;
 }
+
+} // namespace
 
 namespace xrt {
 
@@ -63,8 +92,23 @@ namespace xrt {
 class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 {
   using cfg_param_type = xrt::hw_context::cfg_param_type;
+  using cfg_type = xrt::hw_context::cfg_type;
   using qos_type = cfg_param_type;
   using access_mode = xrt::hw_context::access_mode;
+  using cfg_storage = std::variant<cfg_param_type, cfg_type>;
+
+  // Get the effective configuration parameters based on the storage type
+  static cfg_param_type
+  effective_cfg_param(const cfg_storage& st)
+  {
+    return std::visit([] (const auto& v) -> cfg_param_type {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_same_v<T, cfg_param_type>)
+        return v;
+      else
+        return to_cfg_param_type(v);
+    }, st);
+  }
 
   // Struct used for initializing and dumping firmware log buffer
   struct uc_log_buffer
@@ -151,7 +195,10 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // No. of cols in the AIE partition managed by this hw ctx
   // Devices with no AIE will have partition size as 0
   uint32_t m_partition_size = 0;
-  cfg_param_type m_cfg_param;
+
+  // Either legacy cfg_param_type or experimental cfg_type (mutually exclusive)
+  cfg_storage m_cfg_storage;
+
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
@@ -222,13 +269,13 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   }
 
 public:
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_storage cfg)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
-    , m_cfg_param(std::move(cfg_param))
+    , m_cfg_storage{std::move(cfg)}
     , m_mode(xrt::hw_context::access_mode::shared)
-    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
+    , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
   {}
 
@@ -236,24 +283,25 @@ public:
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
+    , m_cfg_storage{cfg_param_type{}}
     , m_mode{mode}
-    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
+    , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
   {}
 
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, cfg_param_type cfg_param, access_mode mode)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
-    , m_cfg_param{std::move(cfg_param)}
+    , m_cfg_storage{std::move(cfg)}
     , m_mode{mode}
   {}
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::elf& elf,
-                  cfg_param_type cfg_param, access_mode mode)
+                  cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
     , m_partition_size{elf.get_partition_size()}
-    , m_cfg_param{std::move(cfg_param)}
+    , m_cfg_storage{std::move(cfg)}
     , m_mode{mode}
-    , m_hdl{m_core_device->create_hw_context(elf, m_cfg_param, m_mode)}
+    , m_hdl{m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
     , m_elf_flow{true}
   {
@@ -303,7 +351,7 @@ public:
 
     // create hw ctx handle if not already created
     if (!m_hdl) {
-      m_hdl = m_core_device->create_hw_context(elf, m_cfg_param, m_mode);
+      m_hdl = m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode);
       m_partition_size = part_size;
       create_elf_map(elf);
       m_elf_flow = true; // ELF flow
@@ -326,15 +374,20 @@ public:
   void
   update_qos(const qos_type& qos)
   {
+    // update_qos is deprecated and not supported in new flows
+    // update QoS only if the context is created with cfg_param_type
     std::lock_guard lk(m_mutex);
+    if (std::holds_alternative<cfg_type>(m_cfg_storage))
+      throw std::runtime_error("update_qos is not supported for experimental cfg_type");
+
     if (m_hdl) {
       m_hdl->update_qos(qos);
       // Store updated QoS after a successful update_qos call to shim
-      m_cfg_param = qos;
+      m_cfg_storage = qos;
     }
     else
       // Store QoS if hw ctx handle is not yet created
-      m_cfg_param = qos;
+      m_cfg_storage = qos;
   }
 
   void
@@ -530,14 +583,27 @@ public:
   }
 
   // Get the configuration parameter / QoS map from the hw context.
-  // The returned map contains key-value pairs
-  // key: string, value: uint32_t for both QoS-related settings and
-  // other hw context configuration parameters.
+  // Only valid when the context stores cfg_param_type (not experimental cfg_type).
   xrt::hw_context::qos_type
   get_qos_map() const
   {
     std::lock_guard lk(m_mutex);
-    return m_cfg_param;
+    if (!std::holds_alternative<cfg_param_type>(m_cfg_storage))
+      throw std::runtime_error(
+          "get_qos_map: hardware context does not use cfg_param_type (QoS) configuration");
+    return std::get<cfg_param_type>(m_cfg_storage);
+  }
+
+  // Get the configuration as cfg_type (string values).
+  // Only valid when the context was created with experimental cfg_type.
+  xrt::hw_context::cfg_type
+  get_cfg_map() const
+  {
+    std::lock_guard lk(m_mutex);
+    if (!std::holds_alternative<cfg_type>(m_cfg_storage))
+      throw std::runtime_error(
+          "get_cfg_map: hardware context does not use experimental cfg_type configuration");
+    return std::get<cfg_type>(m_cfg_storage);
   }
 };
 
@@ -630,12 +696,21 @@ get_qos_map(const xrt::hw_context& hwctx)
   return hwctx.get_handle()->get_qos_map();
 }
 
+xrt::hw_context::cfg_type
+get_cfg_map(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_cfg_map();
+}
+
 } // xrt_core::hw_context_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_hwcontext C++ API implmentations (xrt_hw_context.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
+
+using hwctx_cfg_storage = std::variant<hw_context::cfg_param_type, hw_context::cfg_type>;
+
 // common function called with hw ctx created from different ways
 static std::shared_ptr<hw_context_impl>
 post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
@@ -649,11 +724,13 @@ post_alloc_hwctx(const std::shared_ptr<hw_context_impl>& handle)
   return handle;
 }
 
+template<typename Cfg>
 static std::shared_ptr<hw_context_impl>
-alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, Cfg&& cfg)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param));
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(
+      device.get_handle(), xclbin_id, hwctx_cfg_storage{std::forward<Cfg>(cfg)}));
 }
 
 static std::shared_ptr<hw_context_impl>
@@ -663,19 +740,23 @@ alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt
   return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode));
 }
 
+template<typename Cfg>
 static std::shared_ptr<hw_context_impl>
-alloc_empty_hwctx(const xrt::device& device, const xrt::hw_context::cfg_param_type& cfg_param, xrt::hw_context::access_mode mode)
+alloc_empty_hwctx(const xrt::device& device, Cfg&& cfg, xrt::hw_context::access_mode mode)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), cfg_param, mode));
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(
+      device.get_handle(), hwctx_cfg_storage{std::forward<Cfg>(cfg)}, mode));
 }
 
+template<typename Cfg>
 static std::shared_ptr<hw_context_impl>
-alloc_hwctx_from_elf(const xrt::device& device, const xrt::elf& elf, const xrt::hw_context::cfg_param_type& cfg_param,
+alloc_hwctx_from_elf(const xrt::device& device, const xrt::elf& elf, Cfg&& cfg,
                      xrt::hw_context::access_mode mode)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
-  return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), elf, cfg_param, mode));
+  return post_alloc_hwctx(std::make_shared<hw_context_impl>(
+      device.get_handle(), elf, hwctx_cfg_storage{std::forward<Cfg>(cfg)}, mode));
 }
 
 hw_context::
@@ -695,12 +776,27 @@ hw_context(const xrt::device& device, const xrt::elf& elf, const cfg_param_type&
 
 hw_context::
 hw_context(const xrt::device& device, const xrt::elf& elf)
-  : hw_context(device, elf, {}, access_mode::shared)
+  : hw_context(device, elf, cfg_param_type{}, access_mode::shared)
 {}
 
 hw_context::
 hw_context(const xrt::device& device, const cfg_param_type& cfg_param, access_mode mode)
   : detail::pimpl<hw_context_impl>(alloc_empty_hwctx(device, cfg_param, mode))
+{}
+
+hw_context::
+hw_context(const xrt::device& device, const cfg_type& cfg, access_mode mode)
+  : detail::pimpl<hw_context_impl>(alloc_empty_hwctx(device, cfg, mode))
+{}
+
+hw_context::
+hw_context(const xrt::device& device, const xrt::elf& elf, const cfg_type& cfg, access_mode mode)
+  : detail::pimpl<hw_context_impl>(alloc_hwctx_from_elf(device, elf, cfg, mode))
+{}
+
+hw_context::
+hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const cfg_type& cfg)
+  : detail::pimpl<hw_context_impl>(alloc_hwctx_from_cfg(device, xclbin_id, cfg))
 {}
 
 void
