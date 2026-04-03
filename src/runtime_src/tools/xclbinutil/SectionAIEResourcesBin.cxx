@@ -1,6 +1,5 @@
-
 /**
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +21,7 @@
 #include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <cstring>
 
 namespace XUtil = XclBinUtilities;
 
@@ -37,9 +37,8 @@ SectionAIEResourcesBin::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES_BIN, "AIE_RESOURCES_BIN", boost::factory<SectionAIEResourcesBin*>());
   sectionInfo->supportsSubSections = true;
-  sectionInfo->subSections.push_back(getSubSectionName(SubSection::obj));
-  sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
-
+  sectionInfo->subSections.push_back(std::string(getSubSectionName(SubSection::obj)));
+  sectionInfo->subSections.push_back(std::string(getSubSectionName(SubSection::metadata)));
   sectionInfo->supportsIndexing = true;
 
   // Add format support empty (no support)
@@ -165,6 +164,13 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::ostringstream stringBlock;         // String block (stored immediately after the header)
 
   auto pHdr = reinterpret_cast<const aie_resources_bin*>(_pOrigDataSection);
+
+  if (pHdr->mpo_name >= _origSectionSize ||
+      pHdr->mpo_version >= _origSectionSize ||
+      pHdr->m_image_offset >= _origSectionSize ||
+      (pHdr->m_image_offset + pHdr->m_image_size) > _origSectionSize) {
+    throw std::runtime_error("ERROR: Invalid offsets in aie_resources_bin structure");
+  }
 
   XUtil::TRACE_BUF("aie_resources_bin-original", reinterpret_cast<const char*>(pHdr), sizeof(aie_resources_bin));
   XUtil::TRACE(boost::format("Original: \n"
@@ -388,15 +394,18 @@ SectionAIEResourcesBin::writeObjImage(std::ostream& _oStream) const
 {
   XUtil::TRACE("SectionAIEResourcesBin::writeObjImage");
 
-  // Overlay the structure
-  // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(aie_resources_bin)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(aie_resources_bin);
     throw std::runtime_error(errMsg.str());
   }
 
-  // No look at the data
   auto pHdr = reinterpret_cast<aie_resources_bin*>(m_pBuffer);
+
+  if (pHdr->m_image_offset > m_bufferSize ||
+      pHdr->m_image_size > m_bufferSize ||
+      pHdr->m_image_offset > m_bufferSize - pHdr->m_image_size) {
+    throw std::runtime_error("ERROR: Invalid m_image_offset/m_image_size in aie_resources_bin");
+  }
 
   auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
@@ -409,8 +418,6 @@ SectionAIEResourcesBin::writeMetadata(std::ostream& _oStream) const
 {
   XUtil::TRACE("AIE_RESOURCES_BIN-METADATA");
 
-  // Overlay the structure
-  // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(aie_resources_bin)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the aie_resources_bin structure (%d)") % m_bufferSize % sizeof(aie_resources_bin);
     throw std::runtime_error(errMsg.str());
@@ -418,29 +425,33 @@ SectionAIEResourcesBin::writeMetadata(std::ostream& _oStream) const
 
   auto pHdr = reinterpret_cast<aie_resources_bin*>(m_pBuffer);
 
+  auto safe_str = [this, pHdr](uint32_t off) -> std::string {
+    if (off >= m_bufferSize)
+      return "";
+    return std::string(reinterpret_cast<const char*>(pHdr) + off,
+                       strnlen(reinterpret_cast<const char*>(pHdr) + off, m_bufferSize - off));
+  };
+
   XUtil::TRACE(boost::format("Original: \n"
                              "  mpo_name (0x%lx): '%s'\n"
                              "  m_image_offset: 0x%lx, m_image_size: 0x%lx\n"
                              "  mpo_version (0x%lx): '%s'\n"
                              "  m_start_column (0x%lx): '%s'\n"
                              "  m_num_columns (0x%lx): '%s'")
-               % pHdr->mpo_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->mpo_name % safe_str(pHdr->mpo_name)
                % pHdr->m_image_offset % pHdr->m_image_size
-               % pHdr->mpo_version % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_version)
-               % pHdr->m_start_column % (reinterpret_cast<char*>(pHdr) + pHdr->m_start_column)
-               % pHdr->m_num_columns % (reinterpret_cast<char*>(pHdr) + pHdr->m_num_columns));
+               % pHdr->mpo_version % safe_str(pHdr->mpo_version)
+               % pHdr->m_start_column % safe_str(pHdr->m_start_column)
+               % pHdr->m_num_columns % safe_str(pHdr->m_num_columns));
 
-  // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptAieResourcesBin;
-
-  ptAieResourcesBin.put("name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
-  ptAieResourcesBin.put("version", reinterpret_cast<char*>(pHdr) + pHdr->mpo_version);
-  ptAieResourcesBin.put("start_column", reinterpret_cast<char*>(pHdr) + pHdr->m_start_column);
-  ptAieResourcesBin.put("num_columns", reinterpret_cast<char*>(pHdr) + pHdr->m_num_columns);
+  ptAieResourcesBin.put("name", safe_str(pHdr->mpo_name));
+  ptAieResourcesBin.put("version", safe_str(pHdr->mpo_version));
+  ptAieResourcesBin.put("start_column", safe_str(pHdr->m_start_column));
+  ptAieResourcesBin.put("num_columns", safe_str(pHdr->m_num_columns));
 
   boost::property_tree::ptree root;
   root.put_child("aie_resources_bin_metadata", ptAieResourcesBin);
-
   boost::property_tree::write_json(_oStream, root);
 }
 
