@@ -45,6 +45,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 
 #ifdef _WIN32
 #include <dbghelp.h>
@@ -74,7 +75,8 @@ class module_impl
 {
 protected:
   std::shared_ptr<xrt::elf_impl> m_elf_impl; // NOLINT
-  std::string m_name; // Name of the module (optional)
+  // Name of the module (optional)
+  std::string m_name; // NOLINT
 
 public:
   explicit
@@ -82,9 +84,9 @@ public:
     : m_elf_impl(elf.get_handle())
   {}
 
-  module_impl(const xrt::elf& elf, const std::string& name)
+  module_impl(const xrt::elf& elf, std::string name)
     : m_elf_impl(elf.get_handle())
-    , m_name(name)
+    , m_name(std::move(name))
   {}
 
   virtual ~module_impl() = default;
@@ -1136,10 +1138,25 @@ xrt::hw_context
 module::
 get_hw_context() const
 {
-  return get_handle()->get_hw_context();
+  auto handle = get_handle();
+  if (!handle)
+    return {};
+
+  return handle->get_hw_context();
 }
 
 } // namespace xrt
+
+namespace {
+
+static void
+valid_or_error(const xrt::module& module)
+{
+  if (!module)
+    throw std::runtime_error("xrt::module object is not initialized");
+}
+
+} // namespace
 
 ////////////////////////////////////////////////////////////////
 // XRT implmentation access to internal module APIs
@@ -1169,24 +1186,30 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
 std::string
 get_name(const xrt::module& module)
 {
+  if (!module)
+    return {};
+
   return module.get_handle()->get_name();
 }
 
 std::shared_ptr<xrt::elf_impl>
 get_elf_handle(const xrt::module& module)
 {
+  valid_or_error(module);
   return module.get_handle()->get_elf_handle();
 }
 
 uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
+  valid_or_error(module);
   return module.get_handle()->fill_ert_dpu_data(payload);
 }
 
 void
 patch(const xrt::module& module, const std::string& argnm, size_t index, const xrt::bo& bo)
 {
+  valid_or_error(module);
   module.get_handle()->patch(argnm, index, bo.address());
 }
 
@@ -1196,6 +1219,7 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const v
   if (size > 8) // NOLINT
   throw std::runtime_error{ "Patching scalar values only supports 64-bit values or less" };
 
+  valid_or_error(module);
   auto arg_value = *static_cast<const uint64_t*>(value);
   module.get_handle()->patch(argnm, index, arg_value);
 }
@@ -1203,12 +1227,14 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const v
 void
 sync(const xrt::module& module)
 {
+  valid_or_error(module);
   module.get_handle()->sync_if_dirty();
 }
 
 bool
 is_dtrace_enabled(const xrt::module& module)
 {
+  valid_or_error(module);
   return module.get_handle()->is_dtrace_enabled();
 }
 
@@ -1217,19 +1243,20 @@ dump_dtrace_buffer(const xrt::module& module, const std::string& postfix)
 {
   if (!is_dtrace_enabled(module))
     return;
-
   module.get_handle()->dump_dtrace_buffer(postfix);
 }
 
 void
 set_dtrace_control_file(const xrt::module& module, const std::string& path)
 {
+  valid_or_error(module);
   module.get_handle()->set_dtrace_control_file(path);
 }
 
 xrt::bo
 get_ctrl_scratchpad_bo(const xrt::module& module)
 {
+  valid_or_error(module);
   return module.get_handle()->get_ctrl_scratchpad_bo();
 }
 
@@ -1237,6 +1264,7 @@ size_t
 get_patch_buf_size(const xrt::module& module, xrt_core::elf_patcher::buf_type type,
                    uint32_t ctrl_code_id)
 {
+  valid_or_error(module);
   auto elf_hdl = module.get_handle()->get_elf_handle();
   auto platform = elf_hdl->get_platform();
 
@@ -1283,6 +1311,7 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t sz,
       const std::vector<std::pair<std::string, uint64_t>>* args,
       xrt_core::elf_patcher::buf_type type, uint32_t ctrl_code_id)
 {
+  valid_or_error(module);
   auto elf_hdl = module.get_handle()->get_elf_handle();
   const xrt::buf* inst = nullptr;
   auto platform = elf_hdl->get_platform();

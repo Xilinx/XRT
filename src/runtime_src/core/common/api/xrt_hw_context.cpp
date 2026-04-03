@@ -374,7 +374,12 @@ public:
   void
   update_qos(const qos_type& qos)
   {
+    // update_qos is deprecated and not supported in new flows
+    // update QoS only if the context is created with cfg_param_type
     std::lock_guard lk(m_mutex);
+    if (std::holds_alternative<cfg_type>(m_cfg_storage))
+      throw std::runtime_error("update_qos is not supported for experimental cfg_type");
+
     if (m_hdl) {
       m_hdl->update_qos(qos);
       // Store updated QoS after a successful update_qos call to shim
@@ -578,7 +583,7 @@ public:
   }
 
   // Get the configuration parameter / QoS map from the hw context.
-  // Only valid when the context was created (or last updated via update_qos) with cfg_param_type.
+  // Only valid when the context stores cfg_param_type (not experimental cfg_type).
   xrt::hw_context::qos_type
   get_qos_map() const
   {

@@ -132,7 +132,7 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
     xrt::aie::program program(elf_view);
 
     // Create hw_context with program (shared access mode for full ELF flow)
-    xrt::hw_context hwctx(working_dev, program, xrt::hw_context::cfg_param_type{}, xrt::hw_context::access_mode::shared);
+    xrt::hw_context hwctx(working_dev, program);
 
     xrt::ext::kernel kernel(hwctx, "DPU");
     xrt::run run {kernel};

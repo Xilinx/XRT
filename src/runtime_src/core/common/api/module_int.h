@@ -110,7 +110,7 @@ get_ctrl_scratchpad_bo(const xrt::module& module);
 
 // Get the name of the module
 // This is optional and only available for modules created with name
-// Returns empty string if the module is not created with name
+// Returns empty string if the module is default-constructed or not created with name
 XRT_CORE_COMMON_EXPORT
 std::string
 get_name(const xrt::module& module);
