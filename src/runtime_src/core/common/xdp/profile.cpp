@@ -198,15 +198,11 @@ std::function<void (void*)> end_status_cb;
 void
 register_callbacks(void* handle)
 {
-  #if defined(XDP_VE2_BUILD)
-    using ftype = void (*)(void*);
-    using utype = void (*)(void*, bool);
-    
-    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
-    end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
-  #else
-    (void)handle;
-  #endif
+  using ftype = void (*)(void*);
+  using utype = void (*)(void*, bool);
+  
+  update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
+  end_status_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
 }
 
 
@@ -695,6 +691,14 @@ update_device(void* handle, bool hw_context_flow)
            handle,
            hw_context_flow);
 
+  load_once_and_update(xrt_core::config::get_aie_status,
+           xrt_core::xdp::aie::status::load,
+           xrt_core::xdp::aie::status::update_device,
+           "Failed to load AIE Status library. Caught exception ",
+           "Failed to setup for AIE Status. Caught exception ",
+           handle,
+           hw_context_flow);
+
   if (!is_hw_emulation()) {
     load_once_and_update(
              []() {
@@ -758,6 +762,8 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_status())
+    xrt_core::xdp::aie::status::end_status(handle);
   if ((xrt_core::config::get_device_trace() != "off") ||
       (xrt_core::config::get_device_counters()))
     xrt_core::xdp::hal::device_offload::finish_flush_device(handle) ;
