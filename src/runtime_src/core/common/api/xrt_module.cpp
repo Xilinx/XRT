@@ -1138,11 +1138,8 @@ xrt::hw_context
 module::
 get_hw_context() const
 {
-  auto handle = get_handle();
-  if (!handle)
-    return {};
-
-  return handle->get_hw_context();
+  // No null check at API level, application error if null
+  return get_handle()->get_hw_context();
 }
 
 } // namespace xrt
@@ -1186,9 +1183,7 @@ create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
 std::string
 get_name(const xrt::module& module)
 {
-  if (!module)
-    return {};
-
+  valid_or_error(module);
   return module.get_handle()->get_name();
 }
 
