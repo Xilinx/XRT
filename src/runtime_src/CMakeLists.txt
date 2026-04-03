@@ -53,9 +53,10 @@ if (NOT XRT_EDGE)
   xrt_add_subdirectory(tools/scripts)
   if (XRT_NPU)
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    set(XDP_USE_AIE_CODEGEN_CMAKE 1)
+    xrt_add_subdirectory_disable_install_target(aie-rt/src)
   endif()
 
 endif()
@@ -85,9 +86,10 @@ else()
 
   if (XRT_NPU)
     # Used by xdp for include search path
-    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/driver/src)
-    set(XAIENGINE_BUILD_SHARED OFF)
-    xrt_add_subdirectory_disable_install_target(aie-rt/driver/src)
+    set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/src)
+    set(AIE_CODEGEN_BUILD_SHARED OFF)
+    set(XDP_USE_AIE_CODEGEN_CMAKE 1)
+    xrt_add_subdirectory_disable_install_target(aie-rt/src)
   endif()
 
   # Build Subdirectories
