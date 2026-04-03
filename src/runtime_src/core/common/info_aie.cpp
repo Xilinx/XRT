@@ -1,26 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
-
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "info_aie.h"
-#include "core/common/query_requests.h"
+
 #include "core/common/device.h"
-#include <array>
+#include "core/common/query_requests.h"
+
+#include "xrt/detail/span.h"
+
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional/optional.hpp>
-#include <boost/property_tree/json_parser.hpp>
+
+#include <array>
+#include <string>
+
+namespace {
 
 namespace qr = xrt_core::query;
 using ptree_type = boost::property_tree::ptree;
 
-namespace {
+template <typename T>
+using span = xrt::detail::span<T>;
+
 // Convert graph status from integer to a human readable
 // string format for better understanding.
 inline std::string
-graph_status_to_string(int status) {
-  switch(status)
-  {
+graph_status_to_string(int status)
+{
+  switch(status) {
     case 0:	return "stop";
     case 1:	return "reset";
     case 2:	return "running";
@@ -100,10 +110,11 @@ addnodelist(const std::string& search_str, const std::string& node_str,
   output_pt.add_child(node_str, pt_array);
 }
 
-template<size_t N>
 void
-populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd,
-	          const std::array<const char*, N>& bd_info) {
+populate_bd_info(const boost::property_tree::ptree& input_pt,
+                 boost::property_tree::ptree& pt_bd,
+                 span<const char*> bd_info)
+{
   try {
     boost::property_tree::ptree bd_info_array;
     const boost::property_tree::ptree& bd_node = input_pt.get_child("bd");
@@ -118,7 +129,7 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
       for (const auto& value : value_tree) {
 	const std::string val = value.second.data();
         boost::property_tree::ptree bd_details_entry;
-	bd_details_entry.put("name", bd_info[i]);
+	bd_details_entry.put("name", bd_info.at(i));
         bd_details_entry.put("value", val);
         bd_details_array.push_back(std::make_pair("", bd_details_entry));
 	i++;
@@ -137,32 +148,37 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
 
 // This function extract BD information for core tiles of 1st generation aie architecture
 void 
-populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  return populate_bd_info(input_pt, pt_bd, core_bd_info_aie);
+populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd)
+{
+  return populate_bd_info(input_pt, pt_bd, span<const char*>{core_bd_info_aie});
 }
 
 // This function extract BD information for shim tiles of 1st generation aie architecture
 void 
-populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  return populate_bd_info(input_pt, pt_bd, shim_bd_info_aie);
+populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd)
+{
+  return populate_bd_info(input_pt, pt_bd, span<const char*>{shim_bd_info_aie});
 }
 
 // This function extract BD information for core tiles of 2nd generation aie architecture
 void 
-populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  return populate_bd_info(input_pt, pt_bd, core_bd_info_aieml);
+populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd)
+{
+  return populate_bd_info(input_pt, pt_bd, span<const char*>{core_bd_info_aieml});
 }
 
 // This function extract BD information for shim tiles of 2nd generation aie architecture
 void 
-populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  return populate_bd_info(input_pt, pt_bd, shim_bd_info_aieml);
+populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd)
+{
+  return populate_bd_info(input_pt, pt_bd, span<const char*>{shim_bd_info_aieml});
 }
 
 // This function extract BD information for mem tiles of 2nd generation aie architecture
 void 
-populate_mem_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  return populate_bd_info(input_pt, pt_bd, mem_bd_info_aieml);
+populate_mem_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd)
+{
+  return populate_bd_info(input_pt, pt_bd, span<const char*>{mem_bd_info_aieml});
 }
 
 // This function extract DMA information for both AIE core and tiles
@@ -359,7 +375,7 @@ populate_aie_errors(const boost::property_tree::ptree& pt, boost::property_tree:
 
 // Populate the AIE Shim information from the input XRT device
 boost::property_tree::ptree
-populate_aie_shim(const xrt_core::device *device, const std::string& desc)
+populate_aie_shim(const xrt_core::device* device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   pt.put("description", desc);
