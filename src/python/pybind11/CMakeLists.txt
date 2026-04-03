@@ -78,6 +78,11 @@ find_package(Python3 COMPONENTS Development Interpreter)
 if (Python3_FOUND)
   message("-- Python libs version: ${Python3_VERSION}")
   message("-- PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS}")
+  set(PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS})
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import sys, pathlib; print((pathlib.Path(sys.base_prefix)/'libs').as_posix())"
+    OUTPUT_VARIABLE PYTHON_LIBDIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
   set(PYTHONLIBS_VERSION_MAJOR ${Python3_VERSION_MAJOR})
   set(PYTHONLIBS_VERSION_MINOR ${Python3_VERSION_MINOR})
 endif(Python3_FOUND)
@@ -105,6 +110,7 @@ if (pybind11_FOUND)
   INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
   pybind11_add_module(pyxrt src/pyxrt.cpp)
   target_link_libraries(pyxrt PRIVATE xrt_coreutil uuid)
+  target_link_directories(pyxrt PRIVATE "${PYTHON_LIBDIR}")
   set_target_properties(pyxrt PROPERTIES SUFFIX ".pyd")
 
   install(TARGETS pyxrt
