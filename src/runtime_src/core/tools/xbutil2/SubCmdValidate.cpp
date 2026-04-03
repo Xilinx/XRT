@@ -216,8 +216,6 @@ print_status(test_status status, std::ostream & _ostream)
     _ostream << "Validation completed";
   if (status == test_status::warning)
     _ostream << ", but with warnings";
-  if (!XBU::getVerbose())
-    _ostream << ". Please run the command '--verbose' option for more details";
   _ostream << std::endl;
 }
 

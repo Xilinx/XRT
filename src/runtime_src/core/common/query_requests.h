@@ -3940,15 +3940,15 @@ struct performance_mode : request
   {
     switch(status) {
       case 0:
-        return "Default";
+        return "default";
       case 1:
-        return "Powersaver";
+        return "powersaver";
       case 2:
-        return "Balanced";
+        return "balanced";
       case 3:
-        return "Performance";
+        return "performance";
       case 4:
-        return "Turbo";
+        return "turbo";
       default:
         throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }
