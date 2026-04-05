@@ -89,9 +89,9 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
 
   // OptionOptions collection for examine-specific interactive functionality
   m_optionOptionsCollection = {
-    {std::make_shared<OO_FirmwareLogExamine>("firmware-log")}, //hidden
-    {std::make_shared<OO_EventTraceExamine>("event-trace")}, //hidden
-    {std::make_shared<OO_ContextHealth>("context-health")} //hidden
+    {std::make_shared<OO_FirmwareLogExamine>("firmware-log", true)}, //hidden
+    {std::make_shared<OO_EventTraceExamine>("event-trace", true)}, //hidden
+    {std::make_shared<OO_ContextHealth>("context-health", true)} //hidden
   };
 
   for (const auto& option : m_optionOptionsCollection){
@@ -147,7 +147,6 @@ SubCmdExamine::getReportsList(const xrt_core::smi::tuple_vector& reports) const
 std::shared_ptr<OptionOptions>
 SubCmdExamine::checkForSubOption(const po::variables_map& vm) const
 {
-  // Check if any of the option options are present
   for (const auto& option : m_optionOptionsCollection) {
     if (vm.count(option->getConfigName()) > 0) {
       return option;
@@ -155,27 +154,6 @@ SubCmdExamine::checkForSubOption(const po::variables_map& vm) const
   }
   
   return nullptr;
-}
-
-std::vector<std::shared_ptr<OptionOptions>>
-SubCmdExamine::getOptionOptions(const xrt_core::smi::tuple_vector& options) const
-{
-  // Vector to store the matched option options
-  std::vector<std::shared_ptr<OptionOptions>> matchedOptionOptions;
-
-  for (const auto& opt : options) {
-    auto it = std::find_if(m_optionOptionsCollection.begin(), m_optionOptionsCollection.end(),
-              [&opt](const std::shared_ptr<OptionOptions>& optionOption) {
-                return std::get<0>(opt) == optionOption->getConfigName() &&
-                       (std::get<2>(opt) != "hidden" || XBU::getAdvance());
-              });
-
-    if (it != m_optionOptionsCollection.end()) {
-      matchedOptionOptions.push_back(*it);
-    }
-  }
-
-  return matchedOptionOptions;
 }
 
 void
@@ -187,7 +165,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   po::variables_map vm;
   SubCmdExamineOptions options;
   try{
-    const auto unrecognized_options = process_arguments(vm, _options, false);
+    // All JSON "hidden" options require --advanced to be accepted on the command line.
+    po::options_description empty_hidden;
+    const po::options_description& hidden_for_parse = XBU::getAdvance() ? m_hiddenOptions : empty_hidden;
+    const auto unrecognized_options = process_arguments(vm, _options, m_commonOptions, hidden_for_parse,
+                                                        m_positionals, m_subOptionOptions, false);
     fill_option_values(vm, options);
 
     // Check for OptionOptions first
