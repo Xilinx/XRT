@@ -4,9 +4,11 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // System - Include Files
 #include <map>
+#include <string>
 
 // Local - Include Files
 #include "ReportRyzenPlatform.h"
+#include "core/common/sensor.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
@@ -35,7 +37,7 @@ ReportRyzenPlatform::getPropertyTree20202(const xrt_core::device* dev,
 }
 
 void 
-ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
+ReportRyzenPlatform::writeReport(const xrt_core::device* _pDevice,
                                  const boost::property_tree::ptree& _pt,
                                  const std::vector<std::string>& /*_elementsFilter*/,
                                  std::ostream& _output) const
@@ -59,6 +61,23 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Estimated Power" % watts;
     else
       _output << std::endl << boost::format("%-23s  : %s\n") % "Estimated Power" % watts;
+
+    std::string temp_c = "N/A";
+    try {
+      boost::property_tree::ptree thermals_pt = xrt_core::sensor::read_thermals(_pDevice);
+      const boost::property_tree::ptree& thermals = thermals_pt.get_child("thermals", empty_ptree);
+      for (const auto& kv : thermals) {
+        const boost::property_tree::ptree& pt_temp = kv.second;
+        if (!pt_temp.get<bool>("is_present", false))
+          continue;
+        auto temp_val = pt_temp.get<uint64_t>("temp_C", 0);
+        temp_c = std::to_string(temp_val);
+        break;
+      }
+    }
+    catch (const std::exception&) {
+    }
+    _output << boost::format("%-23s  : %s\n") % "Temperature (C)" % temp_c;
   }
 
   _output << std::endl;
