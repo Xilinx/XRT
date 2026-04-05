@@ -19,6 +19,7 @@
 #include "core/common/unistd.h"
 #include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
+#include "core/common/api/kernel_int.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -99,7 +100,8 @@ is_page_aligned(const void* value)
 inline void
 insert_json_object(json& dest, const json& src)
 {
-  dest.insert(src.begin(), src.end());
+  if (!src.empty())
+    dest.insert(src.begin(), src.end());
 }
 
 // Lifted from xrt_kernel.cpp
@@ -318,7 +320,8 @@ class recipe
     get_report() const
     {
       json rpt;
-      rpt["xclbin"]["uuid"] = m_xclbin.get_uuid().to_string();
+      if (m_xclbin)
+        rpt["xclbin"]["uuid"] = m_xclbin.get_uuid().to_string();
       return rpt;
     }
   }; // class recipe::header
@@ -330,6 +333,7 @@ class recipe
     class buffer
     {
       std::string m_name;
+      xrt::hw_context m_hwctx; // for debug buffers maybe empty
 
       enum class type { input, output, inout, internal, weight, spill, unknown, debug };
       type m_type;
@@ -375,6 +379,7 @@ class recipe
       // wastes the buffer created here.
       buffer(const xrt::device& device, std::string name, type t, size_t sz)
         : m_name(std::move(name))
+        , m_hwctx{}
         , m_type(t)
         , m_size(sz)
         , m_xrt_bo{create_bo(device, m_type, m_size)}
@@ -382,17 +387,19 @@ class recipe
         XRT_DEBUGF("recipe::resources::buffer(%s), size(%d)\n", m_name.c_str(), m_size);
       }
 
-      buffer(const xrt::hw_context& hwctx, std::string name, type t, size_t sz)
+      buffer(xrt::hw_context hwctx, std::string name, type t, size_t sz)
         : m_name(std::move(name))
+        , m_hwctx(std::move(hwctx))
         , m_type(t)
         , m_size(sz)
-        , m_xrt_bo{create_bo(hwctx, m_type, m_size)}
+        , m_xrt_bo{create_bo(m_hwctx, m_type, m_size)}
       {
         XRT_DEBUGF("recipe::resources::buffer(%s), size(%d) type(debug)\n", m_name.c_str(), m_size);
       }
 
       // Copy constructor creates a new buffer with same properties as other
       // The xrt::bo is not copied, but a new one is created.
+      // This copy ctor is for a buffer at device level
       buffer(const xrt::device& device, const buffer& other)
         : m_name(other.m_name)
         , m_type(other.m_type)
@@ -400,11 +407,13 @@ class recipe
         , m_xrt_bo{create_bo(device, m_type, m_size)}
       {}
 
+      // Copy ctor for buffer in hwctx
       buffer(const xrt::hw_context& hwctx, const buffer& other)
         : m_name(other.m_name)
+        , m_hwctx(other.m_hwctx)
         , m_type(other.m_type)
         , m_size(other.m_size)
-        , m_xrt_bo{create_bo(hwctx, m_type, m_size)}
+        , m_xrt_bo{create_bo(m_hwctx, m_type, m_size)}
       {}
 
       static type
@@ -436,6 +445,9 @@ class recipe
           ? j.at("size").get<size_t>()  // required for internal or debug buffers
           : j.value<size_t>("size", 0); // optional otherwise
 
+        if (tp == type::debug && !hwctx)
+          throw recipe_error("recipe debug buffer must specify hwctx");
+
         return (tp == type::debug)
           ? buffer{hwctx, j.at("name").get<std::string>(), tp, sz}
           : buffer{device, j.at("name").get<std::string>(), tp, sz};
@@ -445,10 +457,10 @@ class recipe
       // This will create a new buffer object with the same properties as the
       // other buffer, but with a new xrt::bo object.
       static buffer
-      create_buffer(const xrt::device& device, const xrt::hw_context& hwctx, const buffer& other)
+      create_buffer(const xrt::device& device, const buffer& other)
       {
         return (other.m_type == type::debug)
-          ? buffer{hwctx, other}
+          ? buffer{other.m_hwctx, other}
           : buffer{device, other};
       }
 
@@ -490,27 +502,32 @@ class recipe
     {
       std::string m_name;
       std::string m_instance;
+      xrt::hw_context m_hwctx;
       xrt::xclbin::kernel m_xclbin_kernel;
       xrt::kernel m_xrt_kernel;
 
       // Kernel must be in xclbin.  The xclbin was used when the hwctx was
       // constructed.  Here we lookup the xclbin kernel object for additional
       // meta data (may not be needed).
-      kernel(const xrt::hw_context& ctx, const xrt::module& mod, std::string name, std::string xname)
+      kernel(xrt::hw_context hwctx, const xrt::module& mod, std::string name, std::string xname)
         : m_name{std::move(name)}
         , m_instance{std::move(xname)}
-        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
-        , m_xrt_kernel{xrt::ext::kernel{ctx, mod, m_instance}}
+        , m_hwctx{std::move(hwctx)}
+        , m_xclbin_kernel{m_hwctx.get_xclbin().get_kernel(m_instance)}
+        , m_xrt_kernel{xrt::ext::kernel{m_hwctx, mod, m_instance}}
       {
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
 
       // Legacy kernel (alveo) or elf file was used when the hwctx was constructed.
-      kernel(const xrt::hw_context& ctx, std::string name, std::string xname)
-        : m_name(std::move(name))
-        , m_instance(std::move(xname))
-        , m_xclbin_kernel{ctx.get_xclbin().get_kernel(m_instance)}
-        , m_xrt_kernel{xrt_core::hw_context_int::get_elf_flow(ctx) ? xrt::ext::kernel{ctx, m_instance} : xrt::kernel{ctx, m_instance}}
+      kernel(xrt::hw_context hwctx, std::string name, std::string xname)
+        : m_name{std::move(name)}
+        , m_instance{std::move(xname)}
+        , m_hwctx{std::move(hwctx)}
+        , m_xclbin_kernel{m_hwctx.get_xclbin().get_kernel(m_instance)}
+        , m_xrt_kernel{xrt_core::hw_context_int::get_elf_flow(m_hwctx)
+                       ? xrt::ext::kernel{m_hwctx, m_instance}
+                       : xrt::kernel{m_hwctx, m_instance}}
       {
         XRT_DEBUGF("recipe::resources::kernel(%s, %s)\n", m_name.c_str(), m_instance.c_str());
       }
@@ -578,20 +595,47 @@ class recipe
       }
     }; // class recipe::resources::cpu
 
+    using hwctx_map = std::map<std::string, xrt::hw_context>;
+
     xrt::device m_device;
-    xrt::hw_context m_hwctx;
+    hwctx_map m_hwctxs;
     std::map<std::string, buffer> m_buffers;
     std::map<std::string, kernel> m_kernels;
     std::map<std::string, cpu>    m_cpus;
 
+    static xrt::hw_context
+    get_xrt_hwctx_or_empty(const std::string& name, const hwctx_map& hwctxs)
+    {
+      if (!name.empty())
+        return hwctxs.at(name);
+
+      if (hwctxs.size() == 1)
+        return hwctxs.begin()->second;
+
+      return {};
+    }
+
+    static xrt::hw_context
+    get_xrt_hwctx_or_error(const std::string& name, const hwctx_map& hwctxs)
+    {
+      if (auto hwctx = get_xrt_hwctx_or_empty(name, hwctxs))
+        return hwctx;
+
+      throw recipe_error("Default hwctx is missing or ambigious");
+    }
+
     // create_buffers - create buffer objects from buffer property tree nodes
     static std::map<std::string, buffer>
-    create_buffers(const xrt::device& device, const xrt::hw_context& hwctx, const json& j)
+    create_buffers(const xrt::device& device,
+                   const hwctx_map& hwctxs,
+                   const json& buffer_array)
     {
       std::map<std::string, buffer> buffers;
-      for (const auto& [name, node] : j.items())
-        buffers.emplace(node.at("name").get<std::string>(),
-                        buffer::create_buffer(device, hwctx, node));
+      for (const auto& node : buffer_array) {
+        auto name = node.at("name").get<std::string>();
+        auto hwctx = get_xrt_hwctx_or_empty(node.value("hwctx", ""), hwctxs);
+        buffers.emplace(std::move(name), buffer::create_buffer(device, hwctx, node));
+      }
 
       return buffers;
     }
@@ -600,98 +644,199 @@ class recipe
     // This will create new buffer objects with the same properties as the
     // other buffers, but with new xrt::bo objects.
     static std::map<std::string, buffer>
-    create_buffers(const xrt::device& device, const xrt::hw_context& hwctx,
+    create_buffers(const xrt::device& device,
                    const std::map<std::string, buffer>& others)
     {
       std::map<std::string, buffer> buffers;
       for (const auto& [name, other] : others)
-        buffers.emplace(name, buffer::create_buffer(device, hwctx, other));
+        buffers.emplace(name, buffer::create_buffer(device, other));
 
       return buffers;
     }
 
     // create_kernels - create kernel objects from kernel property tree nodes
     static std::map<std::string, kernel>
-    create_kernels(xrt::device device, const xrt::hw_context& hwctx,
-                   const json& j, const xartifacts::repo& repo)
+    create_kernels(const xrt::device&,
+                   const hwctx_map& hwctxs,
+                   const json& kernel_array,
+                   const xartifacts::repo& repo)
     {
       std::map<std::string, kernel> kernels;
-      for (const auto& [name, node] : j.items())
-        kernels.emplace(node.at("name").get<std::string>(), kernel::create_kernel(hwctx, node, repo));
-
+      for (const auto& kobj : kernel_array) {
+        auto name = kobj.at("name").get<std::string>();
+        auto hwctx = get_xrt_hwctx_or_error(kobj.value("hwctx", ""), hwctxs);
+        kernels.emplace(std::move(name), kernel::create_kernel(hwctx, kobj, repo));
+      }
+   
       return kernels;
     }
 
     // create_cpus - create cpu objects from cpu property tree nodes
     static std::map<std::string, cpu>
-    create_cpus(const json& j)
+    create_cpus(const json& cpu_array)
     {
       std::map<std::string, cpu> cpus;
-      for (const auto& [name, node] : j.items())
-        cpus.emplace(node.at("name").get<std::string>(), cpu::create_cpu(node));
+      for (const auto& cobj : cpu_array)
+        cpus.emplace(cobj.at("name").get<std::string>(), cpu::create_cpu(cobj));
 
       return cpus;
     }
 
+    // create_hwctx() - Create from legacy xclbin
     static xrt::hw_context
     create_hwctx(xrt::device device, const xrt::xclbin& xclbin,
+                 const xrt::hw_context::qos_type& cfg)
+    {
+      return {device, device.register_xclbin(xclbin), cfg};
+    }
+
+    // create_hwctx() - Create from legacy header
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device,
+                 const header& header, 
                  const xrt::hw_context::qos_type& qos)
     {
       try {
-        return {device, device.register_xclbin(xclbin), qos};
+        if (auto xclbin = header.get_xclbin())
+          // Argh. fix register_xclbin to be const
+          return create_hwctx(device, xclbin, qos);
+
+        xrt::hw_context hwctx {device, qos, xrt::hw_context::access_mode::shared};
+        size_t elf_count = 0;
+        for (const auto& program : header.get_programs()) {
+          hwctx.add_config(program);
+          ++elf_count;
+        }
+
+        if (elf_count)
+          return hwctx;
       }
       catch (const std::exception& ex) {
         throw xrt_core::runner::hwctx_error{ex.what()};
       }
+
+      return {};
     }
 
+    // create_hwctx() - Create from programs array
     static xrt::hw_context
-    create_hwctx(const xrt::device& device, const xrt::aie::program& program,
-                 const xrt::hw_context::qos_type& qos)
+    create_hwctx(const xrt::device& device,
+                 const json& programs_array,
+                 const xrt::hw_context::qos_type& qos,
+                 const xartifacts::repo& repo)
     {
       try {
-        return {device, program, qos, xrt::hw_context::access_mode::shared};
-      }
-      catch (const std::exception& ex) {
-        throw xrt_core::runner::hwctx_error{ex.what()};
-      }
-    }
-
-    static xrt::hw_context
-    create_hwctx(const xrt::device& device, const header& header, 
-                 const xrt::hw_context::qos_type& qos)
-    {
-      if (auto xclbin = header.get_xclbin())
-        return create_hwctx(device, xclbin, qos);
-
-      xrt::hw_context hwctx {device, qos, xrt::hw_context::access_mode::shared};
-      size_t elf_count = 0;
-      for (const auto& program : header.get_programs()) {
-        hwctx.add_config(program);
-        ++elf_count;
-      }
-
-      if (elf_count)
-        return hwctx;
+        xrt::hw_context hwctx {device, qos, xrt::hw_context::access_mode::shared};
       
-      throw recipe_error("No program or xclbin specified");
+        // Read programs array"programs": [ "p1", "p2", ...]
+        size_t elf_count = 0;
+        for (const auto& program : programs_array) {
+          auto data = repo.get(program);
+          hwctx.add_config(xrt::elf{std::string_view{data.data(), data.size()}});
+          ++elf_count;
+        }
+
+        if (elf_count)
+          return hwctx;
+
+      }
+      catch (const std::exception& ex) {
+        throw xrt_core::runner::hwctx_error{ex.what()};
+      }
+          
+      throw recipe_error("No program specified for hwctx");
     }
 
+    // create_hwctx() - Create from resource::hwctxs[]::hwctx
+    //
+    // "hwctxs" : [
+    // {
+    //   "name": "hwctx1",            // required
+    //   "xclbin": "design.xclbin",   // mutually exclusive with programs
+    //   "programs"": [ "p1", ... ],  // mutually exclusive with xclbin
+    //   "qos": {                     // optional
+    //     "key1": "value1",
+    //     "key2": "value2"
+    //   }
+    //  },
+    // 
+    static xrt::hw_context
+    create_hwctx(const xrt::device& device,
+                 const json& hwctx_object,
+                 const xartifacts::repo& repo)
+    {
+      auto read_qos = [&](const json& qos_object) {
+        xrt::hw_context::qos_type qos;
+        for (auto [key, value] : qos_object.items())
+          qos.emplace(std::move(key), value.get<uint32_t>());
+
+        return qos;
+      };
+                                          
+      if (hwctx_object.contains("xclbin")) {
+        auto data = repo.get(hwctx_object.at("xclbin").get<std::string>());
+        return create_hwctx(device, xrt::xclbin{std::string_view{data.data(), data.size()}},
+                 read_qos(hwctx_object.value("qos", json::object())));
+      }
+
+      if (hwctx_object.contains("programs"))
+        return create_hwctx(device, hwctx_object.at("programs"),
+                 read_qos(hwctx_object.value("qos", json::object())), repo);
+
+      throw recipe_error("No xclbin or program specified for hwctx");
+    }
+
+    // create_hwctxs() - Create set of hwctxs legacy or hwctx array
+    //
+    // "header": {  // legacy
+    //   "xclbin": "design.xclbin"  // mutually exclusive with programs
+    //   "programs": [ ... ]        // mutually exclusive with xclbin
+    // },
+    // "resources" : {
+    //   "hwctxs": [ {...}, {...}, ... ]
+    // }
+    //
+    // @param qos Applicable only to legacy construction
+    static std::map<std::string, xrt::hw_context>
+    create_hwctxs(const xrt::device& device,
+                  const header& header,
+                  const json& hwctx_array,
+                  const xrt::hw_context::qos_type& qos,
+                  const xartifacts::repo& repo)
+    {
+      std::map<std::string, xrt::hw_context> hwctxs;
+
+      // Legacy from header
+      if (auto hwctx = create_hwctx(device, header, qos))
+        hwctxs.emplace("header", std::move(hwctx));
+
+      // From resources::hwctxs [ {}, {}, ...]
+      for (const auto& hwctx_object : hwctx_array)
+        hwctxs.emplace(hwctx_object.at("name").get<std::string>(),
+                       create_hwctx(device, hwctx_object, repo));
+
+      if (hwctxs.empty())
+        throw recipe_error("Could not create hwctx, xclbin or program is required in recipe");
+        
+      return hwctxs;
+    }
+
+   
   public:
     resources(xrt::device device, const header& header,
               const xrt::hw_context::qos_type& qos,
               const json& recipe, const xartifacts::repo& repo)
       : m_device{std::move(device)}
-      , m_hwctx{create_hwctx(m_device, header, qos)}
-      , m_buffers{create_buffers(m_device, m_hwctx, recipe.at("buffers"))}
-      , m_kernels{create_kernels(m_device, m_hwctx, recipe.at("kernels"), repo)}
+      , m_hwctxs{create_hwctxs(m_device, header, recipe.value("hwctxs", json::array()), qos, repo)}
+      , m_buffers{create_buffers(m_device, m_hwctxs, recipe.at("buffers"))}
+      , m_kernels{create_kernels(m_device, m_hwctxs, recipe.at("kernels"), repo)}
       , m_cpus{create_cpus(recipe.value("cpus", empty_json))} // optional
     {}
 
     resources(const resources& other)
       : m_device{other.m_device}                             // share device
-      , m_hwctx{other.m_hwctx}                               // share hwctx
-      , m_buffers{create_buffers(m_device, m_hwctx, other.m_buffers)} // new buffers
+      , m_hwctxs{other.m_hwctxs}                             // share hwctxs
+      , m_buffers{create_buffers(m_device, other.m_buffers)} // new buffers
       , m_kernels{other.m_kernels}                           // share kernels
       , m_cpus{other.m_cpus}                                 // share cpus
     {}
@@ -703,9 +848,9 @@ class recipe
     }
 
     xrt::hw_context
-    get_xrt_hwctx() const
+    get_xrt_hwctx(const std::string& name) const
     {
-      return m_hwctx;
+      return m_hwctxs.at(name);
     }
 
     xrt::kernel
@@ -758,7 +903,7 @@ class recipe
           return value;
         });
       rpt["resources"]["kernels"] =  m_kernels.size();
-      rpt["resources"]["hwctx_coloumns"] = xrt_core::hw_context_int::get_partition_size(m_hwctx);
+      rpt["resources"]["hwctxs"] =  m_hwctxs.size();
       return rpt;
     }
   }; // class recipe::resources
@@ -829,7 +974,6 @@ public:
         argument(const resources& resources, const argument& other)
           : m_buffer{resources::buffer::create_buffer           // new resources:buffer
                      (resources.get_device(),
-                      resources.get_xrt_hwctx(),
                       other.m_buffer)}                          // (see earlier comment)
           , m_offset{other.m_offset}                            // same offset
           , m_size{other.m_size}                                // same size
@@ -976,7 +1120,10 @@ public:
       static xrt::run
       create_kernel_run(const resources& resources, const json& j)
       {
-        auto name = j.at("name").get<std::string>();
+        auto name = j.contains("kernel")
+          ? j.at("kernel").get<std::string>()
+          : j.at("name").get<std::string>();  // deprecated
+
         return xrt::run{resources.get_xrt_kernel_or_error(name)};
       }
 
@@ -998,7 +1145,9 @@ public:
 
     public:
       run(const resources& resources, const json& j)
-        : m_name{j.at("name").get<std::string>()}
+        : m_name{j.contains("kernel")
+                 ? j.at("kernel").get<std::string>()
+                 : j.at("name").get<std::string>()} // deprecated
         , m_run{create_run(resources, j)}
         , m_args{create_and_set_args(resources, m_run, j.at("arguments"))}
         , m_constants{create_and_set_constant_args(m_run, j.value("constants", json::object()))}
@@ -1030,6 +1179,12 @@ public:
       is_cpu_run() const
       {
         return std::holds_alternative<xrt_core::cpu::run>(m_run);
+      }
+
+      xrt::hw_context
+      get_xrt_hwctx() const
+      {
+        return xrt_core::kernel_int::get_hw_ctx(get_xrt_run());
       }
 
       xrt::run
@@ -1257,7 +1412,7 @@ public:
             crl = nullptr;
 
           if (!nrl) {
-            auto rl = std::make_unique<npu_runlist>(resources.get_xrt_hwctx(), rlt);
+            auto rl = std::make_unique<npu_runlist>(run.get_xrt_hwctx(), rlt);
             nrl = rl.get();
             runlists.push_back(std::move(rl));
           }
@@ -1282,11 +1437,11 @@ public:
 
     // create_runs() - create a vector of runs from a property tree
     static std::vector<run>
-    create_runs(const resources& resources, const json& j)
+    create_runs(const resources& resources, const json& runs_array)
     {
       std::vector<run> runs;
-      for (const auto& [name, node] : j.items())
-        runs.emplace_back(resources, node);
+      for (const auto& run_object : runs_array)
+        runs.emplace_back(resources, run_object);
 
       return runs;
     }
@@ -1427,7 +1582,7 @@ public:
          const xartifacts::repo& repo)
     : m_device{std::move(device)}
     , m_recipe_json(std::move(recipe)) // paren required, else initialized as array
-    , m_header{m_recipe_json.at("header"), repo}
+    , m_header{m_recipe_json.value("header", json::object()), repo}
     , m_resources{m_device, m_header, qos, m_recipe_json.at("resources"), repo}
     , m_execution{m_resources, m_recipe_json.at("execution"), runlist_threshold }
   {}
