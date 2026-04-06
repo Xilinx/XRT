@@ -94,14 +94,12 @@ get_device_id(const std::shared_ptr<xrt_core::device>& device,
   // Byte layout matches hip_device_get_uuid().
   if (device_class == xrt_core::query::device_class::type::ryzen) {
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    uint8_t bytes[16] = {0};
-    std::memcpy(bytes,     &std::get<0>(bdf), sizeof(uint16_t));
-    std::memcpy(bytes + 2, &std::get<1>(bdf), sizeof(uint16_t));
-    std::memcpy(bytes + 4, &std::get<2>(bdf), sizeof(uint16_t));
-    std::memcpy(bytes + 6, &std::get<3>(bdf), sizeof(uint16_t));
-    return boost::str(boost::format("%02x%02x%02x%02x-%02x%02x-%02x%02x-0000-000000000000")
-      % (unsigned)bytes[0] % (unsigned)bytes[1] % (unsigned)bytes[2] % (unsigned)bytes[3]
-      % (unsigned)bytes[4] % (unsigned)bytes[5] % (unsigned)bytes[6] % (unsigned)bytes[7]);
+    xuid_t uid = {};
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(&uid);
+    std::apply([&ptr](const auto&... fields) {
+      ((std::memcpy(ptr, &fields, sizeof(fields)), ptr += sizeof(fields)), ...);
+    }, bdf);
+    return xrt::uuid(uid).to_string();
   }
 
   // Alveo 2RP: UUID from loaded xclbin logic region
