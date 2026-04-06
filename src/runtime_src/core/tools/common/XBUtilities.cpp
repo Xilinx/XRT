@@ -86,6 +86,42 @@ XBUtilities::Timer::format_time(std::chrono::duration<double> duration)
   return formatted_time;
 }
 
+static std::string
+get_device_id(const std::shared_ptr<xrt_core::device>& device,
+              xrt_core::query::device_class::type device_class)
+{
+  // Ryzen/NPU: no ROM or xclbin UUID — derive from PCIe BDF.
+  // Byte layout matches hip_device_get_uuid().
+  if (device_class == xrt_core::query::device_class::type::ryzen) {
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    uint8_t bytes[16] = {0};
+    std::memcpy(bytes,     &std::get<0>(bdf), sizeof(uint16_t));
+    std::memcpy(bytes + 2, &std::get<1>(bdf), sizeof(uint16_t));
+    std::memcpy(bytes + 4, &std::get<2>(bdf), sizeof(uint16_t));
+    std::memcpy(bytes + 6, &std::get<3>(bdf), sizeof(uint16_t));
+    return boost::str(boost::format("%02x%02x%02x%02x-%02x%02x-%02x%02x-0000-000000000000")
+      % (unsigned)bytes[0] % (unsigned)bytes[1] % (unsigned)bytes[2] % (unsigned)bytes[3]
+      % (unsigned)bytes[4] % (unsigned)bytes[5] % (unsigned)bytes[6] % (unsigned)bytes[7]);
+  }
+
+  // Alveo 2RP: UUID from loaded xclbin logic region
+  try {
+    auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
+    if (!logic_uuids.empty())
+      return xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]);
+  }
+  catch(...) {}
+
+  // Alveo 1RP: timestamp-based ROM id
+  try {
+    return xrt_core::query::rom_time_since_epoch::to_string(
+      xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device));
+  }
+  catch(...) {}
+
+  return "";
+}
+
 boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
 {
@@ -120,17 +156,10 @@ XBUtilities::get_available_devices(bool inUserDomain)
         break;
       }
       
-      try { //1RP
-        pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      }
-      catch(...) {
-        // The id wasn't added
-      }
-
-      try { //2RP
-        auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-        if (!logic_uuids.empty())
-          pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+      try {
+        auto id = get_device_id(device, device_class);
+        if (!id.empty())
+          pt_dev.put("id", id);
       }
       catch(...) {
         // The id wasn't added
