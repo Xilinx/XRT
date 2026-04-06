@@ -38,7 +38,7 @@ get_clock(const std::shared_ptr<xrt_core::device>& dev)
     if (res.type != xrt_core::query::xrt_resource_raw::resource_type::npu_curr_clk_max)
       continue;
     npu_hclock = res.data_uint64;
-  } 
+  }
   return npu_hclock;
 }
 
@@ -68,14 +68,14 @@ void static
 run_strix(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive, boost::property_tree::ptree& ptree) {
   try {
     std::string recipe_data = archive->data("recipe_gemm.json");
-    std::string profile_data = archive->data("profile_gemm.json"); 
-    
+    std::string profile_data = archive->data("profile_gemm.json");
+
     // Extract artifacts using helper method
     auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
-      "gemm.xclbin", 
-      "gemm.elf" 
+      "gemm.xclbin",
+      "gemm.elf"
     });
-    
+
     // Create runner with recipe, profile, and artifacts repository
     xrt_core::runner runner(xrt::device(dev), recipe_data, profile_data, artifacts_repo);
 
@@ -120,19 +120,19 @@ run_npu3(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* 
   try {
     // Extract gemm.elf from archive
     auto artifacts_repo = XBU::extract_artifacts_from_archive(archive, {
-      "gemm.elf" 
+      "gemm.elf"
     });
     xrt::device working_dev(dev);
 
     // Get the ELF data from artifacts repository
     auto elf_data = artifacts_repo.get("gemm.elf");
-    
+
     // Create program from ELF data (full ELF flow)
     std::string_view elf_view(elf_data.data(), elf_data.size());
     xrt::aie::program program(elf_view);
 
     // Create hw_context with program (shared access mode for full ELF flow)
-    xrt::hw_context hwctx(working_dev, program, {}, xrt::hw_context::access_mode::shared);
+    xrt::hw_context hwctx(working_dev, program);
 
     xrt::ext::kernel kernel(hwctx, "DPU");
     xrt::run run {kernel};
@@ -193,7 +193,7 @@ boost::property_tree::ptree
 TestGemm::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::archive* archive)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  
+
   if (archive == nullptr) {
     ptree.put("status", XBValidateUtils::test_token_failed);
     XBValidateUtils::logger(ptree, "Error", "No archive provided, skipping test");
@@ -211,7 +211,7 @@ TestGemm::run(const std::shared_ptr<xrt_core::device>& dev, const xrt_core::arch
     run_strix(dev, archive, ptree);
   else
     run_npu3(dev, archive, ptree);
-  
-  
+
+
   return ptree;
 }
