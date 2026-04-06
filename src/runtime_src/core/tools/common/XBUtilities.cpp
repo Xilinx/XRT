@@ -95,7 +95,7 @@ get_device_id(const std::shared_ptr<xrt_core::device>& device,
   if (device_class == xrt_core::query::device_class::type::ryzen) {
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     xuid_t uid = {};
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(&uid);
+    auto* ptr = reinterpret_cast<uint8_t*>(&uid);
     std::apply([&ptr](const auto&... fields) {
       ((std::memcpy(ptr, &fields, sizeof(fields)), ptr += sizeof(fields)), ...);
     }, bdf);
