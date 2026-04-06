@@ -51,12 +51,17 @@ if (NOT XRT_EDGE)
   # For embedded, headers and libraries are installed in /usr
   # Not requeired setup.sh/.csh
   xrt_add_subdirectory(tools/scripts)
-  if (XRT_NPU)
+  if (XRT_NPU OR (XDP_VE2_BUILD_CMAKE STREQUAL "yes"))
     # Used by xdp for include search path
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/src)
     set(AIE_CODEGEN_BUILD_SHARED OFF)
     set(XDP_USE_AIE_CODEGEN_CMAKE 1)
     xrt_add_subdirectory_disable_install_target(aie-rt/src)
+  endif()
+
+  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+    xrt_add_subdirectory_disable_install_target(aie-rt/fal)
+    set(AIEFAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aie-rt/fal/src/include)
   endif()
 
 endif()
@@ -84,12 +89,17 @@ else()
     add_compile_options( ${XRT_WARN_OPTS} )
   endif()
 
-  if (XRT_NPU)
+  if (XRT_NPU OR (XDP_VE2_BUILD_CMAKE STREQUAL "yes"))
     # Used by xdp for include search path
     set(AIERT_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/src)
     set(AIE_CODEGEN_BUILD_SHARED OFF)
     set(XDP_USE_AIE_CODEGEN_CMAKE 1)
     xrt_add_subdirectory_disable_install_target(aie-rt/src)
+  endif()
+
+  if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
+    xrt_add_subdirectory_disable_install_target(aie-rt/fal)
+    set(AIEFAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aie-rt/fal/src/include)
   endif()
 
   # Build Subdirectories
