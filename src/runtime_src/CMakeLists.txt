@@ -30,7 +30,6 @@ endif(XRT_ENABLE_WERROR)
 if (NOT XRT_EDGE)
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
-xrt_add_subdirectory(xdp)
 
 xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
@@ -66,8 +65,10 @@ if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
   set(XDP_USE_AIE_CODEGEN_CMAKE 1)
   xrt_add_subdirectory_disable_install_target(aie-rt/src)
   xrt_add_subdirectory_disable_install_target(aie-rt/fal)
-  set(AIEFAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aie-rt/fal/src/include)
+  set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/fal/src/include)
 endif()
+
+xrt_add_subdirectory(xdp)
 
 # Attach to the user's linker flags
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
@@ -102,7 +103,7 @@ else()
 
   if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
     xrt_add_subdirectory_disable_install_target(aie-rt/fal)
-    set(AIEFAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aie-rt/fal/src/include)
+    set(AIEFAL_DIR ${CMAKE_CURRENT_BINARY_DIR}/aie-rt/fal/src/include)
   endif()
 
   # Build Subdirectories
