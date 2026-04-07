@@ -4248,6 +4248,11 @@ run::
 start()
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_start);
+  {
+    auto hwctx = handle->get_kernel()->get_hw_context();
+    xrt_core::xdp::run_start(this, hwctx.get_handle().get(), handle->get_uid(),
+                             handle->get_kernel()->get_name().c_str());
+  }
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();
@@ -4280,10 +4285,17 @@ run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait);
-  return xdp::native::profiling_wrapper("xrt::run::wait",
+  auto state = xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
+  {
+    auto hwctx = handle->get_kernel()->get_hw_context();
+    xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
+                            handle->get_uid(),
+                            handle->get_kernel()->get_name().c_str(), static_cast<int>(state));
+  }
+  return state;
 }
 
 std::cv_status
@@ -4291,10 +4303,18 @@ run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
-  return xdp::native::profiling_wrapper("xrt::run::wait",
+  auto cvst = xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
     });
+  {
+    auto hwctx = handle->get_kernel()->get_hw_context();
+    xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
+                            handle->get_uid(),
+                            handle->get_kernel()->get_name().c_str(),
+                            static_cast<int>(handle->state()));
+  }
+  return cvst;
 }
 
 ert_cmd_state

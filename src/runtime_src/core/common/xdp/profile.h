@@ -31,6 +31,16 @@ void
 run_constructor(void* run, void* hwctx_handle, uint32_t run_uid,
                 const char* kernel_name, void* elf_handle);
 
+// run_start should be called immediately before a run is submitted to the device.
+void
+run_start(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name);
+
+// run_wait should be called when a run wait completes (after the underlying wait returns).
+// ert_cmd_state is passed as int for a stable C plugin ABI.
+void
+run_wait(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name,
+         int ert_cmd_state);
+
 } // end namespace xrt_core::xdp
 
 #endif

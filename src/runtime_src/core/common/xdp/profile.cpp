@@ -161,6 +161,8 @@ namespace xrt_core::xdp::aie::dtrace {
 std::function<void(void*, bool)> update_device_cb;
 std::function<void(void*)> end_poll_cb;
 std::function<void(void*, void*, uint32_t, const char*, void*)> run_constructor_cb;
+std::function<void(void*, void*, uint32_t, const char*)> run_start_cb;
+std::function<void(void*, void*, uint32_t, const char*, int)> run_wait_cb;
 
 void
 register_callbacks(void* handle)
@@ -168,10 +170,14 @@ register_callbacks(void* handle)
   using ftype = void (*)(void*);
   using utype = void (*)(void*, bool);
   using rctype = void (*)(void*, void*, uint32_t, const char*, void*);
+  using rsctype = void (*)(void*, void*, uint32_t, const char*);
+  using rwctype = void (*)(void*, void*, uint32_t, const char*, int);
 
   update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDtraceDevice"));
   end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDtracePoll"));
   run_constructor_cb = reinterpret_cast<rctype>(xrt_core::dlsym(handle, "aieDtraceRunConstructor"));
+  run_start_cb = reinterpret_cast<rsctype>(xrt_core::dlsym(handle, "aieDtraceRunStart"));
+  run_wait_cb = reinterpret_cast<rwctype>(xrt_core::dlsym(handle, "aieDtraceRunWait"));
 }
 
 void
@@ -208,6 +214,20 @@ run_constructor(void* run, void* hwctx, uint32_t run_uid, const char* kernel_nam
 {
   if (run_constructor_cb)
     run_constructor_cb(run, hwctx, run_uid, kernel_name, elf_handle);
+}
+
+void
+run_start(void* run, void* hwctx, uint32_t run_uid, const char* kernel_name)
+{
+  if (run_start_cb)
+    run_start_cb(run, hwctx, run_uid, kernel_name);
+}
+
+void
+run_wait(void* run, void* hwctx, uint32_t run_uid, const char* kernel_name, int ert_cmd_state)
+{
+  if (run_wait_cb)
+    run_wait_cb(run, hwctx, run_uid, kernel_name, ert_cmd_state);
 }
 
 } // end namespace xrt_core::xdp::aie::dtrace
@@ -865,6 +885,21 @@ run_constructor(void* run, void* hwctx_handle, uint32_t run_uid, const char* ker
   if (xrt_core::config::get_aie_dtrace())
     xrt_core::xdp::aie::dtrace::run_constructor(run, hwctx_handle, run_uid, kernel_name,
                                                 elf_handle);
+}
+
+void
+run_start(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name)
+{
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::run_start(run, hwctx_handle, run_uid, kernel_name);
+}
+
+void
+run_wait(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name,
+         int ert_cmd_state)
+{
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::run_wait(run, hwctx_handle, run_uid, kernel_name, ert_cmd_state);
 }
 
 } // end namespace xrt_core::xdp
