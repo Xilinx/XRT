@@ -506,7 +506,7 @@ struct pcie_bdf : request
     std::apply([&ptr](const auto&... fields) {
       ((std::memcpy(ptr, &fields, sizeof(fields)), ptr += sizeof(fields)), ...);
     }, bdf);
-    return xrt::uuid(uid);
+    return {uid};
   }
 };
 
