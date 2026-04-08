@@ -106,6 +106,13 @@ public:
   hw_context(const xrt::device& device, const cfg_param_type& cfg_param, access_mode mode);
 
   /**
+   * hw_context() - Constructor for default shared access mode
+   */
+  hw_context(const xrt::device& device, const cfg_param_type& cfg_param)
+    : hw_context{device, cfg_param, access_mode::shared}
+  {}
+
+  /**
    * hw_context() - Constructor with Experimental configuration type and access control
    *
    * @param device
@@ -124,6 +131,13 @@ public:
   hw_context(const xrt::device& device, const cfg_type& cfg, access_mode mode);
 
   /**
+   * hw_context() - Constructor for default shared access mode
+   */
+  hw_context(const xrt::device& device, const cfg_type& cfg)
+    : hw_context{device, cfg, access_mode::shared}
+  {}
+      
+      /**
    * hw_context() - Constructor with Elf file
    *
    * @param device
@@ -144,6 +158,13 @@ public:
              const cfg_param_type& cfg_param, access_mode mode);
 
   /**
+   * hw_context() - Constructor for default shared access mode
+   */
+  hw_context(const xrt::device& device, const xrt::elf& elf, const cfg_param_type& cfg_param)
+    : hw_context{device, elf, cfg_param, access_mode::shared}
+  {}
+
+  /**
    * hw_context() - Constructor with Elf file and Experimental configuration type
    *
    * @param device
@@ -162,6 +183,12 @@ public:
   hw_context(const xrt::device& device, const xrt::elf& elf,
              const cfg_type& cfg, access_mode mode);
 
+  /**
+   * hw_context() - Constructor for default shared access mode
+   */
+  hw_context(const xrt::device& device, const xrt::elf& elf, const cfg_type& cfg)
+    : hw_context{device, elf, cfg, access_mode::shared}
+  {}
 
   /**
     * hw_context() - Constructor with Elf file with implied qos and mode
