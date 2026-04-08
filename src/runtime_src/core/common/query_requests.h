@@ -497,6 +497,17 @@ struct pcie_bdf : request
       (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value) %
        std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
   }
+
+  static xrt::uuid
+  to_uuid(const result_type& bdf)
+  {
+    xuid_t uid = {};
+    auto* ptr = reinterpret_cast<uint8_t*>(&uid);
+    std::apply([&ptr](const auto&... fields) {
+      ((std::memcpy(ptr, &fields, sizeof(fields)), ptr += sizeof(fields)), ...);
+    }, bdf);
+    return xrt::uuid(uid);
+  }
 };
 
 /**

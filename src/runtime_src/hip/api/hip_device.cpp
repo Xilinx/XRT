@@ -116,10 +116,8 @@ hip_device_get_uuid(hipDevice_t device)
 
   hipUUID uid = {0};
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>((device_cache.get_or_error(device))->get_xrt_device().get_handle());
-  std::memcpy(uid.bytes, &std::get<0>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + sizeof(uint16_t), &std::get<1>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + 2 * sizeof(uint16_t), &std::get<2>(bdf), sizeof(uint16_t));
-  std::memcpy(uid.bytes + 3 * sizeof(uint16_t), &std::get<3>(bdf), sizeof(uint16_t));
+  auto uuid = xrt_core::query::pcie_bdf::to_uuid(bdf);
+  std::memcpy(uid.bytes, uuid.get(), sizeof(uid.bytes));
   return uid;
 }
 

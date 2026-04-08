@@ -86,39 +86,6 @@ XBUtilities::Timer::format_time(std::chrono::duration<double> duration)
   return formatted_time;
 }
 
-static std::string
-get_device_id(const std::shared_ptr<xrt_core::device>& device,
-              xrt_core::query::device_class::type device_class)
-{
-  // Ryzen/NPU: no ROM or xclbin UUID — derive from PCIe BDF.
-  // Byte layout matches hip_device_get_uuid().
-  if (device_class == xrt_core::query::device_class::type::ryzen) {
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    xuid_t uid = {};
-    auto* ptr = reinterpret_cast<uint8_t*>(&uid);
-    std::apply([&ptr](const auto&... fields) {
-      ((std::memcpy(ptr, &fields, sizeof(fields)), ptr += sizeof(fields)), ...);
-    }, bdf);
-    return xrt::uuid(uid).to_string();
-  }
-
-  // Alveo 2RP: UUID from loaded xclbin logic region
-  try {
-    auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-    if (!logic_uuids.empty())
-      return xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]);
-  }
-  catch(...) {}
-
-  // Alveo 1RP: timestamp-based ROM id
-  try {
-    return xrt_core::query::rom_time_since_epoch::to_string(
-      xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device));
-  }
-  catch(...) {}
-
-  return "";
-}
 
 boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
@@ -154,13 +121,26 @@ XBUtilities::get_available_devices(bool inUserDomain)
         break;
       }
       
-      try {
-        auto id = get_device_id(device, device_class);
-        if (!id.empty())
-          pt_dev.put("id", id);
+      if (device_class == xrt_core::query::device_class::type::ryzen) {
+        try { // Ryzen/NPU: derive UUID from PCIe BDF
+          pt_dev.put("id", xrt_core::query::pcie_bdf::to_uuid(
+            xrt_core::device_query<xrt_core::query::pcie_bdf>(device)).to_string());
+        }
+        catch(...) {}
       }
-      catch(...) {
-        // The id wasn't added
+      else {
+        try { //1RP
+          pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(
+            xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+        }
+        catch(...) {}
+
+        try { //2RP - overwrites 1RP if available
+          auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
+          if (!logic_uuids.empty())
+            pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+        }
+        catch(...) {}
       }
 
       try {
