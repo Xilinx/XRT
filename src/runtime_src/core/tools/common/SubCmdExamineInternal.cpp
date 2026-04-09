@@ -156,7 +156,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   std::vector<std::string> reportsToRun(m_reportNames);
   if (reportsToRun.empty()) {
     // Default report with or without --advanced (advanced only unlocks hidden options/reports).
-    reportsToRun.push_back("host");
+    reportsToRun.emplace_back("host");
   }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
