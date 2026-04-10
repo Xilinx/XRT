@@ -86,6 +86,7 @@ XBUtilities::Timer::format_time(std::chrono::duration<double> duration)
   return formatted_time;
 }
 
+
 boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
 {
@@ -120,20 +121,26 @@ XBUtilities::get_available_devices(bool inUserDomain)
         break;
       }
       
-      try { //1RP
-        pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+      if (device_class == xrt_core::query::device_class::type::ryzen) {
+        try { // Ryzen/NPU: derive UUID from PCIe BDF
+          pt_dev.put("id", xrt_core::query::pcie_bdf::to_uuid(
+            xrt_core::device_query<xrt_core::query::pcie_bdf>(device)).to_string());
+        }
+        catch(...) {}
       }
-      catch(...) {
-        // The id wasn't added
-      }
+      else {
+        try { //1RP
+          pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(
+            xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+        }
+        catch(...) {}
 
-      try { //2RP
-        auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-        if (!logic_uuids.empty())
-          pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-      }
-      catch(...) {
-        // The id wasn't added
+        try { //2RP - overwrites 1RP if available
+          auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
+          if (!logic_uuids.empty())
+            pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+        }
+        catch(...) {}
       }
 
       try {
