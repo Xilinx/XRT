@@ -9,11 +9,12 @@
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 
+#include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <vector>
-#include <memory>
-#include <map>
 
 namespace xq = xrt_core::query;
 
@@ -129,11 +130,14 @@ public:
 // Each shim (including smi_default) should create objects of smi class and populate
 // them with their custom fields. Currently, shims create singleton instanced of it. 
 class smi {
+  mutable std::mutex m_mutex;
   std::map<std::string, subcommand> m_subcommands;
 
 public:
   void
-  add_subcommand(std::string name, subcommand subcmd) {
+  add_subcommand(std::string name, subcommand subcmd)
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_subcommands.emplace(std::move(name), std::move(subcmd));
   }
 
