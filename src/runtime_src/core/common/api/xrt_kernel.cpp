@@ -4217,6 +4217,23 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 
 } // xrt_core::kernel_int
 
+namespace {
+
+inline xrt_core::xdp::run_info
+make_run_info(void* run, void* hwctx_handle, uint32_t run_uid,
+              const char* kernel_name, void* elf_handle = nullptr, int ert_cmd_state = 0)
+{
+  xrt_core::xdp::run_info info;
+  info.run = run;
+  info.hwctx_handle = hwctx_handle;
+  info.run_uid = run_uid;
+  info.kernel_name = kernel_name;
+  info.elf_handle = elf_handle;
+  info.ert_cmd_state = ert_cmd_state;
+  return info;
+}
+
+} // anonymous namespace
 
 ////////////////////////////////////////////////////////////////
 // xrt_kernel C++ API implmentations (xrt_kernel.h)
@@ -4228,14 +4245,14 @@ run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
            ("xrt::run::run", alloc_run, krnl.get_handle()))
 {
-#ifdef XDP_VE2_BUILD
-  auto hwctx = krnl.get_handle()->get_hw_context();
-  const auto& mod = krnl.get_handle()->get_module();
-  auto elf_hdl = mod ? xrt_core::module_int::get_elf_handle(mod) : nullptr;
-  xrt_core::xdp::run_constructor(this, hwctx.get_handle().get(), handle->get_uid(),
-                                 krnl.get_handle()->get_name().c_str(),
-                                 elf_hdl.get());
-#endif
+  if (xrt_core::config::get_aie_dtrace()) {
+    auto hwctx = krnl.get_handle()->get_hw_context();
+    const auto& mod = krnl.get_handle()->get_module();
+    auto elf_hdl = mod ? xrt_core::module_int::get_elf_handle(mod) : nullptr;
+    auto info = make_run_info(this, hwctx.get_handle().get(), handle->get_uid(),
+                              krnl.get_handle()->get_name().c_str(), elf_hdl.get());
+    xrt_core::xdp::run_constructor(info);
+  }
 }
 
 void
@@ -4250,13 +4267,12 @@ run::
 start()
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_start);
-#ifdef XDP_VE2_BUILD
-  {
+  if (xrt_core::config::get_aie_dtrace()) {
     auto hwctx = handle->get_kernel()->get_hw_context();
-    xrt_core::xdp::run_start(this, hwctx.get_handle().get(), handle->get_uid(),
-                             handle->get_kernel()->get_name().c_str());
+    auto info = make_run_info(this, hwctx.get_handle().get(), handle->get_uid(),
+                              handle->get_kernel()->get_name().c_str());
+    xrt_core::xdp::run_start(info);
   }
-#endif
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();
@@ -4293,14 +4309,13 @@ wait(const std::chrono::milliseconds& timeout_ms) const
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
-#ifdef XDP_VE2_BUILD
-  {
+  if (xrt_core::config::get_aie_dtrace()) {
     auto hwctx = handle->get_kernel()->get_hw_context();
-    xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
-                            handle->get_uid(),
-                            handle->get_kernel()->get_name().c_str(), static_cast<int>(state));
+    auto info = make_run_info(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
+                              handle->get_uid(), handle->get_kernel()->get_name().c_str(),
+                              nullptr, static_cast<int>(state));
+    xrt_core::xdp::run_wait(info);
   }
-#endif
   return state;
 }
 
@@ -4313,15 +4328,13 @@ wait2(const std::chrono::milliseconds& timeout_ms) const
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
     });
-#ifdef XDP_VE2_BUILD
-  {
+  if (xrt_core::config::get_aie_dtrace()) {
     auto hwctx = handle->get_kernel()->get_hw_context();
-    xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
-                            handle->get_uid(),
-                            handle->get_kernel()->get_name().c_str(),
-                            static_cast<int>(handle->state()));
+    auto info = make_run_info(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
+                              handle->get_uid(), handle->get_kernel()->get_name().c_str(),
+                              nullptr, static_cast<int>(handle->state()));
+    xrt_core::xdp::run_wait(info);
   }
-#endif
   return cvst;
 }
 
