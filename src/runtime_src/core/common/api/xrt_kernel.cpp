@@ -4228,12 +4228,14 @@ run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
            ("xrt::run::run", alloc_run, krnl.get_handle()))
 {
+#ifdef XDP_VE2_BUILD
   auto hwctx = krnl.get_handle()->get_hw_context();
   const auto& mod = krnl.get_handle()->get_module();
   auto elf_hdl = mod ? xrt_core::module_int::get_elf_handle(mod) : nullptr;
   xrt_core::xdp::run_constructor(this, hwctx.get_handle().get(), handle->get_uid(),
                                  krnl.get_handle()->get_name().c_str(),
                                  elf_hdl.get());
+#endif
 }
 
 void
@@ -4248,11 +4250,13 @@ run::
 start()
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_start);
+#ifdef XDP_VE2_BUILD
   {
     auto hwctx = handle->get_kernel()->get_hw_context();
     xrt_core::xdp::run_start(this, hwctx.get_handle().get(), handle->get_uid(),
                              handle->get_kernel()->get_name().c_str());
   }
+#endif
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();
@@ -4289,12 +4293,14 @@ wait(const std::chrono::milliseconds& timeout_ms) const
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
+#ifdef XDP_VE2_BUILD
   {
     auto hwctx = handle->get_kernel()->get_hw_context();
     xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
                             handle->get_uid(),
                             handle->get_kernel()->get_name().c_str(), static_cast<int>(state));
   }
+#endif
   return state;
 }
 
@@ -4307,6 +4313,7 @@ wait2(const std::chrono::milliseconds& timeout_ms) const
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
     });
+#ifdef XDP_VE2_BUILD
   {
     auto hwctx = handle->get_kernel()->get_hw_context();
     xrt_core::xdp::run_wait(const_cast<xrt::run*>(this), hwctx.get_handle().get(),
@@ -4314,6 +4321,7 @@ wait2(const std::chrono::milliseconds& timeout_ms) const
                             handle->get_kernel()->get_name().c_str(),
                             static_cast<int>(handle->state()));
   }
+#endif
   return cvst;
 }
 

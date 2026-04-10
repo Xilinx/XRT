@@ -145,6 +145,7 @@ end_poll(void* handle)
 
 } // end namespace xrt_core::xdp::aie::profile
 
+#ifdef XDP_VE2_BUILD
 namespace xrt_core::xdp::aie::dtrace {
 
 std::function<void(void*, bool)> update_device_cb;
@@ -220,6 +221,7 @@ run_wait(void* run, void* hwctx, uint32_t run_uid, const char* kernel_name, int 
 }
 
 } // end namespace xrt_core::xdp::aie::dtrace
+#endif
 
 namespace xrt_core::xdp::aie::debug {
 
@@ -749,10 +751,6 @@ update_device(void* handle, bool hw_context_flow)
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode is XDNA; loading AIE dtrace plugin for XDNA device.");
               xrt_core::xdp::aie::dtrace::load_xdna();
-            } else {
-              xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
-                "xdp_mode is ZOCL; loading AIE dtrace plugin for ZOCL device.");
-              xrt_core::xdp::aie::dtrace::load();
             }
            },
            xrt_core::xdp::aie::dtrace::update_device,
@@ -864,6 +862,7 @@ finish_flush_device(void* handle)
 #endif
 }
 
+#ifdef XDP_VE2_BUILD
 void
 run_constructor(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name,
                 void* elf_handle)
@@ -887,5 +886,6 @@ run_wait(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_nam
   if (xrt_core::config::get_aie_dtrace())
     xrt_core::xdp::aie::dtrace::run_wait(run, hwctx_handle, run_uid, kernel_name, ert_cmd_state);
 }
+#endif
 
 } // end namespace xrt_core::xdp
