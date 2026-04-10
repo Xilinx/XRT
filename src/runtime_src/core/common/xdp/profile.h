@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
 #ifndef CORE_COMMON_PROFILE_DOT_H
 #define CORE_COMMON_PROFILE_DOT_H
 
