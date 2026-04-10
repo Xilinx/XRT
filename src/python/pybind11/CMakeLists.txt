@@ -106,7 +106,7 @@ if (pybind11_FOUND)
   pybind11_add_module(pyxrt src/pyxrt.cpp)
   target_link_libraries(pyxrt PRIVATE xrt_coreutil uuid)
   set_target_properties(pyxrt PROPERTIES SUFFIX ".pyd")
-
+  target_compile_definitions(pyxrt PRIVATE Py_LIMITED_API=0x030C0000)
   install(TARGETS pyxrt
     EXPORT xrt-targets
     LIBRARY DESTINATION ${XRT_INSTALL_PYTHON_DIR} COMPONENT ${XRT_BASE_COMPONENT}
