@@ -10,6 +10,9 @@
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/SmiWatchMode.h"
+
+#include <boost/algorithm/string.hpp>
 
 // ---- OptionOptions ------
 #include "tools/common/OptionOptions.h"
@@ -45,6 +48,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine", "Status of the system and device")
@@ -107,7 +111,11 @@ void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamin
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
-  options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>(); 
+  options.m_watchIntervalSec.reset();
+  if (vm.count("watch")) {
+    const auto& s = vm["watch"].as<std::string>();
+    options.m_watchIntervalSec = static_cast<unsigned>(std::stoul(s.empty() ? "0" : s));
+  }
 }
 
 void
@@ -212,9 +220,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     if (vm.count("report") && options.m_reportNames.empty())
       throw xrt_core::error("No report given to be produced");
 
-    if (vm.count("element") && options.m_elementsFilter.empty())
-      throw xrt_core::error("No element filter given to be produced");
-
     if (schemaVersion == Report::SchemaVersion::unknown) 
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());
 
@@ -225,6 +230,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     if (!options.m_output.empty() && std::filesystem::exists(options.m_output) && !XBU::getForce())
       throw xrt_core::error((boost::format("The output file '%s' already exists. Please either remove it or execute this command again with the '--force' option to overwrite it") % options.m_output).str());
+
+    if (options.m_watchIntervalSec) {
+      if (vm.count("format"))
+        throw xrt_core::error("Watch mode cannot be used with --format; output is text only.");
+      if (!options.m_output.empty())
+        throw xrt_core::error("Watch mode cannot be used with --output.");
+    }
 
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
@@ -316,7 +328,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(device, reportsToProcess, schemaVersion, options.m_elementsFilter, std::cout, oSchemaOutput);
+    if (options.m_watchIntervalSec) {
+      /* Bundle produce_reports() into a lamda and pass it to run_watch_mode() */
+      const auto examine_watch_snapshot =
+          [&](const xrt_core::device*) {
+            std::ostringstream console;
+            XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, console, oSchemaOutput);
+            return console.str();
+          };
+      smi_watch_mode::run_watch_mode(device.get(), std::cout, examine_watch_snapshot,
+          *options.m_watchIntervalSec, true);
+    } else {
+      XBU::produce_reports(device, reportsToProcess, schemaVersion, {}, std::cout, oSchemaOutput);
+    }
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

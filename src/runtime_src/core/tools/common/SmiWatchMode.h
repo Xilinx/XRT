@@ -70,18 +70,14 @@ public:
  * by any XRT-SMI report. It handles:
  * - Element filter parsing for watch mode options
  * - Signal handling (Ctrl+C interruption) with graceful cleanup
- * - Screen clearing with ANSI escape codes for real-time updates
- * - Timing and interval management (1-second intervals)
+ * - Optional terminal clear between updates (examine --watch only)
+ * - Optional refresh interval (seconds; 0 = no delay between updates)
  * - Cross-platform compatibility (Windows/POSIX)
  * 
  * Usage Example:
  * @code
- * if (smi_watch_mode::parse_watch_mode_options(elements_filter)) {
- *   auto generator = [](const xrt_core::device* dev, const std::vector<std::string>& filters) {
- *     return my_report_function(dev, filters);
- *   };
- *   smi_watch_mode::run_watch_mode(device, elements_filter, std::cout, generator, "My Report");
- * }
+ * smi_watch_mode::run_watch_mode(device, std::cout, report_generator);           // no delay
+ * smi_watch_mode::run_watch_mode(device, std::cout, report_generator, interval);  // seconds between updates
  * @endcode
  */
 class smi_watch_mode {
@@ -118,27 +114,19 @@ public:
 
   /**
    * @brief Run watch mode with the provided report generator
-   * 
-   * @param device The XRT device to query for real-time data
-   * @param elements_filter Element filters (watch-specific filters will be filtered out automatically)
+   *
+   * @param device May be nullptr for host-only report generators.
    * @param output Output stream for the report (typically std::cout)
    * @param report_generator Function to generate report content for each iteration
-   * @param report_title Title to display in watch mode header (e.g., "Context Health")
-   * 
-   * This function implements the complete watch mode workflow:
-   * - Sets up SIGINT (Ctrl+C) signal handling for graceful interruption
-   * - Runs an infinite loop with 1-second intervals until interrupted
-   * - Clears screen using ANSI escape codes for real-time updates
-   * - Only updates display when report content actually changes (efficiency)
-   * - Shows timestamp using XRT's native timestamp format (GMT)
-   * - Restores original signal handler on exit
-   * - Handles all exceptions internally with error reporting
-   * 
-   * @note This function blocks until user interrupts with Ctrl+C
-   * @note Thread-safe signal handling using atomic variables
+   * @param refresh_interval_seconds Seconds to sleep after each update before the next (default 0 = no sleep)
+   * @param refresh_terminal If true, clear the terminal before each update after the first (examine reports only).
+   *
+   * @note Blocks until user interrupts with Ctrl+C
    */
   static void 
   run_watch_mode(const xrt_core::device* device,
                  std::ostream& output,
-                 const ReportGenerator& report_generator);
+                 const ReportGenerator& report_generator,
+                 unsigned refresh_interval_seconds = 0,
+                 bool refresh_terminal = false);
 };

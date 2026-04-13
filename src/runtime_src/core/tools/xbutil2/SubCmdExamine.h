@@ -15,6 +15,7 @@
 
 // System - Include Files
 #include <memory>
+#include <optional>
 
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
@@ -22,10 +23,10 @@ namespace po = boost::program_options;
 struct SubCmdExamineOptions {
   std::string               m_device;
   std::vector<std::string>  m_reportNames;
-  std::vector<std::string>  m_elementsFilter;
   std::string               m_format;
   std::string               m_output;
   bool                      m_help;
+  std::optional<unsigned>   m_watchIntervalSec;
 };
 class SubCmdExamine : public SubCmd {
   ReportCollection uniqueReportCollection;
