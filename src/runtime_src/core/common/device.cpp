@@ -19,6 +19,7 @@
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 
+#include "core/common/trace.h"
 #include "core/common/api/hw_queue.h"
 #include "core/common/api/xclbin_int.h"
 
@@ -45,6 +46,7 @@ device(id_type device_id)
 device::
 ~device()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_dtor);
   // virtual must be declared and defined
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
   hw_queue::finish(this);
@@ -386,7 +388,7 @@ get_cuidx(slot_id slot, const std::string& cuname) const
   std::lock_guard lk(m_mutex);
   auto slot_itr = m_cu2idx.find(slot);
   if (slot_itr == m_cu2idx.end()) {
-    // CU doesn't exists in cu mapping. Now check for scu mapping 
+    // CU doesn't exists in cu mapping. Now check for scu mapping
     slot_itr = m_scu2idx.find(slot);
     if (slot_itr == m_scu2idx.end())
       throw error(EINVAL, "No such compute unit '" + cuname + "'");

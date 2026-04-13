@@ -55,7 +55,7 @@ send_exception_message(const char* msg)
 static std::shared_ptr<xrt_core::device>
 alloc_device_index(unsigned int index)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_device_alloc_index);
+  XRT_TRACE_POINT_SCOPE(xrt_device_index_ctor);
   auto dev = xrt_core::get_userpf_device(index);
 
   dev->get_usage_logger()->log_device_info(dev.get());
@@ -66,6 +66,7 @@ alloc_device_index(unsigned int index)
 static std::shared_ptr<xrt_core::device>
 alloc_device_handle(xclDeviceHandle dhdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_handle_ctor);
   return xrt_core::get_userpf_device(dhdl) ;
 }
 
@@ -261,7 +262,7 @@ device::error::
 what() const noexcept
 {
   return handle->m_message.c_str();
-}           
+}
 
 device::
 device(unsigned int index)

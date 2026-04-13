@@ -1842,6 +1842,7 @@ public:
   ~kernel_impl()
   {
     XRT_DEBUGF("kernel_impl::~kernel_impl(%d)\n" , uid);
+    XRT_TRACE_POINT_LOG(xrt_kernel_dtor);
   }
 
   kernel_impl(const kernel_impl&) = delete;
@@ -2496,6 +2497,7 @@ public:
   virtual
   ~run_impl()
   {
+    XRT_TRACE_POINT_LOG(xrt_run_dtor);
     // It is a fatal error to destruct a run_impl while its command is
     // still in progress.  But only abort if there are no live
     // exception objects.
@@ -3678,6 +3680,7 @@ public:
 
   ~runlist_impl()
   {
+    XRT_TRACE_POINT_LOG(xrt_runlist_dtor);
     // Make sure all run objects are severed from this list
     try {
       clear_runs();
@@ -3948,6 +3951,7 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_ctor);
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
     : std::make_unique<xrt::run_impl>(khdl);
@@ -3959,6 +3963,7 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_ctor);
   auto amode = hwctx_access_mode(mode);  // legacy access mode to hwctx qos
   return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, xrt::module{}, name);
 }
@@ -3968,6 +3973,7 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
                       const xrt::hw_context& hwctx,
                       const std::string& name)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_ctx_ctor);
   // Delegating constructor with no module
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, xrt::module{}, name);
 }
@@ -3978,6 +3984,7 @@ alloc_kernel_from_module(const std::shared_ptr<device_type>& dev,
                          const xrt::module& module,
                          const std::string& name)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_module_ctor);
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, module, name);
 }
 
@@ -3986,6 +3993,7 @@ alloc_kernel_from_name(const std::shared_ptr<device_type>& dev,
                        const xrt::hw_context& hwctx,
                        const std::string& name)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_name_ctor);
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, name);
 }
 
@@ -4512,9 +4520,16 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
   ip->m_readrange = {start, size};
 }
 
+static std::shared_ptr<runlist_impl>
+alloc_runlist(xrt::hw_context hwctx)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_ctor);
+  return std::make_shared<runlist_impl>(std::move(hwctx));
+}
+
 runlist::
 runlist(const xrt::hw_context& hwctx)
-  : detail::pimpl<runlist_impl>(std::make_shared<runlist_impl>(hwctx))
+  : detail::pimpl<runlist_impl>(alloc_runlist(hwctx))
 {}
 
 runlist::

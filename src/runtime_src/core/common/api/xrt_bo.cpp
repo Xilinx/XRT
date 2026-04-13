@@ -289,7 +289,10 @@ public:
     , size(sz)
   {}
 
-  virtual ~bo_impl() = default;
+  virtual ~bo_impl()
+  {
+    XRT_TRACE_POINT_LOG(xrt_bo_dtor);
+  }
 
   bo_impl(const bo_impl&) = delete;
   bo_impl(bo_impl&&) = delete;
@@ -1084,7 +1087,7 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
 static std::shared_ptr<xrt::bo_impl>
 alloc_kbuf(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_kbuf);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_kbuf_ctor);
   auto handle = alloc_bo(device, sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), sz);
   boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
@@ -1094,7 +1097,7 @@ alloc_kbuf(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemory
 static std::shared_ptr<xrt::bo_impl>
 alloc_ubuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_ubuf);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_ubuf_ctor);
   // On NoDMA platforms a userptr would require userspace management
   // of specified userptr with extra memcpy on sync and copy.  If
   // supported then it would hide inefficient application code, so
@@ -1116,7 +1119,7 @@ alloc_ubuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags f
 static std::shared_ptr<xrt::bo_impl>
 alloc_hbuf(const device_type& device, xrt_core::aligned_ptr_type&& hbuf, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_hbuf);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_hbuf_ctor);
   auto handle =  alloc_bo(device, hbuf.get(), sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_hbuf>(device, std::move(handle), sz, std::move(hbuf));
   boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
@@ -1126,7 +1129,7 @@ alloc_hbuf(const device_type& device, xrt_core::aligned_ptr_type&& hbuf, size_t 
 static std::shared_ptr<xrt::bo_impl>
 alloc_dbuf(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_dbuf);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_dbuf_ctor);
   auto handle = alloc_bo(device, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
   auto boh = std::make_shared<xrt::buffer_dbuf>(device, std::move(handle), sz);
   boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
@@ -1136,7 +1139,7 @@ alloc_dbuf(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup 
 static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_nodma);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_nodma_ctor);
   constexpr size_t align = 64;
   if (sz % align)
     throw xrt_core::error(EINVAL, "Invalid buffer size '" + std::to_string(sz) +
@@ -1183,21 +1186,21 @@ alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup
 static std::shared_ptr<xrt::bo_impl>
 alloc_xbuf(const device_type& device, xcl_buffer_handle xhdl)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_xbuf);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_xbuf_ctor);
   return std::make_shared<xrt::buffer_xbuf>(device, xhdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_userptr(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_userptr);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_userptr_ctor);
   return alloc_ubuf(device, userptr, sz, flags, grp);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_ctor);
   auto boh = std::make_shared<xrt::buffer_import>(device, ehdl);
   boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), boh->get_size(), device.get_hwctx_handle());
   return boh;
@@ -1206,7 +1209,7 @@ alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 static std::shared_ptr<xrt::bo_impl>
 alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl::export_handle ehdl)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_from_pid);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_from_pid_ctor);
   auto boh = std::make_shared<xrt::buffer_import>(device, pid, ehdl);
   boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(),
                                                      boh->get_size(),
@@ -1217,7 +1220,7 @@ alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl
 static std::shared_ptr<xrt::bo_impl>
 alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_sub);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_sub_ctor);
   auto boh = std::make_shared<xrt::buffer_sub>(parent, size, offset);
   boh->get_usage_logger()->log_buffer_info_construct(boh->get_core_device()->get_device_id(),
                                                      boh->get_size(),
@@ -1229,7 +1232,7 @@ alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offse
 static std::shared_ptr<xrt::bo_impl>
 alloc_clone(const std::shared_ptr<xrt::bo_impl>& src, xrt::memory_group grp)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_clone);
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_clone_ctor);
   // Same device and flags as src bo
   auto device = src->get_device();
   auto xflags = static_cast<xrtBufferFlags>(src->get_flags());
