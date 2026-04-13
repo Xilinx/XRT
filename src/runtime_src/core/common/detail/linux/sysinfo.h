@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -10,6 +10,7 @@
 #include <gnu/libc-version.h>
 #include <sys/utsname.h>
 #include <thread>
+#include "core/common/unistd.h"
 
 #if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
   #define MACHINE_NODE_PATH "/proc/device-tree/model"
@@ -130,7 +131,7 @@ get_os_info(boost::property_tree::ptree &pt)
 bool
 is_advanced()
 {
-  return true; //TODO: implement Linux side
+  return xrt_core::is_user_privileged();
 }
 
 } //xrt_core::sysinfo
