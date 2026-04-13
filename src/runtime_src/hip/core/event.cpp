@@ -255,14 +255,29 @@ kernel_start::kernel_start(std::shared_ptr<function> f, void** args)
         break;
 
       case karg::argtype::global: {
+        // Handle both base buffer addresses and computed addresses (base + offset).
+        // If offset is non-zero, carve out a sub-buffer and pass it as BO arg.
         void **bufptr = static_cast<void **>(args[idx]);
-        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(*bufptr).first;
+        auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(*bufptr);
+        auto hip_mem = hip_mem_info.first;
         if (!hip_mem) {
-            std::string err_msg = "failed to get memory from arg at index - " + std::to_string(idx);
-	    throw_hip_error(hipErrorInvalidValue, err_msg.c_str());
-	}
+          std::string err_msg = "failed to get memory from arg at index - " + std::to_string(idx);
+          throw_hip_error(hipErrorInvalidValue, err_msg.c_str());
+        }
 
-        r.set_arg(arg->index, hip_mem->get_xrt_bo());
+        if (!hip_mem_info.second) {
+          r.set_arg(static_cast<int>(arg->index), hip_mem->get_xrt_bo());
+        }
+        else {
+          auto parent_size = hip_mem->get_size();
+          auto sub_offset = hip_mem_info.second;
+          throw_invalid_value_if(sub_offset >= parent_size,
+                                 "kernel arg pointer offset out of range.");
+
+          auto sub_size = parent_size - sub_offset;
+          r.set_arg(static_cast<int>(arg->index), xrt::bo{hip_mem->get_xrt_bo(), sub_size, sub_offset});
+        }
+
         break;
       }
       case karg::argtype::constant :
