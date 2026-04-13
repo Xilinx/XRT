@@ -3,6 +3,8 @@
 #ifndef CORE_COMMON_PROFILE_DOT_H
 #define CORE_COMMON_PROFILE_DOT_H
 
+#include <cstdint>
+
 // The functions here are the general interfaces for the XDP hooks that are
 // called from the common coreutil library and not the specific shims.
 namespace xrt_core::xdp {
@@ -21,6 +23,31 @@ update_device(void* handle, bool hw_context_flow);
 // the device is reset and the data is wiped.
 void 
 finish_flush_device(void* handle);
+
+// Encapsulates all context needed for run-level XDP hooks
+struct run_info
+{
+  void* run;
+  void* hwctx_handle;
+  uint32_t run_uid;
+  const char* kernel_name;
+  void* elf_handle;
+  int ert_cmd_state;  // used by run_wait, passed as int for stable C plugin ABI
+};
+
+// run_constructor should be called when an xrt::run is constructed.
+// This hook allows XDP plugins to attach per-run resources (e.g.,
+// a CT file for dtrace) before the run is started.
+void
+run_constructor(const run_info& info);
+
+// run_start should be called immediately before a run is submitted to the device.
+void
+run_start(const run_info& info);
+
+// run_wait should be called when a run wait completes (after the underlying wait returns).
+void
+run_wait(const run_info& info);
 
 } // end namespace xrt_core::xdp
 
