@@ -35,6 +35,21 @@ struct run_info
   int ert_cmd_state;  // used by run_wait, passed as int for stable C plugin ABI
 };
 
+// Helper to construct run_info for XDP hooks
+inline run_info
+make_run_info(void* run, void* hwctx_handle, uint32_t run_uid,
+              const char* kernel_name, void* elf_handle = nullptr, int ert_cmd_state = 0)
+{
+  run_info info;
+  info.run = run;
+  info.hwctx_handle = hwctx_handle;
+  info.run_uid = run_uid;
+  info.kernel_name = kernel_name;
+  info.elf_handle = elf_handle;
+  info.ert_cmd_state = ert_cmd_state;
+  return info;
+}
+
 // run_constructor should be called when an xrt::run is constructed.
 // This hook allows XDP plugins to attach per-run resources (e.g.,
 // a CT file for dtrace) before the run is started.

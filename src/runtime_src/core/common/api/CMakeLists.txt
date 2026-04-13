@@ -29,11 +29,3 @@ target_include_directories(core_common_api_library_objects
   ${XRT_SOURCE_DIR}/runtime_src
   ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
-
-# Compile definitions for VE2 XDNA builds to enable run hooks
-if (XDP_VE2_BUILD_CMAKE STREQUAL "yes")
-  target_compile_definitions(core_common_api_library_objects
-    PRIVATE
-    XDP_VE2_BUILD=1
-    )
-endif()
