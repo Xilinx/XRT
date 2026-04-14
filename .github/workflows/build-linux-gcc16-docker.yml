@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Builds XRT in a Linux container whose toolchain is GCC 16.
+#
+# The Docker Library gcc image may not publish gcc:16 yet on your registry; the default
+# below is a Debian-based GCC 16 toolchain image. Edit container.image to another tag
+# (for example gcc:16-bookworm from Docker Hub) when that suits your project.
+
+name: Linux build (GCC 16, Docker)
+
+on:
+  workflow_dispatch:
+#  pull_request:
+#  push:
+#    branches:
+#      - master
+#      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container:
+      image: sourcemation/gcc-16:latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show compiler
+        run: |
+          gcc --version
+          g++ --version
+
+      - name: Install XRT dependencies
+        run: src/runtime_src/tools/scripts/xrtdeps.sh -docker
+
+      - name: Build XRT (Release)
+        run: ./build/build.sh -opt -verbose -noert -noctest
