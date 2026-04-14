@@ -30,7 +30,7 @@ namespace xrt::core::hip
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size);
     auto address = hip_mem->get_address();
     throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipMalloc!");
-      
+
     memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, std::move(hip_mem));
     *ptr = reinterpret_cast<void* >(address);
   }
@@ -49,11 +49,11 @@ namespace xrt::core::hip
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, flags);
     auto address = hip_mem->get_address();
     throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipHostMalloc!");
-      
+
     memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, std::move(hip_mem));
     *ptr = address;
   }
-  
+
   // Register host memory so it can be accessed from the current device.
   static void
   hip_host_register(void* host_ptr, size_t size, unsigned int flags)
@@ -70,7 +70,7 @@ namespace xrt::core::hip
 
     memory_database::instance().insert(reinterpret_cast<uint64_t>(host_addr), size, std::move(hip_mem));
   }
-  
+
   // Get Device pointer from Host Pointer allocated through hipHostMalloc().
   static void
   hip_host_get_device_pointer(void** device_ptr, void* host_ptr, unsigned int flags)
@@ -105,7 +105,7 @@ namespace xrt::core::hip
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
-  
+
   // Free memory allocated by the hipHostMalloc().
   static void
   hip_host_free(void* ptr)
@@ -247,7 +247,7 @@ namespace xrt::core::hip
   }
 
   static void
-  hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
+  hip_memcpy_host2device_async(hipDeviceptr_t dst, const void* src, size_t size, hipStream_t stream)
   {
     throw_invalid_value_if(!src, "src is nullptr.");
 
@@ -259,7 +259,7 @@ namespace xrt::core::hip
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
-   
+
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
@@ -413,7 +413,7 @@ hipMemset(void* dst, int value, size_t size)
 }
 
 hipError_t
-hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
+hipMemcpyHtoDAsync(hipDeviceptr_t dst, const void* src, size_t size, hipStream_t stream)
 {
   return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream);

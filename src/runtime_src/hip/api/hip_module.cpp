@@ -20,7 +20,6 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
                          void** kernelParams, void** extra)
 {
   throw_invalid_resource_if(!f, "function is nullptr");
-  throw_invalid_value_if(!kernelParams, "kernel parameters is nullptr");
 
   auto func_hdl = reinterpret_cast<function_handle>(f);
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
@@ -277,7 +276,7 @@ hipModuleLoad(hipModule_t* module, const char* fname)
     // Treat fname passed is filepath to full ELF and
     // try creating full ELF module
     // if it throws fallback to xclbin + ELF flow
-    xrt::core::hip::module_handle handle;
+    xrt::core::hip::module_handle handle = nullptr;
     if (xrt::core::hip::hip_module_file_is_elf(fname)) {
       handle = xrt::core::hip::create_full_elf_module(std::string{fname});
       *module = reinterpret_cast<hipModule_t>(handle);
@@ -304,4 +303,3 @@ hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
     xrt::core::hip::hip_func_set_attribute(func, attr, value);
   });
 }
-
