@@ -43,7 +43,18 @@
 #include "core/common/time.h"
 #include "core/common/runner/runner.h"
 
+#if defined(__GNUC__) && (__GNUC__ >= 16)
+// GCC 16 tightened the -Warray-bounds family and made it catch more
+// patterns in libstdc++ internals, especially around std::shared_ptr
+// and std::allocator‑backed objects. The diagnostic is spurious
+// (false‑positive) in this case.
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 #include "core/common/json/nlohmann/json.hpp"
+#if defined(__GNUC__) && (__GNUC__ >= 16)
+# pragma GCC diagnostic pop
+#endif
 
 #include <atomic>
 #include <climits>
@@ -66,6 +77,7 @@
 #else
 # include <sys/resource.h>
 #endif
+
 
 using json = nlohmann::json;
 namespace sfs = std::filesystem;
