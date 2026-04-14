@@ -134,7 +134,7 @@ hip_get_device_properties(hipDeviceProp_t* props, hipDevice_t device)
   // Query device name using rom_vbnv
   // Copy device name to device_props.name, ensuring no buffer overflow
   auto name_str = (xrt_core::device_query<xrt_core::query::rom_vbnv>(device_handle));
-  std::strncpy(device_props.name, name_str.c_str(), sizeof(device_props.name));
+  std::strncpy(device_props.name, name_str.c_str(), sizeof(device_props.name) - 1);
   device_props.name[sizeof(device_props.name) - 1] = '\0';
   // Extract and assign PCI domain, bus, and device IDs from the queried PCIe BDF tuple
   device_props.pciDomainID = std::get<0>(uuid);
