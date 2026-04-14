@@ -51,12 +51,12 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_mailbox.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_message.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ip.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_system.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ini.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_mailbox.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_message.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ip.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_system.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_xclbin.h
     )
   string(REPLACE ";" " " DOXY_INPUT "${XRT_CPP_APIS}")
   set(DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
