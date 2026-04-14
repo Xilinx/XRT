@@ -35,6 +35,11 @@ jobs:
         shell: bash
 
     steps:
+      # Workspace is bind-mounted from the runner and owned by a non-root UID; the
+      # container often runs as root, so Git 2.35+ refuses the repo unless trusted.
+      - name: Configure Git safe.directory (container)
+        run: git config --global --add safe.directory '*'
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
