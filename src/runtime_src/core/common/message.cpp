@@ -16,6 +16,7 @@
 #include <mutex>
 #include <algorithm>
 #include <cstdarg>
+#include <cstring>
 #include <climits>
 #ifdef __linux__
 # include <syslog.h>
