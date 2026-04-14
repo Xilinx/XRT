@@ -21,6 +21,7 @@
 #include "config.h"
 #include "scope_guard.h"
 
+#include <cstdint>
 #include <string>
 #include <sstream>
 #include <functional>
