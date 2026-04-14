@@ -236,13 +236,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Determine report level
   std::vector<std::string> reportsToRun(options.m_reportNames);
   if (reportsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      reportsToRun.emplace_back("host");
-    } 
-    else {
-      printHelp();
-      return;
-    }
+    // Default report with or without --advanced (advanced only unlocks hidden options/reports).
+    reportsToRun.emplace_back("host");
   }
 
   if ((std::find(reportsToRun.begin(), reportsToRun.end(), "all") != reportsToRun.end()) && (reportsToRun.size() > 1)) {
