@@ -76,12 +76,12 @@ platform_repo_path()
 
   // 2. XDG data path ($HOME/.local/share) is also a candidate
   if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg && *xdg) {
-    paths.push_back(sfs::path(xdg) / "xrt" / XRT_VERSION_STRING);
     paths.push_back(sfs::path(xdg) / "xrt");
+    paths.push_back(sfs::path(xdg) / "xrt" / XRT_VERSION_STRING);
   }
   else if (const char* home = std::getenv("HOME"); home && *home) {
-    paths.push_back(sfs::path(home) / ".local/share/xrt" / XRT_VERSION_STRING);
     paths.push_back(sfs::path(home) / ".local/share/xrt");
+    paths.push_back(sfs::path(home) / ".local/share/xrt" / XRT_VERSION_STRING);
   }
 
   return paths;

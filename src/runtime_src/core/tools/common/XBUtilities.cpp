@@ -16,6 +16,8 @@
 #include "common/smi.h"
 #include "common/module_loader.h"
 
+#include "xrt/detail/version.h"
+
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
 #include <boost/format.hpp>
@@ -23,11 +25,10 @@
 #include <boost/tokenizer.hpp>
 
 // System - Include Files
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <regex>
-#include <filesystem>
-
 
 #ifdef _WIN32
 
@@ -840,17 +841,46 @@ std::unique_ptr<xrt_core::archive>
 XBUtilities::
 open_archive(const xrt_core::device* device)
 {
-  std::unique_ptr<xrt_core::archive> archive;
-  
+  // Archives only applicable to Ryzen devices
+  if (xrt_core::device_query<xrt_core::query::device_class>(device) == xrt_core::query::device_class::type::alveo)
+    return nullptr;
+
+  std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
+
   try {
-    std::string archive_path = xrt_core::device_query<xrt_core::query::archive_path>(device);
     auto full_archive_path = xrt_core::environment::platform_path(archive_path).string();
-    archive = std::make_unique<xrt_core::archive>(full_archive_path);
-  } catch (const std::exception& /*e*/) {
-    // Continue without archive - this is not a fatal error
+    return std::make_unique<xrt_core::archive>(full_archive_path);
   }
-  
-  return archive;
+  catch (const std::exception&) {
+    // Extract platform and archive name from "<path>/xrt_smi_<pfm>.a"
+    constexpr std::string_view prefix = "xrt_smi_";
+    constexpr std::string_view suffix = ".a";
+    auto pos = archive_path.find(prefix); // start of xrt_smi_<pfm>.a
+    if (pos == std::string::npos)
+      throw; // rethrow
+
+    // e.g. xrt_smi_<pfm>.a
+    auto archive = archive_path.substr(pos);
+
+    pos += prefix.size();                 // start of platform "strx.a"
+    auto end = archive_path.find(suffix); // end of platform ".a"
+    if (end == std::string::npos || end < pos)
+      throw; // rethrow
+
+    // Extract "strx", "phx" ...
+    auto pfm = archive_path.substr(pos, end - pos);
+    auto install_path = xrt_core::environment::platform_repo_paths().back().string();
+    auto msg = boost::str(boost::format(
+      "Archive not found: %s\n"
+      "Download manually from:\n"
+      "  https://raw.githubusercontent.com/Xilinx/VTD/%s/archive/%s/%s\n"
+      "And place it in: %s/%s")
+      % archive_path
+      % xrt_build_version % pfm % archive
+      % install_path % archive_path);
+
+    throw std::runtime_error(msg);
+  }
 }
 
 // Helper function to determine if hardware type is STRX or NPU3

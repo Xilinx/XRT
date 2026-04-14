@@ -23,6 +23,7 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include <linux/version.h>
+#include <linux/printk.h>
 #include <linux/vmalloc.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/dma-buf.h>
@@ -56,6 +57,31 @@
 
 #ifndef XRT_HASH_DATE
 #define XRT_HASH_DATE ""
+#endif
+
+/*
+ * Legacy uppercase DRM logging helpers were dropped from newer kernels.
+ * Keep the existing call sites working by mapping them to the generic
+ * printk-based helpers when the DRM headers no longer provide them.
+ */
+#ifndef DRM_ERROR
+# define DRM_ERROR(fmt, ...) pr_err(fmt, ##__VA_ARGS__)
+#endif
+
+#ifndef DRM_WARN
+# define DRM_WARN(fmt, ...) pr_warn(fmt, ##__VA_ARGS__)
+#endif
+
+#ifndef DRM_INFO
+# define DRM_INFO(fmt, ...) pr_info(fmt, ##__VA_ARGS__)
+#endif
+
+#ifndef DRM_DEBUG
+# define DRM_DEBUG(fmt, ...) pr_debug(fmt, ##__VA_ARGS__)
+#endif
+
+#ifndef DRM_WARN_ONCE
+# define DRM_WARN_ONCE(fmt, ...) pr_warn_once(fmt, ##__VA_ARGS__)
 #endif
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
