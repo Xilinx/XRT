@@ -111,6 +111,7 @@ void SubCmdExamine::fill_option_values(const po::variables_map& vm, SubCmdExamin
   options.m_output = vm.count("output") ? vm["output"].as<std::string>() : "";
   options.m_reportNames = vm.count("report") ? vm["report"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_help = vm.count("help") ? vm["help"].as<bool>() : false;
+  options.m_elementsFilter = vm.count("element") ? vm["element"].as<std::vector<std::string>>() : std::vector<std::string>();
   options.m_watchIntervalSec.reset();
   if (vm.count("watch")) {
     const auto& s = vm["watch"].as<std::string>();
@@ -219,6 +220,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     if (vm.count("report") && options.m_reportNames.empty())
       throw xrt_core::error("No report given to be produced");
+
+    if (vm.count("element") && options.m_elementsFilter.empty())
+      throw xrt_core::error("No element filter given to be produced");
 
     if (schemaVersion == Report::SchemaVersion::unknown) 
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % options.m_format).str());

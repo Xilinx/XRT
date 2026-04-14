@@ -23,6 +23,7 @@ namespace po = boost::program_options;
 struct SubCmdExamineOptions {
   std::string               m_device;
   std::vector<std::string>  m_reportNames;
+  std::vector<std::string>  m_elementsFilter;
   std::string               m_format;
   std::string               m_output;
   bool                      m_help;
