@@ -9,14 +9,19 @@
 
 // This file defines implementation extensions to the XRT Kernel APIs.
 #include "core/include/xrt/experimental/xrt_kernel.h"
+#include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/shim/buffer_handle.h"
 
+#include "ert.h"
+
 #include <bitset>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace xrt_core { namespace kernel_int {
@@ -91,6 +96,27 @@ get_hw_ctx(const xrt::kernel& kernel);
 // This is used for logging usage mertrics
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
+
+// Run-level accessors for XDP dtrace hooks
+XRT_CORE_COMMON_EXPORT
+uint32_t
+get_run_uid(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+xrt::hw_context
+get_run_hwctx(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+get_run_kernel_name(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+xrt::module
+get_run_module(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+ert_cmd_state
+get_run_state(const xrt::run& run);
 
 }} // kernel_int, xrt_core
 
