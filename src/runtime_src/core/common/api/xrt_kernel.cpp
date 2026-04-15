@@ -694,14 +694,9 @@ class kernel_command : public xrt_core::command
 public:
   using execbuf_type = xrt_core::bo_cache::cmd_bo<ert_start_kernel_cmd>;
   using callback_function_type = std::function<void(ert_cmd_state)>;
+  using callback_list = std::vector<callback_function_type>;
 
 private:
-  struct callback_properties {
-    callback_function_type  fn;
-    mutable bool            called;
-  };
-  using callback_list = std::vector<callback_properties>;
-
   // Return state of underlying exec buffer packet This is an
   // asynchronous call, the command object may not be in the same
   // state as reflected by the return value.
@@ -720,7 +715,7 @@ public:
     , m_hwqueue(std::move(hwqueue))
     , m_hwctx(std::move(hwctx))
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
-    , m_done(true)
+    , m_run_state(run_state::ready)
   {
     static unsigned int count = 0;
     m_uid = count++;
@@ -763,10 +758,7 @@ public:
   bool
   is_done() const
   {
-    if (!m_done && !m_managed) {
-      m_done = get_state() >= ERT_CMD_STATE_COMPLETED;
-    }
-    return m_done;
+    return (m_run_state != run_state::running) || (!m_managed && get_state() >= ERT_CMD_STATE_COMPLETED);
   }
 
   // Return state of command object.  The underlying packet
@@ -779,7 +771,9 @@ public:
     // is a no-op on platforms where command state is live.
     m_hwqueue.poll(this);
 
-    return get_state_raw();
+    auto state = get_state_raw();
+    notify(state);  // update command state accordingly
+    return state;
   }
 
   // Return kernel return code from command object for PS kernels
@@ -817,27 +811,52 @@ public:
     ert_cmd_state state = ERT_CMD_STATE_MAX;
     {
       std::lock_guard<std::mutex> lk(m_mutex);
-      if (!m_managed && !m_done)
+      if (!m_managed && m_run_state != run_state::ready)
         throw xrt_core::error(ENOTSUP, "Cannot add callback to running unmanaged command");
+      m_callbacks.emplace_back(std::move(fcn));
       auto pkt = get_ert_packet();
       state = static_cast<ert_cmd_state>(pkt->state);
-      complete = m_done && state >= ERT_CMD_STATE_COMPLETED;
-      m_callbacks.emplace_back(callback_properties({std::move(fcn), complete}));
+      complete = (m_run_state == run_state::ready) && (state >= ERT_CMD_STATE_COMPLETED);
     }
 
     // lock must not be held while calling callback function
     if (complete)
-      fcn(state);
+      m_callbacks.back()(state);
   }
 
   // Remove last added callback
   void
   pop_callback()
   {
-    std::lock_guard<std::mutex> lk(m_mutex);
-    if (!m_callbacks.empty()) {
+    if (!m_callbacks.empty())
       m_callbacks.pop_back();
+  }
+
+  // Run registered callbacks.
+  void
+  run_callbacks(ert_cmd_state state) const
+  {
+    std::vector<const callback_function_type*> copy;
+
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+
+      if (m_callbacks.empty())
+        return;
+    
+
+      // cannot lock mutex while calling the callbacks
+      // so copy address of callbacks while holding the lock
+      // then execute callbacks without lock
+      copy.reserve(m_callbacks.size());
+
+      std::transform(m_callbacks.begin(),m_callbacks.end()
+                     ,std::back_inserter(copy)
+                     ,[](const callback_function_type& cb) { return &cb; });
     }
+
+    for (auto cb : copy)
+      (*cb)(state);
   }
 
   // Submit the command for execution.
@@ -846,12 +865,13 @@ public:
   {
     {
       std::lock_guard<std::mutex> lk(m_mutex);
-      if (!m_done)
+
+      run_state state = run_state::ready;
+      m_run_state.compare_exchange_strong(state, run_state::running);
+      if (state != run_state::ready)
         throw std::runtime_error("bad command state, can't launch");
-      m_managed = !m_callbacks.empty();
-      for (auto& cb : m_callbacks)
-        cb.called = false;
-      m_done = false;
+
+      m_managed = (!m_callbacks.empty());
     }
 
     try {
@@ -861,9 +881,9 @@ public:
         m_hwqueue.unmanaged_start(this);
     }
     catch (...) {
-      // Start failed, m_done remains true
+      // Start failed, run_state remains ready
       // command can be retried if needed
-      m_done = true;
+      m_run_state = run_state::ready;
       throw;
     }
   }
@@ -874,19 +894,14 @@ public:
   {
     if (m_managed) {
       std::unique_lock<std::mutex> lk(m_mutex);
-      while (!m_done)
+      while (m_run_state == run_state::running)
         m_exec_done.wait(lk);
     }
     else {
       m_hwqueue.wait(this);
     }
 
-    auto state = get_state_raw();
-    if (!m_done) {
-      m_done = state >= ERT_CMD_STATE_COMPLETED;
-    }
-
-    return state; // state wont change after wait
+    return get_state_raw(); // state wont change after wait
   }
 
   std::pair<ert_cmd_state, std::cv_status>
@@ -894,7 +909,7 @@ public:
   {
     if (m_managed) {
       std::unique_lock<std::mutex> lk(m_mutex);
-      while (!m_done)
+      while (m_run_state == run_state::running)
         if (m_exec_done.wait_for(lk, timeout_ms) == std::cv_status::timeout)
           return {get_state_raw(), std::cv_status::timeout};
     }
@@ -903,11 +918,7 @@ public:
         return {get_state_raw(), std::cv_status::timeout};
     }
 
-    auto state = get_state_raw();
-    if (!m_done) {
-      m_done = state >= ERT_CMD_STATE_COMPLETED;
-    }
-    return {state, std::cv_status::no_timeout};
+    return {get_state_raw(), std::cv_status::no_timeout};
   }
 
   ////////////////////////////////////////////////////////////////
@@ -942,36 +953,25 @@ public:
   void
   notify(ert_cmd_state s) const override
   {
-
-    if (s < ERT_CMD_STATE_COMPLETED)
-      throw std::runtime_error("bad command state, notify() is only expected to be called after command completes");
-
-    std::vector<callback_function_type> copy;
-    {
-      std::lock_guard<std::mutex> lk(m_mutex);
-
-      if (m_done)
-        return;
-
-      m_done = true;
-  
-      // cannot lock mutex while calling the callbacks
-      // so copy address of callbacks while holding the lock
-      // then execute callbacks without lock
-      if (!m_callbacks.empty()) {
-        copy.reserve(m_callbacks.size());
-        for (auto& cb : m_callbacks) {
-          if (!cb.called) {
-            cb.called = true;
-            copy.emplace_back(cb.fn);
-          }
-        }
-      }
+    run_state state = run_state::running;
+    bool complete = false;
+    if (s >= ERT_CMD_STATE_COMPLETED) {
+      complete = m_run_state.compare_exchange_strong(state, run_state::finishing);
+      XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
     }
 
-    m_exec_done.notify_all();
-    for (const auto& cb : copy)
-      cb(s);
+    // m_run_state is flipped to finishing to prevent m_managed becoming true at this point
+    // Otherwise there's a potential deadlock because run_callbacks() takes the lock,
+    // and we can get here while already holding the lock, but only when m_managed is false
+
+    if (m_managed && complete) {
+      m_exec_done.notify_all();
+      run_callbacks(s); 
+    }
+
+    // if we were finishing, we're done done - ready to run more commands
+    state = run_state::finishing;
+    m_run_state.compare_exchange_strong(state, run_state::ready);
   }
 
   void
@@ -989,13 +989,17 @@ private:
   xrt::hw_context m_hwctx;       // hw_context for command
   execbuf_type m_execbuf;        // underlying execution buffer
   unsigned int m_uid = 0;
-  bool m_managed = false;
-  mutable bool m_done = false;
+  enum class run_state : int {
+    ready,
+    running,
+    finishing,
+  };
+  mutable std::atomic<run_state> m_run_state = run_state::ready;
 
   mutable std::mutex m_mutex;
   mutable std::condition_variable m_exec_done;
 
-  callback_list m_callbacks; // don't see any reason this was a pointer?
+  callback_list m_callbacks;
 };
 
 // class argument - get argument value from va_arg
