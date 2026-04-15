@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_hwemu.h"
 #include "plugin/xdp/device_offload.h"
@@ -1749,7 +1749,6 @@ namespace xclhwemhal2 {
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
 
-    int i = 0;
     for(auto it :mBinaryDirectories)
     {
       std::string binaryDirectory = it.first;
@@ -1805,7 +1804,6 @@ namespace xclhwemhal2 {
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
         systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, std::to_string(__LINE__));
       }
-      i++;
     }
     mBinaryDirectories.clear();
     PRINTENDFUNC;
