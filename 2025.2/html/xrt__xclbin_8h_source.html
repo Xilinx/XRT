@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>XRT: /home/manoj/doc_update/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h Source File</title>
+<title>XRT: /home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_xclbin.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -61,7 +61,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="dir_55ed6c15308cfd39909d411496c8aaac.html">runtime_src</a></li><li class="navelem"><a class="el" href="dir_a44e751f7873481d0a8243bc925245ca.html">core</a></li><li class="navelem"><a class="el" href="dir_cf3e629846bb1ba48b68db8ee534a3b1.html">include</a></li><li class="navelem"><a class="el" href="dir_0c844555828819cd1c5c5ce08237f5f4.html">experimental</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="dir_55ed6c15308cfd39909d411496c8aaac.html">runtime_src</a></li><li class="navelem"><a class="el" href="dir_a44e751f7873481d0a8243bc925245ca.html">core</a></li><li class="navelem"><a class="el" href="dir_cf3e629846bb1ba48b68db8ee534a3b1.html">include</a></li><li class="navelem"><a class="el" href="dir_f7d78027fed52f9ad4c20151947e06f6.html">xrt</a></li><li class="navelem"><a class="el" href="dir_c48327743c89784c2b422a72e765cb6f.html">experimental</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -70,9 +70,581 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <a href="xrt__xclbin_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">// SPDX-License-Identifier: Apache-2.0</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment">// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="preprocessor">#pragma message(&quot;please replace experimental/xrt_xclbin.h with xrt/experimental/xrt_xclbin.h&quot;</span>)</div>
-<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &quot;xrt/experimental/xrt_xclbin.h&quot;</span></div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment">// Copyright (C) 2020-2022 Xilinx, Inc.  All rights reserved.</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment">// Copyright (C) 2023-2025 Advanced Micro Devices, Inc. All rights reserved.</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#ifndef XRT_XCLBIN_H_</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#define XRT_XCLBIN_H_</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160; </div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="xrt__uuid_8h.html">xrt/xrt_uuid.h</a>&quot;</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160; </div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/config.h&quot;</span></div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/pimpl.h&quot;</span></div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="preprocessor">#include &quot;xrt/detail/xclbin.h&quot;</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#include &quot;xrt/deprecated/xrt.h&quot;</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160; </div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor"># include &lt;iterator&gt;</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor"># include &lt;utility&gt;</span></div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="preprocessor"># include &lt;vector&gt;</span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor"># include &lt;string&gt;</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="preprocessor"># include &lt;string_view&gt;</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160; </div>
+<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">   25</a></span>&#160;<span class="keyword">typedef</span> <span class="keywordtype">void</span>* <a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a>; <span class="comment">// NOLINT</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160; </div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="keyword">namespace </span><a class="code" href="namespacexrt.html">xrt</a> {</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160; </div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="keyword">class </span>xclbin_impl;</div>
+<div class="line"><a name="l00073"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html">   73</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin.html">xclbin</a> : <span class="keyword">public</span> detail::pimpl&lt;xclbin_impl&gt;</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;{</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00085"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">   85</a></span>&#160;  <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a> { <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da65c2a3d77127c15d068dec7e00e50649">hw</a>, <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da95c104ccd3426696d51fd70c33557992">sw_emu</a>, <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da416133dd0f388d283d8ad6bd17b319a1">hw_emu</a> };</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160; </div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;  <span class="keyword">class </span>mem_impl;</div>
+<div class="line"><a name="l00099"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html">   99</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin_1_1mem.html">mem</a> : <span class="keyword">public</span> detail::pimpl&lt;mem_impl&gt;</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;  {</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00108"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f">  108</a></span>&#160;    <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f">memory_type</a> : uint8_t {</div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa9ea5bdd29692f10540ec3ce4d8ba97f5">ddr3</a>                 = MEM_DDR3,</div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa59a98898efc5226d57d2da1e7c4444d4">ddr4</a>                 = MEM_DDR4,</div>
+<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fafb5914622a6a9112bc77a767112a6dfc">dram</a>                 = MEM_DRAM,</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525faabb0256a318439745ab0b343d64b9ba0">streaming</a>            = MEM_STREAMING,</div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa57fd539060b8a2bf98cd42880f8846d2">preallocated_global</a>  = MEM_PREALLOCATED_GLOB,</div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87">are</a>                  = MEM_ARE, <span class="comment">//Aurora</span></div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fae65e9faeec18c95733e43fb7b188ad85">hbm</a>                  = MEM_HBM,</div>
+<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fae4fa3adecabcf036f6f95da68bfe76bb">bram</a>                 = MEM_BRAM,</div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d">uram</a>                 = MEM_URAM,</div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e">streaming_connection</a> = MEM_STREAMING_CONNECTION,</div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;      <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e">host</a>                 = MEM_HOST</div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;    };</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160; </div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00123"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab">  123</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab">mem</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160; </div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00126"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b">  126</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b">mem</a>(std::shared_ptr&lt;mem_impl&gt; handle)</div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;      : detail::pimpl&lt;mem_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;    {}</div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160; </div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;    std::string</div>
+<div class="line"><a name="l00138"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#aedef1d46f1deb6610efc97bbfcc3d19e">  138</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#aedef1d46f1deb6610efc97bbfcc3d19e">get_tag</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160; </div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00148"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#a47f115027d60513d9d305994e86b80ba">  148</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a47f115027d60513d9d305994e86b80ba">get_base_address</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160; </div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00158"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#ad21ef7a8dbe0be1ff9a69490cd4ca614">  158</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#ad21ef7a8dbe0be1ff9a69490cd4ca614">get_size_kb</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160; </div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;    <span class="keywordtype">bool</span></div>
+<div class="line"><a name="l00172"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#a75f06b31b11cd597669f9f59a2631699">  172</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a75f06b31b11cd597669f9f59a2631699">get_used</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160; </div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f">memory_type</a></div>
+<div class="line"><a name="l00183"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#a3f68effa4c8f48bd3da7a76f344d1b74">  183</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#a3f68effa4c8f48bd3da7a76f344d1b74">get_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160; </div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;    int32_t</div>
+<div class="line"><a name="l00196"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1mem.html#af8d7d4ae4dad983ccd4287ec88712f77">  196</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1mem.html#af8d7d4ae4dad983ccd4287ec88712f77">get_index</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;  };</div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160; </div>
+<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;  <span class="keyword">class </span>arg_impl;</div>
+<div class="line"><a name="l00212"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html">  212</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin_1_1arg.html">arg</a> : <span class="keyword">public</span> detail::pimpl&lt;arg_impl&gt;</div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;  {</div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00215"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c">  215</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c">arg</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160; </div>
+<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;    <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00218"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#a8026afcbfc713a2c5abaef57b126ad82">  218</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#a8026afcbfc713a2c5abaef57b126ad82">arg</a>(std::shared_ptr&lt;arg_impl&gt; handle)</div>
+<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;      : detail::pimpl&lt;arg_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;    {}</div>
+<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160; </div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;    std::string</div>
+<div class="line"><a name="l00231"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#ab75fd24e69299994b78e0f2e8478612f">  231</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#ab75fd24e69299994b78e0f2e8478612f">get_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160; </div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;    std::vector&lt;mem&gt;</div>
+<div class="line"><a name="l00242"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#ab25a7f72d71e9297ccc2e6efc8bede71">  242</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#ab25a7f72d71e9297ccc2e6efc8bede71">get_mems</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160; </div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;    std::string</div>
+<div class="line"><a name="l00252"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#a6c628a07753650c59819b086d4aee406">  252</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#a6c628a07753650c59819b086d4aee406">get_port</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160; </div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00262"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#aae3b620268196796b3ffb8750a7214a7">  262</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#aae3b620268196796b3ffb8750a7214a7">get_size</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160; </div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00272"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#a33e25ca3c0afa0a5e5c5c146adc77a03">  272</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#a33e25ca3c0afa0a5e5c5c146adc77a03">get_offset</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160; </div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;    std::string</div>
+<div class="line"><a name="l00282"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#a95b5b046b0822db0f4f788baaf2b9f51">  282</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#a95b5b046b0822db0f4f788baaf2b9f51">get_host_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160; </div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;    <span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00292"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1arg.html#a6ef56c3c41cf85fb2060544dd9193a6b">  292</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html#a6ef56c3c41cf85fb2060544dd9193a6b">get_index</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;  };</div>
+<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160; </div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;  <span class="keyword">class </span>ip_impl;</div>
+<div class="line"><a name="l00306"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html">  306</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin_1_1ip.html">ip</a> : <span class="keyword">public</span> detail::pimpl&lt;ip_impl&gt;</div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;  {</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00315"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">  315</a></span>&#160;    <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">control_type</a> : uint8_t { <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa789406d01073ca1782d86293dcfc0764">hs</a> = 0, <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c">chain</a> = 1, <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8">none</a> = 2, <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65">fa</a> = 5 };</div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160; </div>
+<div class="line"><a name="l00323"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74">  323</a></span>&#160;    <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74">ip_type</a> : uint8_t { <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74a288404204e3d452229308317344a285d">pl</a> = IP_KERNEL, <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74a8812c36aa5ae336c2a77bf63211d899a">ps</a> = IP_PS_KERNEL };</div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160; </div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00326"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#ad06915d471c3b2cfea96fed6fe271f41">  326</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#ad06915d471c3b2cfea96fed6fe271f41">ip</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160; </div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;    <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00329"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a63654d4fbfef294c3df0d219be16ec0b">  329</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a63654d4fbfef294c3df0d219be16ec0b">ip</a>(std::shared_ptr&lt;ip_impl&gt; handle)</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;      : detail::pimpl&lt;ip_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;    {}</div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160; </div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;    std::string</div>
+<div class="line"><a name="l00341"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a0809be47f88d58ee765fa54d0f07c6b1">  341</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a0809be47f88d58ee765fa54d0f07c6b1">get_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160; </div>
+<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74">ip_type</a></div>
+<div class="line"><a name="l00351"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#ac65ee975567f90378bd3cdd8295e08dc">  351</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#ac65ee975567f90378bd3cdd8295e08dc">get_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160; </div>
+<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">control_type</a></div>
+<div class="line"><a name="l00361"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a323d2cdc8227af5386f49261f760eb35">  361</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a323d2cdc8227af5386f49261f760eb35">get_control_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160; </div>
+<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;    <span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00371"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a4b3a8a18015caf1d56ba5e3a016e3cf3">  371</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a4b3a8a18015caf1d56ba5e3a016e3cf3">get_num_args</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160; </div>
+<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;    std::vector&lt;arg&gt;</div>
+<div class="line"><a name="l00383"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a9e44d5ab56ce330eda5bab7bbdbc6ea0">  383</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a9e44d5ab56ce330eda5bab7bbdbc6ea0">get_args</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160; </div>
+<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html">arg</a></div>
+<div class="line"><a name="l00397"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a93041b26be6afe28675d45d24ad47612">  397</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a93041b26be6afe28675d45d24ad47612">get_arg</a>(int32_t index) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160; </div>
+<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00407"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a68dd70ee3dc764b7d291035b50d7dca4">  407</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a68dd70ee3dc764b7d291035b50d7dca4">get_base_address</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160; </div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;    <span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00423"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1ip.html#a2e5c54bd572cd0832d2d6732e9a672c2">  423</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html#a2e5c54bd572cd0832d2d6732e9a672c2">get_size</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;  };</div>
+<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160; </div>
+<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;  <span class="keyword">class </span>kernel_impl;</div>
+<div class="line"><a name="l00439"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html">  439</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin_1_1kernel.html">kernel</a> : <span class="keyword">public</span> detail::pimpl&lt;kernel_impl&gt;</div>
+<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;  {</div>
+<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00447"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1">  447</a></span>&#160;    <span class="keyword">enum class</span> <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1">kernel_type</a> : uint8_t { <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a334c4a4c42fdb79d7ebc3e73b517e6f8">none</a> = 0, <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a288404204e3d452229308317344a285d">pl</a> = 1, <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a8812c36aa5ae336c2a77bf63211d899a">ps</a> = 2, <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a225734fb10a045efb6e591ef55b939a7">dpu</a> = 3};</div>
+<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;    </div>
+<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00450"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#aca6d5209b7075863fa5e83a4f2a40c76">  450</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aca6d5209b7075863fa5e83a4f2a40c76">kernel</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160; </div>
+<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;    <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00453"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#aeb4e6d106e71f065bcac36e0d34fc144">  453</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aeb4e6d106e71f065bcac36e0d34fc144">kernel</a>(std::shared_ptr&lt;kernel_impl&gt; handle)</div>
+<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;      : detail::pimpl&lt;kernel_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;    {}</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160; </div>
+<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00464"></a><span class="lineno">  464</span>&#160;    std::string</div>
+<div class="line"><a name="l00465"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#ad1c79e7a4c2644cf7d5d07de7914329e">  465</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#ad1c79e7a4c2644cf7d5d07de7914329e">get_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00466"></a><span class="lineno">  466</span>&#160; </div>
+<div class="line"><a name="l00473"></a><span class="lineno">  473</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00474"></a><span class="lineno">  474</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1">kernel_type</a></div>
+<div class="line"><a name="l00475"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#acc188624236d7fcde489fc90b924ebbb">  475</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#acc188624236d7fcde489fc90b924ebbb">get_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00476"></a><span class="lineno">  476</span>&#160; </div>
+<div class="line"><a name="l00484"></a><span class="lineno">  484</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00485"></a><span class="lineno">  485</span>&#160;    std::vector&lt;ip&gt;</div>
+<div class="line"><a name="l00486"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#affab86fcf3df7edef0120e08d6a5c756">  486</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#affab86fcf3df7edef0120e08d6a5c756">get_cus</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00487"></a><span class="lineno">  487</span>&#160; </div>
+<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00501"></a><span class="lineno">  501</span>&#160;    std::vector&lt;ip&gt;</div>
+<div class="line"><a name="l00502"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#a48be0f0a2068a5f90d3cb7daa9fe3448">  502</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#a48be0f0a2068a5f90d3cb7daa9fe3448">get_cus</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00503"></a><span class="lineno">  503</span>&#160; </div>
+<div class="line"><a name="l00511"></a><span class="lineno">  511</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00512"></a><span class="lineno">  512</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1ip.html">ip</a></div>
+<div class="line"><a name="l00513"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#abf8ad3500c89beb57f27a69b4a8b9831">  513</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#abf8ad3500c89beb57f27a69b4a8b9831">get_cu</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00514"></a><span class="lineno">  514</span>&#160; </div>
+<div class="line"><a name="l00521"></a><span class="lineno">  521</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00522"></a><span class="lineno">  522</span>&#160;    <span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00523"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#a53998db4e76d389fe987133ab441085c">  523</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#a53998db4e76d389fe987133ab441085c">get_num_args</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00524"></a><span class="lineno">  524</span>&#160; </div>
+<div class="line"><a name="l00533"></a><span class="lineno">  533</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00534"></a><span class="lineno">  534</span>&#160;    std::vector&lt;arg&gt;</div>
+<div class="line"><a name="l00535"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#aadcda96d243c82678c9ea7462cb92e76">  535</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#aadcda96d243c82678c9ea7462cb92e76">get_args</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00536"></a><span class="lineno">  536</span>&#160; </div>
+<div class="line"><a name="l00549"></a><span class="lineno">  549</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00550"></a><span class="lineno">  550</span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1arg.html">arg</a></div>
+<div class="line"><a name="l00551"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin_1_1kernel.html#ab81c5f28e8fe3d2c98857c4efbc27915">  551</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin_1_1kernel.html#ab81c5f28e8fe3d2c98857c4efbc27915">get_arg</a>(int32_t index) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00552"></a><span class="lineno">  552</span>&#160;  };</div>
+<div class="line"><a name="l00553"></a><span class="lineno">  553</span>&#160; </div>
+<div class="line"><a name="l00555"></a><span class="lineno">  555</span>&#160; </div>
+<div class="line"><a name="l00556"></a><span class="lineno">  556</span>&#160;  <span class="keyword">class </span>aie_partition_impl;</div>
+<div class="line"><a name="l00557"></a><span class="lineno">  557</span>&#160;  <span class="keyword">class </span>aie_partition : detail::pimpl&lt;aie_partition_impl&gt;</div>
+<div class="line"><a name="l00558"></a><span class="lineno">  558</span>&#160;  {</div>
+<div class="line"><a name="l00559"></a><span class="lineno">  559</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00560"></a><span class="lineno">  560</span>&#160;    <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00561"></a><span class="lineno">  561</span>&#160;    aie_partition(std::shared_ptr&lt;aie_partition_impl&gt; handle)</div>
+<div class="line"><a name="l00562"></a><span class="lineno">  562</span>&#160;      : detail::pimpl&lt;aie_partition_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00563"></a><span class="lineno">  563</span>&#160;    {}</div>
+<div class="line"><a name="l00564"></a><span class="lineno">  564</span>&#160; </div>
+<div class="line"><a name="l00565"></a><span class="lineno">  565</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00566"></a><span class="lineno">  566</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00567"></a><span class="lineno">  567</span>&#160;    get_inference_fingerprint() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00568"></a><span class="lineno">  568</span>&#160; </div>
+<div class="line"><a name="l00569"></a><span class="lineno">  569</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00570"></a><span class="lineno">  570</span>&#160;    uint64_t</div>
+<div class="line"><a name="l00571"></a><span class="lineno">  571</span>&#160;    get_pre_post_fingerprint() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00572"></a><span class="lineno">  572</span>&#160; </div>
+<div class="line"><a name="l00573"></a><span class="lineno">  573</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00574"></a><span class="lineno">  574</span>&#160;    uint32_t</div>
+<div class="line"><a name="l00575"></a><span class="lineno">  575</span>&#160;    get_operations_per_cycle() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00576"></a><span class="lineno">  576</span>&#160;  };</div>
+<div class="line"><a name="l00578"></a><span class="lineno">  578</span>&#160; </div>
+<div class="line"><a name="l00579"></a><span class="lineno">  579</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00583"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a">  583</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a">xclbin</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00584"></a><span class="lineno">  584</span>&#160; </div>
+<div class="line"><a name="l00586"></a><span class="lineno">  586</span>&#160; </div>
+<div class="line"><a name="l00589"></a><span class="lineno">  589</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00590"></a><span class="lineno">  590</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a">xclbin</a>(std::shared_ptr&lt;xclbin_impl&gt; handle)</div>
+<div class="line"><a name="l00591"></a><span class="lineno">  591</span>&#160;    : detail::pimpl&lt;xclbin_impl&gt;(handle)</div>
+<div class="line"><a name="l00592"></a><span class="lineno">  592</span>&#160;  {}</div>
+<div class="line"><a name="l00594"></a><span class="lineno">  594</span>&#160; </div>
+<div class="line"><a name="l00609"></a><span class="lineno">  609</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00610"></a><span class="lineno">  610</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00611"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#aabb2488941ebf2a101af04078794f190">  611</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#aabb2488941ebf2a101af04078794f190">xclbin</a>(<span class="keyword">const</span> std::string&amp; filename);</div>
+<div class="line"><a name="l00612"></a><span class="lineno">  612</span>&#160; </div>
+<div class="line"><a name="l00622"></a><span class="lineno">  622</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00623"></a><span class="lineno">  623</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00624"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a93291d1bcb35c630e000fc0569271704">  624</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a93291d1bcb35c630e000fc0569271704">xclbin</a>(<span class="keyword">const</span> std::vector&lt;char&gt;&amp; data);</div>
+<div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160; </div>
+<div class="line"><a name="l00635"></a><span class="lineno">  635</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00636"></a><span class="lineno">  636</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00637"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a23abb0c79ff953e18f79d8813e7046d6">  637</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a23abb0c79ff953e18f79d8813e7046d6">xclbin</a>(<span class="keyword">const</span> std::string_view&amp; data);</div>
+<div class="line"><a name="l00638"></a><span class="lineno">  638</span>&#160; </div>
+<div class="line"><a name="l00647"></a><span class="lineno">  647</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00648"></a><span class="lineno">  648</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00649"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#aefdf4b1d2a49d74f2d06f98af36832f3">  649</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#aefdf4b1d2a49d74f2d06f98af36832f3">xclbin</a>(<span class="keyword">const</span> axlf* top);</div>
+<div class="line"><a name="l00650"></a><span class="lineno">  650</span>&#160; </div>
+<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;  std::vector&lt;kernel&gt;</div>
+<div class="line"><a name="l00663"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a925a3456903a1dba766ba5d9cec2b443">  663</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a925a3456903a1dba766ba5d9cec2b443">get_kernels</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160; </div>
+<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;  <a class="code" href="classxrt_1_1xclbin_1_1kernel.html">kernel</a></div>
+<div class="line"><a name="l00680"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#ae9d8707a2bb7be48812d0ecda8439c0f">  680</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#ae9d8707a2bb7be48812d0ecda8439c0f">get_kernel</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00681"></a><span class="lineno">  681</span>&#160; </div>
+<div class="line"><a name="l00691"></a><span class="lineno">  691</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00692"></a><span class="lineno">  692</span>&#160;  std::vector&lt;ip&gt;</div>
+<div class="line"><a name="l00693"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#af6b08ecf796d058b79f34a2f754f39a9">  693</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#af6b08ecf796d058b79f34a2f754f39a9">get_ips</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160; </div>
+<div class="line"><a name="l00707"></a><span class="lineno">  707</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00708"></a><span class="lineno">  708</span>&#160;  std::vector&lt;ip&gt;</div>
+<div class="line"><a name="l00709"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a7aeff3f03089c9f047a1447dc4252114">  709</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a7aeff3f03089c9f047a1447dc4252114">get_ips</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00710"></a><span class="lineno">  710</span>&#160; </div>
+<div class="line"><a name="l00720"></a><span class="lineno">  720</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00721"></a><span class="lineno">  721</span>&#160;  <a class="code" href="classxrt_1_1xclbin_1_1ip.html">ip</a></div>
+<div class="line"><a name="l00722"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a2a633cf7ff96390e2239af76e5e92358">  722</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a2a633cf7ff96390e2239af76e5e92358">get_ip</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00723"></a><span class="lineno">  723</span>&#160; </div>
+<div class="line"><a name="l00733"></a><span class="lineno">  733</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00734"></a><span class="lineno">  734</span>&#160;  std::vector&lt;mem&gt;</div>
+<div class="line"><a name="l00735"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#aab6028e7cdd6d89315fef9a722b00f3c">  735</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#aab6028e7cdd6d89315fef9a722b00f3c">get_mems</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160; </div>
+<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00739"></a><span class="lineno">  739</span>&#160;  std::vector&lt;aie_partition&gt;</div>
+<div class="line"><a name="l00740"></a><span class="lineno">  740</span>&#160;  get_aie_partitions() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00742"></a><span class="lineno">  742</span>&#160; </div>
+<div class="line"><a name="l00751"></a><span class="lineno">  751</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00752"></a><span class="lineno">  752</span>&#160;  std::string</div>
+<div class="line"><a name="l00753"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a19d4159e746eba563c54b434d08dfa00">  753</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a19d4159e746eba563c54b434d08dfa00">get_xsa_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00754"></a><span class="lineno">  754</span>&#160; </div>
+<div class="line"><a name="l00761"></a><span class="lineno">  761</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00762"></a><span class="lineno">  762</span>&#160;  std::string</div>
+<div class="line"><a name="l00763"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a6e9e828d4c8e8d2aa1431d1f86163e01">  763</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a6e9e828d4c8e8d2aa1431d1f86163e01">get_fpga_device_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00764"></a><span class="lineno">  764</span>&#160; </div>
+<div class="line"><a name="l00773"></a><span class="lineno">  773</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00774"></a><span class="lineno">  774</span>&#160;  <a class="code" href="classxrt_1_1uuid.html">uuid</a></div>
+<div class="line"><a name="l00775"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#ab4a800b90de7ffcf8aaecbd5e523ffba">  775</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#ab4a800b90de7ffcf8aaecbd5e523ffba">get_uuid</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00776"></a><span class="lineno">  776</span>&#160; </div>
+<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00786"></a><span class="lineno">  786</span>&#160;  <a class="code" href="classxrt_1_1uuid.html">uuid</a></div>
+<div class="line"><a name="l00787"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#a82589a979101e0ffe7c7936154d7e16e">  787</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a82589a979101e0ffe7c7936154d7e16e">get_interface_uuid</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00788"></a><span class="lineno">  788</span>&#160; </div>
+<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a></div>
+<div class="line"><a name="l00797"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin.html#ad0ad16d62bafb595abdddebe2d006266">  797</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#ad0ad16d62bafb595abdddebe2d006266">get_target_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00798"></a><span class="lineno">  798</span>&#160; </div>
+<div class="line"><a name="l00800"></a><span class="lineno">  800</span>&#160; </div>
+<div class="line"><a name="l00808"></a><span class="lineno">  808</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00809"></a><span class="lineno">  809</span>&#160;  <span class="keyword">const</span> axlf*</div>
+<div class="line"><a name="l00810"></a><span class="lineno">  810</span>&#160;  get_axlf() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00811"></a><span class="lineno">  811</span>&#160; </div>
+<div class="line"><a name="l00827"></a><span class="lineno">  827</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> SectionType&gt;</div>
+<div class="line"><a name="l00828"></a><span class="lineno">  828</span>&#160;  SectionType</div>
+<div class="line"><a name="l00829"></a><span class="lineno">  829</span>&#160;  get_axlf_section(axlf_section_kind section)<span class="keyword"> const</span></div>
+<div class="line"><a name="l00830"></a><span class="lineno">  830</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00831"></a><span class="lineno">  831</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>SectionType<span class="keyword">&gt;</span>(get_axlf_section(section).first);</div>
+<div class="line"><a name="l00832"></a><span class="lineno">  832</span>&#160;  }</div>
+<div class="line"><a name="l00834"></a><span class="lineno">  834</span>&#160; </div>
+<div class="line"><a name="l00835"></a><span class="lineno">  835</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00836"></a><span class="lineno">  836</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00837"></a><span class="lineno">  837</span>&#160;  std::pair&lt;const char*, size_t&gt;</div>
+<div class="line"><a name="l00838"></a><span class="lineno">  838</span>&#160;  get_axlf_section(axlf_section_kind section) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;};</div>
+<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160; </div>
+<div class="line"><a name="l00850"></a><span class="lineno">  850</span>&#160;<span class="keyword">class </span>xclbin_repository_impl;</div>
+<div class="line"><a name="l00851"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html">  851</a></span>&#160;<span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin__repository.html">xclbin_repository</a> : <span class="keyword">public</span> detail::pimpl&lt;xclbin_repository_impl&gt;</div>
+<div class="line"><a name="l00852"></a><span class="lineno">  852</span>&#160;{</div>
+<div class="line"><a name="l00853"></a><span class="lineno">  853</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00860"></a><span class="lineno">  860</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00861"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html#a4cad3f1b12eb6322f02d9eb863fe380d">  861</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository.html#a4cad3f1b12eb6322f02d9eb863fe380d">xclbin_repository</a>();</div>
+<div class="line"><a name="l00862"></a><span class="lineno">  862</span>&#160; </div>
+<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00873"></a><span class="lineno">  873</span>&#160;  <span class="keyword">explicit</span></div>
+<div class="line"><a name="l00874"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html#a5d3e3df89ab17c857d826561d346adb9">  874</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository.html#a5d3e3df89ab17c857d826561d346adb9">xclbin_repository</a>(<span class="keyword">const</span> std::string&amp; dir);</div>
+<div class="line"><a name="l00875"></a><span class="lineno">  875</span>&#160; </div>
+<div class="line"><a name="l00883"></a><span class="lineno">  883</span>&#160;  <span class="keyword">class </span>iterator_impl;</div>
+<div class="line"><a name="l00884"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html">  884</a></span>&#160;  <span class="keyword">class </span><a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a> : <span class="keyword">public</span> detail::pimpl&lt;iterator_impl&gt;</div>
+<div class="line"><a name="l00885"></a><span class="lineno">  885</span>&#160;  {</div>
+<div class="line"><a name="l00886"></a><span class="lineno">  886</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00887"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#aa511c3719c208c4fa4557ecac7966e4e">  887</a></span>&#160;    <span class="keyword">using</span> <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#aa511c3719c208c4fa4557ecac7966e4e">iterator_category</a> = std::forward_iterator_tag;</div>
+<div class="line"><a name="l00888"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#ab7753a7cca4ef0ba199579e6c261687c">  888</a></span>&#160;    <span class="keyword">using</span> <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#ab7753a7cca4ef0ba199579e6c261687c">difference_type</a>   = std::ptrdiff_t;</div>
+<div class="line"><a name="l00889"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a5ac4043994c3648f772e216bfc4615c8">  889</a></span>&#160;    <span class="keyword">using</span> <a class="code" href="classxrt_1_1xclbin.html">value_type</a>        = <a class="code" href="classxrt_1_1xclbin.html">xclbin</a>;</div>
+<div class="line"><a name="l00890"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#aeed9ee7edb1bccc6c57180cd74c3953a">  890</a></span>&#160;    <span class="keyword">using</span> <a class="code" href="classxrt_1_1xclbin.html">pointer</a>           = <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a5ac4043994c3648f772e216bfc4615c8">value_type</a>;</div>
+<div class="line"><a name="l00891"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#ad847f6781925a8c8be74935390c33155">  891</a></span>&#160;    <span class="keyword">using</span> <a class="code" href="classxrt_1_1xclbin.html">reference</a>         = <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a5ac4043994c3648f772e216bfc4615c8">value_type</a>;</div>
+<div class="line"><a name="l00892"></a><span class="lineno">  892</span>&#160; </div>
+<div class="line"><a name="l00893"></a><span class="lineno">  893</span>&#160;  <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00897"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#ad2e88633d9a62e37f5064f6e0604e04d">  897</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#ad2e88633d9a62e37f5064f6e0604e04d">iterator</a>(std::shared_ptr&lt;iterator_impl&gt; handle)</div>
+<div class="line"><a name="l00898"></a><span class="lineno">  898</span>&#160;      : detail::pimpl&lt;iterator_impl&gt;(std::move(handle))</div>
+<div class="line"><a name="l00899"></a><span class="lineno">  899</span>&#160;    {}</div>
+<div class="line"><a name="l00900"></a><span class="lineno">  900</span>&#160; </div>
+<div class="line"><a name="l00906"></a><span class="lineno">  906</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00907"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#ad26d51910825e4011a1204a59515c27c">  907</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#ad26d51910825e4011a1204a59515c27c">iterator</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a>&amp;);</div>
+<div class="line"><a name="l00908"></a><span class="lineno">  908</span>&#160; </div>
+<div class="line"><a name="l00912"></a><span class="lineno">  912</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00913"></a><span class="lineno">  913</span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a>&amp;</div>
+<div class="line"><a name="l00914"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a69972caebdebc99239da1e2a8894dd7f">  914</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a69972caebdebc99239da1e2a8894dd7f">operator++</a>();</div>
+<div class="line"><a name="l00915"></a><span class="lineno">  915</span>&#160; </div>
+<div class="line"><a name="l00922"></a><span class="lineno">  922</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00923"></a><span class="lineno">  923</span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a></div>
+<div class="line"><a name="l00924"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a7245cc68632d584556ab4ce1ba0742e8">  924</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a7245cc68632d584556ab4ce1ba0742e8">operator++</a>(<span class="keywordtype">int</span>);</div>
+<div class="line"><a name="l00925"></a><span class="lineno">  925</span>&#160; </div>
+<div class="line"><a name="l00929"></a><span class="lineno">  929</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00930"></a><span class="lineno">  930</span>&#160;    <span class="keywordtype">bool</span></div>
+<div class="line"><a name="l00931"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#ae433e92720464e81f2a4d1ddfa90c562">  931</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#ae433e92720464e81f2a4d1ddfa90c562">operator==</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a>&amp; rhs) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00932"></a><span class="lineno">  932</span>&#160; </div>
+<div class="line"><a name="l00936"></a><span class="lineno">  936</span>&#160;    <span class="keywordtype">bool</span></div>
+<div class="line"><a name="l00937"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a2740f9a5ee07c093a2176745463b5e31">  937</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a2740f9a5ee07c093a2176745463b5e31">operator!=</a>(<span class="keyword">const</span> <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a>&amp; rhs)<span class="keyword"> const</span></div>
+<div class="line"><a name="l00938"></a><span class="lineno">  938</span>&#160;<span class="keyword">    </span>{</div>
+<div class="line"><a name="l00939"></a><span class="lineno">  939</span>&#160;      <span class="keywordflow">return</span> !(*<span class="keyword">this</span> == rhs);</div>
+<div class="line"><a name="l00940"></a><span class="lineno">  940</span>&#160;    }</div>
+<div class="line"><a name="l00941"></a><span class="lineno">  941</span>&#160; </div>
+<div class="line"><a name="l00948"></a><span class="lineno">  948</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00949"></a><span class="lineno">  949</span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a5ac4043994c3648f772e216bfc4615c8">value_type</a></div>
+<div class="line"><a name="l00950"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a454de3610aa5824942e7e285e326779b">  950</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a454de3610aa5824942e7e285e326779b">operator*</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00951"></a><span class="lineno">  951</span>&#160; </div>
+<div class="line"><a name="l00958"></a><span class="lineno">  958</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00959"></a><span class="lineno">  959</span>&#160;    <a class="code" href="classxrt_1_1xclbin.html">value_type</a></div>
+<div class="line"><a name="l00960"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#a85643aede1866041f41053105c104fda">  960</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#a85643aede1866041f41053105c104fda">operator-&gt;</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00961"></a><span class="lineno">  961</span>&#160; </div>
+<div class="line"><a name="l00965"></a><span class="lineno">  965</span>&#160;    XRT_API_EXPORT</div>
+<div class="line"><a name="l00966"></a><span class="lineno">  966</span>&#160;    std::string</div>
+<div class="line"><a name="l00967"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository_1_1iterator.html#aaf3d495e22a97f15e38773a0a1383e7a">  967</a></span>&#160;    <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html#aaf3d495e22a97f15e38773a0a1383e7a">path</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00968"></a><span class="lineno">  968</span>&#160;  };</div>
+<div class="line"><a name="l00969"></a><span class="lineno">  969</span>&#160; </div>
+<div class="line"><a name="l00973"></a><span class="lineno">  973</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00974"></a><span class="lineno">  974</span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a></div>
+<div class="line"><a name="l00975"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html#ad27ef4efd0f7de39f33b63841810d989">  975</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository.html#ad27ef4efd0f7de39f33b63841810d989">begin</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00976"></a><span class="lineno">  976</span>&#160; </div>
+<div class="line"><a name="l00980"></a><span class="lineno">  980</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00981"></a><span class="lineno">  981</span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository_1_1iterator.html">iterator</a></div>
+<div class="line"><a name="l00982"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html#add8a74d3de72bac3afe68309be1754c7">  982</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository.html#add8a74d3de72bac3afe68309be1754c7">end</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00983"></a><span class="lineno">  983</span>&#160; </div>
+<div class="line"><a name="l00987"></a><span class="lineno">  987</span>&#160;  XRT_API_EXPORT</div>
+<div class="line"><a name="l00988"></a><span class="lineno">  988</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html">xclbin</a></div>
+<div class="line"><a name="l00989"></a><span class="lineno"><a class="line" href="classxrt_1_1xclbin__repository.html#a61c367b8d50ea078cd0c350ebf30163c">  989</a></span>&#160;  <a class="code" href="classxrt_1_1xclbin__repository.html#a61c367b8d50ea078cd0c350ebf30163c">load</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00990"></a><span class="lineno">  990</span>&#160;};</div>
+<div class="line"><a name="l00991"></a><span class="lineno">  991</span>&#160; </div>
+<div class="line"><a name="l00992"></a><span class="lineno">  992</span>&#160;} <span class="comment">// namespace xrt</span></div>
+<div class="line"><a name="l00993"></a><span class="lineno">  993</span>&#160; </div>
+<div class="line"><a name="l00995"></a><span class="lineno">  995</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
+<div class="line"><a name="l00996"></a><span class="lineno">  996</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00997"></a><span class="lineno">  997</span>&#160; </div>
+<div class="line"><a name="l01004"></a><span class="lineno"> 1004</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01005"></a><span class="lineno"> 1005</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l01006"></a><span class="lineno"> 1006</span>&#160;xrtXclbinAllocFilename(<span class="keyword">const</span> <span class="keywordtype">char</span>* filename);</div>
+<div class="line"><a name="l01007"></a><span class="lineno"> 1007</span>&#160; </div>
+<div class="line"><a name="l01008"></a><span class="lineno"> 1008</span>&#160; </div>
+<div class="line"><a name="l01015"></a><span class="lineno"> 1015</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01016"></a><span class="lineno"> 1016</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l01017"></a><span class="lineno"> 1017</span>&#160;xrtXclbinAllocAxlf(<span class="keyword">const</span> <span class="keyword">struct</span> axlf* top_axlf);</div>
+<div class="line"><a name="l01018"></a><span class="lineno"> 1018</span>&#160; </div>
+<div class="line"><a name="l01026"></a><span class="lineno"> 1026</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01027"></a><span class="lineno"> 1027</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l01028"></a><span class="lineno"> 1028</span>&#160;xrtXclbinAllocRawData(<span class="keyword">const</span> <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size);</div>
+<div class="line"><a name="l01029"></a><span class="lineno"> 1029</span>&#160; </div>
+<div class="line"><a name="l01036"></a><span class="lineno"> 1036</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01037"></a><span class="lineno"> 1037</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01038"></a><span class="lineno"> 1038</span>&#160;xrtXclbinFreeHandle(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l01039"></a><span class="lineno"> 1039</span>&#160; </div>
+<div class="line"><a name="l01053"></a><span class="lineno"> 1053</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01054"></a><span class="lineno"> 1054</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01055"></a><span class="lineno"> 1055</span>&#160;xrtXclbinGetXSAName(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* name, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
+<div class="line"><a name="l01056"></a><span class="lineno"> 1056</span>&#160; </div>
+<div class="line"><a name="l01064"></a><span class="lineno"> 1064</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01065"></a><span class="lineno"> 1065</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01066"></a><span class="lineno"> 1066</span>&#160;xrtXclbinGetUUID(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> ret_uuid);</div>
+<div class="line"><a name="l01067"></a><span class="lineno"> 1067</span>&#160; </div>
+<div class="line"><a name="l01078"></a><span class="lineno"> 1078</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01079"></a><span class="lineno"> 1079</span>&#160;<span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l01080"></a><span class="lineno"> 1080</span>&#160;xrtXclbinGetNumKernels(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l01081"></a><span class="lineno"> 1081</span>&#160; </div>
+<div class="line"><a name="l01092"></a><span class="lineno"> 1092</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01093"></a><span class="lineno"> 1093</span>&#160;<span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l01094"></a><span class="lineno"> 1094</span>&#160;xrtXclbinGetNumKernelComputeUnits(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l01095"></a><span class="lineno"> 1095</span>&#160; </div>
+<div class="line"><a name="l01109"></a><span class="lineno"> 1109</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01110"></a><span class="lineno"> 1110</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01111"></a><span class="lineno"> 1111</span>&#160;xrtXclbinGetData(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
+<div class="line"><a name="l01112"></a><span class="lineno"> 1112</span>&#160; </div>
+<div class="line"><a name="l01113"></a><span class="lineno"> 1113</span>&#160;<span class="comment">/*</span></div>
+<div class="line"><a name="l01114"></a><span class="lineno"> 1114</span>&#160;<span class="comment"> * xrtGetXclbinUUID() - Get UUID of xclbin image running on device</span></div>
+<div class="line"><a name="l01115"></a><span class="lineno"> 1115</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l01116"></a><span class="lineno"> 1116</span>&#160;<span class="comment"> * @dhdl:   Device handle</span></div>
+<div class="line"><a name="l01117"></a><span class="lineno"> 1117</span>&#160;<span class="comment"> * @out:    Return xclbin id in this uuid_t struct</span></div>
+<div class="line"><a name="l01118"></a><span class="lineno"> 1118</span>&#160;<span class="comment"> * Return:  0 on success or appropriate error number</span></div>
+<div class="line"><a name="l01119"></a><span class="lineno"> 1119</span>&#160;<span class="comment"> */</span></div>
+<div class="line"><a name="l01120"></a><span class="lineno"> 1120</span>&#160;XRT_API_EXPORT</div>
+<div class="line"><a name="l01121"></a><span class="lineno"> 1121</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l01122"></a><span class="lineno"> 1122</span>&#160;xrtXclbinUUID(xclDeviceHandle dhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> out);</div>
+<div class="line"><a name="l01123"></a><span class="lineno"> 1123</span>&#160; </div>
+<div class="line"><a name="l01125"></a><span class="lineno"> 1125</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l01126"></a><span class="lineno"> 1126</span>&#160;}</div>
+<div class="line"><a name="l01127"></a><span class="lineno"> 1127</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l01128"></a><span class="lineno"> 1128</span>&#160; </div>
+<div class="line"><a name="l01129"></a><span class="lineno"> 1129</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="ttc" id="aclassxrt_1_1uuid_html"><div class="ttname"><a href="classxrt_1_1uuid.html">xrt::uuid</a></div><div class="ttdoc">Wrapper class to treat uuid_t as a value type supporting copying.</div><div class="ttdef"><b>Definition:</b> xrt_uuid.h:31</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html">xrt::xclbin::arg</a></div><div class="ttdoc">class arg - xrt::xclbin::arg represents a compute unit argument</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:213</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_a33e25ca3c0afa0a5e5c5c146adc77a03"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#a33e25ca3c0afa0a5e5c5c146adc77a03">xrt::xclbin::arg::get_offset</a></div><div class="ttdeci">XRT_API_EXPORT uint64_t get_offset() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_a6c628a07753650c59819b086d4aee406"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#a6c628a07753650c59819b086d4aee406">xrt::xclbin::arg::get_port</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_port() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_a6ef56c3c41cf85fb2060544dd9193a6b"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#a6ef56c3c41cf85fb2060544dd9193a6b">xrt::xclbin::arg::get_index</a></div><div class="ttdeci">XRT_API_EXPORT size_t get_index() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_a8026afcbfc713a2c5abaef57b126ad82"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#a8026afcbfc713a2c5abaef57b126ad82">xrt::xclbin::arg::arg</a></div><div class="ttdeci">arg(std::shared_ptr&lt; arg_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:218</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_a95b5b046b0822db0f4f788baaf2b9f51"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#a95b5b046b0822db0f4f788baaf2b9f51">xrt::xclbin::arg::get_host_type</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_host_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_aae3b620268196796b3ffb8750a7214a7"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#aae3b620268196796b3ffb8750a7214a7">xrt::xclbin::arg::get_size</a></div><div class="ttdeci">XRT_API_EXPORT uint64_t get_size() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_ab25a7f72d71e9297ccc2e6efc8bede71"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#ab25a7f72d71e9297ccc2e6efc8bede71">xrt::xclbin::arg::get_mems</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; mem &gt; get_mems() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_ab75fd24e69299994b78e0f2e8478612f"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#ab75fd24e69299994b78e0f2e8478612f">xrt::xclbin::arg::get_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_ace0c1022e0b56765d9bfb8c4a887b24c"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c">xrt::xclbin::arg::arg</a></div><div class="ttdeci">arg()=default</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html">xrt::xclbin::ip</a></div><div class="ttdoc">xrt::xclbin::ip represents a IP in an xclbin.</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:307</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a075ba9da9ca0076d04968e462f17132a"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">xrt::xclbin::ip::control_type</a></div><div class="ttdeci">control_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:315</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8">xrt::xclbin::ip::control_type::none</a></div><div class="ttdeci">@ none</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a075ba9da9ca0076d04968e462f17132aa789406d01073ca1782d86293dcfc0764"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa789406d01073ca1782d86293dcfc0764">xrt::xclbin::ip::control_type::hs</a></div><div class="ttdeci">@ hs</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65">xrt::xclbin::ip::control_type::fa</a></div><div class="ttdeci">@ fa</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c">xrt::xclbin::ip::control_type::chain</a></div><div class="ttdeci">@ chain</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a0809be47f88d58ee765fa54d0f07c6b1"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a0809be47f88d58ee765fa54d0f07c6b1">xrt::xclbin::ip::get_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a2e5c54bd572cd0832d2d6732e9a672c2"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a2e5c54bd572cd0832d2d6732e9a672c2">xrt::xclbin::ip::get_size</a></div><div class="ttdeci">XRT_API_EXPORT size_t get_size() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a323d2cdc8227af5386f49261f760eb35"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a323d2cdc8227af5386f49261f760eb35">xrt::xclbin::ip::get_control_type</a></div><div class="ttdeci">XRT_API_EXPORT control_type get_control_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a4b3a8a18015caf1d56ba5e3a016e3cf3"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a4b3a8a18015caf1d56ba5e3a016e3cf3">xrt::xclbin::ip::get_num_args</a></div><div class="ttdeci">XRT_API_EXPORT size_t get_num_args() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a5f85716a30bb8c0fc6768969827c1b74"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74">xrt::xclbin::ip::ip_type</a></div><div class="ttdeci">ip_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:323</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a5f85716a30bb8c0fc6768969827c1b74a288404204e3d452229308317344a285d"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74a288404204e3d452229308317344a285d">xrt::xclbin::ip::ip_type::pl</a></div><div class="ttdeci">@ pl</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a5f85716a30bb8c0fc6768969827c1b74a8812c36aa5ae336c2a77bf63211d899a"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a5f85716a30bb8c0fc6768969827c1b74a8812c36aa5ae336c2a77bf63211d899a">xrt::xclbin::ip::ip_type::ps</a></div><div class="ttdeci">@ ps</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a63654d4fbfef294c3df0d219be16ec0b"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a63654d4fbfef294c3df0d219be16ec0b">xrt::xclbin::ip::ip</a></div><div class="ttdeci">ip(std::shared_ptr&lt; ip_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:329</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a68dd70ee3dc764b7d291035b50d7dca4"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a68dd70ee3dc764b7d291035b50d7dca4">xrt::xclbin::ip::get_base_address</a></div><div class="ttdeci">XRT_API_EXPORT uint64_t get_base_address() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a93041b26be6afe28675d45d24ad47612"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a93041b26be6afe28675d45d24ad47612">xrt::xclbin::ip::get_arg</a></div><div class="ttdeci">XRT_API_EXPORT arg get_arg(int32_t index) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_a9e44d5ab56ce330eda5bab7bbdbc6ea0"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#a9e44d5ab56ce330eda5bab7bbdbc6ea0">xrt::xclbin::ip::get_args</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; arg &gt; get_args() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_ac65ee975567f90378bd3cdd8295e08dc"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#ac65ee975567f90378bd3cdd8295e08dc">xrt::xclbin::ip::get_type</a></div><div class="ttdeci">XRT_API_EXPORT ip_type get_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1ip_html_ad06915d471c3b2cfea96fed6fe271f41"><div class="ttname"><a href="classxrt_1_1xclbin_1_1ip.html#ad06915d471c3b2cfea96fed6fe271f41">xrt::xclbin::ip::ip</a></div><div class="ttdeci">ip()=default</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html">xrt::xclbin::kernel</a></div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:440</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_a48be0f0a2068a5f90d3cb7daa9fe3448"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#a48be0f0a2068a5f90d3cb7daa9fe3448">xrt::xclbin::kernel::get_cus</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; ip &gt; get_cus(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_a53998db4e76d389fe987133ab441085c"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#a53998db4e76d389fe987133ab441085c">xrt::xclbin::kernel::get_num_args</a></div><div class="ttdeci">XRT_API_EXPORT size_t get_num_args() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aadcda96d243c82678c9ea7462cb92e76"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aadcda96d243c82678c9ea7462cb92e76">xrt::xclbin::kernel::get_args</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; arg &gt; get_args() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aae7991bdd065bcf6d2f8d7ff1716c6a1"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1">xrt::xclbin::kernel::kernel_type</a></div><div class="ttdeci">kernel_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:447</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aae7991bdd065bcf6d2f8d7ff1716c6a1a225734fb10a045efb6e591ef55b939a7"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a225734fb10a045efb6e591ef55b939a7">xrt::xclbin::kernel::kernel_type::dpu</a></div><div class="ttdeci">@ dpu</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aae7991bdd065bcf6d2f8d7ff1716c6a1a288404204e3d452229308317344a285d"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a288404204e3d452229308317344a285d">xrt::xclbin::kernel::kernel_type::pl</a></div><div class="ttdeci">@ pl</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aae7991bdd065bcf6d2f8d7ff1716c6a1a334c4a4c42fdb79d7ebc3e73b517e6f8"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a334c4a4c42fdb79d7ebc3e73b517e6f8">xrt::xclbin::kernel::kernel_type::none</a></div><div class="ttdeci">@ none</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aae7991bdd065bcf6d2f8d7ff1716c6a1a8812c36aa5ae336c2a77bf63211d899a"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aae7991bdd065bcf6d2f8d7ff1716c6a1a8812c36aa5ae336c2a77bf63211d899a">xrt::xclbin::kernel::kernel_type::ps</a></div><div class="ttdeci">@ ps</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_ab81c5f28e8fe3d2c98857c4efbc27915"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#ab81c5f28e8fe3d2c98857c4efbc27915">xrt::xclbin::kernel::get_arg</a></div><div class="ttdeci">XRT_API_EXPORT arg get_arg(int32_t index) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_abf8ad3500c89beb57f27a69b4a8b9831"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#abf8ad3500c89beb57f27a69b4a8b9831">xrt::xclbin::kernel::get_cu</a></div><div class="ttdeci">XRT_API_EXPORT ip get_cu(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aca6d5209b7075863fa5e83a4f2a40c76"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aca6d5209b7075863fa5e83a4f2a40c76">xrt::xclbin::kernel::kernel</a></div><div class="ttdeci">kernel()=default</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_acc188624236d7fcde489fc90b924ebbb"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#acc188624236d7fcde489fc90b924ebbb">xrt::xclbin::kernel::get_type</a></div><div class="ttdeci">XRT_API_EXPORT kernel_type get_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_ad1c79e7a4c2644cf7d5d07de7914329e"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#ad1c79e7a4c2644cf7d5d07de7914329e">xrt::xclbin::kernel::get_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_aeb4e6d106e71f065bcac36e0d34fc144"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#aeb4e6d106e71f065bcac36e0d34fc144">xrt::xclbin::kernel::kernel</a></div><div class="ttdeci">kernel(std::shared_ptr&lt; kernel_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:453</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_affab86fcf3df7edef0120e08d6a5c756"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#affab86fcf3df7edef0120e08d6a5c756">xrt::xclbin::kernel::get_cus</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; ip &gt; get_cus() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html">xrt::xclbin::mem</a></div><div class="ttdoc">xrt::xclbin::mem represents a physical device memory bank</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:100</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a1f5d939413811332d2f7d91e4d861aab"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab">xrt::xclbin::mem::mem</a></div><div class="ttdeci">mem()=default</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a3f68effa4c8f48bd3da7a76f344d1b74"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a3f68effa4c8f48bd3da7a76f344d1b74">xrt::xclbin::mem::get_type</a></div><div class="ttdeci">XRT_API_EXPORT memory_type get_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a47f115027d60513d9d305994e86b80ba"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a47f115027d60513d9d305994e86b80ba">xrt::xclbin::mem::get_base_address</a></div><div class="ttdeci">XRT_API_EXPORT uint64_t get_base_address() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525f"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f">xrt::xclbin::mem::memory_type</a></div><div class="ttdeci">memory_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:108</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d">xrt::xclbin::mem::memory_type::uram</a></div><div class="ttdeci">@ uram</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87">xrt::xclbin::mem::memory_type::are</a></div><div class="ttdeci">@ are</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa57fd539060b8a2bf98cd42880f8846d2"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa57fd539060b8a2bf98cd42880f8846d2">xrt::xclbin::mem::memory_type::preallocated_global</a></div><div class="ttdeci">@ preallocated_global</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa59a98898efc5226d57d2da1e7c4444d4"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa59a98898efc5226d57d2da1e7c4444d4">xrt::xclbin::mem::memory_type::ddr4</a></div><div class="ttdeci">@ ddr4</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e">xrt::xclbin::mem::memory_type::streaming_connection</a></div><div class="ttdeci">@ streaming_connection</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e">xrt::xclbin::mem::memory_type::host</a></div><div class="ttdeci">@ host</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa9ea5bdd29692f10540ec3ce4d8ba97f5"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa9ea5bdd29692f10540ec3ce4d8ba97f5">xrt::xclbin::mem::memory_type::ddr3</a></div><div class="ttdeci">@ ddr3</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525faabb0256a318439745ab0b343d64b9ba0"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525faabb0256a318439745ab0b343d64b9ba0">xrt::xclbin::mem::memory_type::streaming</a></div><div class="ttdeci">@ streaming</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fae4fa3adecabcf036f6f95da68bfe76bb"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fae4fa3adecabcf036f6f95da68bfe76bb">xrt::xclbin::mem::memory_type::bram</a></div><div class="ttdeci">@ bram</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fae65e9faeec18c95733e43fb7b188ad85"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fae65e9faeec18c95733e43fb7b188ad85">xrt::xclbin::mem::memory_type::hbm</a></div><div class="ttdeci">@ hbm</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fafb5914622a6a9112bc77a767112a6dfc"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fafb5914622a6a9112bc77a767112a6dfc">xrt::xclbin::mem::memory_type::dram</a></div><div class="ttdeci">@ dram</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a75f06b31b11cd597669f9f59a2631699"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a75f06b31b11cd597669f9f59a2631699">xrt::xclbin::mem::get_used</a></div><div class="ttdeci">XRT_API_EXPORT bool get_used() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_aa42f675b24bef11060db7161a5951a3b"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b">xrt::xclbin::mem::mem</a></div><div class="ttdeci">mem(std::shared_ptr&lt; mem_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:126</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_ad21ef7a8dbe0be1ff9a69490cd4ca614"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#ad21ef7a8dbe0be1ff9a69490cd4ca614">xrt::xclbin::mem::get_size_kb</a></div><div class="ttdeci">XRT_API_EXPORT uint64_t get_size_kb() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_aedef1d46f1deb6610efc97bbfcc3d19e"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#aedef1d46f1deb6610efc97bbfcc3d19e">xrt::xclbin::mem::get_tag</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_tag() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_af8d7d4ae4dad983ccd4287ec88712f77"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#af8d7d4ae4dad983ccd4287ec88712f77">xrt::xclbin::mem::get_index</a></div><div class="ttdeci">XRT_API_EXPORT int32_t get_index() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html">xrt::xclbin_repository::iterator</a></div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:885</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a2740f9a5ee07c093a2176745463b5e31"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a2740f9a5ee07c093a2176745463b5e31">xrt::xclbin_repository::iterator::operator!=</a></div><div class="ttdeci">bool operator!=(const iterator &amp;rhs) const</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:937</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a454de3610aa5824942e7e285e326779b"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a454de3610aa5824942e7e285e326779b">xrt::xclbin_repository::iterator::operator*</a></div><div class="ttdeci">XRT_API_EXPORT value_type operator*() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a5ac4043994c3648f772e216bfc4615c8"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a5ac4043994c3648f772e216bfc4615c8">xrt::xclbin_repository::iterator::value_type</a></div><div class="ttdeci">xclbin value_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:889</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a69972caebdebc99239da1e2a8894dd7f"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a69972caebdebc99239da1e2a8894dd7f">xrt::xclbin_repository::iterator::operator++</a></div><div class="ttdeci">XRT_API_EXPORT iterator &amp; operator++()</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a7245cc68632d584556ab4ce1ba0742e8"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a7245cc68632d584556ab4ce1ba0742e8">xrt::xclbin_repository::iterator::operator++</a></div><div class="ttdeci">XRT_API_EXPORT iterator operator++(int)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_a85643aede1866041f41053105c104fda"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#a85643aede1866041f41053105c104fda">xrt::xclbin_repository::iterator::operator-&gt;</a></div><div class="ttdeci">XRT_API_EXPORT value_type operator-&gt;() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_aa511c3719c208c4fa4557ecac7966e4e"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#aa511c3719c208c4fa4557ecac7966e4e">xrt::xclbin_repository::iterator::iterator_category</a></div><div class="ttdeci">std::forward_iterator_tag iterator_category</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:887</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_aaf3d495e22a97f15e38773a0a1383e7a"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#aaf3d495e22a97f15e38773a0a1383e7a">xrt::xclbin_repository::iterator::path</a></div><div class="ttdeci">XRT_API_EXPORT std::string path() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_ab7753a7cca4ef0ba199579e6c261687c"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#ab7753a7cca4ef0ba199579e6c261687c">xrt::xclbin_repository::iterator::difference_type</a></div><div class="ttdeci">std::ptrdiff_t difference_type</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:888</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_ad26d51910825e4011a1204a59515c27c"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#ad26d51910825e4011a1204a59515c27c">xrt::xclbin_repository::iterator::iterator</a></div><div class="ttdeci">XRT_API_EXPORT iterator(const iterator &amp;)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_ad2e88633d9a62e37f5064f6e0604e04d"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#ad2e88633d9a62e37f5064f6e0604e04d">xrt::xclbin_repository::iterator::iterator</a></div><div class="ttdeci">iterator(std::shared_ptr&lt; iterator_impl &gt; handle)</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:897</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_1_1iterator_html_ae433e92720464e81f2a4d1ddfa90c562"><div class="ttname"><a href="classxrt_1_1xclbin__repository_1_1iterator.html#ae433e92720464e81f2a4d1ddfa90c562">xrt::xclbin_repository::iterator::operator==</a></div><div class="ttdeci">XRT_API_EXPORT bool operator==(const iterator &amp;rhs) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html">xrt::xclbin_repository</a></div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:852</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html_a4cad3f1b12eb6322f02d9eb863fe380d"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html#a4cad3f1b12eb6322f02d9eb863fe380d">xrt::xclbin_repository::xclbin_repository</a></div><div class="ttdeci">XRT_API_EXPORT xclbin_repository()</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html_a5d3e3df89ab17c857d826561d346adb9"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html#a5d3e3df89ab17c857d826561d346adb9">xrt::xclbin_repository::xclbin_repository</a></div><div class="ttdeci">XRT_API_EXPORT xclbin_repository(const std::string &amp;dir)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html_a61c367b8d50ea078cd0c350ebf30163c"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html#a61c367b8d50ea078cd0c350ebf30163c">xrt::xclbin_repository::load</a></div><div class="ttdeci">XRT_API_EXPORT xclbin load(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html_ad27ef4efd0f7de39f33b63841810d989"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html#ad27ef4efd0f7de39f33b63841810d989">xrt::xclbin_repository::begin</a></div><div class="ttdeci">XRT_API_EXPORT iterator begin() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin__repository_html_add8a74d3de72bac3afe68309be1754c7"><div class="ttname"><a href="classxrt_1_1xclbin__repository.html#add8a74d3de72bac3afe68309be1754c7">xrt::xclbin_repository::end</a></div><div class="ttdeci">XRT_API_EXPORT iterator end() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html"><div class="ttname"><a href="classxrt_1_1xclbin.html">xrt::xclbin</a></div><div class="ttdoc">xrt::xclbin represents an xclbin and provides APIs to access meta data.</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:74</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a0746e80e19df9bebf75e08af51e4401d"><div class="ttname"><a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">xrt::xclbin::target_type</a></div><div class="ttdeci">target_type</div><div class="ttdoc">Type of xclbin.</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:85</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a0746e80e19df9bebf75e08af51e4401da416133dd0f388d283d8ad6bd17b319a1"><div class="ttname"><a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da416133dd0f388d283d8ad6bd17b319a1">xrt::xclbin::target_type::hw_emu</a></div><div class="ttdeci">@ hw_emu</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a0746e80e19df9bebf75e08af51e4401da65c2a3d77127c15d068dec7e00e50649"><div class="ttname"><a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da65c2a3d77127c15d068dec7e00e50649">xrt::xclbin::target_type::hw</a></div><div class="ttdeci">@ hw</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a0746e80e19df9bebf75e08af51e4401da95c104ccd3426696d51fd70c33557992"><div class="ttname"><a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da95c104ccd3426696d51fd70c33557992">xrt::xclbin::target_type::sw_emu</a></div><div class="ttdeci">@ sw_emu</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a19d4159e746eba563c54b434d08dfa00"><div class="ttname"><a href="classxrt_1_1xclbin.html#a19d4159e746eba563c54b434d08dfa00">xrt::xclbin::get_xsa_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_xsa_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a23abb0c79ff953e18f79d8813e7046d6"><div class="ttname"><a href="classxrt_1_1xclbin.html#a23abb0c79ff953e18f79d8813e7046d6">xrt::xclbin::xclbin</a></div><div class="ttdeci">XRT_API_EXPORT xclbin(const std::string_view &amp;data)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a2a633cf7ff96390e2239af76e5e92358"><div class="ttname"><a href="classxrt_1_1xclbin.html#a2a633cf7ff96390e2239af76e5e92358">xrt::xclbin::get_ip</a></div><div class="ttdeci">XRT_API_EXPORT ip get_ip(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a6e9e828d4c8e8d2aa1431d1f86163e01"><div class="ttname"><a href="classxrt_1_1xclbin.html#a6e9e828d4c8e8d2aa1431d1f86163e01">xrt::xclbin::get_fpga_device_name</a></div><div class="ttdeci">XRT_API_EXPORT std::string get_fpga_device_name() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a6ee5043fccb0572a789af39b370fe55a"><div class="ttname"><a href="classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a">xrt::xclbin::xclbin</a></div><div class="ttdeci">xclbin()=default</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a7aeff3f03089c9f047a1447dc4252114"><div class="ttname"><a href="classxrt_1_1xclbin.html#a7aeff3f03089c9f047a1447dc4252114">xrt::xclbin::get_ips</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; ip &gt; get_ips(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a82589a979101e0ffe7c7936154d7e16e"><div class="ttname"><a href="classxrt_1_1xclbin.html#a82589a979101e0ffe7c7936154d7e16e">xrt::xclbin::get_interface_uuid</a></div><div class="ttdeci">XRT_API_EXPORT uuid get_interface_uuid() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a925a3456903a1dba766ba5d9cec2b443"><div class="ttname"><a href="classxrt_1_1xclbin.html#a925a3456903a1dba766ba5d9cec2b443">xrt::xclbin::get_kernels</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; kernel &gt; get_kernels() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_a93291d1bcb35c630e000fc0569271704"><div class="ttname"><a href="classxrt_1_1xclbin.html#a93291d1bcb35c630e000fc0569271704">xrt::xclbin::xclbin</a></div><div class="ttdeci">XRT_API_EXPORT xclbin(const std::vector&lt; char &gt; &amp;data)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_aab6028e7cdd6d89315fef9a722b00f3c"><div class="ttname"><a href="classxrt_1_1xclbin.html#aab6028e7cdd6d89315fef9a722b00f3c">xrt::xclbin::get_mems</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; mem &gt; get_mems() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_aabb2488941ebf2a101af04078794f190"><div class="ttname"><a href="classxrt_1_1xclbin.html#aabb2488941ebf2a101af04078794f190">xrt::xclbin::xclbin</a></div><div class="ttdeci">XRT_API_EXPORT xclbin(const std::string &amp;filename)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_ab4a800b90de7ffcf8aaecbd5e523ffba"><div class="ttname"><a href="classxrt_1_1xclbin.html#ab4a800b90de7ffcf8aaecbd5e523ffba">xrt::xclbin::get_uuid</a></div><div class="ttdeci">XRT_API_EXPORT uuid get_uuid() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_ad0ad16d62bafb595abdddebe2d006266"><div class="ttname"><a href="classxrt_1_1xclbin.html#ad0ad16d62bafb595abdddebe2d006266">xrt::xclbin::get_target_type</a></div><div class="ttdeci">XRT_API_EXPORT target_type get_target_type() const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_ae9d8707a2bb7be48812d0ecda8439c0f"><div class="ttname"><a href="classxrt_1_1xclbin.html#ae9d8707a2bb7be48812d0ecda8439c0f">xrt::xclbin::get_kernel</a></div><div class="ttdeci">XRT_API_EXPORT kernel get_kernel(const std::string &amp;name) const</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_aefdf4b1d2a49d74f2d06f98af36832f3"><div class="ttname"><a href="classxrt_1_1xclbin.html#aefdf4b1d2a49d74f2d06f98af36832f3">xrt::xclbin::xclbin</a></div><div class="ttdeci">XRT_API_EXPORT xclbin(const axlf *top)</div></div>
+<div class="ttc" id="aclassxrt_1_1xclbin_html_af6b08ecf796d058b79f34a2f754f39a9"><div class="ttname"><a href="classxrt_1_1xclbin.html#af6b08ecf796d058b79f34a2f754f39a9">xrt::xclbin::get_ips</a></div><div class="ttdeci">XRT_API_EXPORT std::vector&lt; ip &gt; get_ips() const</div></div>
+<div class="ttc" id="anamespacexrt_html"><div class="ttname"><a href="namespacexrt.html">xrt</a></div><div class="ttdef"><b>Definition:</b> xrt_device.h:32</div></div>
+<div class="ttc" id="axrt__uuid_8h_html"><div class="ttname"><a href="xrt__uuid_8h.html">xrt_uuid.h</a></div></div>
+<div class="ttc" id="axrt__uuid_8h_html_acc1e121f6e46b5d2345dc98581dd712d"><div class="ttname"><a href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a></div><div class="ttdeci">uuid_t xuid_t</div><div class="ttdef"><b>Definition:</b> xrt_uuid.h:11</div></div>
+<div class="ttc" id="axrt__xclbin_8h_html_ad160435afaebb750f12f2478bbf29f0a"><div class="ttname"><a href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div><div class="ttdeci">void * xrtXclbinHandle</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:25</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
