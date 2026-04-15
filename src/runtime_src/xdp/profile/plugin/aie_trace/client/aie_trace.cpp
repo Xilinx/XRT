@@ -811,7 +811,7 @@ namespace xdp {
       // 2. Configure Memory Trace Events
       //
       // NOTE: this is applicable for memory modules in AIE tiles or memory tiles
-      uint32_t coreToMemBcMask = 0;
+      //uint32_t coreToMemBcMask = 0;
       if ((type == module_type::core) || (type == module_type::mem_tile)) {
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
 
@@ -959,7 +959,7 @@ namespace xdp {
             if (XAie_TraceEvent(&aieDevInst, loc, XAIE_MEM_MOD, broadcastEvents[bcIndex++], i) != XAIE_OK)
               break;
           
-            coreToMemBcMask |= (0x1 << bcId);
+            //coreToMemBcMask |= (0x1 << bcId);
           } 
           else {
             if (XAie_TraceEvent(&aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], i) != XAIE_OK)
