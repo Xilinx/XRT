@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Builds XRT in a Linux container whose toolchain is GCC 16.
+#
+# The Docker Library gcc image may not publish gcc:16 yet on your registry; the default
+# below is a Debian-based GCC 16 toolchain image. Edit container.image to another tag
+# (for example gcc:16-bookworm from Docker Hub) when that suits your project.
+#
+# ccache + actions/cache work on GitHub-hosted runners; the workspace is bind-mounted into
+# the container so .ccache is visible to both. Fork PRs from outside contributors cannot
+# update the base repo cache (read-only token); same-repo branches still benefit.
+
+name: Linux build (GCC 16, Docker)
+
+on:
+  workflow_dispatch:
+#  pull_request:
+#  push:
+#    branches:
+#      - master
+#      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Under workspace so actions/cache can archive it (bind-mounted into the container).
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPRESS: "true"
+      CCACHE_MAXSIZE: "2G"
+    container:
+      image: sourcemation/gcc-16:latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # Workspace is bind-mounted from the runner and owned by a non-root UID; the
+      # container often runs as root, so Git 2.35+ refuses the repo unless trusted.
+      - name: Configure Git safe.directory (container)
+        run: git config --global --add safe.directory '*'
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          # Unique key so restore always falls through to restore-keys and picks the latest
+          # cache for this OS + CMake fingerprint (save key uses the same prefix).
+          key: ccache-gcc16-${{ runner.os }}-${{ hashFiles('src/CMakeLists.txt', 'src/CMake/**/*.cmake', 'build/build.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ccache-gcc16-${{ runner.os }}-${{ hashFiles('src/CMakeLists.txt', 'src/CMake/**/*.cmake', 'build/build.sh') }}-
+            ccache-gcc16-${{ runner.os }}-
+
+      - name: Show compiler
+        run: |
+          gcc --version
+          g++ --version
+
+      - name: Install XRT dependencies
+        run: src/runtime_src/tools/scripts/xrtdeps.sh -docker
+
+      - name: Install ccache
+        run: apt-get install -y --no-install-recommends ccache
+
+      - name: Build XRT (Release)
+        run: ./build/build.sh -opt -verbose -noert -noctest -ccache
+
+      - name: ccache statistics
+        if: always()
+        run: ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-gcc16-${{ runner.os }}-${{ hashFiles('src/CMakeLists.txt', 'src/CMake/**/*.cmake', 'build/build.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
