@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>XRT: /home/manoj/doc_update/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h File Reference</title>
+<title>XRT: /home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/experimental/xrt_xclbin.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -61,26 +61,109 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="dir_55ed6c15308cfd39909d411496c8aaac.html">runtime_src</a></li><li class="navelem"><a class="el" href="dir_a44e751f7873481d0a8243bc925245ca.html">core</a></li><li class="navelem"><a class="el" href="dir_cf3e629846bb1ba48b68db8ee534a3b1.html">include</a></li><li class="navelem"><a class="el" href="dir_0c844555828819cd1c5c5ce08237f5f4.html">experimental</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="dir_55ed6c15308cfd39909d411496c8aaac.html">runtime_src</a></li><li class="navelem"><a class="el" href="dir_a44e751f7873481d0a8243bc925245ca.html">core</a></li><li class="navelem"><a class="el" href="dir_cf3e629846bb1ba48b68db8ee534a3b1.html">include</a></li><li class="navelem"><a class="el" href="dir_f7d78027fed52f9ad4c20151947e06f6.html">xrt</a></li><li class="navelem"><a class="el" href="dir_c48327743c89784c2b422a72e765cb6f.html">experimental</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
+  <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
+<a href="#namespaces">Namespaces</a> &#124;
+<a href="#typedef-members">Typedefs</a>  </div>
   <div class="headertitle">
 <div class="title">xrt_xclbin.h File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;xrt/experimental/xrt_xclbin.h&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="xrt__uuid_8h_source.html">xrt/xrt_uuid.h</a>&quot;</code><br />
+<code>#include &quot;xrt/detail/config.h&quot;</code><br />
+<code>#include &quot;xrt/detail/pimpl.h&quot;</code><br />
+<code>#include &quot;xrt/detail/xclbin.h&quot;</code><br />
+<code>#include &quot;xrt/deprecated/xrt.h&quot;</code><br />
+<code>#include &lt;iterator&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
+<code>#include &lt;string_view&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for xrt_xclbin.h:</div>
 <div class="dyncontent">
-<div class="center"><img src="xrt__xclbin_8h__incl.png" border="0" usemap="#a_2home_2manoj_2doc__update_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__xclbin_8h" alt=""/></div>
-<map name="a_2home_2manoj_2doc__update_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__xclbin_8h" id="a_2home_2manoj_2doc__update_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__xclbin_8h">
-<area shape="rect" title=" " alt="" coords="5,5,192,76"/>
-<area shape="rect" title=" " alt="" coords="22,124,175,165"/>
+<div class="center"><img src="xrt__xclbin_8h__incl.png" border="0" usemap="#a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8h" alt=""/></div>
+<map name="a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8h" id="a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8h">
+<area shape="rect" title=" " alt="" coords="541,5,785,76"/>
+<area shape="rect" href="xrt__uuid_8h.html" title=" " alt="" coords="7,124,117,151"/>
+<area shape="rect" title=" " alt="" coords="125,199,183,225"/>
+<area shape="rect" title=" " alt="" coords="191,124,327,151"/>
+<area shape="rect" title=" " alt="" coords="352,124,487,151"/>
+<area shape="rect" title=" " alt="" coords="511,124,647,151"/>
+<area shape="rect" title=" " alt="" coords="672,124,823,151"/>
+<area shape="rect" title=" " alt="" coords="847,124,917,151"/>
+<area shape="rect" title=" " alt="" coords="941,124,1001,151"/>
+<area shape="rect" title=" " alt="" coords="1025,124,1088,151"/>
+<area shape="rect" title=" " alt="" coords="1112,124,1209,151"/>
+<area shape="rect" title=" " alt="" coords="5,199,100,225"/>
+</map>
+</div>
+</div><div class="textblock"><div class="dynheader">
+This graph shows which files directly or indirectly include this file:</div>
+<div class="dyncontent">
+<div class="center"><img src="xrt__xclbin_8h__dep__incl.png" border="0" usemap="#a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8hdep" alt=""/></div>
+<map name="a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8hdep" id="a_2home_2rahul_2manoj_2DOC__UPDATE_2XRT_2src_2runtime__src_2core_2include_2xrt_2experimental_2xrt__xclbin_8hdep">
+<area shape="rect" title=" " alt="" coords="125,5,369,76"/>
+<area shape="rect" href="xrt__device_8h.html" title=" " alt="" coords="153,124,341,195"/>
+<area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="33,243,221,313"/>
+<area shape="rect" href="xrt__ip_8h.html" title=" " alt="" coords="245,243,489,313"/>
+<area shape="rect" href="xrt__mailbox_8h.html" title=" " alt="" coords="5,361,249,432"/>
 </map>
 </div>
 </div>
 <p><a href="xrt__xclbin_8h_source.html">Go to the source code of this file.</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html">xrt::xclbin</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin and provides APIs to access meta data.">xrt::xclbin</a> represents an xclbin and provides APIs to access meta data.  <a href="classxrt_1_1xclbin.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1mem.html">xrt::xclbin::mem</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank">xrt::xclbin::mem</a> represents a physical device memory bank  <a href="classxrt_1_1xclbin_1_1mem.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1arg.html">xrt::xclbin::arg</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">class arg - <a class="el" href="classxrt_1_1xclbin_1_1arg.html" title="class arg - xrt::xclbin::arg represents a compute unit argument">xrt::xclbin::arg</a> represents a compute unit argument  <a href="classxrt_1_1xclbin_1_1arg.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html">xrt::xclbin::ip</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> represents a IP in an xclbin.  <a href="classxrt_1_1xclbin_1_1ip.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html">xrt::xclbin::kernel</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin__repository.html">xrt::xclbin_repository</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin__repository_1_1iterator.html">xrt::xclbin_repository::iterator</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
+Namespaces</h2></td></tr>
+<tr class="memitem:namespacexrt"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt.html">xrt</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:ad160435afaebb750f12f2478bbf29f0a"><td class="memItemLeft" align="right" valign="top">typedef void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></td></tr>
+<tr class="separator:ad160435afaebb750f12f2478bbf29f0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Typedef Documentation</h2>
+<a id="ad160435afaebb750f12f2478bbf29f0a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad160435afaebb750f12f2478bbf29f0a">&#9670;&nbsp;</a></span>xrtXclbinHandle</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef void* <a class="el" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>typedef xrtXclbinHandle - opaque xclbin handle </p>
+
+</div>
+</div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

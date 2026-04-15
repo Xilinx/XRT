@@ -1,5 +1,8 @@
-<map id="/home/manoj/doc_update/XRT/src/runtime_src/core/include/xrt/xrt_uuid.h" name="/home/manoj/doc_update/XRT/src/runtime_src/core/include/xrt/xrt_uuid.h">
-<area shape="rect" id="node1" title=" " alt="" coords="71,5,257,61"/>
-<area shape="rect" id="node2" href="$xrt__device_8h.html" title=" " alt="" coords="5,109,192,165"/>
-<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title=" " alt="" coords="71,213,257,269"/>
+<map id="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_uuid.h" name="/home/rahul/manoj/DOC_UPDATE/XRT/src/runtime_src/core/include/xrt/xrt_uuid.h">
+<area shape="rect" id="node1" title=" " alt="" coords="81,5,304,61"/>
+<area shape="rect" id="node2" href="$xrt__device_8h.html" title=" " alt="" coords="140,228,328,299"/>
+<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title=" " alt="" coords="33,347,221,417"/>
+<area shape="rect" id="node5" href="$xrt__ip_8h.html" title=" " alt="" coords="277,347,521,417"/>
+<area shape="rect" id="node6" href="$xrt__xclbin_8h.html" title=" " alt="" coords="151,109,395,180"/>
+<area shape="rect" id="node4" href="$xrt__mailbox_8h.html" title=" " alt="" coords="5,465,249,536"/>
 </map>
