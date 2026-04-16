@@ -869,12 +869,12 @@ run_constructor(xrt::run& run)
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  auto hwctx = xrt_core::kernel_int::get_run_hwctx(run);
-  const auto& mod = xrt_core::kernel_int::get_run_module(run);
-  auto elf_hdl = mod ? xrt_core::module_int::get_elf_handle(mod) : nullptr;
-  xrt_core::xdp::aie::dtrace::run_constructor(&run, hwctx.get_handle().get(),
-                                              xrt_core::kernel_int::get_run_uid(run),
-                                              xrt_core::kernel_int::get_run_kernel_name(run).c_str(),
+  xrt_core::xdp::xrt_kernel_data data;
+  xrt_core::kernel_int::get_xdp_kernel_data(run, &data);
+  auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
+  xrt_core::xdp::aie::dtrace::run_constructor(&run, data.hwctx.get_handle().get(),
+                                              data.uid,
+                                              data.name.c_str(),
                                               elf_hdl.get());
 }
 
@@ -884,23 +884,34 @@ run_start(xrt::run& run)
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  auto hwctx = xrt_core::kernel_int::get_run_hwctx(run);
-  xrt_core::xdp::aie::dtrace::run_start(&run, hwctx.get_handle().get(),
-                                        xrt_core::kernel_int::get_run_uid(run),
-                                        xrt_core::kernel_int::get_run_kernel_name(run).c_str());
+  xrt_core::xdp::xrt_kernel_data data;
+  xrt_core::kernel_int::get_xdp_kernel_data(run, &data);
+  xrt_core::xdp::aie::dtrace::run_start(&run, data.hwctx.get_handle().get(),
+                                        data.uid,
+                                        data.name.c_str());
 }
 
 void
-run_wait(const xrt::run& run)
+run_start(const xrt_kernel_data& data)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  auto hwctx = xrt_core::kernel_int::get_run_hwctx(run);
-  xrt_core::xdp::aie::dtrace::run_wait(const_cast<xrt::run*>(&run), hwctx.get_handle().get(),
-                                       xrt_core::kernel_int::get_run_uid(run),
-                                       xrt_core::kernel_int::get_run_kernel_name(run).c_str(),
-                                       static_cast<int>(xrt_core::kernel_int::get_run_state(run)));
+  xrt_core::xdp::aie::dtrace::run_start(nullptr, data.hwctx.get_handle().get(),
+                                        data.uid,
+                                        data.name.c_str());
+}
+
+void
+run_wait(const xrt_kernel_data& data)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_wait(nullptr, data.hwctx.get_handle().get(),
+                                       data.uid,
+                                       data.name.c_str(),
+                                       data.ert_state);
 }
 
 } // end namespace xrt_core::xdp

@@ -24,6 +24,10 @@
 #include <string>
 #include <vector>
 
+namespace xrt_core::xdp {
+struct xrt_kernel_data;
+}
+
 namespace xrt_core { namespace kernel_int {
 
 // Provide access to kdma command based BO copy Used by xrt::bo::copy.
@@ -97,26 +101,10 @@ get_hw_ctx(const xrt::kernel& kernel);
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
 
-// Run-level accessors for XDP dtrace hooks
+// Fill XDP kernel data from a run object for profiling hooks
 XRT_CORE_COMMON_EXPORT
-uint32_t
-get_run_uid(const xrt::run& run);
-
-XRT_CORE_COMMON_EXPORT
-xrt::hw_context
-get_run_hwctx(const xrt::run& run);
-
-XRT_CORE_COMMON_EXPORT
-std::string
-get_run_kernel_name(const xrt::run& run);
-
-XRT_CORE_COMMON_EXPORT
-xrt::module
-get_run_module(const xrt::run& run);
-
-XRT_CORE_COMMON_EXPORT
-ert_cmd_state
-get_run_state(const xrt::run& run);
+void
+get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data);
 
 }} // kernel_int, xrt_core
 

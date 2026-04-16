@@ -2402,6 +2402,12 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // Run-level dtrace result file postfix
   std::string m_dtrace_result_file_postfix;
 
+  xrt_core::xdp::xrt_kernel_data
+  get_xdp_kernel_data() const
+  {
+    return {uid, kernel->get_name(), kernel->get_hw_context(), m_module};
+  }
+
 public:
   uint32_t
   get_uid() const
@@ -2784,6 +2790,9 @@ public:
 
     prep_start();
 
+    // XDP profiling hook - called immediately before run is submitted
+    xrt_core::xdp::run_start(get_xdp_kernel_data());
+
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
     // as much as possible, passing kernel impl pointer instead of
@@ -2885,6 +2894,11 @@ public:
       state = cmd->wait();
     }
 
+    // XDP profiling hook - called after wait completes
+    auto xdp_data = get_xdp_kernel_data();
+    xdp_data.ert_state = static_cast<int>(state);
+    xrt_core::xdp::run_wait(xdp_data);
+
     dump_logs(true); // dump required logs
 
     return state;
@@ -2936,6 +2950,11 @@ public:
     else {
       state = cmd->wait();
     }
+
+    // XDP profiling hook - called after wait completes
+    auto xdp_data = get_xdp_kernel_data();
+    xdp_data.ert_state = static_cast<int>(state);
+    xrt_core::xdp::run_wait(xdp_data);
 
     // dump required logs
     dump_logs(true);
@@ -4215,34 +4234,15 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }
 
-uint32_t
-get_run_uid(const xrt::run& run)
+void
+get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data)
 {
-  return run.get_handle()->get_uid();
-}
-
-xrt::hw_context
-get_run_hwctx(const xrt::run& run)
-{
-  return run.get_handle()->get_kernel()->get_hw_context();
-}
-
-std::string
-get_run_kernel_name(const xrt::run& run)
-{
-  return run.get_handle()->get_kernel()->get_name();
-}
-
-xrt::module
-get_run_module(const xrt::run& run)
-{
-  return run.get_handle()->get_kernel()->get_module();
-}
-
-ert_cmd_state
-get_run_state(const xrt::run& run)
-{
-  return run.get_handle()->state();
+  auto run_handle = run.get_handle();
+  auto kernel = run_handle->get_kernel();
+  data->uid = run_handle->get_uid();
+  data->name = kernel->get_name();
+  data->hwctx = kernel->get_hw_context();
+  data->mod = kernel->get_module();
 }
 
 } // xrt_core::kernel_int
@@ -4257,6 +4257,7 @@ run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
            ("xrt::run::run", alloc_run, krnl.get_handle()))
 {
+  // XDP run_constructor hook called here where xrt::run object is available
   xrt_core::xdp::run_constructor(*this);
 }
 
@@ -4272,7 +4273,7 @@ run::
 start()
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_start);
-  xrt_core::xdp::run_start(*this);
+  // XDP run_start hook is called in run_impl::start()
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();
@@ -4305,12 +4306,10 @@ run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait);
-  auto state = xdp::native::profiling_wrapper("xrt::run::wait",
+  return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
-  xrt_core::xdp::run_wait(*this);
-  return state;
 }
 
 std::cv_status
@@ -4318,12 +4317,10 @@ run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
-  auto cvst = xdp::native::profiling_wrapper("xrt::run::wait",
+  return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
     });
-  xrt_core::xdp::run_wait(*this);
-  return cvst;
 }
 
 ert_cmd_state
