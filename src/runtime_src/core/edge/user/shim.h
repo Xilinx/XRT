@@ -312,7 +312,8 @@ public:
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
   int xclLoadAxlf(const axlf *buffer);
-  int prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj);
+  int prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
+                      std::vector<char> &krnl_binary, std::string &dtbo_path);
   int load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_create_hw_ctx *hw_ctx);
 
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size,
