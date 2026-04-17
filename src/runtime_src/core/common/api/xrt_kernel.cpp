@@ -1842,7 +1842,6 @@ public:
   ~kernel_impl()
   {
     XRT_DEBUGF("kernel_impl::~kernel_impl(%d)\n" , uid);
-    XRT_TRACE_POINT_LOG(xrt_kernel_dtor);
   }
 
   kernel_impl(const kernel_impl&) = delete;
@@ -2497,7 +2496,6 @@ public:
   virtual
   ~run_impl()
   {
-    XRT_TRACE_POINT_LOG(xrt_run_dtor);
     // It is a fatal error to destruct a run_impl while its command is
     // still in progress.  But only abort if there are no live
     // exception objects.
@@ -3680,7 +3678,6 @@ public:
 
   ~runlist_impl()
   {
-    XRT_TRACE_POINT_LOG(xrt_runlist_dtor);
     // Make sure all run objects are severed from this list
     try {
       clear_runs();
@@ -3951,7 +3948,7 @@ get_run_update(xrtRunHandle rhdl)
 static std::unique_ptr<xrt::run_impl>
 alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_run_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_run_alloc);
   return khdl->has_mailbox()
     ? std::make_unique<xrt::mailbox_impl>(khdl)
     : std::make_unique<xrt::run_impl>(khdl);
@@ -3963,7 +3960,7 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_kernel_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_alloc);
   auto amode = hwctx_access_mode(mode);  // legacy access mode to hwctx qos
   return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, xrt::module{}, name);
 }
@@ -3973,7 +3970,7 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
                       const xrt::hw_context& hwctx,
                       const std::string& name)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_kernel_ctx_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_alloc_from_ctx);
   // Delegating constructor with no module
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, xrt::module{}, name);
 }
@@ -3984,7 +3981,7 @@ alloc_kernel_from_module(const std::shared_ptr<device_type>& dev,
                          const xrt::module& module,
                          const std::string& name)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_kernel_module_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_alloc_from_module);
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, module, name);
 }
 
@@ -3993,7 +3990,7 @@ alloc_kernel_from_name(const std::shared_ptr<device_type>& dev,
                        const xrt::hw_context& hwctx,
                        const std::string& name)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_kernel_name_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_kernel_alloc_from_name);
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, name);
 }
 
@@ -4246,6 +4243,7 @@ void
 run::
 set_dtrace_control_file(const std::string& path)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_set_dtrace_control_file);
   handle->set_dtrace_control_file(path);
 }
 
@@ -4332,6 +4330,7 @@ void
 run::
 set_arg_at_index(int index, const void* value, size_t bytes)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_set_arg_value);
   handle->set_arg_at_index(index, value, bytes);
 }
 
@@ -4339,6 +4338,7 @@ void
 run::
 set_arg_at_index(int index, const xrt::bo& glb)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_set_arg_bo);
   handle->set_arg_at_index(index, glb);
 }
 
@@ -4346,6 +4346,7 @@ void
 run::
 update_arg_at_index(int index, const void* value, size_t bytes)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_update_arg_value);
   auto upd = get_run_update(handle.get());
   upd->update_arg_at_index(index, value, bytes);
 }
@@ -4354,6 +4355,7 @@ void
 run::
 update_arg_at_index(int index, const xrt::bo& glb)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_update_arg_bo);
   auto upd = get_run_update(handle.get());
   upd->update_arg_at_index(index, glb);
 }
@@ -4523,7 +4525,7 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
 static std::shared_ptr<runlist_impl>
 alloc_runlist(xrt::hw_context hwctx)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_runlist_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_alloc);
   return std::make_shared<runlist_impl>(std::move(hwctx));
 }
 
@@ -4542,6 +4544,7 @@ void
 runlist::
 add(const xrt::run& run)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_runlist_add);
   if (!handle)
     throw xrt_core::error("cannot add run object to uninitialized runlist");
 

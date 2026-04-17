@@ -342,7 +342,7 @@ private:
   parse_custom_sections(const std::vector<uint32_t>& custom_section_ids);
 
 public:
-  virtual ~elf_impl();
+  virtual ~elf_impl() = default;
 
   // Base class managed through shared_ptr - no copy/move
   elf_impl(const elf_impl&) = delete;

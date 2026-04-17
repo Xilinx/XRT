@@ -333,12 +333,6 @@ elf_impl(ELFIO::elfio&& elfio, elf::platform platform)
   , m_platform{platform}
 {}
 
-elf_impl::
-~elf_impl()
-{
-  XRT_TRACE_POINT_LOG(xrt_elf_dtor);
-}
-
 // Get symbol information from .symtab at given index
 elf_impl::symbol_info
 elf_impl::
@@ -1438,7 +1432,7 @@ namespace {
 static std::shared_ptr<xrt::elf_impl>
 create_elf_impl(ELFIO::elfio&& elfio)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_elf_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_elf_create_impl);
   auto os_abi = elfio.get_os_abi();
 
   switch (os_abi) {

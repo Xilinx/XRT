@@ -90,10 +90,7 @@ public:
     , m_name(std::move(name))
   {}
 
-  virtual ~module_impl()
-  {
-    XRT_TRACE_POINT_LOG(xrt_module_dtor);
-  }
+  virtual ~module_impl() = default;
 
   // Base class managed through shared_ptr - no copy/move
   module_impl(const module_impl&) = delete;
@@ -1143,14 +1140,14 @@ public:
 static std::shared_ptr<module_impl>
 alloc_module_impl(const xrt::elf& elf)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_module_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_module_alloc_impl);
   return std::make_shared<module_impl>(elf);
 }
 
 static std::shared_ptr<module_impl>
 alloc_module_impl(const xrt::elf& elf, std::string name)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_module_name_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_module_alloc_impl_with_name);
   return std::make_shared<module_impl>(elf, std::move(name));
 }
 
@@ -1194,7 +1191,7 @@ xrt::module
 create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
                   uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_module_run_ctor);
+  XRT_TRACE_POINT_SCOPE(xrt_module_run);
   auto platform = elf.get_platform();
   switch (platform) {
   case xrt::elf::platform::aie2p:
