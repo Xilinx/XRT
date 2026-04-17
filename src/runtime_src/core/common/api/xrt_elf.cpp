@@ -1060,12 +1060,12 @@ class elf_aie_gen2_plus : public elf_impl
 
   // Returns true for merged-format ELFs where all pages per column are packed
   // into a single .ctrltext.<col> section with no separate .ctrldata sections.
-  // Merged versions: 0x03 (legacy elf), 0x04 (config elf no .target), 0x21 (config elf .target).
+  // Merged versions: 0x04 (config elf no .target), 0x21 (config elf .target).
   bool
   is_merged_format() const
   {
     auto abi_ver = m_elfio.get_abi_version();
-    return (abi_ver == 0x03 || abi_ver == 0x04 || abi_ver == 0x21);
+    return (abi_ver == 0x04 || abi_ver == 0x21);
   }
 
   // Extract the column and page information from the section name.
