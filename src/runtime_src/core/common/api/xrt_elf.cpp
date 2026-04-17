@@ -12,6 +12,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -512,6 +513,7 @@ void
 elf_impl::
 parse_sections()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_parse_sections);
   if (!is_group_elf()) { // older ELF format without .group sections
     init_legacy_section_maps();
     finalize_kernels();
@@ -766,6 +768,7 @@ class elf_aie_gen2 : public elf_impl
   void
   initialize_section_buffer_maps()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_initialize_section_buffer_maps);
     initialize_section_buf_map(patcher_buf_type::ctrltext, m_instr_buf_map);
     initialize_section_buf_map(patcher_buf_type::ctrldata, m_ctrl_packet_map);
     initialize_save_restore_buf_map();
@@ -823,6 +826,7 @@ class elf_aie_gen2 : public elf_impl
   void
   initialize_arg_patchers()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_initialize_arg_patchers);
     static constexpr const char* Control_ScratchPad_Symbol = "scratch-pad-ctrl";
     static constexpr const char* ctrlpkt_pm_dynsym = "ctrlpkt-pm";
 
@@ -1210,6 +1214,7 @@ class elf_aie_gen2_plus : public elf_impl
   void
   initialize_arg_patchers(const std::map<uint32_t, std::vector<size_t>>& pad_offsets)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_initialize_arg_patchers);
     static constexpr auto pad_pattern = xrt_core::elf_patcher::get_section_name(patcher_buf_type::pad);
     static constexpr auto ctrlpkt_pattern = xrt_core::elf_patcher::get_section_name(patcher_buf_type::ctrlpkt);
 
@@ -1312,6 +1317,7 @@ class elf_aie_gen2_plus : public elf_impl
   void
   initialize_section_buffer_maps()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_elf_initialize_section_buffer_maps);
     std::map<uint32_t, std::vector<size_t>> pad_offsets;
     initialize_column_ctrlcode(pad_offsets);
     initialize_ctrlpkt_bufs();
@@ -1426,6 +1432,7 @@ namespace {
 static std::shared_ptr<xrt::elf_impl>
 create_elf_impl(ELFIO::elfio&& elfio)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_elf_create_impl);
   auto os_abi = elfio.get_os_abi();
 
   switch (os_abi) {

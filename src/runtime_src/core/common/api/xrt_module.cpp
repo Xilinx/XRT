@@ -5,6 +5,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/trace.h"
 #include "xrt/experimental/xrt_module.h"
 #include "xrt/experimental/xrt_aie.h"
 #include "xrt/experimental/xrt_elf.h"
@@ -374,6 +375,7 @@ class module_run_aie_gen2 : public module_run
   void
   create_ctrlpkt_buf(const xrt::bo& ctrlpkt_bo)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_create_ctrlpkt_buf);
     if (ctrlpkt_bo.size() == 0) {
       XRT_DEBUGF("ctrpkt buf is empty\n");
       return;
@@ -394,6 +396,7 @@ class module_run_aie_gen2 : public module_run
   void
   create_ctrlpkt_pm_bufs()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_create_ctrlpkt_pm_bufs);
     for (const auto& [key, buf] : m_config.ctrlpkt_pm_bufs) {
       m_ctrlpkt_pm_bos[key] = xbi::create_bo(m_hwctx, buf.size(), xbi::use_type::ctrlpkt);
       fill_bo_with_data(m_ctrlpkt_pm_bos.at(key), buf);
@@ -403,6 +406,7 @@ class module_run_aie_gen2 : public module_run
   void
   create_instruction_buf()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_create_instruction_buf);
     XRT_DEBUGF("-> module_run_aie_gen2::create_instruction_buf()\n");
 
     // Get instruction buffer from config
@@ -573,6 +577,7 @@ public:
   void
   patch(const std::string& argnm, size_t index, uint64_t value) override
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_patch_arg);
     bool patched = false;
 
     // patch control-packet buffer
@@ -595,6 +600,7 @@ public:
   void
   sync_if_dirty() override
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_sync_if_dirty);
     if (!m_dirty) {
       if (!m_first_patch)
         return;
@@ -808,6 +814,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   initialize_dtrace_buf(const std::string& run_level_ct_file = "")
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_initialize_dtrace_buf);
     if (!create_dtrace_util(run_level_ct_file))
       return;  // create failure
 
@@ -819,6 +826,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   set_dtrace_control_file(const std::string& path) override
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_set_dtrace_control_file);
     initialize_dtrace_buf(path);
     // Only update dtrace addresses; instruction buffer layout is unchanged.
     update_column_bo_dtrace_addresses();
@@ -832,6 +840,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   create_ctrlpkt_bufs()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_create_ctrlpkt_bufs);
     if (m_config.ctrlpkt_bufs.empty())
       return; // older ELFs have ctrlpkt in pad section
 
@@ -908,6 +917,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   create_instruction_buffer()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_create_instruction_buffer);
     const auto& data = m_config.ctrlcodes;
 
     // Create bo with combined size of all ctrlcodes
@@ -931,6 +941,7 @@ class module_run_aie_gen2_plus : public module_run
   void
   fill_column_bo_address()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_fill_column_bo_address);
     const auto& ctrlcodes = m_config.ctrlcodes;
 
     m_column_bo_address.clear();
@@ -1015,6 +1026,7 @@ public:
   void
   patch(const std::string& argnm, size_t index, uint64_t value) override
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_patch_arg);
     bool patched = false;
 
     // patch instruction buffer
@@ -1040,6 +1052,7 @@ public:
   void
   sync_if_dirty() override
   {
+    XRT_TRACE_POINT_SCOPE(xrt_module_run_sync_if_dirty);
     if (!m_dirty) {
       if (!m_first_patch)
         return;
@@ -1124,14 +1137,28 @@ public:
   }
 };
 
+static std::shared_ptr<module_impl>
+alloc_module_impl(const xrt::elf& elf)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_module_alloc_impl);
+  return std::make_shared<module_impl>(elf);
+}
+
+static std::shared_ptr<module_impl>
+alloc_module_impl(const xrt::elf& elf, std::string name)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_module_alloc_impl_with_name);
+  return std::make_shared<module_impl>(elf, std::move(name));
+}
+
 module::
 module(const xrt::elf& elf)
-: detail::pimpl<module_impl>(std::make_shared<module_impl>(elf))
+: detail::pimpl<module_impl>(alloc_module_impl(elf))
 {}
 
 module::
 module(const xrt::elf& elf, const std::string& name)
-: detail::pimpl<module_impl>(std::make_shared<module_impl>(elf, name))
+: detail::pimpl<module_impl>(alloc_module_impl(elf, name))
 {}
 
 xrt::hw_context
@@ -1164,6 +1191,7 @@ xrt::module
 create_module_run(const xrt::elf& elf, const xrt::hw_context& hwctx,
                   uint32_t ctrl_code_id, const xrt::bo& ctrlpkt_bo)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_module_run);
   auto platform = elf.get_platform();
   switch (platform) {
   case xrt::elf::platform::aie2p:

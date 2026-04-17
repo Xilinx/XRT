@@ -232,6 +232,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   static std::unique_ptr<uc_log_buffer>
   init_uc_log_buf(const std::shared_ptr<xrt_core::device>& device, xrt_core::hwctx_handle* ctx_hdl)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_hw_context_init_uc_log_buf);
     // If uc log buffer is not supported then this function returns nullptr
     static auto uc_log_enabled = xrt_core::config::get_uc_log();
     if (!ctx_hdl || !uc_log_enabled)
@@ -347,6 +348,7 @@ public:
   void
   add_config(const xrt::elf& elf)
   {
+    XRT_TRACE_POINT_SCOPE(xrt_hw_context_add_config);
     auto part_size = elf.get_partition_size();
 
     // create hw ctx handle if not already created
@@ -409,6 +411,7 @@ public:
   void
   dump_uc_log_buffer()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_hw_context_dump_uc_log_buffer);
     if (!m_uc_log_buf)
       return;
 
@@ -537,6 +540,7 @@ public:
   void
   dump_scratchpad_mem()
   {
+    XRT_TRACE_POINT_SCOPE(xrt_hw_context_dump_scratchpad_mem);
     if (m_scratchpad_buf.size() == 0) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_hw_context",
                               "preemption scratchpad memory is not available");
@@ -728,7 +732,7 @@ template<typename Cfg>
 static std::shared_ptr<hw_context_impl>
 alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, Cfg&& cfg)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context_alloc_from_cfg);
   return post_alloc_hwctx(std::make_shared<hw_context_impl>(
       device.get_handle(), xclbin_id, hwctx_cfg_storage{std::forward<Cfg>(cfg)}));
 }
@@ -736,7 +740,7 @@ alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, Cfg&
 static std::shared_ptr<hw_context_impl>
 alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::access_mode mode)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context_alloc_from_mode);
   return post_alloc_hwctx(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode));
 }
 
@@ -744,7 +748,7 @@ template<typename Cfg>
 static std::shared_ptr<hw_context_impl>
 alloc_empty_hwctx(const xrt::device& device, Cfg&& cfg, xrt::hw_context::access_mode mode)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context_alloc_empty);
   return post_alloc_hwctx(std::make_shared<hw_context_impl>(
       device.get_handle(), hwctx_cfg_storage{std::forward<Cfg>(cfg)}, mode));
 }
@@ -754,7 +758,7 @@ static std::shared_ptr<hw_context_impl>
 alloc_hwctx_from_elf(const xrt::device& device, const xrt::elf& elf, Cfg&& cfg,
                      xrt::hw_context::access_mode mode)
 {
-  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context_alloc_from_elf);
   return post_alloc_hwctx(std::make_shared<hw_context_impl>(
       device.get_handle(), elf, hwctx_cfg_storage{std::forward<Cfg>(cfg)}, mode));
 }
