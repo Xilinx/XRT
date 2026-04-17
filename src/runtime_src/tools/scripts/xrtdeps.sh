@@ -178,6 +178,7 @@ ub_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils \
      file \
      g++ \
      gcc \
@@ -325,6 +326,7 @@ suse_package_list()
      curl \
      dkms \
      dmidecode \
+     elfutils \
      gcc \
      gcc-c++ \
      gdb \
