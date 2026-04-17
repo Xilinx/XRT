@@ -2478,6 +2478,9 @@ public:
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+
+    // XDP run_constructor hook
+    xrt_core::xdp::run_constructor(this, get_xdp_kernel_data());
   }
 
   // Clones a run impl, so that the clone can be executed concurrently
@@ -4245,6 +4248,12 @@ get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data)
   data->mod = kernel->get_module();
 }
 
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
+{
+  run_impl->set_dtrace_control_file(path);
+}
+
 } // xrt_core::kernel_int
 
 ////////////////////////////////////////////////////////////////
@@ -4256,10 +4265,7 @@ run::
 run(const kernel& krnl)
   : handle(xdp::native::profiling_wrapper
            ("xrt::run::run", alloc_run, krnl.get_handle()))
-{
-  // XDP run_constructor hook called here where xrt::run object is available
-  xrt_core::xdp::run_constructor(*this);
-}
+{}
 
 void
 run::

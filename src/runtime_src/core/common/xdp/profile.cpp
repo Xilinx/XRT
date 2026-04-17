@@ -864,31 +864,16 @@ finish_flush_device(void* handle)
 }
 
 void
-run_constructor(xrt::run& run)
+run_constructor(xrt::run_impl* run_impl, const xrt_kernel_data& data)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  xrt_core::xdp::xrt_kernel_data data;
-  xrt_core::kernel_int::get_xdp_kernel_data(run, &data);
   auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
-  xrt_core::xdp::aie::dtrace::run_constructor(&run, data.hwctx.get_handle().get(),
+  xrt_core::xdp::aie::dtrace::run_constructor(run_impl, data.hwctx.get_handle().get(),
                                               data.uid,
                                               data.name.c_str(),
                                               elf_hdl.get());
-}
-
-void
-run_start(xrt::run& run)
-{
-  if (!xrt_core::config::get_aie_dtrace())
-    return;
-
-  xrt_core::xdp::xrt_kernel_data data;
-  xrt_core::kernel_int::get_xdp_kernel_data(run, &data);
-  xrt_core::xdp::aie::dtrace::run_start(&run, data.hwctx.get_handle().get(),
-                                        data.uid,
-                                        data.name.c_str());
 }
 
 void

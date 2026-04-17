@@ -106,6 +106,12 @@ XRT_CORE_COMMON_EXPORT
 void
 get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data);
 
+// Set dtrace control file on a run_impl handle
+// This is used by XDP profiling to set the CT file without requiring xrt::run
+XRT_CORE_COMMON_EXPORT
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path);
+
 }} // kernel_int, xrt_core
 
 #endif

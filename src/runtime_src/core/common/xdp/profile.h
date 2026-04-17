@@ -10,7 +10,7 @@
 #include <string>
 
 namespace xrt {
-class run;
+class run_impl;
 }
 
 // Data structure for XDP kernel profiling hooks.
@@ -48,20 +48,15 @@ update_device(void* handle, bool hw_context_flow);
 void 
 finish_flush_device(void* handle);
 
-// run_constructor should be called when an xrt::run is constructed.
+// run_constructor should be called when a run_impl is constructed.
 // This hook allows XDP plugins to attach per-run resources (e.g.,
 // a CT file for dtrace) before the run is started.
-// Note: This hook requires xrt::run& because the XDP plugin needs to call
-// methods on the run object (e.g., set_dtrace_control_file).
+// Called from run_impl constructor with the raw handle.
 void
-run_constructor(xrt::run& run);
+run_constructor(xrt::run_impl* run_impl, const xrt_kernel_data& data);
 
 // run_start should be called immediately before a run is submitted to the device.
-void
-run_start(xrt::run& run);
-
-// Overload for implementation-level calls (e.g., from run_impl::start() or C API).
-// This version takes the kernel data directly without requiring an xrt::run object.
+// Takes the kernel data directly without requiring an xrt::run object.
 void
 run_start(const xrt_kernel_data& data);
 
