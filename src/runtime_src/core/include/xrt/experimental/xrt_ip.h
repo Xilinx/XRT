@@ -138,6 +138,7 @@ public:
    *
    * Constructor throws on error.
    */
+  [[deprecated("deprecated, please use ip(hw_context, name) instead")]]
   XCL_DRIVER_DLLESPEC
   ip(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name);
 
