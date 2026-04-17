@@ -175,7 +175,7 @@ struct module_config_aie_gen2
   const buf& preempt_save_data;
   const buf& preempt_restore_data;
 
-  // Size of scratch pad memory
+  // Size of scratch pad memory per column
   size_t scratch_pad_mem_size;
 
   // Control scratch pad memory size (0 if not present)
@@ -215,7 +215,7 @@ struct module_config_aie_gen2_plus
   // Reference to dump buffer for debug/trace
   const buf& dump_buf;
 
-  // Size of scratch pad memory
+  // Size of scratch pad memory per column
   size_t scratch_pad_mem_size;
   // NOLINTEND
 

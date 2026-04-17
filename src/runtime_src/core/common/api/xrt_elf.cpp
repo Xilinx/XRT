@@ -1272,6 +1272,15 @@ class elf_aie_gen2_plus : public elf_impl
         // section to patch is ctrlpkt
         abs_offset += rela->r_offset;
         buf_type = patcher_buf_type::ctrlpkt;
+        // we have multiple ctrlpkt sections and to uniquely identify symbol
+        // for patching we add ctrlpkt section symbol name to key string
+        // Symbol name is section name without the grp idx
+        // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
+        auto dot_pos = patch_sec_name.rfind('.');
+        auto sym_name = (dot_pos != std::string::npos && dot_pos > 0)
+                      ? patch_sec_name.substr(0, dot_pos)
+                      : patch_sec_name;
+        argnm += sym_name;
       }
       else {
         // section to patch is ctrlcode

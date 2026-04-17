@@ -157,7 +157,7 @@ patch_ctrl57_aie4(uint32_t* bd_data_ptr, uint64_t patch)
 
 void
 symbol_patcher::
-patch_symbol(xrt::bo bo, uint64_t value, bool first)
+patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg)
 {
   if (!m_config)
     throw std::runtime_error("symbol_patcher: config not set");
@@ -176,14 +176,20 @@ patch_symbol(xrt::bo bo, uint64_t value, bool first)
     auto offset = config.offset_to_patch_buffer;
     auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
 
-    if (!state.dirty) {
-      // first time patching cache bd ptr values using bd ptrs array in patch state
-      std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs.begin());
-      state.dirty = true;
-    }
-    else {
-      // not the first time patching, restore bd ptr values from patch state bd ptrs array
-      std::copy(state.bd_data_ptrs.begin(), state.bd_data_ptrs.end(), bd_data_ptr);
+    // If the symbol patched is an argument to kernel we have to cache
+    // original bd data ptrs as args can be changed in subsequent runs.
+    // For non-arg symbols we only patch and sync without caching
+    // as they are patched once and never changed.
+    if (is_arg) {
+      if (!state.dirty) {
+        // first time patching cache bd ptr values using bd ptrs array in patch state
+        std::copy(bd_data_ptr, bd_data_ptr + max_bd_words, state.bd_data_ptrs.begin());
+        state.dirty = true;
+      }
+      else {
+        // not the first time patching, restore bd ptr values from patch state bd ptrs array
+        std::copy(state.bd_data_ptrs.begin(), state.bd_data_ptrs.end(), bd_data_ptr);
+      }
     }
 
     // lambda for calling sync bo

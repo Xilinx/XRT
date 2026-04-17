@@ -132,7 +132,7 @@ struct symbol_patcher
 
   // Function to patch a symbol in the buffer.
   void
-  patch_symbol(xrt::bo bo, uint64_t value, bool first);
+  patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg = true);
 
   // static method for patching raw buffers passed by shim tests
   // where the caller handles sync themselves
