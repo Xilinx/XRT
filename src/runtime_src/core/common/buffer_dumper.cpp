@@ -24,9 +24,13 @@ buffer_dumper(config cfg)
   , m_file_streams(m_config.num_chunks)
 {
   // Files are opened lazily in get_or_open_stream() when first data is available
-  // start the background thread to dump the data
-  m_done_future = m_done_promise.get_future();
-  m_dump_thread = std::thread(&buffer_dumper::dumping_loop, this);
+  // start background dumping only when enabled
+  if (m_config.enable_dumper_thread) {
+    m_done_future = m_done_promise.get_future();
+    // start the background dump loop
+    m_dump_thread = std::thread(&buffer_dumper::dumping_loop, this);
+    m_thread_created = true;
+  }
 }
 
 std::ofstream&
@@ -57,12 +61,17 @@ buffer_dumper::
   // Flush the remaining data
   // catch exceptions to avoid throwing in destructor
   try {
-    m_stop_thread = true;
-    m_cv.notify_one();
-    // Wait for dump thread to finish before detaching.
-    m_done_future.wait();
-    // detach instead of join to avoid deadlock under DLL_PROCESS_DETACH
-    m_dump_thread.detach();
+    // clean up thread state only if the thread was created
+    if (m_thread_created) {
+      // signal the dump thread to stop
+      m_stop_thread = true;
+      m_cv.notify_one();
+      // Wait for dump thread to finish before detaching.
+      m_done_future.wait();
+      // Detach instead of join to avoid deadlock under DLL_PROCESS_DETACH
+      m_dump_thread.detach();
+    }
+
     flush();
   }
   catch (const std::exception& e) {

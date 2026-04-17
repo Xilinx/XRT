@@ -42,10 +42,11 @@
 #endif
 
 namespace {
-static constexpr double hz_per_mhz = 1'000'000.0;
-
 constexpr std::size_t
-operator""_mb(unsigned long long v) { return 1024u * 1024u * v; }
+operator""_kb(unsigned long long v) { return 1024U * v; } // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+
+constexpr double
+operator""_mhz(long double v) { return static_cast<double>(v) * 1'000'000.0; } // NOLINT(cppcoreguidelines-avoid-magic-numbers)
 
 // Dumps the content into a file with given size from given offset
 static void
@@ -123,12 +124,13 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
                           size_t num_uc)
     {
       // parameters for uc log buffer dumper
-      // tweak dump interval, size_per_uc based on experiments
-      constexpr size_t size_per_uc = 2_mb;
       constexpr size_t dump_interval_ms = 50;
       constexpr size_t metadata_size = sizeof(xrt_core::buffer_dumper::log_entry);
       constexpr size_t count_offset = 0;
       constexpr size_t count_size = 8;
+
+      // Get per-uC cert log size from xrt.ini.
+      const auto size_per_uc = xrt_core::config::get_uc_log_size_per_uc_kb() * 1_kb;
 
       auto bo = xrt_core::bo_int::create_bo(
           ctx_hdl, device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
@@ -161,6 +163,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
       config.dump_buffer = std::move(bo);
       config.dump_bin_format = xrt_core::config::get_uc_log_bin_format();
+      config.enable_dumper_thread = xrt_core::config::get_uc_log_dumper_thread();
 
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
@@ -484,7 +487,8 @@ public:
   {
     try {
       auto freq_hz = m_hdl->get_aie_freq();
-      return static_cast<double>(freq_hz) / hz_per_mhz; // Convert Hz to MHz
+      // Convert Hz to MHz.
+      return static_cast<double>(freq_hz) / 1.0_mhz; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
     }
     catch (const xrt_core::error& e) {
       if (e.code() == std::errc::not_supported)
@@ -501,7 +505,8 @@ public:
   set_aie_freq(double freq_mhz)
   {
     try {
-      auto freq_hz = static_cast<uint64_t>(freq_mhz * hz_per_mhz);
+      // Convert MHz to Hz.
+      auto freq_hz = static_cast<uint64_t>(freq_mhz * 1.0_mhz); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       m_hdl->set_aie_freq(freq_hz);
     }
     catch (const xrt_core::error& e) {
