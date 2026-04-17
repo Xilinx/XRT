@@ -1060,12 +1060,12 @@ class elf_aie_gen2_plus : public elf_impl
 
   // Returns true for merged-format ELFs where all pages per column are packed
   // into a single .ctrltext.<col> section with no separate .ctrldata sections.
-  // Merged versions: 0x04 (config elf no .target), 0x21 (config elf .target).
+  // Merged versions: 0x21 (config elf .target).
   bool
   is_merged_format() const
   {
     auto abi_ver = m_elfio.get_abi_version();
-    return (abi_ver == 0x04 || abi_ver == 0x21);
+    return (abi_ver == 0x21);
   }
 
   // Extract the column and page information from the section name.
@@ -1087,10 +1087,10 @@ class elf_aie_gen2_plus : public elf_impl
 
     try {
       if (tokens.size() <= col_token_id)
-        return {0, 0}; // Only prefix present
+        throw std::runtime_error("Invalid section name passed to parse col or page index\n");
 
       if (tokens.size() == (col_token_id + 1))
-        return {std::stoul(tokens[col_token_id]), 0}; // Only col present
+        return {std::stoul(tokens[col_token_id]), 0}; // Only col present (merged format)
 
       return {std::stoul(tokens[col_token_id]), std::stoul(tokens[page_token_id])};
     }
@@ -1157,7 +1157,7 @@ class elf_aie_gen2_plus : public elf_impl
         if (merged) {
           // Merged format: the single .ctrltext.<col> section already contains all
           // pages laid out at page├ùPAGE_SIZE offsets with header+text+data+padding
-          // embedded. Just copy it directly ΓÇö no reconstruction needed.
+          // embedded. Just copy it directly - no reconstruction needed.
           const auto& page_sec = elf_sects.begin()->second;
           if (page_sec.ctrltext)
             m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
@@ -1301,17 +1301,11 @@ class elf_aie_gen2_plus : public elf_impl
       else {
         // section to patch is ctrlcode
         auto column_ctrlcode_size = ctrlcodes.at(col).size();
-        size_t sec_offset = 0;
-        if (is_merged_format()) {
-          // Merged format: r_offset = page_base + T_N + D_bd (T_N excludes 16B header).
-          // page_base is already encoded in r_offset; add 16B header to reach the BD.
-          sec_offset = rela->r_offset + 16; // NOLINT magic number 16
-        }
-        else {
-          // Per-page format: r_offset = T_N + D_bd (T_N excludes the 16B header).
-          // Add page base and 16-byte header to get offset in assembled buffer.
-          sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16
-        }
+        // r_offset = T_N + D_bd (T_N excludes the 16B page header).
+        // For merged format, page = 0 (get_column_and_page returns 0 for merged section names)
+        // so page * elf_page_size = 0 and r_offset already encodes the page_base.
+        // Formula works unchanged for both per-page and merged formats.
+        auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16
         if (sec_offset >= column_ctrlcode_size)
           throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
         // Compute absolute offset across all columns
