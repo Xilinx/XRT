@@ -59,6 +59,18 @@ generate_key_string(const std::string& argument_name, buf_type type)
   return argument_name + std::to_string(static_cast<int>(type));
 }
 
+// Get symbol name from section name
+inline std::string
+get_symbol_name_from_section_name(const std::string& section_name)
+{
+  // Symbol name is section name without the grp idx
+  // if sec name is .ctrlpkt-57.grp_idx then sym name is .ctrlpkt-57
+  auto dot_pos = section_name.rfind('.');
+  return (dot_pos != std::string::npos && dot_pos > 0)
+      ? section_name.substr(0, dot_pos)
+      : section_name;
+}
+
 // Symbol type enum for patching schemes
 enum class symbol_type {
   uc_dma_remote_ptr_symbol_kind = 1,
@@ -132,7 +144,7 @@ struct symbol_patcher
 
   // Function to patch a symbol in the buffer.
   void
-  patch_symbol(xrt::bo bo, uint64_t value, bool first);
+  patch_symbol(xrt::bo bo, uint64_t value, bool first, bool is_arg = true);
 
   // static method for patching raw buffers passed by shim tests
   // where the caller handles sync themselves

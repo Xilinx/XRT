@@ -35,6 +35,9 @@ using xrt_core::elf_int::no_ctrl_code_id;
 static constexpr size_t
 operator"" _kb(unsigned long long v)  { return 1024u * v; } // NOLINT
 
+static constexpr size_t
+operator"" _mb(unsigned long long v)  { return 1024u * 1024u * v; } // NOLINT
+
 ///////////////////////////////////////////////////////////////
 // Helper functions for kernel signature demangling and parsing
 ///////////////////////////////////////////////////////////////
@@ -1269,6 +1272,11 @@ class elf_aie_gen2_plus : public elf_impl
         // section to patch is ctrlpkt
         abs_offset += rela->r_offset;
         buf_type = patcher_buf_type::ctrlpkt;
+        // we have multiple ctrlpkt sections and to uniquely identify symbol
+        // for patching we add ctrlpkt section symbol name to key string
+        auto sym_name =
+            xrt_core::elf_patcher::get_symbol_name_from_section_name(patch_sec_name);
+        argnm += sym_name;
       }
       else {
         // section to patch is ctrlcode
@@ -1362,10 +1370,17 @@ public:
 
     static const std::map<std::string, buf> empty_ctrlpkt_map;
 
+    auto scratch_pad_size = (m_platform == elf::platform::aie4  ||
+                             m_platform == elf::platform::aie4a ||
+                             m_platform == elf::platform::aie4z)
+      ? 3_mb  // NOLINT
+      : 0;
+
     return module_config_aie_gen2_plus{
       ctrlcode_it->second,                                                       // ctrlcodes
       ctrlpkt_it != m_ctrlpkt_buf_map.end() ? ctrlpkt_it->second : empty_ctrlpkt_map, // ctrlpkt_bufs
       dump_it != m_dump_buf_map.end() ? dump_it->second : buf::get_empty_buf(),  // dump_buf
+      scratch_pad_size,                                                          // scratch_pad_mem_size
       this                                                                       // elf_parent
     };
   }
