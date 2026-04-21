@@ -1065,7 +1065,7 @@ class elf_aie_gen2_plus : public elf_impl
   is_merged_format() const
   {
     auto abi_ver = m_elfio.get_abi_version();
-    return (abi_ver == 0x21);
+    return (abi_ver == 0x21); // NOLINT
   }
 
   // Extract the column and page information from the section name.
