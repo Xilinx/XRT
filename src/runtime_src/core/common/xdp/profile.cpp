@@ -521,6 +521,51 @@ finish_flush_device(void* handle)
 
 } // end namespace xrt_core::xdp::hal::device_offload
 
+namespace xrt_core::xdp::hal::device_offload_hwemu {
+
+std::function<void (void*, bool)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+  
+void
+register_callbacks(void* handle)
+{ 
+  #ifdef XDP_CLIENT_BUILD
+    (void)handle;	// Not supported on Client Devices.
+  #else
+    using utype = void (*)(void*, bool);
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateDeviceHWEmu"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDeviceHWEmu"));
+  #endif
+
+}
+
+void
+load()
+{  
+  static xrt_core::module_loader xdp_offload_loader("xdp_hw_emu_device_offload_plugin",
+                                                    register_callbacks,
+                                                    warning_callbacks_empty);
+}
+  
+// Make connections
+void
+update_device(void* handle, bool hw_context_flow)
+{
+  if (update_device_cb)
+    update_device_cb(handle, hw_context_flow);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+  
+} // end namespace xrt_core::xdp::hal::device_offload_hwemu
+
 namespace xrt_core::xdp {
 
 void 
@@ -711,6 +756,18 @@ update_device(void* handle, bool hw_context_flow)
              "Failed to setup for HAL PL trace. Caught exception ",
              handle,
              hw_context_flow);
+  } else {
+    load_once_and_update(
+             []() {
+              return ((xrt_core::config::get_device_trace() != "off") ||
+                      (xrt_core::config::get_device_counters()));
+             },
+             xrt_core::xdp::hal::device_offload_hwemu::load,
+             xrt_core::xdp::hal::device_offload_hwemu::update_device,
+             "Failed to load HW Emu PL trace plugin. Caught exception ",
+             "Failed to setup for HW Emu PL trace. Caught exception ",
+             handle,
+             hw_context_flow);
   }
 
   // Avoid warning until we've added support in all plugins
@@ -765,8 +822,12 @@ finish_flush_device(void* handle)
   if (xrt_core::config::get_aie_status())
     xrt_core::xdp::aie::status::end_status(handle);
   if ((xrt_core::config::get_device_trace() != "off") ||
-      (xrt_core::config::get_device_counters()))
-    xrt_core::xdp::hal::device_offload::finish_flush_device(handle) ;
+    (xrt_core::config::get_device_counters())) {
+    if (!is_hw_emulation())
+      xrt_core::xdp::hal::device_offload::finish_flush_device(handle);
+    else
+      xrt_core::xdp::hal::device_offload_hwemu::finish_flush_device(handle);
+  }
 
 #endif
 }
