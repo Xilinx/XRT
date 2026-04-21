@@ -101,10 +101,10 @@ get_hw_ctx(const xrt::kernel& kernel);
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
 
-// Fill XDP kernel data from a run object for profiling hooks
+// Fill XDP kernel data from a run_impl pointer for profiling hooks
 XRT_CORE_COMMON_EXPORT
 void
-get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data);
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data);
 
 // Set dtrace control file on a run_impl handle
 // This is used by XDP profiling to set the CT file without requiring xrt::run

@@ -2480,7 +2480,7 @@ public:
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
 
     // XDP run_constructor hook
-    xrt_core::xdp::run_constructor(this, get_xdp_kernel_data());
+    xrt_core::xdp::run_constructor(this);
   }
 
   // Clones a run impl, so that the clone can be executed concurrently
@@ -2794,7 +2794,7 @@ public:
     prep_start();
 
     // XDP profiling hook - called immediately before run is submitted
-    xrt_core::xdp::run_start(get_xdp_kernel_data());
+    xrt_core::xdp::run_start(this);
 
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
@@ -2898,9 +2898,7 @@ public:
     }
 
     // XDP profiling hook - called after wait completes
-    auto xdp_data = get_xdp_kernel_data();
-    xdp_data.ert_state = static_cast<int>(state);
-    xrt_core::xdp::run_wait(xdp_data);
+    xrt_core::xdp::run_wait(this);
 
     dump_logs(true); // dump required logs
 
@@ -2955,9 +2953,7 @@ public:
     }
 
     // XDP profiling hook - called after wait completes
-    auto xdp_data = get_xdp_kernel_data();
-    xdp_data.ert_state = static_cast<int>(state);
-    xrt_core::xdp::run_wait(xdp_data);
+    xrt_core::xdp::run_wait(this);
 
     // dump required logs
     dump_logs(true);
@@ -4238,19 +4234,20 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 }
 
 void
-get_xdp_kernel_data(const xrt::run& run, xrt_core::xdp::xrt_kernel_data* data)
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data)
 {
-  auto run_handle = run.get_handle();
-  auto kernel = run_handle->get_kernel();
-  data->uid = run_handle->get_uid();
+  auto kernel = run_impl->get_kernel();
+  data->uid = run_impl->get_uid();
   data->name = kernel->get_name();
   data->hwctx = kernel->get_hw_context();
   data->mod = kernel->get_module();
+  data->ert_state = static_cast<int>(run_impl->state());
 }
 
 void
 set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
 {
+  XRT_TRACE_POINT_SCOPE(set_dtrace_control_file); 
   run_impl->set_dtrace_control_file(path);
 }
 

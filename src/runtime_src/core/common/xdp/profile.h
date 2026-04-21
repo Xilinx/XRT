@@ -53,17 +53,17 @@ finish_flush_device(void* handle);
 // a CT file for dtrace) before the run is started.
 // Called from run_impl constructor with the raw handle.
 void
-run_constructor(xrt::run_impl* run_impl, const xrt_kernel_data& data);
+run_constructor(const xrt::run_impl* run_impl);
 
 // run_start should be called immediately before a run is submitted to the device.
-// Takes the kernel data directly without requiring an xrt::run object.
+// Extracts kernel data internally from the run_impl.
 void
-run_start(const xrt_kernel_data& data);
+run_start(const xrt::run_impl* run_impl);
 
 // run_wait should be called when a run wait completes (after the underlying wait returns).
-// The ert_state field in data should be set before calling this.
+// Extracts kernel data internally from the run_impl, including the ERT state.
 void
-run_wait(const xrt_kernel_data& data);
+run_wait(const xrt::run_impl* run_impl);
 
 } // end namespace xrt_core::xdp
 

@@ -202,24 +202,43 @@ end_poll(void* handle)
 }
 
 void
-run_constructor(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name, void* elf_handle)
+run_constructor(const xrt::run_impl* run_impl)
 {
-  if (run_constructor_cb)
-    run_constructor_cb(run, hwctx_handle, run_uid, kernel_name, elf_handle);
+  if (run_constructor_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
+    run_constructor_cb(const_cast<xrt::run_impl*>(run_impl),
+                       data.hwctx.get_handle().get(),
+                       data.uid,
+                       data.name.c_str(),
+                       elf_hdl.get());
+  }
 }
 
 void
-run_start(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name)
+run_start(const xrt::run_impl* run_impl)
 {
-  if (run_start_cb)
-    run_start_cb(run, hwctx_handle, run_uid, kernel_name);
+  if (run_start_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_start_cb(nullptr, data.hwctx.get_handle().get(),
+                 data.uid,
+                 data.name.c_str());
+  }
 }
 
 void
-run_wait(void* run, void* hwctx_handle, uint32_t run_uid, const char* kernel_name, int ert_cmd_state)
+run_wait(const xrt::run_impl* run_impl)
 {
-  if (run_wait_cb)
-    run_wait_cb(run, hwctx_handle, run_uid, kernel_name, ert_cmd_state);
+  if (run_wait_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_wait_cb(nullptr, data.hwctx.get_handle().get(),
+                data.uid,
+                data.name.c_str(),
+                data.ert_state);
+  }
 }
 
 } // end namespace xrt_core::xdp::aie::dtrace
@@ -864,39 +883,30 @@ finish_flush_device(void* handle)
 }
 
 void
-run_constructor(xrt::run_impl* run_impl, const xrt_kernel_data& data)
+run_constructor(const xrt::run_impl* run_impl)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
-  xrt_core::xdp::aie::dtrace::run_constructor(run_impl, data.hwctx.get_handle().get(),
-                                              data.uid,
-                                              data.name.c_str(),
-                                              elf_hdl.get());
+  xrt_core::xdp::aie::dtrace::run_constructor(run_impl);
 }
 
 void
-run_start(const xrt_kernel_data& data)
+run_start(const xrt::run_impl* run_impl)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  xrt_core::xdp::aie::dtrace::run_start(nullptr, data.hwctx.get_handle().get(),
-                                        data.uid,
-                                        data.name.c_str());
+  xrt_core::xdp::aie::dtrace::run_start(run_impl);
 }
 
 void
-run_wait(const xrt_kernel_data& data)
+run_wait(const xrt::run_impl* run_impl)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;
 
-  xrt_core::xdp::aie::dtrace::run_wait(nullptr, data.hwctx.get_handle().get(),
-                                       data.uid,
-                                       data.name.c_str(),
-                                       data.ert_state);
+  xrt_core::xdp::aie::dtrace::run_wait(run_impl);
 }
 
 } // end namespace xrt_core::xdp
