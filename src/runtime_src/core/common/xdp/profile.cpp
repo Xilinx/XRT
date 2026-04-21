@@ -202,13 +202,13 @@ end_poll(void* handle)
 }
 
 void
-run_constructor(const xrt::run_impl* run_impl)
+run_constructor(xrt::run_impl* run_impl)
 {
   if (run_constructor_cb) {
     xrt_kernel_data data{};
     xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
     auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
-    run_constructor_cb(const_cast<xrt::run_impl*>(run_impl),
+    run_constructor_cb(run_impl,
                        data.hwctx.get_handle().get(),
                        data.uid,
                        data.name.c_str(),
@@ -883,7 +883,7 @@ finish_flush_device(void* handle)
 }
 
 void
-run_constructor(const xrt::run_impl* run_impl)
+run_constructor(xrt::run_impl* run_impl)
 {
   if (!xrt_core::config::get_aie_dtrace())
     return;

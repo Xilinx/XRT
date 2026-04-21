@@ -2402,12 +2402,6 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   // Run-level dtrace result file postfix
   std::string m_dtrace_result_file_postfix;
 
-  xrt_core::xdp::xrt_kernel_data
-  get_xdp_kernel_data() const
-  {
-    return {uid, kernel->get_name(), kernel->get_hw_context(), m_module};
-  }
-
 public:
   uint32_t
   get_uid() const
@@ -4276,7 +4270,6 @@ run::
 start()
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_start);
-  // XDP run_start hook is called in run_impl::start()
   xdp::native::profiling_wrapper
     ("xrt::run::start", [this] {
       handle->start();

@@ -52,8 +52,9 @@ finish_flush_device(void* handle);
 // This hook allows XDP plugins to attach per-run resources (e.g.,
 // a CT file for dtrace) before the run is started.
 // Called from run_impl constructor with the raw handle.
+// Non-const because the callback may modify run_impl (e.g., set_dtrace_control_file).
 void
-run_constructor(const xrt::run_impl* run_impl);
+run_constructor(xrt::run_impl* run_impl);
 
 // run_start should be called immediately before a run is submitted to the device.
 // Extracts kernel data internally from the run_impl.
