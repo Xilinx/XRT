@@ -2393,8 +2393,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
-
-  const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
+  std::atomic<uint64_t> m_runlist_counter{0}; // number of runlists containing this run
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
@@ -2547,20 +2546,15 @@ public:
   }
 
   void
-  set_runlist(const runlist_impl* rl)
+  set_runlist(const runlist_impl*)
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_runlist)
-      throw std::runtime_error("Run object already associated with a runlist");
-
-    m_runlist = rl;
+    ++m_runlist_counter;
   }
 
   void
   clear_runlist()
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_runlist = nullptr;
+    --m_runlist_counter;
   }
 
   // Use to explicitly restrict what CUs can be used
@@ -2778,7 +2772,7 @@ public:
   virtual void
   start()
   {
-    if (m_runlist)
+    if (m_runlist_counter)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
@@ -3716,11 +3710,11 @@ public:
     cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
-    // makes it impossible to add to another list or to same list
-    // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't
-    // proctect against caller manually controlling the run object,
-    // which is undefined behavior.  No exceptions after this point.
+    // makes it impossible to start the run explicitly.  A run can be
+    // added to multiple runlists, but it is undefined behavior to
+    // call runlist::execute() on two or more runlists that contain
+    // the same run object without calling runlist::wait() in between.
+    // No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
     // Non throwing state change
