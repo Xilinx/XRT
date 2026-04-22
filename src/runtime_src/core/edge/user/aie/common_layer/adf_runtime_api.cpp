@@ -26,10 +26,23 @@
 extern "C"
 {
 #include "xaiengine.h"
+#include <xaiengine/xaie_helper.h>
 }
 
 namespace adf
 {
+
+namespace {
+void
+aie_async_wait_nr_throw(XAie_DevInst* dev, int nr)
+{
+  if (nr <= 0)
+    return;
+  AieRC w = XAie_AsyncWaitNr(dev, static_cast<u32>(nr));
+  if (w != XAIE_OK)
+    throw xrt_core::error(-EIO, "XAie_AsyncWaitNr failed: " + std::to_string(w));
+}
+} // namespace
 
 /********************************* Statics & Constants *********************************/
 
@@ -48,10 +61,12 @@ static constexpr unsigned LOCK_TIMEOUT = 0x7FFFFFFF;
 /********************************* config_manager *************************************/
 
 config_manager::
-config_manager(XAie_DevInst* dev_inst, size_t num_reserved_rows, bool broadcast_enable_core)
+config_manager(XAie_DevInst* dev_inst, size_t num_reserved_rows, bool broadcast_enable_core,
+               bool io_uring)
   : m_aie_dev(dev_inst)
   , m_num_reserved_rows(num_reserved_rows)
   , m_broadcast_enable_core(broadcast_enable_core)
+  , m_io_uring(io_uring)
 {}
 
 /************************************ graph_api ************************************/
@@ -784,21 +799,55 @@ std::pair<size_t, size_t> gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t of
     //get an available BD
     uint16_t bdNumber = frontAndPop(availableBDs);
 
-    //set up BD
-    driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
+    if (config->get_io_uring()) {
+      driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, static_cast<u32>(size));
 
-    if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
+      XAie_AsyncRes ares[2]{};
+      int n = 0;
+
+      if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS)
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
-    else
+      else
         driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
 
-    driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
+      driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
-    //write BD
-    driverStatus |= XAie_DmaWriteBd(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
+      int r = XAie_DmaWriteBdAsync(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber, &ares[0]);
+      if (r == 0) {
+        aie_async_wait_nr_throw(config->get_dev(), n);
+        throw xrt_core::error(ares[0].res ? ares[0].res : -EIO, "XAie_DmaWriteBdAsync submit failed");
+      }
+      n += r;
 
-    //enqueue BD
-    driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum, (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+      r = XAie_DmaChannelPushBdToQueueAsync(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum,
+          (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber, &ares[1]);
+      if (r == 0) {
+        aie_async_wait_nr_throw(config->get_dev(), n);
+        throw xrt_core::error(ares[1].res ? ares[1].res : -EIO, "XAie_DmaChannelPushBdToQueueAsync submit failed");
+      }
+      n += r;
+
+      aie_async_wait_nr_throw(config->get_dev(), n);
+      for (int i = 0; i < 2; ++i) {
+        if (ares[i].res < 0){
+          throw xrt_core::error(ares[i].res, "GMIO enqueueBD async completion failed");
+	}
+      }
+    }
+    else {
+      driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, static_cast<u32>(size));
+
+      if (config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIEML || config->get_dev()->DevProp.DevGen == XAIE_DEV_GEN_AIE2PS)
+        driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
+      else
+        driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
+
+      driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
+      driverStatus |= XAie_DmaWriteBd(config->get_dev(), &shimDmaInst, gmioTileLoc, bdNumber);
+      driverStatus |= XAie_DmaChannelPushBdToQueue(config->get_dev(), gmioTileLoc, pGMIOConfig->channelNum,
+          (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
+    }
+
     enqueuedBDs.push(bdNumber);
 
     /* Commenting out as this is increasing overhead of the performance */
@@ -967,7 +1016,6 @@ err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint16_
     //valid bd
     driverStatus |= XAie_DmaEnableBd(&dmaInst);
 
-    //write bd
     driverStatus |= XAie_DmaWriteBd(config->get_dev(), &dmaInst, tileLoc, bdId);
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaWriteBd " << (uint16_t)bdId << std::endl).str());
 
