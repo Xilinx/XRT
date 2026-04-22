@@ -1058,9 +1058,19 @@ class elf_aie_gen2_plus : public elf_impl
   // Helper functions
   ////////////////////////////////////////////////////////////////
 
-  // Extract the column and page information from the section name
-  // section name can be .ctrltext.<col>.<page> or .ctrldata.<col>.<page>
-  // or .ctrltext.<col>.<page>.<id> or .ctrldata.<col>.<page>.<id> - newer Elfs
+  // Returns true for merged-format ELFs where all pages per column are packed
+  // into a single .ctrltext.<col> section with no separate .ctrldata sections.
+  // Merged versions: 0x21 (config elf .target).
+  bool
+  is_merged_format() const
+  {
+    auto abi_ver = m_elfio.get_abi_version();
+    return (abi_ver == 0x21); // NOLINT
+  }
+
+  // Extract the column and page information from the section name.
+  // Per-page format: .ctrltext.<col>.<page>[.<id>] -> returns {col, page}
+  // Merged format:   .ctrltext.<col>[.<id>] -> returns {col, 0}
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name)
   {
@@ -1077,10 +1087,10 @@ class elf_aie_gen2_plus : public elf_impl
 
     try {
       if (tokens.size() <= col_token_id)
-        return {0, 0}; // Only prefix present
+        throw std::runtime_error("Invalid section name passed to parse col or page index\n");
 
       if (tokens.size() == (col_token_id + 1))
-        return {std::stoul(tokens[col_token_id]), 0}; // Only col present
+        return {std::stoul(tokens[col_token_id]), 0}; // Only col present (merged format)
 
       return {std::stoul(tokens[col_token_id]), std::stoul(tokens[page_token_id])};
     }
@@ -1138,24 +1148,34 @@ class elf_aie_gen2_plus : public elf_impl
     }
 
     // Create uC control code from the collected data
-    // Pad to page size for each page of a column
+    bool merged = is_merged_format();
     for (const auto& [id, uc_sec] : ctrl_map) {
       auto size = uc_sec.empty() ? 0 : uc_sec.rbegin()->first + 1;
       m_ctrlcodes_map[id].resize(size);
       pad_offsets[id].resize(size);
       for (auto& [ucidx, elf_sects] : uc_sec) {
-        for (auto& [page, page_sec] : elf_sects) {
+        if (merged) {
+          // Merged format: the single .ctrltext.<col> section already contains all
+          // pages laid out at pageNum*PAGE_SIZE offsets with header+text+data+padding
+          // embedded, meaning elf_sects contains only .ctrltext section
+          const auto& page_sec = elf_sects.begin()->second;
           if (page_sec.ctrltext)
             m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
+        }
+        else {
+          // Per-page format: each page has separate ctrltext + ctrldata sections;
+          // pad each page up to page boundary.
+          for (auto& [page, page_sec] : elf_sects) {
+            if (page_sec.ctrltext)
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
 
-          if (page_sec.ctrldata)
-            m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
+            if (page_sec.ctrldata)
+              m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrldata);
 
-          // Pad to page boundary
-          auto current_size = m_ctrlcodes_map[id][ucidx].size();
-          auto target_size = (page + 1) * elf_page_size;
-          if (current_size < target_size) {
-            m_ctrlcodes_map[id][ucidx].add_padding_to_size(target_size);
+            auto current_size = m_ctrlcodes_map[id][ucidx].size();
+            auto target_size = (page + 1) * elf_page_size;
+            if (current_size < target_size)
+              m_ctrlcodes_map[id][ucidx].add_padding_to_size(target_size);
           }
         }
         pad_offsets[id][ucidx] = m_ctrlcodes_map[id][ucidx].size();
@@ -1281,10 +1301,14 @@ class elf_aie_gen2_plus : public elf_impl
       else {
         // section to patch is ctrlcode
         auto column_ctrlcode_size = ctrlcodes.at(col).size();
+        // r_offset = T_N + D_bd (T_N excludes the 16B page header).
+        // For merged format, page = 0 (get_column_and_page returns 0 for merged section names)
+        // so page * elf_page_size = 0 and r_offset already encodes the page_base.
+        // Formula works unchanged for both per-page and merged formats.
         auto sec_offset = page * elf_page_size + rela->r_offset + 16; // NOLINT magic number 16
         if (sec_offset >= column_ctrlcode_size)
           throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(sec_offset));
-        // Compute absolute offset
+        // Compute absolute offset across all columns
         for (uint32_t i = 0; i < col; ++i)
           abs_offset += ctrlcodes.at(i).size();
         abs_offset += sec_offset;
