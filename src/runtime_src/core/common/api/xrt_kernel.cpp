@@ -47,6 +47,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
 
@@ -2471,6 +2472,9 @@ public:
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+
+    // XDP run_constructor hook
+    xrt_core::xdp::run_constructor(this);
   }
 
   // Clones a run impl, so that the clone can be executed concurrently
@@ -2783,6 +2787,9 @@ public:
 
     prep_start();
 
+    // XDP profiling hook - called immediately before run is submitted
+    xrt_core::xdp::run_start(this);
+
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
     // as much as possible, passing kernel impl pointer instead of
@@ -2884,6 +2891,9 @@ public:
       state = cmd->wait();
     }
 
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
+
     dump_logs(true); // dump required logs
 
     return state;
@@ -2935,6 +2945,9 @@ public:
     else {
       state = cmd->wait();
     }
+
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
 
     // dump required logs
     dump_logs(true);
@@ -4220,8 +4233,24 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }
 
-} // xrt_core::kernel_int
+void
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data)
+{
+  auto kernel = run_impl->get_kernel();
+  data->uid = run_impl->get_uid();
+  data->name = kernel->get_name();
+  data->hwctx = kernel->get_hw_context();
+  data->mod = kernel->get_module();
+  data->ert_state = static_cast<int>(run_impl->state());
+}
 
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
+{
+  run_impl->set_dtrace_control_file(path);
+}
+
+} // xrt_core::kernel_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_kernel C++ API implmentations (xrt_kernel.h)

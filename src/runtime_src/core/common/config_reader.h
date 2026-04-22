@@ -175,6 +175,13 @@ get_aie_profile()
 }
 
 inline bool
+get_aie_dtrace()
+{
+  static bool value = detail::get_bool_value("Debug.aie_dtrace", false);
+  return value;
+}
+
+inline bool
 get_aie_debug()
 {
   static bool value = detail::get_bool_value("Debug.aie_debug",false);
@@ -965,10 +972,27 @@ get_aie_profile_settings_start_iteration()
   return value;
 }
 
-inline bool
-get_aie_profile_settings_dtrace_debug()
+// Configurations under AIE_dtrace_settings (bandwidth / CT for Debug.aie_dtrace; no aie_profile CSV)
+inline unsigned int
+get_aie_dtrace_settings_interval_us()
 {
-  static bool value = detail::get_bool_value("AIE_profile_settings.dtrace_debug", "false");
+  static unsigned int value = detail::get_uint_value("AIE_dtrace_settings.interval_us", 1000);
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.tile_based_interface_tile_metrics", "");
   return value;
 }
 

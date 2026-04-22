@@ -3,10 +3,14 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
+#include "core/common/api/kernel_int.h"
+#include "core/common/api/module_int.h"
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
 #include "core/common/message.h"
+#include "core/include/xrt/xrt_kernel.h"
+
 #include <cstring>
 #include <functional>
 #include <sstream>
@@ -144,6 +148,100 @@ end_poll(void* handle)
 }
 
 } // end namespace xrt_core::xdp::aie::profile
+
+namespace xrt_core::xdp::aie::dtrace {
+
+std::function<void(void*, bool)> update_device_cb;
+std::function<void(void*)> end_poll_cb;
+std::function<void(void*, void*, uint32_t, const char*, void*)> run_constructor_cb;
+std::function<void(void*, void*, uint32_t, const char*)> run_start_cb;
+std::function<void(void*, void*, uint32_t, const char*, int)> run_wait_cb;
+
+void
+register_callbacks(void* handle)
+{
+  using ftype = void (*)(void*);
+  using utype = void (*)(void*, bool);
+  using rctype = void (*)(void*, void*, uint32_t, const char*, void*);
+  using rsctype = void (*)(void*, void*, uint32_t, const char*);
+  using rwctype = void (*)(void*, void*, uint32_t, const char*, int);
+
+  update_device_cb = reinterpret_cast<utype>(xrt_core::dlsym(handle, "updateAIEDtraceDevice"));
+  end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDtracePoll"));
+  run_constructor_cb = reinterpret_cast<rctype>(xrt_core::dlsym(handle, "aieDtraceRunConstructor"));
+  run_start_cb = reinterpret_cast<rsctype>(xrt_core::dlsym(handle, "aieDtraceRunStart"));
+  run_wait_cb = reinterpret_cast<rwctype>(xrt_core::dlsym(handle, "aieDtraceRunWait"));
+}
+
+void
+load_xdna()
+{
+  static xrt_core::module_loader xdp_aie_dtrace_loader("xdp_aie_dtrace_plugin_xdna",
+                                                       register_callbacks,
+                                                       warning_callbacks_empty);
+}
+
+void
+load()
+{
+  load_xdna();
+}
+
+void
+update_device(void* handle, bool hw_context_flow)
+{
+  if (update_device_cb)
+    update_device_cb(handle, hw_context_flow);
+}
+
+void
+end_poll(void* handle)
+{
+  if (end_poll_cb)
+    end_poll_cb(handle);
+}
+
+void
+run_constructor(xrt::run_impl* run_impl)
+{
+  if (run_constructor_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    auto elf_hdl = data.mod ? xrt_core::module_int::get_elf_handle(data.mod) : nullptr;
+    run_constructor_cb(run_impl,
+                       data.hwctx.get_handle().get(),
+                       data.uid,
+                       data.name.c_str(),
+                       elf_hdl.get());
+  }
+}
+
+void
+run_start(const xrt::run_impl* run_impl)
+{
+  if (run_start_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_start_cb(nullptr, data.hwctx.get_handle().get(),
+                 data.uid,
+                 data.name.c_str());
+  }
+}
+
+void
+run_wait(const xrt::run_impl* run_impl)
+{
+  if (run_wait_cb) {
+    xrt_kernel_data data{};
+    xrt_core::kernel_int::get_xdp_kernel_data(run_impl, &data);
+    run_wait_cb(nullptr, data.hwctx.get_handle().get(),
+                data.uid,
+                data.name.c_str(),
+                data.ert_state);
+  }
+}
+
+} // end namespace xrt_core::xdp::aie::dtrace
 
 namespace xrt_core::xdp::aie::debug {
 
@@ -533,6 +631,7 @@ update_device(void* handle, bool hw_context_flow)
   #ifdef _WIN32
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
+      || xrt_core::config::get_aie_dtrace()
       || xrt_core::config::get_aie_trace()
       || xrt_core::config::get_aie_debug()
       || xrt_core::config::get_aie_halt()
@@ -662,6 +761,20 @@ update_device(void* handle, bool hw_context_flow)
            handle,
 	 	      hw_context_flow);
 
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
+           []() {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
+              xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "xdp_mode is XDNA; loading AIE dtrace plugin for XDNA device.");
+              xrt_core::xdp::aie::dtrace::load_xdna();
+            }
+           },
+           xrt_core::xdp::aie::dtrace::update_device,
+           "Failed to load AIE dtrace library. Caught exception ",
+           "Failed to setup for AIE dtrace. Caught exception ",
+           handle,
+           hw_context_flow);
+
 #else
 
   load_once_and_update(  
@@ -730,6 +843,8 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::halt::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
     xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
@@ -751,6 +866,8 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+  if (xrt_core::config::get_aie_dtrace())
+    xrt_core::xdp::aie::dtrace::end_poll(handle);
 
 #else
 
@@ -769,6 +886,33 @@ finish_flush_device(void* handle)
     xrt_core::xdp::hal::device_offload::finish_flush_device(handle) ;
 
 #endif
+}
+
+void
+run_constructor(xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_constructor(run_impl);
+}
+
+void
+run_start(const xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_start(run_impl);
+}
+
+void
+run_wait(const xrt::run_impl* run_impl)
+{
+  if (!xrt_core::config::get_aie_dtrace())
+    return;
+
+  xrt_core::xdp::aie::dtrace::run_wait(run_impl);
 }
 
 } // end namespace xrt_core::xdp
