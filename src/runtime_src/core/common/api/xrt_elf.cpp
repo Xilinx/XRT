@@ -1156,8 +1156,8 @@ class elf_aie_gen2_plus : public elf_impl
       for (auto& [ucidx, elf_sects] : uc_sec) {
         if (merged) {
           // Merged format: the single .ctrltext.<col> section already contains all
-          // pages laid out at page├ùPAGE_SIZE offsets with header+text+data+padding
-          // embedded. Just copy it directly - no reconstruction needed.
+          // pages laid out at pageNum*PAGE_SIZE offsets with header+text+data+padding
+          // embedded, meaning elf_sects contains only .ctrltext section
           const auto& page_sec = elf_sects.begin()->second;
           if (page_sec.ctrltext)
             m_ctrlcodes_map[id][ucidx].append_section_data(page_sec.ctrltext);
