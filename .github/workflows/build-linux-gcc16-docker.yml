@@ -77,7 +77,9 @@ jobs:
         run: apt-get install -y --no-install-recommends ccache
 
       - name: Build XRT (Release)
-        run: ./build/build.sh -opt -verbose -noert -noctest -ccache
+        run: |
+          ./build/build.sh -opt -npu -verbose -noert -noctest -ccache
+          ./build/build.sh -opt -alveo -verbose -noert -noctest -ccache
 
       - name: ccache statistics
         if: always()
