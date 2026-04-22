@@ -9,15 +9,11 @@
 
 // This file defines implementation extensions to the XRT Kernel APIs.
 #include "core/include/xrt/experimental/xrt_kernel.h"
-#include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
-#include "core/include/xrt/xrt_hw_context.h"
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/shim/buffer_handle.h"
-
-#include "ert.h"
 
 #include <bitset>
 #include <cstdint>
