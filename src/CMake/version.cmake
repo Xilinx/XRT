@@ -173,7 +173,7 @@ if (NOT XRT_EDGE)
 endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall
-if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32))
+if (XRT_ALVEO AND (NOT XRT_EDGE) AND (NOT WIN32) AND XRT_ENABLE_DKMS)
   # Copied over from dkms.cmake. TODO: cleanup
   set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
   install(FILES
