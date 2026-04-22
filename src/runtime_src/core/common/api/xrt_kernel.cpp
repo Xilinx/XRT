@@ -4241,7 +4241,6 @@ get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_dat
 void
 set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
 {
-  XRT_TRACE_POINT_SCOPE(set_dtrace_control_file); 
   run_impl->set_dtrace_control_file(path);
 }
 
