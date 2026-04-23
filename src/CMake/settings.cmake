@@ -14,6 +14,13 @@ message("-- CMake version: ${CMAKE_VERSION}")
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 
+# Move to options.cmake
+# Option to enable/disable adding static libraries to xrt-target.cmake
+option(XRT_INSTALL_STATIC_LIBRARY "Enable CMake static library targets" ON)
+if (XRT_YOCTO)
+  set(XRT_INSTALL_STATIC_LIBRARY OFF)
+endif()                       
+
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")
 
