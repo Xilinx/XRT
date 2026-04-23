@@ -82,9 +82,16 @@ endif()
 
 # Shim for Linux is installed in the base component as it is
 # used by both Alveo and NPU components.   
-install(TARGETS xrt_core xrt_core_static
+install(TARGETS xrt_core
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_BASE_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT}
 )
+
+# Enable install of static library iff requested
+if(XRT_INSTALL_STATIC_LIBRARY)
+  install(TARGETS xrt_core_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
+endif()
