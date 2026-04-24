@@ -12,45 +12,69 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
              std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
   namespace sfs = std::filesystem;
-  const std::string drv_root = "/sys/bus/pci/drivers/";
-  const std::string drvpath = drv_root + name();
 
-  if (!sfs::exists(drvpath))
-    return;
+  static const std::string bus_roots[] = {
+    "/sys/bus/pci/drivers/",
+    "/sys/bus/rpmsg/drivers/",
+    "/sys/bus/platform/drivers/",
+  };
 
-  // Gather all sysfs directory and sort
-  // Use try/catch to handle permission errors (e.g. in a confined snap
-  // without the hardware-observe interface connected).
-  std::vector<sfs::path> vec;
-  try {
-    vec.assign(sfs::directory_iterator(drvpath), sfs::directory_iterator());
-  }
-  catch (const sfs::filesystem_error&) {
-    return;
-  }
-  std::sort(vec.begin(), vec.end());
+  const std::string drv_name = name();
 
-  for (auto& path : vec) {
+  for (const auto& bus_root : bus_roots) {
+    const std::string drvpath = bus_root + drv_name;
+
+    if (!sfs::exists(drvpath))
+      continue;
+
+    std::vector<sfs::path> vec;
     try {
-      auto pf = create_pcidev(path.filename().string());
-
-      if (!pf)
-	      continue;
-
-      // In docker, all host sysfs nodes are available. So, we need to check
-      // devnode to make sure the device is really assigned to docker.
-      if (!sfs::exists(pf->get_subdev_path("", -1)))
-        continue;
-
-      // Insert detected device into proper list.
-      if (pf->m_is_ready)
-        ready_list.push_back(std::move(pf));
-      else
-        nonready_list.push_back(std::move(pf));
+      vec.assign(sfs::directory_iterator(drvpath), sfs::directory_iterator());
     }
-    catch (const std::invalid_argument& ex) {
+    catch (const sfs::filesystem_error&) {
       continue;
     }
+    std::sort(vec.begin(), vec.end());
+
+    for (auto& path : vec) {
+      try {
+        if (!sfs::is_symlink(path))
+          continue;
+
+        // Device entries are symlinks into /sys/devices/; skip
+        // standard driver attributes (module, bind, unbind, etc.)
+        auto real = sfs::canonical(path);
+        if (real.string().rfind("/sys/devices/", 0) != 0)
+          continue;
+
+        // PCI: pass BDF filename (e.g. "0000:01:00.0")
+        // rpmsg/platform: pass canonical device sysfs path
+        auto fname = path.filename().string();
+        bool is_bdf = (fname.find(':') != std::string::npos);
+        std::string dev_sysfs = is_bdf ? fname : real.string();
+
+        auto pf = create_pcidev(dev_sysfs);
+
+        if (!pf)
+          continue;
+
+        // In docker, all host sysfs nodes are available. So, we need to check
+        // devnode to make sure the device is really assigned to docker.
+        if (!sfs::exists(pf->get_subdev_path("", -1)))
+          continue;
+
+        if (pf->m_is_ready)
+          ready_list.push_back(std::move(pf));
+        else
+          nonready_list.push_back(std::move(pf));
+      }
+      catch (const std::exception& ex) {
+        continue;
+      }
+    }
+
+    if (!ready_list.empty() || !nonready_list.empty())
+      return;
   }
 }
 
