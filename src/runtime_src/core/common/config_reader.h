@@ -1185,7 +1185,9 @@ get_run_buffer_pool_max_size()
 inline bool
 get_uc_log()
 {
-  static bool value = detail::get_bool_value("Debug.uc_log", false);
+  // Enabled by default for failure logs.
+  // This creates a per-uC log buffer (default 16KB per uC).
+  static bool value = detail::get_bool_value("Debug.uc_log", true);
   return value;
 }
 
@@ -1193,6 +1195,24 @@ inline bool
 get_uc_log_bin_format()
 {
   static bool value = detail::get_bool_value("Debug.uc_log_bin_format", false);
+  return value;
+}
+
+inline bool
+get_uc_log_dumper_thread()
+{
+  // Optional background dump thread; default false keeps dumping on-demand only.
+  static bool value = detail::get_bool_value("Debug.uc_log_dumper_thread", false);
+  return value;
+}
+
+inline unsigned int
+get_uc_log_size_per_uc_kb()
+{
+  // Per-uC log buffer size in KB. Default is 16KB per uC.
+  static constexpr unsigned int default_uc_log_size_per_uc_kb = 16U;
+  static unsigned int value =
+      detail::get_uint_value("Debug.uc_log_size_per_uc_kb", default_uc_log_size_per_uc_kb);
   return value;
 }
 
