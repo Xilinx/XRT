@@ -66,7 +66,7 @@ void  main_(int argc, char** argv,
   const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
+    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If the option is omitted and there is only 1 device, that device is used\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
@@ -120,28 +120,29 @@ void  main_(int argc, char** argv,
   XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
-  // Was default device requested?
-  if (boost::iequals(sDevice, "default")) {
-    sDevice.clear();
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
-
-    // DRC: Are there any devices
-    if (available_devices.empty()) 
-      throw std::runtime_error("No devices found.");
-
-    // DRC: Are there multiple devices, if so then no default device can be found.
-    if (available_devices.size() > 1) {
-      std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+  // Was device specified? If not, try to use default device.
+  {
+    const auto& device_var = vm["device"];
+    if (device_var.defaulted()) {
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
+      if (available_devices.empty())
+        throw std::runtime_error("No devices found.");
+      if (available_devices.size() > 1) {
+        std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+        std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
+        std::cout << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+      for (const auto& kd : available_devices) {
+        sDevice = kd.second.get<std::string>("bdf");
+        break;
+      }
+    }
+    else if (sDevice.empty() || boost::algorithm::iequals(sDevice, "default")) {
+      std::cerr << "\nERROR: Option --device (-d) requires a BDF.\n";
       std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
-
-      std::cout << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);
     }
-
-    // We have only 1 item in the array, get it
-    for (const auto &kd : available_devices) 
-      sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
-
   }
 
   // If there is a device value, parse for valid subcommands for this device.
