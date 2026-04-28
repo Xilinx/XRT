@@ -7,6 +7,11 @@
 #ifndef PS_KERNEL_H_
 #define PS_KERNEL_H_
 
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4200 )
+#endif
+
 /*
  * This header file contains data structure for xrt PS kernel metadata. This
  * file is included in user space utilities and kernel drivers. The data
@@ -26,5 +31,9 @@ struct ps_kernel_node {
 	uint32_t		pkn_count;
 	struct ps_kernel_data	pkn_data[];
 };
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif /* _PS_KERNEL_H_ */
