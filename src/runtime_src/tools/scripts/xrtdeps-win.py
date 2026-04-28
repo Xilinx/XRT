@@ -237,7 +237,7 @@ class BoostLibrary:
     if verbose == True:
       print ("Building and installing the boost library...")
 
-    cmd = "b2 -j6 install toolset=msvc-14.1 --prefix=" + self.install_dir + " --build-type=complete address-model=64 architecture=x86 link=static threading=multi --with-filesystem --with-program_options --with-system"
+    cmd = "b2 -j6 install toolset=msvc-14.1 --prefix=" + self.install_dir + " --build-type=complete address-model=64 architecture=x86 link=static threading=multi cxxflags=/W3 --with-filesystem --with-program_options --with-system"
     print (cmd)
     os.system(cmd)
 
@@ -285,7 +285,7 @@ class BoostLibrary:
     if verbose == True:
       print ("Building and installing the boost library...")
 
-    cmd = "b2 -j6 install toolset=msvc-14.1 --prefix=" + self.install_dir + " --build-type=complete"
+    cmd = "b2 -j6 install toolset=msvc-14.1 --prefix=" + self.install_dir + " --build-type=complete cxxflags=/W3"
     print (cmd)
     os.system(cmd)
 
