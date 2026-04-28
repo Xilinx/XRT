@@ -120,29 +120,31 @@ void  main_(int argc, char** argv,
   XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
-  // Was device specified? If not, check for default device.
   const auto& device_var = vm["device"];
-  if (device_var.defaulted() && boost::iequals(sDevice, "default")) {
-    sDevice.clear();
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
+  if (device_var.defaulted()) {
+    // Was default device requested?
+    if (boost::iequals(sDevice, "default")) {
+      sDevice.clear();
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
 
-    // DRC: Are there any devices
-    if (available_devices.empty()) 
-      throw std::runtime_error("No devices found.");
+      // DRC: Are there any devices
+      if (available_devices.empty())
+        throw std::runtime_error("No devices found.");
 
-    // DRC: Are there multiple devices, if so then no default device can be found.
-    if (available_devices.size() > 1) {
-      std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
-      std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
+      // DRC: Are there multiple devices, if so then no default device can be found.
+      if (available_devices.size() > 1) {
+        std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+        std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
 
-      std::cout << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+        std::cout << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
 
-    // We have only 1 item in the array, get it
-    for (const auto &kd : available_devices) {
-      sDevice = kd.second.get<std::string>("bdf");
-      break; // Exit after the first item
+      // We have only 1 item in the array, get it
+      for (const auto &kd : available_devices) {
+        sDevice = kd.second.get<std::string>("bdf");
+        break; // Exit after the first item
+      }
     }
   }
   else if (sDevice.empty() || boost::iequals(sDevice, "default")) {
