@@ -181,6 +181,18 @@ get_aie_dtrace()
   return value;
 }
 
+// Inline JSON blob carrying XDP profiling runtime configuration.
+// When non-empty, XDP parses this and uses it to drive per-plugin settings
+// (e.g. control_instrumentation for aie_dtrace) in preference to the
+// legacy AIE_*_settings.* xrt.ini sections. See
+// xdp/profile/plugin/vp_base/profiling_runtime_config.h for the consumer.
+inline std::string
+get_profiling_runtime_config()
+{
+  static std::string value = detail::get_string_value("Debug.profiling_runtime_config", "");
+  return value;
+}
+
 inline bool
 get_aie_debug()
 {
