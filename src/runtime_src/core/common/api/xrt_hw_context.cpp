@@ -64,7 +64,7 @@ dump_data_to_file(const std::string& fname, span<char> data)
   if (!ofs.is_open())
     throw std::runtime_error("Failure opening file " + fname + " for writing!");
 
-  ofs.write(data.data(), data.size());
+  ofs.write(data.data(), static_cast<std::streamsize>(data.size()));
 }
 
 // Convert experimental string config to cfg_param_type (uint32 values).
