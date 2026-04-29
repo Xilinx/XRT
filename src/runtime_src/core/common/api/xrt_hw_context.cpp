@@ -384,10 +384,14 @@ public:
   add_config(const xrt::elf& elf)
   {
     auto part_size = elf.get_partition_size();
+
+    // The lock must be held here to prevent race on m_hdl
+    // in case it is created in init_from_elf(). The lock
+    // also protects updated data structures.
+    std::lock_guard lk(m_mutex);
     if (m_hdl && m_partition_size != part_size)
       throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-    std::lock_guard lk(m_mutex);
     if (m_hdl)
       // Add ELF kernels to elf map. Throws if kernel already in map
       update_from_elf(elf);
