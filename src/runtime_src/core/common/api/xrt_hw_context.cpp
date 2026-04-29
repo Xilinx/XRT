@@ -226,7 +226,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 
   bool m_elf_flow = false;
 
-  // update_elf_map() - Insert all kernels in elf
+  // update_from_elf() - Insert all kernels in elf
   // A hwctx can be configured with multiple ELFs.  The elf map
   // maintains a mapping from kernel name to the ELF containing
   // the kernel.
