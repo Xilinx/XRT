@@ -171,7 +171,8 @@ smi_hardware_config()
     {{0x1B0A, 0x00}, hardware_type::npu3_B01},
     {{0x1B0B, 0x00}, hardware_type::npu3_B02},
     {{0x1B0C, 0x00}, hardware_type::npu3_B03},
-    {{0xb052, 0x01}, hardware_type::aie2ps}
+    {{0xb052, 0x01}, hardware_type::aie2ps},
+    {{0xfe02, 0x00}, hardware_type::npu3_aie2ps}
   };
   // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 }
