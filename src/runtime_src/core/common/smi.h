@@ -205,7 +205,14 @@ public:
     npu3_B01, // XXXXX
     npu3_B02, // XXXXX
     npu3_B03, // XXXXX
-    aie2ps, // Telluride aie2ps
+    aie2ps, // Telluride aie2ps (Versal AIE2, Linux drives AIE directly)
+    /*
+     * T20 SoC: same Versal AIE2 (aie2ps / "ve2") silicon as above, but
+     * management is routed via RPU firmware over rpmsg using the npu3 /
+     * aie4 message protocol.  ELFs/xclbins are the same artifacts shipped
+     * for ve2 (xrt_smi_ve2.a); only the management transport differs.
+     */
+    npu3_aie2ps,
     unknown // Unknown hardware type
   };
 
