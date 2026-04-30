@@ -11,7 +11,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/archive.h"
 #include "core/common/runner/runner.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 #include <chrono>
 #include <iostream>

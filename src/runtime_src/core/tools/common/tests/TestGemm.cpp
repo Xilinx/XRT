@@ -12,7 +12,7 @@
 #include "xrt/experimental/xrt_ext.h"
 #include "core/common/runner/runner.h"
 #include "core/common/archive.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 #include "core/common/api/bo_int.h"
 #include "xrt/detail/xclbin.h"
 

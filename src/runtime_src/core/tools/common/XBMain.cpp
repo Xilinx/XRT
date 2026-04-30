@@ -6,7 +6,7 @@
 // Local - Include Files
 #include "core/common/system.h"
 #include "core/common/sysinfo.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 #include "SmiDefault.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
