@@ -3,8 +3,8 @@
 
 #pragma once
 // Local include files
-#include "config.h"
-#include "query_requests.h"
+#include "core/common/config.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -182,7 +182,7 @@ public:
   // This subcommand is used for device and host configuration.
   // Derived classes must implement this method to define hardware-specific configuration logic.
   virtual subcommand 
-  create_configure_subcommand() = 0; 
+  create_configure_subcommand() = 0;
 };
 
 // class smi_hardware_config

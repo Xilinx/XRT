@@ -13,7 +13,7 @@
 #include "common/message.h"
 #include "common/system.h"
 #include "common/sysinfo.h"
-#include "common/smi.h"
+#include "common/smi/smi.h"
 #include "common/module_loader.h"
 #include "xrt/detail/version-slim.h"
 

@@ -11,7 +11,7 @@
 #include "core/common/runner/runner.h"
 #include "core/common/json/nlohmann/json.hpp"
 #include "core/common/archive.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 namespace XBU = XBValidateUtils;
 namespace xq = xrt_core::query;

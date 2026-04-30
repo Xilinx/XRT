@@ -10,7 +10,7 @@
 #include "tools/common/SmiWatchMode.h"
 #include "tools/common/Table2D.h"
 #include "core/common/query_requests.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>

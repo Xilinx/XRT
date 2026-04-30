@@ -31,6 +31,7 @@ set(AIE_TARGET_EXISTS "$<TARGET_EXISTS:core_edge_user_aie_object>")
 
 add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object>>
@@ -38,6 +39,7 @@ add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
 
 add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   $<$<AND:${AIE_BUILD_DEFINED},${AIE_TARGET_EXISTS}>:$<TARGET_OBJECTS:core_edge_user_aie_object>>
