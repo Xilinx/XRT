@@ -204,6 +204,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
           pt_dev.put("aie_architecture_version", "aie4");
           break;
         case xrt_core::smi::smi_hardware_config::hardware_type::aie2ps:
+        case xrt_core::smi::smi_hardware_config::hardware_type::npu3_aie2ps:
           pt_dev.put("aie_architecture_version", "aie2ps");
           break;
         default:
