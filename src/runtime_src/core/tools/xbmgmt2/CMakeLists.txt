@@ -91,6 +91,7 @@ endif()
 target_link_libraries(${XBMGMT2_NAME}
   PRIVATE
   xrt_coreutil
+  ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   )
   
