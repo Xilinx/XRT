@@ -1817,6 +1817,8 @@ struct aie_partition_info : request
     uint64_t    command_completions = 0;
     uint64_t    migrations = 0;
     uint64_t    preemptions = 0;
+    uint64_t    preemption_frame_event = 0;
+    uint64_t    preemption_layer_event = 0;
     uint64_t    errors = 0;
     uint64_t    pasid = 0;
     qos_info    qos {};
