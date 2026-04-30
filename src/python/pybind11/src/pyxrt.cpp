@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2026 Xilinx, Inc. All rights reserved
 
 /**
  * Pybind11 module for XRT C++ APIs
@@ -434,12 +435,12 @@ PYBIND11_MODULE(pyxrt, m) {
                                  try {
                                      r.set_arg(i, item.cast<xrt::bo>());
                                  }
-                                 catch (std::exception e) {  }
+                                 catch (const std::exception&) {  }
 
                                  try {
                                      r.set_arg<int>(i, item.cast<int>());
                                  }
-                                 catch (std::exception e) {  }
+                                 catch (const std::exception&) {  }
 
                                  i++;
                              }

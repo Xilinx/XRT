@@ -1,6 +1,6 @@
 /**
  *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
- *  Copyright (C) 2022 Advanced Micro Devices, Inc.
+ *  Copyright (C) 2022-2026 Advanced Micro Devices, Inc.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -3020,7 +3020,7 @@ static int icap_cache_ps_kernel_axlf_section(const struct axlf *xclbin,
 		return -EINVAL;
 
 	*data = vzalloc(sizeof(struct ps_kernel_node) +
-	    sizeof(struct ps_kernel_data) * (count - 1));
+			sizeof(struct ps_kernel_data) * count);
 	if (*data == NULL)
 		return -ENOMEM;
 
@@ -3906,8 +3906,8 @@ static ssize_t icap_read_ps_kernel(struct file *filp, struct kobject *kobj,
 		if (err)
 			return f_nread;
 
-		size = sizeof(struct ps_kernel_node) + sizeof(struct ps_kernel_data) *
-			(islot->ps_kernel->pkn_count - 1);
+		size = sizeof(struct ps_kernel_node)
+			+ sizeof(struct ps_kernel_data) * islot->ps_kernel->pkn_count;
 		if (offset >= size) {
 			icap_xclbin_rd_unlock(icap, st);
 			return f_nread;
