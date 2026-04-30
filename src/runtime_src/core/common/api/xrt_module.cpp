@@ -709,13 +709,6 @@ class module_run_aie_gen2_plus : public module_run
   // Dynamic tracing utility structure
   struct dtrace_util
   {
-    // Configuration for dtrace handle creation
-    dtrace_config_t dtrace_config = {
-      nullptr, // ctrl_file_path
-      nullptr, // map_data
-      0U,      // log_level (error)
-      0U       // output_fmt (python)
-    };
     // Function pointer for dtrace destroy handle
     using dtrace_destroy_handle = void (*)(dtrace_handle_t);
 
@@ -727,9 +720,17 @@ class module_run_aie_gen2_plus : public module_run
 
     dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
                 uint32_t log_level, uint32_t output_fmt)
-      : dtrace_config{ctrl_file_path.c_str(), map_data.c_str(), log_level, output_fmt}
-      , dtrace_handle(create_dtrace_handle(&dtrace_config), destroy_dtrace_handle)
+      : dtrace_handle(nullptr, destroy_dtrace_handle)
     {
+      // Configuration for dtrace handle creation
+      const dtrace_config_t dtrace_config
+      {
+        ctrl_file_path.c_str(),
+        map_data.c_str(),
+        log_level,
+        output_fmt
+      };
+      dtrace_handle.reset(create_dtrace_handle(&dtrace_config));
     }
   };
   dtrace_util m_dtrace;
@@ -1148,7 +1149,7 @@ public:
 
     try {
       // dtrace output is dumped into current working directory
-      // output is a python file
+      // output is a python/json file
       std::string result_file_path = std::filesystem::current_path().string()
                                    + "/dtrace_dump"
                                    + postfix
