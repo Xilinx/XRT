@@ -78,7 +78,6 @@ if (XRT_STATIC_BUILD)
   target_link_libraries(${XBMGMT2_NAME}_static
     PRIVATE
     xrt_coreutil_static
-    boost_system
     boost_program_options
     -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
     uuid
@@ -92,8 +91,6 @@ endif()
 target_link_libraries(${XBMGMT2_NAME}
   PRIVATE
   xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   )
   
