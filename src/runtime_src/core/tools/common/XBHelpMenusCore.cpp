@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
@@ -373,8 +373,15 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   report_option_help("OPTIONS", _optionDescription);
 
-  if (XBU::getAdvance())
-    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden);
+  if (XBU::getAdvance()) {
+    po::options_description hiddenForDisplay;
+    for (const auto& opt : _optionHidden.options()) {
+      if (opt && !boost::iequals(opt->long_name(), "subCmd"))
+        hiddenForDisplay.add(opt);
+    }
+    if (!hiddenForDisplay.options().empty())
+      report_option_help(std::string("OPTIONS ") + sHidden, hiddenForDisplay);
+  }
 }
 
 static std::string
@@ -400,7 +407,11 @@ create_option_format_name(const boost::program_options::option_description * _op
     optionDisplayName += removeLongOptDashes ? _option->long_name() : longName;
   }
 
-  if (_reportParameter && !_option->format_parameter().empty())
+  // Omit Boost's format_parameter() for subCmd; semantics stay in the description.
+  const std::string& longKey = _option->long_name();
+  if (_reportParameter && boost::iequals(longKey, "device"))
+    optionDisplayName += " <BDF>";
+  else if (_reportParameter && !boost::iequals(longKey, "subCmd") && !_option->format_parameter().empty())
     optionDisplayName += " " + _option->format_parameter();
 
   return optionDisplayName;
