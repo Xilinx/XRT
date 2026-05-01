@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace xrt_smi_alveo {
+namespace xrt_core::smi::alveo {
 
 static xrt_core::smi::subcommand
 create_validate_subcommand()
@@ -110,4 +110,4 @@ get_smi_config()
   return smi_instance->build_json();
 }
 
-} // namespace xrt_smi_alveo
+} // namespace xrt_core::smi::alveo

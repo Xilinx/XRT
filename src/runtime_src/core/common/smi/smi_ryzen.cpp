@@ -7,7 +7,7 @@
 
 using namespace xrt_core::smi;
 
-namespace xrt_smi_ryzen {
+namespace xrt_core::smi::ryzen {
 
 config_gen_ryzen::
 config_gen_ryzen()
@@ -156,4 +156,4 @@ get_smi_config(const xrt_core::device* device)
   return smi_instance->build_json();
 }
 
-} // namespace xrt_smi_ryzen
+} // namespace xrt_core::smi::ryzen

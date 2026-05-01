@@ -9,7 +9,7 @@
 #include "core/common/device.h"
 #include "core/common/smi/smi.h"
 
-namespace xrt_smi_ryzen {
+namespace xrt_core::smi::ryzen {
 
 // Ryzen / NPU xrt-smi JSON config generators (shared by XDNA shim, MCDM, etc.).
 class config_gen_ryzen : public xrt_core::smi::config_generator {
@@ -59,4 +59,4 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
 std::string
 get_smi_config(const xrt_core::device* device);
 
-} // namespace xrt_smi_ryzen
+} // namespace xrt_core::smi::ryzen
