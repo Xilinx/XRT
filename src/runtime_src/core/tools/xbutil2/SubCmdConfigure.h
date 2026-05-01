@@ -9,7 +9,7 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/SubCmdConfigureInternal.h"
 #include "tools/common/OptionOptions.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 struct SubCmdConfigureOptions {
 
   // Common options

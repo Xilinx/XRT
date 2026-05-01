@@ -5,7 +5,7 @@
 
 #define XRT_CORE_COMMON_SOURCE
 
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 #include "SmiDefault.h"
 
 #include <boost/property_tree/ptree.hpp>
@@ -39,7 +39,7 @@ xrt_core::smi::subcommand
 create_examine_subcommand() 
 {
   std::vector<xrt_core::smi::basic_option> examine_report_desc = {
-    {"host", "Host information", "common"},
+    {"host", "Host information (default)", "common"},
   };
   std::map<std::string, std::shared_ptr<xrt_core::smi::option>> examine_suboptions; 
   examine_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));

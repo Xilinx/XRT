@@ -425,12 +425,7 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
 
   auto testsToRun = options.m_tests_to_run;
   if (testsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      testsToRun = std::vector<std::string>({"all"});
-    }
-    else {
-      throw xrt_core::error("No test given to validate against.");
-    }
+    testsToRun = std::vector<std::string>({"all"});
   }
   // Validate the user test requests
   for (auto &userTestName : testsToRun) {

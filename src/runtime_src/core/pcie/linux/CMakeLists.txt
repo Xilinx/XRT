@@ -16,7 +16,6 @@ add_library(core_pcielinux_objects OBJECT
   pcidev.cpp
   pcidrv.cpp
   shim.cpp
-  smi_pcie.cpp
   system_linux.cpp
   )
 
@@ -36,6 +35,7 @@ target_include_directories(core_pcielinux_objects
 add_library(xrt_core SHARED
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
@@ -43,6 +43,7 @@ add_library(xrt_core SHARED
 add_library(xrt_core_static STATIC
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
+  $<TARGET_OBJECTS:core_smi_alveo_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
