@@ -4,10 +4,10 @@
 
 #include <string>
 
-namespace xrt_smi_alveo {
+namespace xrt_core::smi::alveo {
 
 // xrt-smi JSON for Alveo-class shims (PCIe Linux and edge user device_linux).
 std::string
 get_smi_config();
 
-} // namespace xrt_smi_alveo
+} // namespace xrt_core::smi::alveo
