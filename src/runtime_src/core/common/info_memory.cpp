@@ -3,10 +3,9 @@
 // Copyright (C) 2023-2026 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "info_memory.h"
-
-#include "ps_kernel.h"
 #include "query_requests.h"
 #include "utils.h"
+#include "core/include/ps_kernel.h"
 #include "xrt/detail/xclbin.h"
 
 #include <boost/property_tree/ptree.hpp>
@@ -456,6 +455,12 @@ scheduler_update_stat(const xrt_core::device* device)
   }
 }
 
+#if defined(__GNUC__) && (__GNUC__ == 15)
+// Known GCC 15 false positive around std::any_cast<std::vector<char>>
+// + vector copy/destruction at high optimization levels.
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+#endif
 std::vector<ps_kernel_data> 
 get_ps_kernels(const xrt_core::device* device)
 {
@@ -464,19 +469,33 @@ get_ps_kernels(const xrt_core::device* device)
     std::vector<char> buf = xrt_core::device_query<xq::ps_kernel>(device);
     if (buf.empty())
       return ps_kernels;
-    const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+
+    if (buf.size() < sizeof(ps_kernel_node))
+      throw xrt_core::error("'ps_kernel' invalid. Buffer too small.");
+
+    auto map = reinterpret_cast<const ps_kernel_node*>(buf.data());
     if(map->pkn_count == 0)
       throw xrt_core::error("'ps_kernel' invalid. Has the PS kernel been loaded? See 'xrt-smi program'.");
 
-    for (unsigned int i = 0; i < map->pkn_count; i++)
-      ps_kernels.emplace_back(map->pkn_data[i]);
+    auto needed = sizeof(ps_kernel_node) * map->pkn_count * sizeof(ps_kernel_data);
+    if (buf.size() < needed)
+      throw xrt_core::error("'ps_kernel' invalid. Truncated buffer.");
+
+    ps_kernels.reserve(map->pkn_count);
+    for (unsigned int i = 0; i < map->pkn_count; i++) {
+      ps_kernel_data kd {};
+      std::memcpy(&kd, &map->pkn_data[i], sizeof(kd));
+      ps_kernels.emplace_back(kd);
+    }
   }
   catch (const xq::no_such_key&) {
     // Ignoring if not available: Edge Case
   }
-
   return ps_kernels;
 }
+#if defined(__GNUC__) && (__GNUC__ == 15)
+# pragma GCC diagnostic pop
+#endif
 
 ptree_type
 populate_cus(const xrt_core::device* device, const std::vector<xq::kds_cu_info::data_type>& cu_stats, const std::vector<xq::kds_scu_info::data_type>& scu_stats)

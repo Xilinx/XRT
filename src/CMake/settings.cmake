@@ -19,7 +19,10 @@ message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
 option(XRT_INSTALL_STATIC_LIBRARY "Enable CMake static library targets" ON)
 if (XRT_YOCTO)
   set(XRT_INSTALL_STATIC_LIBRARY OFF)
-endif()                       
+endif()
+
+# Option to enable/disable emulation libraries
+option(XRT_ENABLE_EMULATION "Enable Alveo emulation" ON)
 
 # Indicate that we are building XRT
 add_compile_definitions("XRT_BUILD")

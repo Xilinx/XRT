@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2026 Xilinx, Inc. All rights reserved
 
 /**
  * Pybind11 module for XRT C++ APIs
@@ -32,10 +33,6 @@
 // C++11 includes
 #include <stdexcept>
 #include <string>
-
-#ifdef _MSC_VER
-#pragma warning(disable: 4996)  // C4996: deprecated function; Python binding delegates to C++
-#endif
 
 namespace py = pybind11;
 
@@ -83,6 +80,49 @@ warn_deprecated_load_xclbin()
                    "pyxrt.device.load_xclbin() is deprecated; use pyxrt.hw_context(device, xclbin) or pyxrt.hw_context(device, xclbin_path) instead",
                    1) == -1)
     throw py::error_already_set();
+}
+
+void
+warn_deprecated_kernel_device_constructor()
+{
+  if (PyErr_WarnEx(PyExc_DeprecationWarning,
+                   "kernel(device, uuid, name[, mode]) is deprecated; use kernel(hw_context, name) instead.",
+                   1) == -1)
+    throw py::error_already_set();
+}
+
+xrt::kernel
+kernel_device_compat(const xrt::device& device, const xrt::uuid& xclbin_id,
+                     const std::string& name, xrt::kernel::cu_access_mode mode)
+{
+  // Convert kernel cu_access_mode to hw_context access_mode
+  auto ctx_mode = (mode == xrt::kernel::cu_access_mode::exclusive)
+      ? xrt::hw_context::access_mode::exclusive
+      : xrt::hw_context::access_mode::shared;
+
+  xrt::hw_context ctx(device, xclbin_id, ctx_mode);
+  return {ctx, name};
+}
+
+void
+bind_kernel_device_compat(py::class_<xrt::kernel>& pyker)  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+{
+  pyker
+    .def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n,
+                     xrt::kernel::cu_access_mode m) {
+        warn_deprecated_kernel_device_constructor();
+        py::gil_scoped_release release;
+        return new xrt::kernel(kernel_device_compat(d, u, n, m));
+      }),
+      py::arg("device"), py::arg("uuid"), py::arg("name"), py::arg("mode"),
+      "Deprecated compatibility shim. Use kernel(hw_context, name) for new code")
+    .def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
+        warn_deprecated_kernel_device_constructor();
+        py::gil_scoped_release release;
+        return new xrt::kernel(kernel_device_compat(d, u, n, xrt::kernel::cu_access_mode::shared));
+      }),
+      py::arg("device"), py::arg("uuid"), py::arg("name"),
+      "Deprecated compatibility shim. Use kernel(hw_context, name) for new code");
 }
 
 xrt::uuid
@@ -415,17 +455,15 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("none", xrt::kernel::cu_access_mode::none)
         .export_values();
 
+    bind_kernel_device_compat(pyker);
 
-    pyker.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n,
-                          xrt::kernel::cu_access_mode m) {
-                           return new xrt::kernel(d, u, n, m);
-                       }))
-  	    .def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
-                               return new xrt::kernel(d, u, n);
-                       }))
+    pyker
         .def(py::init([](const xrt::hw_context& ctx, const std::string& n) {
-                               return new xrt::kernel(ctx, n);
-                       }))
+                           py::gil_scoped_release release;
+                           return new xrt::kernel(ctx, n);
+                       }),
+              py::arg("hw_context"), py::arg("name"),
+              "Create kernel from hardware context and name (recommended)")
         .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
                              int i = 0;
                              xrt::run r(k);
@@ -434,12 +472,12 @@ PYBIND11_MODULE(pyxrt, m) {
                                  try {
                                      r.set_arg(i, item.cast<xrt::bo>());
                                  }
-                                 catch (std::exception e) {  }
+                                 catch (const std::exception&) {  }
 
                                  try {
                                      r.set_arg<int>(i, item.cast<int>());
                                  }
-                                 catch (std::exception e) {  }
+                                 catch (const std::exception&) {  }
 
                                  i++;
                              }
