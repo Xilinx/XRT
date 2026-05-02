@@ -39,6 +39,8 @@ populate_aie_partition(const xrt_core::device* device)
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
+    pt_entry.put("preemption_frame_event", entry.preemption_frame_event);
+    pt_entry.put("preemption_layer_event", entry.preemption_layer_event);
     pt_entry.put("errors", entry.errors);
     pt_entry.put("suspensions", entry.suspensions);
     pt_entry.put("memory_usage", entry.memory_usage == 0 ? "N/A" : xrt_core::utils::unit_convert(entry.memory_usage));
@@ -127,11 +129,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << "    HW Contexts:\n";
 
     const std::vector<std::string> headers = {
-      "      |PID                 |Ctx ID     |Submissions |Migrations  |Err  |Priority |",
-      "      |Process Name        |Status     |Completions |Suspensions |     |GOPS     |",
-      "      |Memory Usage        |Instr BO   |            |            |     |FPS      |",
-      "      |                    |           |            |            |     |Latency  |",
-      "      |====================|===========|============|============|=====|=========|"
+      "      |PID                 |Ctx ID     |Submissions |Migrations  |Frame Evts  |Err  |Priority |",
+      "      |Process Name        |Status     |Completions |Suspensions |Layer Evts  |     |GOPS     |",
+      "      |Memory Usage        |Instr BO   |            |            |            |     |FPS      |",
+      "      |                    |           |            |            |            |     |Latency  |",
+      "      |====================|===========|============|============|============|=====|=========|"
     };
 
     for (const auto& header : headers) {
@@ -143,30 +145,32 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       const auto& hw_context = pt_hw_context.second;
 
       std::vector<boost::format> row_data;
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-5s|%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-12s|%-5s|%-9s|")
                    % hw_context.get<int>("pid")
                    % hw_context.get<std::string>("context_id")
                    % hw_context.get<uint64_t>("command_submissions")
                    % hw_context.get<uint64_t>("migrations")
+                   % hw_context.get<uint64_t>("preemption_frame_event")
                    % hw_context.get<uint64_t>("errors")
                    % hw_context.get<std::string>("priority"));
 
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|     |%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|%-12s|%-12s|%-12s|     |%-9s|")
                    % hw_context.get<std::string>("process_name")
                    % hw_context.get<std::string>("status")
                    % hw_context.get<uint64_t>("command_completions")
                    % hw_context.get<uint64_t>("suspensions")
+                   % hw_context.get<uint64_t>("preemption_layer_event")
                    % hw_context.get<std::string>("gops"));
 
-      row_data.emplace_back(boost::format("      |%-20s|%-11s|            |            |     |%-9s|")
+      row_data.emplace_back(boost::format("      |%-20s|%-11s|            |            |            |     |%-9s|")
                    % hw_context.get<std::string>("memory_usage")
                    % hw_context.get<std::string>("instr_bo_mem")
                    % hw_context.get<std::string>("fps"));
 
-      row_data.emplace_back(boost::format("      |                    |           |            |            |     |%-9s|")
+      row_data.emplace_back(boost::format("      |                    |           |            |            |            |     |%-9s|")
                    % hw_context.get<std::string>("latency"));
 
-      row_data.emplace_back(boost::format("      |--------------------|-----------|------------|------------|-----|---------|"));
+      row_data.emplace_back(boost::format("      |--------------------|-----------|------------|------------|------------|-----|---------|"));
 
       for (const auto& row : row_data) {
         _output << row << "\n";
