@@ -289,6 +289,9 @@ protected:
   static constexpr uint32_t schema_mask = ~addend_mask;
   // NOLINTEND
 
+  // Filename this ELF was loaded from (empty if loaded from buffer/stream)
+  std::string m_filename;
+
   // Protected constructor - takes already-loaded ELFIO and platform
   elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
 
@@ -358,6 +361,20 @@ public:
   get_elfio() const
   {
     return m_elfio;
+  }
+
+  // Get the filename this ELF was loaded from (empty if loaded from buffer/stream)
+  const std::string&
+  get_filename() const
+  {
+    return m_filename;
+  }
+
+  // Set the filename (called by xrt::elf constructors that load from a path)
+  void
+  set_filename(const std::string& filename)
+  {
+    m_filename = filename;
   }
 
   // Get configuration UUID from ELF
@@ -467,6 +484,15 @@ static constexpr uint32_t no_ctrl_code_id = UINT32_MAX;
 std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
 get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
+
+// Serialize the ELF back to raw bytes.
+// Used to construct aiebu_dump for debug/opcode-info lookups on timeout.
+std::vector<char>
+get_raw_elf(const std::shared_ptr<xrt::elf_impl>& elf_impl);
+
+// Return the filename this ELF was loaded from (empty if loaded from buffer/stream).
+const std::string&
+get_filename(const std::shared_ptr<xrt::elf_impl>& elf_impl);
 
 } // namespace xrt_core::elf_int
 

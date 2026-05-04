@@ -1508,7 +1508,9 @@ valid_or_error(const std::shared_ptr<elf_impl>& handle)
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(fnm))}
-{}
+{
+  handle->set_filename(fnm);
+}
 
 elf::
 elf(std::istream& stream)
@@ -1634,6 +1636,22 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
     }
   }
   throw std::runtime_error("Kernel not found: " + kernel_name);
+}
+
+std::vector<char>
+get_raw_elf(const std::shared_ptr<xrt::elf_impl>& elf_impl)
+{
+  std::ostringstream oss;
+  // ELFIO::save() is not const-qualified but does not modify the object state
+  const_cast<ELFIO::elfio&>(elf_impl->get_elfio()).save(oss);
+  const auto str = oss.str();
+  return {str.begin(), str.end()};
+}
+
+const std::string&
+get_filename(const std::shared_ptr<xrt::elf_impl>& elf_impl)
+{
+  return elf_impl->get_filename();
 }
 
 } // xrt_core::elf_int
