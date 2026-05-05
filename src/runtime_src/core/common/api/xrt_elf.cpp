@@ -1515,20 +1515,17 @@ elf(const std::string& fnm)
 elf::
 elf(std::istream& stream)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(stream))}
-{
-}
+{}
 
 elf::
 elf(const void* data, size_t size)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(data, size))}
-{
-}
+{}
 
 elf::
 elf(const std::string_view& sv)
   : detail::pimpl<elf_impl>{create_elf_impl(load_elfio(sv.data(), sv.size()))}
-{
-}
+{}
 
 xrt::uuid
 elf::

@@ -4772,7 +4772,7 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
       oss << "Kernel Instance: " << kernel_instance;
     if (!elf_filename.empty())
       oss << "\nELF File:        " << elf_filename;
-    else if (!elf_uuid.empty())
+    if (!elf_uuid.empty())
       oss << "\nELF UUID:        " << elf_uuid;
 
     oss << "\nctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
