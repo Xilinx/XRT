@@ -313,7 +313,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   for (auto& subCmdEntry : _subCmds) {
     // Filter out hidden subcommand
-    if (!XBU::getAdvance() && subCmdEntry->isHidden())
+    if (!XBU::getShowHidden() && subCmdEntry->isHidden())
       continue;
 
     // Depricated sub-command
@@ -373,15 +373,8 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   report_option_help("OPTIONS", _optionDescription);
 
-  if (XBU::getAdvance()) {
-    po::options_description hiddenForDisplay;
-    for (const auto& opt : _optionHidden.options()) {
-      if (opt && !boost::iequals(opt->long_name(), "subCmd"))
-        hiddenForDisplay.add(opt);
-    }
-    if (!hiddenForDisplay.options().empty())
-      report_option_help(std::string("OPTIONS ") + sHidden, hiddenForDisplay);
-  }
+  if (XBU::getShowHidden())
+    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden);
 }
 
 static std::string
@@ -407,11 +400,7 @@ create_option_format_name(const boost::program_options::option_description * _op
     optionDisplayName += removeLongOptDashes ? _option->long_name() : longName;
   }
 
-  // Omit Boost's format_parameter() for subCmd; semantics stay in the description.
-  const std::string& longKey = _option->long_name();
-  if (_reportParameter && boost::iequals(longKey, "device"))
-    optionDisplayName += " <BDF>";
-  else if (_reportParameter && !boost::iequals(longKey, "subCmd") && !_option->format_parameter().empty())
+  if (_reportParameter && !_option->format_parameter().empty())
     optionDisplayName += " " + _option->format_parameter();
 
   return optionDisplayName;

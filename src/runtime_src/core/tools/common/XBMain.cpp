@@ -41,6 +41,7 @@ void  main_(int argc, char** argv,
   bool bTrace = false;
   bool bHelp = false;
   bool bBatchMode = false;
+  bool bShowHidden = false;
   bool bAdvance = false;
   bool bForce = false;
   bool bVersion = false;
@@ -68,12 +69,13 @@ void  main_(int argc, char** argv,
   hiddenOptions.add_options()
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If the option is omitted and there is only 1 device, that device is used\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
   if (xrt_core::sysinfo::is_advanced()) {
     hiddenOptions.add_options()
-      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows advanced options and commands")
     ;
   }
 
@@ -117,6 +119,7 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
+  XBU::setShowHidden( bShowHidden );
   XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 

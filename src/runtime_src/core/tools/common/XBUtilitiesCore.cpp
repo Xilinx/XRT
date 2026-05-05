@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
@@ -26,6 +26,7 @@ using namespace XBUtilities;
 static bool m_bVerbose = false;
 static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
+static bool m_bShowHidden = false;
 static bool m_bAdvance = false;
 static bool m_bForce = false;
 static bool m_bElf = false; 
@@ -77,14 +78,30 @@ XBUtilities::setTrace(bool _bTrace)
   m_bTrace = _bTrace;
 }
 
+void
+XBUtilities::setShowHidden(bool _bShowHidden)
+{
+  if (_bShowHidden)
+    trace("Hidden commands and options will be shown.");
+  else
+    trace("Hidden commands and options will be hidden");
+
+  m_bShowHidden = _bShowHidden;
+}
+
+bool
+XBUtilities::getShowHidden()
+{
+  return m_bShowHidden;
+}
 
 void
 XBUtilities::setAdvance(bool _bAdvance)
 {
   if (_bAdvance)
-    trace("Hidden commands and options will be shown.");
+    trace("Advanced commands and options will be shown.");
   else
-    trace("Hidden commands and options will be hidden");
+    trace("Advanced commands and options will be hidden");
 
   m_bAdvance = _bAdvance;
 }
