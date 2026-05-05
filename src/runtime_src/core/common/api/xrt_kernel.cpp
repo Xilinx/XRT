@@ -35,7 +35,6 @@
 #include "xclbin_int.h"
 
 #include "core/common/api/bo_int.h"
-#include "aiebu/aiebu_dump.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/cuidx_type.h"
@@ -1403,6 +1402,7 @@ public:
 
 private:
   std::string name;                           // kernel name
+  std::string m_kernel_instance;             // full "kernel:instance" string, empty if no instance
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -1756,6 +1756,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
+    , m_kernel_instance(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1812,6 +1813,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
+    , m_kernel_instance(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -1895,6 +1897,12 @@ public:
   get_name() const
   {
     return name;
+  }
+
+  const std::string&
+  get_kernel_instance() const
+  {
+    return m_kernel_instance;
   }
 
   uint32_t
@@ -4737,7 +4745,8 @@ what() const noexcept
 
 static std::string
 aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
-                     const std::vector<char>& elf_buf, const std::string& elf_filename)
+                     const std::string& elf_filename, const std::string& kernel_instance,
+                     const std::string& elf_uuid)
 {
   constexpr auto indent8 = 8;
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
@@ -4755,20 +4764,20 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   }
   else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
+
+    // Print kernel and ELF identity to aid post-mortem triage.
+    // ELF UUID (from .note.xrt.UID) is used when the filename is unavailable
+    // (e.g. ELF loaded from a buffer rather than a file path).
+    if (!kernel_instance.empty())
+      oss << "Kernel Instance: " << kernel_instance;
+    if (!elf_filename.empty())
+      oss << "\nELF File:        " << elf_filename;
+    else if (!elf_uuid.empty())
+      oss << "\nELF UUID:        " << elf_uuid;
+
+    oss << "\nctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
       << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
       << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
-
-    // Construct aiebu_dump once for opcode lookups (may throw if ELF has no .dump section)
-    std::unique_ptr<aiebu::aiebu_dump> dumper;
-    if (!elf_buf.empty()) {
-      try {
-        dumper = std::make_unique<aiebu::aiebu_dump>(elf_buf);
-      }
-      catch (const std::exception&) {
-        // ELF type unsupported or no .dump section — opcode info will be skipped
-      }
-    }
 
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
@@ -4783,18 +4792,6 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
         << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
         << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
         << "\n";
-
-      if (dumper) {
-        try {
-          dumper->get_opcode_info(oss, elf_filename.empty() ? "<unknown>" : elf_filename,
-                                  ctx_health->aie4.uc_info[i].offset,
-                                  ctx_health->aie4.uc_info[i].page_idx,
-                                  ctx_health->aie4.uc_info[i].uc_idx);
-        }
-        catch (const std::exception&) {
-          // Lookup failed — skip silently, hardware state already printed above
-        }
-      }
     }
   }
   return oss.str();
@@ -4802,13 +4799,14 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
 
 static std::string
 amend_aie_error_message(const ert_packet* epkt, const std::string& msg,
-                        const std::vector<char>& elf_buf, const std::string& elf_filename)
+                        const std::string& elf_filename, const std::string& kernel_instance,
+                        const std::string& elf_uuid)
 {
   constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
   if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
-    return aie_error_message_v1(epkt, msg, elf_buf, elf_filename);
+    return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid);
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
   //below is for printing V0 exception message
@@ -4827,10 +4825,11 @@ amend_aie_error_message(const ert_packet* epkt, const std::string& msg,
   return oss.str();
 }
 
-// get_elf_info_from_run() - Extract raw ELF bytes and filename from a run object.
-// Returns empty vector and empty string if the run has no associated ELF (non-ELF flow).
-static std::pair<std::vector<char>, std::string>
-get_elf_info_from_run(const xrt::run& run)
+// get_elf_identity_from_run() - Extract ELF filename, kernel instance, and UUID from a run object.
+// Returns empty values if the run has no associated ELF (non-ELF flow).
+// UUID (from .note.xrt.UID) serves as a fallback identifier when the filename is unavailable.
+static std::tuple<std::string, std::string, std::string>
+get_elf_identity_from_run(const xrt::run& run)
 {
   auto impl = run.get_handle();
   if (!impl)
@@ -4840,30 +4839,27 @@ get_elf_info_from_run(const xrt::run& run)
     if (!mod)
       return {};
     auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
-    return {xrt_core::elf_int::get_raw_elf(elf_handle),
-            xrt_core::elf_int::get_filename(elf_handle)};
+    std::string uuid_str;
+    try {
+      uuid_str = elf_handle->get_cfg_uuid().to_string();
+    }
+    catch (const std::exception&) {
+      // ELF has no .note.xrt.UID — leave uuid_str empty
+    }
+    return {xrt_core::elf_int::get_filename(elf_handle),
+            impl->get_kernel()->get_kernel_instance(),
+            uuid_str};
   }
   catch (const std::exception&) {
     return {};
   }
 }
 
-// needs_elf_buf() - Returns true only when the ELF buffer is needed for opcode lookup.
-// Avoids serializing the ELF on non-timeout errors or V0 health data packets.
-static bool
-needs_elf_buf(const ert_packet* epkt)
-{
-  return epkt->state == ERT_CMD_STATE_TIMEOUT
-      && epkt->data[0] == ERT_CTX_HEALTH_DATA_V1;
-}
-
 run::aie_error::
 aie_error(const xrt::run& run, const std::string& what)
   : command_error(run, [&] {
-      auto [buf, filename] = needs_elf_buf(run.get_ert_packet())
-        ? get_elf_info_from_run(run)
-        : std::pair<std::vector<char>, std::string>{};
-      return amend_aie_error_message(run.get_ert_packet(), what, buf, filename);
+      auto [filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
+      return amend_aie_error_message(run.get_ert_packet(), what, filename, kernel_instance, elf_uuid);
     }())
 {}
 
@@ -4882,10 +4878,8 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
   : command_error(run, state, [&] {
-      auto [buf, filename] = needs_elf_buf(run.get_ert_packet())
-        ? get_elf_info_from_run(run)
-        : std::pair<std::vector<char>, std::string>{};
-      return amend_aie_error_message(run.get_ert_packet(), what, buf, filename);
+      auto [filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
+      return amend_aie_error_message(run.get_ert_packet(), what, filename, kernel_instance, elf_uuid);
     }())
 {}
 

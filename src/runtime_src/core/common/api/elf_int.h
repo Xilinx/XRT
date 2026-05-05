@@ -485,11 +485,6 @@ std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
 get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
 
-// Serialize the ELF back to raw bytes.
-// Used to construct aiebu_dump for debug/opcode-info lookups on timeout.
-std::vector<char>
-get_raw_elf(const std::shared_ptr<xrt::elf_impl>& elf_impl);
-
 // Return the filename this ELF was loaded from (empty if loaded from buffer/stream).
 const std::string&
 get_filename(const std::shared_ptr<xrt::elf_impl>& elf_impl);
