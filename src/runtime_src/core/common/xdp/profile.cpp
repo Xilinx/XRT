@@ -118,6 +118,30 @@ namespace {
                      || has_profiling_runtime_control_instrumentation();
     return value;
   }
+
+  // Effective Debug.xdp_mode value with the same precedence as the
+  // authoritative xdp::profiling_runtime_config::xdp_mode_effective():
+  //   1. Explicit [Debug] xdp_mode in xrt.ini wins.
+  //   2. Otherwise, when the runtime config blob carries
+  //      control_instrumentation, promote to "xdna" so the loader picks
+  //      the XDNA variant without requiring xdp_mode=xdna explicitly.
+  //   3. Otherwise the built-in default from get_xdp_mode().
+  // Duplicated here because xrt_coreutil cannot link against xdp_core.
+  // Result is cached.
+  static const std::string&
+  xdp_mode_effective()
+  {
+    static const std::string value = [] {
+      const auto& debug_section =
+        xrt_core::config::detail::get_ptree_value("Debug");
+      if (auto v = debug_section.get_optional<std::string>("xdp_mode"))
+        return *v;
+      if (has_profiling_runtime_control_instrumentation())
+        return std::string("xdna");
+      return xrt_core::config::get_xdp_mode();
+    }();
+    return value;
+  }
 } // end anonymous namespace
 
 // This file makes the connections between all xrt_coreutil level hooks
@@ -807,7 +831,7 @@ update_device(void* handle, bool hw_context_flow)
 
   load_once_and_update(xrt_core::config::get_aie_trace,
            []() {
-            if (xrt_core::config::get_xdp_mode() == "xdna") {
+            if (xdp_mode_effective() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode config is set to XDNA. Hence, AIE Event Trace will be available only for XDNA device.");
               xrt_core::xdp::aie::trace::load_xdna();
@@ -840,7 +864,7 @@ update_device(void* handle, bool hw_context_flow)
 
   load_once_and_update(xrt_core::config::get_aie_profile,  
            []() {
-            if (xrt_core::config::get_xdp_mode() == "xdna") {
+            if (xdp_mode_effective() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode config is set to XDNA. Hence, profiling will be available only for XDNA device.");
               xrt_core::xdp::aie::profile::load_xdna();
@@ -858,7 +882,7 @@ update_device(void* handle, bool hw_context_flow)
 
   load_once_and_update(aie_dtrace_enabled,
            []() {
-            if (xrt_core::config::get_xdp_mode() == "xdna") {
+            if (xdp_mode_effective() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode is XDNA; loading AIE dtrace plugin for XDNA device.");
               xrt_core::xdp::aie::dtrace::load_xdna();
