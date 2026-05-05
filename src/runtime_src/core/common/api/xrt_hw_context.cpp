@@ -262,6 +262,27 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     xrt_core::xdp::update_device(this, true);
   }
 
+  // Amend configuration parameters 
+  static cfg_storage
+  amend_cfg(cfg_storage cfg)
+  {
+    // Refactor if more to amend
+    if (xrt_core::config::get_aie_coredump_file().empty())
+      return cfg;
+
+    std::visit([](auto& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_same_v<T, cfg_param_type>) {
+        v.emplace("aie_coredump", 1u);
+      }
+      else if constexpr (std::is_same_v<T, cfg_type>) {
+        v.emplace("aie_coredump", "1");
+      }
+    }, cfg);
+
+    return cfg;
+  }
+
   // Initializes uc log buffer
   // Creates log buffer and starts a thread to dump the log buffer contents
   // periodically per column to a file
@@ -309,7 +330,7 @@ public:
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -319,7 +340,7 @@ public:
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
-    , m_cfg_storage{cfg_param_type{}}
+    , m_cfg_storage{amend_cfg(cfg_param_type{})}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -327,7 +348,7 @@ public:
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode{mode}
   {}
 
@@ -335,7 +356,7 @@ public:
                   cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
     , m_partition_size{elf.get_partition_size()}
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))

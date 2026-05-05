@@ -611,6 +611,13 @@ get_enable_aied()
   return value;
 }
 
+inline std::string
+get_aie_coredump_file()
+{
+  static std::string value = detail::get_string_value("Runtime.aie_coredump_file", "");
+  return value;
+}
+
 inline bool
 get_multiprocess()
 {

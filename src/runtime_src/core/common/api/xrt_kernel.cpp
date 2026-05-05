@@ -2893,6 +2893,33 @@ public:
     return state;
   }
 
+  // abort_coredump_or_noop() - AIE coredump if enabled
+  // Dump core and abort, or do nothing.
+  void
+  abort_coredump_or_noop(ert_cmd_state state) const
+  {
+    if (state != ERT_CMD_STATE_TIMEOUT)
+      return;
+    
+    auto file = xrt_core::config::get_aie_coredump_file();
+    if (file.empty())
+      return;
+
+    try {
+      auto hwctx = kernel->get_hw_context();
+      auto core = hwctx.get_aie_coredump();  // may throw
+
+      std::ofstream ostr{file, std::ios::binary};
+      if (!ostr)
+        throw std::runtime_error("Could not open '" + file + "' for writing");
+      ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      std::abort();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("Failed to create core dump: ") + ex.what());
+    }
+  }
+
   void
   throw_command_error(ert_cmd_state state) const
   {
@@ -2912,6 +2939,7 @@ public:
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      abort_coredump_or_noop(state);
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
     default:
       throw xrt::run::command_error(state, msg);
@@ -3576,6 +3604,7 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      rhdl->abort_coredump_or_noop(state);
       throw xrt::runlist::aie_error(run, state, msg);
     default:
       throw xrt::runlist::command_error(run, state, msg);
@@ -4715,7 +4744,8 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
       << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
       << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
       << "\n";
-  } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
+  }
+  else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
     oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
       << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
