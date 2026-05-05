@@ -128,6 +128,12 @@ namespace {
   //   3. Otherwise the built-in default from get_xdp_mode().
   // Duplicated here because xrt_coreutil cannot link against xdp_core.
   // Result is cached.
+  //
+  // Only the XDP_VE2_BUILD branch in update_device() consumes this helper
+  // today. Guard the definition with the same macro as the call sites so
+  // builds that don't reference it (XDP_CLIENT_BUILD, default Linux,
+  // Windows) don't trip -Wunused-function.
+#if defined(XDP_VE2_BUILD)
   static const std::string&
   xdp_mode_effective()
   {
@@ -142,6 +148,7 @@ namespace {
     }();
     return value;
   }
+#endif
 } // end anonymous namespace
 
 // This file makes the connections between all xrt_coreutil level hooks
