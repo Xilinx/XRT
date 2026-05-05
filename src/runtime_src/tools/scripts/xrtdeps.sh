@@ -178,6 +178,7 @@ ub_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils \
      file \
      g++ \
      gcc \
@@ -325,6 +326,7 @@ suse_package_list()
      curl \
      dkms \
      dmidecode \
+     elfutils \
      gcc \
      gcc-c++ \
      gdb \
@@ -752,7 +754,7 @@ install_pybind11()
         dnf install -y pybind11-devel python3-pybind11
     elif [ $FLAVOR == "ubuntu" ] && [ $MAJOR -ge 23 ]; then
         apt-get install -y pybind11-dev
-    elif [ $FLAVOR == "linuxmint" ]; then
+    elif [ $FLAVOR == "linuxmint" ] || [ $FLAVOR == "debian" ]; then
         apt-get install -y pybind11-dev
     elif [ $FLAVOR == "arch" ]; then
         pacman -Syu --needed --noconfirm pybind11

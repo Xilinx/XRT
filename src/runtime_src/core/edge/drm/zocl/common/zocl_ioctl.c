@@ -343,6 +343,12 @@ zocl_info_cu_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		cu_idx = apts[apt_idx].cu_idx;
 
 out:
+	if (apt_idx < 0 || apt_idx >= zdev->cu_subdev.num_apts) {
+		DRM_ERROR("%s: invalid apt_idx=%d for cu_idx=%d (num_apts=%d)",
+			__func__, apt_idx, cu_idx, zdev->cu_subdev.num_apts);
+		return -EINVAL;
+	}
+
 	args->paddr = addr;
 	args->apt_idx = apt_idx;
 	args->cu_idx = cu_idx;

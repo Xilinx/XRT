@@ -1142,10 +1142,10 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
     drm_zocl_open_cu_ctx  cu_ctx = {};
     cu_ctx.flags = flags;
     cu_ctx.hw_context = hwctx_hdl->get_slotidx();
-    std:strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
+    std::strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
     cu_ctx.cu_name[sizeof(cu_ctx.cu_name) - 1] = 0;
     if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_CU_CTX, &cu_ctx))
-      throw xrt_core::error("Failed to open cu context");
+      throw xrt_core::system_error(errno, "Failed to open cu context");
 
     return xrt_core::cuidx_type{cu_ctx.cu_index};
   }
@@ -1172,12 +1172,12 @@ close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type c
   }
 }
 
-int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
+int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj,
+                          std::vector<char> &krnl_binary, std::string &dtbo_path)
 {
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
   int off = 0;
-  std::string dtbo_path("");
 
 #ifndef __HWEM__
   auto is_pr_platform = buffer->m_header.m_mode == XCLBIN_PR;
@@ -1237,7 +1237,6 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   axlf_obj->partition_id = partition_id,
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
 
-  std::vector<char> krnl_binary;
   auto xml_header = xclbin::get_axlf_section(buffer, axlf_section_kind::EMBEDDED_METADATA);
   //return success even if there is no embedded metadata.AIE overlay xclbins
   //wont have embedded metadata
@@ -1290,8 +1289,10 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
 int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_create_hw_ctx *hw_ctx)
 {
   drm_zocl_axlf axlf_obj = {};
+  std::vector<char> krnl_binary;
+  std::string dtbo_path;
   auto top = reinterpret_cast<const axlf*>(buffer);
-  auto ret = prepare_hw_axlf(top, &axlf_obj);
+  auto ret = prepare_hw_axlf(top, &axlf_obj, krnl_binary, dtbo_path);
   if (ret)
     return -errno;
 

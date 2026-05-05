@@ -64,10 +64,16 @@ target_link_libraries(xrt_hwemu_static
   uuid
   )
 
-install (TARGETS xrt_hwemu xrt_hwemu_static
+install (TARGETS xrt_hwemu
   EXPORT xrt-targets
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR} COMPONENT ${XRT_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_COMPONENT} NAMELINK_COMPONENT ${XRT_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
 )
 
+# Enable install of static library iff requested
+if(XRT_INSTALL_STATIC_LIBRARY)
+  install(TARGETS xrt_hwemu_static
+    EXPORT xrt-targets
+    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT})
+endif()

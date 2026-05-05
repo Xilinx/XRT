@@ -4,6 +4,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SmiWatchMode.h"
+#include "XBUtilitiesCore.h"
 #include "core/common/query_requests.h"
 #include "core/common/time.h"
 
@@ -104,10 +105,12 @@ void
 smi_watch_mode::
 run_watch_mode(const xrt_core::device* device,
                std::ostream& output,
-               const ReportGenerator& report_generator)
+               const ReportGenerator& report_generator,
+               unsigned refresh_interval_seconds,
+               bool refresh_terminal)
 {
-  if (!device || !report_generator) {
-    output << "Error: Invalid device or report generator provided to watch mode\n";
+  if (!report_generator) {
+    output << "Error: Invalid report generator provided to watch mode\n";
     return;
   }
 
@@ -116,9 +119,15 @@ run_watch_mode(const xrt_core::device* device,
   
   signal_handler::reset_interrupt();
   
+  bool first_iteration = true;
   while (signal_handler::active()) {
+    if (!first_iteration && refresh_interval_seconds > 0)
+      std::this_thread::sleep_for(std::chrono::seconds(refresh_interval_seconds));
+    first_iteration = false;
+
     try {
-      // Generate current report
+      if (refresh_terminal && !XBUtilities::is_escape_codes_disabled())
+        output << "\033[2J\033[H";
       output << report_generator(device);
       output.flush();
     } 

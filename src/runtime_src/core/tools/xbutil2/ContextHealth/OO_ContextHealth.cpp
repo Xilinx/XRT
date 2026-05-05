@@ -329,7 +329,6 @@ OO_ContextHealth::execute(const SubCmdOptions& _options) const
   };
 
   if (m_watch) {
-    // Watch mode: continuously monitor
     smi_watch_mode::run_watch_mode(device.get(), std::cout, report_generator);
   } else {
     // Single report

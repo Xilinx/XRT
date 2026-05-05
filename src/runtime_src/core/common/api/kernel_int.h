@@ -17,7 +17,12 @@
 
 #include <bitset>
 #include <cstdint>
+#include <string>
 #include <vector>
+
+namespace xrt_core::xdp {
+struct xrt_kernel_data;
+}
 
 namespace xrt_core { namespace kernel_int {
 
@@ -95,6 +100,17 @@ get_hw_ctx(const xrt::run&);
 // This is used for logging usage mertrics
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
+
+// Fill XDP kernel data from a run_impl pointer for profiling hooks
+XRT_CORE_COMMON_EXPORT
+void
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data);
+
+// Set dtrace control file on a run_impl handle
+// This is used by XDP profiling to set the CT file without requiring xrt::run
+XRT_CORE_COMMON_EXPORT
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path);
 
 }} // kernel_int, xrt_core
 

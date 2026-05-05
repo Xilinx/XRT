@@ -385,6 +385,7 @@ public:
    *  The device on which the profiling should start
    *
    */
+  [[deprecated("deprecated, please use profiling(hw_context) instead")]]
   explicit
   profiling(const xrt::device& device);
 

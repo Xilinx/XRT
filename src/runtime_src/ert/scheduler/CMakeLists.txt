@@ -93,6 +93,7 @@ add_custom_target(scheduler
 
 endif(${ERT_BUILD_ALL} STREQUAL "yes")
 
+if (XRT_ENABLE_EMULATION)
 ################################################################
 # HW emulation libsched_em
 ################################################################
@@ -147,3 +148,4 @@ install(TARGETS sched_em_v30
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
+endif(XRT_ENABLE_EMULATION)

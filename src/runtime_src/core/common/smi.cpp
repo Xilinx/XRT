@@ -93,6 +93,8 @@ std::string
 smi::
 build_json() const 
 {
+  std::lock_guard<std::mutex> lock(m_mutex);
+
   ptree config;
   ptree subcommands;
 
@@ -111,6 +113,8 @@ tuple_vector
 smi::
 get_list(const std::string& subcommand, const std::string& suboption) const 
 {
+  std::lock_guard<std::mutex> lock(m_mutex);
+
   const auto it = m_subcommands.find(subcommand);
   if (it == m_subcommands.end()) {
     throw std::runtime_error("Subcommand not found: " + subcommand);
@@ -131,6 +135,8 @@ tuple_vector
 smi::
 get_option_options(const std::string& subcommand) const 
 {
+  std::lock_guard<std::mutex> lock(m_mutex);
+
   const auto it = m_subcommands.find(subcommand);
   if (it == m_subcommands.end()) {
     throw std::runtime_error("Subcommand not found: " + subcommand);

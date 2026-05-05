@@ -546,7 +546,11 @@ hipMemset(void* dst, int value, size_t size)
 }
 
 hipError_t
+#if HIP_VERSION >= 70000000
 hipMemcpyHtoDAsync(hipDeviceptr_t dst, const void* src, size_t size, hipStream_t stream)
+#else
+hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
+#endif
 {
   return handle_hip_func_error(__func__, hipErrorRuntimeMemory, [&] {
     xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream);

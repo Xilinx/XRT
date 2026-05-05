@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2021 Xilinx, Inc
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #include "scheduler.h"
 #include "system.h"
 #include "device.h"
@@ -23,6 +23,14 @@
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4245 4267 4996)
+#endif
+
+#if defined(__GNUC__) && (__GNUC__ >= 16)
+// GCC 16 tightened the -Warray-bounds family and made it catch more
+// patterns in libstdc++ internals, especially around std::shared_ptr
+// and std::allocator‑backed objects. The diagnostic is spurious
+// (false‑positive) in this case.
+# pragma GCC diagnostic ignored "-Warray-bounds"
 #endif
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler

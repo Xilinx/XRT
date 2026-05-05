@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "message.h"
 #include "time.h"
@@ -9,14 +9,15 @@
 
 #include "xrt/detail/version-git.h"
 
-#include <map>
+#include <algorithm>
+#include <climits>
+#include <cstdarg>
+#include <cstring>
 #include <fstream>
 #include <iostream>
-#include <thread>
+#include <map>
 #include <mutex>
-#include <algorithm>
-#include <cstdarg>
-#include <climits>
+#include <thread>
 #ifdef __linux__
 # include <syslog.h>
 # include <linux/limits.h>

@@ -175,6 +175,13 @@ get_aie_profile()
 }
 
 inline bool
+get_aie_dtrace()
+{
+  static bool value = detail::get_bool_value("Debug.aie_dtrace", false);
+  return value;
+}
+
+inline bool
 get_aie_debug()
 {
   static bool value = detail::get_bool_value("Debug.aie_debug",false);
@@ -965,10 +972,27 @@ get_aie_profile_settings_start_iteration()
   return value;
 }
 
-inline bool
-get_aie_profile_settings_dtrace_debug()
+// Configurations under AIE_dtrace_settings (bandwidth / CT for Debug.aie_dtrace; no aie_profile CSV)
+inline unsigned int
+get_aie_dtrace_settings_interval_us()
 {
-  static bool value = detail::get_bool_value("AIE_profile_settings.dtrace_debug", "false");
+  static unsigned int value = detail::get_uint_value("AIE_dtrace_settings.interval_us", 1000);
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_dtrace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value =
+      detail::get_string_value("AIE_dtrace_settings.tile_based_interface_tile_metrics", "");
   return value;
 }
 
@@ -1161,7 +1185,9 @@ get_run_buffer_pool_max_size()
 inline bool
 get_uc_log()
 {
-  static bool value = detail::get_bool_value("Debug.uc_log", false);
+  // Enabled by default for failure logs.
+  // This creates a per-uC log buffer (default 16KB per uC).
+  static bool value = detail::get_bool_value("Debug.uc_log", true);
   return value;
 }
 
@@ -1169,6 +1195,24 @@ inline bool
 get_uc_log_bin_format()
 {
   static bool value = detail::get_bool_value("Debug.uc_log_bin_format", false);
+  return value;
+}
+
+inline bool
+get_uc_log_dumper_thread()
+{
+  // Optional background dump thread; default false keeps dumping on-demand only.
+  static bool value = detail::get_bool_value("Debug.uc_log_dumper_thread", false);
+  return value;
+}
+
+inline unsigned int
+get_uc_log_size_per_uc_kb()
+{
+  // Per-uC log buffer size in KB. Default is 16KB per uC.
+  static constexpr unsigned int default_uc_log_size_per_uc_kb = 16U;
+  static unsigned int value =
+      detail::get_uint_value("Debug.uc_log_size_per_uc_kb", default_uc_log_size_per_uc_kb);
   return value;
 }
 

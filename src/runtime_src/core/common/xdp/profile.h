@@ -3,6 +3,32 @@
 #ifndef CORE_COMMON_PROFILE_DOT_H
 #define CORE_COMMON_PROFILE_DOT_H
 
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/experimental/xrt_module.h"
+
+#include <cstdint>
+#include <string>
+
+namespace xrt {
+class run_impl;
+}
+
+// Data structure for XDP kernel profiling hooks.
+// This struct is used to pass kernel/run information from xrt_kernel.cpp
+// to the XDP profiling infrastructure.
+namespace xrt_core::xdp {
+
+struct xrt_kernel_data
+{
+  uint32_t uid;
+  std::string name;
+  xrt::hw_context hwctx;
+  xrt::module mod;
+  int ert_state = 0;  // ERT command state, only meaningful for run_wait hook
+};
+
+} // end namespace xrt_core::xdp
+
 // The functions here are the general interfaces for the XDP hooks that are
 // called from the common coreutil library and not the specific shims.
 namespace xrt_core::xdp {
@@ -21,6 +47,24 @@ update_device(void* handle, bool hw_context_flow);
 // the device is reset and the data is wiped.
 void 
 finish_flush_device(void* handle);
+
+// run_constructor should be called when a run_impl is constructed.
+// This hook allows XDP plugins to attach per-run resources (e.g.,
+// a CT file for dtrace) before the run is started.
+// Called from run_impl constructor with the raw handle.
+// Non-const because the callback may modify run_impl (e.g., set_dtrace_control_file).
+void
+run_constructor(xrt::run_impl* run_impl);
+
+// run_start should be called immediately before a run is submitted to the device.
+// Extracts kernel data internally from the run_impl.
+void
+run_start(const xrt::run_impl* run_impl);
+
+// run_wait should be called when a run wait completes (after the underlying wait returns).
+// Extracts kernel data internally from the run_impl, including the ERT state.
+void
+run_wait(const xrt::run_impl* run_impl);
 
 } // end namespace xrt_core::xdp
 
