@@ -1069,10 +1069,14 @@ class elf_aie_gen2_plus : public elf_impl
   }
 
   // Extract the column and page information from the section name.
-  // Per-page format: .ctrltext.<col>.<page>[.<id>] -> returns {col, page}
-  // Merged format:   .ctrltext.<col>[.<id>] -> returns {col, 0}
+  //
+  // Per-page format: .ctrltext.<col>.<page>[.<group_id>] -> returns {col, page}
+  // Merged format:   .ctrltext.<col>[.<group_id>]        -> returns {col, 0}
+  //
+  // The 3-token case is ambiguous: token[2] is a page index in per-page format
+  // but a group_id in merged format.  is_merged resolves the ambiguity.
   static std::pair<uint32_t, uint32_t>
-  get_column_and_page(const std::string& name)
+  get_column_and_page(const std::string& name, bool is_merged)
   {
     constexpr size_t col_token_id  = 1;
     constexpr size_t page_token_id = 2;
@@ -1087,12 +1091,16 @@ class elf_aie_gen2_plus : public elf_impl
 
     try {
       if (tokens.size() <= col_token_id)
-        throw std::runtime_error("Invalid section name passed to parse col or page index\n");
+        return {0, 0}; // section has no column token (e.g. ctrlpkt in per-page ELF)
 
+      // 2 tokens: .ctrltext.<col> — no page or group_id present
       if (tokens.size() == (col_token_id + 1))
-        return {std::stoul(tokens[col_token_id]), 0}; // Only col present (merged format)
+        return {std::stoul(tokens[col_token_id]), 0};
 
-      return {std::stoul(tokens[col_token_id]), std::stoul(tokens[page_token_id])};
+      // 3+ tokens: merged treats token[2] as group_id (page always 0);
+      //            per-page treats token[2] as page index.
+      return {std::stoul(tokens[col_token_id]),
+              is_merged ? 0 : std::stoul(tokens[page_token_id])};
     }
     catch (const std::exception&) {
       throw std::runtime_error("Invalid section name passed to parse col or page index\n");
@@ -1137,11 +1145,11 @@ class elf_aie_gen2_plus : public elf_impl
         auto name = sec->get_name();
 
         if (name.find(ctrltext_pattern) != std::string::npos) {
-          auto [col, page] = get_column_and_page(name);
+          auto [col, page] = get_column_and_page(name, is_merged_format());
           ctrl_map[id][col][page].ctrltext = sec;
         }
         else if (name.find(ctrldata_pattern) != std::string::npos) {
-          auto [col, page] = get_column_and_page(name);
+          auto [col, page] = get_column_and_page(name, is_merged_format());
           ctrl_map[id][col][page].ctrldata = sec;
         }
       }
@@ -1189,7 +1197,7 @@ class elf_aie_gen2_plus : public elf_impl
         const auto& name = sec->get_name();
         if (name.find(pad_pattern) == std::string::npos)
           continue;
-        auto [col, page] = get_column_and_page(name);
+        auto [col, page] = get_column_and_page(name, is_merged_format());
         m_ctrlcodes_map[id][col].append_section_data(sec);
       }
     }
@@ -1270,7 +1278,7 @@ class elf_aie_gen2_plus : public elf_impl
         throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
       auto patch_sec_name = patch_sec->get_name();
-      auto [col, page] = get_column_and_page(patch_sec_name);
+      auto [col, page] = get_column_and_page(patch_sec_name, is_merged_format());
       auto sec_idx = patch_sec->get_index();
       auto grp_idx = m_section_to_group_map[sec_idx];
       if (m_ctrlcodes_map.find(grp_idx) == m_ctrlcodes_map.end())
