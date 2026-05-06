@@ -11,9 +11,6 @@
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include <cstring>
 #include <functional>
 #include <sstream>
@@ -69,84 +66,6 @@ namespace {
     static auto xem = std::getenv("XCL_EMULATION_MODE");
     static bool hwem = xem ? (std::strcmp(xem, "hw_emu") == 0) : false;
     return hwem;
-  }
-#endif
-
-  // Lightweight probe for the presence of a control_instrumentation section
-  // in the Debug.profiling_runtime_config JSON blob. The authoritative
-  // parser lives in xdp/profile/plugin/vp_base/profiling_runtime_config.{h,cpp}
-  // but that symbol is in xdp_core (loaded dynamically). xrt_coreutil needs
-  // an independent check to decide whether to dlopen the plugin, so we
-  // parse the blob here with boost::property_tree. Result is cached.
-  static bool
-  has_profiling_runtime_control_instrumentation()
-  {
-    static bool value = [] {
-      const std::string raw = xrt_core::config::get_profiling_runtime_config();
-      if (raw.empty())
-        return false;
-      try {
-        namespace pt = boost::property_tree;
-        pt::ptree root;
-        std::istringstream is(raw);
-        pt::read_json(is, root);
-        auto ci_opt = root.get_child_optional("control_instrumentation");
-        if (!ci_opt)
-          return false;
-        for (const auto& kv : *ci_opt) {
-          if (kv.first == "aie_tile" || kv.first == "mem_tile"
-              || kv.first == "interface_tile")
-            return true;
-        }
-        return false;
-      }
-      catch (const std::exception&) {
-        // A descriptive warning is emitted by the XDP-side parser when the
-        // plugin consumes the blob; here we just refuse to auto-load.
-        return false;
-      }
-    }();
-    return value;
-  }
-
-  // aie_dtrace is enabled when either the xrt.ini flag is on OR the runtime
-  // config blob carries a control_instrumentation section.
-  static bool
-  aie_dtrace_enabled()
-  {
-    static bool value = xrt_core::config::get_aie_dtrace()
-                     || has_profiling_runtime_control_instrumentation();
-    return value;
-  }
-
-  // Effective Debug.xdp_mode value with the same precedence as the
-  // authoritative xdp::profiling_runtime_config::xdp_mode_effective():
-  //   1. Explicit [Debug] xdp_mode in xrt.ini wins.
-  //   2. Otherwise, when the runtime config blob carries
-  //      control_instrumentation, promote to "xdna" so the loader picks
-  //      the XDNA variant without requiring xdp_mode=xdna explicitly.
-  //   3. Otherwise the built-in default from get_xdp_mode().
-  // Duplicated here because xrt_coreutil cannot link against xdp_core.
-  // Result is cached.
-  //
-  // Only the XDP_VE2_BUILD branch in update_device() consumes this helper
-  // today. Guard the definition with the same macro as the call sites so
-  // builds that don't reference it (XDP_CLIENT_BUILD, default Linux,
-  // Windows) don't trip -Wunused-function.
-#if defined(XDP_VE2_BUILD)
-  static const std::string&
-  xdp_mode_effective()
-  {
-    static const std::string value = [] {
-      const auto& debug_section =
-        xrt_core::config::detail::get_ptree_value("Debug");
-      if (auto v = debug_section.get_optional<std::string>("xdp_mode"))
-        return *v;
-      if (has_profiling_runtime_control_instrumentation())
-        return std::string("xdna");
-      return xrt_core::config::get_xdp_mode();
-    }();
-    return value;
   }
 #endif
 } // end anonymous namespace
@@ -757,7 +676,7 @@ update_device(void* handle, bool hw_context_flow)
   #ifdef _WIN32
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
-      || aie_dtrace_enabled()
+      || xrt_core::config::get_aie_dtrace()
       || xrt_core::config::get_aie_trace()
       || xrt_core::config::get_aie_debug()
       || xrt_core::config::get_aie_halt()
@@ -838,7 +757,7 @@ update_device(void* handle, bool hw_context_flow)
 
   load_once_and_update(xrt_core::config::get_aie_trace,
            []() {
-            if (xdp_mode_effective() == "xdna") {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode config is set to XDNA. Hence, AIE Event Trace will be available only for XDNA device.");
               xrt_core::xdp::aie::trace::load_xdna();
@@ -871,7 +790,7 @@ update_device(void* handle, bool hw_context_flow)
 
   load_once_and_update(xrt_core::config::get_aie_profile,  
            []() {
-            if (xdp_mode_effective() == "xdna") {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode config is set to XDNA. Hence, profiling will be available only for XDNA device.");
               xrt_core::xdp::aie::profile::load_xdna();
@@ -887,9 +806,9 @@ update_device(void* handle, bool hw_context_flow)
            handle,
 	 	      hw_context_flow);
 
-  load_once_and_update(aie_dtrace_enabled,
+  load_once_and_update(xrt_core::config::get_aie_dtrace,
            []() {
-            if (xdp_mode_effective() == "xdna") {
+            if (xrt_core::config::get_xdp_mode() == "xdna") {
               xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                 "xdp_mode is XDNA; loading AIE dtrace plugin for XDNA device.");
               xrt_core::xdp::aie::dtrace::load_xdna();
@@ -981,7 +900,7 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::halt::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
-  if (aie_dtrace_enabled())
+  if (xrt_core::config::get_aie_dtrace())
     xrt_core::xdp::aie::dtrace::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
     xrt_core::xdp::aie::trace::end_trace(handle);
@@ -1004,7 +923,7 @@ finish_flush_device(void* handle)
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
-  if (aie_dtrace_enabled())
+  if (xrt_core::config::get_aie_dtrace())
     xrt_core::xdp::aie::dtrace::end_poll(handle);
 
 #else
@@ -1033,7 +952,7 @@ finish_flush_device(void* handle)
 void
 run_constructor(xrt::run_impl* run_impl)
 {
-  if (!aie_dtrace_enabled())
+  if (!xrt_core::config::get_aie_dtrace())
     return;
 
   xrt_core::xdp::aie::dtrace::run_constructor(run_impl);
@@ -1042,7 +961,7 @@ run_constructor(xrt::run_impl* run_impl)
 void
 run_start(const xrt::run_impl* run_impl)
 {
-  if (!aie_dtrace_enabled())
+  if (!xrt_core::config::get_aie_dtrace())
     return;
 
   xrt_core::xdp::aie::dtrace::run_start(run_impl);
@@ -1051,7 +970,7 @@ run_start(const xrt::run_impl* run_impl)
 void
 run_wait(const xrt::run_impl* run_impl)
 {
-  if (!aie_dtrace_enabled())
+  if (!xrt_core::config::get_aie_dtrace())
     return;
 
   xrt_core::xdp::aie::dtrace::run_wait(run_impl);
