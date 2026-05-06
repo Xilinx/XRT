@@ -80,28 +80,3 @@ XCLBIN APIs
 .. doxygenclass:: xrt::xclbin
    :project: XRT
    :members:
-
-
-XRT Native Library C API
-************************
-
-Buffer APIs
-~~~~~~~~~~~
-
-.. include:: ../core/xrt_bo.rst
-
-Configuration APIs
-~~~~~~~~~~~~~~~~~~
-
-.. include:: ../core/xrt_ini.rst
-
-Device and XCLBIN APIs
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. include:: ../core/xrt_device.rst
-
-.. include:: ../core/xrt_xclbin.rst
-
-Kernel APIs
-~~~~~~~~~~~
-.. include:: ../core/xrt_kernel.rst

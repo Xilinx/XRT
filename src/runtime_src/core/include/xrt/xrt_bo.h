@@ -69,7 +69,7 @@ class hw_context;
 class bo_impl;
 /*!
  * @class bo
- * 
+ *
  * @brief
  * xrt::bo represents a buffer object that can be used as kernel argument
  */
@@ -121,7 +121,7 @@ public:
    *  Create a BO from a reserved memory pool. Supported for specific
    *  platforms only. For AMD Ryzen NPU this memory is allocated from
    *  a host memory carveout pool.
-   * 
+   *
    * The flags used by xrt::bo are compatible with XCL style
    * flags as define in ``xrt_mem.h``
    */
@@ -146,7 +146,7 @@ public:
    * bo() - Constructor for empty bo
    *
    * A default constructed bo can be assigned to and can be used in a
-   * Boolean check along with comparison.  
+   * Boolean check along with comparison.
    *
    * Unless otherwise noted, it is undefined behavior to use xrt::bo
    * APIs on a default constructed object.
@@ -220,8 +220,6 @@ public:
    *  The device on which to allocate this buffer
    * @param sz
    *  Size of buffer
-   * @param flags
-   *  Specify type of buffer
    * @param grp
    *  Device memory group to allocate buffer in
    *
@@ -334,8 +332,6 @@ public:
    *  The hardware context in which to allocate this buffer
    * @param sz
    *  Size of buffer
-   * @param flags
-   *  Specify type of buffer
    * @param grp
    *  Device memory group to allocate buffer in
    *
@@ -566,10 +562,6 @@ public:
    *
    * @param dir
    *  To device or from device
-   * @param sz
-   *  Size of data to synchronize
-   * @param offset
-   *  Offset within the BO
    *
    * Asynchronously transfer entire buffer content in specified direction
    */

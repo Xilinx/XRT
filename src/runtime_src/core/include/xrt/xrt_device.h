@@ -176,7 +176,7 @@ public:
   {
     using runtime_error::runtime_error;
   };
-  
+
   /**
    * device() - Constructor for empty device
    *
@@ -249,12 +249,12 @@ public:
   /// @endcond
 
   /**
-   * device() - Create a managed device object from a shim xclDeviceHandle
+   * device() - Constructor from a shim xclDeviceHandle
    *
    * @param dhdl
    *  Shim xclDeviceHandle
-   * @return
-   *  xrt::device object epresenting the opened device, or exception on error
+   *
+   * Create a managed device object from a shim xclDeviceHandle
    */
   XCL_DRIVER_DLLESPEC
   explicit
