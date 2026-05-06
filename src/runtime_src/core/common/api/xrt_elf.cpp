@@ -1091,7 +1091,7 @@ class elf_aie_gen2_plus : public elf_impl
 
     try {
       if (tokens.size() <= col_token_id)
-        return {0, 0}; // section has no column token (e.g. ctrlpkt in per-page ELF)
+        return {0, 0}; // section has no column token (e.g. ctrlpkt in partial ELF)
 
       // 2 tokens: .ctrltext.<col> — no page or group_id present
       if (tokens.size() == (col_token_id + 1))
