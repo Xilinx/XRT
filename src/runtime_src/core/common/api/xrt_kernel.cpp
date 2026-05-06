@@ -1402,7 +1402,7 @@ public:
 
 private:
   std::string name;                           // kernel name
-  std::string m_kernel_instance;             // full "kernel:instance" string, empty if no instance
+  std::string m_instance_name;                // full "kernel:instance" string, empty if no instance
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -1756,7 +1756,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
-    , m_kernel_instance(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
+    , m_instance_name(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1813,7 +1813,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
-    , m_kernel_instance(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
+    , m_instance_name(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -1900,9 +1900,9 @@ public:
   }
 
   const std::string&
-  get_kernel_instance() const
+  get_instance_name() const
   {
-    return m_kernel_instance;
+    return m_instance_name;
   }
 
   uint32_t
@@ -4847,7 +4847,7 @@ get_elf_identity_from_run(const xrt::run& run)
       // ELF has no .note.xrt.UID — leave uuid_str empty
     }
     return {xrt_core::elf_int::get_filename(elf_handle),
-            impl->get_kernel()->get_kernel_instance(),
+            impl->get_kernel()->get_instance_name(),
             uuid_str};
   }
   catch (const std::exception&) {
