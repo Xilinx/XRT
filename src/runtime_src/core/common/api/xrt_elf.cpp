@@ -1069,12 +1069,10 @@ class elf_aie_gen2_plus : public elf_impl
   }
 
   // Extract the column and page information from the section name.
+  // Partial ELF format: .ctrltext.<col>.<page> -> returns {col, page}
+  // Full ELF Per-page format: .ctrltext.<col>.<page>[.<group_id>] -> returns {col, page}
+  // Full ELF Merged format:   .ctrltext.<col>[.<group_id>]        -> returns {col, 0}
   //
-  // Per-page format: .ctrltext.<col>.<page>[.<group_id>] -> returns {col, page}
-  // Merged format:   .ctrltext.<col>[.<group_id>]        -> returns {col, 0}
-  //
-  // The 3-token case is ambiguous: token[2] is a page index in per-page format
-  // but a group_id in merged format.  is_merged resolves the ambiguity.
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name, bool is_merged)
   {
