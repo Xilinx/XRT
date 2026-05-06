@@ -719,8 +719,8 @@ class module_run_aie_gen2_plus : public module_run
     dtrace_util() : dtrace_handle(nullptr, destroy_dtrace_handle) {}
 
     dtrace_util(const std::string& ctrl_file_path, const std::string& map_data,
-                uint32_t log_level)
-      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level),
+                uint32_t log_level, uint32_t output_fmt)
+      : dtrace_handle(create_dtrace_handle(ctrl_file_path.c_str(), map_data.c_str(), log_level, output_fmt),
                       destroy_dtrace_handle) {}
   };
   dtrace_util m_dtrace;
@@ -749,10 +749,14 @@ class module_run_aie_gen2_plus : public module_run
       return false;
     }
 
+    // log level 0: error, 1: warning, 2: info
     auto log_level = static_cast<uint32_t>(xrt_core::config::get_dtrace_log_level());
-    log_level = (log_level > 3) ? 3U : (log_level < 1) ? 1U : log_level;
+    log_level = (log_level > 2) ? 2U : log_level;
 
-    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level);
+    // output format 0: python, 1: json
+    uint32_t output_fmt = xrt_core::config::get_dtrace_output_json_format() ? 1U : 0U;
+
+    m_dtrace = dtrace_util(path, m_config.dump_buf.to_string(), log_level, output_fmt);
     if (!m_dtrace.dtrace_handle.get()) {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module",
         "[dtrace] : Failed to get dtrace handle");
@@ -1135,11 +1139,11 @@ public:
 
     try {
       // dtrace output is dumped into current working directory
-      // output is a python file
+      // output is a python/json file
       std::string result_file_path = std::filesystem::current_path().string()
                                    + "/dtrace_dump"
                                    + postfix
-                                   + ".py";
+                                   + (xrt_core::config::get_dtrace_output_json_format() ? ".json" : ".py");
 
       get_dtrace_result_file(m_dtrace.dtrace_handle.get(), result_file_path.c_str());
 
