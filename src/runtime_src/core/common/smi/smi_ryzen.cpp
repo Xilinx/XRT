@@ -12,6 +12,16 @@ namespace xrt_core::smi::ryzen {
 config_gen_ryzen::
 config_gen_ryzen()
 {
+  examine_report_desc = {
+    {"aie-partitions", "AIE partition information", "common"},
+    {"all", "All known reports are produced", "common"},
+    {"host", "Host information (default)", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
+    {"telemetry", "Telemetry data for the device", "hidden"},
+    {"preemption", "Preemption telemetry data for the device", "hidden"},
+    {"clocks", "Clock frequency information", "hidden"}
+  };
+
   validate_test_desc = {
     {"aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA", "hidden"},
     {"all", "All applicable validate tests will be executed (default)", "common"},
@@ -64,16 +74,6 @@ config_gen_ryzen::create_validate_subcommand()
 subcommand
 config_gen_ryzen::create_examine_subcommand()
 {
-  std::vector<basic_option> examine_report_desc = {
-    {"aie-partitions", "AIE partition information", "common"},
-    {"all", "All known reports are produced", "common"},
-    {"host", "Host information (default)", "common"},
-    {"platform", "Platforms flashed on the device", "common"},
-    {"telemetry", "Telemetry data for the device", "hidden"},
-    {"preemption", "Preemption telemetry data for the device", "hidden"},
-    {"clocks", "Clock frequency information", "hidden"}
-  };
-
   std::map<std::string, std::shared_ptr<option>> examine_suboptions;
   examine_suboptions.emplace("device", std::make_shared<option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
   examine_suboptions.emplace("format", std::make_shared<option>("format", "f", "Report output format. Valid values are:\n"
@@ -82,7 +82,7 @@ config_gen_ryzen::create_examine_subcommand()
   examine_suboptions.emplace("output", std::make_shared<option>("output", "o", "Direct the output to the given file", "common", "", "string"));
   examine_suboptions.emplace("help", std::make_shared<option>("help", "h", "Help to use this sub-command", "common", "", "none"));
   examine_suboptions.emplace("watch", std::make_shared<option>("watch", "", "Refresh interval in seconds between examine updates. Exit with Ctrl+C.", "hidden", "0", "string"));
-  examine_suboptions.emplace("report", std::make_shared<listable_description_option>("report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", examine_report_desc));
+  examine_suboptions.emplace("report", std::make_shared<listable_description_option>("report", "r", "The type of report to be produced. Reports currently available are:\n", "common", "", "array", get_examine_report_desc()));
   examine_suboptions.emplace("firmware-log", std::make_shared<option>("firmware-log", "", "Show status|watch firmware log data", "hidden", "", "string", true));
   examine_suboptions.emplace("event-trace", std::make_shared<option>("event-trace", "", "Show status|watch event trace data", "hidden", "", "string", true));
   examine_suboptions.emplace("context-health", std::make_shared<option>("context-health", "", "Show status|watch context health data", "hidden", "", "string", true));
@@ -102,6 +102,34 @@ config_gen_ryzen::create_configure_subcommand()
   configure_suboptions.emplace("firmware-log", std::make_shared<option>("firmware-log", "", "Enable|disable firmware logging", "hidden", "", "string", true));
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
+}
+
+config_gen_npu3::
+config_gen_npu3()
+{
+  examine_report_desc = {
+    {"aie-partitions", "AIE partition information", "common"},
+    {"all", "All known reports are produced", "common"},
+    {"host", "Host information", "common"},
+    {"platform", "Platforms flashed on the device", "common"},
+    {"telemetry", "Telemetry data for the device", "common"},
+    {"preemption", "Preemption telemetry data for the device", "common"},
+    {"clocks", "Clock frequency information", "hidden"}
+  };
+
+  validate_test_desc = {
+    {"all", "All applicable validate tests will be executed (default)", "common"},
+    {"cmd-chain-latency", "Run end-to-end latency test using command chaining", "hidden"},
+    {"cmd-chain-throughput", "Run end-to-end throughput test using command chaining", "hidden"},
+    {"df-bw", "Run bandwidth test on data fabric", "hidden"},
+    {"shim-dma-bw", "Run 2xRead/1xWrite bandwidth test for SHIM DMA", "hidden"},
+    {"latency", "Run end-to-end latency test", "common"},
+    {"throughput", "Run end-to-end throughput test", "common"},
+    {"tct-one-col", "Measure average TCT processing time for one column", "hidden"},
+    {"tct-all-col", "Measure average TCT processing time for all columns", "hidden"},
+    {"gemm", "Measure the TOPS value of GEMM INT8operations", "common"},
+    {"preemption-overhead", "Measure preemption overhead at noop and memtile levels", "hidden"}
+  };
 }
 
 void
@@ -127,9 +155,13 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
     generator = std::make_shared<config_gen_strix>();
     break;
   }
+  case smi_hardware_config::hardware_type::npu3_f0:
   case smi_hardware_config::hardware_type::npu3_f1:
   case smi_hardware_config::hardware_type::npu3_f2:
   case smi_hardware_config::hardware_type::npu3_f3:
+  case smi_hardware_config::hardware_type::npu3_B01:
+  case smi_hardware_config::hardware_type::npu3_B02:
+  case smi_hardware_config::hardware_type::npu3_B03:
   {
     generator = std::make_shared<config_gen_npu3>();
     break;
