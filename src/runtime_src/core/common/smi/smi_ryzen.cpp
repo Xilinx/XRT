@@ -100,6 +100,7 @@ config_gen_ryzen::create_configure_subcommand()
   configure_suboptions.emplace("force-preemption", std::make_shared<option>("force-preemption", "", "Force enable|disable and see status of preemption", "hidden", "", "string", true));
   configure_suboptions.emplace("event-trace", std::make_shared<option>("event-trace", "", "Enable|disable event tracing", "hidden", "", "string", true));
   configure_suboptions.emplace("firmware-log", std::make_shared<option>("firmware-log", "", "Enable|disable firmware logging", "hidden", "", "string", true));
+  configure_suboptions.emplace("hardware-context", std::make_shared<option>("hardware-context", "", "Enable|disable hardware context reset recovery", "hidden", "", "string", true));
 
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }

@@ -14,6 +14,6 @@ public:
 
 private:
   std::string m_device;
-  std::string m_reset;
+  std::string m_reset_on_error;
   bool m_help;
 };
