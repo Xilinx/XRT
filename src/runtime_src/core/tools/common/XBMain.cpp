@@ -143,11 +143,9 @@ void  main_(int argc, char** argv,
         throw xrt_core::error(std::errc::operation_canceled);
       }
 
-      // We have only 1 item in the array, get it
-      for (const auto &kd : available_devices) {
-        sDevice = kd.second.get<std::string>("bdf");
-        break; // Exit after the first item
-      }
+      // We have exactly one device. Get it
+      const auto kd = available_devices.begin();
+      sDevice = kd->second.get<std::string>("bdf");
     }
   }
   else if (sDevice.empty() || boost::iequals(sDevice, "default")) {
