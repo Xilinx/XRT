@@ -201,6 +201,164 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
+std::string
+ctx_status_to_string(uint32_t ctx_status)
+{
+  static const std::map<uint32_t, const char*> ctx_status_string {
+    {0, "CTX_STATUS_UNASSIGNED"},
+    {1, "CTX_STATUS_ERROR"},
+    {2, "CTX_STATUS_IDLE"},
+    {3, "CTX_STATUS_RUNNABLE"},
+    {4, "CTX_STATUS_RUNNING"},
+    {5, "CTX_STATUS_PREEMPTING"},
+  };
+
+  auto itr = ctx_status_string.find(ctx_status);
+  return itr == ctx_status_string.end()
+    ? "out of range"
+     : itr->second;
+}
+
+std::string
+uc_fwstate_to_string(uint32_t fw_status)
+{
+  static const std::map<uint32_t, const char*> fw_state_string {
+    {0x1001, "FW_STATE_LEADER_HOST_QUEUE_POP"},
+    {0x1002, "FW_STATE_LEADER_DISTRIBUTE_WORK"},
+    {0x1003, "FW_STATE_LEADER_POST_DIST_BARRIER"},
+    {0x1004, "FW_STATE_LEADER_POST_WORK_BARRIER"},
+    {0x1005, "FW_STATE_LEADER_RUN"},
+    {0x1006, "FW_STATE_LEADER_HOST_QUEUE_FINISH"},
+    {0x2001, "FW_STATE_WORKER_PRE_WORK_BARRIER"},
+    {0x2002, "FW_STATE_WORKER_POST_WORK_BARRIER"},
+    {0x2003, "FW_STATE_WORKER_RUN"},
+    {0x0FFE, "FW_STATE_HANDSHAKE"},
+    {0x0001, "FW_STATE_INIT_BARRIER"},
+    {0x0002, "FW_STATE_CONFIGURE_PARTITION"},
+    {0x0003, "FW_STATE_HSA_CONFIG"},
+    {0x0004, "FW_STATE_EXEC_PAGEIN"},
+    {0x0005, "FW_STATE_EXEC_INITIAL_PASS"},
+    {0x0006, "FW_STATE_EXEC_EVENTLOOP"},
+    {0x0007, "FW_STATE_OOO_OPCODE"},
+    {0x0008, "FW_STATE_OOO_PREFETCH"},
+    {0x0009, "FW_STATE_EMPTY_PAGE"},
+    {0x000A, "FW_STATE_WAKENUP_AFTER_PREEMPT"},
+    {0x000B, "FW_STATE_EXEC_PAGE"},
+    {0x000C, "FW_STATE_CHECK_NEWPAGE"},
+    {0x000D, "FW_STATE_RUN_TASK_COMPLETION"},
+    {0x000E, "FW_STATE_PREFETCH_IN_ORDER"},
+    {0x000F, "FW_STATE_RELOAD_OOO"},
+    {0x0010, "FW_STATE_RUN_SAVE"},
+    {0x0011, "FW_STATE_RELOAD_CORE"},
+    {0x0012, "FW_STATE_NO_PAGE"},
+    {0x0013, "FW_STATE_PREFETCH_OOO"},
+    {0x0014, "FW_STATE_WAIT_PAGE_LOAD"},
+    {0x0015, "FW_STATE_INVALID_PKT"},
+    {0x0016, "FW_STATE_ASYNC_DM2MM_HANG"},
+    {0x0017, "FW_STATE_SYNC_DM2MM_HANG"},
+    {0x0018, "FW_STATE_ASYNC_MM2DM_HANG"},
+    {0x0019, "FW_STATE_CTRL_CODE_HANG"},
+    {0x001A, "FW_STATE_FW_EXCEPTION"},
+    {0x001B, "FW_STATE_BARRIER_HANG"},
+    {0x001C, "FW_STATE_HW_UNCORRECTABLE_ERROR"},
+    {0x001D, "FW_STATE_HW_CORRECTABLE_ERROR"},
+    {0x001E, "FW_STATE_AXI_ERROR"},
+    {0x001F, "FW_STATE_ATOMIC_DM2MM_HANG"},
+    {0x0020, "FW_STATE_HSA_CRITICAL_ERROR"},
+    {0x0021, "FW_STATE_WAKENUP_AFTER_SWITCH_REQ"},
+    {0x0022, "FW_STATE_SYNC_MM2DM_HANG"},
+    {0x0FFF, "FW_STATE_EXIT"},
+  };
+
+  auto itr = fw_state_string.find(fw_status);
+  return itr == fw_state_string.end()
+    ? "out of range"
+    : itr->second;
+}
+std::string
+ctx_error_type_to_string(uint32_t ctx_error_type)
+{
+  static const std::map<uint32_t, const char*> ctx_error_type_string {
+    {0, "NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE"},
+    {1, "NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE"},
+    {2, "NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE"},
+    {3, "NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT"},
+    {4, "NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE"},
+    {5, "NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR"},
+    {6, "NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT"},
+  };
+  auto itr = ctx_error_type_string.find(ctx_error_type);
+  return itr == ctx_error_type_string.end()
+    ? "out of range"
+    : itr->second;
+}
+
+// misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
+std::string
+uc_misc_status_flags_to_string(uint32_t misc_status)
+{
+  static const std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
+    {0x1u, "FW_EXCEPTION"},
+    {0x2u, "CTRL_HANG"},
+    {0x4u, "ASYNC_DM2MM_HANG"},
+    {0x8u, "ASYNC_MM2DM_HANG"},
+    {0x10u, "SYNC_DM2MM_HANG"},
+    {0x20u, "SYNC_MM2DM_HANG"},
+    {0x40u, "MISC_UNRECOVERABLE_ERROR"},
+  }};
+
+  if (misc_status == 0)
+    return "NONE";
+
+  std::string result;
+  uint32_t unknown = misc_status;
+  for (const auto& entry : misc_status_flags) {
+    if (misc_status & entry.first) {
+      if (!result.empty())
+        result += " | ";
+      result += entry.second;
+      unknown &= ~entry.first;
+    }
+  }
+  if (unknown != 0) {
+    if (!result.empty())
+      result += " | ";
+    result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
+  }
+  return result;
+}
+
+// uc_idle_status is a bit mask (ert_uc_health_info / hsa_lite_status).
+std::string
+uc_idle_status_flags_to_string(uint32_t idle_status)
+{
+  static const std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
+    {0x1u, "HSA_QUEUE_NOT_EMPTY"},
+    {0x2u, "PREEMPTION_SAVE_COMPLETE"},
+    {0x4u, "CERT_IS_IDLE"},
+  }};
+
+  if (idle_status == 0)
+    return "NONE";
+
+  std::string result;
+  uint32_t unknown = idle_status;
+  for (const auto& entry : idle_status_flags) {
+    if (idle_status & entry.first) {
+      if (!result.empty())
+        result += " | ";
+      result += entry.second;
+      unknown &= ~entry.first;
+    }
+  }
+  if (unknown != 0) {
+    if (!result.empty())
+      result += " | ";
+    result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
+  }
+  return result;
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -1402,7 +1560,7 @@ public:
 
 private:
   std::string name;                           // kernel name
-  std::string m_instance_name;                // full "kernel:instance" string, empty if no instance
+  std::string m_full_name;                    // full "kernel:instance" string, empty if no instance
   std::shared_ptr<device_type> device;        // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr;        // device context mgr ownership
   xrt::hw_context hwctx;                      // context for hw resources if any (can be null)
@@ -1756,7 +1914,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
-    , m_instance_name(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
+    , m_full_name(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1813,7 +1971,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
-    , m_instance_name(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
+    , m_full_name(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -1900,9 +2058,9 @@ public:
   }
 
   const std::string&
-  get_instance_name() const
+  get_full_name() const
   {
-    return m_instance_name;
+    return m_full_name;
   }
 
   uint32_t
@@ -3434,7 +3592,6 @@ public:
     , m_state(m_run.state())
     , m_message(std::move(msg))
   {}
-
 };
 
 // class runlist_impl - The internals of a runlist
@@ -4775,16 +4932,16 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
     if (!elf_uuid.empty())
       oss << "\nELF UUID:        " << elf_uuid;
 
-    oss << "\nctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
-      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type
+    oss << "\nctx_state = 0x" << std::setw(indent8) <<ctx_health->aie4.ctx_state<<" ("<<ctx_status_to_string(ctx_health->aie4.ctx_state)<<")"
+      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type<< " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type)<<")"
       << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
 
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
         << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
-        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status
-        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status
-        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state
+        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status<<" ("<<uc_idle_status_flags_to_string(ctx_health->aie4.uc_info[i].uc_idle_status)<<")"
+        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status<<" ("<<uc_misc_status_flags_to_string(ctx_health->aie4.uc_info[i].misc_status)<<")"
+        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state<<" ("<<uc_fwstate_to_string(ctx_health->aie4.uc_info[i].fw_state)<<")"
         << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
         << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
         << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
@@ -4847,7 +5004,7 @@ get_elf_identity_from_run(const xrt::run& run)
       // ELF has no .note.xrt.UID — leave uuid_str empty
     }
     return {xrt_core::elf_int::get_filename(elf_handle),
-            impl->get_kernel()->get_instance_name(),
+            impl->get_kernel()->get_full_name(),
             uuid_str};
   }
   catch (const std::exception&) {

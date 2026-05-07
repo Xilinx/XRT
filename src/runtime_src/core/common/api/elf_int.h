@@ -287,10 +287,10 @@ protected:
   static constexpr uint32_t addend_shift = 4;
   static constexpr uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
   static constexpr uint32_t schema_mask = ~addend_mask;
-  // NOLINTEND
 
   // Filename this ELF was loaded from (empty if loaded from buffer/stream)
   std::string m_filename;
+  // NOLINTEND
 
   // Protected constructor - takes already-loaded ELFIO and platform
   elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
