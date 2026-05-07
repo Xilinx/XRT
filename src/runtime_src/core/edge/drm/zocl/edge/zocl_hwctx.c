@@ -137,9 +137,9 @@ static int zocl_cu_ctx_to_info(struct drm_zocl_dev *zdev, struct drm_zocl_open_c
 done:
     kds_cu_info->ctx = (void *)kds_hw_ctx;
     if (drm_cu_ctx->flags == ZOCL_CTX_EXCLUSIVE)
-        kds_cu_info->flags = ZOCL_CTX_EXCLUSIVE;
+        kds_cu_info->flags = CU_CTX_EXCLUSIVE;
     else
-        kds_cu_info->flags = ZOCL_CTX_SHARED;
+        kds_cu_info->flags = CU_CTX_SHARED;
     return 0;
 }
 
@@ -179,7 +179,7 @@ int zocl_open_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_open_cu_ctx *drm
     }
 
     kds_cu_ctx = kds_alloc_cu_hw_ctx(client, kds_hw_ctx, &kds_cu_info);
-    if (ret) {
+    if (!kds_cu_ctx) {
         DRM_ERROR("%s: Allocation of CU context failed", __func__);
         ret = -EINVAL;
         goto out;
