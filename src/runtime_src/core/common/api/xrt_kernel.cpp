@@ -2290,8 +2290,10 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   xrt::bo
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
-    // ELF flow doesn't have arg connectivity, so skip validation
-    if (!kernel->get_xclbin())
+    // ELF flow doesn't have arg connectivity, so skip validation.
+    // Imported BOs have fixed physical backing from another device
+    // and bank re-mapping is not applicable.
+    if (!kernel->get_xclbin() || xrt_core::bo::is_imported(bo))
       return bo;
 
     // Check if connectivity validation should be skipped via INI option
