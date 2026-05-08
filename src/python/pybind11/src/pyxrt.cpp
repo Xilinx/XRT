@@ -218,7 +218,9 @@ PYBIND11_MODULE(pyxrt, m) {
                             return r.wait2(timeout);
                     }, "Wait for the specified milliseconds for the run to complete")
         .def("state", &xrt::run::state, "Check the current state of a run object")
-        .def("add_callback", &xrt::run::add_callback, "Add a callback function for run state");
+        .def("add_callback", &xrt::run::add_callback, "Add a callback function for run state")
+        .def("get_ctrl_scratchpad_bo", &xrt::run::get_ctrl_scratchpad_bo,
+             "Get the control scratchpad buffer object associated with this run");
 
     py::class_<xrt::kernel> pyker(m, "kernel", "Represents a set of instances matching a specified name");
 
