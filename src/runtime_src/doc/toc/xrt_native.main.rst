@@ -14,6 +14,27 @@ Buffer APIs
    :project: XRT
    :members:
 
+Device APIs
+~~~~~~~~~~~
+
+.. doxygenclass:: xrt::device
+   :project: XRT
+   :members:
+
+Ctrlcode APIs
+~~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::elf
+   :project: XRT
+   :members:
+
+Context APIs
+~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::hw_context
+   :project: XRT
+   :members:
+
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
 
@@ -28,17 +49,17 @@ Custom IP APIs
    :project: XRT
    :members:
 
-Device APIs
-~~~~~~~~~~~
-
-.. doxygenclass:: xrt::device
-   :project: XRT
-   :members:
-
 Info APIs
 ~~~~~~~~~
 
 .. doxygennamespace:: xrt::info
+   :project: XRT
+   :members:
+
+Message APIs
+~~~~~~~~~~~~
+
+.. doxygennamespace:: xrt::message
    :project: XRT
    :members:
 
@@ -53,10 +74,7 @@ Kernel APIs
    :project: XRT
    :members:
 
-Message APIs
-~~~~~~~~~~~~
-
-.. doxygennamespace:: xrt::message
+.. doxygenclass:: xrt::runlist
    :project: XRT
    :members:
 

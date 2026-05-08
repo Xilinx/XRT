@@ -11,8 +11,10 @@ FleXible RunTime (XRT) is implemented as a combination of userspace and kernel
 driver components. XRT enables AMD NPU and AMD FPGA via an abstracted software
 interface.
 
-.. image:: XRT-Layers.svg
+.. figure:: XRT-Layers.svg
    :align: center
+
+   FleXible RunTime (XRT) Stack
 
 ----------------------------------------------------------------------------
 
@@ -47,7 +49,7 @@ interface.
 
    xclbintools.rst
    xrt-smi.rst
-
+   aiebu.rst
 
 .. toctree::
    :caption: Python binding
@@ -57,4 +59,4 @@ interface.
 
 ----------------------------------------------------------------------------
 
-For any questions on XRT please email runtime@xilinx.com
+For any questions on XRT please contact `runtimeca39d@amd.com <mailto:runtimeca39d@amd.com>`

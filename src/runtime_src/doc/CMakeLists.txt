@@ -10,6 +10,7 @@ file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h)
 file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h)
 file(GLOB XRT_IP_H         ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ip.h)
 file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h)
+file(GLOB XRT_KERNEL_EXP_H ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_kernel.h)
 file(GLOB XRT_MESSAGE_H    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_message.h)
 file(GLOB XRT_SYSTEM_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_system.h)
 file(GLOB XRT_UUID_H       ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h)
@@ -42,6 +43,9 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_kernel.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_elf.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_hw_context.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_ini.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/experimental/xrt_message.h
@@ -60,8 +64,8 @@ else()
     COMMAND echo "MACRO_EXPANSION = YES" >> ${DOXYFILE}
     COMMAND echo "EXTRACT_ALL = YES" >> ${DOXYFILE}
     COMMAND echo "SHOW_NAMESPACES = YES" >> ${DOXYFILE}
-    COMMAND echo "PREDEFINED = __cplusplus XCL_DRIVER_DLLESPEC=" >> ${DOXYFILE}
-    COMMAND echo "EXPAND_AS_DEFINED = XCL_DRIVER_DLLESPEC" >> ${DOXYFILE}
+    COMMAND echo "PREDEFINED = __cplusplus XCL_DRIVER_DLLESPEC= __cplusplus XRT_API_EXPORT=" >> ${DOXYFILE}
+    COMMAND echo "EXPAND_AS_DEFINED = XCL_DRIVER_DLLESPEC XRT_API_EXPORT" >> ${DOXYFILE}
     COMMAND echo "IMAGE_PATH = ${XRT_DOC_TOC_DIR}" >> ${DOXYFILE}
     COMMAND echo "INPUT = ${DOXY_INPUT}" >> ${DOXYFILE}
     COMMAND ${DOXYGEN_EXECUTABLE}
@@ -79,7 +83,7 @@ else ()
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
     COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
-    COMMAND ${SPHINX_EXECUTABLE} -E -v -v ${DOC_TOC_DIR} html
+    COMMAND ${SPHINX_EXECUTABLE} -E ${DOC_TOC_DIR} html
     )
 endif ()
 
