@@ -36,8 +36,8 @@
 #include "tools/common/tests/TestGemm.h"
 #include "tools/common/tests/TestNPUThroughput.h"
 #include "tools/common/tests/TestNPULatency.h"
-#include "tools/common/tests/TestCmdChainLatency.h"
-#include "tools/common/tests/TestCmdChainThroughput.h"
+#include "tools/common/tests/TestRunlistLatency.h"
+#include "tools/common/tests/TestRunlistThroughput.h"
 #include "tools/common/tests/TestAIEReconfigOverhead.h"
 #include "tools/common/tests/TestTemporalSharingOvd.h"
 #include "tools/common/tests/TestPreemptionOverhead.h"
@@ -114,8 +114,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestGemm>(),
   std::make_shared<TestNPUThroughput>(),
   std::make_shared<TestNPULatency>(),
-  std::make_shared<TestCmdChainLatency>(),
-  std::make_shared<TestCmdChainThroughput>(),
+  std::make_shared<TestRunlistLatency>(),
+  std::make_shared<TestRunlistThroughput>(),
   std::make_shared<TestAIEReconfigOverhead>(),
   std::make_shared<TestTemporalSharingOvd>(),
   std::make_shared<TestPreemptionOverhead>(),
@@ -425,12 +425,7 @@ SubCmdValidate::handle_errors_and_validate_tests(const boost::program_options::v
 
   auto testsToRun = options.m_tests_to_run;
   if (testsToRun.empty()) {
-    if (!XBU::getAdvance()) {
-      testsToRun = std::vector<std::string>({"all"});
-    }
-    else {
-      throw xrt_core::error("No test given to validate against.");
-    }
+    testsToRun = std::vector<std::string>({"all"});
   }
   // Validate the user test requests
   for (auto &userTestName : testsToRun) {

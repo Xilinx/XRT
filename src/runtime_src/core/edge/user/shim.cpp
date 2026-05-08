@@ -1142,10 +1142,10 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
     drm_zocl_open_cu_ctx  cu_ctx = {};
     cu_ctx.flags = flags;
     cu_ctx.hw_context = hwctx_hdl->get_slotidx();
-    std:strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
+    std::strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
     cu_ctx.cu_name[sizeof(cu_ctx.cu_name) - 1] = 0;
     if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_CU_CTX, &cu_ctx))
-      throw xrt_core::error("Failed to open cu context");
+      throw xrt_core::system_error(errno, "Failed to open cu context");
 
     return xrt_core::cuidx_type{cu_ctx.cu_index};
   }

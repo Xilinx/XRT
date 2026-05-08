@@ -6,7 +6,7 @@
 // Local - Include Files
 #include "core/common/system.h"
 #include "core/common/sysinfo.h"
-#include "core/common/smi.h"
+#include "core/common/smi/smi.h"
 #include "SmiDefault.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
@@ -41,6 +41,7 @@ void  main_(int argc, char** argv,
   bool bTrace = false;
   bool bHelp = false;
   bool bBatchMode = false;
+  bool bShowHidden = false;
   bool bAdvance = false;
   bool bForce = false;
   bool bVersion = false;
@@ -66,14 +67,15 @@ void  main_(int argc, char** argv,
   const std::string device_default = xrt_core::get_total_devices(isUserDomain).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
+    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "Specify a BDF. If the option is omitted and there is only 1 device, that device is used\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
   if (xrt_core::sysinfo::is_advanced()) {
     hiddenOptions.add_options()
-      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows hidden options and commands")
+      ("advanced", boost::program_options::bool_switch(&bAdvance), "Shows advanced options and commands")
     ;
   }
 
@@ -117,31 +119,39 @@ void  main_(int argc, char** argv,
   XBU::disable_escape_codes( bBatchMode );
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
+  XBU::setShowHidden( bShowHidden );
   XBU::setAdvance( bAdvance );
   XBU::setForce( bForce );
 
-  // Was default device requested?
-  if (boost::iequals(sDevice, "default")) {
-    sDevice.clear();
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
+  const auto& device_var = vm["device"];
+  if (device_var.defaulted()) {
+    // Was default device requested?
+    if (boost::iequals(sDevice, "default")) {
+      sDevice.clear();
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
 
-    // DRC: Are there any devices
-    if (available_devices.empty()) 
-      throw std::runtime_error("No devices found.");
+      // DRC: Are there any devices
+      if (available_devices.empty())
+        throw std::runtime_error("No devices found.");
 
-    // DRC: Are there multiple devices, if so then no default device can be found.
-    if (available_devices.size() > 1) {
-      std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
-      std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
+      // DRC: Are there multiple devices, if so then no default device can be found.
+      if (available_devices.size() > 1) {
+        std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+        std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
 
-      std::cout << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
+        std::cout << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+
+      // We have exactly one device. Get it
+      const auto kd = available_devices.begin();
+      sDevice = kd->second.get<std::string>("bdf");
     }
-
-    // We have only 1 item in the array, get it
-    for (const auto &kd : available_devices) 
-      sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
-
+  }
+  else if (sDevice.empty() || boost::iequals(sDevice, "default")) {
+    std::cerr << "\nERROR: Option --device (-d) requires a BDF.\n";
+    std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // If there is a device value, parse for valid subcommands for this device.

@@ -238,8 +238,15 @@ kernel_start::kernel_start(std::shared_ptr<function> f, void** args)
   r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
+  auto kernel_args = xrt_core::kernel_int::get_args(k);
+  if (!args) {
+    throw_invalid_value_if(!kernel_args.empty(),
+                           "kernel args pointer is null but kernel expects arguments");
+    return;
+  }
+
   int idx = 0;
-  for (const auto& arg : xrt_core::kernel_int::get_args(k)) {
+  for (const auto& arg : kernel_args) {
     // non index args are not supported, this condition will not hit in case of HIP
     throw_invalid_value_if(arg->index == karg::no_index, "function has invalid argument");
 

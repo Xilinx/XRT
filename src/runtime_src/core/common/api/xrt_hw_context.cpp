@@ -6,25 +6,27 @@
 #define XRT_API_SOURCE         // exporting xrt_hwcontext.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#include "core/include/xrt/xrt_hw_context.h"
+#include "hw_context_int.h"
+
+#include "core/include/xrt/detail/span.h"
+#include "core/include/xrt/experimental/xrt_ext.h"
 
 #include "core/common/buffer_dumper.h"
 #include "core/common/config_reader.h"
+#include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/time.h"
+#include "core/common/trace.h"
+#include "core/common/usage_metrics.h"
 #include "core/common/utils.h"
-#include "core/include/xrt/xrt_hw_context.h"
-#include "core/include/xrt/experimental/xrt_ext.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/xdp/profile.h"
+
 #include "bo_int.h"
 #include "elf_int.h"
-#include "hw_context_int.h"
 #include "xclbin_int.h"
-
-#include "core/common/device.h"
-#include "core/common/trace.h"
-#include "core/common/shim/hwctx_handle.h"
-#include "core/common/usage_metrics.h"
-#include "core/common/xdp/profile.h"
 
 #include <cstddef>
 #include <ctime>
@@ -42,21 +44,27 @@
 #endif
 
 namespace {
-static constexpr double hz_per_mhz = 1'000'000.0;
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
 constexpr std::size_t
-operator""_mb(unsigned long long v) { return 1024u * 1024u * v; }
+operator""_kb(unsigned long long v) { return 1024U * v; }
+
+constexpr double
+operator""_mhz(long double v) { return static_cast<double>(v) * 1'000'000.0; }
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+
+template <typename T>
+using span = xrt::detail::span<T>;
 
 // Dumps the content into a file with given size from given offset
 static void
-dump_bo(const char* buf_map, const std::string& filename, size_t size, size_t offset = 0)
+dump_data_to_file(const std::string& fname, span<char> data)
 {
-  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+  std::ofstream ofs(fname, std::ios::out | std::ios::binary);
   if (!ofs.is_open())
-    throw std::runtime_error("Failure opening file " + filename + " for writing!");
+    throw std::runtime_error("Failure opening file " + fname + " for writing!");
 
-  const char* buf = buf_map + offset;
-  ofs.write(buf, static_cast<std::streamsize>(size));
+  ofs.write(data.data(), static_cast<std::streamsize>(data.size()));
 }
 
 // Convert experimental string config to cfg_param_type (uint32 values).
@@ -110,10 +118,10 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     }, st);
   }
 
-  // Struct used for initializing and dumping firmware log buffer
+  // struct uc_log_buffer - initialize and dump firmware log buffer
   struct uc_log_buffer
   {
-    size_t m_num_uc; // number of uc's
+    size_t m_num_uc;     // number of uc's
     uint32_t m_slot_idx; // index of slot in which these uc's are present
     std::unique_ptr<xrt_core::buffer_dumper> m_uc_log_bo_dumper;
 
@@ -123,35 +131,37 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
                           size_t num_uc)
     {
       // parameters for uc log buffer dumper
-      // tweak dump interval, size_per_uc based on experiments
-      constexpr size_t size_per_uc = 2_mb;
       constexpr size_t dump_interval_ms = 50;
       constexpr size_t metadata_size = sizeof(xrt_core::buffer_dumper::log_entry);
       constexpr size_t count_offset = 0;
       constexpr size_t count_size = 8;
 
+      // Get per-uC cert log size from xrt.ini.
+      // Make sure metadata_size bytes can fit in log size
+      const auto size_per_uc = xrt_core::config::get_uc_log_size_per_uc_kb() * 1_kb;
+      if (metadata_size > size_per_uc)
+        throw std::runtime_error("Bad log buffer size");
+
+      // Create a bo to collect all dump data across all uCs
       auto bo = xrt_core::bo_int::create_bo(
           ctx_hdl, device, (size_per_uc * num_uc), xrt_core::bo_int::use_type::log);
 
-      // So make sure for each uC metadata bytes are initialized with
-      // zero's before configuring
-      char* buf_map = bo.map<char*>();
-      if (!buf_map)
+      auto bo_data = bo.map<char*>();
+      if (!bo_data)
         throw std::runtime_error("Failed to map uc log buffer");
 
-      // create map with uC index and log buffer size
-      // and also initialize metadata bytes to zero for each uC
+      // Build uc_buf_map and zero metadata for each uC
       std::map<uint32_t, size_t> uc_buf_map;
       for (uint32_t i = 0; i < num_uc; ++i) {
-        std::memset(buf_map + (i * size_per_uc), 0, metadata_size);
-        uc_buf_map[i] = size_per_uc;
+        std::memset(bo_data + (i * size_per_uc), 0, metadata_size);
+        uc_buf_map.emplace(i, size_per_uc);
       }
 
-      // configure the log buffer
+      // Configure the log buffer
       xrt_core::bo_int::config_bo(bo, uc_buf_map, ctx_hdl);
 
-      // create buffer dumper object to dump the log buffer contents
-      xrt_core::buffer_dumper::config config;
+      // Create buffer dumper object to dump the log buffer contents
+      xrt_core::buffer_dumper::config config {};
       config.chunk_size = size_per_uc;
       config.metadata_size = metadata_size;
       config.count_offset = count_offset;
@@ -161,6 +171,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       config.dump_file_prefix = "uc_log_" + std::to_string(ctx_hdl->get_slotidx());
       config.dump_buffer = std::move(bo);
       config.dump_bin_format = xrt_core::config::get_uc_log_bin_format();
+      config.enable_dumper_thread = xrt_core::config::get_uc_log_dumper_thread();
 
       return std::make_unique<xrt_core::buffer_dumper>(std::move(config));
     }
@@ -178,7 +189,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
     {
       m_uc_log_bo_dumper->flush();
     }
-  };
+  };  // struct uc_log_buffer
 
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
@@ -187,7 +198,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   // Stores the Elf corresponding to each kernel name it contains.
   // This map is used for lookup when creating xrt::kernel object
   // using kernel name.
-  std::map<std::string, xrt::elf> m_elf_map;
+  using elf_map_type = std::map<std::string, xrt::elf>;
+  elf_map_type m_elf_map;
 
   // mutex to protect the data members of hw_context_impl (elf_map, cfg_param etc.)
   mutable std::mutex m_mutex;
@@ -202,28 +214,73 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
   std::unique_ptr<uc_log_buffer> m_uc_log_buf;
-  // During preemption, when a hardware context is interrupted L2 memory contents
-  // are saved to a scratchpad memory allocated specifically for that context.
+
+  // During preemption, when a hardware context is interrupted
+  // L2 memory contents are saved to a scratchpad memory allocated
+  // specifically for that context.
   std::once_flag m_scratchpad_init_flag; // used for thread safe lazy init of scratchpad
   xrt::bo m_scratchpad_buf;
+
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
+
   bool m_elf_flow = false;
 
+  // update_from_elf() - Insert all kernels in elf
+  // A hwctx can be configured with multiple ELFs.  The elf map
+  // maintains a mapping from kernel name to the ELF containing
+  // the kernel.
   void
-  create_elf_map(const xrt::elf& elf)
+  update_from_elf(const xrt::elf& elf)
   {
-    // Store the ELF in the map against all available kernels in the it.
-    // This will be useful for ELF lookup when creating xrt::kernel object
-    // using kernel name
+    // Map each kernel in this elf Store the ELF in the map against all available kernels in the
+    // it.  This will be useful for ELF lookup when creating
+    // xrt::kernel object using kernel name
     for (const auto& kernel : elf.get_kernels()) {
       auto kernel_name = kernel.get_name();
-      std::lock_guard lk(m_mutex);
       if (m_elf_map.find(kernel_name) != m_elf_map.end())
         throw std::runtime_error("kernel already exists, cannot use this ELF with this hw ctx\n");
 
       m_elf_map.emplace(kernel_name, elf);
     }
+  }
+
+  // init_from_elf() - Initialize this hwctx from an ELF
+  // This function is called if and only if the hwctx has no
+  // underlying representation (no m_hdl).
+  void
+  init_from_elf(const xrt::elf& elf, uint32_t partition_size)
+  {
+    m_hdl = m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode);
+    m_partition_size = partition_size;
+    update_from_elf(elf);
+    m_elf_flow = true; // ELF flow
+    m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
+
+    // XDP configuration is required only once,
+    // as all the elfs in one HWCtx will have the same partition size
+    xrt_core::xdp::update_device(this, true);
+  }
+
+  // Amend configuration parameters 
+  static cfg_storage
+  amend_cfg(cfg_storage cfg)
+  {
+    // Refactor if more to amend
+    if (xrt_core::config::get_aie_coredump_file().empty())
+      return cfg;
+
+    std::visit([](auto& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_same_v<T, cfg_param_type>) {
+        v.emplace("aie_coredump", 1u);
+      }
+      else if constexpr (std::is_same_v<T, cfg_type>) {
+        v.emplace("aie_coredump", "1");
+      }
+    }, cfg);
+
+    return cfg;
   }
 
   // Initializes uc log buffer
@@ -273,7 +330,7 @@ public:
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -283,7 +340,7 @@ public:
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_partition_size(get_partition_size_from_xclbin(m_xclbin))
-    , m_cfg_storage{cfg_param_type{}}
+    , m_cfg_storage{amend_cfg(cfg_param_type{})}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
@@ -291,7 +348,7 @@ public:
 
   hw_context_impl(std::shared_ptr<xrt_core::device> device, cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode{mode}
   {}
 
@@ -299,13 +356,13 @@ public:
                   cfg_storage cfg, access_mode mode)
     : m_core_device{std::move(device)}
     , m_partition_size{elf.get_partition_size()}
-    , m_cfg_storage{std::move(cfg)}
+    , m_cfg_storage{amend_cfg(std::move(cfg))}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode)}
     , m_uc_log_buf(init_uc_log_buf(m_core_device, m_hdl.get()))
     , m_elf_flow{true}
   {
-    create_elf_map(elf);
+    update_from_elf(elf);
   }
 
   std::shared_ptr<hw_context_impl>
@@ -349,26 +406,19 @@ public:
   {
     auto part_size = elf.get_partition_size();
 
-    // create hw ctx handle if not already created
-    if (!m_hdl) {
-      m_hdl = m_core_device->create_hw_context(elf, effective_cfg_param(m_cfg_storage), m_mode);
-      m_partition_size = part_size;
-      create_elf_map(elf);
-      m_elf_flow = true; // ELF flow
-      m_uc_log_buf = init_uc_log_buf(m_core_device, m_hdl.get()); // create only for first config
-      // XDP configuration is required only once,
-      // as all the elfs in one HWCtx will have the same partition size
-      xrt_core::xdp::update_device(this, true);
-      return;
-    }
-
-    // add ELF only if partition size matches existing configuration
-    if (m_partition_size != part_size)
+    // The lock must be held here to prevent race on m_hdl
+    // in case it is created in init_from_elf(). The lock
+    // also protects updated data structures.
+    std::lock_guard lk(m_mutex);
+    if (m_hdl && m_partition_size != part_size)
       throw std::runtime_error("can not add config to ctx with different configuration\n");
 
-    // Add kernels available in ELF to elf map
-    // This function throws if kernel with same name is already present
-    create_elf_map(elf);
+    if (m_hdl)
+      // Add ELF kernels to elf map. Throws if kernel already in map
+      update_from_elf(elf);
+    else
+      // Intialize this hwctx, and add kernels
+      init_from_elf(elf, part_size);
   }
 
   void
@@ -484,7 +534,8 @@ public:
   {
     try {
       auto freq_hz = m_hdl->get_aie_freq();
-      return static_cast<double>(freq_hz) / hz_per_mhz; // Convert Hz to MHz
+      // Convert Hz to MHz.
+      return static_cast<double>(freq_hz) / 1.0_mhz; // NOLINT(cppcoreguidelines-avoid-magic-numbers)
     }
     catch (const xrt_core::error& e) {
       if (e.code() == std::errc::not_supported)
@@ -501,7 +552,8 @@ public:
   set_aie_freq(double freq_mhz)
   {
     try {
-      auto freq_hz = static_cast<uint64_t>(freq_mhz * hz_per_mhz);
+      // Convert MHz to Hz.
+      auto freq_hz = static_cast<uint64_t>(freq_mhz * 1.0_mhz); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
       m_hdl->set_aie_freq(freq_hz);
     }
     catch (const xrt_core::error& e) {
@@ -549,7 +601,7 @@ public:
     std::string dump_file_name =
         "preemption_scratchpad_mem_" + std::to_string(m_hdl->get_slotidx()) + "_" +
         xrt_core::get_timestamp_for_filename() + ".bin";
-    dump_bo(m_scratchpad_buf.map<char*>(), dump_file_name, m_scratchpad_buf.size());
+    dump_data_to_file(dump_file_name, {m_scratchpad_buf.map<char*>(), m_scratchpad_buf.size()});
 
     std::string msg {"Dumped scratchpad buffer into file : "};
     msg.append(dump_file_name);

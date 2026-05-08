@@ -6,22 +6,21 @@
 # <path>/* matches files under <path> but *not* further nested files.
 
 
-src/runtime_src/core/tools/ @rozumx @chvamshi-xilinx @ashivangi
+src/runtime_src/core/tools/ @chvamshi-xilinx @ashivangi
 src/runtime_src/core/include/ @stsoe
 src/runtime_src/core/include/xclbin.h @rozumx
-src/runtime_src/core/include/xrt/ @stsoe @uday610
-src/runtime_src/core/include/experimental/ @stsoe @uday610
-src/runtime_src/core/include/ert.h @maxzhen @mamin506 @stsoe
-src/runtime_src/core/common/ @stsoe @rozumx
-src/runtime_src/core/common/api/ @stsoe
-src/runtime_src/core/common/drv/ @mamin506
+src/runtime_src/core/include/xrt/ @stsoe @rbramand-xilinx @uday610
+src/runtime_src/core/include/xrt/detail/ert.h @maxzhen @stsoe
+src/runtime_src/core/common/ @stsoe @rbramand-xilinx
+src/runtime_src/core/common/api/ @stsoe @rbramand-xilinx
+src/runtime_src/core/common/drv/ @chvamshi-xilinx
 src/runtime_src/core/edge/ @chvamshi-xilinx @stsoe
 src/runtime_src/core/edge/common/ @chvamshi-xilinx @stsoe
-src/runtime_src/core/edge/drm/ @chvamshi-xilinx @mamin506
+src/runtime_src/core/edge/drm/ @chvamshi-xilinx
 src/runtime_src/core/edge/common_em/ @chvamshi-xilinx
 src/runtime_src/core/edge/hw_em/ @chvamshi-xilinx
 src/runtime_src/core/edge/sw_em/ @chvamshi-xilinx
-src/runtime_src/core/edge/ps_kernels/ @jeffli-xilinx @rozumx @sonals @stsoe
+src/runtime_src/core/edge/ps_kernels/ @jeffli-xilinx @sonals @stsoe
 src/runtime_src/core/edge/skd/ @jeffli-xilinx @sonals @stsoe
 src/runtime_src/core/edge/user/ @chvamshi-xilinx @stsoe
 src/runtime_src/core/edge/user/plugin/ @jvillarre
@@ -29,20 +28,19 @@ src/runtime_src/core/edge/user/aie/ @larry9523
 src/runtime_src/core/edge/user/aie/common_layer/ @larry9523
 src/runtime_src/core/pcie/ @stsoe
 src/runtime_src/core/pcie/emulation/ @chvamshi-xilinx
-src/runtime_src/core/pcie/driver/linux/ @maxzhen
+src/runtime_src/core/pcie/driver/linux/ @maxzhen @chvamshi-xilinx
 src/runtime_src/core/pcie/driver/windows/ @arpitxilinx
 src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
 src/runtime_src/xocl/ @stsoe
 src/runtime_src/xocl/api/plugin/xdp/ @jvillarre
 src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
-src/runtime_src/tools/ @rozumx
 src/runtime_src/tools/xclbinutil/ @rozumx @xfreid
-src/runtime_src/tools/scripts/ @rozumx @stsoe
+src/runtime_src/tools/scripts/ @stsoe
 src/runtime_src/hip/ @sonals @chvamshi-xilinx @stsoe
-src/CMake/ @rozumx @stsoe
+src/CMake/ @stsoe
 tests/xrt/ @stsoe
 tests/unit_test/ @stsoe
 tests/hip/ @sonals @chvamshi-xilinx @stsoe
-build/ @stsoe @rozumx
-.github/workflows/* @Xilinx/xrt @SubhedarV @manikandan-xilinx
+build/ @stsoe @chvamshi-xilinx
+.github/workflows/* @Xilinx/xrt @SubhedarV @manikandan-xilinx @stsoe

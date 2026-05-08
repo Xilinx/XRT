@@ -86,7 +86,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $build
           # Pass triplet as literal so vcpkg subprocess does not re-interpret $triplet
           cmake -B $build -S $src `
-            -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }} `
+            -A ${{ matrix.cmake_arch }} `
             -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
             -DKHRONOS="$kronos" `

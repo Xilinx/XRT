@@ -4,7 +4,7 @@
 #define XRT_CORE_COMMON_SOURCE
 
 // Local - Include Files
-#include "smi.h"
+#include "core/common/smi/smi.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>

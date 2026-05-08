@@ -47,6 +47,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
 
@@ -2393,8 +2394,7 @@ class run_impl : public std::enable_shared_from_this<run_impl>
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
-
-  const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
+  std::atomic<uint64_t> m_runlist_counter{0}; // number of runlists containing this run
   std::mutex m_mutex;                     // mutex synchronization
   // Run-level dtrace ct file: stored so clone inherits it
   std::string m_dtrace_control_file;
@@ -2471,6 +2471,9 @@ public:
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+
+    // XDP run_constructor hook
+    xrt_core::xdp::run_constructor(this);
   }
 
   // Clones a run impl, so that the clone can be executed concurrently
@@ -2547,20 +2550,15 @@ public:
   }
 
   void
-  set_runlist(const runlist_impl* rl)
+  set_runlist(const runlist_impl*)
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_runlist)
-      throw std::runtime_error("Run object already associated with a runlist");
-
-    m_runlist = rl;
+    ++m_runlist_counter;
   }
 
   void
   clear_runlist()
   {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_runlist = nullptr;
+    --m_runlist_counter;
   }
 
   // Use to explicitly restrict what CUs can be used
@@ -2778,10 +2776,13 @@ public:
   virtual void
   start()
   {
-    if (m_runlist)
+    if (m_runlist_counter)
       throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
 
     prep_start();
+
+    // XDP profiling hook - called immediately before run is submitted
+    xrt_core::xdp::run_start(this);
 
     // log kernel start info
     // This is in critical path, we need to reduce log overhead
@@ -2884,9 +2885,39 @@ public:
       state = cmd->wait();
     }
 
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
+
     dump_logs(true); // dump required logs
 
     return state;
+  }
+
+  // abort_coredump_or_noop() - AIE coredump if enabled
+  // Dump core and abort, or do nothing.
+  void
+  abort_coredump_or_noop(ert_cmd_state state) const
+  {
+    if (state != ERT_CMD_STATE_TIMEOUT)
+      return;
+    
+    auto file = xrt_core::config::get_aie_coredump_file();
+    if (file.empty())
+      return;
+
+    try {
+      auto hwctx = kernel->get_hw_context();
+      auto core = hwctx.get_aie_coredump();  // may throw
+
+      std::ofstream ostr{file, std::ios::binary};
+      if (!ostr)
+        throw std::runtime_error("Could not open '" + file + "' for writing");
+      ostr.write(core.data(), static_cast<std::streamsize>(core.size()));
+      std::abort();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(std::string("Failed to create core dump: ") + ex.what());
+    }
   }
 
   void
@@ -2908,6 +2939,7 @@ public:
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      abort_coredump_or_noop(state);
       throw xrt::run::aie_error(xrt::run(get_mutable_shared_ptr()), msg);
     default:
       throw xrt::run::command_error(state, msg);
@@ -2935,6 +2967,9 @@ public:
     else {
       state = cmd->wait();
     }
+
+    // XDP profiling hook - called after wait completes
+    xrt_core::xdp::run_wait(this);
 
     // dump required logs
     dump_logs(true);
@@ -3569,6 +3604,7 @@ class runlist_impl
     case ERT_START_DPU:
     case ERT_START_NPU_PREEMPT:
     case ERT_START_NPU_PREEMPT_ELF:
+      rhdl->abort_coredump_or_noop(state);
       throw xrt::runlist::aie_error(run, state, msg);
     default:
       throw xrt::runlist::command_error(run, state, msg);
@@ -3716,11 +3752,11 @@ public:
     cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size);
 
     // Once a run object is added to a list it will be in a state that
-    // makes it impossible to add to another list or to same list
-    // twice.  This state is managed by the run object itself by
-    // recording this runlist with the run object, but it doesn't
-    // proctect against caller manually controlling the run object,
-    // which is undefined behavior.  No exceptions after this point.
+    // makes it impossible to start the run explicitly.  A run can be
+    // added to multiple runlists, but it is undefined behavior to
+    // call runlist::execute() on two or more runlists that contain
+    // the same run object without calling runlist::wait() in between.
+    // No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
     // Non throwing state change
@@ -4220,8 +4256,24 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }
 
-} // xrt_core::kernel_int
+void
+get_xdp_kernel_data(const xrt::run_impl* run_impl, xrt_core::xdp::xrt_kernel_data* data)
+{
+  auto kernel = run_impl->get_kernel();
+  data->uid = run_impl->get_uid();
+  data->name = kernel->get_name();
+  data->hwctx = kernel->get_hw_context();
+  data->mod = kernel->get_module();
+  data->ert_state = static_cast<int>(run_impl->state());
+}
 
+void
+set_dtrace_control_file(xrt::run_impl* run_impl, const std::string& path)
+{
+  run_impl->set_dtrace_control_file(path);
+}
+
+} // xrt_core::kernel_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_kernel C++ API implmentations (xrt_kernel.h)
@@ -4692,7 +4744,8 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg)
       << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
       << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
       << "\n";
-  } else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
+  }
+  else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
     oss << "ctx_state = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_state
       << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type

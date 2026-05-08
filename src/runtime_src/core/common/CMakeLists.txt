@@ -8,6 +8,7 @@ endif()
 add_subdirectory(api)
 add_subdirectory(xdp)
 add_subdirectory(runner)
+add_subdirectory(smi)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
@@ -15,6 +16,7 @@ else()
   set(AIEBU_COMPONENT ${XRT_BASE_COMPONENT})
   set(AIEBU_DEV_COMPONENT ${XRT_BASE_DEV_COMPONENT})
   set(AIEBU_UPSTREAM ${XRT_UPSTREAM})
+  set(AIEBU_INSTALL_STATIC_LIBRARY ${XRT_INSTALL_STATIC_LIBRARY})
 
   # AIEBU should use XRT's version of ELFIO
   set(AIEBU_ELFIO_SRC_DIR ${XRT_SOURCE_DIR}/runtime_src/core/common/elf)
@@ -50,7 +52,6 @@ add_library(core_common_library_objects OBJECT
   sysinfo.cpp
   xclbin_parser.cpp
   xclbin_swemu.cpp
-  smi.cpp
   )
 
 target_include_directories(core_common_library_objects
@@ -83,6 +84,7 @@ add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
+  $<TARGET_OBJECTS:core_common_smi_objects>
   )
 
 add_library(xrt_coreutil_static STATIC
@@ -90,6 +92,7 @@ add_library(xrt_coreutil_static STATIC
   $<TARGET_OBJECTS:core_common_runner_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
+  $<TARGET_OBJECTS:core_common_smi_objects>
   )
 
 set_target_properties(xrt_coreutil PROPERTIES
@@ -157,12 +160,8 @@ install(TARGETS xrt_coreutil
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_COMPONENT} NAMELINK_COMPONENT ${XRT_BASE_DEV_COMPONENT}
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
 
-# Install static library - exclude from xrt-targets export in yocto builds
-# to avoid find_package(XRT) failures when static libs are not in sysroot
-if(XRT_YOCTO)
-  install(TARGETS xrt_coreutil_static
-    ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})
-else()
+# Enable install of static library iff requested
+if(XRT_INSTALL_STATIC_LIBRARY)
   install(TARGETS xrt_coreutil_static
     EXPORT xrt-targets
     ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_BASE_DEV_COMPONENT})

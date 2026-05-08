@@ -70,8 +70,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* _pDevice,
         const boost::property_tree::ptree& pt_temp = kv.second;
         if (!pt_temp.get<bool>("is_present", false))
           continue;
-        auto temp_val = pt_temp.get<uint64_t>("temp_C", 0);
-        temp_c = std::to_string(temp_val);
+        temp_c = pt_temp.get<std::string>("temp_C", "N/A");
         break;
       }
     }

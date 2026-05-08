@@ -44,10 +44,10 @@ if (MSVC)
     /Qspectre     # compile with the Spectre mitigations switch
     /ZH:SHA_256   # enable secure source code hashing
     /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    /GF           # eliminate duplicate strings
     $<$<NOT:$<CONFIG:Debug>>:/guard:cast> # enable cast guard to prevent type confusion
     $<$<NOT:$<CONFIG:Debug>>:/d2CastGuardFailureMode:fastfail> # fastfail mode for cast guard
     $<$<NOT:$<CONFIG:Debug>>:/GL>  # enable whole program optimization
-    $<$<NOT:$<CONFIG:Debug>>:/GF>  # eliminate duplicate strings
     )
   add_link_options(
     /NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib  # Hybrid CRT

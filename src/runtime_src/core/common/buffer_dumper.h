@@ -47,6 +47,7 @@ public:
     std::string dump_file_prefix;     // Output file prefix
     xrt::bo dump_buffer;              // xrt buffer object to dump
     bool dump_bin_format = false;     // Dump in binary format when enabled
+    bool enable_dumper_thread = false; // Enable background dumper thread
   };
 
   // Log entry layout: shared definition in uc_log.h
@@ -60,6 +61,7 @@ private:
   std::promise<void> m_done_promise;
   std::future<void>  m_done_future;
   std::atomic<bool> m_stop_thread{false};
+  std::atomic<bool> m_thread_created{false};
   std::mutex m_dump_mutex;
   std::condition_variable m_cv;
   std::vector<std::ofstream> m_file_streams;
