@@ -243,6 +243,7 @@ protected:
   // NOLINTBEGIN
   ELFIO::elfio m_elfio;
   xrt::elf::platform m_platform;
+  std::string m_path; // file path from which elf was loaded, empty if loaded from stream/buffer
 
   /* Parsed ELF data structures */
   // lookup map for section index to group index
@@ -288,12 +289,10 @@ protected:
   static constexpr uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
   static constexpr uint32_t schema_mask = ~addend_mask;
 
-  // Filename this ELF was loaded from (empty if loaded from buffer/stream)
-  std::string m_filename;
   // NOLINTEND
 
-  // Protected constructor - takes already-loaded ELFIO and platform
-  elf_impl(ELFIO::elfio&& elfio, elf::platform platform);
+  // Protected constructor - takes already-loaded ELFIO, platform, and optional file path
+  elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path = {});
 
   // Parse sections in the ELF and populate internal maps
   void
@@ -367,14 +366,7 @@ public:
   const std::string&
   get_filename() const
   {
-    return m_filename;
-  }
-
-  // Set the filename (called by xrt::elf constructors that load from a path)
-  void
-  set_filename(const std::string& filename)
-  {
-    m_filename = filename;
+    return m_path;
   }
 
   // Get configuration UUID from ELF

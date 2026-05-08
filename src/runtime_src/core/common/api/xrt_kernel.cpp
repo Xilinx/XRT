@@ -215,7 +215,7 @@ ctx_status_to_string(uint32_t ctx_status)
 
   auto itr = ctx_status_string.find(ctx_status);
   return itr == ctx_status_string.end()
-    ? "out of range"
+    ? "UNKNOWN"
      : itr->second;
 }
 
@@ -272,7 +272,7 @@ uc_fwstate_to_string(uint32_t fw_status)
 
   auto itr = fw_state_string.find(fw_status);
   return itr == fw_state_string.end()
-    ? "out of range"
+    ? "UNKNOWN"
     : itr->second;
 }
 std::string
@@ -289,7 +289,7 @@ ctx_error_type_to_string(uint32_t ctx_error_type)
   };
   auto itr = ctx_error_type_string.find(ctx_error_type);
   return itr == ctx_error_type_string.end()
-    ? "out of range"
+    ? "UNKNOWN"
     : itr->second;
 }
 
@@ -4997,12 +4997,7 @@ get_elf_identity_from_run(const xrt::run& run)
       return {};
     auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
     std::string uuid_str;
-    try {
-      uuid_str = elf_handle->get_cfg_uuid().to_string();
-    }
-    catch (const std::exception&) {
-      // ELF has no .note.xrt.UID — leave uuid_str empty
-    }
+    uuid_str = elf_handle->get_cfg_uuid().to_string();
     return {xrt_core::elf_int::get_filename(elf_handle),
             impl->get_kernel()->get_full_name(),
             uuid_str};
