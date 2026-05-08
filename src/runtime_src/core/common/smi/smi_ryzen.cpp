@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
+#define XRT_CORE_COMMON_SOURCE
+
 #include "core/common/smi/smi_ryzen.h"
 
 #include "core/common/query_requests.h"

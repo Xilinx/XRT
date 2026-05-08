@@ -80,6 +80,7 @@ public:
 void
 populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* device);
 
+XRT_CORE_COMMON_EXPORT
 std::string
 get_smi_config(const xrt_core::device* device);
 
