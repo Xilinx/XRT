@@ -298,13 +298,13 @@ std::string
 uc_misc_status_flags_to_string(uint32_t misc_status)
 {
   static const std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
-    {0x1u, "FW_EXCEPTION"},
-    {0x2u, "CTRL_HANG"},
-    {0x4u, "ASYNC_DM2MM_HANG"},
-    {0x8u, "ASYNC_MM2DM_HANG"},
-    {0x10u, "SYNC_DM2MM_HANG"},
-    {0x20u, "SYNC_MM2DM_HANG"},
-    {0x40u, "MISC_UNRECOVERABLE_ERROR"},
+    {0x1U, "FW_EXCEPTION"},
+    {0x2U, "CTRL_HANG"},
+    {0x4U, "ASYNC_DM2MM_HANG"},
+    {0x8U, "ASYNC_MM2DM_HANG"},
+    {0x10U, "SYNC_DM2MM_HANG"},
+    {0x20U, "SYNC_MM2DM_HANG"},
+    {0x40U, "MISC_UNRECOVERABLE_ERROR"},
   }};
 
   if (misc_status == 0)
@@ -333,9 +333,9 @@ std::string
 uc_idle_status_flags_to_string(uint32_t idle_status)
 {
   static const std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
-    {0x1u, "HSA_QUEUE_NOT_EMPTY"},
-    {0x2u, "PREEMPTION_SAVE_COMPLETE"},
-    {0x4u, "CERT_IS_IDLE"},
+    {0x1U, "HSA_QUEUE_NOT_EMPTY"},
+    {0x2U, "PREEMPTION_SAVE_COMPLETE"},
+    {0x4U, "CERT_IS_IDLE"},
   }};
 
   if (idle_status == 0)
