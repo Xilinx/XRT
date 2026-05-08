@@ -204,19 +204,18 @@ cmd_state_to_string(ert_cmd_state state)
 std::string
 ctx_status_to_string(uint32_t ctx_status)
 {
-  static const std::map<uint32_t, const char*> ctx_status_string {
-    {0, "CTX_STATUS_UNASSIGNED"},
-    {1, "CTX_STATUS_ERROR"},
-    {2, "CTX_STATUS_IDLE"},
-    {3, "CTX_STATUS_RUNNABLE"},
-    {4, "CTX_STATUS_RUNNING"},
-    {5, "CTX_STATUS_PREEMPTING"},
-  };
+  static constexpr std::array<const char*, 6> ctx_status_names {{
+    "CTX_STATUS_UNASSIGNED",
+    "CTX_STATUS_ERROR",
+    "CTX_STATUS_IDLE",
+    "CTX_STATUS_RUNNABLE",
+    "CTX_STATUS_RUNNING",
+    "CTX_STATUS_PREEMPTING",
+  }};
 
-  auto itr = ctx_status_string.find(ctx_status);
-  return itr == ctx_status_string.end()
-    ? "UNKNOWN"
-     : itr->second;
+  if (ctx_status >= ctx_status_names.size())
+    return "UNKNOWN";
+  return ctx_status_names[ctx_status];
 }
 
 std::string
@@ -278,19 +277,19 @@ uc_fwstate_to_string(uint32_t fw_status)
 std::string
 ctx_error_type_to_string(uint32_t ctx_error_type)
 {
-  static const std::map<uint32_t, const char*> ctx_error_type_string {
-    {0, "NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE"},
-    {1, "NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE"},
-    {2, "NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE"},
-    {3, "NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT"},
-    {4, "NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE"},
-    {5, "NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR"},
-    {6, "NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT"},
-  };
-  auto itr = ctx_error_type_string.find(ctx_error_type);
-  return itr == ctx_error_type_string.end()
-    ? "UNKNOWN"
-    : itr->second;
+  static constexpr std::array<const char*, 7> ctx_error_type_names {{
+    "NPU_ASYNC_EVENT_CTX_ERR_HWSCH_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_STOP_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_AIE_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_PREEMPTION_TIMEOUT",
+    "NPU_ASYNC_EVENT_CTX_ERR_NEW_PROCESS_FAILURE",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_CRITICAL_ERROR",
+    "NPU_ASYNC_EVENT_CTX_ERR_UC_COMPLETION_TIMEOUT",
+  }};
+
+  if (ctx_error_type >= ctx_error_type_names.size())
+    return "UNKNOWN";
+  return ctx_error_type_names[ctx_error_type];
 }
 
 // misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
@@ -313,12 +312,12 @@ uc_misc_status_flags_to_string(uint32_t misc_status)
   std::string result;
   uint32_t unknown = misc_status;
   for (const auto& entry : misc_status_flags) {
-    if (misc_status & entry.first) {
-      if (!result.empty())
-        result += " | ";
-      result += entry.second;
-      unknown &= ~entry.first;
-    }
+    if (!(misc_status & entry.first))
+      continue;
+    if (!result.empty())
+      result += " | ";
+    result += entry.second;
+    unknown &= ~entry.first;
   }
   if (unknown != 0) {
     if (!result.empty())
@@ -344,12 +343,12 @@ uc_idle_status_flags_to_string(uint32_t idle_status)
   std::string result;
   uint32_t unknown = idle_status;
   for (const auto& entry : idle_status_flags) {
-    if (idle_status & entry.first) {
-      if (!result.empty())
-        result += " | ";
-      result += entry.second;
-      unknown &= ~entry.first;
-    }
+    if (!(idle_status & entry.first))
+      continue;
+    if (!result.empty())
+      result += " | ";
+    result += entry.second;
+    unknown &= ~entry.first;
   }
   if (unknown != 0) {
     if (!result.empty())
@@ -1914,7 +1913,7 @@ public:
   // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
-    , m_full_name(nm.find(':') != std::string::npos ? nm : "") // full "kernel:instance" string
+    , m_full_name(nm)                                          // full name as passed (with or without ':')
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(check_and_get_hw_context(ctx, false))              // hw context (not full ELF flow)
@@ -1971,7 +1970,7 @@ public:
 
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0, nm.find(":")))                                  // kernel name
-    , m_full_name(nm.find(':') != std::string::npos ? nm : "")   // full "kernel:instance" string
+    , m_full_name(nm)                                                   // full name as passed (with or without ':')
     , device(std::move(dev))                                            // share ownership
     , hwctx(check_and_get_hw_context(ctx, true))                        // hw context (full ELF flow)
     , hwqueue(hwctx)                                                    // hw queue
@@ -4909,9 +4908,19 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   auto ctx_health = get_ert_ctx_health_data_v1(epkt);
   std::ostringstream oss;
   oss << msg << "\n";
+  // Print kernel and ELF identity to aid post-mortem triage.
+  // ELF UUID (from .note.xrt.UID) is used when the filename is unavailable
+  // (e.g. ELF loaded from a buffer rather than a file path).
+  if (!kernel_instance.empty())
+    oss << "Kernel Instance: " << kernel_instance;
+  if (!elf_filename.empty())
+    oss << "\nELF File:        " << elf_filename;
+  if (!elf_uuid.empty())
+    oss << "\nELF UUID:        " << elf_uuid;
+
   if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
+    oss << "\ntxn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
       << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
       << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
       << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
@@ -4921,17 +4930,6 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   }
   else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-
-    // Print kernel and ELF identity to aid post-mortem triage.
-    // ELF UUID (from .note.xrt.UID) is used when the filename is unavailable
-    // (e.g. ELF loaded from a buffer rather than a file path).
-    if (!kernel_instance.empty())
-      oss << "Kernel Instance: " << kernel_instance;
-    if (!elf_filename.empty())
-      oss << "\nELF File:        " << elf_filename;
-    if (!elf_uuid.empty())
-      oss << "\nELF UUID:        " << elf_uuid;
-
     oss << "\nctx_state = 0x" << std::setw(indent8) <<ctx_health->aie4.ctx_state<<" ("<<ctx_status_to_string(ctx_health->aie4.ctx_state)<<")"
       << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type<< " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type)<<")"
       << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
