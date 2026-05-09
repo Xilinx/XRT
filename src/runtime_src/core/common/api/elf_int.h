@@ -478,8 +478,9 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
 
 // Return the filename this ELF was loaded from (empty if loaded from buffer/stream).
+// Non-owning: elf_impl may be null (returns reference to empty string).
 const std::string&
-get_filename(const std::shared_ptr<xrt::elf_impl>& elf_impl);
+get_filename(const xrt::elf_impl* elf_impl);
 
 } // namespace xrt_core::elf_int
 

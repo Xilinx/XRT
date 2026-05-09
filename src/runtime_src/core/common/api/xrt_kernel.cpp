@@ -4966,7 +4966,7 @@ get_elf_identity_from_run(const xrt::run& run)
     if (!mod)
       return {};
     auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
-    return {xrt_core::elf_int::get_filename(elf_handle),
+    return {xrt_core::elf_int::get_filename(elf_handle.get()),
             impl->get_kernel()->get_full_name(),
             elf_handle->get_cfg_uuid().to_string()};
   }

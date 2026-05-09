@@ -1638,8 +1638,11 @@ get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
 }
 
 const std::string&
-get_filename(const std::shared_ptr<xrt::elf_impl>& elf_impl)
+get_filename(const xrt::elf_impl* elf_impl)
 {
+  static const std::string empty;
+  if (!elf_impl)
+    return empty;
   return elf_impl->get_filename();
 }
 
