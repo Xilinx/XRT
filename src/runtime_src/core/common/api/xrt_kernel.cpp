@@ -201,7 +201,7 @@ cmd_state_to_string(ert_cmd_state state)
     : itr->second;
 }
 
-std::string
+static std::string
 ctx_status_to_string(uint32_t ctx_status)
 {
   static constexpr std::array<const char*, 6> ctx_status_names {{
@@ -218,7 +218,7 @@ ctx_status_to_string(uint32_t ctx_status)
   return ctx_status_names[ctx_status];
 }
 
-std::string
+static std::string
 uc_fwstate_to_string(uint32_t fw_status)
 {
   static const std::map<uint32_t, const char*> fw_state_string {
@@ -274,7 +274,7 @@ uc_fwstate_to_string(uint32_t fw_status)
     ? "UNKNOWN"
     : itr->second;
 }
-std::string
+static std::string
 ctx_error_type_to_string(uint32_t ctx_error_type)
 {
   static constexpr std::array<const char*, 7> ctx_error_type_names {{
@@ -293,7 +293,7 @@ ctx_error_type_to_string(uint32_t ctx_error_type)
 }
 
 // misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
-std::string
+static std::string
 uc_misc_status_flags_to_string(uint32_t misc_status)
 {
   static const std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
@@ -4952,16 +4952,40 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   return oss.str();
 }
 
-static std::string
-amend_aie_error_message(const ert_packet* epkt, const std::string& msg,
-                        const std::string& elf_filename, const std::string& kernel_instance,
-                        const std::string& elf_uuid)
+// get_elf_identity_from_run() - Extract ELF filename, kernel instance, and UUID from a run object.
+// Returns empty values if the run has no associated ELF (non-ELF flow).
+// UUID (from .note.xrt.UID) serves as a fallback identifier when the filename is unavailable.
+static std::tuple<std::string, std::string, std::string>
+get_elf_identity_from_run(const xrt::run& run)
 {
+  auto impl = run.get_handle();
+  if (!impl)
+    return {};
+  try {
+    const auto& mod = impl->get_module();
+    if (!mod)
+      return {};
+    auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
+    return {xrt_core::elf_int::get_filename(elf_handle),
+            impl->get_kernel()->get_full_name(),
+            elf_handle->get_cfg_uuid().to_string()};
+  }
+  catch (const std::exception&) {
+    return {};
+  }
+}
+
+static std::string
+amend_aie_error_message(const std::string& msg, const xrt::run& run)
+{
+  const auto* epkt = run.get_ert_packet();
   constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
-  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1)
+  if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
+    auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
     return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid);
+  }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
   //below is for printing V0 exception message
@@ -4980,36 +5004,10 @@ amend_aie_error_message(const ert_packet* epkt, const std::string& msg,
   return oss.str();
 }
 
-// get_elf_identity_from_run() - Extract ELF filename, kernel instance, and UUID from a run object.
-// Returns empty values if the run has no associated ELF (non-ELF flow).
-// UUID (from .note.xrt.UID) serves as a fallback identifier when the filename is unavailable.
-static std::tuple<std::string, std::string, std::string>
-get_elf_identity_from_run(const xrt::run& run)
-{
-  auto impl = run.get_handle();
-  if (!impl)
-    return {};
-  try {
-    const auto& mod = impl->get_module();
-    if (!mod)
-      return {};
-    auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
-    std::string uuid_str;
-    uuid_str = elf_handle->get_cfg_uuid().to_string();
-    return {xrt_core::elf_int::get_filename(elf_handle),
-            impl->get_kernel()->get_full_name(),
-            uuid_str};
-  }
-  catch (const std::exception&) {
-    return {};
-  }
-}
-
 run::aie_error::
 aie_error(const xrt::run& run, const std::string& what)
   : command_error(run, [&] {
-      auto [filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
-      return amend_aie_error_message(run.get_ert_packet(), what, filename, kernel_instance, elf_uuid);
+      return amend_aie_error_message(what, run);
     }())
 {}
 
@@ -5028,8 +5026,7 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
   : command_error(run, state, [&] {
-      auto [filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
-      return amend_aie_error_message(run.get_ert_packet(), what, filename, kernel_instance, elf_uuid);
+      return amend_aie_error_message(what, run);
     }())
 {}
 
