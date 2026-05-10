@@ -332,6 +332,7 @@ enum class key_type
   firmware_log_state,
   firmware_log_config,
   archive_path,
+  hardware_context_reset,
   frame_boundary_preemption,
   debug_ip_layout_path,
   debug_ip_layout,
@@ -4112,10 +4113,21 @@ struct archive_path : request
   get(const device*) const override = 0;
 };
 
+/* Enable (1) or disable (0) hardware-context reset policy (shim ioctl; KMD optional). */
+struct hardware_context_reset : request
+{
+  using value_type = uint32_t;
+
+  static const key_type key = key_type::hardware_context_reset;
+
+  void
+  put(const device*, const std::any&) const override = 0;
+};
+
 /*
  * this request force enables or disables frame boundary pre-emption globally
  * 1: enable; 0: disable
-*/
+ */
 struct frame_boundary_preemption : request
 {
   using result_type = uint32_t;  // get value type
