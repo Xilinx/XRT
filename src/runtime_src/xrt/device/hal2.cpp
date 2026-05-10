@@ -101,6 +101,8 @@ void
 device::
 close_nolock()
 {
+  m_hw_ctx.reset();
+
   if (m_handle)
     xrt_core::device_int::reset(m_handle);
 }
@@ -276,7 +278,9 @@ loadXclBin(const xclBin* xclbin)
 {
   auto xclbin_obj = xrt::xclbin(reinterpret_cast<const axlf*>(xclbin));
   auto uuid = m_handle.register_xclbin(xclbin_obj);
-  m_hw_contexts[uuid] = xrt::hw_context(m_handle, uuid);
+  m_hw_ctx.emplace(std::piecewise_construct,
+                   std::forward_as_tuple(uuid),
+                   std::forward_as_tuple(m_handle, uuid));
 
   // refresh device info on successful load
   std::lock_guard<std::mutex> lk(m_mutex);

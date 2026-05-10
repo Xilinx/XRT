@@ -23,8 +23,11 @@
 #include <cstring>
 #include <memory>
 #include <map>
+#include <optional>
+#include <utility>
 #include <array>
 #include <mutex>
+#include <stdexcept>
 
 #include <boost/optional/optional.hpp>
 
@@ -70,11 +73,9 @@ class device : public xrt_xocl::hal::device
   xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
-  // In hwctx flow, we create hw contexts from xclbins on demand
-  // instead of explicitly loading the xclbins.  The hwctx are cached
-  // here and accessors are provided so that xclbin references can be
-  // converted into the hwctx that has loaded the xclbin.
-  std::map<xrt::uuid, xrt::hw_context> m_hw_contexts;
+  // One active xrt::hw_context per HAL session. emplace replaces the prior
+  // context so the driver slot is freed before a second xclbin load (e.g. kernel_swap).
+  std::optional<std::pair<xrt::uuid, xrt::hw_context>> m_hw_ctx;
 
   mutable std::mutex m_mutex;
 
@@ -201,7 +202,9 @@ public:
   xrt::hw_context
   get_xrt_hwctx(const uuid& uuid) const override
   {
-    return m_hw_contexts.at(uuid);
+    if (!m_hw_ctx.has_value() || m_hw_ctx->first != uuid)
+      throw std::out_of_range("hal2::device::get_xrt_hwctx");
+    return m_hw_ctx->second;
   }
 
   std::shared_ptr<xrt_core::device>
