@@ -19,6 +19,7 @@
 #include "core/include/xrt/experimental/xrt_module.h"
 #include "core/include/xrt/experimental/xrt_xclbin.h"
 #include "core/include/xrt/detail/ert.h"
+#include "core/include/xrt/detail/span.h"
 #include "core/include/ert_fa.h"
 
 #include "bo.h"
@@ -47,6 +48,7 @@
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/capture/capture.h"
 #include "core/common/xdp/profile.h"
 
 #include <boost/format.hpp>
@@ -421,6 +423,12 @@ public:
   data() const
   {
     return uval;
+  }
+
+  const xrt::detail::span<const ValueType>
+  data_as_span() const
+  {
+    return {uval, words};
   }
 };
 
@@ -2417,6 +2425,20 @@ class run_impl : public std::enable_shared_from_this<run_impl>
     return asetter.get();
   }
 
+  void
+  bind_arg_at_index(size_t index, const arg_range<uint8_t>& value)
+  {
+    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, value.data_as_span());
+    // cmd are not binding scalar values
+  }
+
+  void
+  bind_arg_at_index(size_t index, const xrt::bo& bo)
+  {
+    XRT_RECIPE_CAPTURE(run_set_arg_at_index, this, index, bo);
+    cmd->bind_arg_at_index(index, bo);
+  }
+
   bool
   validate_ip_arg_connectivity(size_t argidx, int32_t grpidx)
   {
@@ -2771,13 +2793,14 @@ public:
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     get_arg_setter()->set_arg_value(arg, value);
+    bind_arg_at_index(arg.index(), value);
   }
 
   void
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
-    cmd->bind_arg_at_index(arg.index(), bo);
+    bind_arg_at_index(arg.index(), bo);
 
     if (m_module) {
       if (!cmd->is_done())
@@ -2960,6 +2983,7 @@ public:
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
     cmd->run();
+    XRT_RECIPE_CAPTURE(start_frame, this);
   }
 
   void
@@ -3932,6 +3956,8 @@ public:
     pkt->count += sizeof(uint64_t) / word_size; // account for added command
     m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
     m_bos.push_back(run_bo);              // ptr noexcept
+
+    XRT_RECIPE_CAPTURE(runlist_add_run, this, run_impl.get());
   }
 
   void
@@ -3957,6 +3983,7 @@ public:
     // things failed.
     try {
       submit();
+      XRT_RECIPE_CAPTURE(start_frame, this);
     }
     catch (const std::exception&) {
       m_state = state::running;
@@ -4416,12 +4443,18 @@ get_hw_ctx(const xrt::run& run)
 }
 
 xrt::kernel
-create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
+create_kernel_from_impl(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation.");
 
   return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
+}
+
+xrt::run
+create_run_from_impl(const xrt::run_impl* run_impl)
+{
+  return xrt::run{const_cast<xrt::run_impl*>(run_impl)->get_shared_ptr()}; // NOLINT
 }
 
 void

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_COMMON_CAPTURE_CAPTURE_H_
+#define XRT_COMMON_CAPTURE_CAPTURE_H_
+#include "xrt/detail/config.h"
+#include "core/common/config_reader.h"
+#include "core/common/capture/fn_fwd.h"
+
+namespace xrt_core::capture {
+
+inline bool
+is_enabled()
+{
+  static bool enabled = xrt_core::config::get_feature_toggle("Runtime.capture_frames");
+  return enabled;
+}
+
+// No-op when disabled, actual capture when enabled
+#define XRT_RECIPE_CAPTURE(fn, ...) \
+  do { if (XRT_UNLIKELY(xrt_core::capture::is_enabled())) { \
+      xrt_core::capture::fn(__VA_ARGS__);           \
+    } } while(0)
+
+} // namespace xrt_core::capture
+
+#endif

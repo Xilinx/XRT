@@ -99,7 +99,11 @@ get_hw_ctx(const xrt::run&);
 // Allows the creation of the kernel object from a kernel_impl pointer
 // This is used for logging usage mertrics
 xrt::kernel
-create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
+create_kernel_from_impl(const xrt::kernel_impl* kernel_impl);
+
+// Allows the creation of an xrt::run object from a run_impl pointer
+xrt::run
+create_run_from_impl(const xrt::run_impl*);
 
 // Fill XDP kernel data from a run_impl pointer for profiling hooks
 XRT_CORE_COMMON_EXPORT

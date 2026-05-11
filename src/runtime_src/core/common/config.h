@@ -43,10 +43,14 @@
 
 #ifdef __linux__
 # define XRT_CORE_UNUSED __attribute__((unused))
+# define XRT_LIKELY(x) __builtin_expect(!!(x), 1)
+# define XRT_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #endif
 
 #ifdef _WIN32
 # define XRT_CORE_UNUSED
+# define XRT_LIKELY(x)
+# define XRT_UNLIKELY(x)
 #endif
 
 #endif

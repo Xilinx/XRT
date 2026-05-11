@@ -661,6 +661,13 @@ public:
   }
 
   virtual
+  std::string
+  get_filename() const
+  {
+    throw std::runtime_error("not implemented");
+  }
+
+  virtual
   uuid
   get_uuid() const
   {
@@ -804,6 +811,7 @@ public:
 // binary images for file content
 class xclbin_full : public xclbin_impl
 {
+  std::string       m_fnm;     // path to xclbin file if loaded from file
   std::vector<char> m_axlf;    // complete copy of xclbin raw data
   const axlf* m_top = nullptr; // axlf pointer to the raw data
   uuid m_uuid;                 // uuid of xclbin
@@ -862,8 +870,9 @@ class xclbin_full : public xclbin_impl
 
 public:
   explicit
-  xclbin_full(const std::string& filename)
-    : m_axlf(read_xclbin(filename))
+  xclbin_full(std::string filename)
+    : m_fnm{std::move(filename)}
+    , m_axlf{read_xclbin(m_fnm)}
   {
     init();
   }
@@ -880,6 +889,12 @@ public:
     : m_axlf(copy_axlf(top))
   {
     init();
+  }
+
+  std::string
+  get_filename() const override
+  {
+    return m_fnm;
   }
 
   uuid
@@ -1662,6 +1677,12 @@ const std::vector<size_t>&
 get_membank_encoding(const xrt::xclbin& xclbin)
 {
   return xclbin.get_handle()->get_membank_encoding();
+}
+
+std::string
+get_xclbin_fnm(const xrt::xclbin& xclbin)
+{
+  return xclbin.get_handle()->get_filename();
 }
 
 std::string

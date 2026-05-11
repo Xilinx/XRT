@@ -41,6 +41,9 @@ get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 std::vector<char>
 read_xclbin(const std::string& fnm);
 
+std::string
+get_xclbin_fnm(const xrt::xclbin&);
+
 // get_properties() - Get kernel properties
 XRT_CORE_COMMON_EXPORT
 const xrt_core::xclbin::kernel_properties&
