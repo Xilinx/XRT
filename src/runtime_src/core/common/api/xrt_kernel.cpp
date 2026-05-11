@@ -289,42 +289,53 @@ ctx_error_type_to_string(uint32_t ctx_error_type)
 
   if (ctx_error_type >= ctx_error_type_names.size())
     return "UNKNOWN";
+  
   return ctx_error_type_names[ctx_error_type];
 }
 
-// misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
+template <size_t N>
 static std::string
-uc_misc_status_flags_to_string(uint32_t misc_status)
+flags_to_string(uint32_t value, const std::array<std::pair<uint32_t, const char*>, N>& flags)
 {
-  static constexpr std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
-    {0x1U, "FW_EXCEPTION"},
-    {0x2U, "CTRL_HANG"},
-    {0x4U, "ASYNC_DM2MM_HANG"},
-    {0x8U, "ASYNC_MM2DM_HANG"},
-    {0x10U, "SYNC_DM2MM_HANG"},
-    {0x20U, "SYNC_MM2DM_HANG"},
-    {0x40U, "MISC_UNRECOVERABLE_ERROR"},
-  }};
-
-  if (misc_status == 0)
+  if (value == 0)
     return "NONE";
-
+  
   std::string result;
-  uint32_t unknown = misc_status;
-  for (const auto& entry : misc_status_flags) {
-    if (!(misc_status & entry.first))
+  uint32_t unknown = value;
+  for (const auto& entry : flags) {
+    if (!(value & entry.first))
       continue;
+
     if (!result.empty())
       result += " | ";
+
     result += entry.second;
     unknown &= ~entry.first;
   }
   if (unknown != 0) {
     if (!result.empty())
       result += " | ";
+
     result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
   }
   return result;
+}
+  
+// misc_status is a bit mask (ert_uc_health_info); OR known flags and report unknown bits.
+static std::string
+uc_misc_status_flags_to_string(uint32_t misc_status)
+{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
+    {0x1U,  "FW_EXCEPTION"},
+    {0x2U,  "CTRL_HANG"},
+    {0x4U,  "ASYNC_DM2MM_HANG"},
+    {0x8U,  "ASYNC_MM2DM_HANG"},
+    {0x10U, "SYNC_DM2MM_HANG"},
+    {0x20U, "SYNC_MM2DM_HANG"},
+    {0x40U, "MISC_UNRECOVERABLE_ERROR"},
+  }};
+
+  return flags_to_string(misc_status, misc_status_flags);
 }
 
 // uc_idle_status is a bit mask (ert_uc_health_info / hsa_lite_status).
@@ -337,25 +348,7 @@ uc_idle_status_flags_to_string(uint32_t idle_status)
     {0x4U, "CERT_IS_IDLE"},
   }};
 
-  if (idle_status == 0)
-    return "NONE";
-
-  std::string result;
-  uint32_t unknown = idle_status;
-  for (const auto& entry : idle_status_flags) {
-    if (!(idle_status & entry.first))
-      continue;
-    if (!result.empty())
-      result += " | ";
-    result += entry.second;
-    unknown &= ~entry.first;
-  }
-  if (unknown != 0) {
-    if (!result.empty())
-      result += " | ";
-    result += (boost::format("UNKNOWN(0x%x)") % unknown).str();
-  }
-  return result;
+  return flags_to_string(idle_status, idle_status_flags);
 }
 
 // Helper class for representing an in-memory kernel argument.  User
@@ -2056,7 +2049,7 @@ public:
     return name;
   }
 
-  const std::string&
+  std::string
   get_full_name() const
   {
     return m_full_name;
@@ -4913,58 +4906,91 @@ aie_error_message_v1(const ert_packet* epkt, const std::string& msg,
   // (e.g. ELF loaded from a buffer rather than a file path).
   if (!kernel_instance.empty())
     oss << "Kernel Instance: " << kernel_instance;
+  
   if (!elf_filename.empty())
     oss << "\nELF File:        " << elf_filename;
+  
   if (!elf_uuid.empty())
     oss << "\nELF UUID:        " << elf_uuid;
 
   if ( ctx_health->npu_gen == NPU_GEN_AIE2) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "\ntxn_op_idx = 0x" << std::setw(indent8) << ctx_health->aie2.txn_op_idx
-      << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->aie2.ctx_pc
-      << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_type
-      << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_type
-      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_exception_pc
-      << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->aie2.fatal_error_app_module
-      << "\n";
+    oss << "\ntxn_op_idx = 0x" << std::setw(indent8)
+        << ctx_health->aie2.txn_op_idx
+        << "\nctx_pc = 0x"<< std::setw(indent8)
+        << ctx_health->aie2.ctx_pc
+        << "\nfatal_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_type
+        << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_type
+        << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_exception_pc
+        << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+        << ctx_health->aie2.fatal_error_app_module
+        << "\n";
   }
   else if ( ctx_health->npu_gen == NPU_GEN_AIE4) {
     oss << std::uppercase << std::hex << std::setfill('0');
-    oss << "\nctx_state = 0x" << std::setw(indent8) <<ctx_health->aie4.ctx_state<<" ("<<ctx_status_to_string(ctx_health->aie4.ctx_state)<<")"
-      << "\nctx_error_type = 0x" << std::setw(indent8) << ctx_health->aie4.ctx_error_type<< " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type)<<")"
-      << "\nnumber of uC reported = "<<std::dec << ctx_health->aie4.num_uc;
+    oss << "\nctx_state = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_state
+        << " (" <<ctx_status_to_string(ctx_health->aie4.ctx_state) << ")"
+        << "\nctx_error_type = 0x" << std::setw(indent8)
+        << ctx_health->aie4.ctx_error_type
+        << " ("<<ctx_error_type_to_string(ctx_health->aie4.ctx_error_type) << ")"
+        << "\nnumber of uC reported = " << std::dec
+        << ctx_health->aie4.num_uc;
 
     for (uint32_t i = 0; i < ctx_health->aie4.num_uc; ++i) {
       oss << "\nuc_info[" << i << "]: "
-        << "\nuc_idx=0x" << std::setw(indent8) <<std::hex << ctx_health->aie4.uc_info[i].uc_idx
-        << "\nuc_idle_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_idle_status<<" ("<<uc_idle_status_flags_to_string(ctx_health->aie4.uc_info[i].uc_idle_status)<<")"
-        << "\nmisc_status=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].misc_status<<" ("<<uc_misc_status_flags_to_string(ctx_health->aie4.uc_info[i].misc_status)<<")"
-        << "\nfw_state=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].fw_state<<" ("<<uc_fwstate_to_string(ctx_health->aie4.uc_info[i].fw_state)<<")"
-        << "\npage_idx=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].page_idx
-        << "\noffset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].offset
-        << "\nrestore_page=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_page
-        << "\nrestore_offset=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].restore_offset
-        << "\nuc_ear=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_ear
-        << "\nuc_esr=0x" << std::setw(indent8) << ctx_health->aie4.uc_info[i].uc_esr
-        << "\n";
+          << "\nuc_idx=0x" << std::setw(indent8) << std::hex
+          << ctx_health->aie4.uc_info[i].uc_idx
+          << "\nuc_idle_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_idle_status
+          << " (" << uc_idle_status_flags_to_string(ctx_health->aie4.uc_info[i].uc_idle_status) << ")"
+          << "\nmisc_status=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].misc_status
+          << " ("<<uc_misc_status_flags_to_string(ctx_health->aie4.uc_info[i].misc_status) << ")"
+          << "\nfw_state=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].fw_state
+          << " ("<<uc_fwstate_to_string(ctx_health->aie4.uc_info[i].fw_state) << ")"
+          << "\npage_idx=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].page_idx
+          << "\noffset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].offset
+          << "\nrestore_page=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_page
+          << "\nrestore_offset=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].restore_offset
+          << "\nuc_ear=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_ear
+          << "\nuc_esr=0x" << std::setw(indent8)
+          << ctx_health->aie4.uc_info[i].uc_esr
+          << "\n";
     }
   }
   return oss.str();
 }
 
-// get_elf_identity_from_run() - Extract ELF filename, kernel instance, and UUID from a run object.
-// Returns empty values if the run has no associated ELF (non-ELF flow).
-// UUID (from .note.xrt.UID) serves as a fallback identifier when the filename is unavailable.
+// get_elf_identity_from_run() - Extract ELF identity
+//
+// The identity is tuple of filename, kernel instance name, and UUID
+// from a run object.
+//
+// Values are empty if the run has no associated ELF (non-ELF flow).
+// UUID (from .note.xrt.UID) serves as a fallback identifier when the
+// filename is unavailable.
 static std::tuple<std::string, std::string, std::string>
 get_elf_identity_from_run(const xrt::run& run)
 {
   auto impl = run.get_handle();
   if (!impl)
     return {};
+
+  const auto& mod = impl->get_module();
+  if (!mod)
+    return {};
+
   try {
-    const auto& mod = impl->get_module();
-    if (!mod)
-      return {};
     auto elf_handle = xrt_core::module_int::get_elf_handle(mod);
     return {xrt_core::elf_int::get_filename(elf_handle.get()),
             impl->get_kernel()->get_full_name(),
@@ -4976,39 +5002,45 @@ get_elf_identity_from_run(const xrt::run& run)
 }
 
 static std::string
-amend_aie_error_message(const std::string& msg, const xrt::run& run)
+amend_aie_error_message(const xrt::run& run, const std::string& msg)
 {
   const auto* epkt = run.get_ert_packet();
   constexpr auto indent8 = 8;
   if (epkt->state != ERT_CMD_STATE_TIMEOUT)
     return msg;
+
   if (epkt->data[0] == ERT_CTX_HEALTH_DATA_V1) {
     auto [elf_filename, kernel_instance, elf_uuid] = get_elf_identity_from_run(run);
     return aie_error_message_v1(epkt, msg, elf_filename, kernel_instance, elf_uuid);
   }
   else if (epkt->data[0] !=  ERT_CTX_HEALTH_DATA_V0)
     return msg;
-  //below is for printing V0 exception message
+
+  // Below is for printing V0 exception message
   std::ostringstream oss;
   oss << msg << "\n";
   auto ctx_health = get_ert_ctx_health_data(epkt);
 
   oss << std::uppercase << std::hex << std::setfill('0');
-  oss << "txn_op_idx = 0x" << std::setw(indent8) << ctx_health->txn_op_idx
-    << "\nctx_pc = 0x"<< std::setw(indent8) << ctx_health->ctx_pc
-    << "\nfatal_error_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_type
-    << "\nfatal_error_exception_type = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_type
-    << "\nfatal_error_exception_pc = 0x" << std::setw(indent8) << ctx_health->fatal_error_exception_pc
-    << "\nfatal_error_app_module = 0x" << std::setw(indent8) << ctx_health->fatal_error_app_module
-    << "\n";
+  oss << "txn_op_idx = 0x" << std::setw(indent8)
+      << ctx_health->txn_op_idx
+      << "\nctx_pc = 0x"<< std::setw(indent8)
+      << ctx_health->ctx_pc
+      << "\nfatal_error_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_type
+      << "\nfatal_error_exception_type = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_type
+      << "\nfatal_error_exception_pc = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_exception_pc
+      << "\nfatal_error_app_module = 0x" << std::setw(indent8)
+      << ctx_health->fatal_error_app_module
+      << "\n";
   return oss.str();
 }
 
 run::aie_error::
 aie_error(const xrt::run& run, const std::string& what)
-  : command_error(run, [&] {
-      return amend_aie_error_message(what, run);
-    }())
+  : command_error{run, amend_aie_error_message(run, what)}
 {}
 
 } // xrt
@@ -5025,9 +5057,7 @@ command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
 
 runlist::aie_error::
 aie_error(const xrt::run& run, ert_cmd_state state, const std::string& what)
-  : command_error(run, state, [&] {
-      return amend_aie_error_message(what, run);
-    }())
+  : command_error{run, state, amend_aie_error_message(run, what)}
 {}
 
 xrt::run

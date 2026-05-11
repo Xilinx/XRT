@@ -291,8 +291,12 @@ protected:
 
   // NOLINTEND
 
-  // Protected constructor - takes already-loaded ELFIO, platform, and optional file path
-  elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path = {});
+  // elf_impl() - constructor
+  // 
+  // @elfio:  In memory ELFIO object
+  // @platform: ?
+  // @path: file path if ELFIO was loaded from from a file, empty otherwise
+  elf_impl(ELFIO::elfio&& elfio, elf::platform platform, std::string path);
 
   // Parse sections in the ELF and populate internal maps
   void
@@ -477,9 +481,9 @@ std::pair<xrt_core::xclbin::kernel_properties, std::vector<xrt::xarg>>
 get_kernel_properties_and_args(std::shared_ptr<xrt::elf_impl> elf_impl,
                                const std::string& kernel_name);
 
-// Return the filename this ELF was loaded from (empty if loaded from buffer/stream).
-// Non-owning: elf_impl may be null (returns reference to empty string).
-const std::string&
+// get_filename() - Return the filename this ELF was loaded from
+// Empty string if ELF was loaded from buffer/stream
+std::string
 get_filename(const xrt::elf_impl* elf_impl);
 
 } // namespace xrt_core::elf_int
