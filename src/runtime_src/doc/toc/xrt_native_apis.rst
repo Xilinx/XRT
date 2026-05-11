@@ -8,12 +8,12 @@
 XRT Native APIs
 ===============
 
-XRT provides a set of APIs in C++ and Python.
+XRT exposes host-side APIs in C++ and Python.
 
-To use the native XRT APIs, the host application must link with the **xrt_coreutil** library.
-Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer).
+Native XRT host code must link against the **xrt_coreutil** library.
+C++ examples in this guide assume a compiler with **ISO C++17** or newer (for example ``-std=c++17``).
 
-Example g++ command
+Example ``g++`` invocation:
 
 .. code-block:: shell
 
@@ -42,7 +42,7 @@ The C++ Class objects used for the APIs are the following:
 +----------------------+---------------------+------------------------------------------------+
 |   Xclbin             | ``xrt::xclbin``     |  ``#include <xrt/experimental/xrt_xclbin.h>``  |
 +----------------------+---------------------+------------------------------------------------+
-|   Ctlrcode           | ``xrt::elf``        |  ``#include <xrt/experimental/xrt_elf.h>``     |
+|   Control code (ELF) | ``xrt::elf``        |  ``#include <xrt/experimental/xrt_elf.h>``     |
 +----------------------+---------------------+------------------------------------------------+
 | User-managed Kernel  | ``xrt::ip``         |  ``#include <xrt/experimental/xrt_ip.h>``      |
 +----------------------+---------------------+------------------------------------------------+
@@ -51,9 +51,9 @@ The C++ Class objects used for the APIs are the following:
 |                      |                     |  ``#include <xrt/xrt_graph.h>``                |
 +----------------------+---------------------+------------------------------------------------+
 
-Majority of the core data structures are defined inside in the header files located at ``$XILINX_XRT/include/xrt/`` directory. Newer features such as ``xrt::ip``, ``xrt::runlist``, ``xrt::elf``, etc. are defined inside header files located at ``$XILINX_XRT/include/experimental`` directory. The API interfaces that are in the experimental folder are subject to breaking changes.
+The majority of core data structures are defined in the header files under ``$XILINX_XRT/include/xrt/``. Newer features such as ``xrt::ip``, ``xrt::runlist``, ``xrt::elf``, and related types live under ``$XILINX_XRT/include/xrt/experimental/``. APIs in that experimental area are subject to breaking changes.
 
-The common host code flow using the above data structures is as below:
+The common host code flow using the above data structures is as follows:
 
 - Open AMD **Device** and load a kernel defined either in **ELF**, **XCLBIN** or combination of both.
 - Create **Buffer** objects to hold data for kernel inputs and outputs
@@ -67,7 +67,7 @@ Below we will walk through the common API usage to accomplish the above tasks.
 Device and Context (NPU Flow)
 -----------------------------
 
-Device and Context classes provide fundamental infrastructure-related interfaces. The primary objective of the device and context related APIs are:
+Device and Context classes provide fundamental infrastructure-related interfaces. The primary objectives of the device- and context-related APIs are:
 
 - Open a device and create a context on the device
 - Load a compiled kernel binary (or an elf) onto the device
@@ -112,14 +112,14 @@ The class constructor ``xrt::elf(const void *data, size_t size)`` also supports 
 .. code:: c++
       :number-lines: 10
 
-           void *mytrlcode = mycompiler_out();
+           void *myctrlcode = mycompiler_out();
            xrt::elf elf(myctrlcode, 0x10000);
 
 
 Device and XCLBIN (Classic FPGA Flow)
 -------------------------------------
 
-Device and XCLBIN classes provide fundamental infrastructure-related interfaces. The primary objective of the device and XCLBIN related APIs are
+Device and XCLBIN classes provide fundamental infrastructure-related interfaces. The primary objectives of the device- and XCLBIN-related APIs are
 
 - Open a device
 - Load a compiled kernel binary (or XCLBIN) onto the device
@@ -139,7 +139,7 @@ The above code block shows:
 
 - The ``xrt::device`` class's constructor is used to open the device (enumerated as 0)
 - The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename.
-- The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section).
+- The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (see the Kernel section).
 
 The class constructor ``xrt::device::device(const std::string& bdf)`` also supports opening a device object from a PCIe BDF passed as a string.
 
@@ -160,7 +160,7 @@ The ``xrt::device::get_info()`` is a useful member function to obtain necessary 
 Buffers
 -------
 
-Buffers are primarily used to store the input/output data for use by the device. The buffer related APIs are discussed in the following three subsections
+Buffers are primarily used to store the input/output data for use by the device. The buffer-related APIs are discussed in the following three subsections:
 
 1. Buffer allocation and deallocation
 2. Data transfer using Buffers
@@ -171,7 +171,7 @@ Buffers are primarily used to store the input/output data for use by the device.
 1. Buffer allocation and deallocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The C++ interface for buffers as below
+The C++ interface for buffers is illustrated below.
 
 The class constructor ``xrt::bo`` is mainly used to allocate a buffer object 4K aligned. By default, a regular buffer is created (optionally the user can create other types of buffers by providing a flag).
 
@@ -190,20 +190,20 @@ In the above code ``xrt::bo`` buffer objects are created using the class constru
 - The second argument specifies the buffer size.
 - The third argument is used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. There are two ways to specify the memory bank index
 
- - Through kernel arguments: In the above example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index. This member function accept kernel argument-index and automatically detect corresponding memory bank index by inspecting XCLBIN.
- - Passing Memory bank index:  The ``xrt::kernel::group_id()`` also accepts the direct memory bank index (as observed from ``xrt-smi examine --report memory`` output).
+ - Through kernel arguments: In the above example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index. This member function accepts a kernel argument index and detects the corresponding memory bank index by inspecting the XCLBIN.
+ - Passing a memory bank index: The ``xrt::kernel::group_id()`` overload also accepts the memory bank index directly (as reported by ``xrt-smi examine --report memory``).
 
 
 Creating special Buffers
 ************************
 
-The ``xrt::bo()`` constructors accept multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values:
+The ``xrt::bo()`` constructors accept additional buffer flags via an ``enum class`` argument. The main enumerator values are:
 
 - ``xrt::bo::flags::normal``: Regular buffer (default)
 - ``xrt::bo::flags::device_only``: Device only buffer (meant to be used only by the kernel, there is no host backing pointer).
 - ``xrt::bo::flags::host_only``: Host only buffer (buffer resides in the host memory directly transferred to/from the kernel)
 - ``xrt::bo::flags::p2p``: P2P buffer, A special type of device-only buffer capable of peer-to-peer transfer
-- ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when the host CPU frequently accessing the buffer (applicable for edge platform).
+- ``xrt::bo::flags::cacheable``: Use a cacheable buffer when the host CPU accesses the buffer frequently (typical on edge platforms).
 
 .. note::
 
@@ -214,7 +214,7 @@ The below example shows creating a P2P buffer on a device memory bank connected 
 .. code:: c++
       :number-lines: 15
 
-           auto p2p_buffer = xrt::bo(device, buffer_size_in_byte,xrt::bo::flags::p2p, kernel.group_id(3));
+           auto p2p_buffer = xrt::bo(device, buffer_size_in_bytes, xrt::bo::flags::p2p, kernel.group_id(3));
 
 
 Creating Buffers from the user pointer
@@ -229,7 +229,7 @@ The ``xrt::bo()`` constructor can also be called using a pointer provided by the
            int *host_ptr;
            posix_memalign(&host_ptr,4096,MAX_LENGTH*sizeof(int));
 
-           // Sample example filling the allocated host memory
+           // Simple example: fill the allocated host memory
            for(int i=0; i<MAX_LENGTH; i++) {
              host_ptr[i] = i;  // whatever
            }
@@ -264,7 +264,7 @@ The ``xrt::bo`` class has following member functions for the same functionality
 1. ``xrt::bo::write()``
 2. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
 
-To transfer the data from the device to the host, the steps are reversed, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer.
+To transfer data from the device to the host, reverse the steps: perform a DMA transfer from the device, then read data from the host-side buffer backing store.
 
 
 The corresponding ``xrt::bo`` class's member functions are
@@ -288,7 +288,7 @@ Code example of transferring data from the host to the device
            input_buffer.write(buff_data);
            input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for partial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments.
+Note that the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read``, and related overloads support partial buffer sync, read, and write by passing size and offset. In the example above, the full buffer size and offset ``0`` are used implicitly.
 
 Also note that if the buffer is created through the user-pointer, the ``xrt::bo::write`` or ``xrt::bo::read`` is not required before or after the ``xrt::bo::sync`` call.
 
@@ -302,7 +302,7 @@ Below is the example for creation of device only buffers.
            xrt::bo::flags device_flags = xrt::bo::flags::device_only;
            auto device_only_buffer = xrt::bo(device, size_in_bytes, device_flags, bank_grp_arg0);
 
-Here is how ``xrt::bo::read()`` and ``xrt::bo::write()`` API's to read/write directly from/to device only buffer there is no host backing storage.
+For device-only buffers (no host backing store), ``xrt::bo::read()`` and ``xrt::bo::write()`` perform DMA directly to or from device memory.
 
 - ``xrt::bo::write(const void* src, size_t size, size_t seek)``: Copies data from src to device buffer directly.
 - ``xrt::bo::read(void* dst, size_t size, size_t skip)``: Copies data from device buffer to dst.
@@ -330,7 +330,7 @@ Code example of transferring data from the host to the device by this approach
 III. Data transfer between the buffers by copy API
 **************************************************
 
-XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in :doc:`m2m`). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).
+XRT provides ``xrt::bo::copy()`` for a deep copy between two buffer objects when the platform supports it (see the M2M feature in :doc:`m2m`). If deep copy is not supported, the transfer falls back to a shallow copy via the host.
 
 .. code:: c++
       :number-lines: 25
@@ -348,7 +348,7 @@ This section describes a few other specific use-cases using buffers.
 DMA-BUF API
 ***********
 
-XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. The buffer handle obtained from ``xrt::bo::export_buffer()`` is essentially a file descriptor, hence sending across the processes requires a suitable IPC mechanism (example, UDS or Unix Domain Socket) to translate the file descriptor of one process into another process.
+XRT provides buffer export and import APIs primarily used for sharing buffers across devices (P2P) and processes. The buffer handle obtained from ``xrt::bo::export_buffer()`` is essentially a file descriptor, hence sending across the processes requires a suitable IPC mechanism (example, UDS or Unix Domain Socket) to translate the file descriptor of one process into another process.
 
 - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
 - ``xrt::bo()`` constructor: Allocate a BO imported from exported buffer handle
@@ -389,7 +389,7 @@ In the example below a sub-buffer is created from a parent buffer of size 4 byte
 Buffer information
 ******************
 
-XRT provides few other API Class member functions to obtain information related to the buffer.
+XRT provides a few other class member functions to obtain buffer-related information.
 
 - The member function ``xrt::bo::size()``: Size of the buffer
 - The member function ``xrt::bo::address()`` : Physical address of the buffer
@@ -473,7 +473,7 @@ Let us review the example below where the buffer is allocated for the kernel's f
 
 If the kernel bank index is ambiguous then ``kernel.group_id()`` returns the last memory bank index in the list it maintains. This is the case when the kernel has multiple CU with different connectivity for that argument. For example, let's assume a kernel argument (argument 0) is connected to memory bank 0, 1, 2 (for 3 CUs), then ``kernel.group_id(0)`` will return the last index from the group {0,1,2}, i.e. 2. As a result the buffer is created on the memory bank 2, so the buffer cannot be used for the CU0 and CU1.
 
-However, in the above situation, the user can always create 3 distinct kernel objects corresponds to 3 CUs (by using the ``{kernel_name:{cu_name(s)}}`` for xrt::kernel constructor) to execute the CUs by separate ``xrt::kernel`` objects.
+However, in the above situation, you can create three distinct ``xrt::kernel`` objects—one per CU—using the ``{kernel_name:{cu_name(s)}}`` form of the ``xrt::kernel`` constructor, and run each CU with its own kernel object.
 
 
 Executing the kernel
@@ -493,32 +493,29 @@ Execution of the kernel is associated with a **Run** object. The kernel can be e
            runt.start();
            runt.wait();
 
-	   // 3nd kernel execution with explicit run object creation
+           // 3rd kernel execution with explicit run object creation
            auto runs = xrt::run(krn);
            runs.set_arg(0, buf_a);
-	   runs.set_arg(1, buf_b);
-	   runs.set_arg(2, scalar_1);
+           runs.set_arg(1, buf_b);
+           runs.set_arg(2, scalar_1);
            runs.start();
            runs.wait();
 
 The ``xrt::kernel`` class provides **overloaded operator ()** to execute the kernel with a comma-separated list of arguments.
 
-The above c++ code block is demonstrating
+The C++ example above illustrates the following:
 
-- The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a ``xrt::run`` object. This is an asynchronous API and returns after submitting the task.
+- Invoking the kernel with ``operator()`` and a comma-separated argument list returns an ``xrt::run`` object. The call is asynchronous and returns after the work is submitted.
 - The member function ``xrt::run::wait()`` is used to block the current thread until the current execution is finished.
 - The member function ``xrt::run::set_arg()`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.
 - The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).
-- Optionally create a run object using the ``xrt::run`` constructor with the kernel argument.
-- Set the kernel arguments associated for the next execution using the member function ``xrt::run::set_arg()``.
-- Execute the kernel by the member function ``xrt::run::start()``.
-- Wait for the execution finish by the member function ``xrt::run::wait()``.
+- Optionally construct an ``xrt::run`` from the kernel, then use ``xrt::run::set_arg()`` for each argument, ``xrt::run::start()`` to launch, and ``xrt::run::wait()`` to block until completion.
 
 
 Executing a kernel list
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Multiple kernel runs of the same or different kernels can be stringed together in a runlist. The runlist can then be executed with a single submission, ``xrt::runlist::execute()``, and a single wait, ``xrt::runlist::wait()``, for the entire list. This enables efficient graph mode execution for ML models running on NPU.
+Multiple kernel runs of the same or different kernels can be chained in a runlist. The runlist can then be executed with a single submission, ``xrt::runlist::execute()``, and a single wait, ``xrt::runlist::wait()``, for the entire list. This enables efficient graph mode execution for ML models running on NPU.
 
 .. code:: c++
       :number-lines: 50
@@ -533,7 +530,7 @@ Multiple kernel runs of the same or different kernels can be stringed together i
            auto run2 = xrt::run(krn2);
            auto run3 = xrt::run(krn3);
 
-           // String the kernels in the runlist
+           // Chain the kernels in the runlist
            run1.set_arg(0, buf_a);
            run1.set_arg(1, buf_b);
            run1.set_arg(2, buf_c);
@@ -553,36 +550,36 @@ Multiple kernel runs of the same or different kernels can be stringed together i
 Waiting for completion of a run
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The member function ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes. To specify a timeout supported API ``xrt::run::wait()`` also accepts a timeout in millisecond unit. ``xrt::run::wait()`` returns ``ert_cmd_state`` to inform the caller if the kernel has finished running.
+The member function ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes. To specify a timeout supported API ``xrt::run::wait()`` also accepts a timeout in milliseconds. It returns ``ert_cmd_state`` so the caller can tell whether the kernel has finished.
 
 .. code:: c++
       :number-lines: 15
 
            auto runt = krn(buf_a, buf_b, scalar_1);
-	   // wait for 100 ms
-	   while (1) {
+           // wait for 100 ms
+           while (1) {
                auto result = runt.wait(100);
                if ((result == ERT_CMD_STATE_RUNNING) ||
                    (result == ERT_CMD_STATE_SUBMITTED) ||
                    (result == ERT_CMD_STATE_QUEUED))
                    continue;
-	   }
+           }
 
 
-However, the prefered method to wait for the completion of a kernel run is to use the member function ``xrt::run::wait2()``. Like ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes but in addition it also throws an exception if the kernel run returns an error status back.
+The preferred way to wait for a kernel run is ``xrt::run::wait2()``. Like ``xrt::run::wait()``, it blocks until execution finishes, but it also throws if the run completes with an error status.
 
 .. code:: c++
       :number-lines: 15
 
            auto runt = krn(buf_a, buf_b, scalar_1);
-	   // wait for 100 ms
-	   while (1) {
-		try {
-	            auto result = runt.wait2(100);
-		} catch (std::exception &ex) {
-		     std::cout << ex.what();
-		}
-	   }
+           // wait for 100 ms
+           while (1) {
+               try {
+                   auto result = runt.wait2(100);
+               } catch (std::exception &ex) {
+                   std::cout << ex.what();
+               }
+           }
 
 
 User Managed Kernel (Classic FPGA flow)
@@ -590,7 +587,7 @@ User Managed Kernel (Classic FPGA flow)
 
 The ``xrt::kernel`` is used to execute the kernels with standard control interface through AXI-Lite control registers. These standard control interfaces are well defined and understood by XRT but transparent to the user. These XRT managed kernels should always be represented by ``xrt::kernel`` objects in the host code.
 
-The XRT also supports custom control interface for a kernel. These type of kernels (a.k.a User-Managed Kernel) must be managed by the user by writing/reading to/from the AXI-Lite registers controlling these kernels. To differentiate from the XRT managed kernel, class ``xrt::ip`` is used to specify a user-managed kernel inside the user host code.
+XRT also supports a custom control interface for a kernel. Kernels of this kind (user-managed kernels) must be driven by the host reading and writing the AXI-Lite registers that control them. To differentiate from the XRT managed kernel, class ``xrt::ip`` is used to specify a user-managed kernel inside the user host code.
 
 Creating ``xrt::ip`` object from XCLBIN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -610,7 +607,7 @@ Allocating buffers for the IP inputs/outputs
 
 Similar to XRT managed kernel ``xrt::bo`` objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank.
 
-Below is a example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by ``xrt-smi examine --report memory`` command.
+Below is an example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by ``xrt-smi examine --report memory`` command.
 
 .. code:: c++
       :number-lines: 35
@@ -619,7 +616,7 @@ Below is a example of creating two buffers. Note the last argument of ``xrt::bo`
            auto buf_in_b = xrt::bo(device, DATA_SIZE, xrt::bo::flags::host_only, 8);
 
 
-Reading and write CU mapped registers
+Reading and writing CU-mapped registers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To read and write from the AXI-Lite register space to a CU (specified by ``xrt::ip`` object in the host code), the required member functions from the ``xrt::ip`` class are
@@ -647,9 +644,9 @@ In the above code block
 Graph (Versal AIE)
 ------------------
 
-In Versal ACAPs with AI Engines generation aie and aie2, the XRT Graph class (``xrt::graph``) and its member functions can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array.
+On Versal ACAPs with AI Engines (AIE and AIE2), the XRT graph class (``xrt::graph``) and its member functions can be used to dynamically load, monitor, and control graphs running on the AI Engine array.
 
-**A note regarding Device and Buffer**: In AIE based application, the device and buffer have some additional functionlities. For this reason the classes ``xrt::aie::device`` and ``xrt::aie::buffer`` are recommended to specify device and buffer objects.
+**A note regarding device and buffer**: In AIE-based applications, device and buffer objects have additional behavior. Prefer ``xrt::aie::device`` and ``xrt::aie::buffer`` when you need those capabilities.
 
 Graph Opening and Closing
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -684,7 +681,7 @@ The member function ``xrt::graph::reset()`` is used to reset a specified graph b
            graph.reset();
 
 
-The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. But after this AIE reset functionality is called, the PDI get lost, so a special AIE only XCLBIN has be loaded (This flow is for advanced user only).
+The member function ``xrt::aie::device::reset_array()`` resets the entire AIE array. After that call, the PDI is no longer loaded, so you must load a suitable AIE-only XCLBIN again (advanced flow only).
 
 
 
@@ -700,18 +697,18 @@ A graph can be executed for a fixed number of iterations followed by a "busy-wai
 
 **Busy Wait scheme**
 
-The graph can be executed for a fixed number of iteration by ``xrt::graph::run()`` API using an iteration argument. Subsequently, ``xrt::graph::wait()`` or ``xrt::graph::end()`` API should be used (with argument 0) to wait until graph execution is completed.
+The graph can be run for a fixed number of iterations using ``xrt::graph::run()`` with an iteration count. Then use ``xrt::graph::wait()`` or ``xrt::graph::end()`` (with argument ``0``) to block until that burst of execution completes.
 
 Let's review the below example
 
-- The graph is executed for 3 iterations by API ``xrt::graph::run()`` with the number of iterations as an argument.
-- The API ``xrt::graph::wait(0)`` is used to wait till the iteration is done.
+- The graph runs for three iterations via ``xrt::graph::run()`` with the iteration count as an argument.
+- ``xrt::graph::wait(0)`` blocks until that run completes.
 
-     - The API `xrt::graph::wait()` is used because the host code needs to execute the graph again.
-- The Graph is executed again for 5 iteration
-- The API ``xrt::graph::end(0)`` is used to wait till the iteration is done.
+  - Use ``xrt::graph::wait()`` when you intend to run the graph again afterward.
+- The graph runs again for five iterations.
+- ``xrt::graph::end(0)`` blocks until that run completes.
 
-    - After ``xrt::graph::end()`` the same graph can not be executed.
+  - After ``xrt::graph::end()``, the same graph cannot be run again without reloading the design and resetting.
 
 .. code:: c
       :number-lines: 35
@@ -719,20 +716,20 @@ Let's review the below example
            // start from reset state
            graph.reset();
 
-           // run the graph for 3 iteration
+           // run the graph for 3 iterations
            graph.run(3);
 
-           // Wait till the graph is done
+           // Wait until the graph is done
            graph.wait(0);  // Use graph::wait if you want to execute the graph again
 
 
            graph.run(5);
-           graph.end(0);  // Use graph::end if you are done with the graph execution
+           graph.end(0);  // Use graph::end when finished with graph execution
 
 
 **Timeout wait scheme**
 
-As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrt::graph::wait(std::chrono::milliseconds)`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
+As in the example above, ``xrt::graph::wait(0)`` busy-waits until the graph finishes. For a bounded wait, ``xrt::graph::wait(std::chrono::milliseconds)`` waits up to the given duration; if the graph is not done, you can handle the timeout (for example, retry or do other work). An example is shown below.
 
 .. code:: c++
       :number-lines: 35
@@ -740,7 +737,7 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
            // start from reset state
            graph.reset();
 
-           // run the graph for 100 iteration
+           // run the graph for 100 iterations
            graph.run(100);
 
             while (1) {
@@ -763,7 +760,7 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
 Infinite Graph Execution
 ************************
 
-The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument 0. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume()`` is used to execute the infinitely running graph again.
+The graph runs indefinitely if ``xrt::graph::run()`` is called with an iteration count of ``0``. While the graph is running in that mode, ``xrt::graph::wait()``, ``xrt::graph::suspend()``, and ``xrt::graph::end()`` can suspend or end execution after a given number of AIE cycles. ``xrt::graph::resume()`` continues a suspended graph.
 
 
 .. code:: c
@@ -790,15 +787,15 @@ The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argu
 In the example above
 
 - The member function ``xrt::graph::run(0)`` is used to execute the graph infinitely
-- The member function ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the graph starts.
+- ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the start of the run.
 
-       - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately.
+  - If the graph has already executed more than 3000 cycles, it suspends immediately.
 - The member function ``xrt::graph::resume()`` is used to restart the suspended graph
 - The member function ``xrt::graph::suspend()`` is used to suspend the graph immediately
-- The member function ``xrt::graph::end(5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start.
+- ``xrt::graph::end(5000)`` ends the graph after 5000 AIE cycles from the previous start.
 
-       - If the graph was already run more than 5000 AIE cycles the graph ends immediately.
-       - Using ``xrt::graph::end()`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again).
+  - If the graph has already executed more than 5000 cycles, it ends immediately.
+  - After ``xrt::graph::end()``, you cannot run the same graph again without reloading the PDI and performing a graph reset.
 
 
 Measuring AIE cycle consumed by the Graph
@@ -806,7 +803,7 @@ Measuring AIE cycle consumed by the Graph
 
 The member function ``xrt::graph::get_timestamp()`` can be used to determine AIE cycle consumed between a graph start and stop.
 
-Here in this example, the AIE cycle consumed by 3 iteration is calculated
+In this example, the AIE cycles consumed across three iterations are measured.
 
 
 .. code:: c++
@@ -817,20 +814,20 @@ Here in this example, the AIE cycle consumed by 3 iteration is calculated
 
            uint64_t begin_t = graph.get_timestamp();
 
-           // run the graph for 3 iteration
+           // run the graph for 3 iterations
            graph.run(3);
 
            graph.wait(0);
 
            uint64_t end_t = graph.get_timestamp();
 
-           std::cout<<"Number of AIE cycles consumed in the 3 iteration is: "<< end_t-begin_t;
+           std::cout << "Number of AIE cycles consumed in 3 iterations: " << (end_t - begin_t) << std::endl;
 
 
 RTP (Runtime Parameter) control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``xrt::graph`` class contains member function to update and read the runtime parameters of the graph.
+The ``xrt::graph`` class provides member functions to update and read runtime parameters (RTP) of the graph.
 
 - The member function ``xrt::graph::update()`` to update the RTP
 - The member function ``xrt::graph::read()`` to read the RTP.
@@ -852,7 +849,7 @@ The ``xrt::graph`` class contains member function to update and read the runtime
            // Read RTP
            float increment_out;
            graph.read("mm.mm0.inout[0]", &increment_out);
-           std::cout<<"\n RTP value read<<increment_out;
+           std::cout << "\n RTP value read: " << increment_out << std::endl;
 
 In the above example, the member function ``xrt::graph::update()`` and ``xrt::graph::read()`` are used to update and read the RTP values respectively. Note the function arguments
 
@@ -862,7 +859,7 @@ In the above example, the member function ``xrt::graph::update()`` and ``xrt::gr
 DMA operation to and from Global Memory IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::sync()`` that can be used to synchronize the buffer contents between global memory and AIE. The following code shows a sample example
+The AIE buffer class ``xrt::aie::bo`` provides ``xrt::aie::bo::sync()`` to synchronize data between global memory and the AIE. The following example illustrates its use.
 
 
 .. code:: c++
@@ -901,115 +898,113 @@ The above code shows
           - The size and the offset of the buffer
 
 
-GMIOs & External Buffers
-------------------------
+GMIOs and external buffers
+---------------------------
 
-XRT provides a buffer class ``xrt::aie::buffer`` which represents GMIO & External-Buffers. GMIOs & External Buffers facilitates the movement of data from global memory (like DDR) to the AI Engine and vice versa.Both GMIO and External buffers work together to manage data flow efficiently by ensuring that large datasets can be processed effectively without overwhelming local memory resources
+XRT provides ``xrt::aie::buffer`` for GMIO and external-buffer endpoints. GMIOs and external buffers move data between global memory (for example DDR) and the AI Engine. They help manage data flow so large workloads can be staged without exhausting local tile memory.
 
+Construction of ``xrt::aie::buffer`` succeeds only if a GMIO or external buffer with the given name exists in the loaded design.
 
-The AIE buffer ``xrt::aie::buffer`` object creation would be succesful if GMIO/External buffer exists with given name.
+The class overloads ``xrt::aie::buffer::sync(...)`` to move data between global memory and the AIE.
 
-This class has overloaded member function ``xrt::aie::buffer::sync(...)`` that can be used to synchronize the buffer contents between global memory and AIE.
+- ``xrt::aie::buffer::sync(xrt::bo bo, ...)`` synchronizes between an ``xrt::aie::buffer`` (GMIO or external buffer) and an ``xrt::bo`` in global memory.
 
-xrt::aie::buffer::sync(xrt::bo bo, ...) synchronizes the buffer content between xrt::aie::buffer (GMIO/External Buffer) & xrt::bo (Global Memory)
+- ``xrt::aie::buffer::sync(xrt::bo ping, xrt::bo pong, ...)`` attaches ping/pong ``xrt::bo`` buffers to an external buffer for parallel transfers.
 
-xrt::aie::buffer::sync(xrt::bo ping, xrt::bo pong, ...) configures the External buffer with ping/pong buffer for parallelism.
-
-The following code shows a sample example with a single input/output GMIO/External Buffer. Data gets transferred from global buffer "in_bo" to "gr.in1"
+The example below uses one input and one output GMIO or external buffer: data moves from the global buffer ``in_bo`` into ``gr.in1``.
 
 .. code:: c++
         :number-lines: 1
 
            auto device = xrt::aie::device(0);
-           auto uuid = device.load_xclbin(xclbin-filename);
+           auto uuid = device.load_xclbin("kernel.xclbin");
 
-           // Create Buffer in DDR/Global memory & prepare input
+           // Create buffer in DDR / global memory and prepare input
            auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto inp_bo_map = in_bo.map<float *>();
            std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
 
-           // Create Buffer in DDR/Global memory to store output
+           // Create buffer in DDR / global memory for output
            auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto out_bo_map = out_bo.map<float *>();
 
-           // create GMIO/External Buffer object for input & sync from in_bo
-           auto xrt::aie::buffer in_buffer = xrt::aie::buffer(device, uuid,"gr.in1");
+           // GMIO / external buffer for input — sync from in_bo
+           auto in_buffer = xrt::aie::buffer(device, uuid, "gr.in1");
            in_buffer.sync(in_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0);
 
-           //run your graphs which uses output GMIO/External buffer
+           // Run graphs that use the output GMIO / external buffer
 
-           // create GMIO/External Buffer object for output & sync from out_bo
-           auto xrt::aie::buffer out_buffer  = xrt::aie::buffer(device, uuid,"gr.out1");
+           // GMIO / external buffer for output — sync to out_bo
+           auto out_buffer  = xrt::aie::buffer(device, uuid, "gr.out1");
            out_buffer.sync(out_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0);
 
-This class has overloaded member function ``xrt::aie::buffer::async(...)`` that can be used to initiate an asynchronize operation to synchronize the xrt::bo buffer object
+The class also overloads ``xrt::aie::buffer::async(...)`` to start an asynchronous transfer involving an ``xrt::bo``.
 
-xrt::aie::buffer::async(xrt::bo bo, ...) initiate an asynchronize operation between xrt::aie::buffer (GMIO/External Buffer) & xrt::bo (Global Memory)
+- ``xrt::aie::buffer::async(xrt::bo bo, ...)`` starts an asynchronous sync between an ``xrt::aie::buffer`` and global memory.
 
-xrt::aie::buffer::async(xrt::bo ping,xrt::bo pong, ...) initiate an asynchronize operation between xrt::aie::buffer (GMIO/External Buffer) & ping/pong xrt::bo objects
+- ``xrt::aie::buffer::async(xrt::bo ping, xrt::bo pong, ...)`` starts an asynchronous sync using ping/pong ``xrt::bo`` objects.
 
-xrt::aie::buffer::wait() waits for the asynchronize operation to complete
+Use ``xrt::aie::buffer::wait()`` to wait for the asynchronous operation to finish.
 
-The following code shows a sample example with a single input/output GMIO/External Buffer. Data gets transferred from global buffer "in_bo" to "gr.in1"
+The example below is the same scenario as above, using ``async`` and ``wait`` instead of ``sync`` alone.
 
 .. code:: c++
         :number-lines: 1
 
            auto device = xrt::aie::device(0);
-           auto uuid = device.load_xclbin(xclbin-filename);
+           auto uuid = device.load_xclbin("kernel.xclbin");
 
-           // Create Buffer in DDR/Global memory & prepare input
+           // Create buffer in DDR / global memory and prepare input
            auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto inp_bo_map = in_bo.map<float *>();
            std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
 
-           // Create Buffer in DDR/Global memory to store output
+           // Create buffer in DDR / global memory for output
            auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto out_bo_map = out_bo.map<float *>();
 
-           // create GMIO/External Buffer object for input & sync from in_bo
-           auto xrt::aie::buffer in_buffer = xrt::aie::buffer(device, uuid,"gr.in1");
+           // GMIO / external buffer for input
+           auto in_buffer = xrt::aie::buffer(device, uuid, "gr.in1");
            in_buffer.async(in_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0);
 
-           //run your graphs which uses output GMIO/External buffer
+           // Run graphs that use the output GMIO / external buffer
 
-           // create GMIO/External Buffer object for output & sync from out_bo
-           auto xrt::aie::buffer out_buffer  = xrt::aie::buffer(device, uuid,"gr.out1");
+           // GMIO / external buffer for output
+           auto out_buffer  = xrt::aie::buffer(device, uuid, "gr.out1");
            out_buffer.async(out_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0);
            out_buffer.wait();
 
-Ping Pong buffers
+Ping-pong buffers
 ~~~~~~~~~~~~~~~~~
-The following code shows ping-pong buffer example.This shows an example with a ping/ping buffer being set on one of External buffer
+
+The example below attaches ping-pong ``xrt::bo`` buffers in global memory to an external buffer (``gr.ext1``) for double-buffered input, then syncs the result to ``out_bo`` via ``gr.out1``.
 
 .. code:: c++
         :number-lines: 1
 
            auto device = xrt::aie::device(0);
-           auto uuid = device.load_xclbin(xclbin-filename);
+           auto uuid = device.load_xclbin("kernel.xclbin");
 
-           // Create a Buffer in DDR/Global Memory & prepare input
+           // Host buffer and GMIO / external buffer for primary input
            auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto in_bo_map = in_bo.map<float *>();
            std::copy(my_float_array,my_float_array+SIZE,in_bo_map);
 
-           // create GMIO/External Buffer object for input
-           auto xrt::aie::buffer in_buffer  = xrt::aie::buffer(device, uuid,"gr.in1");
-           in_buffer.sync(in_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0);
+           auto in_buffer = xrt::aie::buffer(device, uuid, "gr.in1");
+           in_buffer.sync(in_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0);
 
-           // Create a Buffer in DDR/Global Memory for storing output
+           // Output buffer in global memory
            auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto out_bo_map = out_bo.map<float *>();
 
-           // Create Ping/Pong Buffers in global memory for intermediate buffers
+           // Ping-pong buffers for an external buffer port
            auto ext1_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
            auto ext2_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
 
-           // create GMIO/External Buffer object for input
-           auto xrt::aie::buffer ping_pong_bo  = xrt::aie::buffer(device, uuid,"gr.ext1");
+           auto ping_pong_bo  = xrt::aie::buffer(device, uuid, "gr.ext1");
            ping_pong_bo.sync(ext1_bo, ext2_bo, XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0);
-           // create GMIO/External Buffer object for output
-           auto xrt::aie::buffer out_buffer  = xrt::aie::buffer(device, uuid,"gr.out1");
+
+           auto out_buffer  = xrt::aie::buffer(device, uuid, "gr.out1");
            out_buffer.sync(out_bo, XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float),0);
 
 XRT Error API
@@ -1017,23 +1012,23 @@ XRT Error API
 
 In general, XRT APIs can encounter two types of errors:
 
-- Synchronous error: Error can be thrown by the API itself. The host code can catch these exception and take necessary steps.
-- Asynchronous error: Errors from the underneath driver, system, hardware, etc.
+- **Synchronous errors:** The API may throw an exception that host code can catch and handle.
+- **Asynchronous errors:** Failures reported later from the driver, system, or hardware.
 
-XRT provides an ``xrt::error`` class and its member functions to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
+XRT provides ``xrt::error`` and related member functions to surface asynchronous errors to user-space host code, which aids debugging.
 
-- Member function ``xrt::error::get_error_code()`` - Gets the last error code and its timestamp of a given error class
-- Member function ``xrt::error::get_timestamp()`` - Gets the timestamp of the last error
-- Member function ``xrt:error::to_string()`` - Gets the description string of a given error code.
+- ``xrt::error::get_error_code()`` — underlying ``xrtErrorCode`` for the error object (constructed from the device and error class, or from an explicit code and timestamp)
+- ``xrt::error::get_timestamp()`` — timestamp associated with that error
+- ``xrt::error::to_string()`` — formatted description string for the error object
 
-**NOTE**: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release.
+**Note:** Asynchronous error retrieval is still evolving and currently focuses on AIE-related asynchronous errors. Broader coverage is planned for a future release.
 
 Example code
 
 .. code:: c++
       :number-lines: 41
 
-           graph.run(runInteration);
+           graph.run(runIteration);
 
            try {
               graph.wait(timeout);
@@ -1070,14 +1065,14 @@ In Versal ACAPs with AI Engines, the XRT Profiling class (``xrt::aie::profiling`
 Create Profiling Event
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The class constructor ``xrt::aie::profiling`` is used to create profiling event object as shown below
+The ``xrt::aie::profiling`` constructor creates a profiling object, as shown below.
 
 .. code:: c
       :number-lines: 35
 
            auto event = xrt::aie::profiling(device);
 
-The profling object can be used to execute the profiling functions and collect profile statistics by calling profiling APIs.
+Use the profiling object to start and stop counters and to read profiling statistics through the profiling APIs.
 
 Start Profiling
 ~~~~~~~~~~~~~~~
@@ -1089,23 +1084,28 @@ The member function ``xrt::aie::profiling::start()`` is used to start performanc
       :number-lines: 45
 
            auto graph = xrt::graph(device, xclbin_uuid, "graph_name");
-           auto handle = event.start(xrt::aie::profiling::profiling_option option, std::string& port1, std::string& port2, int value);
+           std::string port1_name = "...";  // PLIO/GMIO port per UG1079
+           std::string port2_name = "...";  // PLIO/GMIO port per UG1079
+           uint32_t value = 0;               // meaning depends on profiling_option
+           event.start(
+               xrt::aie::profiling::profiling_option::io_total_stream_running_to_idle_cycles,
+               port1_name, port2_name, value);
 
            // run graph
            ...
            s2mm_run.wait();
 
-It returns a handle to be used by read and stop.
+Use the same ``xrt::aie::profiling`` object for ``read()`` and ``stop()`` after ``start()``; see ``xrt/xrt_aie.h`` and UG1079 for option and port semantics.
 
 Read Profiling
 ~~~~~~~~~~~~~~
 
-The ``xrt::aie::profiling::read`` function will return the current performance counter value associated with the profiling handle. It can be used using profiling event object as shown below
+``xrt::aie::profiling::read()`` returns the current performance counter value for the profiling session on that object.
 
-.. code:: c
+.. code:: c++
       :number-lines: 35
 
-           long long cycle_count = profile.read();
+           uint64_t cycle_count = event.read();
 
 Stop Profiling
 ~~~~~~~~~~~~~~
