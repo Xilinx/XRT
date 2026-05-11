@@ -296,7 +296,7 @@ ctx_error_type_to_string(uint32_t ctx_error_type)
 static std::string
 uc_misc_status_flags_to_string(uint32_t misc_status)
 {
-  static const std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 7> misc_status_flags {{
     {0x1U, "FW_EXCEPTION"},
     {0x2U, "CTRL_HANG"},
     {0x4U, "ASYNC_DM2MM_HANG"},
@@ -331,7 +331,7 @@ uc_misc_status_flags_to_string(uint32_t misc_status)
 std::string
 uc_idle_status_flags_to_string(uint32_t idle_status)
 {
-  static const std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
+  static constexpr std::array<std::pair<uint32_t, const char*>, 3> idle_status_flags {{
     {0x1U, "HSA_QUEUE_NOT_EMPTY"},
     {0x2U, "PREEMPTION_SAVE_COMPLETE"},
     {0x4U, "CERT_IS_IDLE"},
