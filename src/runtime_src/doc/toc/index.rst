@@ -1,7 +1,7 @@
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-   comment:: Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+   comment:: Copyright (C) 2022-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 ===================================
 FleXible RunTime (XRT) Architecture
