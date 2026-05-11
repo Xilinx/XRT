@@ -617,7 +617,7 @@ Below is an example of creating two buffers. Note the last argument of ``xrt::bo
 
 
 Reading and writing CU-mapped registers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To read and write from the AXI-Lite register space to a CU (specified by ``xrt::ip`` object in the host code), the required member functions from the ``xrt::ip`` class are
 
