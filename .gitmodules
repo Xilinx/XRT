@@ -21,4 +21,4 @@
 [submodule "src/runtime_src/xdp"]
 	path = src/runtime_src/xdp
 	url = https://github.com/Xilinx/XDP.git
-	branch = master
+	branch = 2026.1
