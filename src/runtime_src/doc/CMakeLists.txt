@@ -75,6 +75,54 @@ endif(NOT DOXYGEN_EXECUTABLE)
 if (NOT KERNELDOC_EXECUTABLE OR NOT SPHINX_EXECUTABLE)
   MESSAGE (WARNING "kernel-doc or Sphinx not found, XRT documentation build disabled")
 else ()
+  # RST sources present under toc/ but not linked from any toctree cause Sphinx
+  # "document isn't included in any toctree" warnings. Remove them from the
+  # staging copy before sphinx-build (sources under ${XRT_DOC_TOC_DIR} are unchanged).
+  set(XRT_DOC_SPHINX_EXCLUDE_RST
+    cloud_vendor_support.rst
+    debug-faq.rst
+    ert.main.rst
+    execution-model.rst
+    formats.rst
+    fpga_device_ready.rst
+    hm.rst
+    m2m.rst
+    mailbox.main.rst
+    mailbox.proto.rst
+    mgmt-ioctl.main.rst
+    multiprocess.rst
+    nagios_plugin.rst
+    newxsa-bringup.rst
+    opencl_extension.rst
+    p2p.rst
+    platforms.rst
+    platforms_partitions.rst
+    security.rst
+    sysfs.rst
+    test.rst
+    vsec.rst
+    xball.rst
+    xbflash2.rst
+    xbmgmt.rst
+    xbtools_map.rst
+    xbtop.rst
+    xocl_ioctl.main.rst
+    xrt_include_api_reference.rst
+    xrt_api_aie_graph.rst
+    xrt_api_buffer.rst
+    xrt_api_device_uuid.rst
+    xrt_api_experimental_headers.rst
+    xrt_api_hw_context.rst
+    xrt_api_kernel_run.rst
+    xrt_kernel_executions.rst
+    yocto.rst
+    zocl_ioctl.main.rst
+    )
+  set(XRT_DOC_SPHINX_EXCLUDE_ABS "")
+  foreach(_xrt_doc_rst IN LISTS XRT_DOC_SPHINX_EXCLUDE_RST)
+    list(APPEND XRT_DOC_SPHINX_EXCLUDE_ABS "${DOC_TOC_DIR}/${_xrt_doc_rst}")
+  endforeach()
+
   add_custom_target(
     xrt_docs
     DEPENDS
@@ -83,6 +131,7 @@ else ()
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
     COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
+    COMMAND rm -f ${XRT_DOC_SPHINX_EXCLUDE_ABS}
     COMMAND ${SPHINX_EXECUTABLE} -E ${DOC_TOC_DIR} html
     )
 endif ()

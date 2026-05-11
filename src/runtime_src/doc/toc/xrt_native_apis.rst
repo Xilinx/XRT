@@ -330,7 +330,7 @@ Code example of transferring data from the host to the device by this approach
 III. Data transfer between the buffers by copy API
 **************************************************
 
-XRT provides ``xrt::bo::copy()`` for a deep copy between two buffer objects when the platform supports it (see the M2M feature in :doc:`m2m`). If deep copy is not supported, the transfer falls back to a shallow copy via the host.
+XRT provides ``xrt::bo::copy()`` for a deep copy between two buffer objects when the platform supports memory-to-memory (M2M) DMA between memory banks. If deep copy is not supported, the transfer falls back to a shallow copy via the host.
 
 .. code:: c++
       :number-lines: 25
