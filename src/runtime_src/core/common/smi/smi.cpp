@@ -187,6 +187,19 @@ get_hardware_type(const xq::pcie_id::data& dev) const
 }
 
 tuple_vector
+smi::
+get_subcommands_list() const 
+{
+  std::lock_guard<std::mutex> lock(m_mutex);
+  tuple_vector out;
+  out.reserve(m_subcommands.size());
+  for (const auto& [name, subcmd] : m_subcommands) {
+    out.emplace_back(std::make_tuple(name, subcmd.get_description(), subcmd.get_type()));
+  }
+  return out;
+}
+
+tuple_vector
 get_list(const std::string& subcommand, const std::string& suboption) 
 {
   return instance()->get_list(subcommand, suboption);
@@ -196,6 +209,12 @@ tuple_vector
 get_option_options(const std::string& subcommand) 
 {
   return instance()->get_option_options(subcommand);
+}
+
+tuple_vector
+get_subcommands_list() 
+{
+  return instance()->get_subcommands_list();
 }
 
 } // namespace xrt_core::smi

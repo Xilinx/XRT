@@ -13,6 +13,8 @@
 #include "core/common/runner/runner.h"
 #include "core/common/smi/smi.h"
 
+#include "SubCmd.h"
+
 #include <chrono>
 #include <iostream>
 #include <map>
@@ -67,7 +69,17 @@ namespace XBUtilities {
   std::string
   str_available_devs(bool _inUserDomain);
 
-   /**
+  void
+  resolve_device(bool is_user_domain,
+                 const boost::program_options::variables_map& vm,
+                 std::string& device_bdf);
+
+  std::vector<std::shared_ptr<SubCmd>>
+  filter_subcmds(bool is_user_domain,
+                 const std::string& device_bdf,
+                 const std::vector<std::shared_ptr<SubCmd>>& all_subcmds);
+
+  /**
    * get_axlf_section() - Get section from the file passed in
    *
    * filename: file containing the axlf section

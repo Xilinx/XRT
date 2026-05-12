@@ -24,10 +24,12 @@
 #include <boost/tokenizer.hpp>
 
 // System - Include Files
+#include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <regex>
-#include <filesystem>
+#include <stdexcept>
 
 
 #ifdef _WIN32
@@ -228,6 +230,66 @@ XBUtilities::get_available_devices(bool inUserDomain)
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;
+}
+
+void
+XBUtilities::resolve_device(bool is_user_domain,
+                            const boost::program_options::variables_map& vm,
+                            std::string& device_bdf)
+{
+  const auto& device_var = vm["device"];
+  if (device_var.defaulted()) {
+    if (boost::iequals(device_bdf, "default")) {
+      device_bdf.clear();
+      boost::property_tree::ptree available_devices = get_available_devices(is_user_domain);
+      if (available_devices.empty())
+        throw std::runtime_error("No devices found.");
+      if (available_devices.size() > 1) {
+        std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
+        std::cerr << str_available_devs(is_user_domain) << std::endl;
+        std::cout << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+      const auto kd = available_devices.begin();
+      device_bdf = kd->second.get<std::string>("bdf");
+    }
+  }
+  else if (device_bdf.empty() || boost::iequals(device_bdf, "default")) {
+    std::cerr << "\nERROR: Option --device (-d) requires a BDF.\n";
+    std::cerr << str_available_devs(is_user_domain) << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+std::vector<std::shared_ptr<SubCmd>>
+XBUtilities::filter_subcmds(bool is_user_domain,
+                            const std::string& device_bdf,
+                            const std::vector<std::shared_ptr<SubCmd>>& all_subcmds)
+{
+  if (!is_user_domain || device_bdf.empty())
+    return {};
+
+  try {
+    auto device = get_device(boost::algorithm::to_lower_copy(device_bdf), is_user_domain);
+    const auto rows = xrt_core::device_query<xrt_core::query::xrt_smi_lists>(
+      device, xrt_core::query::xrt_smi_lists::type::subcommands);
+
+    std::vector<std::shared_ptr<SubCmd>> out;
+    for (const auto& cmd : all_subcmds) {
+      const std::string& name = cmd->getName();
+      for (const auto& row : rows) {
+        const std::string& n = std::get<0>(row);
+        if (!n.empty() && n == name) {
+          out.emplace_back(cmd);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+  catch (const std::exception&) {
+    return {};
+  }
 }
 
 std::string

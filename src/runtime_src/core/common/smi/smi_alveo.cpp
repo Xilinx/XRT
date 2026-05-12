@@ -100,14 +100,61 @@ create_configure_subcommand()
   return {"configure", "Device and host configuration", "common", std::move(configure_suboptions)};
 }
 
+static xrt_core::smi::subcommand
+create_advanced_subcommand()
+{
+  std::map<std::string, std::shared_ptr<xrt_core::smi::option>> advanced_suboptions;
+  advanced_suboptions.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  advanced_suboptions.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+  advanced_suboptions.emplace("read-mem", std::make_shared<xrt_core::smi::option>("read-mem", "", "Read from the given memory address", "hidden", "", "string", true));
+  advanced_suboptions.emplace("write-mem", std::make_shared<xrt_core::smi::option>("write-mem", "", "Write to a given memory address", "hidden", "", "string", true));
+
+  return {"advanced", "Low level command operations", "hidden", std::move(advanced_suboptions)};
+}
+
+static xrt_core::smi::subcommand
+create_program_subcommand()
+{
+  std::map<std::string, std::shared_ptr<xrt_core::smi::option>> o;
+  o.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  o.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+  return {"program", "Download the acceleration program to a given device", "common", std::move(o)};
+}
+
+static xrt_core::smi::subcommand
+create_reset_subcommand()
+{
+  std::map<std::string, std::shared_ptr<xrt_core::smi::option>> o;
+  o.emplace("device", std::make_shared<xrt_core::smi::option>("device", "d", "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest", "common", "", "string"));
+  o.emplace("help", std::make_shared<xrt_core::smi::option>("help", "h", "Help to use this sub-command", "common", "", "none"));
+  return {"reset", "Resets the given device", "common", std::move(o)};
+}
+
+void
+populate_smi_instance(xrt_core::smi::smi* smi_instance)
+{
+  smi_instance->add_subcommand("validate", create_validate_subcommand());
+  smi_instance->add_subcommand("examine", create_examine_subcommand());
+  smi_instance->add_subcommand("configure", create_configure_subcommand());
+  smi_instance->add_subcommand("advanced", create_advanced_subcommand());
+  smi_instance->add_subcommand("program", create_program_subcommand());
+  smi_instance->add_subcommand("reset", create_reset_subcommand());
+}
+
 std::string
 get_smi_config()
 {
   auto smi_instance = xrt_core::smi::instance();
-  smi_instance->add_subcommand("validate", create_validate_subcommand());
-  smi_instance->add_subcommand("examine", create_examine_subcommand());
-  smi_instance->add_subcommand("configure", create_configure_subcommand());
+  populate_smi_instance(smi_instance);
   return smi_instance->build_json();
+}
+
+xrt_core::smi::tuple_vector
+get_subcommands_list()
+{
+  auto smi_instance = xrt_core::smi::instance();
+  populate_smi_instance(smi_instance);
+  return smi_instance->get_subcommands_list();
 }
 
 } // namespace xrt_core::smi::alveo

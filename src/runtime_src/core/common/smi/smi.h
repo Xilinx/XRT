@@ -116,6 +116,18 @@ public:
   boost::property_tree::ptree 
   construct_subcommand_json() const;
 
+  const std::string&
+  get_name() const
+  { return m_name; }
+
+  const std::string&
+  get_description() const
+  { return m_description; }
+
+  const std::string&
+  get_type() const
+  { return m_type; }
+
   subcommand(std::string name, 
              std::string description, 
              std::string type, 
@@ -152,6 +164,17 @@ public:
   XRT_CORE_COMMON_EXPORT
   tuple_vector
   get_option_options(const std::string& subcommand) const;
+
+  bool
+  empty() const
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_subcommands.empty();
+  }
+
+  XRT_CORE_COMMON_EXPORT
+  tuple_vector
+  get_subcommands_list() const;
 
 };
 
@@ -243,5 +266,10 @@ get_list(const std::string& subcommand, const std::string& suboption);
 XRT_CORE_COMMON_EXPORT
 tuple_vector
 get_option_options(const std::string& subcommand);
+
+// Top-level xrt-smi subcommand names (and metadata) for the current smi singleton state.
+XRT_CORE_COMMON_EXPORT
+tuple_vector
+get_subcommands_list();
 
 } // namespace xrt_core::smi

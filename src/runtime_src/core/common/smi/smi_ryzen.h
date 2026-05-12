@@ -39,6 +39,9 @@ public:
 
   xrt_core::smi::subcommand
   create_configure_subcommand() override;
+
+  xrt_core::smi::subcommand
+  create_advanced_subcommand();
 };
 
 class config_gen_phoenix : public config_gen_ryzen {
@@ -83,5 +86,9 @@ populate_smi_instance(xrt_core::smi::smi* smi_instance, const xrt_core::device* 
 XRT_CORE_COMMON_EXPORT
 std::string
 get_smi_config(const xrt_core::device* device);
+
+XRT_CORE_COMMON_EXPORT
+xrt_core::smi::tuple_vector
+get_subcommands_list(const xrt_core::device* device);
 
 } // namespace xrt_core::smi::ryzen
