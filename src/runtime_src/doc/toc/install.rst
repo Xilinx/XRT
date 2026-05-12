@@ -7,10 +7,10 @@
 XRT Installation
 ----------------
 
-Install XRT Pre-requests on Deployment Server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install XRT Prerequisites on Deployment Server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT requires EPEL to install dependencies during installation process. Please use the folloing steps to install EPEL on your system if it hasn't been installed.
+XRT requires EPEL to install dependencies during installation process. Please use the following steps to install EPEL on your system if it hasn't been installed.
 
 .. Warning:: If it's on the XRT build server, EPEL should have been installed by ``xrtdeps.sh``. This step can be skipped.
 
@@ -56,7 +56,7 @@ Steps to reinstall XRT on Ubuntu::
 
     sudo apt install --reinstall ./xrt_<version>.deb
 
-Starting wirh 2026.1 XRT comes with separate *deployment* and *development* packages. The deployment package is sufficient to execute a precompiled XRT application. However, the development package is required to compile an XRT application. The development package includes XRT header files, CMake package files for discovery by CMake based appliation build environments, and XRT dynamic/static libraries for linking.
+Starting with 2026.1 XRT comes with separate *deployment* and *development* packages. The deployment package is sufficient to execute a precompiled XRT application. However, the development package is required to compile an XRT application. The development package includes XRT header files, CMake package files for discovery by CMake based application build environments, and XRT dynamic/static libraries for linking.
 
 .. note::
 

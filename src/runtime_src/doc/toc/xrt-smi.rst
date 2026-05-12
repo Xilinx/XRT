@@ -9,10 +9,12 @@
 xrt-smi
 =======
 
-This document describes the latest ``xrt-smi`` commands. These latest commands are default from 21.1 release.
+.. note::
+
+   For *up to date* xrt-smi documentation, visit `NPU Management Interface — Ryzen AI Software 1.7.1 documentation <https://ryzenai.docs.amd.com/en/latest/xrt_smi.html>`_
+   This details below describe the **legacy** ``xrt-smi`` commands and may not work with the latest xrt-smi.
 
 For an instructive video on xrt-smi commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
-
 
 **Global options**: These are the global options can be used with any command.
 
@@ -66,7 +68,7 @@ The ``xrt-smi program`` command downloads a specified xclbin binary to the progr
 
 
 xrt-smi validate
-~~~~~~~~~~~~~~~_
+~~~~~~~~~~~~~~~~
 
 The command ``xrt-smi validate`` validates the installed card by running precompiled basic tests `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
 
@@ -85,7 +87,7 @@ The command ``xrt-smi validate`` validates the installed card by running precomp
 
     - <user bdf> :  The Bus:Device.Function of the device of interest
 
-- The ``--run`` (or ``-r``) specifies the perticular test(s) to execute
+- The ``--run`` (or ``-r``) specifies the particular test(s) to execute
 
     - ``all`` (**default**): runs all the tests listed below
     - ``aux-connection``: Check if auxiliary power is connected

@@ -38,7 +38,7 @@ The C++ Class objects used for the APIs are the following:
 +----------------------+---------------------+------------------------------------------------+
 |   Run-list           | ``xrt::runlist``    |  ``#include <xrt/experimental/xrt_kernel.h>``  |
 +----------------------+---------------------+------------------------------------------------+
-|   Context            | ``xrt::hw_context`` |  ``#include <xrt/experimental/xrt_xclbin.h>``  |
+|   Context            | ``xrt::hw_context`` |  ``#include <xrt/xrt_hw_context.h>``  |
 +----------------------+---------------------+------------------------------------------------+
 |   Xclbin             | ``xrt::xclbin``     |  ``#include <xrt/experimental/xrt_xclbin.h>``  |
 +----------------------+---------------------+------------------------------------------------+
@@ -575,7 +575,7 @@ The preferred way to wait for a kernel run is ``xrt::run::wait2()``. Like ``xrt:
            // wait for 100 ms
            while (1) {
                try {
-                   auto result = runt.wait2(100);
+                   runt.wait2(100);
                } catch (std::exception &ex) {
                    std::cout << ex.what();
                }
