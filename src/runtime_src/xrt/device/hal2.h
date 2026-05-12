@@ -203,7 +203,7 @@ public:
   get_xrt_hwctx(const uuid& uuid) const override
   {
     if (!m_hw_ctx.has_value() || m_hw_ctx->first != uuid)
-      throw std::out_of_range("hal2::device::get_xrt_hwctx");
+      throw std::runtime_error(std::string("hal2 get_xrt_hwctx: requested=") + uuid.to_string() + (m_hw_ctx.has_value() ? std::string(", cached=") + m_hw_ctx->first.to_string() : std::string(", no cached hw context")));
     return m_hw_ctx->second;
   }
 
