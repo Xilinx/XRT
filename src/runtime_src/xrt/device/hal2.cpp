@@ -101,8 +101,6 @@ void
 device::
 close_nolock()
 {
-  m_hw_ctx.reset();
-
   if (m_handle)
     xrt_core::device_int::reset(m_handle);
 }
