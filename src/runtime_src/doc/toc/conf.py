@@ -26,14 +26,14 @@ sys.path.insert(0, os.path.abspath('docs'))
 # -- Project information -----------------------------------------------------
 
 project = 'XRT'
-copyright = '2017-2023, Advanced Micro Devices, Inc'
+copyright = '2017-2026, Advanced Micro Devices, Inc'
 author = 'Advanced Micro Devices, Inc'
 
 # The short X.Y version
 version = 'Master'
 # The full version, including alpha/beta/rc tags
 release = 'Master'
-html_last_updated_fmt = 'October 7, 2022'
+html_last_updated_fmt = 'May 12, 2026'
 
 
 # -- General configuration ---------------------------------------------------
