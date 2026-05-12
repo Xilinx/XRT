@@ -214,6 +214,7 @@ graph_object::wait_graph(uint64_t cycle)
 
     graph_api_obj->wait(cycle);
     state = graph_state::suspend;
+    throw xrt_core::error(-ETIME, "Wait graph '" + name + "' timeout");
   }
 }
 
