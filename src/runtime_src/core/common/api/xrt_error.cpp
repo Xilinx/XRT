@@ -38,10 +38,6 @@
 #include <map>
 #include <cstring>
 
-#ifdef _WIN32
-# pragma warning( disable : 4996)
-#endif
-
 namespace {
 
 static auto code_to_string = [] (auto& map, auto code, const std::string& msg)
@@ -354,7 +350,11 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
         return 0;
 
       auto cp_len = std::min(len-1, str.size());
+#ifdef _WIN32
+      strncpy_s(out, len, str.c_str(), cp_len);
+#else
       std::strncpy(out, str.c_str(), cp_len);
+#endif
       out[cp_len] = 0;
 
       return 0;
