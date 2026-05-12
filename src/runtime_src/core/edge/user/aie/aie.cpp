@@ -17,6 +17,7 @@
  */
 
 #include "aie.h"
+#include "core/common/config_reader.h"
 #include "core/common/error.h"
 #include "common_layer/fal_util.h"
 #include "core/common/message.h"
@@ -70,7 +71,8 @@ aie_array(const std::shared_ptr<xrt_core::device>& device)
   dev_inst = &dev_inst_obj;
 
   adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core,
+                                                     xrt_core::config::get_io_uring());
 
   fal_util::initialize(dev_inst); //resource manager initialization
 
@@ -144,7 +146,8 @@ aie_array(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_
   dev_inst = &dev_inst_obj;
 
   adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get(), hwctx_obj);
-  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+  m_config = std::make_shared<adf::config_manager>(dev_inst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core,
+                                                     xrt_core::config::get_io_uring());
 
   fal_util::initialize(dev_inst); //resource manager initialization
   
