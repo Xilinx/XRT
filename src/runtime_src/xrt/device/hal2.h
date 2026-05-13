@@ -23,8 +23,6 @@
 #include <cstring>
 #include <memory>
 #include <map>
-#include <optional>
-#include <utility>
 #include <array>
 #include <mutex>
 #include <stdexcept>
@@ -73,9 +71,8 @@ class device : public xrt_xocl::hal::device
   xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
-  // One active xrt::hw_context per HAL session. emplace replaces the prior
-  // context so the driver slot is freed before a second xclbin load (e.g. kernel_swap).
-  std::optional<std::pair<xrt::uuid, xrt::hw_context>> m_hw_ctx;
+  // Active xrt::hw_context for the HAL session.
+  xrt::hw_context m_hw_ctx;
 
   mutable std::mutex m_mutex;
 
@@ -202,9 +199,13 @@ public:
   xrt::hw_context
   get_xrt_hwctx(const uuid& uuid) const override
   {
-    if (!m_hw_ctx.has_value() || m_hw_ctx->first != uuid)
-      throw std::runtime_error(std::string("hal2 get_xrt_hwctx: requested=") + uuid.to_string() + (m_hw_ctx.has_value() ? std::string(", cached=") + m_hw_ctx->first.to_string() : std::string(", no cached hw context")));
-    return m_hw_ctx->second;
+    if (!m_hw_ctx)
+      throw std::runtime_error("no active hw context");
+
+    if (m_hw_ctx.get_xclbin_uuid() != uuid)
+      throw std::runtime_error(std::string("requested xclbin uuid does not match active hw context: ") + uuid.to_string() + "/" + m_hw_ctx.get_xclbin_uuid().to_string());
+
+    return m_hw_ctx;
   }
 
   std::shared_ptr<xrt_core::device>
