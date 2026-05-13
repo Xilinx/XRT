@@ -25,6 +25,7 @@
 #include <map>
 #include <array>
 #include <mutex>
+#include <stdexcept>
 
 #include <boost/optional/optional.hpp>
 
@@ -70,11 +71,8 @@ class device : public xrt_xocl::hal::device
   xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
-  // In hwctx flow, we create hw contexts from xclbins on demand
-  // instead of explicitly loading the xclbins.  The hwctx are cached
-  // here and accessors are provided so that xclbin references can be
-  // converted into the hwctx that has loaded the xclbin.
-  std::map<xrt::uuid, xrt::hw_context> m_hw_contexts;
+  // Active xrt::hw_context for the HAL session.
+  xrt::hw_context m_hw_ctx;
 
   mutable std::mutex m_mutex;
 
@@ -201,7 +199,13 @@ public:
   xrt::hw_context
   get_xrt_hwctx(const uuid& uuid) const override
   {
-    return m_hw_contexts.at(uuid);
+    if (!m_hw_ctx)
+      throw std::runtime_error("no active hw context");
+
+    if (m_hw_ctx.get_xclbin_uuid() != uuid)
+      throw std::runtime_error(std::string("requested xclbin uuid does not match active hw context: ") + uuid.to_string() + "/" + m_hw_ctx.get_xclbin_uuid().to_string());
+
+    return m_hw_ctx;
   }
 
   std::shared_ptr<xrt_core::device>
